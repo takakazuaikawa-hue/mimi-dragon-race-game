@@ -62,10 +62,13 @@ const NEWSPAPER_MARK_VALUE = {
 };
 
 const DISTANCE = {
+  // §14.1 §14.2: stamina pool bonus + cost multiplier. Per §14.1 "Alternative"
+  // and §12.10 (Target Feel): bonuses widened so long/marathon races at high
+  // rank don't collapse every dragon (Phase 9 testing showed 100% collapse).
   short:    { label: "短距離", bonus: -5, mult: 0.85 },
   mid:      { label: "中距離", bonus:  0, mult: 1.00 },
-  long:     { label: "長距離", bonus: 10, mult: 1.20 },
-  marathon: { label: "特長距離", bonus: 20, mult: 1.40 }
+  long:     { label: "長距離", bonus: 25, mult: 1.20 },
+  marathon: { label: "特長距離", bonus: 45, mult: 1.40 }
 };
 
 function statRank(v) {

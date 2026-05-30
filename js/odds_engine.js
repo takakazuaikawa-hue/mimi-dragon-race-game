@@ -56,12 +56,14 @@ function popularityPower(d, race) {
 // Simulate market many times.
 function simulateMarket(race) {
   const hypeRange = RANKS[race.rank].hypeNoise;
-  const pops = DRAGONS.map(d => ({ d, pp: popularityPower(d, race) }));
+  // §07 §9: 8 dragons per race.
+  const raceDragons = getRaceDragons(race);
+  const pops = raceDragons.map(d => ({ d, pp: popularityPower(d, race) }));
+  const N = raceDragons.length;
 
-  const winCount   = new Array(DRAGONS.length).fill(0);
-  const top3Count  = new Array(DRAGONS.length).fill(0);
+  const winCount   = new Array(N).fill(0);
+  const top3Count  = new Array(N).fill(0);
   // wide pair counts (symmetric matrix)
-  const N = DRAGONS.length;
   const wide = Array.from({length: N}, () => new Array(N).fill(0));
 
   const sims = SIM_COUNT;
@@ -106,7 +108,7 @@ function simulateMarket(race) {
   for (let i = 0; i < N; i++) for (let j = i+1; j < N; j++) {
     const p = wide[i][j] / sims;
     const o = oddsFromProb(p, FLOOR_WIDE, RANKS[race.rank].capsWide);
-    wideOdds[wideKey(DRAGONS[i].id, DRAGONS[j].id)] = { prob: p, odds: o };
+    wideOdds[wideKey(raceDragons[i].id, raceDragons[j].id)] = { prob: p, odds: o };
   }
 
   // Compute popularity ranking (by winOdds asc / winProb desc)

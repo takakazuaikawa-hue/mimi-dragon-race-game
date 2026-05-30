@@ -4,7 +4,8 @@
 function simulateRaceManyTimes(raceId, count) {
   const race = RACES.find(r => r.id === raceId);
   if (!race) return { error: "race not found" };
-  const N = DRAGONS.length;
+  const raceDragons = getRaceDragons(race);
+  const N = raceDragons.length;
   const winCount = new Array(N).fill(0);
   const top3Count = new Array(N).fill(0);
   let totalCollapse = 0;
@@ -15,7 +16,7 @@ function simulateRaceManyTimes(raceId, count) {
   for (let i = 0; i < count; i++) {
     const rr = runRace(race);
     rr.entries.forEach(e => {
-      const idx = DRAGONS.findIndex(d => d.id === e.dragon.id);
+      const idx = raceDragons.findIndex(d => d.id === e.dragon.id);
       if (e.rank === 1) winCount[idx]++;
       if (e.rank <= 3) top3Count[idx]++;
       if (e.collapse) totalCollapse++;
@@ -25,7 +26,7 @@ function simulateRaceManyTimes(raceId, count) {
     if (favEntry.rank <= 3) favTop3++;
   }
 
-  const perDragon = DRAGONS.map((d, i) => ({
+  const perDragon = raceDragons.map((d, i) => ({
     name: d.name,
     winRate: (winCount[i]/count*100).toFixed(1)+"%",
     top3Rate: (top3Count[i]/count*100).toFixed(1)+"%"
@@ -55,14 +56,15 @@ const STRATEGIES = {
     return { type:"wide", selections:[a,b] };
   },
   randomWin: (race, odds) => {
-    const d = DRAGONS[Math.floor(Math.random()*DRAGONS.length)];
+    const pool = getRaceDragons(race);
+    const d = pool[Math.floor(Math.random()*pool.length)];
     return { type:"win", selections:[d.id] };
   },
   // Value-aware: pick dragon whose true-fit course score most exceeds market expectation.
   valueWin: (race, odds) => {
     // approximate fit = basePower + coursePower (terrain-only)
     let best = null, bestScore = -Infinity;
-    for (const d of DRAGONS) {
+    for (const d of getRaceDragons(race)) {
       const cp = coursePower(d, race);
       const fit = basePower(d) + cp.total*0.5;
       const od = odds.oddsData.find(o => o.dragonId === d.id);
@@ -113,15 +115,16 @@ function compareAllStrategies(raceIds, raceCount, wager) {
 function testMarketVsTrueStrength(raceId, raceCount) {
   raceCount = raceCount || 200;
   const race = RACES.find(r => r.id === raceId);
+  const raceDragons = getRaceDragons(race);
   const oddsResult = simulateMarket(race);
   // True win rate from race simulation
-  const trueWin = new Array(DRAGONS.length).fill(0);
+  const trueWin = new Array(raceDragons.length).fill(0);
   for (let i = 0; i < raceCount; i++) {
     const rr = runRace(race);
-    const widx = DRAGONS.findIndex(d => d.id === rr.entries[0].dragon.id);
+    const widx = raceDragons.findIndex(d => d.id === rr.entries[0].dragon.id);
     trueWin[widx]++;
   }
-  return DRAGONS.map((d, i) => {
+  return raceDragons.map((d, i) => {
     const od = oddsResult.oddsData.find(o => o.dragonId === d.id);
     const trueRate = trueWin[i] / raceCount;
     const marketRate = od.marketWinProb;

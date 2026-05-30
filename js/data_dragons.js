@@ -13,7 +13,12 @@ const DRAGON_ASSET_BASE = {
   miruka: "dragon_mist_horn_milka",
   baran:  "dragon_fire_tail_baran",
   rosso:  "dragon_turn_claw_rosso",
-  momu:   "dragon_sleepy_cloud_momu"
+  momu:   "dragon_sleepy_cloud_momu",
+  // Phase 9 — high-rank challengers
+  phenix: "dragon_phoenix_phenix",
+  raika:  "dragon_thunder_horn_raika",
+  stella: "dragon_starlight_stella",
+  glaze:  "dragon_ice_glaze_glaze"
 };
 
 // §11 §19: placeholder dragon-icon CSS color by style.
@@ -154,5 +159,66 @@ const DRAGONS = [
     crowdReaction: 38,
     traits: ["追込", "複穴狙い", "気性安定"],
     portraitTone: "雲の眠竜"
+  },
+  // ===== Phase 9 high-rank challengers =====
+  {
+    id: "phenix",
+    name: "鳳凰竜フェニックス",
+    style: "front",
+    stats: { speed: 90, stamina: 85, turn: 70, wing: 88, fire: 90, nerve: 75, classBonus: 90 },
+    publicImage: 95,    // legendary name
+    courseReputation: { fire: 90, straight: 85, wind: 75, turn: 60, fog: 50 },
+    fanBias: 92,        // huge fan support
+    recentResult: 95,
+    newspaperMark: "◎",
+    visualMood: 92,
+    crowdReaction: 95,
+    traits: ["先行", "高ランク本命", "炎×翼"],
+    portraitTone: "黄金の鳳凰"
+  },
+  {
+    id: "raika",
+    name: "雷角竜ライカ",
+    style: "escape",
+    stats: { speed: 92, stamina: 70, turn: 60, wing: 75, fire: 60, nerve: 50, classBonus: 80 },
+    publicImage: 80,
+    courseReputation: { fire: 65, straight: 88, wind: 70, turn: 55, fog: 45 },
+    fanBias: 70,
+    recentResult: 85,
+    newspaperMark: "○",
+    visualMood: 82,
+    crowdReaction: 78,
+    traits: ["逃げ", "電光石火", "気性難"],
+    portraitTone: "稲妻の角"
+  },
+  {
+    id: "stella",
+    name: "星光竜ステラ",
+    style: "late",
+    stats: { speed: 80, stamina: 82, turn: 75, wing: 90, fire: 50, nerve: 85, classBonus: 82 },
+    publicImage: 78,
+    courseReputation: { fire: 55, straight: 80, wind: 90, turn: 75, fog: 80 },
+    fanBias: 75,
+    recentResult: 80,
+    newspaperMark: "○",
+    visualMood: 80,
+    crowdReaction: 80,
+    traits: ["差し", "翼安定", "夜・霧強"],
+    portraitTone: "星の翼"
+  },
+  {
+    id: "glaze",
+    name: "氷甲竜グレイズ",
+    style: "front",
+    stats: { speed: 70, stamina: 92, turn: 80, wing: 65, fire: 45, nerve: 90, classBonus: 78 },
+    publicImage: 55,    // quiet, not flashy
+    courseReputation: { fire: 35, straight: 70, wind: 65, turn: 80, fog: 88 },
+    fanBias: 50,
+    recentResult: 75,
+    newspaperMark: "▲",
+    visualMood: 58,
+    crowdReaction: 50,
+    traits: ["先行", "耐久型", "気性◎"],
+    portraitTone: "氷の甲"
   }
 ];

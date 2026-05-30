@@ -189,7 +189,9 @@ function runRace(race, trialForms) {
   const distBonus = DISTANCE[race.distance].bonus;
 
   // Build entries with form, base, course, weather pre-calculated.
-  const entries = DRAGONS.map(d => {
+  // §07 §9: 8 dragons per race (chosen per-race in data_races.js).
+  const raceDragons = getRaceDragons(race);
+  const entries = raceDragons.map(d => {
     const form = (trialForms && trialForms[d.id]) || generateForm(d);
     return {
       dragon: d,

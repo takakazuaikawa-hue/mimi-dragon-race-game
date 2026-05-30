@@ -246,7 +246,7 @@ function renderRaceDetail(race) {
   // Generate trial-run forms shown to the player (cached so they stay
   // consistent during this race-detail session per §07 §11).
   const trialForms = {};
-  DRAGONS.forEach(d => trialForms[d.id] = generateForm(d));
+  getRaceDragons(race).forEach(d => trialForms[d.id] = generateForm(d));
 
   state.current = { race, oddsResult, trialForms, bet: { type: "win", selections: [], wager: 100 } };
   // Tense tag for panyu hook when overpopular favorite has bad fit
@@ -442,7 +442,7 @@ function trialNote(d, f) {
 function generateValueHints(race, oddsResult, trialForms) {
   // Quick rough estimate: weight basePower + coursePower fit, compare to popularityPower
   const hints = [];
-  const items = DRAGONS.map(d => {
+  const items = getRaceDragons(race).map(d => {
     const cp = coursePower(d, race);
     const wp = weightedStat(d.stats, WEATHERS[race.weather].weights);
     const f = trialForms[d.id];
