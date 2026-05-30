@@ -1,0 +1,213 @@
+* { box-sizing: border-box; }
+body {
+  font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  margin: 0; padding: 0;
+  background: linear-gradient(180deg, #1a1530 0%, #2a2050 100%);
+  color: #f0e8d0;
+  min-height: 100vh;
+}
+#header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 20px; gap: 16px;
+  background: rgba(0,0,0,0.4);
+  border-bottom: 2px solid #d4a850;
+  flex-wrap: wrap;
+}
+#header h1 {
+  margin: 0; font-size: 18px; color: #ffd870;
+  flex: 0 1 auto; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 60vw;
+}
+#header h1 .subtitle {
+  font-size: 11px; color: #c0a070; margin-left: 6px; font-weight: normal;
+}
+.header-info { flex-shrink: 0; }
+.header-info { display: flex; gap: 20px; align-items: center; font-size: 14px; }
+.header-info b { color: #ffe080; font-size: 16px; }
+.debug-toggle { font-size: 12px; color: #aaa; cursor: pointer; }
+.info-level-select { font-size: 12px; color: #c0a070; }
+.info-level-select select {
+  background: #2a2050; color: #f0e8d0;
+  border: 1px solid #604040; border-radius: 3px;
+  padding: 2px 4px; font-size: 12px; margin-left: 4px;
+}
+
+.trial-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
+.trial-table th, .trial-table td { border: 1px solid #604040; padding: 5px 7px; }
+.trial-table th { background: rgba(212,168,80,0.15); color: #ffd870; }
+.trial-table .trial-good { color: #80ff80; }
+.trial-table .trial-mid { color: #ffd870; }
+.trial-table .trial-bad { color: #ff8080; }
+
+.info-tabs { display: flex; gap: 6px; margin: 10px 0 6px 0; }
+.info-tabs button { padding: 6px 12px; font-size: 13px; background: #604070; }
+.info-tabs button.active { background: #d4a850; color: #1a1530; }
+
+.value-positive { color: #80ff80; font-weight: bold; }
+.value-negative { color: #ff8080; }
+.value-neutral { color: #c0c0c0; }
+
+/* §11 §19 dragon icon placeholder: colored disc + initial. */
+.dragon-icon {
+  display: inline-block; width: 22px; height: 22px; line-height: 22px;
+  border-radius: 50%; text-align: center; vertical-align: middle;
+  font-weight: bold; color: #1a1530; font-size: 12px;
+  margin-right: 6px; box-shadow: 0 0 4px rgba(0,0,0,0.4);
+}
+.dragon-icon-row { display: flex; align-items: center; }
+
+/* §11 §23 region color theme on race cards & detail header. */
+.race-card[data-region] {
+  border-left: 4px solid var(--region-accent, #d4a850);
+}
+.race-detail-card[data-region] {
+  background: linear-gradient(135deg, var(--region-from, #50386b) 0%, var(--region-to, #2a2050) 100%);
+  border: 1px solid var(--region-accent, #d4a850);
+}
+
+#app { padding: 20px; max-width: 1200px; margin: 0 auto; }
+
+h2 { color: #ffd870; border-bottom: 1px solid #604040; padding-bottom: 6px; }
+h3 { color: #ffc850; margin-top: 16px; }
+button {
+  background: #d4a850; color: #1a1530;
+  border: none; padding: 10px 20px;
+  border-radius: 4px; font-weight: bold; cursor: pointer;
+  font-size: 14px;
+}
+button:hover { background: #ffd870; }
+button:disabled { background: #555; color: #888; cursor: not-allowed; }
+button.secondary { background: #604070; color: #f0e8d0; }
+button.secondary:hover { background: #806090; }
+
+.card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid #604040;
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.race-card {
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.race-card:hover { background: rgba(255,255,255,0.1); border-color: #d4a850; }
+.race-meta { font-size: 12px; color: #c0a070; margin-top: 4px; }
+
+table.entry-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  background: rgba(0,0,0,0.2);
+}
+.entry-table th, .entry-table td {
+  border: 1px solid #604040; padding: 6px 8px; text-align: left;
+}
+.entry-table th { background: rgba(212,168,80,0.2); color: #ffd870; }
+.entry-table tr:hover { background: rgba(255,255,255,0.05); }
+.entry-table .num { text-align: right; }
+.entry-table .odds-win { color: #ffe080; font-weight: bold; }
+.entry-table .odds-place { color: #c0d0ff; }
+.entry-table .style-escape { color: #ff8060; }
+.entry-table .style-front { color: #ffc060; }
+.entry-table .style-late { color: #80d0ff; }
+.entry-table .style-chase { color: #c080ff; }
+.entry-table .mark { font-size: 16px; }
+
+.popularity-rank { display: inline-block; width: 22px; text-align: center; background: #604040; border-radius: 3px; font-weight: bold; }
+.popularity-rank.p1 { background: #d44040; color: #fff; }
+.popularity-rank.p2 { background: #4060d4; color: #fff; }
+.popularity-rank.p3 { background: #d4a040; color: #fff; }
+
+.rank-S { color: #ff80c0; font-weight: bold; }
+.rank-A { color: #ff8060; font-weight: bold; }
+.rank-B { color: #ffc060; }
+.rank-C { color: #c0d040; }
+.rank-D { color: #80c0c0; }
+.rank-E { color: #808080; }
+
+.bet-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.bet-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.bet-tabs button { flex: 1; padding: 8px; }
+.bet-tabs button.active { background: #ff8060; }
+
+.selectors label { display: block; margin: 6px 0; font-size: 13px; }
+.selectors select, .selectors input {
+  width: 100%; padding: 6px; background: #2a2050; color: #f0e8d0;
+  border: 1px solid #604040; border-radius: 3px; font-size: 14px;
+}
+
+.expected-payout {
+  font-size: 16px; color: #80ff80;
+  background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;
+  margin: 10px 0;
+}
+
+.race-log {
+  background: rgba(0,0,0,0.4);
+  padding: 14px; border-radius: 4px;
+  max-height: 400px; overflow-y: auto;
+  font-size: 13px; line-height: 1.7;
+}
+.race-log .phase { color: #ffd870; font-weight: bold; margin-top: 8px; }
+.race-log .line { margin-left: 12px; }
+
+.ranking-table { width: 100%; border-collapse: collapse; }
+.ranking-table th, .ranking-table td { padding: 6px 10px; border-bottom: 1px solid #604040; }
+.ranking-table th { background: rgba(212,168,80,0.2); }
+.ranking-table tr.top1 { background: rgba(255,200,80,0.15); }
+.ranking-table tr.top2 { background: rgba(192,192,192,0.10); }
+.ranking-table tr.top3 { background: rgba(176,128,80,0.10); }
+
+.result-hit { color: #80ff80; font-size: 24px; font-weight: bold; }
+.result-miss { color: #ff8080; font-size: 24px; font-weight: bold; }
+
+.analysis-section { margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.2); border-left: 3px solid #d4a850; border-radius: 3px; }
+.analysis-section .label { color: #ffd870; font-weight: bold; display: block; margin-bottom: 4px; }
+
+.hidden { display: none !important; }
+
+#event-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.event-box {
+  background: #2a2050; border: 2px solid #d4a850;
+  padding: 20px; border-radius: 8px; max-width: 500px;
+}
+.event-speaker { color: #ffd870; font-weight: bold; margin-bottom: 8px; }
+.event-text { line-height: 1.7; margin-bottom: 14px; }
+
+.actions { display: flex; gap: 10px; margin-top: 16px; }
+
+.debug-info {
+  background: rgba(0,0,0,0.5); border: 1px dashed #604040;
+  padding: 8px; margin-top: 10px; font-size: 11px; font-family: monospace;
+  white-space: pre-wrap; color: #a0c0a0;
+}
+
+.stamina-bar {
+  display: inline-block; width: 60px; height: 8px;
+  background: #333; border-radius: 4px; overflow: hidden; vertical-align: middle;
+}
+.stamina-bar > div { height: 100%; background: linear-gradient(90deg, #ff4040, #ffc040, #40c040); }
+
+.collapse-marker { color: #ff6060; font-size: 11px; margin-left: 4px; }
+
+.trial-note { color: #a0c0a0; font-size: 12px; }
+.dragon-traits { color: #c0a0c0; font-size: 12px; }
+
+.section-info { display: flex; gap: 8px; margin: 8px 0; font-size: 12px; }
+.section-info > div { background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 3px; }
+
+.race-detail-card {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(80,60,120,0.3), rgba(120,80,60,0.2));
+}
+
+.condition-line { color: #c0c0a0; font-size: 12px; font-style: italic; }
+.locked-badge { color: #888; font-size: 12px; margin-left: 4px; }
+.race-card button:disabled { opacity: 0.4; }
