@@ -211,8 +211,45 @@ const RACE_ENTRY_OVERRIDES = {
 };
 
 function getRaceDragonIds(race) {
-  return RACE_ENTRY_OVERRIDES[race.id] || ORIGINAL_8;
+  // §09 §15: entry encouragement may temporarily inject a candidate dragon
+  // into the race's entry list. The override is applied only after the
+  // story-supported event has fired (not as paid manipulation).
+  const base = RACE_ENTRY_OVERRIDES[race.id] || ORIGINAL_8;
+  const override = state.current && state.current._encouragementOverride;
+  if (override && override.raceId === race.id) return override.entries;
+  return base;
 }
 function getRaceDragons(race) {
   return getRaceDragonIds(race).map(id => DRAGONS.find(d => d.id === id));
+}
+
+// §09 §15 — entry encouragement offers, one per story event, once each.
+// Form: raceId → { candidateId, replaceId, villageLevelAtLeast, dialogue }.
+const ENTRY_ENCOURAGEMENTS = {
+  race_lapan_festival: {
+    candidateId: "poro",
+    replaceId: "raika",  // 派手な雷竜の1枠を、村の推薦枠でポロに譲る
+    villageLevelAtLeast: 2,
+    dialogue: [
+      ["mimi", "サケさん、祝祭級にポロちゃんを推せないかな？ 観衆は派手な竜に流れるけど、ポロちゃんの気性なら3着以内は狙えるかも…！"],
+      ["sake_udada", "推薦枠なら出せる。村のチャレンジ出走として、正規の勝負だ。出した以上、結果はレース通り。読みは君次第だ。"]
+    ]
+  }
+};
+
+function maybeOfferEntryEncouragement(race) {
+  const offer = ENTRY_ENCOURAGEMENTS[race.id];
+  if (!offer) return null;
+  if (state.player.village.level < offer.villageLevelAtLeast) return null;
+  // once per story event
+  const flagName = `_encouragement_fired_${race.id}`;
+  if (state.player.village.eventFlags[flagName]) return null;
+  state.player.village.eventFlags[flagName] = true;
+  // Build modified entries
+  const base = RACE_ENTRY_OVERRIDES[race.id] || ORIGINAL_8;
+  const entries = base.includes(offer.candidateId)
+    ? base.slice()
+    : base.filter(id => id !== offer.replaceId).concat([offer.candidateId]);
+  saveGame();
+  return { raceId: race.id, entries, offer };
 }

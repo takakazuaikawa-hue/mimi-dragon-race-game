@@ -158,7 +158,7 @@ function renderCollection() {
 
   const tbl = el("table", "entry-table");
   tbl.innerHTML = `<thead><tr>
-    <th>竜名</th><th>脚質</th><th>状態</th>
+    <th>竜名</th><th>脚質</th><th>解放ノート</th>
     <th>見た数</th><th>勝</th><th>複圏</th>
     <th>賭けた数</th><th>的中</th><th>★</th>
   </tr></thead>`;
@@ -167,11 +167,12 @@ function renderCollection() {
     const entry = (state.player.collection || {})[d.id];
     const seen = entry && entry.seen;
     const r = entry ? entry.records : { racesSeen:0, winsSeen:0, top3Seen:0, playerBetCount:0, playerHitCount:0 };
+    const notes = seen ? getCollectionNoteText(entry, d) : [];
     const tr = el("tr");
     tr.innerHTML = `
       <td><b>${seen ? d.name : "？？？"}</b></td>
       <td class="style-${d.style}">${seen ? STYLE_LABEL[d.style] : "－"}</td>
-      <td>${seen ? "解放" : "未確認"}</td>
+      <td class="trial-note">${notes.length ? notes.join("<br>") : "<span style=\"color:#666\">未確認</span>"}</td>
       <td class="num">${r.racesSeen}</td>
       <td class="num">${r.winsSeen}</td>
       <td class="num">${r.top3Seen}</td>
@@ -183,6 +184,7 @@ function renderCollection() {
   });
   tbl.appendChild(tbody);
   app.appendChild(tbl);
+  app.appendChild(el("div", "condition-line", "ノート解放: 1戦=基本 / 3戦=気性 / 5戦=適性 / 2賭=市場印象 / 8戦+複圏経験=物語"));
 
   app.querySelectorAll(".fav-btn").forEach(btn => {
     btn.onclick = () => {
@@ -240,6 +242,17 @@ function renderRaceDetail(race) {
   state.ui.screen = "race_detail";
   runEventHooks("afterRaceSelect", { race });
 
+  // §09 §12-16 Entry encouragement opportunity (may modify entries).
+  state.current = state.current || {};
+  const offer = maybeOfferEntryEncouragement(race);
+  if (offer) {
+    state.current._encouragementOverride = offer;
+    // queue the story dialogue
+    offer.offer.dialogue.forEach(([speaker, text]) => showEvent(speakerLabel(speaker), text));
+  } else {
+    state.current._encouragementOverride = null;
+  }
+
   // Compute odds (market simulation).
   runEventHooks("beforeEntryList", { race });
   const oddsResult = simulateMarket(race);
@@ -248,7 +261,7 @@ function renderRaceDetail(race) {
   const trialForms = {};
   getRaceDragons(race).forEach(d => trialForms[d.id] = generateForm(d));
 
-  state.current = { race, oddsResult, trialForms, bet: { type: "win", selections: [], wager: 100 } };
+  Object.assign(state.current, { race, oddsResult, trialForms, bet: { type: "win", selections: [], wager: 100 } });
   // Tense tag for panyu hook when overpopular favorite has bad fit
   const fav = oddsResult.oddsData.find(o => o.popularityRank === 1);
   const tense = fav && fav.winOdds <= 2.5;
@@ -527,6 +540,7 @@ function onConfirmBet(skipDialog) {
     state.player.winsByRank[c.race.rank] = (state.player.winsByRank[c.race.rank] || 0) + 1;
   }
   updateCollectionFromRace(raceResult, c.bet, betResult);
+  gainVillageExp(c.race, betResult && betResult.hit, raceResult._newDragonsThisRace || 0);
   checkEconomyMilestones(betResult);
   checkRankProgression();
   saveGame();

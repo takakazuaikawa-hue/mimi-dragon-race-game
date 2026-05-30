@@ -122,25 +122,83 @@ function ensureCollectionEntry(dragonId) {
 function updateCollectionFromRace(raceResult, bet, betResult) {
   // Record every dragon that ran (seen + race counter), winner/top3,
   // and the player's bet/hit per selected dragon (§9 records schema).
+  let newDragons = 0;
   raceResult.entries.forEach(e => {
     const entry = ensureCollectionEntry(e.dragon.id);
+    const wasNew = !entry.seen;
     entry.seen = true;
     entry.unlocked = true;  // V1: unlock on first race seen
-    entry.notesUnlocked.basic = true;
     entry.records.racesSeen += 1;
     if (e.rank === 1) entry.records.winsSeen += 1;
     if (e.rank <= 3) entry.records.top3Seen += 1;
     if (!state.player.village.unlockedDragonIds.includes(e.dragon.id)) {
       state.player.village.unlockedDragonIds.push(e.dragon.id);
     }
+    if (wasNew) newDragons += 1;
+    unlockCollectionNotes(entry);
   });
+  raceResult._newDragonsThisRace = newDragons;
   if (bet && bet.selections) {
     bet.selections.forEach(id => {
       const entry = ensureCollectionEntry(id);
       entry.records.playerBetCount += 1;
       if (betResult && betResult.hit) entry.records.playerHitCount += 1;
+      unlockCollectionNotes(entry);
     });
   }
+}
+
+// §09 §11: Progressive note unlocking by player familiarity.
+function unlockCollectionNotes(entry) {
+  const seen = entry.records.racesSeen;
+  const bet = entry.records.playerBetCount;
+  // 1 race seen → basic info known
+  if (seen >= 1) entry.notesUnlocked.basic = true;
+  // 3 races seen → condition (足取り・気性) shown
+  if (seen >= 3) entry.notesUnlocked.condition = true;
+  // 5 races seen → course fit (適性) shown
+  if (seen >= 5) entry.notesUnlocked.courseFit = true;
+  // 2 bets placed → market bias shown
+  if (bet >= 2) entry.notesUnlocked.marketBias = true;
+  // 8 races seen + top3 history → story flavor
+  if (seen >= 8 && entry.records.top3Seen >= 1) entry.notesUnlocked.story = true;
+}
+
+// Helper for collection UI: text description for each note.
+function getCollectionNoteText(entry, dragon) {
+  const n = entry.notesUnlocked || {};
+  const lines = [];
+  if (n.basic) lines.push(`脚質: ${STYLE_LABEL[dragon.style]} / 特徴: ${dragon.traits.join("・")}`);
+  if (n.condition) lines.push(`気性${statRank(dragon.stats.nerve)}・体調印象${(dragon.visualMood||50) >= 70 ? "良好" : "並"}`);
+  if (n.courseFit) {
+    const rep = dragon.courseReputation || {};
+    const top = Object.entries(rep).filter(([k,v]) => v >= 75).map(([k,v]) => k).slice(0,3);
+    lines.push(`得意: ${top.length ? top.join("/") : "汎用"}`);
+  }
+  if (n.marketBias) lines.push(`市場印象: 新聞印${dragon.newspaperMark || "－"} / 見た目人気${(dragon.publicImage||50)>=75?"高":(dragon.publicImage||50)<=45?"低":"中"}`);
+  if (n.story) lines.push(`物語: ${dragon.portraitTone || "—"}`);
+  return lines;
+}
+
+// §09 §18 Village level-up logic.
+// VillageExp += raceRank*10 + (hit ? raceRank*5 : 0) + (newDragonSeen ? 20 : 0).
+// Threshold for next level: level * 100.
+function gainVillageExp(race, hit, newDragonsThisRace) {
+  const v = state.player.village;
+  if (!v.exp) v.exp = 0;
+  let gain = race.rank * 10 + (hit ? race.rank * 5 : 0) + (newDragonsThisRace || 0) * 20;
+  v.exp += gain;
+  const threshold = v.level * 100;
+  if (v.exp >= threshold && v.level < 10) {
+    v.exp -= threshold;
+    v.level += 1;
+    state.player.villageLevel = v.level; // sync shortcut
+    runEventHooks("onVillageUpdate", { newLevel: v.level, gain });
+    saveGame();
+    return v.level;
+  }
+  saveGame();
+  return null;
 }
 
 // §08 §11 Check rank unlock after race.
