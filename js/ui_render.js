@@ -32,6 +32,8 @@ function renderHome() {
   actions.appendChild(goCollection);
   const goHelp = el("button", "secondary", "予想入門"); goHelp.onclick = () => renderHelp();
   actions.appendChild(goHelp);
+  const shareGame = el("button", "secondary", "ゲームをシェア"); shareGame.onclick = shareGameInfo;
+  actions.appendChild(shareGame);
   const reset = el("button", "secondary", "リセット"); reset.onclick = () => {
     if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); }
   };
@@ -652,6 +654,69 @@ function renderResult() {
   const next = el("button", "secondary", "次のレースへ"); next.onclick = renderRaceSelect;
   actions.appendChild(next);
   app.appendChild(actions);
+}
+
+// Game-level share — promotes the game itself rather than a single race result.
+const GAME_SHARE_URL = "";  // 公開URLが決まったらここに入れる
+
+function buildGameShareText() {
+  const lines = [
+    `【聖龍爆走録ミミ】`,
+    `転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件`,
+    ``,
+    `市場のオッズと真の実力のズレを読む、ファンタジー公営龍レース予想カジノ。`,
+    `8竜・3賭式（単竜／複竜／ワイド竜）・5レース。`,
+    `1番人気が強いとは限らない。読めば勝てる、読まなきゃ負ける。`,
+    ``,
+    `#聖龍爆走録ミミ #ぱほぱほ`
+  ];
+  if (GAME_SHARE_URL) lines.push("", GAME_SHARE_URL);
+  return lines.join("\n");
+}
+
+async function shareGameInfo() {
+  const text = buildGameShareText();
+  const payload = { title: "聖龍爆走録ミミ", text };
+  if (GAME_SHARE_URL) payload.url = GAME_SHARE_URL;
+  if (navigator.share) {
+    try {
+      await navigator.share(payload);
+      flashShareToast("シェアしました");
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      flashShareToast("ゲーム紹介文をコピーしました");
+      return;
+    } catch (e) { /* fall through */ }
+  }
+  showShareFallback(text, "ゲーム紹介文をコピー");
+}
+
+function flashShareToast(msg) {
+  let toast = document.getElementById("share-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "share-toast";
+    toast.className = "share-toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+function showShareFallback(text, title) {
+  const overlay = document.getElementById("event-overlay");
+  document.getElementById("event-speaker").textContent = title || "テキストをコピー";
+  document.getElementById("event-text").innerHTML =
+    `<div style="font-size:12px;color:#a0a0a0;margin-bottom:8px;">下のテキストを選んでコピーしてください。</div>` +
+    `<textarea readonly style="width:100%;height:160px;background:#1a1530;color:#f0e8d0;border:1px solid #604040;border-radius:3px;padding:6px;font-size:13px;">${text.replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))}</textarea>`;
+  overlay.classList.remove("hidden");
 }
 
 function renderAnalysis() {
