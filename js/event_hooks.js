@@ -34,7 +34,9 @@ const eventHooks = {
   onVillageUpdate: [],
   // Phase 5/6 economy/progression extras
   onRankUp: [],
-  onMilestone: []
+  onMilestone: [],
+  // §30 total-asset progression: fired when a new story/lifestyle stage unlocks.
+  onStoryUnlock: []
 };
 
 // §10 §16 story flags — persisted via player.flags (resides in state.js).
@@ -81,9 +83,16 @@ function runEventActions(ev, context) {
         showEvent("システム", text);
         break;
       case "coin_rescue": {
+        // §30 §10/§13.4 — rescue scales with the life Mimi has rebuilt
+        // (living/fame/village bonuses), not just village level.
         const lv = state.player.villageLevel;
-        const amt = (a.amount != null) ? a.amount : (RESCUE_COINS[lv] || 300);
+        const amt = (a.amount != null) ? a.amount
+          : (typeof calculateRescueCoins === "function"
+              ? calculateRescueCoins(state, state.player.rank)
+              : (RESCUE_COINS[lv] || 300));
         state.player.coins += amt;
+        if (typeof bumpMaxCoins === "function") bumpMaxCoins();
+        if (typeof recomputeAssets === "function") recomputeAssets(state);
         if (context) context.rescueAmount = amt;
         break;
       }

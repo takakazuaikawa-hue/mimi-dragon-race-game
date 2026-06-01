@@ -12,11 +12,15 @@
  * the new field changes save layout in a non-backwards-compatible way.
  */
 const SAVE_KEY = "mimi_dragon_race_v0_1";
-const SAVE_VERSION = "1.0.0";
+const SAVE_VERSION = "1.1.0";  // #30: + maxCoinsReached/totalAssets + state.assets
 
 const state = {
   player: {
     coins: 1000,
+    // §30 §3.1 — progression uses the all-time coin high-water mark, never the
+    // current (bettable) balance, so a losing bet never rolls back the story.
+    maxCoinsReached: 1000,
+    totalAssets: 0,   // recomputed by recomputeAssets(); high-water (never drops)
     rank: 1,
     villageLevel: 1,  // shortcut to village.level (kept for backwards compat)
     completedRaces: 0,
@@ -51,6 +55,16 @@ const state = {
     // §09 §9 dragon collection — per-dragon records
     collection: {}  // dragonId -> { seen, unlocked, favorite, records: {...}, notesUnlocked: {...} }
   },
+  // §30 §13.1 total-asset / lifestyle store (kept separate from player.coins).
+  // Values are recomputed by recomputeAssets() (assets_engine.js); the defaults
+  // here are inlined (not from data_assets.js) so state.js has no load-order dep.
+  assets: {
+    villageValue: 0, facilityValue: 0, livingValue: 0,
+    fameValue: 0, dragonValue: 0,
+    lifeItems: [],            // owned purchasable cosmetics
+    unlockedLifeStages: 0,    // high-water asset level (story gate; never drops)
+    rescueBonus: 0            // flat rescue add from unlocked life assets
+  },
   ui: {
     screen: "home",           // home | race_select | race_detail | bet | race_run | result | analysis
     debug: false,
@@ -65,6 +79,7 @@ function saveGame() {
     const data = {
       version: SAVE_VERSION,
       player: state.player,
+      assets: state.assets,   // §30 total-asset / lifestyle store
       savedAt: Date.now()
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -80,6 +95,10 @@ function loadGame() {
     const data = JSON.parse(raw);
     if (data && data.player) {
       Object.assign(state.player, data.player);
+      if (data.assets) Object.assign(state.assets, data.assets);
+      // §30 migration: pre-1.1 saves lack maxCoinsReached — seed it from coins
+      // so an existing player's progression isn't reset to zero.
+      if (state.player.maxCoinsReached == null) state.player.maxCoinsReached = state.player.coins || 0;
       return true;
     }
   } catch (e) {
@@ -90,7 +109,8 @@ function loadGame() {
 
 function resetGame() {
   state.player = {
-    coins: 1000, rank: 1, villageLevel: 1,
+    coins: 1000, maxCoinsReached: 1000, totalAssets: 0,
+    rank: 1, villageLevel: 1,
     completedRaces: 0, wins: 0,
     completedByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
     winsByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
@@ -109,6 +129,12 @@ function resetGame() {
     },
     collection: {}
   };
+  state.assets = {
+    villageValue: 0, facilityValue: 0, livingValue: 0,
+    fameValue: 0, dragonValue: 0,
+    lifeItems: [], unlockedLifeStages: 0, rescueBonus: 0
+  };
+  if (typeof recomputeAssets === "function") recomputeAssets(state);
   saveGame();
   if (typeof updateHeader === "function") updateHeader();
 }

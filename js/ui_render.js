@@ -32,6 +32,8 @@ function renderHome() {
   const actions = el("div", "actions");
   const goRace = el("button", null, "レースを選ぶ"); goRace.onclick = () => renderRaceSelect();
   actions.appendChild(goRace);
+  const goAssets = el("button", "secondary", "暮らしと資産"); goAssets.onclick = () => renderAssets();
+  actions.appendChild(goAssets);
   const goVillage = el("button", "secondary", "竜の村を訪れる"); goVillage.onclick = () => renderVillage();
   actions.appendChild(goVillage);
   const goCollection = el("button", "secondary", "竜図鑑"); goCollection.onclick = () => renderCollection();
@@ -44,6 +46,119 @@ function renderHome() {
     if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); }
   };
   actions.appendChild(reset);
+  app.appendChild(actions);
+}
+
+// =========================================================================
+// §30 — 暮らしと資産 (total-asset / lifestyle) screen.
+// Two layers (§9): A. numeric breakdown, B. ミミの生活. Plus story progress +
+// the life-asset list (auto-unlocked + purchasable cosmetics). This screen is
+// read/cosmetic only — it never changes coins except via an explicit purchase,
+// and never touches race results.
+// =========================================================================
+function renderAssets() {
+  state.ui.screen = "assets";
+  recomputeAssets(state);  // keep the view in sync (idempotent, monotonic)
+  const p = state.player, a = state.assets;
+  const total = p.totalAssets;
+  const level = a.unlockedLifeStages;
+  const stage = lifeStageFor(level);
+  const app = $("app"); app.innerHTML = "";
+  app.appendChild(el("h2", null, "暮らしと資産"));
+
+  // --- Headline: total assets + the coins/maxCoins distinction (§16) ---
+  const head = el("div", "card");
+  const nextT = nextAssetThreshold(total);
+  head.innerHTML =
+    `<div class="asset-total">総資産：<b>${fmtCoins(total)}</b> コイン相当</div>` +
+    `<div class="asset-coins">手持ち：<b>${fmtCoins(p.coins)}</b> ／ 最大到達：<b>${fmtCoins(p.maxCoinsReached)}</b></div>` +
+    `<div class="asset-coins-note">※ 手持ちは賭けに使うお金、総資産はミミの再起度です（賭けに負けても総資産は下がりません）。</div>` +
+    (nextT ? `<div class="asset-next">次の段階まで：あと <b>${fmtCoins(Math.max(0, nextT - total))}</b></div>`
+           : `<div class="asset-next">最終段階に到達しています。</div>`);
+  app.appendChild(head);
+
+  // --- B. ミミの生活 ---
+  const life = el("div", "card");
+  life.appendChild(el("div", "asset-stage-title", `ミミの生活：${stage.summary}`));
+  const rows = [
+    ["住居", stage.housing], ["衣装", stage.outfit], ["食事", stage.food],
+    ["部屋飾り", stage.decor], ["実況道具", stage.tool],
+    ["支援者", stage.supporter], ["名声", stage.fame], ["村の様子", stage.village]
+  ];
+  const grid = el("div", "asset-life-grid");
+  rows.forEach(([k, v]) => {
+    const row = el("div", "asset-life-row");
+    row.appendChild(el("span", "k", k));
+    row.appendChild(el("span", "v", v));
+    grid.appendChild(row);
+  });
+  life.appendChild(grid);
+  life.appendChild(el("div", "asset-rescue", `救済見込み額：${fmtCoins(calculateRescueCoins(state, p.rank))}（破産時に世界が支えてくれる額）`));
+  app.appendChild(life);
+
+  // --- A. 数値一覧（内訳） ---
+  app.appendChild(el("h3", null, "内訳"));
+  const breakdown = el("table", "ranking-table");
+  breakdown.innerHTML =
+    `<tr><th>項目</th><th>価値</th></tr>` +
+    `<tr><td>最大到達コイン</td><td>${fmtCoins(p.maxCoinsReached)}</td></tr>` +
+    `<tr><td>村資産</td><td>${fmtCoins(a.villageValue)}</td></tr>` +
+    `<tr><td>施設価値</td><td>${fmtCoins(a.facilityValue)}</td></tr>` +
+    `<tr><td>生活資産</td><td>${fmtCoins(a.livingValue)}</td></tr>` +
+    `<tr><td>名声価値</td><td>${fmtCoins(a.fameValue)}</td></tr>` +
+    `<tr><td>ドラゴン資産</td><td>${fmtCoins(a.dragonValue)}</td></tr>` +
+    `<tr class="top1"><td><b>総資産</b></td><td><b>${fmtCoins(total)}</b></td></tr>`;
+  app.appendChild(breakdown);
+
+  // --- ストーリー進行 (§7) ---
+  app.appendChild(el("h3", null, "ストーリー進行"));
+  const story = el("div", "card");
+  STORY_CHAPTERS.forEach(ch => {
+    const unlocked = level >= ch.level;
+    const row = el("div", "asset-story-row" + (unlocked ? " unlocked" : " locked"));
+    const head2 = el("div", "asset-story-head");
+    head2.appendChild(el("span", "t", ch.title));
+    head2.appendChild(el("span", "s", unlocked ? "解放" : `総資産 ${fmtCoins(ASSET_LEVELS.find(x => x.level === ch.level) ? ASSET_LEVELS.find(x => x.level === ch.level).threshold : 0)} で解放`));
+    row.appendChild(head2);
+    if (unlocked) row.appendChild(el("div", "asset-story-body", ch.body));
+    story.appendChild(row);
+  });
+  app.appendChild(story);
+
+  // --- 生活資産アイテム (§5: auto-unlocked + purchasable) ---
+  app.appendChild(el("h3", null, "生活資産"));
+  const items = el("div", "card");
+  LIFE_ASSETS.forEach(item => {
+    const owned = isLifeAssetUnlocked(state, item, level);
+    const row = el("div", "asset-item-row" + (owned ? " owned" : ""));
+    const info = el("div", "asset-item-info");
+    info.appendChild(el("span", "cat", LIFE_CATEGORY_LABEL[item.category] || item.category));
+    info.appendChild(el("span", "nm", item.name));
+    info.appendChild(el("span", "ds", item.description));
+    row.appendChild(info);
+    const right = el("div", "asset-item-right");
+    if (item.unlockType === "auto") {
+      right.appendChild(el("span", "tag", owned ? "解放済み" : `Lv${item.unlockAssetLevel}で解放`));
+    } else if (owned) {
+      right.appendChild(el("span", "tag", "購入済み"));
+    } else {
+      const buy = el("button", "secondary", `購入 ${fmtCoins(item.price)}`);
+      buy.disabled = state.player.coins < item.price;
+      buy.onclick = () => {
+        const res = buyLifeItem(item.id);
+        if (res.ok) renderAssets();
+        else if (res.reason === "poor") alert("コインが足りません。");
+      };
+      right.appendChild(buy);
+    }
+    row.appendChild(right);
+    items.appendChild(row);
+  });
+  app.appendChild(items);
+
+  const actions = el("div", "actions");
+  const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
+  actions.appendChild(back);
   app.appendChild(actions);
 }
 
@@ -536,6 +651,8 @@ function onConfirmBet(skipDialog) {
   const raceResult = runRace(c.race, c.trialForms);
   // Spec #27: broadcast cache invalidated for each new race run.
   c.broadcast = null; c.commentary = null; c.broadcastState = null;
+  // Spec #29: recap is rebuilt per race; result-screen hooks fire once.
+  c.recap = null; c.recapTab = "result"; c.resultHooksRan = false;
   c.raceResult = raceResult;
   const betResult = resolveBet(c.bet, raceResult, c.oddsResult);
   c.betResult = betResult;
@@ -551,6 +668,16 @@ function onConfirmBet(skipDialog) {
   gainVillageExp(c.race, betResult && betResult.hit, raceResult._newDragonsThisRace || 0);
   checkEconomyMilestones(betResult);
   checkRankProgression();
+  // §30 — update total-asset progression from the payout (after coins/village/
+  // rank/collection have settled). maxCoinsReached + 総資産 only ever rise.
+  bumpMaxCoins();
+  const prevStage = state.assets.unlockedLifeStages || 0;
+  const ra = recomputeAssets(state);
+  if (ra.level > prevStage) {
+    // New story chapter / lifestyle stage reached. No-op until events register
+    // an onStoryUnlock handler (§30 §8); surfaced on the 暮らしと資産 screen.
+    runEventHooks("onStoryUnlock", { stage: ra.level, chapter: ra.unlockedStory });
+  }
   saveGame();
   updateHeader();
   renderRaceRun();
@@ -608,7 +735,7 @@ function renderRaceRun() {
   // Build broadcast data + auto-start playback so the player can just watch.
   if (!c.broadcast) {
     c.broadcast = buildBroadcastData(c.race, c.raceResult, c.bet, c.oddsResult);
-    c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult });
+    c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult, raceResult: c.raceResult });
     c.broadcastState = {
       phaseIdx: 0, lineIdx: 0,
       autoMode: true,   // default: race plays itself
@@ -624,36 +751,50 @@ function renderRaceRun() {
   }
 }
 
+function stopAutoTimer() {
+  const bs = state.current && state.current.broadcastState;
+  if (bs && bs.timer) { clearTimeout(bs.timer); bs.timer = null; }
+}
+
 function startAutoTimer() {
   const bs = state.current && state.current.broadcastState;
   if (!bs) return;
-  if (bs.timer) { clearInterval(bs.timer); bs.timer = null; }
+  stopAutoTimer();
   if (!bs.autoMode) return;
-  bs.timer = setInterval(autoTick, AUTO_TICK_MS / bs.speed);
+  scheduleNextTick();
+}
+
+// §28 §5.2: each phase has its own telop tempo (faster near the finish), so we
+// reschedule a one-shot timer using the CURRENT phase's tempoMs rather than a
+// fixed interval.
+function scheduleNextTick() {
+  const c = state.current;
+  const bs = c && c.broadcastState;
+  if (!bs || !bs.autoMode) return;
+  const q = c.commentary[bs.phaseIdx];
+  const tempo = (q && q.tempoMs) ? q.tempoMs : AUTO_TICK_MS;
+  bs.timer = setTimeout(autoTick, Math.max(140, tempo / bs.speed));
 }
 
 function autoTick() {
-  if (state.ui.screen !== "race_run") {
-    // Stop ticking if user navigated away.
-    const bs = state.current && state.current.broadcastState;
-    if (bs && bs.timer) { clearInterval(bs.timer); bs.timer = null; }
-    return;
-  }
   const c = state.current;
-  const bs = c.broadcastState;
+  const bs = c && c.broadcastState;
+  if (!bs) return;
+  bs.timer = null;
+  if (state.ui.screen !== "race_run") { stopAutoTimer(); return; }
   // Pause while a Mimi/Sake event overlay is showing so we don't talk over it.
   const overlay = document.getElementById("event-overlay");
-  if (overlay && !overlay.classList.contains("hidden")) return;
+  if (overlay && !overlay.classList.contains("hidden")) { scheduleNextTick(); return; }
   // End-of-race: stop auto and wait for the user to click "結果を見る".
   const lastPhaseIdx = c.broadcast.phases.length - 1;
   if (bs.phaseIdx === lastPhaseIdx
-      && bs.lineIdx >= c.commentary[lastPhaseIdx].length - 1) {
+      && bs.lineIdx >= c.commentary[lastPhaseIdx].lines.length - 1) {
     bs.autoMode = false;
-    clearInterval(bs.timer); bs.timer = null;
     renderBroadcastScreen();
     return;
   }
   stepLineOrPhase();
+  scheduleNextTick();
 }
 
 /**
@@ -723,7 +864,8 @@ function buildBroadcastShell(c) {
 function updateBroadcastFrame(wrap, c) {
   const bs = c.broadcastState;
   const phase = c.broadcast.phases[bs.phaseIdx];
-  const linesToShow = c.commentary[bs.phaseIdx].slice(0, bs.lineIdx + 1);
+  const phaseQueue = c.commentary[bs.phaseIdx];
+  const shownLines = phaseQueue.lines.slice(0, bs.lineIdx + 1);
 
   // --- Header ---
   wrap.querySelector("#bc-header").innerHTML = `
@@ -748,7 +890,7 @@ function updateBroadcastFrame(wrap, c) {
     const isTarget = c.bet && c.bet.selections.includes(id);
     const cls = isTarget ? "target" : (popRank === 1 ? "fav" : "");
     rankBar.appendChild(el("span", `rank-pos ${cls}`,
-      `${i + 1}: ${dragonShortName(id).replace("ちゃん","")}`));
+      `${i + 1}: ${commentaryName(id)}`));
   });
 
   // --- Bet status ---
@@ -760,13 +902,15 @@ function updateBroadcastFrame(wrap, c) {
     betEl.style.display = "none";
   }
 
-  // --- Mimi commentary ---
+  // --- Mimi commentary (§28 §5.1 telop: latest line large, a couple fading
+  // prior lines — never a tall growing stack; full text lives in 全ログ). ---
   const linesEl = wrap.querySelector("#mimi-lines");
   linesEl.innerHTML = "";
-  linesToShow.forEach((line, i) => {
+  const recent = shownLines.slice(-3);
+  recent.forEach((line, i) => {
+    const isLatest = i === recent.length - 1;
     const d = document.createElement("div");
-    d.className = "line";
-    d.style.animationDelay = `${i * 0.04}s`;
+    d.className = isLatest ? "line is-latest" : "line-prev";
     d.textContent = line;
     linesEl.appendChild(d);
   });
@@ -778,7 +922,7 @@ function updateBroadcastFrame(wrap, c) {
   const controls = wrap.querySelector("#bc-controls");
   controls.innerHTML = "";
   const atEnd = bs.phaseIdx === c.broadcast.phases.length - 1
-      && bs.lineIdx >= c.commentary[bs.phaseIdx].length - 1;
+      && bs.lineIdx >= c.commentary[bs.phaseIdx].lines.length - 1;
   if (!atEnd) {
     const speedBtn = makeBtn(`速度 ${bs.speed}×`, cycleSpeed, { secondary: bs.speed === 1 });
     if (bs.speed > 1) speedBtn.classList.add("speed-active");
@@ -797,7 +941,7 @@ function updateBroadcastFrame(wrap, c) {
     logEl.innerHTML = "";
     c.broadcast.phases.forEach((p, i) => {
       logEl.appendChild(el("div", "log-phase", `【${p.label} ${p.sectionName}】`));
-      c.commentary[i].forEach(line => logEl.appendChild(el("div", "log-line", line)));
+      c.commentary[i].lines.forEach(line => logEl.appendChild(el("div", "log-line", line)));
     });
   } else {
     logEl.style.display = "none";
@@ -970,9 +1114,9 @@ function stepLineOrPhase() {
   const c = state.current;
   const bs = c.broadcastState;
   const phaseCommentary = c.commentary[bs.phaseIdx];
-  if (bs.lineIdx < phaseCommentary.length - 1) {
+  if (bs.lineIdx < phaseCommentary.lines.length - 1) {
     bs.lineIdx += Math.max(1, Math.floor(bs.speed));  // larger steps at higher speed
-    bs.lineIdx = Math.min(bs.lineIdx, phaseCommentary.length - 1);
+    bs.lineIdx = Math.min(bs.lineIdx, phaseCommentary.lines.length - 1);
   } else if (bs.phaseIdx < c.broadcast.phases.length - 1) {
     bs.phaseIdx += 1;
     bs.lineIdx = 0;
@@ -1009,7 +1153,7 @@ function cycleSpeed() {
 
 function skipToResult() {
   const bs = state.current.broadcastState;
-  if (bs.timer) { clearInterval(bs.timer); bs.timer = null; }
+  stopAutoTimer();
   bs.autoMode = false;
   renderResult();
 }
@@ -1031,43 +1175,189 @@ function debugDumpRace(rr) {
   ).join("\n") + `\nPace: ${rr.pace.type} (idx=${rr.pace.index.toFixed(1)})`;
 }
 
+// =========================================================================
+// Spec #29 — post-race recap / 答え合わせ screen (tabbed).
+// Tabs: 結果 / 払い戻し / 勝負所 / 分析 / 次のヒント / 実況ログ (§29 §9.1)
+// First view shows 着順 + 的中/不的中 + 払い戻し + 短い勝負所 (§29 §9.2).
+// The recap NEVER changes the race result or payout (§29 §12).
+// =========================================================================
+const RECAP_TABS = [
+  { id: "result",  label: "結果" },
+  { id: "payout",  label: "払い戻し" },
+  { id: "highlights", label: "勝負所" },
+  { id: "analysis", label: "分析" },
+  { id: "hints",   label: "次のヒント" },
+  { id: "log",     label: "実況ログ" }
+];
+
 function renderResult() {
   state.ui.screen = "result";
   const c = state.current;
   // Stop any running broadcast auto-timer when leaving the race screen.
-  if (c.broadcastState && c.broadcastState.timer) {
-    clearInterval(c.broadcastState.timer);
-    c.broadcastState.timer = null;
-    c.broadcastState.autoMode = false;
+  stopAutoTimer();
+
+  // Build the recap once per race (reuses analysis; never mutates result/payout).
+  if (!c.recap) {
+    c.recap = buildRecap({
+      race: c.race, raceResult: c.raceResult, oddsResult: c.oddsResult,
+      bet: c.bet, betResult: c.betResult, broadcastData: c.broadcast,
+      commentary: c.commentary
+    });
   }
+  if (!c.recapTab) c.recapTab = "result";
+
+  // Mimi/Sake reaction after race result + bankruptcy — fire exactly once.
+  if (!c.resultHooksRan) {
+    const r = c.betResult;
+    const winnerOd = c.oddsResult.oddsData.find(o => o.dragonId === c.raceResult.entries[0].dragon.id);
+    runEventHooks("afterRaceResult", { race: c.race, hit: r.hit, popularityRank: winnerOd.popularityRank, bigLoss: !r.hit && r.wager >= 500 });
+    if (state.player.coins <= 0) runEventHooks("onBankruptcy", { race: c.race });
+    c.resultHooksRan = true;
+  }
+
+  drawRecapScreen();
+}
+
+function showRecapTab(id) {
+  state.current.recapTab = id;
+  drawRecapScreen();
+}
+
+function drawRecapScreen() {
+  const c = state.current;
+  const recap = c.recap;
   const app = $("app"); app.innerHTML = "";
-  app.appendChild(el("h2", null, "賭け結果"));
+  app.appendChild(el("h2", null, "答え合わせ"));
 
-  const r = c.betResult;
-  const headBox = el("div", "card");
-  const sel = c.bet.selections.map(id => DRAGONS.find(d => d.id === id).name).join(" + ");
-  const typeLabel = { win:"単竜", place:"複竜", wide:"ワイド竜"}[c.bet.type];
-  headBox.innerHTML = `
-    <div>賭式: <b>${typeLabel}</b> ／ 選択: <b>${sel}</b> ／ 賭金: <b>${fmtCoins(r.wager)}</b> ／ オッズ: <b>${r.odds.toFixed(1)}</b></div>
-    <div class="${r.hit ? 'result-hit' : 'result-miss'}">${r.hit ? '的中！' : 'ハズレ'}</div>
-    <div>払戻: <b>${fmtCoins(r.payout)}</b>コイン ／ 収支: <b>${r.profit >= 0 ? '+' : ''}${fmtCoins(r.profit)}</b></div>
-    <div>新所持コイン: <b>${fmtCoins(state.player.coins)}</b></div>
-  `;
-  app.appendChild(headBox);
+  // --- Hit/miss banner (always on top so the verdict is instant) ---
+  const ps = recap.payoutSummary;
+  if (ps) {
+    const banner = el("div", "card");
+    banner.innerHTML =
+      `<div class="${ps.hit ? 'result-hit' : 'result-miss'}">${ps.hit ? '的中！' : 'ハズレ'}</div>` +
+      `<div>払戻: <b>${fmtCoins(ps.payout)}</b>コイン ／ 収支: <b>${ps.profit >= 0 ? '+' : ''}${fmtCoins(ps.profit)}</b></div>`;
+    app.appendChild(banner);
+  }
 
-  // Mimi/Sake reaction after race result (§3 afterRaceResult)
-  const winnerOd = c.oddsResult.oddsData.find(o => o.dragonId === c.raceResult.entries[0].dragon.id);
-  runEventHooks("afterRaceResult", { race: c.race, hit: r.hit, popularityRank: winnerOd.popularityRank, bigLoss: !r.hit && r.wager >= 500 });
+  // --- Tab bar ---
+  const bar = el("div", "recap-tabs");
+  RECAP_TABS.forEach(t => {
+    const b = el("button", "recap-tab" + (c.recapTab === t.id ? " active" : ""), t.label);
+    b.onclick = () => showRecapTab(t.id);
+    bar.appendChild(b);
+  });
+  app.appendChild(bar);
 
-  // Bankruptcy
-  if (state.player.coins <= 0) runEventHooks("onBankruptcy", { race: c.race });
+  // --- Tab body ---
+  const body = el("div", "recap-body");
+  ({
+    result: recapTabResult,
+    payout: recapTabPayout,
+    highlights: recapTabHighlights,
+    analysis: recapTabAnalysis,
+    hints: recapTabHints,
+    log: recapTabLog
+  }[c.recapTab] || recapTabResult)(body, recap, c);
+  app.appendChild(body);
 
+  // --- Persistent actions ---
   const actions = el("div", "actions");
-  const a = el("button", null, "分析を見る"); a.onclick = renderAnalysis;
-  actions.appendChild(a);
-  const next = el("button", "secondary", "次のレースへ"); next.onclick = renderRaceSelect;
+  const detail = el("button", "secondary", "詳しい分析"); detail.onclick = renderAnalysis;
+  actions.appendChild(detail);
+  const next = el("button", null, "次のレースへ"); next.onclick = renderRaceSelect;
   actions.appendChild(next);
   app.appendChild(actions);
+}
+
+function recapSection(label, lines) {
+  const d = el("div", "analysis-section");
+  d.appendChild(el("span", "label", label));
+  (lines || []).forEach(t => { if (t) d.appendChild(el("div", null, t)); });
+  return d;
+}
+
+// §29 §9.2 first view: 着順(全8) + 的中/不的中 + 払い戻し + 短い勝負所.
+function recapTabResult(body, recap, c) {
+  const tbl = el("table", "ranking-table");
+  tbl.innerHTML =
+    `<tr><th>着</th><th>竜</th><th>人気</th><th>オッズ</th><th>脚質</th><th>短評</th></tr>` +
+    recap.resultSummary.map(e => {
+      const cls = e.rank <= 3 ? ` class="top${e.rank}"` : "";
+      const star = e.isBetTarget ? " ★" : "";
+      const od = (e.odds != null) ? e.odds.toFixed(1) : "—";
+      const pop = (e.popularityRank != null) ? `${e.popularityRank}番` : "—";
+      return `<tr${cls}><td>${e.rank}</td><td>${e.name}${star}</td><td>${pop}</td><td>${od}</td><td>${e.style}</td><td>${e.blurb}</td></tr>`;
+    }).join("");
+  body.appendChild(tbl);
+  body.appendChild(el("div", "recap-note", "★ … あなたの予想竜"));
+
+  // Short 払い戻し one-liner.
+  const ps = recap.payoutSummary;
+  if (ps) {
+    body.appendChild(recapSection("払い戻し", [
+      `${ps.typeLabel}／${ps.resultText}`,
+      `賭金 ${fmtCoins(ps.wager)} × ${ps.odds.toFixed(1)} → 払戻 ${fmtCoins(ps.payout)}（収支 ${ps.profit >= 0 ? '+' : ''}${fmtCoins(ps.profit)}）`,
+      `所持コイン: ${fmtCoins(state.player.coins)}`
+    ]));
+  }
+
+  // Short 勝負所 — top 2 highlights.
+  body.appendChild(recapSection("勝負所", recap.broadcastHighlights.slice(0, 2)));
+
+  // Mimi sign-off (§29 §8).
+  const mimi = el("div", "recap-mimi");
+  mimi.appendChild(el("span", "speaker", "ミミ"));
+  mimi.appendChild(el("span", "line", recap.mimiRecap));
+  body.appendChild(mimi);
+}
+
+function recapTabPayout(body, recap, c) {
+  const ps = recap.payoutSummary;
+  if (!ps) { body.appendChild(el("div", null, "賭けの記録がありません。")); return; }
+  body.appendChild(recapSection("賭け", [
+    `賭式: ${ps.typeLabel}`,
+    `選択: ${ps.selections.map(s => s.name).join(" + ")}`,
+    `結果: ${ps.resultText}`,
+    `${ps.hit ? '的中' : '不的中'}／賭金 ${fmtCoins(ps.wager)}／オッズ ${ps.odds.toFixed(1)}`,
+    `払戻: ${fmtCoins(ps.payout)}コイン（収支 ${ps.profit >= 0 ? '+' : ''}${fmtCoins(ps.profit)}）`,
+    `所持コイン: ${fmtCoins(state.player.coins)}`
+  ]));
+  if (recap.betReview && recap.betReview.length) {
+    body.appendChild(recapSection("馬券レビュー", recap.betReview));
+  }
+}
+
+function recapTabHighlights(body, recap, c) {
+  body.appendChild(recapSection("実況ハイライト", recap.broadcastHighlights));
+}
+
+function recapTabAnalysis(body, recap, c) {
+  body.appendChild(recapSection("勝因", recap.winnerReason));
+  if (recap.loserReason && recap.loserReason.length) {
+    body.appendChild(recapSection("敗因・人気馬", recap.loserReason));
+  }
+  body.appendChild(recapSection("人気と実力のズレ", recap.marketGap));
+  body.appendChild(recapSection("ペース", recap.paceAnalysis));
+  if (recap.staminaAnalysis && recap.staminaAnalysis.length) {
+    body.appendChild(recapSection("スタミナ", recap.staminaAnalysis));
+  }
+  if (recap.courseWeatherAnalysis && recap.courseWeatherAnalysis.length) {
+    body.appendChild(recapSection("コース・天候", recap.courseWeatherAnalysis));
+  }
+}
+
+function recapTabHints(body, recap, c) {
+  body.appendChild(recapSection("次戦へのヒント", recap.nextHints));
+}
+
+function recapTabLog(body, recap, c) {
+  const log = el("div", "broadcast-log");
+  (recap.commentaryLog || []).forEach(phase => {
+    const label = (BROADCAST_PHASES.find(p => p.id === phase.phaseId) || {}).label || phase.phaseId;
+    log.appendChild(el("div", "log-phase", label));
+    (phase.lines || []).forEach(line => log.appendChild(el("div", "log-line", line)));
+  });
+  body.appendChild(log);
 }
 
 // Game-level share — promotes the game itself rather than a single race result.

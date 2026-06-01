@@ -883,6 +883,15 @@ body {
   animation: mimi-line-in 0.25s ease-out forwards;
 }
 @keyframes mimi-line-in { to { opacity: 1; transform: none; } }
+/* §28 §5.1 telop: newest line large + bright, prior lines small + faded so the
+   panel never grows into a tall stack (full text lives in 全ログ). */
+.broadcast-mimi .lines .line.is-latest {
+  font-size: 15px; font-weight: 700; color: #fff0c8;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.broadcast-mimi .lines .line-prev {
+  opacity: 0.42; font-size: 12px; line-height: 1.5; color: #d8c08a;
+}
 
 .broadcast-controls {
   display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
@@ -997,6 +1006,56 @@ table.entry-table {
 
 .analysis-section { margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.2); border-left: 3px solid #d4a850; border-radius: 3px; }
 .analysis-section .label { color: #ffd870; font-weight: bold; display: block; margin-bottom: 4px; }
+
+/* Spec #29 recap tabs */
+.recap-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 4px; }
+.recap-tab {
+  flex: 1 1 auto; min-width: 72px; padding: 7px 8px;
+  background: rgba(0,0,0,0.25); color: #c8b48a;
+  border: 1px solid #604040; border-radius: 4px 4px 0 0;
+  font-size: 13px; cursor: pointer;
+}
+.recap-tab:hover { background: rgba(212,168,80,0.15); color: #ffe6a8; }
+.recap-tab.active {
+  background: rgba(212,168,80,0.28); color: #fff0c8;
+  border-color: #d4a850; font-weight: bold;
+}
+.recap-body { border-top: 2px solid #d4a850; padding-top: 8px; min-height: 120px; }
+.recap-note { font-size: 11px; color: #9a8a66; margin: 4px 0 8px; }
+.recap-mimi {
+  margin-top: 10px; padding: 8px 10px;
+  background: rgba(80,40,80,0.25); border-left: 3px solid #d48ad4; border-radius: 3px;
+}
+.recap-mimi .speaker { color: #f0b0f0; font-weight: bold; margin-right: 8px; }
+.recap-mimi .line { color: #f0e0f0; }
+
+/* Spec #30 暮らしと資産 screen */
+.asset-total { font-size: 18px; color: #ffe6a8; }
+.asset-total b { color: #fff0c8; }
+.asset-coins { margin-top: 4px; color: #d8c89a; }
+.asset-coins-note { margin-top: 4px; font-size: 11px; color: #9a8a66; }
+.asset-next { margin-top: 6px; font-size: 12px; color: #c0a070; }
+.asset-stage-title { font-size: 15px; color: #ffd6a0; font-weight: bold; margin-bottom: 8px; }
+.asset-life-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+@media (max-width: 480px) { .asset-life-grid { grid-template-columns: 1fr; } }
+.asset-life-row { display: flex; gap: 8px; font-size: 13px; }
+.asset-life-row .k { color: #b0a070; min-width: 56px; }
+.asset-life-row .v { color: #f0e8d0; }
+.asset-rescue { margin-top: 10px; padding-top: 8px; border-top: 1px solid #604040; font-size: 12px; color: #d8b878; }
+.asset-story-row { padding: 8px 0; border-bottom: 1px solid #4a3a3a; }
+.asset-story-row.locked { opacity: 0.5; }
+.asset-story-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.asset-story-head .t { color: #ffd870; font-weight: bold; }
+.asset-story-head .s { font-size: 11px; color: #9a8a66; white-space: nowrap; }
+.asset-story-body { margin-top: 4px; font-size: 12px; color: #d0c0a0; line-height: 1.6; }
+.asset-item-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #3a3030; }
+.asset-item-row.owned .nm { color: #ffe6a8; }
+.asset-item-info { display: flex; flex-direction: column; gap: 1px; }
+.asset-item-info .cat { font-size: 10px; color: #9a8a66; }
+.asset-item-info .nm { color: #f0e8d0; font-size: 13px; }
+.asset-item-info .ds { font-size: 11px; color: #a89878; }
+.asset-item-right .tag { font-size: 11px; color: #b0a070; }
+.asset-item-right button { font-size: 12px; padding: 4px 8px; }
 
 .hidden { display: none !important; }
 

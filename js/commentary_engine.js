@@ -1,189 +1,295 @@
 /**
- * commentary_engine.js — Mimi's race-only race commentator (spec §27 §9).
+ * commentary_engine.js — Mimi's race commentary engine (spec #28).
  *
- * Generates dense, short-line commentary queues per broadcast phase. The
- * commentary is derived purely from broadcast data (which is derived from
- * race_engine output); we never invent facts that would contradict the
- * actual rank / pace / stamina state.
+ * Generates dense, accurate, fast-paced race commentary from the already
+ * calculated broadcast data. This is NOT random flavor text: every line is
+ * derived from the real per-phase order, rank movement, course section,
+ * weather, pace, stamina and dragon traits. We never invent a fact that would
+ * contradict race_engine's result (§28 §12).
  *
- * Tone: cheerleader-style, fast, peppered with -ちゃん, focused on the
- * player's bet status.
+ * Style (§28 §3): serious sports-broadcast tone, dragon names WITHOUT
+ * honorifics, short sentence bursts, neutral most of the time with a little
+ * heat near the finish. Betting terms stay mostly in the UI (§28 §4.1/§10):
+ * commentary only touches the bet when it is essential to the drama.
  *
- * EXTENSION POINT: new tag → handle in tagLine() so the dialogue stays in
- * sync with broadcast tags.
+ * Output per phase (§28 §9.2):
+ *   { phaseId, tempoMs, lines[], focusDragonIds, tags, visualMode }
+ *
+ * EXTENSION POINT: new phase rhythm → PHASE_TEMPO / PHASE_LINE_TARGET; new
+ * dragon voice → DRAGON_PERSONA in commentary_data.js; new situational beat →
+ * add a builder and call it from the per-phase composer below.
  */
 
-// Short-name accessor (drops the prefix kanji + 竜 so commentary stays punchy).
-function dragonShortName(id) {
-  const d = DRAGONS.find(x => x.id === id);
-  if (!d) return id;
-  // 赤翼竜ルベル → ルベル / 鳳凰竜フェニックス → フェニックス
-  const m = d.name.match(/竜(.+)$/);
-  return (m ? m[1] : d.name) + "ちゃん";
-}
+// §28 §5.2 telop tempo (ms per line) — later phases are faster.
+const PHASE_TEMPO = { early: 1300, mid: 1100, development: 1000, late: 800, finish: 650 };
+// §28 §5.3 lines per phase (target; engine caps near these).
+const PHASE_LINE_TARGET = { early: 8, mid: 10, development: 12, late: 15, finish: 9 };
 
-function rankWord(r) {
+function ceRankWord(r) {
   return r === 1 ? "先頭" : `${r}番手`;
 }
 
-const PHASE_OPENERS = {
-  early:       ["ゲートが開いた！", "スタートです！", "8頭一斉に飛び出しました！"],
-  mid:         ["中盤に入ります！", "ここから区間のクセが出ます！"],
-  development: ["ペースが動きます！", "ここで人気竜にも疲れが…！"],
-  late:        ["残り直線！", "ラストスパート！"],
-  finish:      ["ゴール板が見えた！", "決着の瞬間です！"]
-};
-
-const PHASE_TARGET_COUNT = {
-  early: 7, mid: 9, development: 11, late: 14, finish: 7
-};
-
-/**
- * @param {object} phase           broadcast phase object
- * @param {object} prevPhase       previous phase (for delta callouts), nullable
- * @param {object} ctx             { race, bet, oddsResult }
- * @returns {string[]} commentaryQueue
- */
-function buildCommentaryQueue(phase, prevPhase, ctx) {
-  const q = [];
-  const { race, bet, oddsResult } = ctx;
-  const targetCount = PHASE_TARGET_COUNT[phase.id] || 8;
-
-  // -- Opener
-  q.push(pickOne(PHASE_OPENERS[phase.id]));
-  q.push(`${phase.label}・${phase.sectionName}！`);
-  if (phase.distanceRemaining > 0) q.push(`残り${phase.distanceRemaining}！`);
-
-  // -- Top 3 callout
-  const top3 = phase.orderedEntries.slice(0, 3);
-  q.push(`${rankWord(1)}は${dragonShortName(top3[0].dragon.id)}！`);
-  q.push(`${rankWord(2)}は${dragonShortName(top3[1].dragon.id)}！`);
-  q.push(`${rankWord(3)}は${dragonShortName(top3[2].dragon.id)}！`);
-
-  // -- Rank movers
-  if (prevPhase) {
-    const movers = phase.orderedEntries.map((e, i) => {
-      const prevR = prevPhase.currRankMap[e.dragon.id] || (i + 1);
-      return { id: e.dragon.id, delta: prevR - (i + 1), now: i + 1 };
-    }).filter(m => Math.abs(m.delta) >= 2);
-    movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-    movers.slice(0, 3).forEach(m => {
-      if (m.delta > 0) q.push(`${dragonShortName(m.id)}、ぐっと上がって${rankWord(m.now)}！`);
-      else            q.push(`${dragonShortName(m.id)}、苦しい、${rankWord(m.now)}に下がる！`);
-    });
-  }
-
-  // -- Tag-driven flavor lines
-  phase.tags.forEach(tag => {
-    const line = tagLine(tag, phase, ctx);
-    if (line) q.push(line);
-  });
-
-  // -- Bet status (always — this is what the player cares about)
-  appendBetStatusLines(q, phase, ctx);
-
-  // -- Finish: declare the result
-  if (phase.id === "finish") {
-    const o = phase.orderedEntries;
-    q.push(`${dragonShortName(o[0].dragon.id)}が1着！`);
-    q.push(`2着${dragonShortName(o[1].dragon.id)}！ 3着${dragonShortName(o[2].dragon.id)}！`);
-  }
-
-  // -- Trim or pad toward target density
-  return trimToDensity(q, targetCount);
-}
-
-function appendBetStatusLines(q, phase, ctx) {
-  const bs = phase.bettingStatus;
-  if (!bs || !bs.targets || bs.targets.length === 0) return;
-  if (ctx.bet.type === "win") {
-    const t = bs.targets[0];
-    if (phase.id === "finish") {
-      q.push(t.rank === 1 ? "単竜、的中です！" : `単竜、${rankWord(t.rank)}で届かず…！`);
-    } else {
-      if (t.rank === 1) q.push("単竜、先頭キープ！");
-      else if (t.rank === 2) q.push("単竜、あと一歩！");
-      else if (t.rank <= 4) q.push(`単竜、まだ届きます、${rankWord(t.rank)}！`);
-      else q.push("単竜、ここから差し切れるか…！");
-    }
-    return;
-  }
-  if (ctx.bet.type === "place") {
-    const t = bs.targets[0];
-    if (phase.id === "finish") {
-      q.push(t.rank <= 3 ? "複竜、的中です！" : "複竜、ぎりぎり届かず…！");
-    } else {
-      if (t.rank <= 2) q.push("複竜、安全圏！");
-      else if (t.rank === 3) q.push("複竜、3着ラインを守れ！");
-      else if (t.rank === 4) q.push("複竜、あと1枚！");
-      else q.push("複竜、ここから巻き返せ！");
-    }
-    return;
-  }
-  // wide
-  const inRange = bs.targets.filter(t => t.rank <= 3).length;
-  if (phase.id === "finish") {
-    q.push(inRange === 2 ? "ワイド竜、的中です！"
-         : inRange === 1 ? "ワイド竜、片方届かず…！"
-         : "ワイド竜、届かず…！");
-    return;
-  }
-  if (inRange === 2) q.push("ワイド竜、2頭とも圏内！");
-  else if (inRange === 1) {
-    const out = bs.targets.find(t => t.rank > 3);
-    q.push(`ワイド竜、あと1頭！ ${dragonShortName(out.id)}！`);
-  } else {
-    q.push("ワイド竜、苦しい…どちらも圏外！");
-  }
-}
-
-function tagLine(tag, phase, ctx) {
-  const lead = phase.orderedEntries[0].dragon.id;
-  switch (tag) {
-    case "favorite_leads":    return `${dragonShortName(lead)}、人気馬の貫禄！`;
-    case "favorite_fade":     return "人気馬、苦しくなってきました！";
-    case "underdog_rising":   return "穴竜、ぐいぐい来ています！";
-    case "rank_up":           return null; // already covered by movers
-    case "stamina_fade":      return "脚が止まる竜、出てきました！";
-    case "good_start":        return "好スタート、前を取りました！";
-    case "slow_start":        return "出遅れた竜、追走苦しい！";
-    case "section_boost_wind":   return "翼竜にとって追い風です！";
-    case "section_trouble_turn": return "カーブで膨らむ竜あり！";
-    case "section_boost_fire":   return "火力勝負の区間！";
-    case "section_trouble_fog":  return "霧で視界不良、気性勝負！";
-    case "late_surge":        return "外から差し脚！来てる！";
-    case "close_finish":      return "ゴール前、横一線！";
-    case "photo_finish":      return "写真判定、紙一重！";
-    default: return null;
-  }
-}
-
-function trimToDensity(arr, target) {
-  if (arr.length <= target + 2) return arr;
-  // Keep first 4 (opener) + last 3 (closer) + interleave middle
-  const head = arr.slice(0, 4);
-  const tail = arr.slice(-3);
-  const middle = arr.slice(4, arr.length - 3);
-  const want = target - head.length - tail.length;
-  if (want <= 0) return [...head, ...tail];
-  const step = Math.max(1, Math.floor(middle.length / want));
-  const picked = [];
-  for (let i = 0; i < middle.length && picked.length < want; i += step) {
-    picked.push(middle[i]);
-  }
-  return [...head, ...picked, ...tail];
-}
-
-function pickOne(arr) {
+function cePick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Convenience: build all phase queues at once.
+// --- Situational beat builders -------------------------------------------
+// Each returns a string or null. The phase composer collects them, the
+// finalizer dedupes + caps to the phase target.
+
+// Top-N position read: "ルベル、先頭。" / "ポロが2番手。" / "セラムは3番手。"
+function positionBeats(phase, n) {
+  const verbs = ["、", "が", "は"];
+  return phase.orderedEntries.slice(0, n).map((e, i) => {
+    const name = commentaryName(e.dragon.id);
+    const r = i + 1;
+    if (r === 1) return `${name}、${ceRankWord(1)}。`;
+    return `${name}${verbs[i % verbs.length]}${ceRankWord(r)}。`;
+  });
+}
+
+// Dragons that gained/lost >=2 since last phase. Prefer persona voice.
+function moverBeats(phase, prevPhase, maxUp, maxDown) {
+  if (!prevPhase) return [];
+  const ups = [], downs = [];
+  phase.orderedEntries.forEach((e, i) => {
+    const r = i + 1;
+    const prevR = prevPhase.currRankMap[e.dragon.id] || r;
+    const delta = prevR - r;
+    if (delta >= 2) ups.push({ id: e.dragon.id, r, delta });
+    else if (delta <= -2 && !e.collapse) downs.push({ id: e.dragon.id, r, delta });
+  });
+  ups.sort((a, b) => b.delta - a.delta);
+  downs.sort((a, b) => a.delta - b.delta);
+  const out = [];
+  ups.slice(0, maxUp).forEach(m => {
+    out.push(personaLine(m.id, "rising") || `${commentaryName(m.id)}が上がる、${ceRankWord(m.r)}。`);
+  });
+  downs.slice(0, maxDown).forEach(m => {
+    out.push(personaLine(m.id, "fading") || `${commentaryName(m.id)}、後退。`);
+  });
+  return out;
+}
+
+// Popularity vs position (§28 §6.4/§7.6/§7.7) — leader hype + underdog rising.
+function popularityBeats(phase, ctx) {
+  if (!ctx.oddsResult) return [];
+  const popMap = {};
+  ctx.oddsResult.oddsData.forEach(o => { popMap[o.dragonId] = o.popularityRank; });
+  const out = [];
+  const lead = phase.orderedEntries[0];
+  if (lead && popMap[lead.dragon.id] === 1) {
+    out.push(`1番人気${commentaryName(lead.dragon.id)}、まだ${ceRankWord(1)}。`);
+  }
+  // an underdog (>=5 popularity) inside the top 3
+  const under = phase.orderedEntries.slice(0, 3).find((e, i) => (popMap[e.dragon.id] || 9) >= 5);
+  if (under) {
+    const r = phase.currRankMap[under.dragon.id];
+    out.push(`人気薄の${commentaryName(under.dragon.id)}が${ceRankWord(r)}。`);
+  }
+  return out;
+}
+
+// Course section meaning (§28 §7.3). sectionKey ∈ early|mid|late.
+function sectionBeats(race, phaseLabel, sectionKey) {
+  const label = sectionLabelOf(race, sectionKey);
+  const why = sectionWhy(race, sectionKey);
+  const out = [];
+  if (label) out.push(`${phaseLabel}、${label}。`);
+  if (why) out.push(why);
+  return out;
+}
+
+// A focus dragon whose trait fits the moment (§28 §7.5).
+function traitBeat(phase) {
+  for (const id of (phase.focusDragonIds || [])) {
+    const e = phase.orderedEntries.find(x => x.dragon.id === id);
+    if (!e) continue;
+    const r = phase.currRankMap[id];
+    const kind = r === 1 ? "lead" : r <= 3 ? "holding" : r >= 7 ? "back" : "trait";
+    const line = personaLine(id, kind) || personaLine(id, "trait");
+    if (line) return line;
+  }
+  return null;
+}
+
+// Stamina as 脚色 (§28 §6.5/§7.9) — never a number. Flags a tiring leader.
+function staminaBeats(phase) {
+  const out = [];
+  const tiring = phase.orderedEntries.find(e =>
+    e.collapse && phase.currRankMap[e.dragon.id] <= 4);
+  if (tiring) {
+    out.push(personaLine(tiring.dragon.id, "fading")
+      || `${commentaryName(tiring.dragon.id)}、脚色が鈍る。`);
+  }
+  return out;
+}
+
+// Bet beat — only when essential (§28 §4.1). Subtle, no loud 馬券用語.
+function essentialBetBeat(phase, ctx) {
+  const bs = phase.bettingStatus;
+  if (!bs || !bs.targets || !bs.targets.length) return null;
+  // Mention only the moment a target steps onto/off the 3rd-place line.
+  if (phase.id === "development" || phase.id === "late") {
+    const justInRange = bs.targets.find(t => t.rank === 3);
+    if (justInRange) return `${commentaryName(justInRange.id)}、3番手。ここで圏内。`;
+  }
+  return null;
+}
+
+// --- Per-phase composers --------------------------------------------------
+
+function composeEarly(phase, prevPhase, ctx) {
+  const lines = [];
+  lines.push(cePick(["スタートが切られた。", "ゲートが開いた。", "8頭、一斉に飛び出す。"]));
+  if (phase.tags.includes("good_start")) {
+    const fast = phase.orderedEntries[0];
+    lines.push(personaLine(fast.dragon.id, "lead") || `${commentaryName(fast.dragon.id)}が好発進。`);
+  }
+  if (phase.tags.includes("slow_start")) {
+    const slow = phase.orderedEntries.find((e, i) => i + 1 >= 7);
+    if (slow) lines.push(`${commentaryName(slow.dragon.id)}は出遅れた。`);
+  }
+  lines.push(...positionBeats(phase, 3));
+  lines.push(...popularityBeats(phase, ctx));
+  if (ctx.race.weather !== "clear") lines.push(weatherFlavor(ctx.race.weather));
+  lines.push(traitBeat(phase));
+  return lines;
+}
+
+function composeMid(phase, prevPhase, ctx) {
+  const lines = [];
+  lines.push(...sectionBeats(ctx.race, phase.label, "mid"));
+  if (ctx.race.weather !== "clear") lines.push(weatherFlavor(ctx.race.weather));
+  lines.push(...moverBeats(phase, prevPhase, 1, 0));
+  lines.push(traitBeat(phase));
+  lines.push(...positionBeats(phase, 3));
+  lines.push(...popularityBeats(phase, ctx));
+  return lines;
+}
+
+function composeDevelopment(phase, prevPhase, ctx) {
+  const lines = [];
+  const pace = ctx.raceResult && ctx.raceResult.pace;
+  if (pace) paceFlavor(pace.type).forEach(l => lines.push(l));
+  if (phase.tags.includes("favorite_fade")) {
+    const fav = favoriteEntry(phase, ctx);
+    if (fav) lines.push(`${commentaryName(fav.dragon.id)}、苦しくなってきた。`);
+  }
+  lines.push(...moverBeats(phase, prevPhase, 2, 1));
+  lines.push(...staminaBeats(phase));
+  lines.push(traitBeat(phase));
+  lines.push(...positionBeats(phase, 2));
+  lines.push(essentialBetBeat(phase, ctx));
+  lines.push(...popularityBeats(phase, ctx));
+  return lines;
+}
+
+function composeLate(phase, prevPhase, ctx) {
+  const lines = [];
+  lines.push(distancePhrase(phase.distanceRemaining));
+  lines.push(...positionBeats(phase, 3));
+  lines.push(...moverBeats(phase, prevPhase, 2, 0));
+  // 粘り — a forward dragon holding on
+  const holder = phase.orderedEntries.slice(0, 2).find(e => !e.collapse);
+  if (holder) lines.push(personaLine(holder.dragon.id, "holding")
+    || `${commentaryName(holder.dragon.id)}、まだ粘る。`);
+  lines.push(...staminaBeats(phase));
+  lines.push(essentialBetBeat(phase, ctx));
+  if (phase.tags.includes("late_surge") || phase.tags.includes("close_finish")) {
+    lines.push("後ろから脚が来る。");
+  }
+  lines.push("残りわずか。");
+  return lines;
+}
+
+function composeFinish(phase, prevPhase, ctx) {
+  const lines = [];
+  const o = phase.orderedEntries; // final order
+  lines.push(`${commentaryName(o[0].dragon.id)}、抜け出す。`);
+  if (o[1]) lines.push(`${commentaryName(o[1].dragon.id)}が追う。`);
+  if (o[2]) lines.push(`外から${commentaryName(o[2].dragon.id)}。`);
+  if (phase.tags.includes("photo_finish")) lines.push("横一線。");
+  else if (phase.tags.includes("close_finish")) lines.push("際どい。");
+  lines.push("今、聖龍門へ。");
+  lines.push(`1着、${commentaryName(o[0].dragon.id)}。`);
+  if (o[1]) lines.push(`2着、${commentaryName(o[1].dragon.id)}。`);
+  if (o[2]) lines.push(`3着、${commentaryName(o[2].dragon.id)}。`);
+  return lines;
+}
+
+function favoriteEntry(phase, ctx) {
+  if (!ctx.oddsResult) return null;
+  const fav = ctx.oddsResult.oddsData.find(o => o.popularityRank === 1);
+  if (!fav) return null;
+  return phase.orderedEntries.find(e => e.dragon.id === fav.dragonId) || null;
+}
+
+// --- Finalize: dedupe + cap to target -------------------------------------
+
+function finalizeLines(raw, phaseId) {
+  const cleaned = [];
+  for (const item of raw) {
+    if (!item) continue;
+    const s = String(item).trim();
+    if (!s) continue;
+    if (cleaned.length && cleaned[cleaned.length - 1] === s) continue; // no immediate repeat
+    cleaned.push(s);
+  }
+  // drop exact global repeats (keep first occurrence)
+  const seen = new Set();
+  const dq = [];
+  for (const s of cleaned) {
+    if (seen.has(s)) continue;
+    seen.add(s);
+    dq.push(s);
+  }
+  const target = PHASE_LINE_TARGET[phaseId] || 10;
+  const max = target + 3;
+  if (dq.length <= max) return dq;
+  // keep the head and the closing tail (finish's 着順 lives at the tail)
+  const head = dq.slice(0, Math.ceil(max * 0.55));
+  const tail = dq.slice(dq.length - (max - head.length));
+  return [...head, ...tail];
+}
+
+// --- Public ----------------------------------------------------------------
+
+/**
+ * Build one phase's commentary object.
+ * @param {object} phase      broadcast phase
+ * @param {object} prevPhase  previous broadcast phase (nullable)
+ * @param {object} ctx        { race, bet, oddsResult, raceResult }
+ */
+function buildPhaseCommentary(phase, prevPhase, ctx) {
+  let raw;
+  switch (phase.id) {
+    case "early":       raw = composeEarly(phase, prevPhase, ctx); break;
+    case "mid":         raw = composeMid(phase, prevPhase, ctx); break;
+    case "development": raw = composeDevelopment(phase, prevPhase, ctx); break;
+    case "late":        raw = composeLate(phase, prevPhase, ctx); break;
+    case "finish":      raw = composeFinish(phase, prevPhase, ctx); break;
+    default:            raw = positionBeats(phase, 3);
+  }
+  return {
+    phaseId: phase.id,
+    tempoMs: PHASE_TEMPO[phase.id] || 1000,
+    lines: finalizeLines(raw, phase.id),
+    focusDragonIds: phase.focusDragonIds || [],
+    tags: phase.tags || [],
+    visualMode: phase.visualMode
+  };
+}
+
+/**
+ * Build every phase's commentary object in order.
+ * @returns {Array<{phaseId,tempoMs,lines,focusDragonIds,tags,visualMode}>}
+ */
 function buildAllCommentary(broadcastData, ctx) {
   const out = [];
   let prev = null;
   for (const phase of broadcastData.phases) {
-    out.push(buildCommentaryQueue(phase, prev, ctx));
+    out.push(buildPhaseCommentary(phase, prev, ctx));
     prev = phase;
   }
   return out;

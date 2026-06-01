@@ -13,6 +13,10 @@
  */
 window.addEventListener("DOMContentLoaded", () => {
   loadGame();
+  // §30 — initialize total-asset progression from the loaded save (seeds
+  // maxCoinsReached / 総資産 / unlocked lifestyle stage before first render).
+  bumpMaxCoins();
+  recomputeAssets(state);
   updateHeader();
 
   const rerenderCurrent = () => {
@@ -20,7 +24,7 @@ window.addEventListener("DOMContentLoaded", () => {
       home: renderHome, race_select: renderRaceSelect,
       race_detail: () => renderRaceDetail(state.current.race),
       race_run: renderRaceRun, result: renderResult, analysis: renderAnalysis,
-      village: renderVillage, collection: renderCollection, help: renderHelp
+      assets: renderAssets, village: renderVillage, collection: renderCollection, help: renderHelp
     };
     if (map[state.ui.screen]) map[state.ui.screen]();
   };
