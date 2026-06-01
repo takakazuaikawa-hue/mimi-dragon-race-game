@@ -651,6 +651,9 @@ function onConfirmBet(skipDialog) {
   const raceResult = runRace(c.race, c.trialForms);
   // Spec #27: broadcast cache invalidated for each new race run.
   c.broadcast = null; c.commentary = null; c.broadcastState = null;
+  // Canvas-race rebuild: drop the old timeline + stop any running player.
+  c.timeline = null;
+  if (typeof stopRacePlayer === "function") stopRacePlayer();
   // Spec #29: recap is rebuilt per race; result-screen hooks fire once.
   c.recap = null; c.recapTab = "result"; c.resultHooksRan = false;
   c.raceResult = raceResult;
@@ -729,31 +732,42 @@ function closeBetConfirm() {
 // 50-80 lines → 60-90 seconds at 1x with no input required.
 const AUTO_TICK_MS = 1100;
 
+/**
+ * In-race view (rebuilt as a continuous <canvas> race).
+ *
+ * The numerical result is decided already; here we only VISUALISE it. We still
+ * build the broadcast + commentary (the recap & telop read them), then build a
+ * continuous timeline (race_timeline_engine.js) whose finish order is guaranteed
+ * identical to raceResult, and hand it to the canvas player (race_canvas.js).
+ */
 function renderRaceRun() {
   state.ui.screen = "race_run";
   const c = state.current;
-  // Build broadcast data + auto-start playback so the player can just watch.
+  // If a player is already animating this race, don't tear it down on an
+  // incidental rerender (e.g. the debug / info-level toggles call us again).
+  if (c.racePlayer && document.getElementById("race-canvas-host")) return;
+
   if (!c.broadcast) {
     c.broadcast = buildBroadcastData(c.race, c.raceResult, c.bet, c.oddsResult);
     c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult, raceResult: c.raceResult });
-    c.broadcastState = {
-      phaseIdx: 0, lineIdx: 0,
-      autoMode: true,   // default: race plays itself
-      speed: 1,
-      timer: null,
-      _autoStarted: false
-    };
   }
-  renderBroadcastScreen();
-  if (!c.broadcastState._autoStarted) {
-    c.broadcastState._autoStarted = true;
-    startAutoTimer();
+  if (!c.timeline) {
+    c.timeline = buildRaceTimeline(c.race, c.raceResult, c.oddsResult, c.bet);
   }
+  const app = $("app"); app.innerHTML = "";
+  const host = el("div"); host.id = "race-canvas-host";
+  app.appendChild(host);
+  startRaceCanvas(host, {
+    race: c.race, raceResult: c.raceResult, oddsResult: c.oddsResult, bet: c.bet,
+    timeline: c.timeline, commentary: c.commentary, broadcast: c.broadcast
+  });
 }
 
 function stopAutoTimer() {
   const bs = state.current && state.current.broadcastState;
   if (bs && bs.timer) { clearTimeout(bs.timer); bs.timer = null; }
+  // Canvas race player cleanup (RAF loop + listeners).
+  if (typeof stopRacePlayer === "function") stopRacePlayer();
 }
 
 function startAutoTimer() {
