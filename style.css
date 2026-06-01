@@ -919,6 +919,12 @@ body {
   background: #d4a850; color: #1a1430; font-weight: 700;
   padding: 2px 8px; border-radius: 3px; white-space: nowrap;
 }
+.rc-section {
+  background: #2a3550; color: #bfe0ff; font-weight: 700;
+  border: 1px solid #44608a;
+  padding: 2px 7px; border-radius: 3px; white-space: nowrap; font-size: 11px;
+}
+.rc-section:empty { display: none; }
 .rc-race { color: #e8d0a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-hud-right { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
 .rc-weather { color: #9fd0ff; }
