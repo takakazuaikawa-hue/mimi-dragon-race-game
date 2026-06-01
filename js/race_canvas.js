@@ -94,11 +94,26 @@ function rcDrawDragon(ctx, o) {
   const base = o.color;
   const dark  = rcShade(base, -40), mid = rcShade(base, -16),
         light = rcShade(base, 30),  belly = rcShade(base, 60),
-        horn  = rcShade(base, -54);
+        hornC = rcShade(base, -54);
   const gait = o.gait || 0;
   const lean = o.lean || 0;
   const bank = o.bank || 0;        // banking into a turn
   const spread = o.spread || 0;    // wing spread on wind lanes (0..1)
+
+  // ---- per-dragon design profile (presentation only) ----
+  const D = o.design || (typeof DRAGON_DESIGN_DEFAULT !== "undefined" ? DRAGON_DESIGN_DEFAULT : {});
+  const BUILD = {
+    sleek:  { bw: 14.0, bh: 8.4,  headK: 0.95 },
+    smooth: { bw: 14.5, bh: 9.0,  headK: 1.00 },
+    sturdy: { bw: 15.2, bh: 9.6,  headK: 1.02 },
+    heavy:  { bw: 16.2, bh: 10.6, headK: 1.05 },
+    chubby: { bw: 13.6, bh: 10.8, headK: 1.16 },
+    fluffy: { bw: 14.2, bh: 10.4, headK: 1.12 }
+  };
+  const bp = BUILD[D.build] || BUILD.smooth;
+  const bw = bp.bw, bh = bp.bh, headK = bp.headK;
+  const eyeK = D.eye || 1.0;
+  const wsz = D.wingSize || 1.0;
 
   ctx.save();
   ctx.translate(o.x, o.y);
@@ -106,41 +121,410 @@ function rcDrawDragon(ctx, o) {
   ctx.scale(s, s);
   ctx.rotate(-lean * 0.16 + bank * 0.13);   // lean forward when fast, tilt into turns
 
-  // ---- surge aura (radial, fades out) ----
+  // ---- surge aura (radial, fades out) — tinted by signature aura when present ----
+  const auraC = D.aura || base;
   if (o.glow > 0) {
     ctx.save();
     ctx.globalAlpha = 0.5 * o.glow;
-    const ag = ctx.createRadialGradient(-1, -6, 2, -1, -6, 27);
-    ag.addColorStop(0, rcRgba(base, 0.95));
-    ag.addColorStop(1, rcRgba(base, 0));
+    const ag = ctx.createRadialGradient(-1, -6, 2, -1, -6, 28);
+    ag.addColorStop(0, rcRgba(auraC, 0.95));
+    ag.addColorStop(1, rcRgba(auraC, 0));
     ctx.fillStyle = ag;
-    ctx.beginPath(); ctx.ellipse(-1, -6, 27, 20, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-1, -6, 28, 20, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // faint, ever-present halo marks the "special" dragons even at rest
+  if (D.aura) {
+    ctx.save();
+    ctx.globalAlpha = 0.13 + 0.05 * Math.abs(Math.sin((o.flap || 0) * 0.5));
+    const pg = ctx.createRadialGradient(-1, -6, 4, -1, -6, 24);
+    pg.addColorStop(0, rcRgba(D.aura, 0.6));
+    pg.addColorStop(1, rcRgba(D.aura, 0));
+    ctx.fillStyle = pg;
+    ctx.beginPath(); ctx.ellipse(-1, -6, 24, 17, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
   const bob = o.down ? 1.6 : Math.abs(Math.sin(gait)) * 1.35;
   const headY = o.down ? -3 : -9 - bob;
   const flap = Math.sin(o.flap || 0);
+  const wf = flap * (6 + spread * 7) + spread * 3;   // far-wing flap lift
+  const wn = flap * (7 + spread * 10);               // near-wing flap lift
+  const cy = -4 + bob;                                // torso centre
 
-  // ---- far wing (behind body) ----
-  const wf = flap * (6 + spread * 7) + spread * 3;
-  ctx.fillStyle = mid;
-  ctx.beginPath();
-  ctx.moveTo(-3, -9 + bob);
-  ctx.quadraticCurveTo(-15 - spread * 6, -19 - wf, -2, -23 - wf);
-  ctx.quadraticCurveTo(3, -14, -3, -9 + bob);
-  ctx.fill();
+  // ---- a tiny 4-point sparkle (star trails, sparkle accents) ----
+  function spark4(x, y, r, c) {
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.32, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r * 0.32, y);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x - r, y); ctx.lineTo(x, y + r * 0.32); ctx.lineTo(x + r, y); ctx.lineTo(x, y - r * 0.32);
+    ctx.closePath(); ctx.fill();
+  }
 
-  // ---- tail (sways with gait, finned tip) ----
-  const tsw = Math.sin(gait * 0.8) * 3;
-  ctx.fillStyle = dark;
-  ctx.beginPath();
-  ctx.moveTo(-12, -6 + bob);
-  ctx.quadraticCurveTo(-25, -5 - tsw, -29, 2 - tsw);
-  ctx.lineTo(-32, -2 - tsw);                                // tail fin upper
-  ctx.quadraticCurveTo(-27, 2 - tsw, -31, 7 - tsw);        // tail fin lower
-  ctx.quadraticCurveTo(-22, 3 - tsw, -11, -1 + bob);
-  ctx.fill();
+  // ---- wing: shape switches on D.wing; side<0 = far (behind, darker), side>0 = near ----
+  function wing(side) {
+    const near = side > 0;
+    const k = wsz * (near ? 1.0 : 0.82);
+    const lift = near ? wn : wf;
+    ctx.save();
+    if (near) { ctx.translate(0, -8 + bob); ctx.rotate(-0.08 - spread * 0.22); }
+    else      { ctx.translate(-3, -9 + bob); ctx.rotate(0.12 - spread * 0.10); }
+    let fillA, fillB;
+    if (near) {
+      const g = ctx.createLinearGradient(0, 2, 4 * k, -26 * k - lift);
+      g.addColorStop(0, base); g.addColorStop(1, light);
+      fillA = g; fillB = light;
+    } else { fillA = mid; fillB = dark; }
+
+    switch (D.wing) {
+      case "feather": {
+        const n = 4;
+        for (let i = 0; i < n; i++) {
+          ctx.save();
+          ctx.rotate(-0.95 + i * (1.25 / (n - 1)));
+          const len = (18 + i * 3.2) * k + lift * 0.5;
+          ctx.fillStyle = (i % 2 ? fillB : fillA);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(3.0, -len * 0.5, 0.5, -len);
+          ctx.quadraticCurveTo(-2.4, -len * 0.5, 0, 0);
+          ctx.fill();
+          ctx.restore();
+        }
+        break;
+      }
+      case "phoenix": {
+        const n = 5;
+        for (let i = 0; i < n; i++) {
+          ctx.save();
+          ctx.rotate(-1.0 + i * (1.4 / (n - 1)));
+          const len = (20 + i * 3.6) * k + lift * 0.6;
+          ctx.fillStyle = (i >= n - 2) ? (D.aura || "#ffcf52") : (i % 2 ? fillB : fillA);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(3.4, -len * 0.5, 0.6, -len);
+          ctx.quadraticCurveTo(-2.6, -len * 0.5, 0, 0);
+          ctx.fill();
+          ctx.restore();
+        }
+        break;
+      }
+      case "fluffy": {
+        const puffs = [[-1, -5, 5.2], [-5, -10, 6.0], [1, -14, 5.6], [6, -9, 5.4], [-7, -4, 4.6]];
+        for (let i = 0; i < puffs.length; i++) {
+          const p = puffs[i];
+          ctx.fillStyle = (i % 2 ? fillB : fillA);
+          ctx.beginPath();
+          ctx.arc(p[0] * k, p[1] * k - lift * 0.4, p[2] * k, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+      case "ice": {
+        ctx.fillStyle = near ? rcRgba(light, 0.62) : rcRgba(mid, 0.7);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-4 * k, -12 * k - lift);
+        ctx.lineTo(2 * k, -21 * k - lift);
+        ctx.lineTo(8 * k, -14 * k - lift * 0.6);
+        ctx.lineTo(11 * k, -5 * k);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = rcRgba("#ffffff", 0.5); ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.lineTo(2 * k, -21 * k - lift);
+        ctx.moveTo(0, 0); ctx.lineTo(8 * k, -14 * k - lift * 0.6);
+        ctx.stroke();
+        break;
+      }
+      case "stub": case "small": {
+        ctx.fillStyle = fillA;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(-3 * k, -11 * k - lift, 5 * k, -12 * k - lift);
+        ctx.quadraticCurveTo(9 * k, -7 * k, 0, 0);
+        ctx.fill();
+        break;
+      }
+      default: { // membrane + ribs
+        ctx.fillStyle = fillA;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(-9 * k - spread * 6, -22 * k - lift, 7 * k, -26 * k - lift);
+        ctx.quadraticCurveTo(12 * k, -19 * k - lift * 0.6, 11 * k, -6 * k);
+        ctx.quadraticCurveTo(7 * k, -9 * k, 0, 0);
+        ctx.fill();
+        ctx.strokeStyle = rcRgba(dark, 0.55); ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        ctx.moveTo(1, -3); ctx.lineTo(5 * k, -24 * k - lift);
+        ctx.moveTo(1, -3); ctx.lineTo(10 * k, -18 * k - lift * 0.6);
+        ctx.stroke();
+        break;
+      }
+    }
+    ctx.restore();
+  }
+
+  // ---- tail: shape switches on D.tail; sways with gait ----
+  function tail() {
+    const tsw = Math.sin(gait * 0.8) * 3;
+    const ty = bob;
+    switch (D.tail) {
+      case "fin": {
+        ctx.fillStyle = dark;
+        ctx.beginPath();
+        ctx.moveTo(-12, -6 + ty);
+        ctx.quadraticCurveTo(-25, -5 - tsw, -29, 2 - tsw);
+        ctx.lineTo(-32, -2 - tsw);
+        ctx.quadraticCurveTo(-27, 2 - tsw, -31, 7 - tsw);
+        ctx.quadraticCurveTo(-22, 3 - tsw, -11, -1 + ty);
+        ctx.fill();
+        break;
+      }
+      case "flame": {
+        const fg = ctx.createLinearGradient(-12, 0, -36, 0);
+        fg.addColorStop(0, dark); fg.addColorStop(0.55, base); fg.addColorStop(1, "#ffcf5e");
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.moveTo(-12, -6 + ty);
+        ctx.quadraticCurveTo(-26, -7 - tsw, -34, -6 - tsw);
+        ctx.quadraticCurveTo(-30, -2 - tsw, -36, 1 - tsw);
+        ctx.quadraticCurveTo(-30, 2 - tsw, -34, 7 - tsw);
+        ctx.quadraticCurveTo(-24, 3 - tsw, -11, -1 + ty);
+        ctx.fill();
+        ctx.fillStyle = rcRgba("#fff1b8", 0.7);
+        ctx.beginPath();
+        ctx.moveTo(-14, -4 + ty);
+        ctx.quadraticCurveTo(-26, -3 - tsw, -31, -1 - tsw);
+        ctx.quadraticCurveTo(-26, 1 - tsw, -14, 0 + ty);
+        ctx.fill();
+        break;
+      }
+      case "cloud": {
+        const puffs = [[-15, -4, 5], [-20, -3, 5.6], [-26, -2.4, 5.2], [-31, -1.4, 4.2]];
+        for (let i = 0; i < puffs.length; i++) {
+          const p = puffs[i];
+          ctx.fillStyle = (i % 2 ? light : mid);
+          ctx.beginPath();
+          ctx.arc(p[0], p[1] + ty - tsw * 0.3, p[2], 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+      case "club": {
+        ctx.strokeStyle = dark; ctx.lineWidth = 5; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-12, -5 + ty); ctx.quadraticCurveTo(-24, -3 - tsw, -29, 1 - tsw); ctx.stroke();
+        ctx.fillStyle = mid;
+        ctx.beginPath(); ctx.arc(-31, 1 - tsw, 5.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = hornC;
+        for (let a = 0; a < 6; a++) {
+          const ang = a * (Math.PI / 3);
+          const cx = -31 + Math.cos(ang) * 5.4, cyy = (1 - tsw) + Math.sin(ang) * 5.4;
+          ctx.beginPath();
+          ctx.moveTo(cx, cyy);
+          ctx.lineTo(-31 + Math.cos(ang) * 8.4, (1 - tsw) + Math.sin(ang) * 8.4);
+          ctx.lineTo(cx + Math.cos(ang + 0.4) * 1.6, cyy + Math.sin(ang + 0.4) * 1.6);
+          ctx.closePath(); ctx.fill();
+        }
+        break;
+      }
+      case "plume": {
+        const cols = [dark, base, (D.aura || "#ffcf52")];
+        for (let i = 0; i < 3; i++) {
+          const off = i * 2;
+          ctx.fillStyle = cols[i];
+          ctx.beginPath();
+          ctx.moveTo(-12, -6 + ty + off);
+          ctx.quadraticCurveTo(-26, -8 - tsw + off, -35 - i * 1.5, -2 - tsw + off * 1.4);
+          ctx.quadraticCurveTo(-27, -1 - tsw + off, -12, -2 + ty + off);
+          ctx.fill();
+        }
+        break;
+      }
+      case "startrail": {
+        ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-12, -5 + ty); ctx.quadraticCurveTo(-24, -4 - tsw, -30, 0 - tsw); ctx.stroke();
+        const stars = [[-22, -4, 2.2], [-27, -2, 1.7], [-32, 0, 1.3], [-36, 1.6, 1.0]];
+        for (let i = 0; i < stars.length; i++) {
+          const st = stars[i];
+          spark4(st[0], st[1] + ty - tsw * 0.2, st[2], (D.aura || "#ffd0ec"));
+        }
+        break;
+      }
+      case "bolt": {
+        ctx.strokeStyle = (D.aura || "#ffe66b"); ctx.lineWidth = 2.6; ctx.lineJoin = "round"; ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-12, -5 + ty);
+        ctx.lineTo(-20, -7 - tsw); ctx.lineTo(-23, -2 - tsw);
+        ctx.lineTo(-30, -5 - tsw); ctx.lineTo(-28, 0 - tsw); ctx.lineTo(-35, -1 - tsw);
+        ctx.stroke();
+        ctx.strokeStyle = rcRgba("#ffffff", 0.8); ctx.lineWidth = 1.0;
+        ctx.stroke();
+        break;
+      }
+      case "crystal": {
+        ctx.fillStyle = mid;
+        ctx.beginPath(); ctx.moveTo(-12, -5 + ty); ctx.quadraticCurveTo(-24, -4 - tsw, -28, 0 - tsw); ctx.quadraticCurveTo(-24, 1 - tsw, -12, -2 + ty); ctx.fill();
+        ctx.fillStyle = rcRgba(light, 0.85);
+        const seg = [[-28, 0, 4.5], [-32, 1, 3.4], [-35, 2, 2.4]];
+        for (let i = 0; i < seg.length; i++) {
+          const c = seg[i], cx = c[0], cyy = c[1] - tsw, r = c[2];
+          ctx.beginPath();
+          ctx.moveTo(cx, cyy - r); ctx.lineTo(cx + r * 0.7, cyy); ctx.lineTo(cx, cyy + r); ctx.lineTo(cx - r * 0.7, cyy);
+          ctx.closePath(); ctx.fill();
+        }
+        break;
+      }
+      case "round": {
+        ctx.strokeStyle = dark; ctx.lineWidth = 4.4; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-12, -4 + ty); ctx.quadraticCurveTo(-22, -3 - tsw, -27, 1 - tsw); ctx.stroke();
+        ctx.fillStyle = light;
+        ctx.beginPath(); ctx.arc(-28, 1 - tsw, 3.6, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      default: { // spade
+        ctx.fillStyle = dark;
+        ctx.beginPath();
+        ctx.moveTo(-12, -6 + ty);
+        ctx.quadraticCurveTo(-25, -5 - tsw, -29, 0 - tsw);
+        ctx.quadraticCurveTo(-23, 1 - tsw, -12, -1 + ty);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-29, 0 - tsw); ctx.lineTo(-33, -3.2 - tsw); ctx.lineTo(-35, 0 - tsw); ctx.lineTo(-33, 3.2 - tsw);
+        ctx.closePath(); ctx.fill();
+        break;
+      }
+    }
+  }
+
+  // ---- horns: switches on D.horn ----
+  function horns() {
+    if (D.horn === "none") return;
+    const hy = headY;
+    ctx.strokeStyle = hornC; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+    switch (D.horn) {
+      case "nub": {
+        ctx.fillStyle = hornC;
+        ctx.beginPath(); ctx.ellipse(10, hy - 6, 1.8, 2.4, -0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(13.6, hy - 6.4, 1.7, 2.2, -0.1, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case "tall": {
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(10, hy - 5); ctx.quadraticCurveTo(9, hy - 14, 10.5, hy - 19);
+        ctx.moveTo(13.5, hy - 5.5); ctx.quadraticCurveTo(13, hy - 15, 14.5, hy - 20);
+        ctx.stroke();
+        break;
+      }
+      case "rocky": {
+        ctx.fillStyle = hornC;
+        ctx.beginPath();
+        ctx.moveTo(9.5, hy - 4); ctx.lineTo(7, hy - 12); ctx.lineTo(11, hy - 9);
+        ctx.lineTo(12, hy - 13); ctx.lineTo(13.5, hy - 6); ctx.closePath(); ctx.fill();
+        break;
+      }
+      case "back": {
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(10, hy - 4.5); ctx.quadraticCurveTo(3, hy - 9, 0, hy - 7);
+        ctx.moveTo(13, hy - 5); ctx.quadraticCurveTo(6, hy - 10, 3, hy - 8.5);
+        ctx.stroke();
+        break;
+      }
+      case "thunder": {
+        ctx.strokeStyle = (D.aura || hornC); ctx.lineWidth = 2.2; ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(10, hy - 5); ctx.lineTo(8, hy - 9); ctx.lineTo(11, hy - 11); ctx.lineTo(9, hy - 16);
+        ctx.moveTo(13.5, hy - 5.5); ctx.lineTo(12, hy - 10); ctx.lineTo(15, hy - 12); ctx.lineTo(13, hy - 17);
+        ctx.stroke();
+        break;
+      }
+      case "crystal": {
+        ctx.fillStyle = rcRgba(light, 0.9);
+        const drawC = (bx, by, h) => {
+          ctx.beginPath(); ctx.moveTo(bx - 2, by); ctx.lineTo(bx, by - h); ctx.lineTo(bx + 2, by); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = rcRgba("#ffffff", 0.6); ctx.lineWidth = 0.6;
+          ctx.beginPath(); ctx.moveTo(bx, by - h); ctx.lineTo(bx, by); ctx.stroke();
+        };
+        drawC(10, hy - 4, 11); drawC(14, hy - 5, 12.5);
+        break;
+      }
+      case "crown": {
+        ctx.fillStyle = (D.aura || hornC);
+        const pts = [[8.5, -5], [11, -6], [13.5, -6], [16, -5]];
+        const hh = [7, 11, 11, 7];
+        for (let i = 0; i < pts.length; i++) {
+          const px = pts[i][0], py = hy + pts[i][1];
+          ctx.beginPath();
+          ctx.moveTo(px - 1.8, py); ctx.lineTo(px, py - hh[i]); ctx.lineTo(px + 1.8, py); ctx.closePath(); ctx.fill();
+        }
+        break;
+      }
+      default: { // swept
+        ctx.beginPath();
+        ctx.moveTo(10, hy - 5);   ctx.quadraticCurveTo(6, hy - 11, 8.5, hy - 13.5);
+        ctx.moveTo(13.5, hy - 5.5); ctx.quadraticCurveTo(11, hy - 12, 13.5, hy - 14);
+        ctx.stroke();
+        break;
+      }
+    }
+  }
+
+  // ---- face: eyes sized by eyeK, expression by D.face / accent ----
+  function face() {
+    const ex = 13.4, ey = headY - 0.8;
+    if (o.down) {
+      ctx.strokeStyle = "#16202e"; ctx.lineWidth = 1.5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(10.5, headY - 1); ctx.lineTo(13, headY - 2.6); ctx.lineTo(15.5, headY - 1); ctx.stroke();
+      return;
+    }
+    const cute = (D.face === "teary" || D.face === "gentle" || D.face === "serene" || D.face === "sleepy" || D.face === "calm");
+    if (D.face === "sleepy") {
+      ctx.strokeStyle = "#16202e"; ctx.lineWidth = 1.4; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(11.4, ey + 0.4); ctx.quadraticCurveTo(13.4, ey - 1.6, 15.4, ey + 0.4); ctx.stroke();
+      ctx.fillStyle = rcRgba("#ff8fb0", 0.4);
+      ctx.beginPath(); ctx.ellipse(16.5, headY + 1.6, 2.0, 1.3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = rcRgba("#cfe0ff", 0.9); ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.moveTo(17, headY - 9); ctx.lineTo(19, headY - 9); ctx.lineTo(17, headY - 7); ctx.lineTo(19, headY - 7); ctx.stroke();
+      return;
+    }
+    const rx = 2.4 * eyeK, ry = 2.7 * eyeK;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#16202e";
+    ctx.beginPath(); ctx.arc(ex + 0.6, ey + 0.2, 1.5 * Math.min(eyeK, 1.3), 0, Math.PI * 2); ctx.fill();
+    if (D.aura) {
+      ctx.strokeStyle = rcRgba(D.aura, 0.8); ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.arc(ex + 0.6, ey + 0.2, 1.5 * Math.min(eyeK, 1.3), 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(ex + 1.3, ey - 1.0, 0.8 * eyeK, 0, Math.PI * 2); ctx.fill();
+    if (eyeK > 1.15) { ctx.beginPath(); ctx.arc(ex - 0.4, ey + 1.0, 0.5 * eyeK, 0, Math.PI * 2); ctx.fill(); }
+    const fierce = (D.face === "fierce" || D.face === "wild" || D.face === "intense" || D.face === "sharp");
+    if (fierce) {
+      ctx.strokeStyle = mid; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(10.6, ey - 2.6); ctx.lineTo(15.4, ey - 1.2); ctx.stroke();
+    } else if (D.face === "regal") {
+      ctx.strokeStyle = hornC; ctx.lineWidth = 1.0; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(11.2, ey - 2.4); ctx.quadraticCurveTo(13.4, ey - 3.0, 15.6, ey - 2.0); ctx.stroke();
+    }
+    if (cute) {
+      ctx.fillStyle = rcRgba("#ff8fb0", 0.34);
+      ctx.beginPath(); ctx.ellipse(16.6, headY + 1.7, 1.9, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    if (D.face === "teary" || D.accent === "tear") {
+      ctx.fillStyle = rcRgba("#bfe6ff", 0.92);
+      ctx.beginPath(); ctx.ellipse(ex + 0.4, ey + ry + 1.4, 1.1, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = rcRgba("#ffffff", 0.8);
+      ctx.beginPath(); ctx.arc(ex + 0.1, ey + ry + 1.0, 0.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ===== draw order: far wing → tail → legs → torso → dorsal → near wing → head =====
+  wing(-1);
+  tail();
 
   // ---- legs (run cycle) + claws ----
   ctx.strokeStyle = dark; ctx.lineWidth = 3.3; ctx.lineCap = "round";
@@ -158,62 +542,84 @@ function rcDrawDragon(ctx, o) {
   ctx.moveTo(-5 + a1, legY + 8.5); ctx.lineTo(-3 + a1, legY + 9.8);
   ctx.moveTo(9 + a1, legY + 8.5);  ctx.lineTo(11 + a1, legY + 9.8);
   ctx.stroke();
+  if (D.claw === "big") {   // extra raptor talons
+    ctx.strokeStyle = light; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(9 + a1, legY + 8.5);  ctx.lineTo(12 + a1, legY + 8.6);
+    ctx.moveTo(5 + a2, legY + 8.5);  ctx.lineTo(8 + a2, legY + 8.6);
+    ctx.moveTo(-5 + a1, legY + 8.5); ctx.lineTo(-8 + a1, legY + 8.6);
+    ctx.stroke();
+  }
 
   // ---- torso (vertical gradient: lit back → shaded under) ----
-  const bg = ctx.createLinearGradient(0, -14 + bob, 0, 6 + bob);
+  const bg = ctx.createLinearGradient(0, cy - bh - 1, 0, cy + bh + 1);
   bg.addColorStop(0, light);
   bg.addColorStop(0.55, base);
   bg.addColorStop(1, mid);
   ctx.fillStyle = bg;
   ctx.beginPath();
-  ctx.ellipse(0, -4 + bob, 14.5, 9.2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, cy, bw, bh, 0, 0, Math.PI * 2);
   ctx.fill();
   // belly plate
   ctx.fillStyle = belly;
   ctx.beginPath();
-  ctx.ellipse(2, -1 + bob, 9, 5.2, 0, 0, Math.PI * 2);
+  ctx.ellipse(2, cy + 3, bw * 0.62, bh * 0.57, 0, 0, Math.PI * 2);
   ctx.fill();
-  // scale hints
-  ctx.strokeStyle = rcRgba(dark, 0.45); ctx.lineWidth = 0.8;
-  for (let i = -1; i <= 1; i++) {
-    ctx.beginPath(); ctx.arc(i * 5 + 1, -3 + bob, 4, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke();
+
+  // ---- body texture switches on D.body ----
+  if (D.body === "stone") {
+    ctx.strokeStyle = rcRgba(dark, 0.5); ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(-7, cy - 1); ctx.lineTo(-2, cy + 2); ctx.lineTo(3, cy - 2); ctx.lineTo(8, cy + 2);
+    ctx.stroke();
+    ctx.fillStyle = rcRgba(dark, 0.22);
+    ctx.beginPath(); ctx.moveTo(-9, cy - 3); ctx.lineTo(-4, cy - 4); ctx.lineTo(-3, cy); ctx.lineTo(-8, cy + 1); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(3, cy - 4); ctx.lineTo(9, cy - 3); ctx.lineTo(8, cy + 1); ctx.lineTo(2, cy); ctx.closePath(); ctx.fill();
+  } else if (D.body === "frost") {
+    ctx.strokeStyle = rcRgba("#eaffff", 0.5); ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-6, cy - 3); ctx.lineTo(-3, cy + 1); ctx.lineTo(-6, cy + 3);
+    ctx.moveTo(4, cy - 3); ctx.lineTo(7, cy + 1); ctx.lineTo(4, cy + 3);
+    ctx.stroke();
+    ctx.fillStyle = rcRgba("#ffffff", 0.16);
+    ctx.beginPath(); ctx.moveTo(-1, cy - 4); ctx.lineTo(3, cy - 1); ctx.lineTo(-1, cy + 2); ctx.closePath(); ctx.fill();
+  } else if (D.body === "smooth") {
+    ctx.fillStyle = rcRgba(light, 0.45);
+    ctx.beginPath(); ctx.ellipse(-2, cy - 3, 6, 2.4, -0.2, 0, Math.PI * 2); ctx.fill();
+  } else { // scale
+    ctx.strokeStyle = rcRgba(dark, 0.45); ctx.lineWidth = 0.8;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath(); ctx.arc(i * 5 + 1, cy + 1, 4, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke();
+    }
   }
   // rim light along the back
   ctx.strokeStyle = rcRgba(light, 0.7); ctx.lineWidth = 1.1;
-  ctx.beginPath(); ctx.ellipse(0, -4 + bob, 14.5, 9.2, 0, Math.PI * 1.08, Math.PI * 1.62); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, cy, bw, bh, 0, Math.PI * 1.08, Math.PI * 1.62); ctx.stroke();
 
-  // ---- dorsal spines ----
-  ctx.fillStyle = dark;
-  for (let i = 0; i < 4; i++) {
-    const sx = -9 + i * 5;
-    ctx.beginPath();
-    ctx.moveTo(sx, -10.5 + bob);
-    ctx.lineTo(sx + 2, -15.5 + bob);
-    ctx.lineTo(sx + 4, -10.5 + bob);
-    ctx.closePath(); ctx.fill();
+  // ---- dorsal line switches on build/body ----
+  if (D.build === "fluffy") {
+    ctx.fillStyle = rcRgba(light, 0.85);
+    for (let i = 0; i < 4; i++) { const sx = -9 + i * 5; ctx.beginPath(); ctx.arc(sx + 1, cy - bh + 1.5, 2.2, 0, Math.PI * 2); ctx.fill(); }
+  } else if (D.body === "frost") {
+    for (let i = 0; i < 4; i++) {
+      const sx = -9 + i * 5;
+      ctx.fillStyle = rcRgba(light, 0.95);
+      ctx.beginPath(); ctx.moveTo(sx, cy - bh + 2); ctx.lineTo(sx + 2, cy - bh - 3.5); ctx.lineTo(sx + 4, cy - bh + 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = rcRgba("#ffffff", 0.6); ctx.lineWidth = 0.5; ctx.stroke();
+    }
+  } else if (D.body === "stone" || D.build === "heavy") {
+    ctx.fillStyle = dark;
+    for (let i = 0; i < 4; i++) { const sx = -9 + i * 5; ctx.beginPath(); ctx.arc(sx + 2, cy - bh + 1.5, 2.0, Math.PI, 0); ctx.fill(); }
+  } else {
+    ctx.fillStyle = dark;
+    for (let i = 0; i < 4; i++) {
+      const sx = -9 + i * 5;
+      ctx.beginPath(); ctx.moveTo(sx, cy - bh + 1.5); ctx.lineTo(sx + 2, cy - bh - 3.5); ctx.lineTo(sx + 4, cy - bh + 1.5); ctx.closePath(); ctx.fill();
+    }
   }
 
-  // ---- near wing (shoulder, in front of torso; membrane + ribs) ----
-  ctx.save();
-  ctx.translate(0, -8 + bob);
-  ctx.rotate(-0.08 - spread * 0.22);
-  const wn = flap * (7 + spread * 10);
-  const wg = ctx.createLinearGradient(0, 2, 4, -26 - wn);
-  wg.addColorStop(0, base);
-  wg.addColorStop(1, light);
-  ctx.fillStyle = wg;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.quadraticCurveTo(-9 - spread * 6, -22 - wn, 7, -26 - wn);
-  ctx.quadraticCurveTo(12, -19 - wn * 0.6, 11, -6);
-  ctx.quadraticCurveTo(7, -9, 0, 0);
-  ctx.fill();
-  ctx.strokeStyle = rcRgba(dark, 0.55); ctx.lineWidth = 0.9;
-  ctx.beginPath();
-  ctx.moveTo(1, -3); ctx.lineTo(5, -24 - wn);
-  ctx.moveTo(1, -3); ctx.lineTo(10, -18 - wn * 0.6);
-  ctx.stroke();
-  ctx.restore();
+  // ---- near wing (in front of torso) ----
+  wing(1);
 
   // ---- neck + head ----
   ctx.fillStyle = light;
@@ -223,10 +629,10 @@ function rcDrawDragon(ctx, o) {
   ctx.lineTo(8, headY + 4);
   ctx.quadraticCurveTo(6, -4 + bob, 7, -7 + bob);
   ctx.fill();
-  // head
+  // head (scaled by build's headK — bigger heads read cuter)
   ctx.fillStyle = light;
   ctx.beginPath();
-  ctx.ellipse(12.5, headY, 8, 6.6, 0, 0, Math.PI * 2);
+  ctx.ellipse(12.5, headY, 8 * headK, 6.6 * headK, 0, 0, Math.PI * 2);
   ctx.fill();
   // snout / jaw
   ctx.fillStyle = base;
@@ -243,25 +649,10 @@ function rcDrawDragon(ctx, o) {
   ctx.beginPath();
   ctx.moveTo(8.5, headY + 0.5); ctx.lineTo(4.5, headY + 1.5);
   ctx.lineTo(8, headY + 4); ctx.closePath(); ctx.fill();
-  // horns (swept back)
-  ctx.strokeStyle = horn; ctx.lineWidth = 2.2; ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(10, headY - 5);   ctx.quadraticCurveTo(6, headY - 11, 8.5, headY - 13.5);
-  ctx.moveTo(13.5, headY - 5.5); ctx.quadraticCurveTo(11, headY - 12, 13.5, headY - 14);
-  ctx.stroke();
 
-  // ---- eye / expression ----
-  if (o.down) {
-    ctx.strokeStyle = "#16202e"; ctx.lineWidth = 1.5; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(10.5, headY - 1); ctx.lineTo(13, headY - 2.6); ctx.lineTo(15.5, headY - 1); ctx.stroke();
-  } else {
-    ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.ellipse(13.4, headY - 0.8, 2.4, 2.7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#16202e";
-    ctx.beginPath(); ctx.arc(14.0, headY - 0.6, 1.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.arc(14.6, headY - 1.5, 0.7, 0, Math.PI * 2); ctx.fill();
-  }
+  horns();
+  face();
+
   // open mouth + fang when pushing hard / at the line
   if (o.effort) {
     ctx.fillStyle = "#7a1f2b";
@@ -378,9 +769,32 @@ function startRaceCanvas(container, ctx) {
     tapeBroken: false,
     showLog: false,
     finishedAnnounced: false,
-    countdown: 1.0      // brief スタート flash
+    countdown: 0,
+    // --- presentation drama ---
+    preT: 3.0,          // pre-start 3-2-1 countdown (holds τ at the gate)
+    goFlash: 0,         // "GO！" burst after the countdown
+    zoomBump: 0,        // extra push-in impulse from overtakes / close battles
+    prevStand: null,    // {id: place} last frame, for overtake detection
+    cheerT: 1.2,        // throttle for cheer-your-pick callouts
+    battleT: 0,         // throttle for 接戦！ callouts
+    overT: 0,           // throttle for overtake callouts
+    celebrated: false,  // finish confetti fired once
+    confettiT: 0        // ongoing confetti spawn while celebrating
   };
   dragons.forEach(dr => { S.gait[dr.id] = Math.random() * Math.PI * 2; });
+
+  // player's pick (first selection) — used by the cheer treatment
+  const pickId = (bet && bet.selections && bet.selections[0]) || null;
+  // presentation-only bet-hit check, mirrors resolveBet (win:1st / place:top3 / wide:both top3)
+  function computeBetHit() {
+    if (!bet || !betSet.size) return null;
+    const placeOf = {}; timeline.crossings.forEach(c => { placeOf[c.id] = c.place; });
+    const top3 = timeline.crossings.filter(c => c.place <= 3).map(c => c.id);
+    if (bet.type === "win")   return placeOf[bet.selections[0]] === 1;
+    if (bet.type === "place") return top3.includes(bet.selections[0]);
+    if (bet.type === "wide")  return top3.includes(bet.selections[0]) && top3.includes(bet.selections[1]);
+    return null;
+  }
 
   // ---- telop scheduling: spread each phase's commentary across its τ-span ----
   const telopSchedule = [];
@@ -436,6 +850,33 @@ function startRaceCanvas(container, ctx) {
       });
     }
   }
+  // celebration confetti — colourful ribbons fluttering down from the top (screen space)
+  const CONFETTI_COLORS = ["#ff5a7a", "#ffd34d", "#5cc6ff", "#7df29a", "#c79bff", "#ffae5c", "#ffffff"];
+  function spawnConfetti(n) {
+    for (let i = 0; i < n; i++) {
+      S.particles.push({
+        scr: true, kind: "confetti",
+        x: Math.random() * cw, y: -8 - Math.random() * 30,
+        vx: (Math.random() * 2 - 1) * 36, vy: 50 + Math.random() * 70,
+        rot: Math.random() * Math.PI, vr: (Math.random() * 2 - 1) * 8,
+        life: 1, max: 1.6 + Math.random() * 1.2, size: 4 + Math.random() * 4,
+        color: CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0]
+      });
+    }
+  }
+  // firework burst at a screen point (radial sparks that fade)
+  function spawnFirework(x, y, color) {
+    const N = 18;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2, sp = 60 + Math.random() * 50;
+      S.particles.push({
+        scr: true, kind: "spark",
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 1, max: 0.7 + Math.random() * 0.5, size: 1.6 + Math.random() * 1.8,
+        color: color || CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0]
+      });
+    }
+  }
 
   // ---- camera (smoothed follow + dynamic zoom / vertical pan) ----
   function updateCamera() {
@@ -453,7 +894,7 @@ function startRaceCanvas(container, ctx) {
     // push in near the finish and when the field bunches up; pull back when spread
     const finishProx = clamp((leaderP - 0.74) / 0.26, 0, 1);
     const bunch = clamp(1 - (leaderP - lastP) / 0.22, 0, 1);
-    S.zoomT = S.finished ? 1.2 : (1 + 0.13 * finishProx + 0.05 * bunch);
+    S.zoomT = S.finished ? 1.2 : (1 + 0.13 * finishProx + 0.05 * bunch + (S.zoomBump || 0));
     S.zoom += (S.zoomT - S.zoom) * 0.06;
 
     // gentle vertical pan toward the leader's lane → the camera "follows"
@@ -646,6 +1087,49 @@ function startRaceCanvas(container, ctx) {
   // =====================================================================
   // DRAW
   // =====================================================================
+  // ---- live position minimap (compact strip: every dragon at a glance) ----
+  function drawMinimap() {
+    const mx0 = cw * 0.15, mx1 = cw * 0.85, my = ch * 0.05;
+    const bx = mx0 - 16, bw = (mx1 - mx0) + 40, by = my - 9, bh = 18;
+    cctx.save();
+    // backing strip
+    cctx.fillStyle = "rgba(10,14,28,0.50)";
+    if (cctx.roundRect) { cctx.beginPath(); cctx.roundRect(bx, by, bw, bh, 9); cctx.fill(); }
+    else cctx.fillRect(bx, by, bw, bh);
+    cctx.strokeStyle = "rgba(255,255,255,0.12)"; cctx.lineWidth = 1;
+    if (cctx.roundRect) { cctx.beginPath(); cctx.roundRect(bx, by, bw, bh, 9); cctx.stroke(); }
+    else cctx.strokeRect(bx, by, bw, bh);
+    // track baseline
+    cctx.strokeStyle = "rgba(255,255,255,0.16)"; cctx.lineWidth = 2;
+    cctx.beginPath(); cctx.moveTo(mx0, my); cctx.lineTo(mx1, my); cctx.stroke();
+    // start tick
+    cctx.fillStyle = "rgba(255,255,255,0.45)";
+    cctx.fillRect(mx0 - 1, my - 4, 2, 8);
+    // finish checker flag
+    for (let r = 0; r < 3; r++) {
+      cctx.fillStyle = (r % 2) ? "#1c2030" : "#f0f0f0"; cctx.fillRect(mx1 + 2, my - 4 + r * 3, 3, 3);
+      cctx.fillStyle = (r % 2) ? "#f0f0f0" : "#1c2030"; cctx.fillRect(mx1 + 5, my - 4 + r * 3, 3, 3);
+    }
+    // leader
+    let leaderP = -1, leaderId = null;
+    for (const dr of dragons) { const p = timeline.progressAt(dr.id, S.tau); if (p > leaderP) { leaderP = p; leaderId = dr.id; } }
+    // draw the pack, with pick & leader last so they sit on top
+    const order = [...dragons].sort((a, b) =>
+      ((a.id === leaderId ? 2 : 0) + (betSet.has(a.id) ? 1 : 0)) -
+      ((b.id === leaderId ? 2 : 0) + (betSet.has(b.id) ? 1 : 0)));
+    for (const dr of order) {
+      const p = clamp(timeline.progressAt(dr.id, S.tau), 0, 1);
+      const x = mx0 + p * (mx1 - mx0);
+      const isLead = dr.id === leaderId, isPick = betSet.has(dr.id);
+      const r = isLead ? 4.5 : 3;
+      if (isPick) { cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2; cctx.beginPath(); cctx.arc(x, my, r + 3, 0, Math.PI * 2); cctx.stroke(); }
+      cctx.fillStyle = dr.color || "#fff";
+      cctx.beginPath(); cctx.arc(x, my, r, 0, Math.PI * 2); cctx.fill();
+      if (isLead) { cctx.strokeStyle = "#fff"; cctx.lineWidth = 1.5; cctx.beginPath(); cctx.arc(x, my, r + 1.5, 0, Math.PI * 2); cctx.stroke(); }
+    }
+    cctx.restore();
+  }
+
   function draw() {
     const cam = updateCamera();
     const WINW = cam.WINW;
@@ -774,6 +1258,26 @@ function startRaceCanvas(container, ctx) {
       }
     }
 
+    // --- leader golden speed trail (world space, behind the field) ---
+    if (cam.leaderId && !S.finished && S.preT <= 0) {
+      const lp = timeline.progressAt(cam.leaderId, S.tau);
+      const lv = timeline.speedAt(cam.leaderId, S.tau);
+      if (lv > 0.9 && lp < 1) {
+        const ldr = timeline.byId[cam.leaderId];
+        const ly = laneY(ldr, g);
+        const lx = clamp(screenX(lp, WINW), cw * 0.05, cw * 0.97);
+        const len = 36 + (lv - 0.9) * 95;
+        const tg = cctx.createLinearGradient(lx - len, ly, lx, ly);
+        tg.addColorStop(0, "rgba(255,224,106,0)");
+        tg.addColorStop(1, "rgba(255,224,106,0.45)");
+        cctx.fillStyle = tg;
+        cctx.beginPath();
+        cctx.moveTo(lx, ly - 7); cctx.lineTo(lx - len, ly - 2);
+        cctx.lineTo(lx - len, ly + 2); cctx.lineTo(lx, ly + 7);
+        cctx.closePath(); cctx.fill();
+      }
+    }
+
     // --- dragons (draw far lanes first for overlap) ---
     const standings = timeline.standingsAt(S.tau);
     const standMap = {}; standings.forEach((id, i) => { standMap[id] = i + 1; });
@@ -839,13 +1343,22 @@ function startRaceCanvas(container, ctx) {
       cctx.beginPath();
       cctx.ellipse(drawX, baseY + 15 * dep, 15 * dep, 4 * dep, 0, 0, Math.PI * 2);
       cctx.fill();
+      // pick spotlight — a soft, pulsing halo so the eye always tracks your dragon
+      if (betSet.has(dr.id) && !finishedNow) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
+        const rg = cctx.createRadialGradient(drawX, y - 4, 4, drawX, y - 4, 42 * dep);
+        rg.addColorStop(0, `rgba(255,211,77,${0.18 + 0.12 * pulse})`);
+        rg.addColorStop(1, "rgba(255,211,77,0)");
+        cctx.fillStyle = rg;
+        cctx.beginPath(); cctx.arc(drawX, y - 4, 42 * dep, 0, Math.PI * 2); cctx.fill();
+      }
       // terrain shapes body language: bank into turns, spread wings on wind lanes
       const tkey = themeKeyAtP(P);
       const bank = tkey === "turn" ? clamp(0.25 + intensity * 0.4, 0, 0.8) : 0;
       const spread = tkey === "wind" ? clamp(0.45 + intensity * 0.4, 0, 1) : 0;
       rcDrawDragon(cctx, {
         x: drawX, y: y, scale: sprScale,
-        color: dr.color, style: dr.style,
+        color: dr.color, style: dr.style, design: dragonDesign(dr.id),
         gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6,
         lean: intensity, down: down, tumble: tumble, glow: glow, effort: effort,
         bank: bank, spread: spread
@@ -887,6 +1400,7 @@ function startRaceCanvas(container, ctx) {
 
     // --- particles (dust / spark + ambient embers / gusts / leaves) ---
     for (const p of S.particles) {
+      if (p.scr) continue;   // screen-space FX (confetti / fireworks) drawn after restore
       const a = clamp(p.life, 0, 1);
       if (p.kind === "dust") {
         cctx.fillStyle = `rgba(180,170,150,${0.5 * a})`;
@@ -908,38 +1422,98 @@ function startRaceCanvas(container, ctx) {
 
     cctx.restore();   // ============ end WORLD GROUP ============
 
+    // --- final-straight drama vignette (darkens the corners, pulls the eye in) ---
+    const finishProx = clamp((leaderP - 0.72) / 0.28, 0, 1);
+    const vig = Math.max(finishProx * 0.9, S.finished ? 0.55 : 0);
+    if (vig > 0.02) {
+      const rg = cctx.createRadialGradient(cw / 2, ch * 0.56, ch * 0.30, cw / 2, ch * 0.56, ch * 0.92);
+      rg.addColorStop(0, "rgba(0,0,0,0)");
+      rg.addColorStop(1, `rgba(6,6,16,${0.6 * vig})`);
+      cctx.fillStyle = rg; cctx.fillRect(0, 0, cw, ch);
+    }
+
+    // --- live position minimap (all dragons at a glance) ---
+    drawMinimap();
+
+    // --- finish dim (so confetti & banner pop) ---
+    if (S.finished) { cctx.fillStyle = "rgba(8,10,20,0.32)"; cctx.fillRect(0, 0, cw, ch); }
+
+    // --- screen-space FX: confetti ribbons + firework sparks ---
+    for (const p of S.particles) {
+      if (!p.scr) continue;
+      const a = clamp(p.life, 0, 1);
+      if (p.kind === "confetti") {
+        cctx.save();
+        cctx.translate(p.x, p.y); cctx.rotate(p.rot || 0);
+        cctx.globalAlpha = a; cctx.fillStyle = p.color;
+        cctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size * 0.55);
+        cctx.restore();
+      } else {
+        cctx.globalAlpha = a; cctx.fillStyle = p.color || "#ffe9a8";
+        cctx.beginPath(); cctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); cctx.fill();
+      }
+    }
+    cctx.globalAlpha = 1;
+
     // --- floating texts (screen space) ---
     cctx.textAlign = "center";
     for (const f of S.floats) {
       cctx.globalAlpha = clamp(f.life, 0, 1);
-      cctx.fillStyle = f.color;
+      cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.8)";
       cctx.font = (f.big ? "bold 20px" : "bold 13px") + " system-ui, sans-serif";
+      cctx.strokeText(f.text, f.x, f.y);
+      cctx.fillStyle = f.color;
       cctx.fillText(f.text, f.x, f.y);
     }
     cctx.globalAlpha = 1;
 
-    // --- start flash ---
-    if (S.countdown > 0) {
-      cctx.globalAlpha = clamp(S.countdown, 0, 1);
-      cctx.fillStyle = "#fff";
-      cctx.font = "bold 30px system-ui, sans-serif";
+    // --- start 3-2-1 countdown / GO burst ---
+    if (S.preT > 0) {
+      const n = Math.min(3, Math.max(1, Math.ceil(S.preT)));
+      const frac = S.preT - Math.floor(S.preT);     // ~1 right after a tick → 0 before next
+      const pulse = 0.7 + frac * 0.75;
+      cctx.save();
+      cctx.globalAlpha = clamp(0.2 + frac, 0, 1);
+      cctx.translate(cw / 2, ch * 0.40); cctx.scale(pulse, pulse);
+      cctx.font = "bold 66px system-ui, sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillText("スタート！", cw / 2, ch * 0.3);
+      cctx.lineWidth = 6; cctx.strokeStyle = "rgba(10,12,24,0.7)";
+      cctx.fillStyle = "#fff";
+      cctx.strokeText(String(n), 0, 0); cctx.fillText(String(n), 0, 0);
+      cctx.restore();
+      cctx.globalAlpha = 0.85; cctx.fillStyle = "#ffe9a8";
+      cctx.font = "bold 13px system-ui, sans-serif"; cctx.textAlign = "center";
+      cctx.fillText("位置について…", cw / 2, ch * 0.40 + 54);
       cctx.globalAlpha = 1;
+    } else if (S.goFlash > 0) {
+      const k = clamp(S.goFlash / 0.8, 0, 1);
+      cctx.save();
+      cctx.globalAlpha = k;
+      cctx.translate(cw / 2, ch * 0.40); cctx.scale(1 + (1 - k) * 0.9, 1 + (1 - k) * 0.9);
+      cctx.font = "bold 72px system-ui, sans-serif";
+      cctx.textAlign = "center"; cctx.textBaseline = "middle";
+      cctx.lineWidth = 6; cctx.strokeStyle = "rgba(120,60,0,0.55)";
+      cctx.fillStyle = "#ffe06a";
+      cctx.strokeText("GO！", 0, 0); cctx.fillText("GO！", 0, 0);
+      cctx.restore(); cctx.globalAlpha = 1;
     }
 
-    // --- finish flash overlay ---
+    // --- finish celebration banner ---
     if (S.finished) {
-      cctx.fillStyle = "rgba(8,10,20,0.30)";
-      cctx.fillRect(0, 0, cw, ch);
-      cctx.fillStyle = "#ffe9a8";
-      cctx.font = "bold 26px system-ui, sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillText("ゴールイン！", cw / 2, ch * 0.26);
       const winner = timeline.crossings[0];
-      cctx.fillStyle = "#fff";
-      cctx.font = "bold 16px system-ui, sans-serif";
-      cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.26 + 30);
+      cctx.textAlign = "center"; cctx.textBaseline = "middle";
+      cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 27px system-ui, sans-serif";
+      cctx.fillText("ゴールイン！", cw / 2, ch * 0.22);
+      cctx.fillStyle = "#fff"; cctx.font = "bold 17px system-ui, sans-serif";
+      cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.22 + 28);
+      const hit = computeBetHit();
+      if (hit === true) {
+        cctx.fillStyle = "#8df0a6"; cctx.font = "bold 23px system-ui, sans-serif";
+        cctx.fillText("🎯 的中！", cw / 2, ch * 0.22 + 60);
+      } else if (hit === false) {
+        cctx.fillStyle = "#ff9a8a"; cctx.font = "bold 15px system-ui, sans-serif";
+        cctx.fillText("残念…次こそ！", cw / 2, ch * 0.22 + 58);
+      }
     }
 
     // HUD updates
@@ -980,8 +1554,12 @@ function startRaceCanvas(container, ctx) {
     // particles — dust/spark fall under gravity; ambient embers rise, gusts/leaves drift
     for (const p of S.particles) {
       p.x += p.vx * dt; p.y += p.vy * dt;
-      if (!p.amb) p.vy += 60 * dt;
-      else if (p.kind === "ember") p.vy -= 9 * dt;
+      if (p.kind === "confetti") {
+        p.vy += 26 * dt;                       // gentle fall
+        p.vx += Math.sin((p.rot || 0) * 2) * 18 * dt; // flutter sway
+        p.rot = (p.rot || 0) + (p.vr || 0) * dt;
+      } else if (!p.amb) { p.vy += 60 * dt; }
+      else if (p.kind === "ember") { p.vy -= 9 * dt; }
       p.life -= dt / p.max;
     }
     S.particles = S.particles.filter(p => p.life > 0);
@@ -991,6 +1569,14 @@ function startRaceCanvas(container, ctx) {
     if (S.countdown > 0) S.countdown -= dt * 1.3;
     // screen-shake impulse decays
     if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 14);
+    // "GO！" flash + overtake push-in impulse fade
+    if (S.goFlash > 0) S.goFlash = Math.max(0, S.goFlash - dt);
+    if (S.zoomBump > 0) S.zoomBump = Math.max(0, S.zoomBump - dt * 0.22);
+    // keep sprinkling celebration confetti for a beat after the finish
+    if (S.finished && S.confettiT > 0) {
+      S.confettiT -= dt;
+      if (Math.random() < 0.45) spawnConfetti(3);
+    }
 
     if (!S.playing || S.finished) return;
     // ambient terrain particles (embers / gusts / leaves) for the current section
@@ -1003,8 +1589,27 @@ function startRaceCanvas(container, ctx) {
     const ov = document.getElementById("event-overlay");
     if (ov && !ov.classList.contains("hidden")) return;
 
+    // --- pre-start 3-2-1 countdown: hold τ at the gate, then fire GO ---
+    if (S.preT > 0) {
+      S.preT -= dt * S.speed;
+      if (S.preT <= 0) {
+        S.preT = 0;
+        S.goFlash = 0.85;
+        S.shake = Math.max(S.shake, 4);
+        spawnSpark(cw / 2, ch * 0.40, "#ffe06a");
+      }
+      return;   // the field stays on the line until "GO！"
+    }
+
     const prevTau = S.tau;
-    S.tau = Math.min(1, S.tau + dt * S.speed / timeline.durationSecHint);
+    // advance τ — but ease into slow-motion at the wire on a photo / close finish
+    // (pure animation pacing; the finishing order is fixed by the timeline)
+    let adv = dt * S.speed / timeline.durationSecHint;
+    if ((timeline.photoFinish || timeline.closeFinish) && S.tau > 0.88) {
+      const k = clamp((S.tau - 0.88) / 0.12, 0, 1);
+      adv *= (1 - 0.62 * k);
+    }
+    S.tau = Math.min(1, S.tau + adv);
 
     // detect crossings between prevTau and S.tau
     for (const cr of timeline.crossings) {
@@ -1043,6 +1648,58 @@ function startRaceCanvas(container, ctx) {
       }
     }
 
+    // --- overtake & close-battle drama (presentation only; order is fixed) ---
+    const standNow = timeline.standingsAt(S.tau);
+    if (S.overT > 0) S.overT -= dt;
+    if (S.prevStand && S.overT <= 0 && S.tau > 0.08 && S.tau < 0.99) {
+      for (let i = 0; i < standNow.length; i++) {
+        const id = standNow[i], place = i + 1, prevPlace = S.prevStand[id];
+        if (prevPlace && place < prevPlace && place <= 4) {
+          const dr = timeline.byId[id], gp = trackGeom();
+          const xx = screenX(timeline.progressAt(id, S.tau), S._winw || 0.3);
+          const yy = laneY(dr, gp) - 20, jump = prevPlace - place, isPick = betSet.has(id);
+          const txt = (place === 1) ? "先頭に立った！" : (jump >= 2 ? "ごぼう抜き！" : "かわした！");
+          addFloat(xx, yy, txt, isPick ? "#ffd34d" : "#aef2b0", place === 1 || jump >= 2);
+          S.overT = 0.5;
+          S.zoomBump = Math.min(0.16, (S.zoomBump || 0) + (place === 1 ? 0.12 : 0.08));
+          if (place === 1) S.shake = Math.max(S.shake, 2);
+          break;   // one callout per beat
+        }
+      }
+    }
+    S.prevStand = {}; standNow.forEach((id, i) => { S.prevStand[id] = i + 1; });
+
+    // close battle "接戦！" when the lead pair runs nose-to-nose on the run-in
+    if (S.battleT > 0) S.battleT -= dt;
+    if (standNow.length >= 2 && S.tau > 0.5 && S.tau < 0.985 && S.battleT <= 0) {
+      const gapTop = timeline.progressAt(standNow[0], S.tau) - timeline.progressAt(standNow[1], S.tau);
+      if (gapTop < 0.012) {
+        addFloat(cw / 2, ch * 0.30, "接戦！", "#ffffff", true);
+        S.battleT = 1.8;
+        S.zoomBump = Math.min(0.18, (S.zoomBump || 0) + 0.06);
+      }
+    }
+
+    // --- cheer for the player's pick (situation-aware encouragement) ---
+    if (S.cheerT > 0) S.cheerT -= dt;
+    if (pickId && S.cheerT <= 0 && S.tau > 0.12 && S.tau < 0.97) {
+      const dr = timeline.byId[pickId];
+      if (dr) {
+        const cheerPick = a => a[(Math.random() * a.length) | 0];
+        const place = standNow.indexOf(pickId) + 1;
+        const myP = timeline.progressAt(pickId, S.tau);
+        const gap = timeline.leaderProgressAt(S.tau) - myP;
+        let msg;
+        if (place === 1) msg = cheerPick(["そのまま！", "逃げ切れ！", "行け行け！"]);
+        else if (gap < 0.02) msg = cheerPick(["差せ！", "前へ！", "あと少し！"]);
+        else if (gap < 0.06) msg = cheerPick(["がんばれ！", "食らいつけ！", "まだいける！"]);
+        else msg = cheerPick(["あきらめないで！", "ここから！", "盛り返せ！"]);
+        const gp = trackGeom();
+        addFloat(screenX(myP, S._winw || 0.3), laneY(dr, gp) - 24, msg, "#ffd34d", false);
+        S.cheerT = 2.4 + Math.random() * 1.3;
+      }
+    }
+
     pumpTelop();
 
     if (S.tau >= 1 && !S.finishedAnnounced) onAllFinished();
@@ -1052,6 +1709,20 @@ function startRaceCanvas(container, ctx) {
     S.finished = true;
     S.finishedAnnounced = true;
     S.shake = Math.max(S.shake, 4);
+    // celebration! confetti rain + a triple firework over the winner's line
+    if (!S.celebrated) {
+      S.celebrated = true;
+      S.confettiT = 1.5;
+      spawnConfetti(90);
+      spawnFirework(cw * 0.50, ch * 0.32, "#ffe06a");
+      spawnFirework(cw * 0.30, ch * 0.42, "#ff7aa0");
+      spawnFirework(cw * 0.70, ch * 0.42, "#7fd1ff");
+      // an extra pop when the player's bet lands
+      if (computeBetHit() === true) {
+        spawnConfetti(60);
+        spawnFirework(cw * 0.50, ch * 0.50, "#8df0a6");
+      }
+    }
     playBtn.style.display = "none";
     renderControls();
     renderFinishStrip();
@@ -1135,6 +1806,9 @@ function startRaceCanvas(container, ctx) {
       S.playing = false;
       if (playBtn) playBtn.textContent = "▶";
       S.countdown = 0;
+      // skip the start ceremony when scrubbing; re-baseline standings so resuming
+      // play doesn't fire a phantom overtake callout on the first frame
+      S.preT = 0; S.goFlash = 0; S.prevStand = null;
       S.tau = Math.max(0, Math.min(1, t));
       for (let i = 0; i < 80; i++) updateCamera();
       draw();

@@ -253,3 +253,41 @@ const DRAGONS = [
     portraitTone: "氷の甲"
   }
 ];
+
+// =========================================================================
+// §11 §19 — per-dragon VISUAL 意匠 ("designer's intent").
+// V1 ships no art files (assetIds stay null), so each dragon's look is encoded
+// here as a design profile and brought to life by the canvas sprite renderer
+// (race_canvas.js → rcDrawDragon). Derived from each dragon's name / portraitTone
+// / traits / DRAGON_ASSET_BASE so the silhouette matches the concept:
+//   赤翼=大きな赤い膜翼 / 泣き虫=丸っこく涙目 / 岩鱗=重い石板の体 /
+//   霧角=長い白角 / 火尾=燃える尾 / 旋爪=大きな爪 / 眠雲=もこもこ眠り顔 /
+//   鳳凰=黄金の羽根翼 / 雷角=稲妻の角 / 星光=星の羽根 / 氷甲=氷晶の甲。
+// Fields (all presentation-only; never read by race math):
+//   build  torso proportions: sleek|sturdy|heavy|chubby|fluffy
+//   wing   membrane|feather|phoenix|fluffy|ice|small|stub
+//   wingSize  size multiplier (cuteness/grandeur)
+//   horn   swept|back|tall|rocky|thunder|crystal|crown|nub|none
+//   tail   spade|fin|flame|cloud|plume|bolt|crystal|club|round|startrail
+//   body   scale|stone|smooth|frost  (surface texture hint)
+//   face   fierce|wild|sharp|calm|serene|teary|sleepy|stoic|regal|intense|gentle|cool
+//   eye    eye-size multiplier (bigger = cuter)
+//   accent trailing aura particle kind: ember|wind|tear|mist|spark|sparkle|snow|sleep|firegold|none
+//   aura   optional hex — a soft body halo (legendary dragons)
+//   claw   "big" to emphasise talons (旋爪)
+const DRAGON_DESIGN = {
+  rubel:  { build: "sleek",  wing: "membrane", wingSize: 1.28, horn: "swept",   tail: "spade",     body: "scale",  face: "fierce",  eye: 1.0,  accent: "ember"    },
+  seram:  { build: "sleek",  wing: "feather",  wingSize: 1.42, horn: "swept",   tail: "fin",       body: "smooth", face: "calm",    eye: 1.08, accent: "wind"     },
+  poro:   { build: "chubby", wing: "small",    wingSize: 0.82, horn: "nub",     tail: "round",     body: "scale",  face: "teary",   eye: 1.42, accent: "tear"     },
+  gando:  { build: "heavy",  wing: "stub",     wingSize: 0.7,  horn: "rocky",   tail: "club",      body: "stone",  face: "stoic",   eye: 0.92, accent: "none"     },
+  miruka: { build: "sleek",  wing: "membrane", wingSize: 1.0,  horn: "tall",    tail: "fin",       body: "smooth", face: "serene",  eye: 1.12, accent: "mist"     },
+  baran:  { build: "sturdy", wing: "membrane", wingSize: 1.12, horn: "back",    tail: "flame",     body: "scale",  face: "wild",    eye: 1.0,  accent: "ember"    },
+  rosso:  { build: "sleek",  wing: "membrane", wingSize: 1.04, horn: "swept",   tail: "fin",       body: "scale",  face: "sharp",   eye: 1.02, accent: "wind", claw: "big" },
+  momu:   { build: "fluffy", wing: "fluffy",   wingSize: 0.98, horn: "none",    tail: "cloud",     body: "smooth", face: "sleepy",  eye: 0.62, accent: "sleep"    },
+  phenix: { build: "sleek",  wing: "phoenix",  wingSize: 1.55, horn: "crown",   tail: "plume",     body: "scale",  face: "regal",   eye: 1.06, accent: "firegold", aura: "#ffcf52" },
+  raika:  { build: "sleek",  wing: "membrane", wingSize: 1.12, horn: "thunder", tail: "bolt",      body: "scale",  face: "intense", eye: 1.0,  accent: "spark"    },
+  stella: { build: "sleek",  wing: "feather",  wingSize: 1.34, horn: "nub",     tail: "startrail", body: "smooth", face: "gentle",  eye: 1.18, accent: "sparkle", aura: "#ffd0ec" },
+  glaze:  { build: "heavy",  wing: "ice",      wingSize: 0.96, horn: "crystal", tail: "crystal",   body: "frost",  face: "cool",    eye: 1.0,  accent: "snow"     }
+};
+const DRAGON_DESIGN_DEFAULT = { build: "sleek", wing: "membrane", wingSize: 1.0, horn: "swept", tail: "spade", body: "scale", face: "calm", eye: 1.0, accent: "none" };
+function dragonDesign(id) { return DRAGON_DESIGN[id] || DRAGON_DESIGN_DEFAULT; }
