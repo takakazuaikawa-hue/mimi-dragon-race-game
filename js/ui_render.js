@@ -438,7 +438,7 @@ function renderRaceDetail(race) {
 
 // §11 §19 placeholder dragon icon — colored disc + name initial.
 function dragonIconPlaceholder(d) {
-  const color = STYLE_COLOR[d.style] || "#888";
+  const color = dragonColor(d);
   const initial = d.name.charAt(0);
   return `<span class="dragon-icon" style="background:${color}">${initial}</span>`;
 }
@@ -597,30 +597,136 @@ function closeBetConfirm() {
 // Spec #27: Phase-based pixel race broadcast
 // =========================================================================
 
+// Comfortable race-call cadence: ~1 short line per 1.1 seconds at 1x.
+// Specs §27 §9.3 imply 6-18 lines per phase, so a 5-phase race fits roughly
+// 50-80 lines → 60-90 seconds at 1x with no input required.
+const AUTO_TICK_MS = 1100;
+
 function renderRaceRun() {
   state.ui.screen = "race_run";
   const c = state.current;
-  // Build broadcast data (read-only over raceResult) and commentary queues
+  // Build broadcast data + auto-start playback so the player can just watch.
   if (!c.broadcast) {
     c.broadcast = buildBroadcastData(c.race, c.raceResult, c.bet, c.oddsResult);
     c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult });
-    c.broadcastState = { phaseIdx: 0, lineIdx: 0, autoMode: false, speed: 1, timer: null };
+    c.broadcastState = {
+      phaseIdx: 0, lineIdx: 0,
+      autoMode: true,   // default: race plays itself
+      speed: 1,
+      timer: null,
+      _autoStarted: false
+    };
   }
   renderBroadcastScreen();
+  if (!c.broadcastState._autoStarted) {
+    c.broadcastState._autoStarted = true;
+    startAutoTimer();
+  }
 }
 
+function startAutoTimer() {
+  const bs = state.current && state.current.broadcastState;
+  if (!bs) return;
+  if (bs.timer) { clearInterval(bs.timer); bs.timer = null; }
+  if (!bs.autoMode) return;
+  bs.timer = setInterval(autoTick, AUTO_TICK_MS / bs.speed);
+}
+
+function autoTick() {
+  if (state.ui.screen !== "race_run") {
+    // Stop ticking if user navigated away.
+    const bs = state.current && state.current.broadcastState;
+    if (bs && bs.timer) { clearInterval(bs.timer); bs.timer = null; }
+    return;
+  }
+  const c = state.current;
+  const bs = c.broadcastState;
+  // Pause while a Mimi/Sake event overlay is showing so we don't talk over it.
+  const overlay = document.getElementById("event-overlay");
+  if (overlay && !overlay.classList.contains("hidden")) return;
+  // End-of-race: stop auto and wait for the user to click "結果を見る".
+  const lastPhaseIdx = c.broadcast.phases.length - 1;
+  if (bs.phaseIdx === lastPhaseIdx
+      && bs.lineIdx >= c.commentary[lastPhaseIdx].length - 1) {
+    bs.autoMode = false;
+    clearInterval(bs.timer); bs.timer = null;
+    renderBroadcastScreen();
+    return;
+  }
+  stepLineOrPhase();
+}
+
+/**
+ * Renders/updates the broadcast screen.
+ *
+ * Two-pass rendering:
+ *  1. First call: build the persistent shell (header / scene with 8 dragon
+ *     nodes / rank bar / bet / mimi / controls / log).
+ *  2. Subsequent calls (and every phase change): update positions, classes,
+ *     and content WITHOUT rebuilding DOM, so CSS transitions can animate
+ *     "passing / being passed" position changes.
+ */
 function renderBroadcastScreen() {
   const c = state.current;
+  let wrap = document.getElementById("broadcast-wrap");
+  if (!wrap || wrap.dataset.raceId !== c.race.id) {
+    wrap = buildBroadcastShell(c);
+    const app = $("app"); app.innerHTML = "";
+    app.appendChild(wrap);
+  }
+  updateBroadcastFrame(wrap, c);
+}
+
+function buildBroadcastShell(c) {
+  const wrap = el("div", "broadcast-wrap");
+  wrap.id = "broadcast-wrap";
+  wrap.dataset.raceId = c.race.id;
+  wrap.innerHTML = `
+    <div id="bc-header" class="broadcast-header"></div>
+    <div id="bc-scene" class="broadcast-scene"></div>
+    <div id="bc-rankbar" class="broadcast-rank-bar"></div>
+    <div id="bc-bet" class="broadcast-bet" style="display:none"></div>
+    <div id="bc-mimi" class="broadcast-mimi">
+      <div class="avatar"></div><div class="lines" id="mimi-lines"></div>
+    </div>
+    <div id="bc-controls" class="broadcast-controls"></div>
+    <div id="bc-log" class="broadcast-log" style="display:none"></div>
+  `;
+  // Layered parallax backdrop (a night dragon-racing stadium). Sits behind the
+  // dragons; common to the horizontal camera modes, faded out for the vertical
+  // perspective cameras (which paint their own receding road). Pure CSS in
+  // style.css under `.scene-bg`.
+  const scene = wrap.querySelector("#bc-scene");
+  scene.innerHTML = `
+    <div class="scene-bg" aria-hidden="true">
+      <div class="sky"></div>
+      <div class="ridge"></div>
+      <div class="moon"></div>
+      <div class="tower"></div>
+      <div class="skyline"></div>
+      <div class="crowd"></div>
+      <div class="rail"></div>
+      <div class="track"></div>
+      <div class="vignette"></div>
+    </div>`;
+  // Pre-create persistent dragon nodes for all 8 entries so transitions can
+  // animate the same DOM elements through every phase change.
+  c.raceResult.entries.forEach(entry => {
+    const node = buildPixelDragon(entry, c.broadcast.phases[0], c.bet, -30, 30);
+    node.dataset.id = entry.dragon.id;
+    node.style.opacity = "0";  // start hidden, frame update will reveal
+    scene.appendChild(node);
+  });
+  return wrap;
+}
+
+function updateBroadcastFrame(wrap, c) {
   const bs = c.broadcastState;
   const phase = c.broadcast.phases[bs.phaseIdx];
   const linesToShow = c.commentary[bs.phaseIdx].slice(0, bs.lineIdx + 1);
 
-  const app = $("app"); app.innerHTML = "";
-  const wrap = el("div", "broadcast-wrap");
-
-  // Header
-  const header = el("div", "broadcast-header");
-  header.innerHTML = `
+  // --- Header ---
+  wrap.querySelector("#bc-header").innerHTML = `
     <div>
       <div class="phase-label">[${phase.label}] ${phase.sectionName}</div>
       <div>${raceFullName(c.race)}</div>
@@ -628,83 +734,35 @@ function renderBroadcastScreen() {
     <div>
       <span class="weather-chip">${WEATHERS[c.race.weather].label}</span>
       <span> 残り ${phase.distanceRemaining}m</span>
-    </div>
-  `;
-  wrap.appendChild(header);
+    </div>`;
 
-  // Scene with pixel dragons (focus only) — leader on the right, slower
-  // runners to the left. Vertical band layered by rank for clarity.
-  const scene = el("div", "broadcast-scene");
-  scene.setAttribute("data-mode", phase.visualMode);
-  const focusEntries = phase.focusDragonIds
-    .map(id => phase.orderedEntries.find(e => e.dragon.id === id))
-    .filter(Boolean)
-    .sort((a, b) => phase.currRankMap[a.dragon.id] - phase.currRankMap[b.dragon.id]);
-  const N = focusEntries.length;
-  focusEntries.forEach((entry, i) => {
-    // X: leader rightmost (~88%) descending to ~10%
-    const leftPct = 88 - (N > 1 ? (i * 78 / (N - 1)) : 0);
-    // Y (bottom): leader nearest the track, others slightly higher to avoid overlap
-    const bottomPx = 30 + (i % 2) * 22 + (i >= 2 ? 6 : 0);
-    scene.appendChild(buildPixelDragon(entry, phase, c.bet, leftPct, bottomPx));
-  });
-  wrap.appendChild(scene);
+  // --- Scene: update persistent dragons ---
+  updateBroadcastScene(wrap.querySelector("#bc-scene"), phase, c.bet);
 
-  // Current ranking strip
-  const rankBar = el("div", "broadcast-rank-bar");
+  // --- Ranking bar ---
+  const rankBar = wrap.querySelector("#bc-rankbar");
+  rankBar.innerHTML = "";
   phase.orderedEntries.forEach((e, i) => {
     const id = e.dragon.id;
     const popRank = c.oddsResult.oddsData.find(o => o.dragonId === id).popularityRank;
     const isTarget = c.bet && c.bet.selections.includes(id);
     const cls = isTarget ? "target" : (popRank === 1 ? "fav" : "");
-    const span = el("span", `rank-pos ${cls}`,
-      `${i + 1}: ${dragonShortName(id).replace("ちゃん","")}`);
-    rankBar.appendChild(span);
+    rankBar.appendChild(el("span", `rank-pos ${cls}`,
+      `${i + 1}: ${dragonShortName(id).replace("ちゃん","")}`));
   });
-  wrap.appendChild(rankBar);
 
-  // Bet status
+  // --- Bet status ---
+  const betEl = wrap.querySelector("#bc-bet");
   if (c.bet && c.bet.selections.length) {
-    const betBox = el("div", "broadcast-bet", `🎯 ${phase.bettingStatus.summary}`);
-    wrap.appendChild(betBox);
+    betEl.style.display = "";
+    betEl.textContent = `🎯 ${phase.bettingStatus.summary}`;
+  } else {
+    betEl.style.display = "none";
   }
 
-  // Mimi commentary
-  const mimi = el("div", "broadcast-mimi");
-  mimi.innerHTML = `<div class="avatar"></div><div class="lines" id="mimi-lines"></div>`;
-  wrap.appendChild(mimi);
-
-  // Controls
-  const controls = el("div", "broadcast-controls");
-  controls.appendChild(makeBtn("◀ 戻る", () => stepPhase(-1), { secondary: true }));
-  controls.appendChild(makeBtn("▶ 次へ", () => stepLineOrPhase()));
-  const autoBtn = makeBtn(bs.autoMode ? "⏸ 一時停止" : "▶▶ オート", toggleAuto, { secondary: !bs.autoMode });
-  controls.appendChild(autoBtn);
-  const speedBtn = makeBtn(`${bs.speed}x`, cycleSpeed, { secondary: bs.speed === 1 });
-  if (bs.speed > 1) speedBtn.classList.add("speed-active");
-  controls.appendChild(speedBtn);
-  controls.appendChild(makeBtn("⏭ スキップ", skipToResult, { secondary: true }));
-  controls.appendChild(makeBtn("📜 全ログ", toggleLog, { secondary: true }));
-  if (bs.phaseIdx === c.broadcast.phases.length - 1
-      && bs.lineIdx >= c.commentary[bs.phaseIdx].length - 1) {
-    controls.appendChild(makeBtn("結果を見る", renderResult));
-  }
-  wrap.appendChild(controls);
-
-  // Optional log
-  if (bs.showLog) {
-    const log = el("div", "broadcast-log");
-    c.broadcast.phases.forEach((p, i) => {
-      log.appendChild(el("div", "log-phase", `【${p.label} ${p.sectionName}】`));
-      c.commentary[i].forEach(line => log.appendChild(el("div", "log-line", line)));
-    });
-    wrap.appendChild(log);
-  }
-
-  app.appendChild(wrap);
-
-  // Inject commentary lines progressively (with animation key for retrigger)
-  const linesEl = $("mimi-lines");
+  // --- Mimi commentary ---
+  const linesEl = wrap.querySelector("#mimi-lines");
+  linesEl.innerHTML = "";
   linesToShow.forEach((line, i) => {
     const d = document.createElement("div");
     d.className = "line";
@@ -712,31 +770,188 @@ function renderBroadcastScreen() {
     d.textContent = line;
     linesEl.appendChild(d);
   });
-  // Auto-scroll within mimi box
   linesEl.scrollTop = linesEl.scrollHeight;
+
+  // --- Controls ---
+  // Watch-mode: the race auto-plays start→finish so the player just watches
+  // the dragons (§27 — no pause). Only speed / skip / log conveniences remain.
+  const controls = wrap.querySelector("#bc-controls");
+  controls.innerHTML = "";
+  const atEnd = bs.phaseIdx === c.broadcast.phases.length - 1
+      && bs.lineIdx >= c.commentary[bs.phaseIdx].length - 1;
+  if (!atEnd) {
+    const speedBtn = makeBtn(`速度 ${bs.speed}×`, cycleSpeed, { secondary: bs.speed === 1 });
+    if (bs.speed > 1) speedBtn.classList.add("speed-active");
+    controls.appendChild(speedBtn);
+    controls.appendChild(makeBtn("⏭ スキップ", skipToResult, { secondary: true }));
+  }
+  controls.appendChild(makeBtn("📜 全ログ", toggleLog, { secondary: true }));
+  if (atEnd) {
+    controls.appendChild(makeBtn("結果を見る", renderResult));
+  }
+
+  // --- Log panel ---
+  const logEl = wrap.querySelector("#bc-log");
+  if (bs.showLog) {
+    logEl.style.display = "";
+    logEl.innerHTML = "";
+    c.broadcast.phases.forEach((p, i) => {
+      logEl.appendChild(el("div", "log-phase", `【${p.label} ${p.sectionName}】`));
+      c.commentary[i].forEach(line => logEl.appendChild(el("div", "log-line", line)));
+    });
+  } else {
+    logEl.style.display = "none";
+  }
+}
+
+/**
+ * Update dragon positions in-place so CSS transitions animate the change.
+ * Focus entries get on-screen layout slots; non-focus dragons drift to the
+ * left edge with low opacity (still mounted, so re-entry animates back).
+ */
+function updateBroadcastScene(scene, phase, bet) {
+  scene.setAttribute("data-mode", phase.visualMode);
+
+  const focusEntries = phase.focusDragonIds
+    .map(id => phase.orderedEntries.find(e => e.dragon.id === id))
+    .filter(Boolean)
+    .sort((a, b) => phase.currRankMap[a.dragon.id] - phase.currRankMap[b.dragon.id]);
+  const N = focusEntries.length;
+  const layout = phaseLayoutFor(phase.id, N, phase.visualMode);
+  const focusSlot = {};
+  focusEntries.forEach((entry, i) => {
+    focusSlot[entry.dragon.id] = { left: layout.left(i), bottom: layout.bottom(i) };
+  });
+
+  // Update every persistent dragon node.
+  scene.querySelectorAll(".pixel-dragon").forEach(node => {
+    const id = node.dataset.id;
+    const entry = phase.orderedEntries.find(e => e.dragon.id === id);
+    if (!entry) return;
+    const rank = phase.currRankMap[id];
+    // Position
+    if (focusSlot[id]) {
+      node.style.left = focusSlot[id].left + "%";
+      node.style.bottom = focusSlot[id].bottom + "px";
+      node.style.opacity = "1";
+      node.style.zIndex = String(20 - rank);
+    } else {
+      // Drift off to the left edge while still mounted
+      node.style.left = "-18%";
+      node.style.bottom = "30px";
+      node.style.opacity = "0.0";
+    }
+    // Rank tag
+    const tag = node.querySelector(".rank-tag");
+    if (tag) {
+      tag.textContent = rank;
+      tag.className = `rank-tag r${rank}`;
+    }
+    // Class flags
+    node.classList.toggle("collapsed", !!entry.collapse);
+    node.classList.toggle("bet-target", !!(bet && bet.selections.includes(id)));
+    // Sprite pose follows camera mode + race state (face us / show backs /
+    // exhausted / final-sprint lean / default run).
+    node.dataset.pose = poseFor(phase.visualMode, rank, entry, phase.id);
+    // Rank class controls bob speed & z-index in CSS
+    node.classList.forEach(cn => { if (/^rank-\d+$/.test(cn)) node.classList.remove(cn); });
+    node.classList.add(`rank-${rank}`);
+  });
+}
+
+// §27 §8.2 layout per phase + visual mode (positioning rules independent of CSS camera).
+function phaseLayoutFor(phaseId, N, visualMode) {
+  // 後方視点: 縦並びでleaderが奥(上)、follower手前(下)。
+  if (visualMode === "back_camera") {
+    return {
+      left:   i => 50 + (i % 2 === 0 ? -8 : 8) - (i * 1),
+      bottom: i => 30 + i * 28      // leader top, follower bottom
+    };
+  }
+  // 前方視点: leaderが手前(下大きく)、follower奥(上小さく)。
+  if (visualMode === "front_camera") {
+    return {
+      left:   i => 50 + (i % 2 === 0 ? 6 : -6) + (i * 1),
+      bottom: i => 18 + i * 22      // leader bottom, followers receding up
+    };
+  }
+  if (phaseId === "development") {
+    return {
+      left: i => 80 - (N > 1 ? i * 40 / (N - 1) : 0),
+      bottom: i => 32 + (i % 2) * 18 + (i >= 2 ? 4 : 0)
+    };
+  }
+  if (phaseId === "late") {
+    // leader anchored at 80% (not 90) so the rank-1/bet-target's glow + 🎯
+    // reticle never clip the right edge (sprite box is 56px ≈ 7.5%).
+    return {
+      left: i => 80 - (N > 1 ? i * 60 / (N - 1) : 0),
+      bottom: i => 28 + (i % 2) * 30 + i * 4
+    };
+  }
+  if (phaseId === "finish") {
+    return {
+      left: i => 78 - (N > 1 ? i * 48 / (N - 1) : 0),
+      bottom: i => 30 + (i % 2) * 22 + (i >= 2 ? 6 : 0)
+    };
+  }
+  return {
+    left: i => 80 - (N > 1 ? i * 60 / (N - 1) : 0),
+    bottom: i => 30 + (i % 2) * 22 + (i >= 2 ? 6 : 0)
+  };
+}
+
+/**
+ * §27: which sprite pose to show. Driven by camera mode + race state so the
+ * dragon's body language matches what's happening:
+ *   tired  — stamina-collapsed (へばっている), any camera
+ *   back   — back_camera (pack breaking away up-track, we see their backs)
+ *   front  — front_camera (charging toward the lens, cute faces to viewer)
+ *   goal   — leader in the closing stages (ゴール直前, leaning, mouth open)
+ *   side   — default right-facing run
+ */
+function poseFor(visualMode, rank, entry, phaseId) {
+  if (entry.collapse) return "tired";
+  if (visualMode === "back_camera") return "back";
+  if (visualMode === "front_camera") return "front";
+  if ((phaseId === "finish" || phaseId === "late") && rank === 1) return "goal";
+  return "side";
 }
 
 function buildPixelDragon(entry, phase, bet, leftPct, bottomPx) {
   const d = entry.dragon;
   const rank = phase.currRankMap[d.id];
-  const color = STYLE_COLOR[d.style] || "#888";
-  const classes = [
-    "pixel-dragon",
-    `rank-${rank}`,
-    bet && bet.selections.includes(d.id) ? "bet-target" : "",
-    entry.collapse ? "collapsed" : ""
-  ].filter(Boolean).join(" ");
-  const wrap = el("div", classes);
+  const color = dragonColor(d);
+  const wrap = el("div", "pixel-dragon");
+  wrap.dataset.style = d.style;
+  wrap.dataset.pose = poseFor(phase.visualMode, rank, entry, phase.id);
+  wrap.classList.add(`rank-${rank}`);
+  if (bet && bet.selections.includes(d.id)) wrap.classList.add("bet-target");
+  if (entry.collapse) wrap.classList.add("collapsed");
   wrap.style.left = leftPct + "%";
   wrap.style.bottom = bottomPx + "px";
+  // One cohesive sprite. Every part for every pose is present; CSS shows/hides
+  // and re-poses them per [data-pose] / [data-style] so we never rebuild DOM.
   wrap.innerHTML = `
     <span class="rank-tag r${rank}">${rank}</span>
-    <div class="sprite" style="--c: ${color}">
+    <div class="shadow"></div>
+    <div class="sprite" style="--c:${color}">
       <div class="tail"></div>
-      <div class="wing"></div>
-      <div class="body"></div>
-      <div class="head"></div>
+      <div class="wing far"></div>
+      <div class="wing near"></div>
+      <div class="torso"></div>
+      <div class="belly"></div>
+      <div class="spine"></div>
       <div class="legs"></div>
+      <div class="horn l"></div>
+      <div class="horn r"></div>
+      <div class="brow"></div>
+      <div class="eye l"></div>
+      <div class="eye r"></div>
+      <div class="cheek l"></div>
+      <div class="cheek r"></div>
+      <div class="mouth"></div>
+      <div class="sweat"></div>
     </div>
     <span class="name-tag">${d.name.replace(/^.+竜/, "")}</span>
   `;
@@ -781,21 +996,14 @@ function stepPhase(delta) {
 function toggleAuto() {
   const bs = state.current.broadcastState;
   bs.autoMode = !bs.autoMode;
-  if (bs.timer) { clearInterval(bs.timer); bs.timer = null; }
-  if (bs.autoMode) {
-    const tick = 600 / bs.speed;
-    bs.timer = setInterval(stepLineOrPhase, tick);
-  }
+  startAutoTimer();
   renderBroadcastScreen();
 }
 
 function cycleSpeed() {
   const bs = state.current.broadcastState;
   bs.speed = bs.speed === 1 ? 2 : bs.speed === 2 ? 3 : 1;
-  if (bs.autoMode) {
-    clearInterval(bs.timer);
-    bs.timer = setInterval(stepLineOrPhase, 600 / bs.speed);
-  }
+  startAutoTimer();
   renderBroadcastScreen();
 }
 
@@ -826,6 +1034,12 @@ function debugDumpRace(rr) {
 function renderResult() {
   state.ui.screen = "result";
   const c = state.current;
+  // Stop any running broadcast auto-timer when leaving the race screen.
+  if (c.broadcastState && c.broadcastState.timer) {
+    clearInterval(c.broadcastState.timer);
+    c.broadcastState.timer = null;
+    c.broadcastState.autoMode = false;
+  }
   const app = $("app"); app.innerHTML = "";
   app.appendChild(el("h2", null, "賭け結果"));
 

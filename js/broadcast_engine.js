@@ -243,15 +243,32 @@ function selectFocusDragons(ordered, currRankMap, prevRankMap, count, bet, oddsR
   return Array.from(picked).slice(0, count);
 }
 
-// §8.2 visual mode hints for the UI.
+/**
+ * §8.2 visual mode hints for the UI. Extended with front/back camera
+ * angles (§27 user follow-up):
+ *   back_camera  — 前から後ろ視点 (peering forward from behind).
+ *                  used when underdog/late-runner is closing in development.
+ *   front_camera — 後ろから前視点 (looking back from the leader).
+ *                  used in finish phase if it's a close finish (rear-view drama).
+ */
 function visualModeFor(phaseId, race, tags) {
   if (phaseId === "early")       return "side_start";
   if (phaseId === "mid")         return tags.includes("section_boost_wind") ? "obstacle_wind"
                                   : tags.includes("section_trouble_turn") ? "obstacle_turn"
                                   : tags.includes("section_boost_fire")   ? "obstacle_fire"
                                   : "side_obstacle";
-  if (phaseId === "development") return "close_chase";
-  if (phaseId === "late")        return "diagonal_sprint";
-  if (phaseId === "finish")      return "side_finish";
+  if (phaseId === "development") {
+    // 後方視点: late surge / underdog rising → camera looks forward from the pack
+    if (tags.includes("late_surge") || tags.includes("underdog_rising")) return "back_camera";
+    return "close_chase";
+  }
+  if (phaseId === "late") {
+    // 前方視点: close finish brewing → camera looks back from the leader
+    if (tags.includes("close_finish") || tags.includes("late_surge")) return "front_camera";
+    return "diagonal_sprint";
+  }
+  if (phaseId === "finish") {
+    return tags.includes("photo_finish") ? "front_camera" : "side_finish";
+  }
   return "side";
 }

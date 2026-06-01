@@ -31,10 +31,19 @@ const DRAGON_ASSET_BASE = {
   glaze:  "dragon_ice_glaze_glaze"
 };
 
-// §11 §19: placeholder dragon-icon CSS color by style.
+// §11 §19: fallback dragon-icon CSS color by style (used only if a dragon has
+// no individual `color`). Each dragon now carries its own identity color (below)
+// so same-style racers are visually distinct ("個性"); this stays as a safety net.
 const STYLE_COLOR = {
   escape: "#d44040", front: "#d4a040", late: "#4080d4", chase: "#a060d4"
 };
+
+// Per-dragon identity color resolver. Prefers the dragon's own themed `color`,
+// falling back to the style color, then grey. Used by every sprite/icon renderer
+// so a dragon looks the same everywhere (broadcast, roster, collection).
+function dragonColor(d) {
+  return (d && d.color) || (d && STYLE_COLOR[d.style]) || "#888";
+}
 
 function dragonAssetIds(id) {
   const base = DRAGON_ASSET_BASE[id] || `dragon_${id}`;
@@ -51,6 +60,7 @@ const DRAGONS = [
   {
     id: "rubel",
     name: "赤翼竜ルベル",
+    color: "#ed5a52",   // 炎の赤翼 — flashy crimson
     style: "escape",
     // stamina/nerve adjusted per §14.18 ("can be adjusted later") so that the
     // overpopular favorite still wins sometimes (§12.12 #2 / §12.10 target feel).
@@ -68,6 +78,7 @@ const DRAGONS = [
   {
     id: "seram",
     name: "青翼竜セラム",
+    color: "#4f9be8",   // 蒼翼の伸び — clear azure
     style: "late",
     stats: { speed: 72, stamina: 78, turn: 68, wing: 90, fire: 40, nerve: 72, classBonus: 65 },
     publicImage: 62,
@@ -83,6 +94,7 @@ const DRAGONS = [
   {
     id: "poro",
     name: "泣き虫竜ポロ",
+    color: "#46cbbd",   // 涙の青鱗 — teary aqua
     style: "front",
     stats: { speed: 68, stamina: 72, turn: 70, wing: 60, fire: 38, nerve: 82, classBonus: 60 },
     publicImage: 70,    // cute underdog
@@ -98,6 +110,7 @@ const DRAGONS = [
   {
     id: "gando",
     name: "岩鱗竜ガンド",
+    color: "#b58a5c",   // 灰岩の重戦 — earthy stone tan
     style: "front",
     stats: { speed: 60, stamina: 92, turn: 62, wing: 50, fire: 65, nerve: 78, classBonus: 68 },
     publicImage: 55,
@@ -113,6 +126,7 @@ const DRAGONS = [
   {
     id: "miruka",
     name: "霧角竜ミルカ",
+    color: "#b6a8e6",   // 霧の白角 — misty lavender
     style: "late",
     stats: { speed: 70, stamina: 68, turn: 75, wing: 55, fire: 35, nerve: 88, classBonus: 62 },
     publicImage: 50,
@@ -128,6 +142,7 @@ const DRAGONS = [
   {
     id: "baran",
     name: "火尾竜バラン",
+    color: "#f2893f",   // 炎尾の暴走 — burning orange
     style: "escape",
     stats: { speed: 82, stamina: 76, turn: 50, wing: 55, fire: 92, nerve: 60, classBonus: 66 },
     publicImage: 85,    // flashy fire
@@ -143,6 +158,7 @@ const DRAGONS = [
   {
     id: "rosso",
     name: "旋爪竜ロッソ",
+    color: "#5cc25c",   // 旋風の爪 — whirlwind green
     style: "late",
     stats: { speed: 74, stamina: 70, turn: 92, wing: 58, fire: 55, nerve: 70, classBonus: 64 },
     publicImage: 60,
@@ -158,6 +174,7 @@ const DRAGONS = [
   {
     id: "momu",
     name: "眠雲竜モム",
+    color: "#9d83d4",   // 雲の眠竜 — sleepy violet
     style: "chase",
     stats: { speed: 65, stamina: 80, turn: 68, wing: 70, fire: 35, nerve: 80, classBonus: 58 },
     publicImage: 45,    // sleepy looking
@@ -174,6 +191,7 @@ const DRAGONS = [
   {
     id: "phenix",
     name: "鳳凰竜フェニックス",
+    color: "#f6b81f",   // 黄金の鳳凰 — radiant gold
     style: "front",
     stats: { speed: 90, stamina: 85, turn: 70, wing: 88, fire: 90, nerve: 75, classBonus: 90 },
     publicImage: 95,    // legendary name
@@ -189,6 +207,7 @@ const DRAGONS = [
   {
     id: "raika",
     name: "雷角竜ライカ",
+    color: "#6d63ec",   // 稲妻の角 — electric indigo
     style: "escape",
     stats: { speed: 92, stamina: 70, turn: 60, wing: 75, fire: 60, nerve: 50, classBonus: 80 },
     publicImage: 80,
@@ -204,6 +223,7 @@ const DRAGONS = [
   {
     id: "stella",
     name: "星光竜ステラ",
+    color: "#ec7fb9",   // 星の翼 — starlight pink
     style: "late",
     stats: { speed: 80, stamina: 82, turn: 75, wing: 90, fire: 50, nerve: 85, classBonus: 82 },
     publicImage: 78,
@@ -219,6 +239,7 @@ const DRAGONS = [
   {
     id: "glaze",
     name: "氷甲竜グレイズ",
+    color: "#73d3ea",   // 氷の甲 — glacial cyan
     style: "front",
     stats: { speed: 70, stamina: 92, turn: 80, wing: 65, fire: 45, nerve: 90, classBonus: 78 },
     publicImage: 55,    // quiet, not flashy
