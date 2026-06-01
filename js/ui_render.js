@@ -632,14 +632,22 @@ function renderBroadcastScreen() {
   `;
   wrap.appendChild(header);
 
-  // Scene with pixel dragons (focus only)
+  // Scene with pixel dragons (focus only) — leader on the right, slower
+  // runners to the left. Vertical band layered by rank for clarity.
   const scene = el("div", "broadcast-scene");
   scene.setAttribute("data-mode", phase.visualMode);
   const focusEntries = phase.focusDragonIds
     .map(id => phase.orderedEntries.find(e => e.dragon.id === id))
     .filter(Boolean)
     .sort((a, b) => phase.currRankMap[a.dragon.id] - phase.currRankMap[b.dragon.id]);
-  focusEntries.forEach(e => scene.appendChild(buildPixelDragon(e, phase, c.bet)));
+  const N = focusEntries.length;
+  focusEntries.forEach((entry, i) => {
+    // X: leader rightmost (~88%) descending to ~10%
+    const leftPct = 88 - (N > 1 ? (i * 78 / (N - 1)) : 0);
+    // Y (bottom): leader nearest the track, others slightly higher to avoid overlap
+    const bottomPx = 30 + (i % 2) * 22 + (i >= 2 ? 6 : 0);
+    scene.appendChild(buildPixelDragon(entry, phase, c.bet, leftPct, bottomPx));
+  });
   wrap.appendChild(scene);
 
   // Current ranking strip
@@ -708,16 +716,28 @@ function renderBroadcastScreen() {
   linesEl.scrollTop = linesEl.scrollHeight;
 }
 
-function buildPixelDragon(entry, phase, bet) {
+function buildPixelDragon(entry, phase, bet, leftPct, bottomPx) {
   const d = entry.dragon;
   const rank = phase.currRankMap[d.id];
   const color = STYLE_COLOR[d.style] || "#888";
-  const wrap = el("div", "pixel-dragon" +
-    (bet && bet.selections.includes(d.id) ? " bet-target" : "") +
-    (entry.collapse ? " collapsed" : ""));
+  const classes = [
+    "pixel-dragon",
+    `rank-${rank}`,
+    bet && bet.selections.includes(d.id) ? "bet-target" : "",
+    entry.collapse ? "collapsed" : ""
+  ].filter(Boolean).join(" ");
+  const wrap = el("div", classes);
+  wrap.style.left = leftPct + "%";
+  wrap.style.bottom = bottomPx + "px";
   wrap.innerHTML = `
     <span class="rank-tag r${rank}">${rank}</span>
-    <div class="sprite" style="background:${color}"></div>
+    <div class="sprite" style="--c: ${color}">
+      <div class="tail"></div>
+      <div class="wing"></div>
+      <div class="body"></div>
+      <div class="head"></div>
+      <div class="legs"></div>
+    </div>
     <span class="name-tag">${d.name.replace(/^.+竜/, "")}</span>
   `;
   return wrap;

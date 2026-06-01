@@ -89,73 +89,239 @@ body {
 .broadcast-header .phase-label { font-size: 16px; font-weight: bold; }
 .broadcast-header .weather-chip { background: #ffd870; color: #0a0820; padding: 2px 8px; border-radius: 2px; }
 
+/* === Race scene with flowing background and running dragons === */
 .broadcast-scene {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #0a0a18 0 24px,
-      #10102a 24px 48px
-    );
+  background-color: #0a0a18;
+  background-image:
+    /* speed lines (closer, faster) */
+    repeating-linear-gradient(90deg,
+      transparent 0 38px, rgba(255,216,112,0.10) 38px 40px, transparent 40px 80px),
+    /* mid track stripes */
+    repeating-linear-gradient(90deg,
+      #0a0a18 0 32px, #14142e 32px 64px);
+  background-size: 80px 100%, 64px 100%;
   border: 2px solid #d4a850;
-  padding: 14px 10px 18px;
-  min-height: 220px;
+  padding: 10px;
+  height: 200px;
   position: relative;
   overflow: hidden;
+  animation:
+    scene-scroll-speed 0.45s linear infinite,
+    scene-scroll-track 1.2s linear infinite;
 }
+@keyframes scene-scroll-speed { from { background-position: 0 0, 0 0; } to { background-position: -80px 0, 0 0; } }
+@keyframes scene-scroll-track { from { background-position: 0 0, 0 0; } to { background-position: 0 0, -64px 0; } }
+
+/* Track ground line */
 .broadcast-scene::before {
-  /* horizon */
-  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px;
-  background: #604040; opacity: 0.6;
+  content: ""; position: absolute; left: 0; right: 0; bottom: 28px; height: 3px;
+  background: linear-gradient(180deg, #604040 0, #302020 100%);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.4);
 }
-.broadcast-scene[data-mode="diagonal_sprint"] {
-  background:
-    repeating-linear-gradient(
-      105deg,
-      #1a0a20 0 24px,
-      #22102e 24px 48px
-    );
-}
-.broadcast-scene[data-mode="side_finish"] {
-  background:
-    repeating-linear-gradient(90deg, #20180a 0 24px, #28200e 24px 48px);
-  border-color: #ffd870;
+/* Sky glow */
+.broadcast-scene::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 40%;
+  background: linear-gradient(180deg, rgba(80,40,120,0.25), transparent);
+  pointer-events: none;
 }
 
+.broadcast-scene[data-mode="diagonal_sprint"] {
+  background-image:
+    repeating-linear-gradient(110deg,
+      transparent 0 38px, rgba(255,128,80,0.18) 38px 40px, transparent 40px 80px),
+    repeating-linear-gradient(110deg,
+      #1a0a20 0 32px, #22102e 32px 64px);
+  animation-duration: 0.28s, 0.9s;
+}
+.broadcast-scene[data-mode="side_finish"] {
+  background-image:
+    repeating-linear-gradient(90deg,
+      transparent 0 38px, rgba(255,240,160,0.20) 38px 40px, transparent 40px 80px),
+    repeating-linear-gradient(90deg, #20180a 0 32px, #28200e 32px 64px);
+  border-color: #ffd870;
+  animation-duration: 0.6s, 1.5s;
+}
+.broadcast-scene[data-mode="obstacle_wind"] {
+  background-image:
+    repeating-linear-gradient(90deg,
+      transparent 0 38px, rgba(160,220,255,0.18) 38px 40px, transparent 40px 80px),
+    repeating-linear-gradient(90deg, #0a1428 0 32px, #142440 32px 64px);
+}
+.broadcast-scene[data-mode="obstacle_fire"] {
+  background-image:
+    repeating-linear-gradient(90deg,
+      transparent 0 38px, rgba(255,128,40,0.25) 38px 40px, transparent 40px 80px),
+    repeating-linear-gradient(90deg, #2a0a08 0 32px, #38120c 32px 64px);
+}
+.broadcast-scene[data-mode="obstacle_turn"] {
+  background-image:
+    repeating-linear-gradient(75deg,
+      transparent 0 38px, rgba(255,200,160,0.18) 38px 40px, transparent 40px 80px),
+    repeating-linear-gradient(75deg, #1a0a18 0 32px, #28102a 32px 64px);
+}
+
+/* === Cute pixel dragon — composite parts === */
 .pixel-dragon {
-  display: inline-flex; flex-direction: column; align-items: center;
-  margin: 0 8px; padding: 4px;
-  position: relative;
-  min-width: 64px;
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center;
+  width: 60px;
+  transition: left 0.9s cubic-bezier(.4,1.4,.5,1), bottom 0.6s ease;
+  /* bob up and down while running */
+  animation: dragon-bob 0.32s ease-in-out infinite alternate;
 }
-.pixel-dragon .sprite {
-  width: 32px; height: 32px;
-  background: #888;
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(8, 1fr);
-  box-shadow: 2px 2px 0 #000;
-  image-rendering: pixelated;
-}
-.pixel-dragon .sprite::after {
-  content: ""; display: block;
-  background: rgba(255,255,255,0.15);
-  position: absolute; inset: 4px 0 auto 4px; width: 8px; height: 8px;
+@keyframes dragon-bob {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-3px); }
 }
 .pixel-dragon .rank-tag {
   background: #ffd870; color: #0a0820; font-weight: bold;
-  padding: 1px 5px; font-size: 11px; margin-bottom: 2px;
-  border: 1px solid #000;
+  padding: 1px 6px; font-size: 10px; margin-bottom: 2px;
+  border: 1px solid #000; border-radius: 2px;
+  box-shadow: 1px 1px 0 #000;
 }
 .pixel-dragon .rank-tag.r1 { background: #ff8060; color: #fff; }
 .pixel-dragon .rank-tag.r2 { background: #c0c0c0; color: #0a0820; }
 .pixel-dragon .rank-tag.r3 { background: #c08040; color: #fff; }
+
+.pixel-dragon .sprite {
+  position: relative;
+  width: 44px; height: 32px;
+  --c: #888;  /* style color injected via inline var */
+}
+/* body — chubby oval */
+.pixel-dragon .sprite .body {
+  position: absolute; left: 4px; right: 4px; top: 8px; height: 18px;
+  background: var(--c);
+  border: 2px solid #000;
+  border-radius: 12px 14px 14px 12px / 10px;
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,0.25), 2px 2px 0 #000;
+}
+/* head — round with cute eye */
+.pixel-dragon .sprite .head {
+  position: absolute; right: -4px; top: 2px;
+  width: 18px; height: 18px;
+  background: var(--c);
+  border: 2px solid #000;
+  border-radius: 60% 70% 50% 50% / 60% 70% 50% 50%;
+  box-shadow: inset 1px -2px 0 rgba(0,0,0,0.25);
+}
+.pixel-dragon .sprite .head::before {
+  /* eye white */
+  content: ""; position: absolute; right: 3px; top: 4px;
+  width: 5px; height: 5px;
+  background: #fff; border-radius: 50%;
+  box-shadow: 0 0 0 1px #000;
+}
+.pixel-dragon .sprite .head::after {
+  /* pupil */
+  content: ""; position: absolute; right: 4px; top: 5px;
+  width: 2px; height: 3px;
+  background: #000; border-radius: 50%;
+  animation: dragon-blink 3.2s ease-in-out infinite;
+}
+@keyframes dragon-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+/* wing — flap animation */
+.pixel-dragon .sprite .wing {
+  position: absolute; left: 8px; top: 2px;
+  width: 16px; height: 14px;
+  background: var(--c);
+  filter: brightness(0.78);
+  border: 2px solid #000;
+  border-radius: 70% 30% 50% 50% / 70% 40% 60% 40%;
+  transform-origin: 50% 90%;
+  animation: dragon-flap 0.32s ease-in-out infinite alternate;
+}
+@keyframes dragon-flap {
+  from { transform: rotate(-12deg) translateY(0); }
+  to   { transform: rotate(18deg) translateY(-1px); }
+}
+/* tail — wiggles behind */
+.pixel-dragon .sprite .tail {
+  position: absolute; left: -6px; top: 12px;
+  width: 12px; height: 8px;
+  background: var(--c);
+  border: 2px solid #000;
+  border-radius: 60% 0 0 60% / 50%;
+  transform-origin: 100% 50%;
+  animation: dragon-tail 0.4s ease-in-out infinite alternate;
+}
+@keyframes dragon-tail {
+  from { transform: rotate(-10deg); }
+  to   { transform: rotate(14deg); }
+}
+/* legs — two tiny stomping rectangles */
+.pixel-dragon .sprite .legs {
+  position: absolute; left: 8px; right: 8px; bottom: 0; height: 6px;
+}
+.pixel-dragon .sprite .legs::before,
+.pixel-dragon .sprite .legs::after {
+  content: ""; position: absolute; bottom: 0;
+  width: 4px; height: 6px;
+  background: var(--c); border: 2px solid #000;
+  filter: brightness(0.85);
+}
+.pixel-dragon .sprite .legs::before {
+  left: 4px;
+  animation: leg-stomp-a 0.22s ease-in-out infinite alternate;
+}
+.pixel-dragon .sprite .legs::after {
+  right: 4px;
+  animation: leg-stomp-b 0.22s ease-in-out infinite alternate;
+}
+@keyframes leg-stomp-a {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-2px); }
+}
+@keyframes leg-stomp-b {
+  from { transform: translateY(-2px); }
+  to   { transform: translateY(0); }
+}
+
 .pixel-dragon .name-tag {
-  color: #f0e8d0; font-size: 10px; margin-top: 4px; white-space: nowrap;
+  color: #f0e8d0; font-size: 10px; margin-top: 3px; white-space: nowrap;
+  text-shadow: 1px 1px 0 #000;
 }
-.pixel-dragon.bet-target .sprite {
-  outline: 2px dashed #80ff80; outline-offset: 2px;
+
+.pixel-dragon.bet-target {
+  filter: drop-shadow(0 0 4px #80ff80);
 }
-.pixel-dragon.collapsed .sprite { filter: grayscale(0.5) brightness(0.6); }
+.pixel-dragon.bet-target::before {
+  content: "🎯"; position: absolute; left: -10px; top: -6px;
+  font-size: 12px;
+  animation: target-pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes target-pulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.2); }
+}
+
+.pixel-dragon.collapsed .sprite { filter: grayscale(0.7) brightness(0.55); }
+.pixel-dragon.collapsed .wing { animation-duration: 0.9s; }
+.pixel-dragon.collapsed .legs::before,
+.pixel-dragon.collapsed .legs::after { animation-duration: 0.5s; }
+
+/* per-rank slight speed difference so leader bobs faster */
+.pixel-dragon.rank-1 { animation-duration: 0.28s; z-index: 5; }
+.pixel-dragon.rank-2 { animation-duration: 0.30s; z-index: 4; }
+.pixel-dragon.rank-3 { animation-duration: 0.32s; z-index: 3; }
+
+/* "puff" dust under feet */
+.pixel-dragon::after {
+  content: ""; position: absolute; left: 8px; bottom: 28px;
+  width: 12px; height: 6px;
+  background: radial-gradient(ellipse at center, rgba(255,240,200,0.45), transparent 70%);
+  border-radius: 50%;
+  animation: puff 0.4s linear infinite;
+  pointer-events: none;
+}
+@keyframes puff {
+  0%   { opacity: 0; transform: translateX(0) scale(0.6); }
+  60%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translateX(-20px) scale(1.2); }
+}
 
 .broadcast-rank-bar {
   background: #0a0820; border: 1px solid #604040;
