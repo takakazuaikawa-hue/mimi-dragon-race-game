@@ -1,4 +1,14 @@
-// Weather definitions per spec 03 §9.
+/**
+ * data_weather.js — weather profiles per spec §03 §9.
+ *
+ * Each weather supplies a stat-weight map used by race_engine.weatherPower
+ * and analysis_engine.weatherKeyStats.
+ *
+ * EXTENSION POINT — new weather:
+ *   1. Add { label, weights: {speed,stamina,turn,wing,fire,nerve} } here.
+ *   2. Add a case for it in analysis_engine.weatherKeyStats.
+ *   3. Optional: add a `mimi_<weather>_first` event in event_registry.js.
+ */
 const WEATHERS = {
   clear: {
     label: "晴れ",

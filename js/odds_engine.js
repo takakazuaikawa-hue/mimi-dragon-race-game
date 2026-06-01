@@ -1,5 +1,17 @@
-// Odds engine — spec 04.
-// PopularityPower → market simulation → win/place/wide odds.
+/**
+ * odds_engine.js — market popularity simulation per spec §04.
+ *
+ * Computes PopularityPower (rank-weighted), runs SIM_COUNT market races with
+ * noise, and converts win / place / wide-pair probabilities into displayed
+ * odds with payout rate and floor/cap.
+ *
+ * Key design (§04 §10/§14): "Race results are based on true race strength.
+ * Odds are based on market popularity. Player reads the gap."
+ *
+ * EXTENSION POINT:
+ *   - Tune market noise: see randRange(-15,15) below (§12.10 adjusted from ±5).
+ *   - New bet type: add a probability counter to the loop and an odds map.
+ */
 
 const SIM_COUNT = 5000;
 

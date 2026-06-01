@@ -1,4 +1,15 @@
-// Betting: validation, odds lookup, resolution, payout.
+/**
+ * betting_engine.js — bet validation, odds lookup, hit resolution, payout.
+ *
+ * §04 §13/§14. Validation rules per §04 §16.
+ *
+ * EXTENSION POINT — new bet type (e.g. 連竜/三連竜/応援券):
+ *   1. Add validation branch in validateBet.
+ *   2. Add odds lookup in betOdds.
+ *   3. Add hit logic in resolveBet.
+ *   4. Add tab + selector UI in ui_render.js renderRaceDetail.
+ *   5. Add corresponding probability counter in odds_engine.simulateMarket.
+ */
 
 function validateBet(bet, race) {
   if (!bet) return "賭けが選択されていません。";

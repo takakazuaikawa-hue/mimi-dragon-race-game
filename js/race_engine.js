@@ -1,15 +1,15 @@
-// Race engine — implements spec 03.
-// Calculates FinalPower per dragon with all 7 components + stamina adjustment.
-
-function randRange(min, max) { return min + Math.random() * (max - min); }
-function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-
-// Weighted stat sum given weights object.
-function weightedStat(stats, weights) {
-  let s = 0;
-  for (const k in weights) s += (stats[k] || 0) * weights[k];
-  return s;
-}
+/**
+ * race_engine.js — Race result engine per spec §03.
+ *
+ * Calculates FinalPower per dragon with 7 weighted components + StaminaAdjustment.
+ * Produces ordered entries, per-phase race log, and component breakdown for analysis.
+ *
+ * Depends on: utils.js (clamp, randRange, weightedStat), data_courses.js,
+ * data_weather.js, data_ranks.js, data_dragons.js, data_races.js.
+ *
+ * EXTENSION POINT: new running styles → PACE_STYLE_MOD. New section types →
+ * data_courses.js + relStatMap below. New formulas → keep §03 §2 weights stable.
+ */
 
 // Generate per-race FormPower components (transient).
 function generateForm(dragon) {

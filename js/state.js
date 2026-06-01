@@ -1,5 +1,18 @@
-// Player state and current-race transient state.
+/**
+ * state.js — central player state, save/load, progression hooks.
+ *
+ * Holds the only mutable runtime store (`state`) plus helpers that mutate it:
+ * collection records, village exp/level, rank progression, milestone events.
+ *
+ * Depends on: utils.js (fmtCoins), data_ranks.js (RANK_UNLOCK, VILLAGE_MULT,
+ * RESCUE_COINS), event_hooks.js (runEventHooks for level-up / rank-up triggers).
+ *
+ * EXTENSION POINT: when adding new persistent fields, also extend
+ * `resetGame()`, `state.player` initial object, and bump SAVE_VERSION below if
+ * the new field changes save layout in a non-backwards-compatible way.
+ */
 const SAVE_KEY = "mimi_dragon_race_v0_1";
+const SAVE_VERSION = "1.0.0";
 
 const state = {
   player: {
@@ -50,7 +63,7 @@ const state = {
 function saveGame() {
   try {
     const data = {
-      version: "0.1.0",
+      version: SAVE_VERSION,
       player: state.player,
       savedAt: Date.now()
     };
@@ -234,27 +247,4 @@ function checkEconomyMilestones(betResult) {
   saveGame();
 }
 
-// Helper: format big integer-like numbers per §08 §15.
-// Below 10,000 → comma-formatted.
-// 10,000+ → use 万/億/兆/京 units with up to 2 decimals.
-function fmtCoins(n) {
-  if (typeof n !== "number") return String(n);
-  const abs = Math.abs(n);
-  if (abs < 10000) return n.toLocaleString("ja-JP");
-  const sign = n < 0 ? "-" : "";
-  const a = abs;
-  const units = [
-    { v: 1e16, u: "京" },
-    { v: 1e12, u: "兆" },
-    { v: 1e8,  u: "億" },
-    { v: 1e4,  u: "万" }
-  ];
-  for (const { v, u } of units) {
-    if (a >= v) {
-      const num = a / v;
-      const display = num >= 100 ? Math.floor(num).toLocaleString("ja-JP") : num.toFixed(2).replace(/\.?0+$/, "");
-      return `${sign}${display}${u}`;
-    }
-  }
-  return sign + Math.floor(a).toLocaleString("ja-JP");
-}
+// fmtCoins moved to utils.js (used by many modules, kept dependency-free).

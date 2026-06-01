@@ -1,5 +1,13 @@
-// Simulation & test harness per spec §12.8 / §12.9.
-// Usage from console: simulateRaceManyTimes("race_grandclock_1", 1000)
+/**
+ * sim_tools.js — debug / balance-testing harness per spec §12 §8/§9.
+ *
+ * Console-callable helpers for measuring favorite win rate, stamina collapse
+ * frequency, market vs true gap, and strategy ROI comparisons. NOT bundled
+ * into the gameplay loop; loaded so it is available at the JS console.
+ *
+ * EXTENSION POINT — new strategy: append to STRATEGIES map.
+ * Run `compareAllStrategies(RACES.map(r=>r.id), 100, 100)` to compare ROI.
+ */
 
 function simulateRaceManyTimes(raceId, count) {
   const race = RACES.find(r => r.id === raceId);

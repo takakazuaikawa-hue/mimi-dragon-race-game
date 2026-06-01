@@ -1,6 +1,20 @@
-// Sample races. V1 has Rank 1-3; Phase 9 (v0.9 Content Expansion) adds
-// Rank 4-7 races, more regions, festival races, and 神兎大レース.
-// Region color theme per §11 §23 (8 regions total).
+/**
+ * data_races.js — race definitions, regions, entry overrides, encouragements.
+ *
+ * V1 races (Rank 1-3) + Phase 9 expansion (Rank 4-7). Entries default to
+ * ORIGINAL_8 from data_dragons.js; non-default 8-dragon casts live in
+ * RACE_ENTRY_OVERRIDES.
+ *
+ * EXTENSION POINT — adding a new race:
+ *   1. Append { id, region, cup, number, rank, distance, weather,
+ *      early, mid, late, purpose } to RACES.
+ *   2. If using non-default 8 dragons → add to RACE_ENTRY_OVERRIDES.
+ *   3. If introducing a new region → add to REGION_THEME and consider
+ *      adding a `first_visit_<region>` event in event_registry.js.
+ *   4. Story-driven late entry? Add an offer to ENTRY_ENCOURAGEMENTS.
+ *
+ * Region color theme per §11 §23 (8 regions covered).
+ */
 const REGION_THEME = {
   "グランドクロック地域": { from: "#5d4828", to: "#3a2818", accent: "#d4a850" }, // brass/gold
   "ルミナ地域":           { from: "#264068", to: "#1a2848", accent: "#80b0f0" }, // sky blue

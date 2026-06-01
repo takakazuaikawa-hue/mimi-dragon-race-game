@@ -1,5 +1,14 @@
-// Race rank: market popularity weights, hype noise, odds caps, max wager.
-// Per spec 04 §7, §9, §12, §16.
+/**
+ * data_ranks.js — race rank tables, economy multipliers, distance bands.
+ *
+ * EXTENSION POINT:
+ *   - new rank: extend RANKS, RANK_UNLOCK, RESCUE_COINS, VILLAGE_MULT
+ *   - new distance band: extend DISTANCE
+ *   - new newspaper mark: extend NEWSPAPER_MARK_VALUE
+ *   - new running style: extend STYLE_LABEL (and PACE_STYLE_MOD in race_engine.js)
+ *
+ * Spec refs: §04 §7/§9/§12/§16, §08 §5/§7/§13.
+ */
 const RANKS = {
   1: {
     label: "新人競竜杯",
@@ -71,14 +80,7 @@ const DISTANCE = {
   marathon: { label: "特長距離", bonus: 45, mult: 1.40 }
 };
 
-function statRank(v) {
-  if (v >= 90) return "S";
-  if (v >= 75) return "A";
-  if (v >= 60) return "B";
-  if (v >= 45) return "C";
-  if (v >= 30) return "D";
-  return "E";
-}
+// statRank moved to utils.js (used by UI as well as data display).
 
 const STYLE_LABEL = { escape:"逃げ", front:"先行", late:"差し", chase:"追込" };
 

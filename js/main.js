@@ -1,4 +1,16 @@
-// Entry point — wire everything up.
+/**
+ * main.js — entry point and event wiring.
+ *
+ * Loaded last so all engines, data, and UI render functions are defined.
+ * Responsible for: load save → initial header → wire UI toggles → render
+ * home screen.
+ *
+ * EXTENSION POINT — new top-level UI control (e.g. settings dropdown):
+ *   1. Add the HTML in index.html header.
+ *   2. Wire its listener inside DOMContentLoaded below.
+ *   3. Call rerenderCurrent() at the end of the listener if the change is
+ *      visible on the current screen.
+ */
 window.addEventListener("DOMContentLoaded", () => {
   loadGame();
   updateHeader();

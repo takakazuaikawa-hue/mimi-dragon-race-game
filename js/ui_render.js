@@ -1,12 +1,18 @@
-// UI rendering for each screen.
-
-function $(id) { return document.getElementById(id); }
-function el(tag, cls, html) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (html != null) e.innerHTML = html;
-  return e;
-}
+/**
+ * ui_render.js — all screen renderers.
+ *
+ * Screens implemented (in render-function form, dispatched by main.js):
+ *   home / race_select / race_detail / race_run / result / analysis /
+ *   village / collection / help.
+ *
+ * DOM helpers `$` and `el` live in utils.js.
+ *
+ * EXTENSION POINT — new screen:
+ *   1. Add render<NewScreen>() following the pattern (set state.ui.screen,
+ *      clear #app, append elements, end with .actions buttons).
+ *   2. Wire it into the rerenderCurrent map in main.js.
+ *   3. Add a navigation button on the home screen (or wherever entry lives).
+ */
 
 function updateHeader() {
   $("coin-display").textContent = fmtCoins(state.player.coins);

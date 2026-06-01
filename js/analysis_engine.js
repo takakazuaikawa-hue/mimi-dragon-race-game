@@ -1,4 +1,14 @@
-// Post-race analysis — produces structured explanation per spec 03 §17.
+/**
+ * analysis_engine.js — post-race analysis text per spec §03 §17.
+ *
+ * Generates structured fields: winnerReasons / favoriteFailureReasons /
+ * paceSummary / staminaNotes / weatherNotes / valueNotes / betEval /
+ * nextHints. UI then renders by infoDisplayLevel (§07 §16).
+ *
+ * EXTENSION POINT — adding a new analysis section:
+ *   1. Compute the field in buildAnalysis and return it.
+ *   2. Render in ui_render.renderAnalysis under the appropriate level gate.
+ */
 
 function buildAnalysis(race, raceResult, oddsResult, betResult) {
   const top = raceResult.entries[0];

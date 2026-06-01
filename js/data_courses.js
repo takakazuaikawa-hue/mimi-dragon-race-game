@@ -1,5 +1,15 @@
-// Course section definitions. Weights per spec 03 §7.
-// Each section has stat weights (sum = 1.0), terrain cost tag, and a display label.
+/**
+ * data_courses.js — early/mid/late section profiles per spec §03 §7.
+ *
+ * Each section: label, stat weights (sum = 1.0), optional terrain cost.
+ *
+ * EXTENSION POINT — new section type:
+ *   1. Add entry to the matching EARLY_SECTIONS / MID_SECTIONS / LATE_SECTIONS.
+ *   2. If it imposes a stat-based stamina cost → set `terrain: { stat, coef }`.
+ *   3. Add the section key to `relStatMap` in race_engine.js so
+ *      EfficiencyBonus knows the relevant stat.
+ *   4. Optional: add `icon_section_<key>` to assetIds plan (§11 §9).
+ */
 
 const EARLY_SECTIONS = {
   long_straight_start: {

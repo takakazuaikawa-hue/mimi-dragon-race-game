@@ -35,6 +35,19 @@
   </div>
 </div>
 
+<!--
+  Load order matters (no module system).
+  1) utils.js          — dependency-free helpers
+  2) data_*            — pure data + extension-point comments
+  3) state.js          — state store + save/load + progression helpers
+  4) *_engine.js       — pure logic (depends on data + utils)
+  5) event_hooks.js    — event system core
+  6) event_registry.js — event registrations (depends on system + data)
+  7) ui_render.js      — DOM rendering
+  8) sim_tools.js      — debug/balance harness
+  9) main.js           — entry point, wires everything
+-->
+<script src="js/utils.js"></script>
 <script src="js/data_dragons.js"></script>
 <script src="js/data_courses.js"></script>
 <script src="js/data_weather.js"></script>
@@ -46,6 +59,7 @@
 <script src="js/betting_engine.js"></script>
 <script src="js/analysis_engine.js"></script>
 <script src="js/event_hooks.js"></script>
+<script src="js/event_registry.js"></script>
 <script src="js/ui_render.js"></script>
 <script src="js/sim_tools.js"></script>
 <script src="js/main.js"></script>

@@ -1,8 +1,18 @@
-// 8 sample dragons for V1
-// Stats are internal 0-100. ClassBonus scales with rank/experience.
-// assetIds (§11 §15) follow snake_case naming and remain null in V1 — slots
-// are reserved so completed-version assets can drop in without code changes.
-// §11 §19 placeholder strategy: dragon icon = style color + name initial badge.
+/**
+ * data_dragons.js — dragon roster (V1 base 8 + Phase 9 high-rank 4).
+ *
+ * Stats are internal 0-100. ClassBonus scales with rank/experience.
+ * assetIds (§11 §15) remain null in V1; slot keys reserved for asset injection.
+ * Placeholder visual = style color disc + name initial (§11 §19).
+ *
+ * EXTENSION POINT — adding a new dragon:
+ *   1. Append entry to DRAGONS array (use ORIGINAL_8 ordering convention or
+ *      tag as a Phase 9+ rival via the "high-rank challengers" section).
+ *   2. Add asset base name to DRAGON_ASSET_BASE map.
+ *   3. If you want them in default V1 races, replace one of ORIGINAL_8 in
+ *      data_races.js. Otherwise add per-race RACE_ENTRY_OVERRIDES.
+ *   4. Optionally add a rival-intro event in event_registry.js.
+ */
 
 // §11 §7 archetype → asset ID base name map.
 const DRAGON_ASSET_BASE = {
