@@ -10,7 +10,16 @@
  *   2. Render in ui_render.renderAnalysis under the appropriate level gate.
  */
 
-function buildAnalysis(race, raceResult, oddsResult, betResult) {
+// Spec #27 §12: aggregate broadcast tags into a Set for analysis use.
+function aggregateBroadcastTags(broadcastData) {
+  const set = new Set();
+  if (!broadcastData) return set;
+  broadcastData.phases.forEach(p => p.tags.forEach(t => set.add(t)));
+  return set;
+}
+
+function buildAnalysis(race, raceResult, oddsResult, betResult, broadcastData) {
+  const broadcastTags = aggregateBroadcastTags(broadcastData);
   const top = raceResult.entries[0];
   const second = raceResult.entries[1];
   const third = raceResult.entries[2];
@@ -91,6 +100,17 @@ function buildAnalysis(race, raceResult, oddsResult, betResult) {
     }
   }
 
+  // Spec #27 §12: broadcast tag callouts — keep analysis prose consistent
+  // with what the broadcaster said happened.
+  const broadcastNotes = [];
+  if (broadcastTags.has("favorite_fade"))    broadcastNotes.push("中継でも人気馬の苦戦が見えました。");
+  if (broadcastTags.has("underdog_rising"))  broadcastNotes.push("中盤以降、穴竜の浮上が際立ちました。");
+  if (broadcastTags.has("late_surge"))       broadcastNotes.push("終盤の差し脚が決め手になりました。");
+  if (broadcastTags.has("close_finish"))     broadcastNotes.push("ゴール前は接戦、紙一重の決着でした。");
+  if (broadcastTags.has("photo_finish"))     broadcastNotes.push("写真判定級の超接戦でした。");
+  if (broadcastTags.has("section_trouble_turn")) broadcastNotes.push("カーブ区間で順位が大きく動きました。");
+  if (broadcastTags.has("section_boost_wind"))   broadcastNotes.push("追い風区間で翼竜が伸びました。");
+
   // Next hint
   const nextHints = [];
   if (pace.type === "high" || pace.type === "very_high") {
@@ -103,7 +123,7 @@ function buildAnalysis(race, raceResult, oddsResult, betResult) {
   return {
     winnerReasons, favoriteFailureReasons,
     paceSummary, staminaNotes, weatherNotes, valueNotes,
-    betEval, nextHints,
+    betEval, broadcastNotes, nextHints,
     keySection: lateLabel
   };
 }

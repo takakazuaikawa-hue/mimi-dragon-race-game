@@ -534,6 +534,8 @@ function onConfirmBet(skipDialog) {
   // Run race using the trial-run forms shown to the player.
   runEventHooks("duringRace", { race: c.race });
   const raceResult = runRace(c.race, c.trialForms);
+  // Spec #27: broadcast cache invalidated for each new race run.
+  c.broadcast = null; c.commentary = null; c.broadcastState = null;
   c.raceResult = raceResult;
   const betResult = resolveBet(c.bet, raceResult, c.oddsResult);
   c.betResult = betResult;
@@ -591,45 +593,203 @@ function closeBetConfirm() {
   if (a) a.remove();
 }
 
+// =========================================================================
+// Spec #27: Phase-based pixel race broadcast
+// =========================================================================
+
 function renderRaceRun() {
   state.ui.screen = "race_run";
   const c = state.current;
+  // Build broadcast data (read-only over raceResult) and commentary queues
+  if (!c.broadcast) {
+    c.broadcast = buildBroadcastData(c.race, c.raceResult, c.bet, c.oddsResult);
+    c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult });
+    c.broadcastState = { phaseIdx: 0, lineIdx: 0, autoMode: false, speed: 1, timer: null };
+  }
+  renderBroadcastScreen();
+}
+
+function renderBroadcastScreen() {
+  const c = state.current;
+  const bs = c.broadcastState;
+  const phase = c.broadcast.phases[bs.phaseIdx];
+  const linesToShow = c.commentary[bs.phaseIdx].slice(0, bs.lineIdx + 1);
+
   const app = $("app"); app.innerHTML = "";
-  app.appendChild(el("h2", null, "レース進行"));
-  const log = el("div", "race-log");
-  c.raceResult.logs.forEach(phase => {
-    log.appendChild(el("div", "phase", `【${phase.phase}】`));
-    phase.lines.forEach(line => log.appendChild(el("div", "line", line)));
-  });
-  app.appendChild(log);
+  const wrap = el("div", "broadcast-wrap");
 
-  app.appendChild(el("h3", null, "最終順位"));
-  const tbl = el("table", "ranking-table");
-  tbl.innerHTML = `<thead><tr><th>着順</th><th>竜名</th><th>脚質</th><th>FinalPower</th><th>スタミナ残</th></tr></thead>`;
-  const tbody = el("tbody");
-  c.raceResult.entries.forEach(e => {
-    const tr = el("tr", e.rank <= 3 ? `top${e.rank}` : "");
-    tr.innerHTML = `
-      <td>${e.rank}</td>
-      <td><b>${e.dragon.name}</b></td>
-      <td class="style-${e.dragon.style}">${STYLE_LABEL[e.dragon.style]}</td>
-      <td>${e.finalPower.toFixed(1)}</td>
-      <td>${staminaBar(e)} ${e.collapse ? '<span class="collapse-marker">崩壊</span>' : ''}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-  tbl.appendChild(tbody);
-  app.appendChild(tbl);
+  // Header
+  const header = el("div", "broadcast-header");
+  header.innerHTML = `
+    <div>
+      <div class="phase-label">[${phase.label}] ${phase.sectionName}</div>
+      <div>${raceFullName(c.race)}</div>
+    </div>
+    <div>
+      <span class="weather-chip">${WEATHERS[c.race.weather].label}</span>
+      <span> 残り ${phase.distanceRemaining}m</span>
+    </div>
+  `;
+  wrap.appendChild(header);
 
-  if (state.ui.debug) {
-    const dbg = el("div", "debug-info", debugDumpRace(c.raceResult));
-    app.appendChild(dbg);
+  // Scene with pixel dragons (focus only)
+  const scene = el("div", "broadcast-scene");
+  scene.setAttribute("data-mode", phase.visualMode);
+  const focusEntries = phase.focusDragonIds
+    .map(id => phase.orderedEntries.find(e => e.dragon.id === id))
+    .filter(Boolean)
+    .sort((a, b) => phase.currRankMap[a.dragon.id] - phase.currRankMap[b.dragon.id]);
+  focusEntries.forEach(e => scene.appendChild(buildPixelDragon(e, phase, c.bet)));
+  wrap.appendChild(scene);
+
+  // Current ranking strip
+  const rankBar = el("div", "broadcast-rank-bar");
+  phase.orderedEntries.forEach((e, i) => {
+    const id = e.dragon.id;
+    const popRank = c.oddsResult.oddsData.find(o => o.dragonId === id).popularityRank;
+    const isTarget = c.bet && c.bet.selections.includes(id);
+    const cls = isTarget ? "target" : (popRank === 1 ? "fav" : "");
+    const span = el("span", `rank-pos ${cls}`,
+      `${i + 1}: ${dragonShortName(id).replace("ちゃん","")}`);
+    rankBar.appendChild(span);
+  });
+  wrap.appendChild(rankBar);
+
+  // Bet status
+  if (c.bet && c.bet.selections.length) {
+    const betBox = el("div", "broadcast-bet", `🎯 ${phase.bettingStatus.summary}`);
+    wrap.appendChild(betBox);
   }
 
-  const actions = el("div", "actions");
-  const next = el("button", null, "結果を見る"); next.onclick = renderResult;
-  actions.appendChild(next);
-  app.appendChild(actions);
+  // Mimi commentary
+  const mimi = el("div", "broadcast-mimi");
+  mimi.innerHTML = `<div class="avatar"></div><div class="lines" id="mimi-lines"></div>`;
+  wrap.appendChild(mimi);
+
+  // Controls
+  const controls = el("div", "broadcast-controls");
+  controls.appendChild(makeBtn("◀ 戻る", () => stepPhase(-1), { secondary: true }));
+  controls.appendChild(makeBtn("▶ 次へ", () => stepLineOrPhase()));
+  const autoBtn = makeBtn(bs.autoMode ? "⏸ 一時停止" : "▶▶ オート", toggleAuto, { secondary: !bs.autoMode });
+  controls.appendChild(autoBtn);
+  const speedBtn = makeBtn(`${bs.speed}x`, cycleSpeed, { secondary: bs.speed === 1 });
+  if (bs.speed > 1) speedBtn.classList.add("speed-active");
+  controls.appendChild(speedBtn);
+  controls.appendChild(makeBtn("⏭ スキップ", skipToResult, { secondary: true }));
+  controls.appendChild(makeBtn("📜 全ログ", toggleLog, { secondary: true }));
+  if (bs.phaseIdx === c.broadcast.phases.length - 1
+      && bs.lineIdx >= c.commentary[bs.phaseIdx].length - 1) {
+    controls.appendChild(makeBtn("結果を見る", renderResult));
+  }
+  wrap.appendChild(controls);
+
+  // Optional log
+  if (bs.showLog) {
+    const log = el("div", "broadcast-log");
+    c.broadcast.phases.forEach((p, i) => {
+      log.appendChild(el("div", "log-phase", `【${p.label} ${p.sectionName}】`));
+      c.commentary[i].forEach(line => log.appendChild(el("div", "log-line", line)));
+    });
+    wrap.appendChild(log);
+  }
+
+  app.appendChild(wrap);
+
+  // Inject commentary lines progressively (with animation key for retrigger)
+  const linesEl = $("mimi-lines");
+  linesToShow.forEach((line, i) => {
+    const d = document.createElement("div");
+    d.className = "line";
+    d.style.animationDelay = `${i * 0.04}s`;
+    d.textContent = line;
+    linesEl.appendChild(d);
+  });
+  // Auto-scroll within mimi box
+  linesEl.scrollTop = linesEl.scrollHeight;
+}
+
+function buildPixelDragon(entry, phase, bet) {
+  const d = entry.dragon;
+  const rank = phase.currRankMap[d.id];
+  const color = STYLE_COLOR[d.style] || "#888";
+  const wrap = el("div", "pixel-dragon" +
+    (bet && bet.selections.includes(d.id) ? " bet-target" : "") +
+    (entry.collapse ? " collapsed" : ""));
+  wrap.innerHTML = `
+    <span class="rank-tag r${rank}">${rank}</span>
+    <div class="sprite" style="background:${color}"></div>
+    <span class="name-tag">${d.name.replace(/^.+竜/, "")}</span>
+  `;
+  return wrap;
+}
+
+function makeBtn(label, onClick, opts) {
+  const b = el("button", opts && opts.secondary ? "secondary" : "", label);
+  b.onclick = onClick;
+  return b;
+}
+
+// ---- Playback control ----
+
+function stepLineOrPhase() {
+  const c = state.current;
+  const bs = c.broadcastState;
+  const phaseCommentary = c.commentary[bs.phaseIdx];
+  if (bs.lineIdx < phaseCommentary.length - 1) {
+    bs.lineIdx += Math.max(1, Math.floor(bs.speed));  // larger steps at higher speed
+    bs.lineIdx = Math.min(bs.lineIdx, phaseCommentary.length - 1);
+  } else if (bs.phaseIdx < c.broadcast.phases.length - 1) {
+    bs.phaseIdx += 1;
+    bs.lineIdx = 0;
+  } else {
+    // End of broadcast — auto-stop
+    if (bs.autoMode) toggleAuto();
+  }
+  renderBroadcastScreen();
+}
+
+function stepPhase(delta) {
+  const c = state.current;
+  const bs = c.broadcastState;
+  const next = bs.phaseIdx + delta;
+  if (next < 0 || next >= c.broadcast.phases.length) return;
+  bs.phaseIdx = next;
+  bs.lineIdx = 0;
+  renderBroadcastScreen();
+}
+
+function toggleAuto() {
+  const bs = state.current.broadcastState;
+  bs.autoMode = !bs.autoMode;
+  if (bs.timer) { clearInterval(bs.timer); bs.timer = null; }
+  if (bs.autoMode) {
+    const tick = 600 / bs.speed;
+    bs.timer = setInterval(stepLineOrPhase, tick);
+  }
+  renderBroadcastScreen();
+}
+
+function cycleSpeed() {
+  const bs = state.current.broadcastState;
+  bs.speed = bs.speed === 1 ? 2 : bs.speed === 2 ? 3 : 1;
+  if (bs.autoMode) {
+    clearInterval(bs.timer);
+    bs.timer = setInterval(stepLineOrPhase, 600 / bs.speed);
+  }
+  renderBroadcastScreen();
+}
+
+function skipToResult() {
+  const bs = state.current.broadcastState;
+  if (bs.timer) { clearInterval(bs.timer); bs.timer = null; }
+  bs.autoMode = false;
+  renderResult();
+}
+
+function toggleLog() {
+  const bs = state.current.broadcastState;
+  bs.showLog = !bs.showLog;
+  renderBroadcastScreen();
 }
 
 function staminaBar(e) {
@@ -742,7 +902,7 @@ function showShareFallback(text, title) {
 function renderAnalysis() {
   state.ui.screen = "analysis";
   const c = state.current;
-  const analysis = buildAnalysis(c.race, c.raceResult, c.oddsResult, c.betResult);
+  const analysis = buildAnalysis(c.race, c.raceResult, c.oddsResult, c.betResult, c.broadcast);
   const app = $("app"); app.innerHTML = "";
   app.appendChild(el("h2", null, "レース後分析"));
   runEventHooks("afterRaceAnalysis", { race: c.race, analysis });
@@ -765,6 +925,9 @@ function renderAnalysis() {
   if (lvl !== "simple") {
     app.appendChild(sec("人気馬(竜)分析", analysis.favoriteFailureReasons));
     app.appendChild(sec("妙味・人気とのズレ", analysis.valueNotes));
+    if (analysis.broadcastNotes && analysis.broadcastNotes.length) {
+      app.appendChild(sec("中継ハイライト", analysis.broadcastNotes));
+    }
     if (analysis.betEval && analysis.betEval.length) app.appendChild(sec("今回の賭け評価", analysis.betEval));
   }
   if (lvl === "advanced" || lvl === "expert") {
