@@ -118,7 +118,7 @@ function rcTerrainInfo(key) { return RC_TERRAIN[key] || RC_TERRAIN.straight; }
 // =========================================================================
 const RC_DRG = {
   GW: 132, GH: 84, res: 3,    // 3x-resolution grid → smooth lines + room for fine detail
-  anchorX: 72, anchorY: 48,   // grid cell mapped to the dragon's (x,y) position (body centre, flying)
+  anchorX: 60, anchorY: 42,   // grid cell mapped to the dragon's (x,y) position (gourd centre)
   px: 0.593,                  // on-screen cell size = scale * px (so overall size is unchanged)
   P: { hx: 28, hy: 9, hr: 6.6, bx: 20, by: 16, brx: 6.6, bry: 5.6, eyeK: 0.9, pupK: 0.66 }
 };
@@ -141,79 +141,77 @@ function _rcNeon(hex) {
   return _rcRgbHex((rr + m) * 255, (gg + m) * 255, (bb + m) * 255);
 }
 function _rcDragonShapes(P, flap) {
-  const hx = P.hx, hy = P.hy, hr = P.hr, bx = P.bx, by = P.by, brx = P.brx, bry = P.bry;
-  const sx = hx + hr * 0.82, sy = hy + hr * 0.4, ex = hx + hr * 0.04, ey = hy - hr * 0.12;
-  const lift = ((flap == null ? 0.5 : flap) - 0.5) * 3.2;   // gentle wing flap
+  // Built from a SINGLE coherent layout (original coord space ~44x28), light
+  // from the upper-left. Head + body are TWO clean primitives forming a gourd
+  // silhouette; everything else attaches to that. One pass, no stacked patches.
+  const bcx = 16, bcy = 15.5, brx = 10, bry = 8;        // body
+  const hcx = 30, hcy = 10.5, hr = 7.8;                 // head
+  const scx = 37, scy = 12.4, srx = 3.0, sry = 2.7;     // snout
+  const ecx = 32, ecy = 10.0;                           // eye centre
+  const lift = ((flap == null ? 0.5 : flap) - 0.5) * 3.0;   // wing flap
   const S = [];
-  // ===== far wing (small bat wing behind, darker) =====
-  S.push({ k: 'D', t: 'poly', p: [[bx + brx * 0.06, by - bry * 0.5], [bx - brx * 0.46, by - bry * 1.55 + lift * 0.7], [bx - brx * 0.26, by - bry * 0.95 + lift * 0.4], [bx - brx * 0.48, by - bry * 0.5]] });
-  // ===== tail: short cute up-curl + warm fin =====
-  {
-    const tr = bx - brx;
-    S.push({ k: 'B', t: 'poly', p: [
-      [tr + 1.5, by - bry * 0.42], [tr - brx * 0.42, by - bry * 0.58], [tr - brx * 0.82, by - bry * 1.02],
-      [tr - brx * 0.74, by - bry * 1.34], [tr - brx * 0.4, by - bry * 0.98], [tr - brx * 0.05, by - bry * 0.26],
-      [tr + 1.5, by + bry * 0.4]
-    ]});
-    S.push({ k: 'M', t: 'tri', p: [[tr - brx * 0.16, by - bry * 0.16], [tr - brx * 0.62, by - bry * 0.92], [tr - brx * 0.5, by - bry * 0.46]] });
-    S.push({ k: 'g', t: 'poly', p: [[tr - brx * 0.66, by - bry * 0.92], [tr - brx * 1.16, by - bry * 1.16], [tr - brx * 1.0, by - bry * 1.46], [tr - brx * 0.56, by - bry * 1.3]] });
-  }
-  // ===== FAR legs (2, behind the body, darker — only the lower part shows) =====
-  [[bx - brx * 0.52, by + bry * 0.55], [bx + brx * 0.16, by + bry * 0.5]].forEach(function (L) {
-    S.push({ k: 'M', t: 'ell', p: [L[0], L[1] + 1.8, 1.9, 2.6] });
-    S.push({ k: 'D', t: 'ell', p: [L[0] + 0.5, L[1] + 3.7, 2.5, 1.3] });
+  // ===== TAIL (behind) — short upward curl + warm fin =====
+  S.push({ k: 'B', t: 'poly', p: [[8, bcy - 1.5], [3, bcy - 2.8], [1.8, bcy - 6.0], [3.8, bcy - 6.6], [4.8, bcy - 3.6], [8, bcy + 1.5]] });
+  S.push({ k: 'g', t: 'tri', p: [[2.0, bcy - 5.8], [4.0, bcy - 6.6], [2.4, bcy - 8.6]] });
+  S.push({ k: 'M', t: 'tri', p: [[4.6, bcy - 3.4], [2.6, bcy - 5.4], [3.4, bcy - 2.6]] });
+  // ===== FAR wing (behind, dark) =====
+  S.push({ k: 'W', t: 'poly', p: [[18, bcy - 5], [11, bcy - 12 + lift * 0.7], [8.5, bcy - 6.5 + lift * 0.5], [14.5, bcy - 3.5]] });
+  // ===== FAR legs (behind, darker) =====
+  [[10, 22.2], [17.5, 21.8]].forEach(function (L) {
+    S.push({ k: 'M', t: 'ell', p: [L[0], L[1], 2.0, 2.8] });
+    S.push({ k: 'D', t: 'ell', p: [L[0] + 0.6, L[1] + 2.4, 2.7, 1.4] });
   });
-  // ===== body =====
-  S.push({ k: 'B', t: 'ell', p: [bx, by, brx, bry] });
-  S.push({ k: 'M', t: 'ell', p: [bx, by + bry * 0.52, brx * 0.88, bry * 0.48] });   // lower shade
-  S.push({ k: 'g', t: 'ell', p: [bx + brx * 0.16, by + bry * 0.4, brx * 0.66, bry * 0.54] });   // warm belly
-  S.push({ k: 'G', t: 'ell', p: [bx + brx * 0.16, by + bry * 0.66, brx * 0.52, bry * 0.3] });   // belly shade
-  S.push({ k: 'M', t: 'ell', p: [bx - brx * 0.24, by - bry * 0.52, 1.7, 1.2] });   // back spot
-  S.push({ k: 'M', t: 'ell', p: [bx + brx * 0.22, by - bry * 0.48, 1.4, 1.05] });  // back spot
-  // ===== NEAR legs (2, in FRONT, clear: chunky leg + foot + 3 toes) =====
-  [[bx - brx * 0.3, by + bry * 0.58], [bx + brx * 0.42, by + bry * 0.52]].forEach(function (L) {
+  // ===== BODY + HEAD (two clean primitives -> gourd silhouette) =====
+  S.push({ k: 'B', t: 'ell', p: [bcx, bcy, brx, bry] });
+  S.push({ k: 'B', t: 'ell', p: [hcx, hcy, hr, hr] });
+  S.push({ k: 'M', t: 'ell', p: [bcx + 2.0, bcy + 3.0, brx * 0.84, bry * 0.58] });   // body underside shade
+  S.push({ k: 'M', t: 'ell', p: [hcx + 2.2, hcy + 2.8, hr * 0.78, hr * 0.68] });     // head underside shade
+  S.push({ k: 'L', t: 'ell', p: [bcx - 3.8, bcy - 4.0, brx * 0.5, bry * 0.42] });    // body highlight
+  S.push({ k: 'L', t: 'ell', p: [hcx - 3.2, hcy - 3.4, hr * 0.5, hr * 0.44] });      // head highlight
+  S.push({ k: 'b', t: 'ell', p: [hcx - 3.8, hcy - 4.0, hr * 0.2, hr * 0.18] });      // hot spot
+  // ===== BELLY (warm orange) + soft scale lines =====
+  S.push({ k: 'g', t: 'ell', p: [bcx + 3.4, bcy + 3.0, brx * 0.5, bry * 0.58] });
+  S.push({ k: 'G', t: 'ell', p: [bcx + 3.4, bcy + 4.8, brx * 0.4, bry * 0.28] });
+  S.push({ k: 'G', t: 'rect', p: [bcx + 1.4, bcy + 2.2, 5.0, 0.5] });
+  S.push({ k: 'G', t: 'rect', p: [bcx + 2.2, bcy + 4.2, 3.8, 0.5] });
+  // ===== NEAR legs (clear: leg + foot + 3 toes) =====
+  [[12, 21.2], [20.5, 20.8]].forEach(function (L) {
     const lx = L[0], ly = L[1];
-    S.push({ k: 'B', t: 'ell', p: [lx, ly + 1.5, 2.4, 3.0] });            // chunky leg
-    S.push({ k: 'M', t: 'ell', p: [lx - 0.9, ly + 2.2, 1.3, 2.2] });     // back shade
-    S.push({ k: 'g', t: 'ell', p: [lx + 0.7, ly + 3.6, 3.2, 1.6] });     // warm foot
-    S.push({ k: 'o', t: 'rect', p: [lx - 0.5, ly + 3.8, 0.6, 1.6] });    // toe gap
-    S.push({ k: 'o', t: 'rect', p: [lx + 1.0, ly + 3.9, 0.6, 1.6] });    // toe gap
-    S.push({ k: 'o', t: 'rect', p: [lx + 2.4, ly + 3.7, 0.6, 1.5] });    // toe gap
+    S.push({ k: 'B', t: 'ell', p: [lx, ly, 2.4, 3.1] });
+    S.push({ k: 'M', t: 'ell', p: [lx - 1.0, ly + 0.6, 1.2, 2.3] });
+    S.push({ k: 'g', t: 'ell', p: [lx + 0.8, ly + 2.8, 3.3, 1.7] });
+    S.push({ k: 'o', t: 'rect', p: [lx - 0.5, ly + 2.9, 0.55, 1.7] });
+    S.push({ k: 'o', t: 'rect', p: [lx + 1.05, ly + 3.0, 0.55, 1.7] });
+    S.push({ k: 'o', t: 'rect', p: [lx + 2.6, ly + 2.8, 0.55, 1.6] });
   });
-  // ===== neck + round head + highlight + cheek blush =====
-  S.push({ k: 'B', t: 'ell', p: [(bx + hx) / 2 + 1, (by + hy) / 2, 3.4, Math.abs(by - hy) / 2 + 2.4] });
-  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr * 1.04, hr * 1.04] });        // round face
-  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.34, hy - hr * 0.42, hr * 0.54, hr * 0.42] });
-  S.push({ k: 'G', t: 'ell', p: [hx + hr * 0.2, hy + hr * 0.36, hr * 0.24, hr * 0.15] });   // cheek blush
-  // ===== muzzle =====
-  S.push({ k: 'B', t: 'ell', p: [sx - hr * 0.06, sy, hr * 0.58, hr * 0.46] });
-  S.push({ k: 'L', t: 'ell', p: [sx - hr * 0.04, sy - hr * 0.22, hr * 0.3, hr * 0.14] });
-  S.push({ k: 'g', t: 'ell', p: [sx, sy + hr * 0.22, hr * 0.44, hr * 0.24] });
-  // ===== nose horn (short, clean) + ear horn =====
-  S.push({ k: 'h', t: 'poly', p: [[sx + hr * 0.44, sy - hr * 0.3], [sx + hr * 0.26, sy - hr * 0.92], [sx + hr * 0.12, sy - hr * 0.86], [sx + hr * 0.16, sy - hr * 0.3]] });
-  S.push({ k: 'H', t: 'tri', p: [[sx + hr * 0.16, sy - hr * 0.3], [sx + hr * 0.16, sy - hr * 0.6], [sx + hr * 0.3, sy - hr * 0.32]] });
-  S.push({ k: 'h', t: 'tri', p: [[hx - hr * 0.34, hy - hr * 0.66], [hx - hr * 0.58, hy - hr * 1.18], [hx - hr * 0.06, hy - hr * 0.74]] });
-  S.push({ k: 'H', t: 'tri', p: [[hx - hr * 0.34, hy - hr * 0.66], [hx - hr * 0.42, hy - hr * 0.98], [hx - hr * 0.2, hy - hr * 0.68]] });
-  // ===== friendly eye (white + amber iris + dark pupil + shine + lid) =====
-  S.push({ k: 'M', t: 'poly', p: [[ex - hr * 0.44, ey - hr * 0.36], [ex + hr * 0.46, ey - hr * 0.46], [ex + hr * 0.48, ey - hr * 0.24], [ex - hr * 0.42, ey - hr * 0.16]] });   // brow/lid
-  S.push({ k: 'e', t: 'ell', p: [ex, ey, hr * 0.42, hr * 0.48] });
-  S.push({ k: 'i', t: 'ell', p: [ex + hr * 0.05, ey + hr * 0.06, hr * 0.28, hr * 0.32] });
-  S.push({ k: 'o', t: 'ell', p: [ex + hr * 0.07, ey + hr * 0.08, hr * 0.14, hr * 0.18] });
-  S.push({ k: 'e', t: 'ell', p: [ex - hr * 0.06, ey - hr * 0.14, hr * 0.1, hr * 0.1] });   // shine
-  // ===== nostril =====
-  S.push({ k: 'o', t: 'rect', p: [sx + hr * 0.36, sy - hr * 0.04, 1.0, 1.0] });
-  // ===== mouth (small smile + tiny fang) =====
-  S.push({ k: 'o', t: 'poly', p: [[sx + hr * 0.44, sy + hr * 0.34], [sx + hr * 0.44, sy + hr * 0.42], [sx + hr * 0.02, sy + hr * 0.5], [sx - hr * 0.02, sy + hr * 0.42]] });
-  S.push({ k: 'f', t: 'tri', p: [[sx + hr * 0.34, sy + hr * 0.42], [sx + hr * 0.31, sy + hr * 0.58], [sx + hr * 0.4, sy + hr * 0.5]] });
-  // ===== near wing (small bat, base + warm + arm) =====
+  // ===== SNOUT =====
+  S.push({ k: 'B', t: 'ell', p: [scx, scy, srx, sry] });
+  S.push({ k: 'M', t: 'ell', p: [scx + 0.2, scy + 1.1, srx * 0.85, sry * 0.5] });
+  S.push({ k: 'L', t: 'ell', p: [scx - 0.6, scy - 1.2, srx * 0.46, sry * 0.4] });
+  S.push({ k: 'o', t: 'ell', p: [scx + 1.2, scy - 0.3, 0.7, 0.85] });   // nostril
+  S.push({ k: 'o', t: 'poly', p: [[scx + 1.4, scy + 1.9], [scx - 2.8, scy + 2.3], [scx - 2.8, scy + 2.9], [scx + 1.4, scy + 2.5]] });   // mouth
+  S.push({ k: 'f', t: 'tri', p: [[scx - 1.6, scy + 2.3], [scx - 2.0, scy + 3.3], [scx - 1.1, scy + 2.8]] });   // fang
+  // ===== EYE (big, friendly) + cheek blush =====
+  S.push({ k: 'M', t: 'poly', p: [[ecx - 2.8, ecy - 2.4], [ecx + 3.0, ecy - 2.8], [ecx + 3.2, ecy - 1.3], [ecx - 2.6, ecy - 1.0]] });   // lid/brow
+  S.push({ k: 'e', t: 'ell', p: [ecx, ecy, 2.7, 3.1] });
+  S.push({ k: 'i', t: 'ell', p: [ecx + 0.4, ecy + 0.5, 1.8, 2.1] });
+  S.push({ k: 'o', t: 'ell', p: [ecx + 0.5, ecy + 0.7, 0.95, 1.15] });
+  S.push({ k: 'e', t: 'ell', p: [ecx - 0.5, ecy - 0.7, 0.7, 0.7] });   // shine
+  S.push({ k: 'G', t: 'ell', p: [ecx + 0.6, ecy + 3.8, 1.7, 0.95] });  // cheek blush
+  // ===== HORNS (cream + shade) — nose + ear =====
+  S.push({ k: 'h', t: 'poly', p: [[scx - 1.0, scy - 2.0], [scx - 0.2, scy - 6.2], [scx + 1.2, scy - 6.0], [scx + 1.0, scy - 1.6]] });
+  S.push({ k: 'H', t: 'poly', p: [[scx - 1.0, scy - 2.0], [scx - 0.6, scy - 4.8], [scx + 0.2, scy - 4.7], [scx - 0.1, scy - 1.8]] });
+  S.push({ k: 'h', t: 'poly', p: [[24.5, hcy - 6.6], [23.3, hcy - 9.4], [24.7, hcy - 9.2], [26.0, hcy - 6.2]] });
+  S.push({ k: 'H', t: 'poly', p: [[24.5, hcy - 6.6], [23.8, hcy - 8.4], [24.7, hcy - 8.3], [25.3, hcy - 6.4]] });
+  // ===== NEAR wing (bat) — flaps with the gait =====
   {
-    const J = [bx + brx * 0.26, by - bry * 0.5];
-    const t1 = [bx - brx * 0.52, by - bry * 1.95 + lift];
-    const t2 = [bx - brx * 0.06, by - bry * 1.32 + lift * 0.6];
-    const b1 = [bx - brx * 0.6, by - bry * 0.92 + lift * 0.4];
-    S.push({ k: 'B', t: 'poly', p: [J, t1, t2, [bx + brx * 0.06, by - bry * 0.55]] });
-    S.push({ k: 'g', t: 'poly', p: [J, t2, b1, [bx + brx * 0.06, by - bry * 0.55]] });
-    S.push({ k: 'D', t: 'poly', p: [[J[0] - 0.5, J[1] - 0.4], [t1[0], t1[1]], [t1[0] + 1.0, t1[1] + 0.9], [J[0] + 0.7, J[1] + 0.6]] });
+    const wrx = 19, wry = bcy - 5.6;
+    const tip = [9, wry - 6.5 + lift];
+    const mid = [14, wry - 2.2 + lift * 0.6];
+    const low = [11.5, wry + 0.8 + lift * 0.4];
+    S.push({ k: 'w', t: 'poly', p: [[wrx, wry], tip, mid, [wrx - 1, wry + 1.6]] });
+    S.push({ k: 'W', t: 'poly', p: [[wrx, wry], mid, low, [wrx - 1, wry + 1.6]] });
+    S.push({ k: 'W', t: 'poly', p: [[wrx, wry], tip, [tip[0] + 1.3, tip[1] + 0.9], [wrx + 0.6, wry + 0.4]] });
   }
   return S;
 }
