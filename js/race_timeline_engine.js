@@ -47,6 +47,20 @@ const TL_STYLE_TEMPO = {
 // telop and HUD stay in sync with what the dragons are doing on screen.
 const TL_PHASE_TAU = [0.18, 0.44, 0.66, 0.86, 1.01];
 
+// Wall-clock pacing (seconds at 1× speed). A race is meant to be a single
+// ~1-minute beat you actually want to watch; skip / 2× / 3× are the player-
+// friendly escape hatches layered on top in the canvas player. Kept in one
+// tunable place so race length stays data-driven (raise `base` for longer
+// races; this NEVER affects the finishing order, odds, payouts, or coins —
+// it is only how fast the fixed result is played back).
+const TL_DURATION = {
+  base: 54,         // seconds at the reference distance
+  refMeters: 1200,  // distance that maps to `base`
+  perKm: 8,         // extra seconds per +1000m of distance
+  min: 50,          // never shorter than this at 1×
+  max: 66           // never longer than this at 1×
+};
+
 // ---- small deterministic RNG so a race replays identically every render ----
 function tlHash(str) {
   let h = 2166136261 >>> 0;
@@ -271,7 +285,10 @@ function buildRaceTimeline(race, raceResult, oddsResult, bet) {
   dragons.forEach(dr => { byId[dr.id] = dr; });
 
   // duration hint (wall-clock seconds at 1×) scales gently with distance
-  const durationSecHint = clamp(11 + (distanceMeters - 1200) / 1000 * 2.2, 11, 18);
+  const durationSecHint = clamp(
+    TL_DURATION.base + (distanceMeters - TL_DURATION.refMeters) / 1000 * TL_DURATION.perKm,
+    TL_DURATION.min, TL_DURATION.max
+  );
 
   return {
     raceId: race.id,

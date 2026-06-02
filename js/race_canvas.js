@@ -26,6 +26,12 @@ function stopRacePlayer() {
   if (RC_ACTIVE) { RC_ACTIVE.stop(); RC_ACTIVE = null; }
 }
 
+// Phase-entry banners — a big sweeping caption the instant the field rolls into
+// a new act of the race. Indexed to timeline.phaseIndexAt() (序盤/中盤/展開/終盤/
+// ゴール前). Index 0 is intentionally blank so the opening act doesn't double up
+// with the GO！ burst. Pure presentation: tune freely, the result never changes.
+const RC_PHASE_BANNERS = ["", "隊列形成", "中盤の攻防", "直線勝負！", "ゴール前！"];
+
 // ---------- colour helpers ----------
 function rcHexToRgb(hex) {
   let h = (hex || "#888").replace("#", "");
@@ -779,7 +785,9 @@ function startRaceCanvas(container, ctx) {
     battleT: 0,         // throttle for 接戦！ callouts
     overT: 0,           // throttle for overtake callouts
     celebrated: false,  // finish confetti fired once
-    confettiT: 0        // ongoing confetti spawn while celebrating
+    confettiT: 0,       // ongoing confetti spawn while celebrating
+    banner: null,       // {text,t,max} active phase-entry banner
+    phaseShown: 0       // last phase index a banner was raised for
   };
   dragons.forEach(dr => { S.gait[dr.id] = Math.random() * Math.PI * 2; });
 
@@ -1498,6 +1506,30 @@ function startRaceCanvas(container, ctx) {
       cctx.restore(); cctx.globalAlpha = 1;
     }
 
+    // --- phase-entry banner (slides in from the side, holds, slides out) ---
+    if (S.banner && !S.finished && S.preT <= 0) {
+      const b = S.banner, u = clamp(b.t / b.max, 0, 1);
+      const fade = u < 0.16 ? u / 0.16 : (u > 0.74 ? (1 - u) / 0.26 : 1);
+      const slideIn = (1 - Math.min(1, u / 0.16)) * 46;
+      const slideOut = u > 0.74 ? ((u - 0.74) / 0.26) * 34 : 0;
+      const sx = slideIn - slideOut;
+      const by = ch * 0.17;
+      cctx.save();
+      cctx.globalAlpha = clamp(fade, 0, 1);
+      cctx.fillStyle = "rgba(12,14,28,0.46)";
+      cctx.fillRect(0, by - 23, cw, 46);
+      cctx.fillStyle = "rgba(255,224,106,0.92)";
+      cctx.fillRect(0, by - 23, cw, 3);
+      cctx.fillRect(0, by + 20, cw, 3);
+      cctx.font = "bold 30px system-ui, sans-serif";
+      cctx.textAlign = "center"; cctx.textBaseline = "middle";
+      cctx.lineWidth = 5; cctx.strokeStyle = "rgba(8,10,22,0.7)";
+      cctx.fillStyle = "#fff";
+      cctx.strokeText(b.text, cw / 2 + sx, by);
+      cctx.fillText(b.text, cw / 2 + sx, by);
+      cctx.restore(); cctx.globalAlpha = 1;
+    }
+
     // --- finish celebration banner ---
     if (S.finished) {
       const winner = timeline.crossings[0];
@@ -1572,6 +1604,8 @@ function startRaceCanvas(container, ctx) {
     // "GO！" flash + overtake push-in impulse fade
     if (S.goFlash > 0) S.goFlash = Math.max(0, S.goFlash - dt);
     if (S.zoomBump > 0) S.zoomBump = Math.max(0, S.zoomBump - dt * 0.22);
+    // phase-entry banner ages out (animates even while paused so it can clear)
+    if (S.banner) { S.banner.t += dt; if (S.banner.t >= S.banner.max) S.banner = null; }
     // keep sprinkling celebration confetti for a beat after the finish
     if (S.finished && S.confettiT > 0) {
       S.confettiT -= dt;
@@ -1610,6 +1644,19 @@ function startRaceCanvas(container, ctx) {
       adv *= (1 - 0.62 * k);
     }
     S.tau = Math.min(1, S.tau + adv);
+
+    // --- phase-entry banner: a sweeping caption as the field rolls into a new
+    // act of the race (presentation only; cued off the shared race clock) ---
+    const phNow = timeline.phaseIndexAt(S.tau);
+    if (phNow !== S.phaseShown) {
+      S.phaseShown = phNow;
+      const lbl = RC_PHASE_BANNERS[phNow];
+      if (lbl && S.preT <= 0 && !S.finished) {
+        S.banner = { text: lbl, t: 0, max: 1.9 };
+        S.zoomBump = Math.min(0.2, (S.zoomBump || 0) + 0.07);
+        if (phNow >= 3) S.shake = Math.max(S.shake, 2.5);
+      }
+    }
 
     // detect crossings between prevTau and S.tau
     for (const cr of timeline.crossings) {
@@ -1747,13 +1794,22 @@ function startRaceCanvas(container, ctx) {
   function renderControls() {
     controlsEl.innerHTML = "";
     if (!S.finished) {
-      const sp = makeBtn(`速度 ${S.speed}×`, () => {
-        S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 3 : 1;
-        renderControls();
-      }, { secondary: S.speed === 1 });
-      if (S.speed > 1) sp.classList.add("speed-active");
-      controlsEl.appendChild(sp);
-      controlsEl.appendChild(makeBtn("⏭ スキップ", () => { stopRacePlayer(); if (typeof renderResult === "function") renderResult(); }, { secondary: true }));
+      // segmented speed control — tap a rate directly (clearer than cycling),
+      // so 2× / 3× fast-forward is one obvious tap away.
+      const grp = el("div", "rc-speedgrp");
+      grp.appendChild(el("span", "rc-ctl-label", "速度"));
+      const seg = el("div", "rc-speedseg");
+      [1, 2, 3].forEach(v => {
+        const b = el("button", "rc-spd" + (S.speed === v ? " on" : ""), v + "×");
+        b.onclick = () => { S.speed = v; renderControls(); };
+        seg.appendChild(b);
+      });
+      grp.appendChild(seg);
+      controlsEl.appendChild(grp);
+      // prominent skip — jump straight to the result whenever the player wants
+      const skip = makeBtn("⏭ スキップ", () => { stopRacePlayer(); if (typeof renderResult === "function") renderResult(); }, { secondary: true });
+      skip.classList.add("rc-skip");
+      controlsEl.appendChild(skip);
     }
     controlsEl.appendChild(makeBtn("📜 全ログ", () => {
       S.showLog = !S.showLog;
@@ -1810,6 +1866,25 @@ function startRaceCanvas(container, ctx) {
       // play doesn't fire a phantom overtake callout on the first frame
       S.preT = 0; S.goFlash = 0; S.prevStand = null;
       S.tau = Math.max(0, Math.min(1, t));
+      // don't replay a phase banner from a scrub; re-baseline the phase marker
+      S.banner = null; S.phaseShown = timeline.phaseIndexAt(S.tau);
+      // Rebuild all presentation/ceremony state from the target time so that
+      // scrubbing — including *backward* from a finished race — shows a faithful
+      // frame (no stuck finish overlay) and replays callouts cleanly. Order is
+      // fixed by the timeline; this only touches visuals.
+      S.floats = [];
+      S.overT = 0;
+      S.crossedSet = new Set(timeline.crossings.filter(c => S.tau >= c.tau).map(c => c.id));
+      const _winCross = timeline.crossings.find(c => c.place === 1);
+      S.tapeBroken = !!(_winCross && S.tau >= _winCross.tau);
+      const _done = S.tau >= 1;
+      S.finished = _done; S.finishedAnnounced = _done; S.celebrated = _done; S.confettiT = 0;
+      // re-arm per-dragon stumble/surge shouts so already-passed ones stay quiet
+      // and still-upcoming ones can fire again on a forward replay
+      for (const dr of dragons) {
+        const ownU = dr.finishTau ? Math.min(1, S.tau / dr.finishTau) : 1;
+        for (const ev of dr.events) ev._shouted = ownU >= ev.u;
+      }
       for (let i = 0; i < 80; i++) updateCamera();
       draw();
     }

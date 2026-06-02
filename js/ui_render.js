@@ -23,30 +23,58 @@ function renderHome() {
   state.ui.screen = "home";
   const app = $("app"); app.innerHTML = "";
   app.appendChild(el("h2", null, "ホーム"));
-  const intro = el("div", "card", `
-    <p>ようこそ、<b>聖龍爆走録ミミ</b>へ。</p>
-    <p>あなたは予想家として、市場のオッズと真の実力のズレを読み、賭けで利益を出します。</p>
-    <p>所持コイン: <b>${fmtCoins(state.player.coins)}</b> ／ 出走数: ${state.player.completedRaces} ／ 単竜的中: ${state.player.wins}</p>
-  `);
-  app.appendChild(intro);
-  const actions = el("div", "actions");
-  const goRace = el("button", null, "レースを選ぶ"); goRace.onclick = () => renderRaceSelect();
-  actions.appendChild(goRace);
-  const goAssets = el("button", "secondary", "暮らしと資産"); goAssets.onclick = () => renderAssets();
-  actions.appendChild(goAssets);
-  const goVillage = el("button", "secondary", "竜の村を訪れる"); goVillage.onclick = () => renderVillage();
-  actions.appendChild(goVillage);
-  const goCollection = el("button", "secondary", "竜図鑑"); goCollection.onclick = () => renderCollection();
-  actions.appendChild(goCollection);
-  const goHelp = el("button", "secondary", "予想入門"); goHelp.onclick = () => renderHelp();
-  actions.appendChild(goHelp);
-  const shareGame = el("button", "secondary", "ゲームをシェア"); shareGame.onclick = shareGameInfo;
-  actions.appendChild(shareGame);
-  const reset = el("button", "secondary", "リセット"); reset.onclick = () => {
+
+  const p = state.player;
+  const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
+  const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : null;
+
+  // --- hero: welcome + the single primary action ---
+  const hero = el("div", "card home-hero");
+  hero.innerHTML = `
+    <div class="home-hero-title">ようこそ、<b>聖龍爆走録ミミ</b> へ</div>
+    <p class="home-hero-sub">市場のオッズと真の実力のズレを読み、賭けで利益を出す——予想家の物語。</p>
+  `;
+  const cta = el("button", "home-cta", "🐉 レースを選ぶ");
+  cta.onclick = () => renderRaceSelect();
+  hero.appendChild(cta);
+  app.appendChild(hero);
+
+  // --- player stat strip ---
+  const stat = (k, v) => `<div class="home-stat"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  const stats = el("div", "card home-stats");
+  let statHTML =
+    stat("所持コイン", fmtCoins(p.coins)) +
+    stat("ランク", p.rank + (rankLabel ? ` <small>${rankLabel}</small>` : "")) +
+    stat("出走数", p.completedRaces + " 戦") +
+    stat("単竜的中", p.wins + " 勝");
+  if (winRate !== null) statHTML += stat("単勝率", winRate + " %");
+  stats.innerHTML = statHTML;
+  app.appendChild(stats);
+
+  // --- secondary navigation tiles ---
+  app.appendChild(el("h3", null, "メニュー"));
+  const tile = (icon, label, sub, onClick) => {
+    const b = el("button", "home-tile",
+      `<span class="ht-icon">${icon}</span><span class="ht-body"><span class="ht-label">${label}</span><span class="ht-sub">${sub}</span></span>`);
+    b.onclick = onClick;
+    return b;
+  };
+  const menu = el("div", "home-menu");
+  menu.appendChild(tile("🏠", "暮らしと資産", "総資産と暮らしの歩み", () => renderAssets()));
+  menu.appendChild(tile("🏘️", "竜の村を訪れる", "竜たちと交流する", () => renderVillage()));
+  menu.appendChild(tile("📖", "竜図鑑", "出会った竜の記録", () => renderCollection()));
+  menu.appendChild(tile("🎓", "予想入門", "賭けの基礎を学ぶ", () => renderHelp()));
+  menu.appendChild(tile("📣", "ゲームをシェア", "友達に教える", shareGameInfo));
+  app.appendChild(menu);
+
+  // --- footer: low-key reset ---
+  const foot = el("div", "actions home-foot");
+  const reset = el("button", "secondary ghost", "プレイヤー状態をリセット");
+  reset.onclick = () => {
     if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); }
   };
-  actions.appendChild(reset);
-  app.appendChild(actions);
+  foot.appendChild(reset);
+  app.appendChild(foot);
 }
 
 // =========================================================================
@@ -505,23 +533,25 @@ function renderRaceDetail(race) {
   // Betting panel
   app.appendChild(el("h3", null, "賭けパネル"));
   const panel = el("div", "card");
+  const betCap = RANKS[race.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1.0);
   panel.innerHTML = `
     <div class="bet-tabs">
-      <button data-type="win" class="active">単竜（1着）</button>
-      <button data-type="place">複竜（3着以内）</button>
-      <button data-type="wide">ワイド竜（2頭3着以内）</button>
+      <button data-type="win" class="active">単竜<small>1着</small></button>
+      <button data-type="place">複竜<small>3着以内</small></button>
+      <button data-type="wide">ワイド竜<small>2頭が3着以内</small></button>
     </div>
     <div class="selectors">
       <label>1頭目: <select id="sel-a"></select></label>
       <label id="sel-b-row" style="display:none;">2頭目: <select id="sel-b"></select></label>
-      <label>賭金: <input id="wager" type="number" min="1" step="1" value="100" max="${RANKS[race.rank].maxWager}"></label>
-      <div class="expected-payout" id="expected-payout">期待払戻: -</div>
+      <label>賭金: <input id="wager" type="number" min="1" step="1" value="100" max="${betCap}"></label>
+      <div class="wager-chips" id="wager-chips"></div>
+      <div class="payout-box empty" id="expected-payout"><div class="po-hint">竜と賭金を選ぶと払戻が表示されます</div></div>
     </div>
     <div class="actions">
-      <button id="bet-confirm">この賭けで出走</button>
+      <button id="bet-confirm" disabled>この賭けで出走</button>
       <button id="back-race-select" class="secondary">戻る</button>
     </div>
-    <div class="condition-line">所持: ${fmtCoins(state.player.coins)}コイン ／ このランクの上限賭金: ${fmtCoins(RANKS[race.rank].maxWager)}</div>
+    <div class="condition-line">所持: ${fmtCoins(state.player.coins)}コイン ／ 上限賭金: ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
   `;
   app.appendChild(panel);
 
@@ -549,6 +579,21 @@ function renderRaceDetail(race) {
   $("wager").oninput = updateExpected;
   $("bet-confirm").onclick = onConfirmBet;
   $("back-race-select").onclick = renderRaceSelect;
+
+  // Wager quick-chips — fast, mobile-friendly amount entry (each clamped to the
+  // effective cap and the player's coins so a tap never lands on an invalid bet).
+  const chipsEl = $("wager-chips");
+  [100, 500, 1000].forEach(v => {
+    if (v > betCap) return;                      // skip amounts above this rank's cap
+    const chip = el("button", "chip", fmtCoins(v));
+    chip.onclick = () => { $("wager").value = Math.max(1, Math.min(v, betCap, state.player.coins)); updateExpected(); };
+    chipsEl.appendChild(chip);
+  });
+  const maxChip = el("button", "chip", "最大");
+  maxChip.onclick = () => { $("wager").value = Math.max(1, Math.floor(Math.min(betCap, state.player.coins))); updateExpected(); };
+  chipsEl.appendChild(maxChip);
+
+  updateExpected();   // set the initial payout hint + confirm-disabled state
 }
 
 // §11 §19 placeholder dragon icon — colored disc + name initial.
@@ -616,16 +661,38 @@ function updateExpected() {
   const a = $("sel-a").value;
   const b = $("sel-b").value;
   const wager = parseInt($("wager").value, 10);
-  c.bet = { type, selections: type === "wide" ? [a,b] : [a], wager };
-  let display = "期待払戻: -";
-  if (a && (type !== "wide" || b) && wager > 0) {
-    try {
-      const odds = betOdds(c.bet, c.oddsResult);
-      const payout = Math.floor(wager * odds);
-      display = `オッズ ${odds.toFixed(1)}倍 ／ 的中時払戻: ${fmtCoins(payout)}コイン (利益 +${fmtCoins(payout - wager)})`;
-    } catch (e) { display = "オッズ計算エラー"; }
+  c.bet = { type, selections: type === "wide" ? [a, b] : [a], wager: Number.isNaN(wager) ? 0 : wager };
+
+  const box = $("expected-payout");
+  const confirmBtn = $("bet-confirm");
+  box.style.color = "";                             // clear any prior inline error tint
+  box.classList.remove("empty", "valid", "invalid");
+  const setHint = (cls, msg) => {
+    box.classList.add(cls);
+    box.innerHTML = `<div class="po-hint">${msg}</div>`;
+    if (confirmBtn) confirmBtn.disabled = true;
+  };
+
+  // 1) incomplete selection → friendly prompt, confirm stays disabled
+  if (!(a && (type !== "wide" || b))) {
+    setHint("empty", (type === "wide" ? "2頭" : "竜") + "と賭金を選ぶと払戻が表示されます");
+    return;
   }
-  $("expected-payout").textContent = display;
+  // 2) validation (wager range / coins / cap / duplicate) → inline reason
+  const err = validateBet(c.bet, c.race);
+  if (err) { setHint("invalid", err); return; }
+  // 3) valid → structured odds / payout / profit readout
+  let odds, payout;
+  try {
+    odds = betOdds(c.bet, c.oddsResult);
+    payout = Math.floor(c.bet.wager * odds);
+  } catch (e) { setHint("invalid", "オッズ計算エラー"); return; }
+  box.classList.add("valid");
+  box.innerHTML =
+    `<div class="po-line"><span class="pl-k">オッズ</span><span class="pl-v">${odds.toFixed(1)} 倍</span></div>` +
+    `<div class="po-line"><span class="pl-k">的中時払戻</span><span class="pl-v">${fmtCoins(payout)} コイン</span></div>` +
+    `<div class="po-line po-profit"><span class="pl-k">利益（上乗せ）</span><span class="pl-v">+${fmtCoins(payout - c.bet.wager)}</span></div>`;
+  if (confirmBtn) confirmBtn.disabled = false;
 }
 
 function onConfirmBet(skipDialog) {

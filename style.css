@@ -978,9 +978,26 @@ body {
   opacity: 0.42; font-size: 12px; line-height: 1.5; color: #d8c08a;
 }
 
-.rc-controls { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.rc-controls { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
 .rc-controls button { padding: 8px 14px; font-size: 13px; }
 .rc-controls .speed-active { background: #ff8060; }
+
+/* segmented speed control (1× / 2× / 3×) — clearer than a cycling button */
+.rc-speedgrp { display: inline-flex; align-items: center; gap: 6px; }
+.rc-ctl-label { font-size: 12px; color: #cbb890; font-weight: bold; }
+.rc-speedseg {
+  display: inline-flex; border: 1px solid #6a5a8c; border-radius: 8px;
+  overflow: hidden; background: rgba(0,0,0,0.28);
+}
+.rc-speedseg button.rc-spd {
+  padding: 8px 15px; font-size: 13px; font-weight: bold;
+  background: transparent; color: #cfc3e6;
+  border: none; border-left: 1px solid #6a5a8c; border-radius: 0;
+}
+.rc-speedseg button.rc-spd:first-child { border-left: none; }
+.rc-speedseg button.rc-spd.on { background: #ff8060; color: #241018; }
+.rc-controls .rc-skip { background: #5a3f7a; color: #f4ecff; }
+@media (max-width: 420px) { .rc-speedseg button.rc-spd { padding: 8px 12px; } }
 
 .rc-finishstrip {
   background: rgba(0,0,0,0.4); border: 1px solid #d4a850;
@@ -1171,6 +1188,69 @@ table.entry-table {
 
 .actions { display: flex; gap: 10px; margin-top: 16px; }
 
+/* ===== home screen (product-grade menu) ===== */
+.home-hero { background: linear-gradient(135deg, rgba(212,168,80,0.16), rgba(96,64,112,0.22)); }
+.home-hero-title { font-size: 18px; color: #ffe6a8; margin-bottom: 4px; }
+.home-hero-title b { color: #fff0c8; }
+.home-hero-sub { font-size: 13px; color: #d8c89a; line-height: 1.6; margin: 0 0 12px; }
+.home-cta {
+  width: 100%; padding: 14px; font-size: 17px; font-weight: bold;
+  background: linear-gradient(180deg, #ffcf6a, #e0a840); color: #2a1810;
+  box-shadow: 0 3px 0 #a87820;
+}
+.home-cta:hover { background: linear-gradient(180deg, #ffd87a, #e8b050); }
+.home-cta:active { transform: translateY(2px); box-shadow: 0 1px 0 #a87820; }
+
+.home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+.home-stat {
+  display: flex; flex-direction: column; gap: 2px; padding: 7px 9px;
+  background: rgba(0,0,0,0.22); border-radius: 6px;
+}
+.home-stat .k { font-size: 11px; color: #b0a070; }
+.home-stat .v { font-size: 16px; color: #ffe6a8; font-weight: bold; }
+.home-stat .v small { font-size: 11px; color: #d8b878; font-weight: normal; }
+
+.home-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 480px) { .home-menu { grid-template-columns: 1fr; } }
+.home-tile {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  padding: 12px; background: rgba(96,64,112,0.30); color: #f0e8d0;
+  border: 1px solid #5a4a70; border-radius: 8px; font-weight: normal;
+}
+.home-tile:hover { background: rgba(120,80,140,0.42); border-color: #8a6aa8; }
+.ht-icon { font-size: 22px; line-height: 1; }
+.ht-body { display: flex; flex-direction: column; gap: 2px; }
+.ht-label { font-size: 14px; font-weight: bold; color: #ffe6a8; }
+.ht-sub { font-size: 11px; color: #c0a888; }
+.home-foot { justify-content: center; margin-top: 18px; }
+.home-foot .ghost {
+  background: transparent; color: #9a8a66; border: 1px solid #5a4a4a;
+  font-weight: normal; font-size: 12px; padding: 6px 14px;
+}
+.home-foot .ghost:hover { color: #c8b48a; border-color: #7a6a5a; }
+
+/* ===== betting panel uplift ===== */
+.bet-tabs button small { display: block; font-size: 10px; opacity: 0.82; font-weight: normal; margin-top: 2px; }
+.wager-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.wager-chips button.chip {
+  padding: 6px 13px; font-size: 13px; font-weight: bold;
+  background: rgba(0,0,0,0.28); color: #ffe0a0;
+  border: 1px solid #7a6a4a; border-radius: 14px;
+}
+.wager-chips button.chip:hover { background: rgba(212,168,80,0.25); border-color: #d4a850; }
+.payout-box {
+  background: rgba(0,0,0,0.34); border-radius: 6px; padding: 10px 12px;
+  margin: 10px 0; border-left: 3px solid #40c040;
+}
+.payout-box.empty { border-left-color: #604040; }
+.payout-box.invalid { border-left-color: #c05050; }
+.payout-box .po-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin: 2px 0; }
+.payout-box .po-line .pl-k { color: #b0a070; }
+.payout-box .po-line .pl-v { color: #f0e8d0; font-weight: bold; }
+.payout-box .po-profit .pl-v { color: #80ff80; }
+.payout-box .po-hint { font-size: 12px; color: #c8a060; }
+.payout-box.invalid .po-hint { color: #ff9a8a; }
+
 .debug-info {
   background: rgba(0,0,0,0.5); border: 1px dashed #604040;
   padding: 8px; margin-top: 10px; font-size: 11px; font-family: monospace;
@@ -1198,6 +1278,7 @@ table.entry-table {
 }
 
 .condition-line { color: #c0c0a0; font-size: 12px; font-style: italic; }
+.condition-line .cl-note { color: #9a8a66; font-style: normal; }
 .locked-badge { color: #888; font-size: 12px; margin-left: 4px; }
 .race-card button:disabled { opacity: 0.4; }
 
