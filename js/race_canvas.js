@@ -1219,6 +1219,36 @@ function startRaceCanvas(container, ctx) {
     cctx.fill();
   }
   // distant silhouette that gives each terrain its identity (screen space, parallax)
+  // ===== pixel-art backdrop helpers (chunky grid) — the "dot" half of the hybrid.
+  // Distant course landmarks (mountains / volcano / clouds / moon) are drawn as blocky
+  // pixels to match the dragon sprites; sky / ground / fog stay smooth (vector). =====
+  const RC_BPX = 4;   // backdrop pixel chunk size
+  function pxBlock(x, y, w, h, color) {
+    const q = RC_BPX;
+    cctx.fillStyle = color;
+    cctx.fillRect(Math.round(x / q) * q, Math.round(y / q) * q, Math.max(q, Math.round(w / q) * q), Math.max(q, Math.round(h / q) * q));
+  }
+  // stepped pixel ridge: top profile topFn(x), filled down to baseY, with a lit top + dark cap
+  function pxRidge(x0, x1, baseY, topFn, fill, lit, cap) {
+    const q = RC_BPX; x0 = Math.floor(x0 / q) * q; x1 = Math.ceil(x1 / q) * q; baseY = Math.round(baseY / q) * q;
+    for (let x = x0; x < x1; x += q) {
+      const top = Math.round(topFn(x + q / 2) / q) * q;
+      if (top >= baseY) continue;
+      cctx.fillStyle = fill; cctx.fillRect(x, top, q, baseY - top);
+      if (lit) { cctx.fillStyle = lit; cctx.fillRect(x, top, q, q); }
+      if (cap) { cctx.fillStyle = cap; cctx.fillRect(x, top - q, q, q); }
+    }
+  }
+  // blocky pixel disc (moon / crater glow core)
+  function pxDisc(cx, cy, r, color) {
+    const q = RC_BPX; cctx.fillStyle = color;
+    for (let y = -r; y <= r; y += q) { const xw = Math.sqrt(Math.max(0, r * r - y * y)); cctx.fillRect(Math.round((cx - xw) / q) * q, Math.round((cy + y) / q) * q, Math.max(q, Math.round((2 * xw) / q) * q), q); }
+  }
+  // blocky pixel cloud (a few stacked lumps)
+  function pxCloud2(cx, cy, r, color, cap) {
+    const q = RC_BPX;
+    pxRidge(cx - r, cx + r, cy + r * 0.55, x => cy - r * 0.62 * Math.sqrt(Math.max(0, 1 - ((x - cx) / r) * ((x - cx) / r))) - (Math.abs(x - cx) < r * 0.45 ? r * 0.22 : 0), color, null, cap);
+  }
   function drawThemeBackdrop(key, g, alpha) {
     if (alpha <= 0.02) return;
     const hz = g.top;
@@ -1226,43 +1256,32 @@ function startRaceCanvas(container, ctx) {
     cctx.save();
     cctx.globalAlpha = alpha;
     if (key === "fire") {
-      // red sky-glow band along the horizon
+      // red sky-glow band along the horizon (smooth atmosphere — the "sprite" half)
       const glow = cctx.createLinearGradient(0, hz - 130, 0, hz + 6);
       glow.addColorStop(0, "rgba(255,70,20,0)"); glow.addColorStop(1, "rgba(255,90,30,0.34)");
       cctx.fillStyle = glow; cctx.fillRect(0, hz - 130, cw, 136);
-      // big erupting volcano cone (parallax)
+      // PIXEL volcano cone (stepped silhouette) — the "dot" half
       const vx = cw * 0.64 - ((S.camL * 70) % (cw * 1.7));
       const peak = hz - 108, halfW = 138;
-      cctx.fillStyle = "#241010";
-      cctx.beginPath();
-      cctx.moveTo(vx - halfW, hz); cctx.lineTo(vx - 22, peak + 6);
-      cctx.lineTo(vx + 22, peak + 6); cctx.lineTo(vx + halfW, hz); cctx.closePath(); cctx.fill();
-      cctx.fillStyle = "rgba(86,42,30,0.55)";   // sunlit flank
-      cctx.beginPath();
-      cctx.moveTo(vx + 6, peak + 6); cctx.lineTo(vx + 22, peak + 6);
-      cctx.lineTo(vx + halfW, hz); cctx.lineTo(vx + halfW * 0.42, hz); cctx.closePath(); cctx.fill();
-      // glowing crater + lava fountain
-      const cg = cctx.createRadialGradient(vx, peak + 8, 2, vx, peak + 8, 30);
-      cg.addColorStop(0, "rgba(255,240,150,0.95)"); cg.addColorStop(0.5, "rgba(255,140,40,0.8)"); cg.addColorStop(1, "rgba(255,80,20,0)");
-      cctx.fillStyle = cg; cctx.beginPath(); cctx.ellipse(vx, peak + 8, 27, 17, 0, 0, Math.PI * 2); cctx.fill();
-      for (let i = 0; i < 8; i++) {
-        const ph = (t / 680 + i * 0.47) % 1;                      // 0..1 rising spatter
-        const fx = vx + Math.sin(i * 2.1) * 18 * ph, fy = peak + 8 - ph * 50;
-        cctx.fillStyle = "rgba(255," + (190 - ((ph * 130) | 0)) + ",60," + ((1 - ph) * 0.9) + ")";
-        cctx.beginPath(); cctx.arc(fx, fy, 3.4 * (1 - ph * 0.4), 0, Math.PI * 2); cctx.fill();
+      const coneTop = x => { const d = Math.abs(x - vx); return d > halfW ? hz + 99 : hz - (1 - d / halfW) * (hz - peak); };
+      pxRidge(vx - halfW, vx + halfW, hz, coneTop, "#3a1712", "#5a2a1e", "#170b09");
+      pxRidge(vx + RC_BPX * 2, vx + halfW, hz, coneTop, "rgba(122,58,38,0.55)", null, null);   // sunlit flank
+      // glowing crater (pixel blocks)
+      pxBlock(vx - 16, peak + 2, 32, 8, "#ff8a30"); pxBlock(vx - 8, peak - 2, 16, 8, "#ffd866");
+      // lava fountain (animated pixel spatter)
+      for (let i = 0; i < 7; i++) {
+        const ph = (t / 680 + i * 0.5) % 1;
+        pxBlock(vx + Math.sin(i * 2.1) * 16 * ph - 2, peak + 4 - ph * 46, 4, 4, "rgba(255," + (190 - ((ph * 130) | 0)) + ",60," + ((1 - ph) * 0.9) + ")");
       }
-      // lava flows down both flanks
-      cctx.strokeStyle = "rgba(255,110,40,0.85)"; cctx.lineWidth = 3;
-      for (let s = -1; s <= 1; s += 2) {
-        cctx.beginPath(); cctx.moveTo(vx + s * 7, peak + 16);
-        cctx.quadraticCurveTo(vx + s * 54, hz - 42, vx + s * (halfW - 30), hz - 2); cctx.stroke();
+      // lava flows (pixel dots down the flanks)
+      for (let s = -1; s <= 1; s += 2) for (let k = 0; k < 5; k++) {
+        const tt = k / 5;
+        pxBlock(vx + s * (10 + tt * (halfW - 40)) - 2, peak + 16 + tt * (hz - peak - 20), 4, 4, "rgba(255,110,40,0.9)");
       }
-      // dark smoke plume
+      // dark smoke plume (pixel blocks)
       for (let i = 0; i < 5; i++) {
-        const ph = (t / 2600 + i * 0.2) % 1;
-        const sx = vx + Math.sin(i * 1.7 + t / 1800) * 20 * ph, sy = peak + 4 - ph * 74;
-        cctx.fillStyle = "rgba(60,52,52," + ((1 - ph) * 0.5) + ")";
-        cctx.beginPath(); cctx.arc(sx, sy, 9 + ph * 24, 0, Math.PI * 2); cctx.fill();
+        const ph = (t / 2600 + i * 0.2) % 1, r = 6 + ph * 20;
+        pxBlock(vx + Math.sin(i * 1.7 + t / 1800) * 18 * ph - r, peak - ph * 70 - r, r * 2, r * 2, "rgba(64,56,56," + ((1 - ph) * 0.42) + ")");
       }
     } else if (key === "turn") {
       // a big banked corner sweeps across the horizon: grandstand + striped curb
@@ -1281,12 +1300,11 @@ function startRaceCanvas(container, ctx) {
         cctx.beginPath(); cctx.arc(cx, cy, R, b0, b1); cctx.stroke();
       }
     } else if (key === "wind") {
-      cctx.fillStyle = "rgba(196,214,238,0.5)";                              // layered cloud banks
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 5; i++) {                                          // PIXEL cloud banks
         const cx = (((i * 150 - S.camL * 240) % (cw + 260)) + cw + 260) % (cw + 260) - 130;
-        rcCloud(cx, hz - 42 - (i % 2) * 20, 28 + (i % 2) * 10);
+        pxCloud2(cx, hz - 42 - (i % 2) * 20, 28 + (i % 2) * 10, "rgba(208,224,244,0.88)", "rgba(150,170,202,0.7)");
       }
-      cctx.strokeStyle = "rgba(205,228,255,0.5)"; cctx.lineWidth = 2;        // raking wind streaks
+      cctx.strokeStyle = "rgba(205,228,255,0.5)"; cctx.lineWidth = 2;        // raking wind streaks (smooth)
       for (let i = 0; i < 7; i++) {
         const yy = hz - 98 + i * 13, off = (t / 6 + i * 80) % (cw + 200);
         cctx.beginPath(); cctx.moveTo(cw - off, yy); cctx.lineTo(cw - off + 72, yy - 6); cctx.stroke();
@@ -1318,21 +1336,16 @@ function startRaceCanvas(container, ctx) {
         cctx.beginPath(); cctx.moveTo(hx, hz - 6); cctx.lineTo(hx, cyl); cctx.stroke();
       }
     } else if (key === "uphill") {
-      cctx.fillStyle = "rgba(30,46,28,0.85)";                                // a big slope to a summit
-      cctx.beginPath();
-      cctx.moveTo(0, hz); cctx.lineTo(0, hz - 10); cctx.lineTo(cw * 0.72, hz - 84); cctx.lineTo(cw * 0.72, hz); cctx.closePath(); cctx.fill();
-      cctx.strokeStyle = "#cfe6ff"; cctx.lineWidth = 2;                      // summit flagpole
-      cctx.beginPath(); cctx.moveTo(cw * 0.72, hz - 84); cctx.lineTo(cw * 0.72, hz - 102); cctx.stroke();
-      cctx.fillStyle = "#ffe06a";
-      cctx.beginPath(); cctx.moveTo(cw * 0.72, hz - 102); cctx.lineTo(cw * 0.72 + 16, hz - 97); cctx.lineTo(cw * 0.72, hz - 92); cctx.closePath(); cctx.fill();
+      const sxv = cw * 0.72;                                                  // PIXEL slope to a summit
+      pxRidge(0, sxv, hz, x => hz - 10 - (x / sxv) * 74, "#1e2e1c", "#2c4226", "#121d10");
+      cctx.strokeStyle = "#cfe6ff"; cctx.lineWidth = 2;                      // summit flagpole (thin → smooth)
+      cctx.beginPath(); cctx.moveTo(sxv, hz - 84); cctx.lineTo(sxv, hz - 102); cctx.stroke();
+      pxBlock(sxv, hz - 102, 16, 9, "#ffe06a");                              // pixel flag
     } else if (key === "rolling") {
-      const cols = ["rgba(28,44,26,0.7)", "rgba(34,52,30,0.8)"];            // layered rolling hills
+      const fills = ["#1c2c1a", "#22341e"], lits = ["#2e4426", "#36502c"];   // PIXEL rolling hills
       for (let L = 0; L < 2; L++) {
-        cctx.fillStyle = cols[L];
-        cctx.beginPath(); cctx.moveTo(0, hz);
         const amp = 16 + L * 12, ph = S.camL * (160 + L * 80);
-        for (let x = 0; x <= cw; x += 30) cctx.lineTo(x, hz - 10 - L * 8 - amp * (0.5 + 0.5 * Math.sin((x + ph) / (70 + L * 20))));
-        cctx.lineTo(cw, hz); cctx.closePath(); cctx.fill();
+        pxRidge(0, cw, hz, x => hz - 10 - L * 8 - amp * (0.5 + 0.5 * Math.sin((x + ph) / (70 + L * 20))), fills[L], lits[L], null);
       }
     } else if (key === "narrow") {
       const wallH = ch * 0.20;                                               // tall canyon walls closing in
@@ -1567,11 +1580,12 @@ function startRaceCanvas(container, ctx) {
     cctx.fillStyle = sky;
     cctx.fillRect(0, 0, cw, ch);
 
-    // moon
-    cctx.fillStyle = "rgba(255,247,224,0.92)";
-    cctx.beginPath(); cctx.arc(cw * 0.82, ch * 0.16, 22, 0, Math.PI * 2); cctx.fill();
+    // moon — soft glow (smooth) + PIXEL disc with little craters (dot)
     cctx.fillStyle = "rgba(255,247,224,0.10)";
     cctx.beginPath(); cctx.arc(cw * 0.82, ch * 0.16, 34, 0, Math.PI * 2); cctx.fill();
+    pxDisc(cw * 0.82, ch * 0.16, 22, "rgba(255,247,224,0.95)");
+    pxBlock(cw * 0.82 + 5, ch * 0.16 - 5, 6, 6, "rgba(226,218,194,0.9)");
+    pxBlock(cw * 0.82 - 9, ch * 0.16 + 3, 5, 5, "rgba(226,218,194,0.85)");
 
     // distant terrain identity (volcano / clouds / hills / canyon / pylons)
     drawThemeBackdrop(tb.keyA, g, 1);
@@ -1579,25 +1593,19 @@ function startRaceCanvas(container, ctx) {
 
     // stadium dressing (skyline + clock tower + crowd) only on ground courses
     if (stadium) {
-      const skl = (S.camL * 220) % 60;
-      cctx.fillStyle = "rgba(20,26,52,0.9)";
-      for (let i = -1; i < cw / 60 + 1; i++) {
-        const x = i * 60 - skl;
-        const h = 18 + ((i * 37) % 5) * 6;
-        cctx.fillRect(x, g.top - h - 6, 44, h);
-      }
-      cctx.fillStyle = "rgba(40,46,78,0.95)";
+      // PIXEL distant mountain range (the course outline) — the "dot" half
+      const ph = S.camL * 120;
+      pxRidge(0, cw, g.top, x => g.top - 24 - 20 * (0.5 + 0.5 * Math.sin((x + ph) / 120)) - 14 * (0.5 + 0.5 * Math.sin((x + ph * 0.6) / 64 + 1.7)), "#1a2440", "#28365e", "#0e1428");
+      // pixel clock-tower landmark (Grand Clock region), parallax
       const tx = cw * 0.62 - (S.camL * 120 % cw);
-      cctx.fillRect(tx, g.top - 64, 26, 64);
-      cctx.fillStyle = "rgba(255,240,200,0.85)";
-      cctx.beginPath(); cctx.arc(tx + 13, g.top - 50, 7, 0, Math.PI * 2); cctx.fill();
-      cctx.fillStyle = "#181d33";
-      cctx.fillRect(0, g.top - 6, cw, 10);
-      const crowdScroll = (S.camL * 600) % 14;
-      for (let x = -crowdScroll; x < cw; x += 14) {
-        cctx.fillStyle = ["#3a4474", "#46406e", "#523b5e", "#3e4a6b"][(Math.floor(x) % 4 + 4) % 4];
-        cctx.beginPath(); cctx.arc(x, g.top - 2, 3, 0, Math.PI * 2); cctx.fill();
-      }
+      pxBlock(tx - 2, g.top - 70, 28, 8, "#3a4470");
+      pxBlock(tx, g.top - 64, 24, 64, "#2c3358");
+      pxBlock(tx + 4, g.top - 52, 16, 16, "rgba(255,240,200,0.92)");        // clock face
+      pxBlock(tx + 11, g.top - 50, 2, 8, "#2c3358"); pxBlock(tx + 11, g.top - 46, 7, 2, "#2c3358");  // hands
+      // rail + pixel crowd
+      cctx.fillStyle = "#181d33"; cctx.fillRect(0, g.top - 6, cw, 10);
+      const crowdScroll = (S.camL * 600) % 12;
+      for (let x = -crowdScroll; x < cw; x += 12) pxBlock(x, g.top - 6, 4, 5, ["#3a4474", "#46406e", "#523b5e", "#3e4a6b"][(Math.floor(x / 12) % 4 + 4) % 4]);
     }
 
     // ============ WORLD GROUP (dynamic camera: zoom + pan + shake) ============
