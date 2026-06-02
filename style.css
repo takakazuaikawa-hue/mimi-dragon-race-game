@@ -1200,3 +1200,61 @@ table.entry-table {
 .condition-line { color: #c0c0a0; font-size: 12px; font-style: italic; }
 .locked-badge { color: #888; font-size: 12px; margin-left: 4px; }
 .race-card button:disabled { opacity: 0.4; }
+
+/* ===========================================================
+ * スマホ版 (responsive) — portrait phone layout, down to ~360px.
+ * Pure presentation: no race result / odds / payout / balance is
+ * affected. Keeps every screen (race list, betting, canvas player,
+ * recap, assets, event modal) usable & tappable on a phone.
+ * Placed last so equal-specificity base rules are overridden inside
+ * the matching media query.
+ * =========================================================== */
+@media (max-width: 680px) {
+  html { -webkit-text-size-adjust: 100%; }   /* stop iOS font auto-zoom */
+  #app { padding: 12px 10px; }
+
+  /* header: title on its own line (ellipsised), info chips wrap below */
+  #header { padding: 8px 12px; gap: 6px 12px; }
+  #header h1 { font-size: 15px; max-width: 100%; flex-basis: 100%; }
+  #header h1 .subtitle { font-size: 10px; }
+  .header-info { width: 100%; gap: 10px 14px; flex-wrap: wrap; font-size: 12px; }
+  .header-info b { font-size: 14px; }
+
+  /* two-column grids collapse to one column */
+  .bet-panel { grid-template-columns: 1fr; gap: 12px; }
+  .race-detail-card { grid-template-columns: 1fr; gap: 10px; }
+
+  /* tab / action rows wrap instead of overflowing the viewport */
+  .info-tabs { flex-wrap: wrap; }
+  .actions { flex-wrap: wrap; }
+
+  /* wide data tables scroll inside their own box so the PAGE never
+     scrolls sideways (entry / trial / ranking can be 8–9 columns) */
+  .entry-table, .trial-table, .ranking-table {
+    display: block; max-width: 100%;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .card { padding: 12px; }
+
+  /* event modal hugs the viewport with a safe inset + inner scroll */
+  #event-overlay { padding: 16px; }
+  .event-box { width: 100%; max-width: 460px; max-height: 84vh; overflow-y: auto; }
+
+  /* canvas player chrome: keep finish list / telop comfortable */
+  .rc-finishstrip { gap: 4px 12px; font-size: 12px; }
+  .rc-telop { padding: 7px 9px; min-height: 56px; }
+}
+
+@media (max-width: 420px) {
+  #app { padding: 10px 8px; }
+  #header h1 { font-size: 14px; }
+  .header-info { gap: 8px 12px; }
+  /* keep tap targets usable while fitting more per row */
+  button { padding: 9px 14px; font-size: 13px; }
+  .rc-controls button, .broadcast-controls button { padding: 8px 12px; font-size: 12px; }
+  .bet-tabs button, .info-tabs button { padding: 8px 6px; font-size: 12px; }
+  .rc-hud { font-size: 11px; }
+  .rc-rankbar { font-size: 10px; gap: 5px; }
+}
