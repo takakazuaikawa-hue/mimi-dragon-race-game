@@ -89,6 +89,16 @@ function storyUnlockAt(chapterId) { const v = STORY_UNLOCK_AT[chapterId]; return
 // 総資産 needed for an advisor (= their introducing chapter's threshold).
 function castUnlockAt(castKey) { const ch = STORY_CHAPTERS.find(c => c.cast === castKey); return ch ? storyUnlockAt(ch.id) : 0; }
 
+// (b) contextual one-liners — shown as an "advisor voice" on gameplay screens
+// once the advisor is met. Flavor / perspective only; never affects race math.
+const STORY_RACE_VOICE = {
+  sake:     "息を見ろ。人気でも数字でもなく、竜の気配で選べ。",
+  mizu:     "オッズは勝率じゃない。観客の願望が混ざった値であるわ。人気と価値を分けて見るのよ、あはん。",
+  makura:   "その人気、実力か物語か？ 盛られてるだけの竜を高値で掴むなよ？",
+  sumika:   "勝っても負けても、住居・食事・名声まで含めた総資産が再起の土台です。",
+  celestia: "1着を知っても、配当が消えれば意味がない。価値の残る賭けを探しなさい。"
+};
+
 // §30 §6 — lifestyle stages by asset level (index 0..5). Drives the
 // "ミミの生活" panel. Cosmetic/flavor only; never touches race math.
 const LIFE_STAGES = [

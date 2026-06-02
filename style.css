@@ -1475,3 +1475,18 @@ table.entry-table {
   font-weight: 700; border: none; border-radius: 10px; cursor: pointer; color: #fff;
   background: linear-gradient(90deg, color-mix(in srgb, var(--cg,#666) 70%, #160f2b), color-mix(in srgb, var(--cg,#666) 40%, #160f2b));
 }
+
+/* ===== Advisor voice (b) ===== */
+.advisor-voice {
+  display: flex; gap: 10px; align-items: center;
+  border-left: 3px solid color-mix(in srgb, var(--cg,#666) 70%, transparent);
+}
+.av-sym {
+  width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 17px;
+  background: color-mix(in srgb, var(--cg,#666) 42%, #160f2b);
+}
+.av-body { display: flex; flex-direction: column; line-height: 1.5; }
+.av-name { font-size: 12px; font-weight: 600; color: color-mix(in srgb, var(--cg,#aaa) 65%, #e9e3f5); }
+.av-name small { opacity: .7; font-weight: 400; }
+.av-line { font-size: 13px; color: #e9e3f5; }

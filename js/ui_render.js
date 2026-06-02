@@ -107,6 +107,9 @@ function renderAssets() {
            : `<div class="asset-next">最終段階に到達しています。</div>`);
   app.appendChild(head);
 
+  // (b) Sumika's voice on 総資産 (once she has been met).
+  const _avA = advisorVoiceEl("assets"); if (_avA) app.appendChild(_avA);
+
   // --- B. ミミの生活 ---
   const life = el("div", "card");
   life.appendChild(el("div", "asset-stage-title", `ミミの生活：${stage.summary}`));
@@ -218,6 +221,25 @@ function showStoryUnlock(chapters, idx) {
   modal.appendChild(btn);
   ov.appendChild(modal);
   document.body.appendChild(ov);
+}
+
+// (b) advisor "voice" element for a gameplay screen, or null if none met yet.
+//   context "race"   → most-advanced race advisor met (Sake→Mizu→Makura→Celestia)
+//   context "assets" → Sumika (lifestyle / 総資産)
+function advisorVoiceEl(context) {
+  const total = state.player.totalAssets || 0;
+  const order = context === "assets" ? ["sumika"] : ["celestia", "makura", "mizu", "sake"];
+  let key = null;
+  for (const k of order) { if (STORY_RACE_VOICE[k] && total >= castUnlockAt(k)) { key = k; break; } }
+  if (!key) return null;
+  const c = STORY_CAST[key];
+  const box = el("div", "card advisor-voice");
+  box.style.setProperty("--cg", c.color);
+  box.innerHTML =
+    `<span class="av-sym">${c.symbol}</span>` +
+    `<span class="av-body"><span class="av-name">${c.name}<small>（${c.tag}）</small></span>` +
+    `<span class="av-line">${STORY_RACE_VOICE[key]}</span></span>`;
+  return box;
 }
 
 // =========================================================================
@@ -577,6 +599,9 @@ function renderRaceDetail(race) {
     </div>
   `;
   app.appendChild(info);
+
+  // (b) advisor voice — a met advisor's perspective on picking this race.
+  const _av = advisorVoiceEl("race"); if (_av) app.appendChild(_av);
 
   // Popularity-sorted entries — shared by the pick cards and the detail table.
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
