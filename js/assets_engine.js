@@ -142,19 +142,19 @@ function recomputeAssets(state) {
   state.player.totalAssets = total;                // high-water (never drops)
   a.unlockedLifeStages = level;                    // high-water (no story rollback)
 
-  return { total, level, unlockedStory: currentStoryChapter(level) };
+  return { total, level, unlockedStory: currentStoryChapter(total) };
 }
 
-// §7 — the highest story chapter unlocked at this asset level.
-function currentStoryChapter(level) {
+// §7 — the highest story chapter unlocked at this 総資産 (spec 32 §9 thresholds).
+function currentStoryChapter(total) {
   let cur = STORY_CHAPTERS[0];
-  for (const ch of STORY_CHAPTERS) { if (level >= ch.level) cur = ch; }
+  for (const ch of STORY_CHAPTERS) { if (total >= storyUnlockAt(ch.id)) cur = ch; }
   return cur;
 }
 
 // All story chapters unlocked so far (for the progress list).
-function unlockedStoryChapters(level) {
-  return STORY_CHAPTERS.filter(ch => level >= ch.level);
+function unlockedStoryChapters(total) {
+  return STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id));
 }
 
 // §10 / §13.4 — base rescue from the established village-level curve, so the

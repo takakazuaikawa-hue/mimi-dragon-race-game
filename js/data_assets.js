@@ -81,6 +81,14 @@ const STORY_CAST = {
               consult: "勝つ竜の名なら、教えてあげる。……でもね、その答えが配当を消すの。1着を知ることと、価値を残すことは違うわ。" }
 };
 
+// spec 32 §9 — story chapters unlock by 総資産 (DECOUPLED from the lifestyle
+// ASSET_LEVELS, so story pacing follows the spec without touching the
+// economy / lifestyle / rescue thresholds). chapter id → 総資産 needed.
+const STORY_UNLOCK_AT = { "1": 0, "2": 3000, "3": 30000, "4": 1000000, "5": 100000000, "ED": 10000000000000000 };
+function storyUnlockAt(chapterId) { const v = STORY_UNLOCK_AT[chapterId]; return v == null ? 0 : v; }
+// 総資産 needed for an advisor (= their introducing chapter's threshold).
+function castUnlockAt(castKey) { const ch = STORY_CHAPTERS.find(c => c.cast === castKey); return ch ? storyUnlockAt(ch.id) : 0; }
+
 // §30 §6 — lifestyle stages by asset level (index 0..5). Drives the
 // "ミミの生活" panel. Cosmetic/flavor only; never touches race math.
 const LIFE_STAGES = [

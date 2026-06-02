@@ -144,11 +144,11 @@ function renderAssets() {
   app.appendChild(el("h3", null, "ストーリー進行"));
   const story = el("div", "card");
   STORY_CHAPTERS.forEach(ch => {
-    const unlocked = level >= ch.level;
+    const unlocked = total >= storyUnlockAt(ch.id);
     const row = el("div", "asset-story-row" + (unlocked ? " unlocked" : " locked"));
     const head2 = el("div", "asset-story-head");
     head2.appendChild(el("span", "t", ch.title));
-    head2.appendChild(el("span", "s", unlocked ? "解放" : `総資産 ${fmtCoins(ASSET_LEVELS.find(x => x.level === ch.level) ? ASSET_LEVELS.find(x => x.level === ch.level).threshold : 0)} で解放`));
+    head2.appendChild(el("span", "s", unlocked ? "解放" : `総資産 ${fmtCoins(storyUnlockAt(ch.id))} で解放`));
     row.appendChild(head2);
     if (unlocked) row.appendChild(el("div", "asset-story-body", ch.body));
     story.appendChild(row);
@@ -192,11 +192,32 @@ function renderAssets() {
   app.appendChild(actions);
 }
 
-// asset threshold that unlocks a chapter/advisor of the given asset level.
-function storyThresholdFor(level) {
-  if (level <= 0) return 0;
-  const t = ASSET_LEVELS.find(x => x.level === level);
-  return t ? t.threshold : 0;
+// =========================================================================
+// Story-unlock popup (a) — shown when a 総資産 threshold is crossed during a
+// race. Reuses the same CG placeholder slot. `chapters` is an array; it chains
+// via 次へ so multiple unlocks in one race show one after another.
+// =========================================================================
+function showStoryUnlock(chapters, idx) {
+  idx = idx || 0;
+  const ch = chapters[idx];
+  if (!ch) return;
+  const cast = STORY_CAST[ch.cast];
+  const ex = document.getElementById("story-unlock"); if (ex) ex.remove();
+  const ov = el("div", "story-unlock-overlay"); ov.id = "story-unlock";
+  const modal = el("div", "card story-unlock-modal");
+  if (cast) modal.style.setProperty("--cg", cast.color);
+  modal.innerHTML =
+    `<div class="su-badge">✦ 新エピソード解放 ✦</div>` +
+    `<div class="story-cg"><div class="story-cg-art"><span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span></div>` +
+      `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div></div>` +
+    `<div class="su-title">${ch.title}</div>` +
+    (cast ? `<div class="su-cast"><span class="su-cast-sym" style="--cg:${cast.color}">${cast.symbol}</span>${cast.name}<small>（${cast.tag}）</small></div>` : "") +
+    `<div class="su-body">${ch.body}</div>`;
+  const btn = el("button", "su-close", idx < chapters.length - 1 ? "次へ ▶" : "とじる");
+  btn.onclick = () => { ov.remove(); if (idx < chapters.length - 1) showStoryUnlock(chapters, idx + 1); };
+  modal.appendChild(btn);
+  ov.appendChild(modal);
+  document.body.appendChild(ov);
 }
 
 // =========================================================================
@@ -208,19 +229,19 @@ function storyThresholdFor(level) {
 function renderStory() {
   state.ui.screen = "story";
   recomputeAssets(state);
-  const level = state.assets.unlockedLifeStages;
+  const total = state.player.totalAssets;
   const app = $("app"); app.innerHTML = "";
   app.appendChild(el("h2", null, "ストーリー"));
 
   const intro = el("div", "card story-intro");
-  const unlockedCount = STORY_CHAPTERS.filter(ch => level >= ch.level).length;
+  const unlockedCount = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
   intro.innerHTML =
     `<p class="story-intro-sub">借金まみれのバニー・ミミが、霧と火山の聖龍レース島で出会う5人と、5つの視点。総資産を育てると、新しい話が解放されます。</p>` +
     `<div class="story-progress">解放：<b>${unlockedCount}</b> / ${STORY_CHAPTERS.length} 話</div>`;
   app.appendChild(intro);
 
   STORY_CHAPTERS.forEach(ch => {
-    const unlocked = level >= ch.level;
+    const unlocked = total >= storyUnlockAt(ch.id);
     const cast = STORY_CAST[ch.cast];
     const card = el("div", "card story-chapter" + (unlocked ? "" : " locked"));
 
@@ -231,7 +252,7 @@ function renderStory() {
       ? `<div class="story-cg-art"><span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span></div>` +
         `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div>`
       : `<div class="story-cg-art"><span class="story-cg-sym">🔒</span></div>` +
-        `<div class="story-cg-cap">総資産 ${fmtCoins(storyThresholdFor(ch.level))} で解放</div>`;
+        `<div class="story-cg-cap">総資産 ${fmtCoins(storyUnlockAt(ch.id))} で解放</div>`;
     card.appendChild(cg);
 
     card.appendChild(el("div", "story-ch-title", ch.title));
@@ -247,7 +268,7 @@ function renderStory() {
       }
       card.appendChild(el("div", "story-ch-body", ch.body));
     } else {
-      card.appendChild(el("div", "story-ch-locked", `総資産 ${fmtCoins(storyThresholdFor(ch.level))} に到達すると読めます。`));
+      card.appendChild(el("div", "story-ch-locked", `総資産 ${fmtCoins(storyUnlockAt(ch.id))} に到達すると読めます。`));
     }
     app.appendChild(card);
   });
@@ -267,7 +288,7 @@ function renderStory() {
 function renderConsult() {
   state.ui.screen = "consult";
   recomputeAssets(state);
-  const level = state.assets.unlockedLifeStages;
+  const total = state.player.totalAssets;
   const app = $("app"); app.innerHTML = "";
   app.appendChild(el("h2", null, "相談する"));
   app.appendChild(el("p", "consult-sub", "出会った顧問に話を聞けます。相談は「答え合わせ」ではなく「視点の切り替え」です。"));
@@ -275,7 +296,7 @@ function renderConsult() {
   const list = el("div", "consult-list");
   Object.keys(STORY_CAST).forEach(k => {
     const c = STORY_CAST[k];
-    const unlocked = level >= c.level;
+    const unlocked = total >= castUnlockAt(k);
     const card = el("div", "card consult-card" + (unlocked ? "" : " locked"));
     const port = el("div", "consult-port");
     port.style.setProperty("--cg", c.color);
@@ -287,7 +308,7 @@ function renderConsult() {
         `<div class="consult-focus">${c.focus}　—　授けるもの：${c.gives}</div>` +
         `<div class="consult-line">「${c.consult}」</div>`
       : `<div class="consult-name muted">？？？</div>` +
-        `<div class="consult-focus">総資産 ${fmtCoins(storyThresholdFor(c.level))} で出会う</div>`;
+        `<div class="consult-focus">総資産 ${fmtCoins(castUnlockAt(k))} で出会う</div>`;
     card.appendChild(body);
     list.appendChild(card);
   });
@@ -919,15 +940,18 @@ function onConfirmBet(skipDialog) {
   // rank/collection have settled). maxCoinsReached + 総資産 only ever rise.
   bumpMaxCoins();
   const prevStage = state.assets.unlockedLifeStages || 0;
+  const prevTotal = state.player.totalAssets || 0;
   const ra = recomputeAssets(state);
-  if (ra.level > prevStage) {
-    // New story chapter / lifestyle stage reached. No-op until events register
-    // an onStoryUnlock handler (§30 §8); surfaced on the 暮らしと資産 screen.
-    runEventHooks("onStoryUnlock", { stage: ra.level, chapter: ra.unlockedStory });
+  const newTotal = state.player.totalAssets || 0;
+  // (a) story: any chapter whose 総資産 threshold was crossed THIS race pops up.
+  const justUnlocked = STORY_CHAPTERS.filter(ch => prevTotal < storyUnlockAt(ch.id) && newTotal >= storyUnlockAt(ch.id));
+  if (ra.level > prevStage || justUnlocked.length) {
+    runEventHooks("onStoryUnlock", { stage: ra.level, chapter: ra.unlockedStory, chapters: justUnlocked });
   }
   saveGame();
   updateHeader();
   renderRaceRun();
+  if (justUnlocked.length) showStoryUnlock(justUnlocked);   // popup over the finished race
 }
 
 // §07 §13 Bet confirmation modal.
