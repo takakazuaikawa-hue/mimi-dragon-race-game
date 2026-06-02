@@ -117,9 +117,9 @@ function rcTerrainInfo(key) { return RC_TERRAIN[key] || RC_TERRAIN.straight; }
 // the flight animation; a floating bob / lean / tumble are applied at draw time.
 // =========================================================================
 const RC_DRG = {
-  GW: 44, GH: 28,
-  anchorX: 24, anchorY: 16,   // grid cell mapped to the dragon's (x,y) position (body centre, flying)
-  px: 1.78,                    // on-screen cell size = scale * px
+  GW: 88, GH: 56, res: 2,     // 2x-resolution grid → smoother lines when enlarged (less jagged)
+  anchorX: 48, anchorY: 32,   // grid cell mapped to the dragon's (x,y) position (body centre, flying)
+  px: 0.89,                   // on-screen cell size = scale * px (halved for the finer grid)
   P: { hx: 28, hy: 9, hr: 6.6, bx: 20, by: 16, brx: 6.6, bry: 5.6, eyeK: 0.9, pupK: 0.66 }
 };
 function _rcInEll(gx, gy, cx, cy, rx, ry) { const dx = (gx - cx) / rx, dy = (gy - cy) / ry; return dx * dx + dy * dy <= 1; }
@@ -147,16 +147,16 @@ function _rcDragonShapes(P, flap) {
   const S = [];
   // ---- far wing (small bat wing behind, darker) ----
   S.push({ k: 'D', t: 'poly', p: [[bx + brx * 0.06, by - bry * 0.5], [bx - brx * 0.48, by - bry * 1.55 + lift * 0.7], [bx - brx * 0.28, by - bry * 0.95 + lift * 0.4], [bx - brx * 0.5, by - bry * 0.5]] });
-  // ---- tail: thick, tapering, curving UP, with a warm fin ----
+  // ---- tail: SHORT & cute, a thick little up-curl with a warm fin ----
   {
     const tr = bx - brx;
     S.push({ k: 'B', t: 'poly', p: [
-      [tr + 1.5, by - bry * 0.5], [tr - brx * 0.55, by - bry * 0.55], [tr - brx * 1.1, by - bry * 1.02],
-      [tr - brx * 1.45, by - bry * 1.55], [tr - brx * 1.2, by - bry * 1.66], [tr - brx * 0.78, by - bry * 1.05],
-      [tr - brx * 0.35, by - bry * 0.3], [tr + 1.5, by + bry * 0.34]
+      [tr + 1.5, by - bry * 0.45], [tr - brx * 0.42, by - bry * 0.6], [tr - brx * 0.82, by - bry * 1.05],
+      [tr - brx * 0.72, by - bry * 1.32], [tr - brx * 0.38, by - bry * 0.95], [tr - brx * 0.05, by - bry * 0.28],
+      [tr + 1.5, by + bry * 0.36]
     ]});
-    S.push({ k: 'M', t: 'poly', p: [[tr - brx * 0.3, by - bry * 0.2], [tr - brx * 0.8, by - bry * 0.85], [tr - brx * 1.2, by - bry * 1.5], [tr - brx * 0.72, by - bry * 0.62]] });   // shade
-    S.push({ k: 'g', t: 'poly', p: [[tr - brx * 1.26, by - bry * 1.2], [tr - brx * 1.92, by - bry * 1.46], [tr - brx * 1.6, by - bry * 0.74]] });   // warm fin
+    S.push({ k: 'M', t: 'tri', p: [[tr - brx * 0.18, by - bry * 0.2], [tr - brx * 0.64, by - bry * 0.95], [tr - brx * 0.48, by - bry * 0.48]] });   // shade
+    S.push({ k: 'g', t: 'poly', p: [[tr - brx * 0.64, by - bry * 0.92], [tr - brx * 1.12, by - bry * 1.18], [tr - brx * 0.96, by - bry * 1.42], [tr - brx * 0.56, by - bry * 1.28]] });   // warm fin
   }
   // ---- far legs (2, behind body, darker) ----
   [-brx * 0.46, brx * 0.5].forEach(function (lo) {
@@ -183,14 +183,15 @@ function _rcDragonShapes(P, flap) {
   });
   // ---- neck + head ----
   S.push({ k: 'B', t: 'ell', p: [(bx + hx) / 2 + 1, (by + hy) / 2, 3.4, Math.abs(by - hy) / 2 + 2.4] });
-  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr, hr * 0.98] });
-  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.34, hy - hr * 0.42, hr * 0.5, hr * 0.36] });
-  // ---- muzzle (blunt, lower-front) + warm jaw ----
-  S.push({ k: 'B', t: 'ell', p: [sx - hr * 0.1, sy - hr * 0.02, hr * 0.54, hr * 0.46] });
-  S.push({ k: 'g', t: 'ell', p: [sx - hr * 0.04, sy + hr * 0.2, hr * 0.42, hr * 0.24] });
-  // ---- single NOSE HORN (cream, curving up & forward, like the reference) ----
-  S.push({ k: 'h', t: 'poly', p: [[sx + hr * 0.16, sy - hr * 0.34], [sx + hr * 0.5, sy - hr * 1.18], [sx + hr * 0.66, sy - hr * 1.12], [sx + hr * 0.5, sy - hr * 0.28]] });
-  S.push({ k: 'H', t: 'tri', p: [[sx + hr * 0.18, sy - hr * 0.34], [sx + hr * 0.44, sy - hr * 0.86], [sx + hr * 0.32, sy - hr * 0.28]] });
+  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr * 1.02, hr * 1.02] });               // round face
+  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.36, hy - hr * 0.44, hr * 0.52, hr * 0.4] });
+  // ---- muzzle (a clear rounded snout on the round face) + warm jaw ----
+  S.push({ k: 'B', t: 'ell', p: [sx - hr * 0.06, sy, hr * 0.58, hr * 0.46] });
+  S.push({ k: 'L', t: 'ell', p: [sx - hr * 0.04, sy - hr * 0.22, hr * 0.3, hr * 0.14] });   // nose-bridge highlight
+  S.push({ k: 'g', t: 'ell', p: [sx, sy + hr * 0.22, hr * 0.44, hr * 0.24] });
+  // ---- single NOSE HORN (cream) — short, clean, curving up & slightly back ----
+  S.push({ k: 'h', t: 'poly', p: [[sx + hr * 0.44, sy - hr * 0.3], [sx + hr * 0.26, sy - hr * 0.92], [sx + hr * 0.12, sy - hr * 0.86], [sx + hr * 0.16, sy - hr * 0.3]] });
+  S.push({ k: 'H', t: 'tri', p: [[sx + hr * 0.16, sy - hr * 0.3], [sx + hr * 0.16, sy - hr * 0.6], [sx + hr * 0.3, sy - hr * 0.32]] });
   // ---- small back ear-horn ----
   S.push({ k: 'h', t: 'tri', p: [[hx - hr * 0.32, hy - hr * 0.68], [hx - hr * 0.56, hy - hr * 1.16], [hx - hr * 0.04, hy - hr * 0.72]] });
   // ---- friendly eye (white + amber iris + dark pupil + shine) ----
@@ -216,10 +217,12 @@ function _rcDragonShapes(P, flap) {
   return S;
 }
 function _rcCover(s, gx, gy) { const cx = gx + 0.5, cy = gy + 0.5; return s.t === 'ell' ? _rcInEll(cx, cy, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'rect' ? _rcInRect(cx, cy, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'poly' ? _rcInPoly(cx, cy, s.p) : _rcInTri(cx, cy, s.p[0], s.p[1], s.p[2]); }
+function _rcCoverPt(s, px, py) { return s.t === 'ell' ? _rcInEll(px, py, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'rect' ? _rcInRect(px, py, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'poly' ? _rcInPoly(px, py, s.p) : _rcInTri(px, py, s.p[0], s.p[1], s.p[2]); }
 function _rcBuildGrid(P, legDX) {
-  const sh = _rcDragonShapes(P, legDX), GW = RC_DRG.GW, GH = RC_DRG.GH;
+  const sh = _rcDragonShapes(P, legDX), GW = RC_DRG.GW, GH = RC_DRG.GH, res = RC_DRG.res || 1;
   const g = []; for (let y = 0; y < GH; y++) g.push(new Array(GW).fill(null));
-  for (const s of sh) for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (_rcCover(s, x, y)) g[y][x] = s.k; }
+  // sample each fine cell at its centre in the shapes' original coordinate space
+  for (const s of sh) for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (_rcCoverPt(s, (x + 0.5) / res, (y + 0.5) / res)) g[y][x] = s.k; }
   const og = g.map(r => r.slice());
   const fil = (x, y) => x >= 0 && x < GW && y >= 0 && y < GH && g[y][x] != null;
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (g[y][x] == null && (fil(x - 1, y) || fil(x + 1, y) || fil(x, y - 1) || fil(x, y + 1))) og[y][x] = 'o'; }
