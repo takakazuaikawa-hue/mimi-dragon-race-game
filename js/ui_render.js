@@ -61,6 +61,8 @@ function renderHome() {
   };
   const menu = el("div", "home-menu");
   menu.appendChild(tile("🏠", "暮らしと資産", "総資産と暮らしの歩み", () => renderAssets()));
+  menu.appendChild(tile("📜", "ストーリー", "ミミと5人の物語", () => renderStory()));
+  menu.appendChild(tile("💬", "相談する", "顧問に視点をもらう", () => renderConsult()));
   menu.appendChild(tile("🏘️", "竜の村を訪れる", "竜たちと交流する", () => renderVillage()));
   menu.appendChild(tile("📖", "竜図鑑", "出会った竜の記録", () => renderCollection()));
   menu.appendChild(tile("🎓", "予想入門", "賭けの基礎を学ぶ", () => renderHelp()));
@@ -186,6 +188,115 @@ function renderAssets() {
 
   const actions = el("div", "actions");
   const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// asset threshold that unlocks a chapter/advisor of the given asset level.
+function storyThresholdFor(level) {
+  if (level <= 0) return 0;
+  const t = ASSET_LEVELS.find(x => x.level === level);
+  return t ? t.threshold : 0;
+}
+
+// =========================================================================
+// Story screen (specs 31–34): a chapter reader with a 一枚絵CG placeholder slot
+// per chapter (themed by the introduced advisor; ready to drop real art into
+// later) + the long「件。」chapter text. Read/cosmetic only — gated by asset
+// level, never touches race math.
+// =========================================================================
+function renderStory() {
+  state.ui.screen = "story";
+  recomputeAssets(state);
+  const level = state.assets.unlockedLifeStages;
+  const app = $("app"); app.innerHTML = "";
+  app.appendChild(el("h2", null, "ストーリー"));
+
+  const intro = el("div", "card story-intro");
+  const unlockedCount = STORY_CHAPTERS.filter(ch => level >= ch.level).length;
+  intro.innerHTML =
+    `<p class="story-intro-sub">借金まみれのバニー・ミミが、霧と火山の聖龍レース島で出会う5人と、5つの視点。総資産を育てると、新しい話が解放されます。</p>` +
+    `<div class="story-progress">解放：<b>${unlockedCount}</b> / ${STORY_CHAPTERS.length} 話</div>`;
+  app.appendChild(intro);
+
+  STORY_CHAPTERS.forEach(ch => {
+    const unlocked = level >= ch.level;
+    const cast = STORY_CAST[ch.cast];
+    const card = el("div", "card story-chapter" + (unlocked ? "" : " locked"));
+
+    // 一枚絵CG placeholder slot (real art can be dropped in here later)
+    const cg = el("div", "story-cg" + (unlocked ? "" : " locked"));
+    if (cast) cg.style.setProperty("--cg", cast.color);
+    cg.innerHTML = unlocked
+      ? `<div class="story-cg-art"><span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span></div>` +
+        `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div>`
+      : `<div class="story-cg-art"><span class="story-cg-sym">🔒</span></div>` +
+        `<div class="story-cg-cap">総資産 ${fmtCoins(storyThresholdFor(ch.level))} で解放</div>`;
+    card.appendChild(cg);
+
+    card.appendChild(el("div", "story-ch-title", ch.title));
+
+    if (unlocked) {
+      if (cast) {
+        const badge = el("div", "story-cast");
+        badge.innerHTML =
+          `<span class="story-cast-sym" style="--cg:${cast.color}">${cast.symbol}</span>` +
+          `<span class="story-cast-info"><span class="story-cast-name">${cast.name}<small>（${cast.tag}）</small></span>` +
+          `<span class="story-cast-gives">授けるもの：${cast.gives}</span></span>`;
+        card.appendChild(badge);
+      }
+      card.appendChild(el("div", "story-ch-body", ch.body));
+    } else {
+      card.appendChild(el("div", "story-ch-locked", `総資産 ${fmtCoins(storyThresholdFor(ch.level))} に到達すると読めます。`));
+    }
+    app.appendChild(card);
+  });
+
+  const actions = el("div", "actions");
+  const consultBtn = el("button", "secondary", "💬 相談する"); consultBtn.onclick = () => renderConsult();
+  const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
+  actions.appendChild(consultBtn);
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// =========================================================================
+// 相談 (consult) screen — lists advisors met so far; each gives their
+// "perspective" line (spec §10.3). Flavor only; never affects race math.
+// =========================================================================
+function renderConsult() {
+  state.ui.screen = "consult";
+  recomputeAssets(state);
+  const level = state.assets.unlockedLifeStages;
+  const app = $("app"); app.innerHTML = "";
+  app.appendChild(el("h2", null, "相談する"));
+  app.appendChild(el("p", "consult-sub", "出会った顧問に話を聞けます。相談は「答え合わせ」ではなく「視点の切り替え」です。"));
+
+  const list = el("div", "consult-list");
+  Object.keys(STORY_CAST).forEach(k => {
+    const c = STORY_CAST[k];
+    const unlocked = level >= c.level;
+    const card = el("div", "card consult-card" + (unlocked ? "" : " locked"));
+    const port = el("div", "consult-port");
+    port.style.setProperty("--cg", c.color);
+    port.innerHTML = `<span class="consult-sym">${unlocked ? c.symbol : "🔒"}</span>`;
+    card.appendChild(port);
+    const body = el("div", "consult-body");
+    body.innerHTML = unlocked
+      ? `<div class="consult-name">${c.name}<small>（${c.tag}）</small></div>` +
+        `<div class="consult-focus">${c.focus}　—　授けるもの：${c.gives}</div>` +
+        `<div class="consult-line">「${c.consult}」</div>`
+      : `<div class="consult-name muted">？？？</div>` +
+        `<div class="consult-focus">総資産 ${fmtCoins(storyThresholdFor(c.level))} で出会う</div>`;
+    card.appendChild(body);
+    list.appendChild(card);
+  });
+  app.appendChild(list);
+
+  const actions = el("div", "actions");
+  const storyBtn = el("button", "secondary", "📜 ストーリー"); storyBtn.onclick = () => renderStory();
+  const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
+  actions.appendChild(storyBtn);
   actions.appendChild(back);
   app.appendChild(actions);
 }
