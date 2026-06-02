@@ -117,9 +117,9 @@ function rcTerrainInfo(key) { return RC_TERRAIN[key] || RC_TERRAIN.straight; }
 // the flight animation; a floating bob / lean / tumble are applied at draw time.
 // =========================================================================
 const RC_DRG = {
-  GW: 88, GH: 56, res: 2,     // 2x-resolution grid → smoother lines when enlarged (less jagged)
-  anchorX: 48, anchorY: 32,   // grid cell mapped to the dragon's (x,y) position (body centre, flying)
-  px: 0.89,                   // on-screen cell size = scale * px (halved for the finer grid)
+  GW: 132, GH: 84, res: 3,    // 3x-resolution grid → smooth lines + room for fine detail
+  anchorX: 72, anchorY: 48,   // grid cell mapped to the dragon's (x,y) position (body centre, flying)
+  px: 0.593,                  // on-screen cell size = scale * px (so overall size is unchanged)
   P: { hx: 28, hy: 9, hr: 6.6, bx: 20, by: 16, brx: 6.6, bry: 5.6, eyeK: 0.9, pupK: 0.66 }
 };
 function _rcInEll(gx, gy, cx, cy, rx, ry) { const dx = (gx - cx) / rx, dy = (gy - cy) / ry; return dx * dx + dy * dy <= 1; }
@@ -145,66 +145,67 @@ function _rcDragonShapes(P, flap) {
   const sx = hx + hr * 0.82, sy = hy + hr * 0.4, ex = hx + hr * 0.04, ey = hy - hr * 0.12;
   const lift = ((flap == null ? 0.5 : flap) - 0.5) * 3.2;   // gentle wing flap
   const S = [];
-  // ---- far wing (small bat wing behind, darker) ----
-  S.push({ k: 'D', t: 'poly', p: [[bx + brx * 0.06, by - bry * 0.5], [bx - brx * 0.48, by - bry * 1.55 + lift * 0.7], [bx - brx * 0.28, by - bry * 0.95 + lift * 0.4], [bx - brx * 0.5, by - bry * 0.5]] });
-  // ---- tail: SHORT & cute, a thick little up-curl with a warm fin ----
+  // ===== far wing (small bat wing behind, darker) =====
+  S.push({ k: 'D', t: 'poly', p: [[bx + brx * 0.06, by - bry * 0.5], [bx - brx * 0.46, by - bry * 1.55 + lift * 0.7], [bx - brx * 0.26, by - bry * 0.95 + lift * 0.4], [bx - brx * 0.48, by - bry * 0.5]] });
+  // ===== tail: short cute up-curl + warm fin =====
   {
     const tr = bx - brx;
     S.push({ k: 'B', t: 'poly', p: [
-      [tr + 1.5, by - bry * 0.45], [tr - brx * 0.42, by - bry * 0.6], [tr - brx * 0.82, by - bry * 1.05],
-      [tr - brx * 0.72, by - bry * 1.32], [tr - brx * 0.38, by - bry * 0.95], [tr - brx * 0.05, by - bry * 0.28],
-      [tr + 1.5, by + bry * 0.36]
+      [tr + 1.5, by - bry * 0.42], [tr - brx * 0.42, by - bry * 0.58], [tr - brx * 0.82, by - bry * 1.02],
+      [tr - brx * 0.74, by - bry * 1.34], [tr - brx * 0.4, by - bry * 0.98], [tr - brx * 0.05, by - bry * 0.26],
+      [tr + 1.5, by + bry * 0.4]
     ]});
-    S.push({ k: 'M', t: 'tri', p: [[tr - brx * 0.18, by - bry * 0.2], [tr - brx * 0.64, by - bry * 0.95], [tr - brx * 0.48, by - bry * 0.48]] });   // shade
-    S.push({ k: 'g', t: 'poly', p: [[tr - brx * 0.64, by - bry * 0.92], [tr - brx * 1.12, by - bry * 1.18], [tr - brx * 0.96, by - bry * 1.42], [tr - brx * 0.56, by - bry * 1.28]] });   // warm fin
+    S.push({ k: 'M', t: 'tri', p: [[tr - brx * 0.16, by - bry * 0.16], [tr - brx * 0.62, by - bry * 0.92], [tr - brx * 0.5, by - bry * 0.46]] });
+    S.push({ k: 'g', t: 'poly', p: [[tr - brx * 0.66, by - bry * 0.92], [tr - brx * 1.16, by - bry * 1.16], [tr - brx * 1.0, by - bry * 1.46], [tr - brx * 0.56, by - bry * 1.3]] });
   }
-  // ---- far legs (2, behind body, darker) ----
-  [-brx * 0.46, brx * 0.5].forEach(function (lo) {
-    const lx = bx + lo;
-    S.push({ k: 'M', t: 'ell', p: [lx, by + bry * 0.88, 1.8, 2.4] });
-    S.push({ k: 'M', t: 'ell', p: [lx + 0.4, by + bry * 1.34, 2.1, 1.2] });
+  // ===== FAR legs (2, behind the body, darker — only the lower part shows) =====
+  [[bx - brx * 0.52, by + bry * 0.55], [bx + brx * 0.16, by + bry * 0.5]].forEach(function (L) {
+    S.push({ k: 'M', t: 'ell', p: [L[0], L[1] + 1.8, 1.9, 2.6] });
+    S.push({ k: 'D', t: 'ell', p: [L[0] + 0.5, L[1] + 3.7, 2.5, 1.3] });
   });
-  // ---- body + lower shade ----
+  // ===== body =====
   S.push({ k: 'B', t: 'ell', p: [bx, by, brx, bry] });
-  S.push({ k: 'M', t: 'ell', p: [bx, by + bry * 0.5, brx * 0.86, bry * 0.5] });
-  // ---- warm belly + chest (the orange underside) ----
-  S.push({ k: 'g', t: 'ell', p: [bx + brx * 0.14, by + bry * 0.42, brx * 0.64, bry * 0.52] });
-  S.push({ k: 'G', t: 'ell', p: [bx + brx * 0.14, by + bry * 0.66, brx * 0.5, bry * 0.3] });
-  // ---- back spots (darker) ----
-  S.push({ k: 'M', t: 'ell', p: [bx - brx * 0.22, by - bry * 0.5, 1.5, 1.1] });
-  S.push({ k: 'M', t: 'ell', p: [bx + brx * 0.24, by - bry * 0.46, 1.3, 1.0] });
-  // ---- near legs (2, front, base) with little toes ----
-  [-brx * 0.12, brx * 0.24].forEach(function (lo) {
-    const lx = bx + lo;
-    S.push({ k: 'B', t: 'ell', p: [lx, by + bry * 0.94, 1.9, 2.5] });
-    S.push({ k: 'b', t: 'ell', p: [lx + 0.4, by + bry * 1.4, 2.2, 1.2] });
-    S.push({ k: 'o', t: 'rect', p: [lx - 0.6, by + bry * 1.55, 0.8, 0.8] });
-    S.push({ k: 'o', t: 'rect', p: [lx + 1.0, by + bry * 1.5, 0.8, 0.8] });
+  S.push({ k: 'M', t: 'ell', p: [bx, by + bry * 0.52, brx * 0.88, bry * 0.48] });   // lower shade
+  S.push({ k: 'g', t: 'ell', p: [bx + brx * 0.16, by + bry * 0.4, brx * 0.66, bry * 0.54] });   // warm belly
+  S.push({ k: 'G', t: 'ell', p: [bx + brx * 0.16, by + bry * 0.66, brx * 0.52, bry * 0.3] });   // belly shade
+  S.push({ k: 'M', t: 'ell', p: [bx - brx * 0.24, by - bry * 0.52, 1.7, 1.2] });   // back spot
+  S.push({ k: 'M', t: 'ell', p: [bx + brx * 0.22, by - bry * 0.48, 1.4, 1.05] });  // back spot
+  // ===== NEAR legs (2, in FRONT, clear: chunky leg + foot + 3 toes) =====
+  [[bx - brx * 0.3, by + bry * 0.58], [bx + brx * 0.42, by + bry * 0.52]].forEach(function (L) {
+    const lx = L[0], ly = L[1];
+    S.push({ k: 'B', t: 'ell', p: [lx, ly + 1.5, 2.4, 3.0] });            // chunky leg
+    S.push({ k: 'M', t: 'ell', p: [lx - 0.9, ly + 2.2, 1.3, 2.2] });     // back shade
+    S.push({ k: 'g', t: 'ell', p: [lx + 0.7, ly + 3.6, 3.2, 1.6] });     // warm foot
+    S.push({ k: 'o', t: 'rect', p: [lx - 0.5, ly + 3.8, 0.6, 1.6] });    // toe gap
+    S.push({ k: 'o', t: 'rect', p: [lx + 1.0, ly + 3.9, 0.6, 1.6] });    // toe gap
+    S.push({ k: 'o', t: 'rect', p: [lx + 2.4, ly + 3.7, 0.6, 1.5] });    // toe gap
   });
-  // ---- neck + head ----
+  // ===== neck + round head + highlight + cheek blush =====
   S.push({ k: 'B', t: 'ell', p: [(bx + hx) / 2 + 1, (by + hy) / 2, 3.4, Math.abs(by - hy) / 2 + 2.4] });
-  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr * 1.02, hr * 1.02] });               // round face
-  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.36, hy - hr * 0.44, hr * 0.52, hr * 0.4] });
-  // ---- muzzle (a clear rounded snout on the round face) + warm jaw ----
+  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr * 1.04, hr * 1.04] });        // round face
+  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.34, hy - hr * 0.42, hr * 0.54, hr * 0.42] });
+  S.push({ k: 'G', t: 'ell', p: [hx + hr * 0.2, hy + hr * 0.36, hr * 0.24, hr * 0.15] });   // cheek blush
+  // ===== muzzle =====
   S.push({ k: 'B', t: 'ell', p: [sx - hr * 0.06, sy, hr * 0.58, hr * 0.46] });
-  S.push({ k: 'L', t: 'ell', p: [sx - hr * 0.04, sy - hr * 0.22, hr * 0.3, hr * 0.14] });   // nose-bridge highlight
+  S.push({ k: 'L', t: 'ell', p: [sx - hr * 0.04, sy - hr * 0.22, hr * 0.3, hr * 0.14] });
   S.push({ k: 'g', t: 'ell', p: [sx, sy + hr * 0.22, hr * 0.44, hr * 0.24] });
-  // ---- single NOSE HORN (cream) — short, clean, curving up & slightly back ----
+  // ===== nose horn (short, clean) + ear horn =====
   S.push({ k: 'h', t: 'poly', p: [[sx + hr * 0.44, sy - hr * 0.3], [sx + hr * 0.26, sy - hr * 0.92], [sx + hr * 0.12, sy - hr * 0.86], [sx + hr * 0.16, sy - hr * 0.3]] });
   S.push({ k: 'H', t: 'tri', p: [[sx + hr * 0.16, sy - hr * 0.3], [sx + hr * 0.16, sy - hr * 0.6], [sx + hr * 0.3, sy - hr * 0.32]] });
-  // ---- small back ear-horn ----
-  S.push({ k: 'h', t: 'tri', p: [[hx - hr * 0.32, hy - hr * 0.68], [hx - hr * 0.56, hy - hr * 1.16], [hx - hr * 0.04, hy - hr * 0.72]] });
-  // ---- friendly eye (white + amber iris + dark pupil + shine) ----
-  S.push({ k: 'e', t: 'ell', p: [ex, ey, hr * 0.4, hr * 0.46] });
-  S.push({ k: 'i', t: 'ell', p: [ex + hr * 0.06, ey + hr * 0.06, hr * 0.26, hr * 0.3] });
-  S.push({ k: 'o', t: 'ell', p: [ex + hr * 0.08, ey + hr * 0.08, hr * 0.13, hr * 0.17] });
-  S.push({ k: 'e', t: 'rect', p: [ex - hr * 0.08, ey - hr * 0.14, 1.3, 1.3] });
-  // ---- nostril ----
+  S.push({ k: 'h', t: 'tri', p: [[hx - hr * 0.34, hy - hr * 0.66], [hx - hr * 0.58, hy - hr * 1.18], [hx - hr * 0.06, hy - hr * 0.74]] });
+  S.push({ k: 'H', t: 'tri', p: [[hx - hr * 0.34, hy - hr * 0.66], [hx - hr * 0.42, hy - hr * 0.98], [hx - hr * 0.2, hy - hr * 0.68]] });
+  // ===== friendly eye (white + amber iris + dark pupil + shine + lid) =====
+  S.push({ k: 'M', t: 'poly', p: [[ex - hr * 0.44, ey - hr * 0.36], [ex + hr * 0.46, ey - hr * 0.46], [ex + hr * 0.48, ey - hr * 0.24], [ex - hr * 0.42, ey - hr * 0.16]] });   // brow/lid
+  S.push({ k: 'e', t: 'ell', p: [ex, ey, hr * 0.42, hr * 0.48] });
+  S.push({ k: 'i', t: 'ell', p: [ex + hr * 0.05, ey + hr * 0.06, hr * 0.28, hr * 0.32] });
+  S.push({ k: 'o', t: 'ell', p: [ex + hr * 0.07, ey + hr * 0.08, hr * 0.14, hr * 0.18] });
+  S.push({ k: 'e', t: 'ell', p: [ex - hr * 0.06, ey - hr * 0.14, hr * 0.1, hr * 0.1] });   // shine
+  // ===== nostril =====
   S.push({ k: 'o', t: 'rect', p: [sx + hr * 0.36, sy - hr * 0.04, 1.0, 1.0] });
-  // ---- friendly closed mouth (small upward smile) + a tiny fang ----
+  // ===== mouth (small smile + tiny fang) =====
   S.push({ k: 'o', t: 'poly', p: [[sx + hr * 0.44, sy + hr * 0.34], [sx + hr * 0.44, sy + hr * 0.42], [sx + hr * 0.02, sy + hr * 0.5], [sx - hr * 0.02, sy + hr * 0.42]] });
-  S.push({ k: 'f', t: 'tri', p: [[sx + hr * 0.34, sy + hr * 0.42], [sx + hr * 0.31, sy + hr * 0.56], [sx + hr * 0.39, sy + hr * 0.5]] });
-  // ---- near wing (small bat wing, base upper + warm lower membrane + arm) ----
+  S.push({ k: 'f', t: 'tri', p: [[sx + hr * 0.34, sy + hr * 0.42], [sx + hr * 0.31, sy + hr * 0.58], [sx + hr * 0.4, sy + hr * 0.5]] });
+  // ===== near wing (small bat, base + warm + arm) =====
   {
     const J = [bx + brx * 0.26, by - bry * 0.5];
     const t1 = [bx - brx * 0.52, by - bry * 1.95 + lift];
@@ -263,9 +264,17 @@ function rcDrawDragonPixel(ctx, o) {
     ctx.fillStyle = ag; ctx.beginPath(); ctx.ellipse(0, -8 * pxc, 26, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
   const ox = -RC_DRG.anchorX * pxc, oy = -RC_DRG.anchorY * pxc, GW = RC_DRG.GW, GH = RC_DRG.GH;
-  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
-    const k = grid[y][x]; if (!k) continue;
-    ctx.fillStyle = pal[k]; ctx.fillRect(Math.round(ox + x * pxc), Math.round(oy + y * pxc), Math.ceil(pxc), Math.ceil(pxc));
+  for (let y = 0; y < GH; y++) {
+    const row = grid[y], ry = Math.round(oy + y * pxc), rh = Math.max(1, Math.round(oy + (y + 1) * pxc) - ry);
+    let x = 0;
+    while (x < GW) {
+      const k = row[x];
+      if (!k) { x++; continue; }
+      let x2 = x + 1; while (x2 < GW && row[x2] === k) x2++;   // horizontal run of one colour
+      const rx = Math.round(ox + x * pxc), rw = Math.max(1, Math.round(ox + x2 * pxc) - rx);
+      ctx.fillStyle = pal[k]; ctx.fillRect(rx, ry, rw, rh);
+      x = x2;
+    }
   }
   ctx.restore();
 }
