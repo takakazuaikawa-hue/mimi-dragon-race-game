@@ -110,7 +110,169 @@ function rcTerrainInfo(key) { return RC_TERRAIN[key] || RC_TERRAIN.straight; }
 // gait tempo & lean from speed, wing flap, head-down + sweat when tiring,
 // rotation when stumbling, glow when surging.
 // =========================================================================
+// =========================================================================
+// Pixel-art dragon sprite (DQ-style chibi). The dragon is defined as a few simple
+// shapes rasterised ONCE onto a low-res grid with a crisp outline + tight palette,
+// then recoloured per dragon and drawn as filled rects. A short wing-flap cycle gives
+// the flight animation; a floating bob / lean / tumble are applied at draw time.
+// =========================================================================
+const RC_DRG = {
+  GW: 44, GH: 28,
+  anchorX: 24, anchorY: 16,   // grid cell mapped to the dragon's (x,y) position (body centre, flying)
+  px: 1.78,                    // on-screen cell size = scale * px
+  P: { hx: 28, hy: 9, hr: 6.6, bx: 20, by: 16, brx: 6.6, bry: 5.6, eyeK: 0.9, pupK: 0.66 }
+};
+function _rcInEll(gx, gy, cx, cy, rx, ry) { const dx = (gx - cx) / rx, dy = (gy - cy) / ry; return dx * dx + dy * dy <= 1; }
+function _rcInRect(gx, gy, x, y, w, h) { return gx >= x && gx < x + w && gy >= y && gy < y + h; }
+function _rcSgn(ax, ay, bx, by, cx, cy) { return (ax - cx) * (by - cy) - (bx - cx) * (ay - cy); }
+function _rcInTri(px, py, A, B, C) { const d1 = _rcSgn(px, py, A[0], A[1], B[0], B[1]), d2 = _rcSgn(px, py, B[0], B[1], C[0], C[1]), d3 = _rcSgn(px, py, C[0], C[1], A[0], A[1]); return !(((d1 < 0) || (d2 < 0) || (d3 < 0)) && ((d1 > 0) || (d2 > 0) || (d3 > 0))); }
+function _rcInPoly(px, py, pts) { let inside = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1]; if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) inside = !inside; } return inside; }
+// ---- neon recolour: push the base hue to a vivid, luminous neon ----
+function _rcHexRgb(h) { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+function _rcRgbHex(r, g, b) { const f = v => ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2); return '#' + f(r) + f(g) + f(b); }
+function _rcNeon(hex) {
+  let c = _rcHexRgb(hex), r = c[0] / 255, g = c[1] / 255, b = c[2] / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0, s = 0; const l = (mx + mn) / 2;
+  if (d !== 0) { s = d / (1 - Math.abs(2 * l - 1)); h = mx === r ? (((g - b) / d) % 6) : mx === g ? ((b - r) / d + 2) : ((r - g) / d + 4); h *= 60; if (h < 0) h += 360; }
+  s = Math.min(1, s * 1.7 + 0.4); const L = 0.56;
+  const cc = (1 - Math.abs(2 * L - 1)) * s, X = cc * (1 - Math.abs((h / 60) % 2 - 1)), m = L - cc / 2;
+  let rr, gg, bb;
+  if (h < 60) { rr = cc; gg = X; bb = 0; } else if (h < 120) { rr = X; gg = cc; bb = 0; } else if (h < 180) { rr = 0; gg = cc; bb = X; } else if (h < 240) { rr = 0; gg = X; bb = cc; } else if (h < 300) { rr = X; gg = 0; bb = cc; } else { rr = cc; gg = 0; bb = X; }
+  return _rcRgbHex((rr + m) * 255, (gg + m) * 255, (bb + m) * 255);
+}
+function _rcDragonShapes(P, flap) {
+  const hx = P.hx, hy = P.hy, hr = P.hr, bx = P.bx, by = P.by, brx = P.brx, bry = P.bry;
+  const sx = hx + hr * 0.86, sy = hy + hr * 0.34, ex = hx + hr * 0.10, ey = hy - hr * 0.10;
+  const lift = ((flap == null ? 0.5 : flap) - 0.5) * 5.0;   // wing-tip vertical travel (flap)
+  const S = [];
+  // far wing (behind, darker) — a fuller dragon wing
+  {
+    const J = [bx + brx * 0.06, by - bry * 0.32];
+    const u1 = [bx - brx * 0.8, by - bry * 2.25 + lift * 0.7];
+    const u2 = [bx - brx * 0.28, by - bry * 1.7 + lift * 0.4];
+    const u3 = [bx + brx * 0.12, by - bry * 0.9 + lift * 0.15];
+    const dp = (a, b) => [(a[0] + b[0]) / 2 * 0.85 + J[0] * 0.15, (a[1] + b[1]) / 2 * 0.85 + J[1] * 0.15];
+    S.push({ k: 'D', t: 'poly', p: [J, u1, dp(u1, u2), u2, dp(u2, u3), u3] });
+  }
+  // tail — a long tapering dragon tail curving back-down to an arrowhead/spade fin tip
+  {
+    const tr = bx - brx;   // root (body back)
+    S.push({ k: 'B', t: 'poly', p: [
+      [tr + 1.2, by - bry * 0.32], [tr - brx * 0.55, by - bry * 0.02], [tr - brx * 1.08, by + bry * 0.5],
+      [tr - brx * 1.48, by + bry * 1.0], [tr - brx * 1.3, by + bry * 1.22], [tr - brx * 0.82, by + bry * 0.82],
+      [tr - brx * 0.38, by + bry * 0.36], [tr + 1.2, by + bry * 0.42]
+    ]});
+    S.push({ k: 'M', t: 'poly', p: [
+      [tr - brx * 0.4, by + bry * 0.5], [tr - brx * 0.9, by + bry * 0.9], [tr - brx * 1.38, by + bry * 1.16], [tr - brx * 0.78, by + bry * 0.82]
+    ]});   // shaded underside
+    S.push({ k: 'D', t: 'poly', p: [
+      [tr - brx * 1.38, by + bry * 0.66], [tr - brx * 1.92, by + bry * 0.42], [tr - brx * 1.72, by + bry * 1.12], [tr - brx * 1.28, by + bry * 1.04]
+    ]});   // arrowhead / spade fin tip
+  }
+  // tiny TUCKED legs (small claw nubs only — it's a FLYING dragon now)
+  S.push({ k: 'M', t: 'ell', p: [bx - brx * 0.28, by + bry * 0.82, 1.4, 1.6] });
+  S.push({ k: 'M', t: 'ell', p: [bx + brx * 0.34, by + bry * 0.78, 1.4, 1.6] });
+  S.push({ k: 'D', t: 'tri', p: [[bx - brx * 0.28 - 1, by + bry * 1.45], [bx - brx * 0.28, by + bry * 1.05], [bx - brx * 0.28 + 1, by + bry * 1.45]] });
+  S.push({ k: 'D', t: 'tri', p: [[bx + brx * 0.34 - 1, by + bry * 1.4], [bx + brx * 0.34, by + bry * 1.0], [bx + brx * 0.34 + 1, by + bry * 1.4]] });
+  // body + belly
+  S.push({ k: 'B', t: 'ell', p: [bx, by, brx, bry] });
+  S.push({ k: 'M', t: 'ell', p: [bx, by + bry * 0.45, brx * 0.85, bry * 0.55] });
+  S.push({ k: 'b', t: 'ell', p: [bx + brx * 0.06, by + bry * 0.5, brx * 0.62, bry * 0.5] });
+  // neck + head
+  S.push({ k: 'B', t: 'ell', p: [(bx + hx) / 2 + 1, (by + hy) / 2, 3.0, Math.abs(by - hy) / 2 + 2.2] });
+  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr, hr * 0.97] });
+  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.36, hy - hr * 0.4, hr * 0.5, hr * 0.36] });
+  S.push({ k: 'B', t: 'ell', p: [sx - hr * 0.06, sy + hr * 0.04, hr * 0.56, hr * 0.48] });   // blunt reptilian muzzle (not a beak)
+  S.push({ k: 'L', t: 'ell', p: [sx - hr * 0.16, sy - hr * 0.2, hr * 0.34, hr * 0.18] });    // nose-bridge highlight
+  // horns
+  // horns — two swept-back horns: a distinct far horn (darker, behind) + a prominent near horn
+  S.push({ k: 'H', t: 'poly', p: [[hx - hr * 0.04, hy - hr * 0.56], [hx - hr * 0.82, hy - hr * 1.12], [hx - hr * 0.62, hy - hr * 1.2], [hx + hr * 0.2, hy - hr * 0.5]] });   // far horn
+  S.push({ k: 'h', t: 'poly', p: [[hx + hr * 0.16, hy - hr * 0.58], [hx - hr * 0.58, hy - hr * 1.3], [hx - hr * 0.34, hy - hr * 1.36], [hx + hr * 0.44, hy - hr * 0.5]] });   // near horn
+  S.push({ k: 'L', t: 'tri', p: [[hx + hr * 0.3, hy - hr * 0.56], [hx - hr * 0.48, hy - hr * 1.28], [hx - hr * 0.3, hy - hr * 1.32]] });   // near-horn highlight
+  // eye (sizes from P.eyeK / P.pupK so variants can be compared)
+  const eK = P.eyeK || 1, pK = P.pupK || 1;
+  S.push({ k: 'e', t: 'ell', p: [ex, ey, hr * 0.46 * eK, hr * 0.52 * eK] });
+  S.push({ k: 'p', t: 'ell', p: [ex + hr * 0.16, ey + hr * 0.16, hr * 0.27 * pK, hr * 0.32 * pK] });
+  S.push({ k: 'n', t: 'rect', p: [sx + hr * 0.34, sy - hr * 0.12, 1.0, 1.0] });   // nostril
+  // CLOSED reptilian mouth — a dark lip line along the lower muzzle (curving up at the
+  // back, NOT a beak split) + clear white fangs poking DOWN from the upper lip.
+  S.push({ k: 'o', t: 'poly', p: [[sx + hr * 0.52, sy + hr * 0.3], [sx + hr * 0.52, sy + hr * 0.4], [sx - hr * 0.14, sy + hr * 0.46], [sx - hr * 0.18, sy + hr * 0.36]] });   // lip line
+  S.push({ k: 'f', t: 'poly', p: [[sx + hr * 0.44, sy + hr * 0.36], [sx + hr * 0.38, sy + hr * 0.66], [sx + hr * 0.5, sy + hr * 0.52]] });   // front fang (big, clear)
+  S.push({ k: 'f', t: 'poly', p: [[sx + hr * 0.24, sy + hr * 0.4], [sx + hr * 0.19, sy + hr * 0.64], [sx + hr * 0.31, sy + hr * 0.54]] });   // second fang
+  // near wing — SIDE PROFILE, FULL & refined: a leading-edge arm rises from the shoulder
+  // to the tip; a BROAD membrane sail trails behind with gentle scallops + finger struts.
+  {
+    const S0 = [bx + brx * 0.3, by - bry * 0.22];                 // shoulder joint
+    const W0 = [bx - brx * 0.28, by - bry * 1.85 + lift * 0.8];   // wrist (mid leading edge)
+    const T0 = [bx - brx * 0.66, by - bry * 2.45 + lift];         // wing tip
+    const e1 = [bx - brx * 1.02, by - bry * 1.42 + lift * 0.55];  // broad trailing edge (out & back)
+    const e2 = [bx - brx * 0.6, by - bry * 0.52 + lift * 0.25];
+    const e3 = [bx - brx * 0.08, by - bry * 0.05];               // trailing edge meeting the back
+    S.push({ k: 'w', t: 'poly', p: [S0, W0, T0, e1, e2, e3] });   // broad membrane sail
+    S.push({ k: 'W', t: 'poly', p: [S0, W0, T0, e1, [(e1[0] + e2[0]) / 2, (e1[1] + e2[1]) / 2]] });  // lit membrane
+    S.push({ k: 'D', t: 'poly', p: [[S0[0] - 0.5, S0[1] - 0.4], [W0[0] - 0.5, W0[1] - 0.4], [T0[0], T0[1]], [T0[0] + 1.0, T0[1] + 0.9], [W0[0] + 0.6, W0[1] + 0.7], [S0[0] + 0.7, S0[1] + 0.6]] });  // leading-edge arm
+    S.push({ k: 'D', t: 'tri', p: [[W0[0], W0[1]], e1, [W0[0] + 0.8, W0[1] + 0.9]] });  // finger strut
+    S.push({ k: 'D', t: 'tri', p: [[W0[0], W0[1]], e2, [W0[0] + 0.8, W0[1] + 0.9]] });  // finger strut
+  }
+  return S;
+}
+function _rcCover(s, gx, gy) { const cx = gx + 0.5, cy = gy + 0.5; return s.t === 'ell' ? _rcInEll(cx, cy, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'rect' ? _rcInRect(cx, cy, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'poly' ? _rcInPoly(cx, cy, s.p) : _rcInTri(cx, cy, s.p[0], s.p[1], s.p[2]); }
+function _rcBuildGrid(P, legDX) {
+  const sh = _rcDragonShapes(P, legDX), GW = RC_DRG.GW, GH = RC_DRG.GH;
+  const g = []; for (let y = 0; y < GH; y++) g.push(new Array(GW).fill(null));
+  for (const s of sh) for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (_rcCover(s, x, y)) g[y][x] = s.k; }
+  const og = g.map(r => r.slice());
+  const fil = (x, y) => x >= 0 && x < GW && y >= 0 && y < GH && g[y][x] != null;
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (g[y][x] == null && (fil(x - 1, y) || fil(x + 1, y) || fil(x, y - 1) || fil(x, y + 1))) og[y][x] = 'o'; }
+  return og;
+}
+const _RC_FLAP = [0.12, 0.5, 0.92, 0.5];   // wing-flap cycle: down → mid → up → mid
+const RC_DRAGON_FRAMES = _RC_FLAP.map(f => _rcBuildGrid(RC_DRG.P, f));
+function _rcDragonPal(base) {
+  // Natural (distinguishable) base colours, but keep the "pop": brighter highlights
+  // + a deep-violet outline. The luminous halo (drawn separately) carries the glow.
+  const b0 = base || '#8a8a8a';
+  return { 'o': '#201425', 'D': rcShade(b0, -46), 'M': rcShade(b0, -20), 'B': b0, 'L': rcShade(b0, 40), 'b': rcShade(b0, 82), 'h': '#f1e8cf', 'H': rcShade('#f1e8cf', -42), 'w': rcShade(b0, -6), 'W': rcShade(b0, 36), 'e': '#ffffff', 'p': '#2b39c8', 'f': '#ffffff', 'm': '#4a1018', 'n': '#201425' };
+}
+function rcDrawDragonPixel(ctx, o) {
+  let fi = Math.floor((o.gait || 0) / (Math.PI / 2)) % RC_DRAGON_FRAMES.length;
+  if (fi < 0) fi += RC_DRAGON_FRAMES.length;
+  const grid = RC_DRAGON_FRAMES[fi];
+  const pal = _rcDragonPal(o.color || '#8a8a8a');
+  const pxc = (o.scale || 1) * RC_DRG.px;
+  const bob = Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);   // gentle floating (flight)
+  ctx.save();
+  ctx.translate(o.x, o.y);
+  if (o.tumble) ctx.rotate(o.tumble);
+  ctx.rotate(-(o.lean || 0) * 0.06 + (o.bank || 0) * 0.10);
+  ctx.translate(0, -bob * pxc * 0.9);
+  // soft luminous halo — keeps the eye-catching "pop" without washing out the colours
+  {
+    ctx.save(); ctx.globalAlpha = 0.22;
+    const gc = rcShade(o.color || '#888', 46), r = 14 * pxc;
+    const ng = ctx.createRadialGradient(0, -pxc, 2, 0, -pxc, r);
+    ng.addColorStop(0, rcRgba(gc, 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.15)); ng.addColorStop(1, rcRgba(gc, 0));
+    ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -pxc, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  if (o.glow > 0) {
+    ctx.save(); ctx.globalAlpha = 0.5 * o.glow;
+    const ag = ctx.createRadialGradient(0, -8 * pxc, 2, 0, -8 * pxc, 30);
+    ag.addColorStop(0, rcRgba(o.color || '#fff', 0.9)); ag.addColorStop(1, rcRgba(o.color || '#fff', 0));
+    ctx.fillStyle = ag; ctx.beginPath(); ctx.ellipse(0, -8 * pxc, 26, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  const ox = -RC_DRG.anchorX * pxc, oy = -RC_DRG.anchorY * pxc, GW = RC_DRG.GW, GH = RC_DRG.GH;
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    const k = grid[y][x]; if (!k) continue;
+    ctx.fillStyle = pal[k]; ctx.fillRect(Math.round(ox + x * pxc), Math.round(oy + y * pxc), Math.ceil(pxc), Math.ceil(pxc));
+  }
+  ctx.restore();
+}
+
 function rcDrawDragon(ctx, o) {
+  return rcDrawDragonPixel(ctx, o);
+}
+// ----- legacy vector dragon (unused; removed once the pixel sprite is signed off) -----
+function _rcDragonVectorLegacy(ctx, o) {
   const s = o.scale;
   const base = o.color;
   const dark  = rcShade(base, -40), mid = rcShade(base, -16),
@@ -642,49 +804,104 @@ function rcDrawDragon(ctx, o) {
   // ---- near wing (in front of torso) ----
   wing(1);
 
-  // ---- neck + head ----
-  ctx.fillStyle = light;
+  // ---- neck + head: Dragon-Quest-style reptilian muzzle — long snout, almond
+  // amber slit-eye, brow ridge, nostril/fang, cheek spike, big swept-back horns.
+  // (Drawn side-on, facing +x.) The head mass is scaled by headK; the neck is not. ----
+  const hornL = "#e7dabd", hornM = rcShade("#e7dabd", -22), hornD = rcShade("#e7dabd", -48);
+  const sweptHorn = (bx, by, tipx, tipy, w, col) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(bx - w, by);
+    ctx.quadraticCurveTo((bx + tipx) * 0.5 - w * 1.5, (by + tipy) * 0.5 - 1, tipx, tipy);
+    ctx.quadraticCurveTo((bx + tipx) * 0.5 + w * 0.3, (by + tipy) * 0.5 + 1.6, bx + w, by);
+    ctx.closePath(); ctx.fill();
+  };
+  // neck (sturdy; connects the chest to the back of the skull)
+  ctx.fillStyle = mid;
   ctx.beginPath();
-  ctx.moveTo(7, -7 + bob);
-  ctx.quadraticCurveTo(12, -6 + bob, 12, headY + 3);
-  ctx.lineTo(8, headY + 4);
-  ctx.quadraticCurveTo(6, -4 + bob, 7, -7 + bob);
+  ctx.moveTo(4, -6 + bob);
+  ctx.quadraticCurveTo(10, -7 + bob, 10.5, headY + 4);
+  ctx.lineTo(5.5, headY + 5);
+  ctx.quadraticCurveTo(2.5, -3 + bob, 4, -6 + bob);
   ctx.fill();
-  // head (scaled by build's headK — bigger heads read cuter)
-  ctx.fillStyle = light;
-  ctx.beginPath();
-  ctx.ellipse(12.5, headY, 8 * headK, 6.6 * headK, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // snout / jaw
+
+  ctx.save();
+  ctx.translate(14, headY); ctx.scale(headK, headK); ctx.translate(-14, -headY);
+
+  // far horn (behind the skull, darker → depth) — small, gentle sweep
+  sweptHorn(11.5, headY - 3.5, 8.8, headY - 9.5, 1.7, hornD);
+
+  // head mass: a chunky reptilian muzzle (rounded skull → blunt snout → jaw)
   ctx.fillStyle = base;
   ctx.beginPath();
-  ctx.moveTo(16.5, headY - 2.2);
-  ctx.quadraticCurveTo(23, headY - 0.2, 20.5, headY + 2.6);
-  ctx.quadraticCurveTo(17.5, headY + 3.4, 15.5, headY + 2);
+  ctx.moveTo(6, headY + 4.4);
+  ctx.quadraticCurveTo(5.2, headY - 3.4, 10, headY - 5.2);
+  ctx.quadraticCurveTo(13, headY - 6.2, 16.5, headY - 4);
+  ctx.quadraticCurveTo(20, headY - 3, 22.6, headY - 0.8);
+  ctx.quadraticCurveTo(23.6, headY + 0.9, 22.8, headY + 2.7);
+  ctx.quadraticCurveTo(20, headY + 3.5, 15, headY + 3.7);
+  ctx.quadraticCurveTo(9, headY + 4.4, 6, headY + 4.4);
   ctx.closePath(); ctx.fill();
-  // brow ridge
-  ctx.fillStyle = mid;
-  ctx.beginPath(); ctx.ellipse(11.5, headY - 3.6, 5, 2.1, -0.2, 0, Math.PI * 2); ctx.fill();
-  // cheek frill
-  ctx.fillStyle = mid;
+  // lit top of the muzzle (nose-bridge highlight)
+  ctx.fillStyle = light;
   ctx.beginPath();
-  ctx.moveTo(8.5, headY + 0.5); ctx.lineTo(4.5, headY + 1.5);
-  ctx.lineTo(8, headY + 4); ctx.closePath(); ctx.fill();
+  ctx.moveTo(9, headY - 3.8);
+  ctx.quadraticCurveTo(13, headY - 5.4, 16.5, headY - 3.6);
+  ctx.quadraticCurveTo(20, headY - 2.6, 22.2, headY - 0.6);
+  ctx.quadraticCurveTo(19, headY - 1.2, 15.5, headY - 1.6);
+  ctx.quadraticCurveTo(12, headY - 2.0, 9, headY - 3.8);
+  ctx.fill();
+  // under-jaw shadow
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(15, headY + 3.7); ctx.quadraticCurveTo(10.5, headY + 4.3, 6.4, headY + 4.3);
+  ctx.quadraticCurveTo(10.5, headY + 3.2, 15, headY + 2.9); ctx.closePath(); ctx.fill();
 
-  horns();
-  face();
+  // mouth seam + a small fang
+  ctx.strokeStyle = rcRgba(dark, 0.85); ctx.lineWidth = 1.0; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(22.6, headY + 2.0); ctx.lineTo(15.5, headY + 2.8); ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.moveTo(19.6, headY + 2.4); ctx.lineTo(20.2, headY + 3.6); ctx.lineTo(20.8, headY + 2.4); ctx.closePath(); ctx.fill();
+  // nostril
+  ctx.fillStyle = rcRgba(dark, 0.9);
+  ctx.beginPath(); ctx.ellipse(21.4, headY + 0.2, 0.9, 1.2, -0.3, 0, Math.PI * 2); ctx.fill();
 
-  // open mouth + fang when pushing hard / at the line
-  if (o.effort) {
-    ctx.fillStyle = "#7a1f2b";
-    ctx.beginPath(); ctx.ellipse(18.5, headY + 2.4, 2.2, 1.7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.moveTo(17.6, headY + 1.4); ctx.lineTo(18.4, headY + 2.8); ctx.lineTo(19.2, headY + 1.4);
-    ctx.closePath(); ctx.fill();
+  // cheek spike (small backward horn, à la the DQ dragon)
+  ctx.fillStyle = hornM;
+  ctx.beginPath(); ctx.moveTo(9.5, headY + 0.6); ctx.lineTo(5.2, headY - 0.4); ctx.lineTo(9.5, headY + 2.2); ctx.closePath(); ctx.fill();
+
+  // big "Pac-Man ghost" eye — a large white eyeball with a round blue pupil that
+  // looks ahead in the running direction. Cute > fierce, so no heavy brow ridge.
+  if (o.down) {
+    ctx.strokeStyle = "#16202e"; ctx.lineWidth = 1.4; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(10.6, headY - 1.0); ctx.quadraticCurveTo(13.8, headY - 3.0, 17.0, headY - 1.0); ctx.stroke();
+  } else {
+    const exx = 13.8, eyy = headY - 0.8, ek = 0.9 + 0.25 * eyeK;
+    ctx.fillStyle = "#ffffff";                                 // big eyeball
+    ctx.beginPath(); ctx.ellipse(exx, eyy, 3.3 * ek, 3.9 * ek, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rcRgba(dark, 0.28); ctx.lineWidth = 0.6; ctx.stroke();
+    ctx.fillStyle = D.aura || "#2b39c8";                       // round blue ghost pupil
+    ctx.beginPath(); ctx.ellipse(exx + 1.6 * ek, eyy + 0.3, 1.8 * ek, 2.1 * ek, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff";                                     // glint
+    ctx.beginPath(); ctx.arc(exx + 1.0, eyy - 0.9, 0.7, 0, Math.PI * 2); ctx.fill();
   }
 
-  ctx.restore();
+  // near horn (in front, light) — small, gentle sweep + a ridge line
+  sweptHorn(14.5, headY - 3.2, 11.6, headY - 10, 2.1, hornL);
+  ctx.strokeStyle = rcRgba(hornD, 0.6); ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(13.7, headY - 5.6); ctx.lineTo(12.5, headY - 5.9);
+  ctx.moveTo(12.9, headY - 7.6); ctx.lineTo(11.8, headY - 7.9);
+  ctx.stroke();
+
+  // open maw when pushing hard
+  if (o.effort) {
+    ctx.fillStyle = "#7a1f2b";
+    ctx.beginPath(); ctx.ellipse(19, headY + 2.7, 2.3, 1.5, -0.1, 0, Math.PI * 2); ctx.fill();
+  }
+
+  ctx.restore();   // end head-scale
+  ctx.restore();   // end dragon transform
 }
 
 // =========================================================================
@@ -933,8 +1150,11 @@ function startRaceCanvas(container, ctx) {
     // push in near the finish and when the field bunches up; pull back when spread
     const finishProx = clamp((leaderP - 0.74) / 0.26, 0, 1);
     const bunch = clamp(1 - (leaderP - lastP) / 0.22, 0, 1);
-    S.zoomT = S.finished ? 1.2 : (1 + 0.13 * finishProx + 0.05 * bunch + (S.zoomBump || 0));
-    S.zoom += (S.zoomT - S.zoom) * 0.06;
+    // Steady camera: only a gentle, smooth push-in toward the finish. The old
+    // per-event zoom "bumps" (overtake / close-battle / callout) read as a glitch,
+    // so they no longer drive the zoom — drama is carried by shake + telop instead.
+    S.zoomT = S.finished ? 1.12 : (1 + 0.07 * finishProx + 0.02 * bunch);
+    S.zoom += (S.zoomT - S.zoom) * 0.05;
 
     // gentle vertical pan toward the leader's lane → the camera "follows"
     const g = trackGeom();
