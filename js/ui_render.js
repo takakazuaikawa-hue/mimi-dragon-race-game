@@ -211,10 +211,10 @@ function showStoryUnlock(chapters, idx) {
   if (cast) modal.style.setProperty("--cg", cast.color);
   modal.innerHTML =
     `<div class="su-badge">✦ 新エピソード解放 ✦</div>` +
-    `<div class="story-cg"><div class="story-cg-art"><span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span></div>` +
+    `<div class="story-cg"><div class="story-cg-art">${photoOr("images/story/" + ch.id + ".png", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}</div>` +
       `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div></div>` +
     `<div class="su-title">${ch.title}</div>` +
-    (cast ? `<div class="su-cast"><span class="su-cast-sym" style="--cg:${cast.color}">${cast.symbol}</span>${cast.name}<small>（${cast.tag}）</small></div>` : "") +
+    (cast ? `<div class="su-cast"><span class="su-cast-sym" style="--cg:${cast.color}">${photoOr("images/cast/" + ch.cast + ".png", cast.symbol)}</span>${cast.name}<small>（${cast.tag}）</small></div>` : "") +
     `<div class="su-body">${ch.body}</div>`;
   const btn = el("button", "su-close", idx < chapters.length - 1 ? "次へ ▶" : "とじる");
   btn.onclick = () => { ov.remove(); if (idx < chapters.length - 1) showStoryUnlock(chapters, idx + 1); };
@@ -240,6 +240,14 @@ function advisorVoiceEl(context) {
     `<span class="av-body"><span class="av-name">${c.name}<small>（${c.tag}）</small></span>` +
     `<span class="av-line">${STORY_RACE_VOICE[key]}</span></span>`;
   return box;
+}
+
+// Image drop-in (1)(2): returns `fallbackHTML` plus an <img> that loads a real
+// asset from `src` if present (fades in over the fallback) and removes itself on
+// 404 so only the placeholder shows. See images/README.md for the convention.
+function photoOr(src, fallbackHTML) {
+  return fallbackHTML +
+    `<img class="photo-fill" alt="" src="${src}" onload="this.classList.add('loaded')" onerror="this.remove()">`;
 }
 
 // =========================================================================
@@ -271,7 +279,7 @@ function renderStory() {
     const cg = el("div", "story-cg" + (unlocked ? "" : " locked"));
     if (cast) cg.style.setProperty("--cg", cast.color);
     cg.innerHTML = unlocked
-      ? `<div class="story-cg-art"><span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span></div>` +
+      ? `<div class="story-cg-art">${photoOr("images/story/" + ch.id + ".png", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}</div>` +
         `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div>`
       : `<div class="story-cg-art"><span class="story-cg-sym">🔒</span></div>` +
         `<div class="story-cg-cap">総資産 ${fmtCoins(storyUnlockAt(ch.id))} で解放</div>`;
@@ -322,7 +330,9 @@ function renderConsult() {
     const card = el("div", "card consult-card" + (unlocked ? "" : " locked"));
     const port = el("div", "consult-port");
     port.style.setProperty("--cg", c.color);
-    port.innerHTML = `<span class="consult-sym">${unlocked ? c.symbol : "🔒"}</span>`;
+    port.innerHTML = unlocked
+      ? photoOr("images/cast/" + k + ".png", `<span class="consult-sym">${c.symbol}</span>`)
+      : `<span class="consult-sym">🔒</span>`;
     card.appendChild(port);
     const body = el("div", "consult-body");
     body.innerHTML = unlocked
