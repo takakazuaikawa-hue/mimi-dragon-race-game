@@ -88,6 +88,21 @@ const RC_THEME = {
   rolling:  { sky: ["#13192e", "#232d49", "#2b2540"], ground: ["#37502e", "#405a35", "#23361d"], accent: "#c2e2aa", amb: "leaf" },
   bridge:   { sky: ["#0f1a30", "#1b2c4a", "#243a52"], ground: ["#2d3f49", "#324a55", "#1c2b33"], accent: "#bcd8e8", amb: null }
 };
+// Terrain identity for the watcher: an icon for the HUD + the section sign, and a
+// translucent full-scene wash so each course's character is felt at a glance. The
+// race result is untouched — this is purely how the fixed run is dressed on screen.
+const RC_TERRAIN = {
+  straight: { icon: "🏁", word: "直線",   tint: null,                     turn: 0 },
+  uphill:   { icon: "⛰️", word: "上り坂", tint: "rgba(170,130,70,0.10)",  turn: 0 },
+  narrow:   { icon: "🪨", word: "狭路",   tint: "rgba(50,38,24,0.16)",    turn: 0 },
+  fire:     { icon: "🌋", word: "火山",   tint: "rgba(255,70,20,0.15)",   turn: 0 },
+  mist:     { icon: "🌫️", word: "霧",     tint: "rgba(208,222,234,0.16)", turn: 0 },
+  wind:     { icon: "💨", word: "強風",   tint: "rgba(150,200,255,0.09)", turn: 0 },
+  turn:     { icon: "🌀", word: "旋回",   tint: "rgba(255,224,106,0.07)", turn: 1 },
+  rolling:  { icon: "🏞️", word: "起伏",   tint: "rgba(130,180,100,0.08)", turn: 0 },
+  bridge:   { icon: "🌉", word: "橋上",   tint: "rgba(150,200,220,0.10)", turn: 0 }
+};
+function rcTerrainInfo(key) { return RC_TERRAIN[key] || RC_TERRAIN.straight; }
 
 // =========================================================================
 // Pixel dragon, drawn on canvas. Keeps the cute identity (base colour + belly +
@@ -788,7 +803,10 @@ function startRaceCanvas(container, ctx) {
     confettiT: 0,       // ongoing confetti spawn while celebrating
     banner: null,       // {text,t,max} active phase-entry banner
     phaseShown: 0,      // last phase index a banner was raised for
-    trioShown: false    // "三つ巴！" lead-trio callout fired once
+    trioShown: false,   // "三つ巴！" lead-trio callout fired once
+    terrainSign: null,  // {icon,label,t,max} section-entry terrain sign
+    sectionShown: -1,   // last course third (0/1/2) a terrain sign was raised for
+    tilt: 0             // eased camera roll — banks the view through turns
   };
   dragons.forEach(dr => { S.gait[dr.id] = Math.random() * Math.PI * 2; });
 
@@ -926,6 +944,10 @@ function startRaceCanvas(container, ctx) {
     S.camYT = clamp((centerY - leadLaneY) * 0.22, -ch * 0.05, ch * 0.05);
     S.camY += (S.camYT - S.camY) * 0.05;
 
+    // bank the camera through turn sections — a subtle roll that reads as a corner
+    const tiltTarget = rcTerrainInfo(themeKeyAtP(leaderP)).turn ? 0.02 : 0;
+    S.tilt += (tiltTarget - S.tilt) * 0.04;
+
     return { leaderP, lastP, WINW, leaderId };
   }
 
@@ -980,71 +1002,221 @@ function startRaceCanvas(container, ctx) {
   function drawThemeBackdrop(key, g, alpha) {
     if (alpha <= 0.02) return;
     const hz = g.top;
+    const t = performance.now();
     cctx.save();
     cctx.globalAlpha = alpha;
     if (key === "fire") {
-      const vx = cw * 0.5 - ((S.camL * 90) % (cw * 1.5));
-      cctx.fillStyle = "#2a1410";
+      // red sky-glow band along the horizon
+      const glow = cctx.createLinearGradient(0, hz - 130, 0, hz + 6);
+      glow.addColorStop(0, "rgba(255,70,20,0)"); glow.addColorStop(1, "rgba(255,90,30,0.34)");
+      cctx.fillStyle = glow; cctx.fillRect(0, hz - 130, cw, 136);
+      // big erupting volcano cone (parallax)
+      const vx = cw * 0.64 - ((S.camL * 70) % (cw * 1.7));
+      const peak = hz - 108, halfW = 138;
+      cctx.fillStyle = "#241010";
       cctx.beginPath();
-      cctx.moveTo(vx - 76, hz); cctx.lineTo(vx - 18, hz - 70);
-      cctx.lineTo(vx + 18, hz - 70); cctx.lineTo(vx + 76, hz); cctx.closePath(); cctx.fill();
-      const gl = cctx.createLinearGradient(vx, hz - 70, vx, hz - 28);
-      gl.addColorStop(0, "rgba(255,150,60,0.9)"); gl.addColorStop(1, "rgba(255,90,40,0)");
-      cctx.fillStyle = gl;
+      cctx.moveTo(vx - halfW, hz); cctx.lineTo(vx - 22, peak + 6);
+      cctx.lineTo(vx + 22, peak + 6); cctx.lineTo(vx + halfW, hz); cctx.closePath(); cctx.fill();
+      cctx.fillStyle = "rgba(86,42,30,0.55)";   // sunlit flank
       cctx.beginPath();
-      cctx.moveTo(vx - 16, hz - 68); cctx.lineTo(vx + 16, hz - 68);
-      cctx.lineTo(vx + 10, hz - 40); cctx.lineTo(vx - 10, hz - 40); cctx.closePath(); cctx.fill();
+      cctx.moveTo(vx + 6, peak + 6); cctx.lineTo(vx + 22, peak + 6);
+      cctx.lineTo(vx + halfW, hz); cctx.lineTo(vx + halfW * 0.42, hz); cctx.closePath(); cctx.fill();
+      // glowing crater + lava fountain
+      const cg = cctx.createRadialGradient(vx, peak + 8, 2, vx, peak + 8, 30);
+      cg.addColorStop(0, "rgba(255,240,150,0.95)"); cg.addColorStop(0.5, "rgba(255,140,40,0.8)"); cg.addColorStop(1, "rgba(255,80,20,0)");
+      cctx.fillStyle = cg; cctx.beginPath(); cctx.ellipse(vx, peak + 8, 27, 17, 0, 0, Math.PI * 2); cctx.fill();
+      for (let i = 0; i < 8; i++) {
+        const ph = (t / 680 + i * 0.47) % 1;                      // 0..1 rising spatter
+        const fx = vx + Math.sin(i * 2.1) * 18 * ph, fy = peak + 8 - ph * 50;
+        cctx.fillStyle = "rgba(255," + (190 - ((ph * 130) | 0)) + ",60," + ((1 - ph) * 0.9) + ")";
+        cctx.beginPath(); cctx.arc(fx, fy, 3.4 * (1 - ph * 0.4), 0, Math.PI * 2); cctx.fill();
+      }
+      // lava flows down both flanks
+      cctx.strokeStyle = "rgba(255,110,40,0.85)"; cctx.lineWidth = 3;
+      for (let s = -1; s <= 1; s += 2) {
+        cctx.beginPath(); cctx.moveTo(vx + s * 7, peak + 16);
+        cctx.quadraticCurveTo(vx + s * 54, hz - 42, vx + s * (halfW - 30), hz - 2); cctx.stroke();
+      }
+      // dark smoke plume
+      for (let i = 0; i < 5; i++) {
+        const ph = (t / 2600 + i * 0.2) % 1;
+        const sx = vx + Math.sin(i * 1.7 + t / 1800) * 20 * ph, sy = peak + 4 - ph * 74;
+        cctx.fillStyle = "rgba(60,52,52," + ((1 - ph) * 0.5) + ")";
+        cctx.beginPath(); cctx.arc(sx, sy, 9 + ph * 24, 0, Math.PI * 2); cctx.fill();
+      }
+    } else if (key === "turn") {
+      // a big banked corner sweeps across the horizon: grandstand + striped curb
+      const cx = cw * 0.5, cy = hz - 210, R = 178, a0 = Math.PI * 0.17, a1 = Math.PI * 0.83;
+      cctx.strokeStyle = "rgba(26,30,54,0.9)"; cctx.lineWidth = 26;          // grandstand band
+      cctx.beginPath(); cctx.arc(cx, cy, R - 20, a0, a1); cctx.stroke();
+      cctx.fillStyle = "rgba(132,142,182,0.5)";                              // crowd speckle
+      for (let i = 0; i < 36; i++) {
+        const a = a0 + (a1 - a0) * (i / 36), rr = R - 14 - (i % 3) * 7;
+        cctx.beginPath(); cctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, 1.5, 0, Math.PI * 2); cctx.fill();
+      }
+      const segs = 30;                                                       // red/white striped curb
+      for (let i = 0; i < segs; i++) {
+        const b0 = a0 + (a1 - a0) * (i / segs), b1 = a0 + (a1 - a0) * ((i + 1) / segs);
+        cctx.strokeStyle = (i % 2 === 0) ? "#d64b4b" : "#eef0f2"; cctx.lineWidth = 9;
+        cctx.beginPath(); cctx.arc(cx, cy, R, b0, b1); cctx.stroke();
+      }
     } else if (key === "wind") {
-      cctx.fillStyle = "rgba(196,214,238,0.45)";
-      for (let i = 0; i < 4; i++) {
-        const cx = (((i * 190 - S.camL * 240) % (cw + 220)) + cw + 220) % (cw + 220) - 110;
-        rcCloud(cx, hz - 34 - (i % 2) * 16, 24 + (i % 2) * 8);
+      cctx.fillStyle = "rgba(196,214,238,0.5)";                              // layered cloud banks
+      for (let i = 0; i < 5; i++) {
+        const cx = (((i * 150 - S.camL * 240) % (cw + 260)) + cw + 260) % (cw + 260) - 130;
+        rcCloud(cx, hz - 42 - (i % 2) * 20, 28 + (i % 2) * 10);
+      }
+      cctx.strokeStyle = "rgba(205,228,255,0.5)"; cctx.lineWidth = 2;        // raking wind streaks
+      for (let i = 0; i < 7; i++) {
+        const yy = hz - 98 + i * 13, off = (t / 6 + i * 80) % (cw + 200);
+        cctx.beginPath(); cctx.moveTo(cw - off, yy); cctx.lineTo(cw - off + 72, yy - 6); cctx.stroke();
       }
     } else if (key === "mist") {
-      const mg = cctx.createLinearGradient(0, hz - 44, 0, hz + 12);
-      mg.addColorStop(0, "rgba(210,224,236,0)"); mg.addColorStop(1, "rgba(202,218,232,0.5)");
-      cctx.fillStyle = mg; cctx.fillRect(0, hz - 44, cw, 56);
-    } else if (key === "bridge") {
-      cctx.strokeStyle = "rgba(150,175,195,0.6)"; cctx.lineWidth = 3;
-      for (let i = 0; i < 3; i++) {
-        const px = cw * 0.34 * i + (((-S.camL * 130) % (cw * 1.02)) + cw * 1.02) % (cw * 1.02) - cw * 0.1;
-        cctx.beginPath(); cctx.moveTo(px, hz); cctx.lineTo(px, hz - 58); cctx.stroke();
-        cctx.beginPath(); cctx.moveTo(px - 54, hz - 6); cctx.quadraticCurveTo(px, hz - 52, px + 54, hz - 6); cctx.stroke();
+      for (let i = 0; i < 4; i++) {                                          // thick stacked fog banks
+        const yy = hz - 64 + i * 18;
+        const mg = cctx.createLinearGradient(0, yy, 0, yy + 30);
+        mg.addColorStop(0, "rgba(206,220,232,0)"); mg.addColorStop(1, "rgba(206,220,232," + (0.22 + i * 0.06) + ")");
+        cctx.fillStyle = mg;
+        cctx.fillRect(-20 + Math.sin(t / 2600 + i) * 18, yy, cw + 40, 30);
       }
-    } else if (key === "uphill" || key === "rolling") {
-      cctx.fillStyle = "rgba(26,40,24,0.78)";
-      cctx.beginPath(); cctx.moveTo(0, hz);
-      for (let x = 0; x <= cw; x += 36) cctx.lineTo(x, hz - 20 - 14 * Math.sin((x + S.camL * 220) / 88));
-      cctx.lineTo(cw, hz); cctx.closePath(); cctx.fill();
+    } else if (key === "bridge") {
+      cctx.fillStyle = "rgba(40,70,96,0.5)"; cctx.fillRect(0, hz, cw, 8);    // water below
+      cctx.strokeStyle = "rgba(150,200,225,0.35)"; cctx.lineWidth = 1;
+      for (let i = 0; i < 6; i++) {
+        const yy = hz + 2 + (i % 3), off = (t / 30 + i * 60) % (cw + 80);
+        cctx.beginPath(); cctx.moveTo(off - 40, yy); cctx.lineTo(off, yy); cctx.stroke();
+      }
+      const bx = cw * 0.3 - ((S.camL * 110) % (cw * 1.3)), span = cw * 0.6, tH = 76;
+      cctx.strokeStyle = "rgba(150,172,188,0.85)"; cctx.lineWidth = 5;       // towers
+      [bx, bx + span].forEach(tx => { cctx.beginPath(); cctx.moveTo(tx, hz); cctx.lineTo(tx, hz - tH); cctx.stroke(); });
+      cctx.lineWidth = 2.5;                                                   // draped main cable
+      cctx.beginPath(); cctx.moveTo(bx, hz - tH); cctx.quadraticCurveTo(bx + span / 2, hz - 16, bx + span, hz - tH); cctx.stroke();
+      cctx.lineWidth = 1;                                                     // vertical hangers
+      for (let i = 1; i < 10; i++) {
+        const hx = bx + span * (i / 10);
+        const cyl = hz - 16 - (1 - Math.pow((i / 10 - 0.5) * 2, 2)) * (tH - 16);
+        cctx.beginPath(); cctx.moveTo(hx, hz - 6); cctx.lineTo(hx, cyl); cctx.stroke();
+      }
+    } else if (key === "uphill") {
+      cctx.fillStyle = "rgba(30,46,28,0.85)";                                // a big slope to a summit
+      cctx.beginPath();
+      cctx.moveTo(0, hz); cctx.lineTo(0, hz - 10); cctx.lineTo(cw * 0.72, hz - 84); cctx.lineTo(cw * 0.72, hz); cctx.closePath(); cctx.fill();
+      cctx.strokeStyle = "#cfe6ff"; cctx.lineWidth = 2;                      // summit flagpole
+      cctx.beginPath(); cctx.moveTo(cw * 0.72, hz - 84); cctx.lineTo(cw * 0.72, hz - 102); cctx.stroke();
+      cctx.fillStyle = "#ffe06a";
+      cctx.beginPath(); cctx.moveTo(cw * 0.72, hz - 102); cctx.lineTo(cw * 0.72 + 16, hz - 97); cctx.lineTo(cw * 0.72, hz - 92); cctx.closePath(); cctx.fill();
+    } else if (key === "rolling") {
+      const cols = ["rgba(28,44,26,0.7)", "rgba(34,52,30,0.8)"];            // layered rolling hills
+      for (let L = 0; L < 2; L++) {
+        cctx.fillStyle = cols[L];
+        cctx.beginPath(); cctx.moveTo(0, hz);
+        const amp = 16 + L * 12, ph = S.camL * (160 + L * 80);
+        for (let x = 0; x <= cw; x += 30) cctx.lineTo(x, hz - 10 - L * 8 - amp * (0.5 + 0.5 * Math.sin((x + ph) / (70 + L * 20))));
+        cctx.lineTo(cw, hz); cctx.closePath(); cctx.fill();
+      }
     } else if (key === "narrow") {
-      cctx.fillStyle = "rgba(30,26,20,0.82)";
-      cctx.beginPath();
-      cctx.moveTo(0, hz); cctx.lineTo(0, hz - 60); cctx.lineTo(cw * 0.15, hz - 28); cctx.lineTo(cw * 0.15, hz); cctx.closePath(); cctx.fill();
-      cctx.beginPath();
-      cctx.moveTo(cw, hz); cctx.lineTo(cw, hz - 60); cctx.lineTo(cw * 0.85, hz - 28); cctx.lineTo(cw * 0.85, hz); cctx.closePath(); cctx.fill();
+      const wallH = ch * 0.20;                                               // tall canyon walls closing in
+      [0, 1].forEach(side => {
+        const baseX = side === 0 ? 0 : cw, inX = side === 0 ? cw * 0.17 : cw * 0.83;
+        cctx.fillStyle = "rgba(34,28,20,0.92)";
+        cctx.beginPath();
+        cctx.moveTo(baseX, hz); cctx.lineTo(baseX, hz - wallH);
+        cctx.lineTo(inX, hz - wallH * 0.5); cctx.lineTo(inX, hz); cctx.closePath(); cctx.fill();
+        cctx.strokeStyle = "rgba(80,66,48,0.5)"; cctx.lineWidth = 1.5;       // rock striations
+        for (let i = 1; i < 4; i++) {
+          const yy = hz - wallH * (i / 4);
+          cctx.beginPath(); cctx.moveTo(baseX, yy); cctx.lineTo(inX, yy - wallH * 0.12); cctx.stroke();
+        }
+      });
     }
     cctx.restore();
   }
   // surface treatment painted within the running band (world space)
   function drawGroundOverlay(key, g, WINW) {
+    const t = performance.now();
+    const band = g.bottom - g.top;
     if (key === "mist") {
-      cctx.fillStyle = "rgba(200,214,228,0.12)";
-      cctx.fillRect(0, g.top, cw, g.bottom - g.top);
+      // heavy fog veil over the track + drifting wisps (kills contrast → reads as fog)
+      cctx.fillStyle = "rgba(202,216,228,0.26)";
+      cctx.fillRect(0, g.top, cw, band);
+      cctx.fillStyle = "rgba(222,232,242,0.16)";
+      for (let i = 0; i < 4; i++) {
+        const y = g.top + (i + 0.5) * band / 4, x = ((t / 40 + i * 130) % (cw + 220)) - 110;
+        cctx.beginPath(); cctx.ellipse(x, y, 82, 14, 0, 0, Math.PI * 2); cctx.fill();
+      }
     } else if (key === "fire") {
-      cctx.strokeStyle = "rgba(255,120,50,0.10)"; cctx.lineWidth = 1.5;
-      for (let i = 0; i < 5; i++) {
-        const yy = g.top + (i + 0.5) * (g.bottom - g.top) / 5;
-        const off = ((S.camL * 300) + i * 40) % 60;
+      // glowing lava cracks crawling across the track, pulsing
+      const pulse = 0.6 + 0.4 * Math.sin(t / 220);
+      for (let i = 0; i < 4; i++) {
+        const yy = g.top + (i + 0.5) * band / 4 + Math.sin(i) * 6, off = (S.camL * 300 + i * 47) % 120;
+        cctx.lineWidth = 6; cctx.strokeStyle = "rgba(255,200,90," + (0.16 * pulse) + ")";   // hot glow (under)
         cctx.beginPath();
-        for (let x = -off; x < cw; x += 60) { cctx.moveTo(x, yy); cctx.lineTo(x + 26, yy + (i % 2 ? 3 : -3)); }
+        for (let x = -off; x < cw + 30; x += 30) { const yj = yy + (((x + off) / 30 | 0) % 2 ? 4 : -4); (x === -off) ? cctx.moveTo(x, yj) : cctx.lineTo(x, yj); }
+        cctx.stroke();
+        cctx.lineWidth = 2.4; cctx.strokeStyle = "rgba(255," + (110 + (pulse * 60 | 0)) + ",40," + (0.55 * pulse) + ")";  // bright crack
+        cctx.stroke();
+      }
+    } else if (key === "turn") {
+      // red/white striped curb along the inner (top) edge of the running band
+      const cw0 = 22, off = (S.camL * 600) % (cw0 * 2);
+      for (let x = -off; x < cw; x += cw0) {
+        cctx.fillStyle = ((x + off) / cw0 | 0) % 2 === 0 ? "rgba(214,75,75,0.9)" : "rgba(238,240,242,0.9)";
+        cctx.fillRect(x, g.top, cw0, 7);
+      }
+      // big sweeping chevrons across the track, pointing through the bend
+      cctx.strokeStyle = "rgba(255,224,106,0.7)"; cctx.lineWidth = 5;
+      const cvW = 60, coff = (S.camL * 500) % cvW;
+      for (let x = -coff; x < cw + cvW; x += cvW) {
+        cctx.beginPath();
+        cctx.moveTo(x, g.top + band * 0.30); cctx.lineTo(x + 26, g.top + band * 0.5); cctx.lineTo(x, g.top + band * 0.70);
+        cctx.stroke();
+      }
+    } else if (key === "uphill") {
+      // climbing shade (dark high / warm low) + upward chevrons → reads as a climb
+      const sg = cctx.createLinearGradient(0, g.top, 0, g.bottom);
+      sg.addColorStop(0, "rgba(0,0,0,0.18)"); sg.addColorStop(1, "rgba(255,240,200,0.05)");
+      cctx.fillStyle = sg; cctx.fillRect(0, g.top, cw, band);
+      cctx.strokeStyle = "rgba(192,232,172,0.55)"; cctx.lineWidth = 4;
+      const cvW = 64, coff = (S.camL * 480) % cvW;
+      for (let x = -coff; x < cw + cvW; x += cvW) {
+        cctx.beginPath();
+        cctx.moveTo(x, g.top + band * 0.62); cctx.lineTo(x + 22, g.top + band * 0.40); cctx.lineTo(x + 44, g.top + band * 0.62);
         cctx.stroke();
       }
     } else if (key === "bridge") {
-      cctx.strokeStyle = "rgba(120,142,156,0.16)"; cctx.lineWidth = 2;
+      // side railings down both edges + plank seams
+      cctx.strokeStyle = "rgba(160,182,198,0.7)"; cctx.lineWidth = 3;
+      cctx.beginPath(); cctx.moveTo(0, g.top + 3); cctx.lineTo(cw, g.top + 3); cctx.stroke();
+      cctx.beginPath(); cctx.moveTo(0, g.bottom - 3); cctx.lineTo(cw, g.bottom - 3); cctx.stroke();
+      cctx.strokeStyle = "rgba(150,172,188,0.4)"; cctx.lineWidth = 2;
       const step = 0.03, startP = Math.floor(S.camL / step) * step;
       for (let P = startP; P < S.camL + WINW + step; P += step) {
         const x = screenX(P, WINW);
         cctx.beginPath(); cctx.moveTo(x, g.top); cctx.lineTo(x, g.bottom); cctx.stroke();
+        cctx.fillStyle = "rgba(160,182,198,0.6)";
+        cctx.fillRect(x - 1, g.top - 6, 2, 9); cctx.fillRect(x - 1, g.bottom - 3, 2, 9);
+      }
+    } else if (key === "narrow") {
+      // jagged rock walls bite into the top & bottom of the runnable band
+      const enc = band * 0.17;
+      for (let edge = 0; edge < 2; edge++) {
+        const yEdge = edge === 0 ? g.top : g.bottom, dir = edge === 0 ? 1 : -1;
+        cctx.fillStyle = "rgba(36,30,22,0.86)";
+        cctx.beginPath(); cctx.moveTo(0, yEdge);
+        for (let x = 0; x <= cw; x += 26) {
+          const j = enc * (0.5 + 0.5 * Math.sin((x + S.camL * 300) / 40 + edge * 2));
+          cctx.lineTo(x, yEdge + dir * j);
+        }
+        cctx.lineTo(cw, yEdge); cctx.closePath(); cctx.fill();
+      }
+    } else if (key === "rolling") {
+      // soft undulating shadow waves suggest rises and dips
+      cctx.strokeStyle = "rgba(0,0,0,0.10)"; cctx.lineWidth = 10;
+      for (let i = 0; i < 3; i++) {
+        const ph = S.camL * 260 + i * 70, yb = g.top + band * (0.3 + i * 0.26);
+        cctx.beginPath();
+        for (let x = 0; x <= cw; x += 22) { const y = yb + Math.sin((x + ph) / 62) * 8; (x === 0) ? cctx.moveTo(x, y) : cctx.lineTo(x, y); }
+        cctx.stroke();
       }
     }
   }
@@ -1163,7 +1335,9 @@ function startRaceCanvas(container, ctx) {
 
     // blended terrain theme around the leader → tints the whole scene
     const tb = themeBlendAtP(leaderP);
-    const stadium = /straight|turn|uphill|narrow|rolling/.test(tb.keyA);
+    // Keep the generic grandstand skyline only for the plain straight; every other
+    // terrain now shows its own dedicated backdrop so the course reads at a glance.
+    const stadium = (tb.keyA === "straight");
 
     // --- sky (themed) ---
     const sky = cctx.createLinearGradient(0, 0, 0, ch);
@@ -1210,7 +1384,7 @@ function startRaceCanvas(container, ctx) {
     const fx = clamp(screenX(leaderP, WINW), cw * 0.2, cw * 0.8);
     const fy = (g.top + g.bottom) / 2;
     cctx.save();
-    cctx.translate(fx, fy); cctx.scale(S.zoom, S.zoom); cctx.translate(-fx, -fy);
+    cctx.translate(fx, fy); cctx.scale(S.zoom, S.zoom); cctx.rotate(S.tilt); cctx.translate(-fx, -fy);
     cctx.translate(S.shakeX, S.camY + S.shakeY);
 
     // --- track ground (themed turf, apron below to survive pan/zoom) ---
@@ -1219,7 +1393,7 @@ function startRaceCanvas(container, ctx) {
     grd.addColorStop(0.5, rcMix(tb.a.ground[1], tb.b.ground[1], tb.t));
     grd.addColorStop(1,   rcMix(tb.a.ground[2], tb.b.ground[2], tb.t));
     cctx.fillStyle = grd;
-    cctx.fillRect(0, g.top, cw, (ch - g.top) + 12);
+    cctx.fillRect(-20, g.top, cw + 40, (ch - g.top) + 26);   // overscan covers camera tilt/pan
     // mowed-stripe banding for a groomed-turf look
     cctx.fillStyle = "rgba(255,255,255,0.020)";
     for (let i = 0; i < 8; i += 2) cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH);
@@ -1384,7 +1558,7 @@ function startRaceCanvas(container, ctx) {
       }
       // terrain shapes body language: bank into turns, spread wings on wind lanes
       const tkey = themeKeyAtP(P);
-      const bank = tkey === "turn" ? clamp(0.25 + intensity * 0.4, 0, 0.8) : 0;
+      const bank = tkey === "turn" ? clamp(0.42 + intensity * 0.45, 0, 1.05) : 0;
       const spread = tkey === "wind" ? clamp(0.45 + intensity * 0.4, 0, 1) : 0;
       rcDrawDragon(cctx, {
         x: drawX, y: y, scale: sprScale,
@@ -1452,6 +1626,15 @@ function startRaceCanvas(container, ctx) {
     }
 
     cctx.restore();   // ============ end WORLD GROUP ============
+
+    // --- terrain colour wash: a subtle full-scene grade so each course's mood
+    // (volcanic red / misty grey / windy blue) is felt even at a glance ---
+    const washA = rcTerrainInfo(tb.keyA).tint;
+    if (washA) { cctx.fillStyle = washA; cctx.fillRect(0, 0, cw, ch); }
+    if (tb.keyB !== tb.keyA) {
+      const washB = rcTerrainInfo(tb.keyB).tint;
+      if (washB) { cctx.save(); cctx.globalAlpha = tb.t; cctx.fillStyle = washB; cctx.fillRect(0, 0, cw, ch); cctx.restore(); }
+    }
 
     // --- final-straight drama vignette (darkens the corners, pulls the eye in) ---
     const finishProx = clamp((leaderP - 0.72) / 0.28, 0, 1);
@@ -1530,6 +1713,33 @@ function startRaceCanvas(container, ctx) {
     }
 
     // --- phase-entry banner (slides in from the side, holds, slides out) ---
+    // --- terrain sign: a centred plate that names the course feature on entry ---
+    if (S.terrainSign && !S.finished && S.preT <= 0) {
+      const ts = S.terrainSign;
+      const appear = clamp(ts.t / 0.28, 0, 1);
+      const a = Math.min(appear, clamp((ts.max - ts.t) / 0.5, 0, 1));
+      const scale = 0.84 + 0.16 * appear;
+      const accent = (RC_THEME[ts.key] || RC_THEME.straight).accent;
+      const cx = cw / 2, cy = ch * 0.49;
+      cctx.save();
+      cctx.globalAlpha = clamp(a, 0, 1);
+      cctx.translate(cx, cy); cctx.scale(scale, scale); cctx.translate(-cx, -cy);
+      cctx.font = "bold 23px system-ui, sans-serif";
+      const tw = cctx.measureText(ts.label).width;
+      const iconW = 44, padX = 22, h = 48, w = iconW + tw + padX * 2;
+      const x0 = cx - w / 2, y0 = cy - h / 2;
+      cctx.fillStyle = "rgba(12,12,24,0.9)"; cctx.fillRect(x0, y0, w, h);
+      cctx.fillStyle = accent;
+      cctx.fillRect(x0, y0, 5, h);                                   // accent spine
+      cctx.fillRect(x0, y0, w, 2); cctx.fillRect(x0, y0 + h - 2, w, 2);
+      cctx.textBaseline = "middle";
+      cctx.font = "26px system-ui, sans-serif"; cctx.textAlign = "center";
+      cctx.fillText(ts.icon, x0 + padX + 12, cy + 1);                // terrain icon
+      cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 23px system-ui, sans-serif";
+      cctx.fillText(ts.label, x0 + iconW + padX, cy + 1);            // section label
+      cctx.restore(); cctx.globalAlpha = 1;
+    }
+
     if (S.banner && !S.finished && S.preT <= 0) {
       const b = S.banner, u = clamp(b.t / b.max, 0, 1);
       const fade = u < 0.16 ? u / 0.16 : (u > 0.74 ? (1 - u) / 0.26 : 1);
@@ -1573,7 +1783,9 @@ function startRaceCanvas(container, ctx) {
 
     // HUD updates
     phaseEl.textContent = ["序盤", "中盤", "展開", "終盤", "ゴール前"][timeline.phaseIndexAt(S.tau)] || "";
-    sectionEl.textContent = sectionLabelAtP(leaderP);
+    const _hudKey = themeKeyAtP(leaderP);
+    sectionEl.textContent = rcTerrainInfo(_hudKey).icon + " " + sectionLabelAtP(leaderP);
+    sectionEl.style.borderLeftColor = (RC_THEME[_hudKey] || RC_THEME.straight).accent;
     remainEl.textContent = "残り " + timeline.distanceRemainingAt(S.tau) + "m";
     updateRankbar(standings, standMap);
     updateBet(standMap);
@@ -1629,6 +1841,7 @@ function startRaceCanvas(container, ctx) {
     if (S.zoomBump > 0) S.zoomBump = Math.max(0, S.zoomBump - dt * 0.22);
     // phase-entry banner ages out (animates even while paused so it can clear)
     if (S.banner) { S.banner.t += dt; if (S.banner.t >= S.banner.max) S.banner = null; }
+    if (S.terrainSign) { S.terrainSign.t += dt; if (S.terrainSign.t >= S.terrainSign.max) S.terrainSign = null; }
     // keep sprinkling celebration confetti for a beat after the finish
     if (S.finished && S.confettiT > 0) {
       S.confettiT -= dt;
@@ -1683,6 +1896,19 @@ function startRaceCanvas(container, ctx) {
         S.banner = { text: lbl, t: 0, max: 1.9 };
         S.zoomBump = Math.min(0.2, (S.zoomBump || 0) + 0.07);
         if (phNow >= 3) S.shake = Math.max(S.shake, 2.5);
+      }
+    }
+
+    // --- terrain sign: NAME the course feature as the leader rolls into each
+    // third (early/mid/late) — tells the watcher outright "ここは 旋回 / 火山" ---
+    const leadPnow = timeline.leaderProgressAt(S.tau);
+    const third = leadPnow < 1 / 3 ? 0 : leadPnow < 2 / 3 ? 1 : 2;
+    if (third !== S.sectionShown && S.preT <= 0 && !S.finished) {
+      S.sectionShown = third;
+      const tkey = themeKeyAtP(leadPnow), info = rcTerrainInfo(tkey), label = sectionLabelAtP(leadPnow);
+      if (label) {
+        S.terrainSign = { icon: info.icon, label: label, key: tkey, t: 0, max: 2.6 };
+        if (info.turn) S.shake = Math.max(S.shake, 1.6);
       }
     }
 
@@ -1924,6 +2150,8 @@ function startRaceCanvas(container, ctx) {
       const _done = S.tau >= 1;
       S.finished = _done; S.finishedAnnounced = _done; S.celebrated = _done; S.confettiT = 0;
       S.trioShown = false;   // re-arm the "三つ巴！" callout for a forward replay
+      S.terrainSign = null;  // baseline the terrain sign to the scrubbed-to section
+      { const _lp = timeline.leaderProgressAt(S.tau); S.sectionShown = _lp < 1 / 3 ? 0 : _lp < 2 / 3 ? 1 : 2; }
       // re-arm per-dragon stumble/surge shouts so already-passed ones stay quiet
       // and still-upcoming ones can fire again on a forward replay
       for (const dr of dragons) {
