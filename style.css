@@ -1083,16 +1083,67 @@ table.entry-table {
 .rank-D { color: #80c0c0; }
 .rank-E { color: #808080; }
 
-.bet-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.bet-panel { display: block; }
 .bet-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 .bet-tabs button { flex: 1; padding: 8px; }
 .bet-tabs button.active { background: #ff8060; }
 
-.selectors label { display: block; margin: 6px 0; font-size: 13px; }
-.selectors select, .selectors input {
-  width: 100%; padding: 6px; background: #2a2050; color: #f0e8d0;
-  border: 1px solid #604040; border-radius: 3px; font-size: 14px;
+/* ---- tappable dragon selection (info + pick unified) ---- */
+.bet-pick { margin-bottom: 12px; }
+.bet-pick-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: #c8b890; margin: 2px 2px 8px;
 }
+.bet-pick-head .pick-count { color: #d4a850; font-weight: bold; font-variant-numeric: tabular-nums; }
+.bet-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.bet-pick-card {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px; text-align: left; width: 100%;
+  background: #241c44; border: 2px solid #3a3060; border-radius: 10px;
+  color: #f0e8d0; cursor: pointer; transition: border-color .12s, background .12s, transform .05s;
+}
+.bet-pick-card:hover { border-color: #5a4f86; background: #2a2150; }
+.bet-pick-card:active { transform: translateY(1px); }
+.bet-pick-card.selected { border-color: #ffd34d; background: #3a2f18; box-shadow: 0 0 0 1px #ffd34d inset; }
+.bet-pick-card .bp-order {
+  position: absolute; top: -8px; left: -8px; width: 22px; height: 22px;
+  align-items: center; justify-content: center;
+  background: #ffd34d; color: #241018; border-radius: 50%;
+  font-size: 13px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.bet-pick-card .bp-pop {
+  flex: 0 0 auto; min-width: 30px; text-align: center; line-height: 1;
+  font-size: 17px; font-weight: bold; color: #cdbfff;
+}
+.bet-pick-card .bp-pop small { display: block; font-size: 8px; color: #8a7fc0; font-weight: normal; }
+.bet-pick-card .bp-pop.p1 { color: #ffd34d; }
+.bet-pick-card .bp-pop.p2 { color: #cfe0ff; }
+.bet-pick-card .bp-pop.p3 { color: #ffb0a0; }
+.bet-pick-card .bp-main { flex: 1 1 auto; min-width: 0; }
+.bet-pick-card .bp-name {
+  display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: bold;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bet-pick-card .bp-name .dragon-icon { width: 16px; height: 16px; font-size: 10px; flex: 0 0 auto; }
+.bet-pick-card .bp-sub { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 11px; color: #b8ac84; }
+.bet-pick-card .bp-mark { color: #ffd34d; font-weight: bold; }
+.bet-pick-card .bp-odds { flex: 0 0 auto; display: flex; gap: 8px; }
+.bet-pick-card .bp-win, .bet-pick-card .bp-place {
+  display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; transition: opacity .12s;
+}
+.bet-pick-card .bp-win b, .bet-pick-card .bp-place b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.bet-pick-card .bp-win small, .bet-pick-card .bp-place small { font-size: 8px; color: #8a8068; }
+.bet-pick-card .bp-win b { color: #ffd9a0; }
+.bet-pick-card .bp-place b { color: #a0d0ff; }
+.bet-pick-card .dim { opacity: 0.28; }
+
+.bet-stake { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.bet-stake .wager-field { font-size: 13px; color: #c8b890; display: flex; align-items: center; gap: 6px; }
+.bet-stake .wager-field input {
+  width: 120px; padding: 8px; background: #2a2050; color: #f0e8d0;
+  border: 1px solid #604040; border-radius: 6px; font-size: 15px; font-variant-numeric: tabular-nums;
+}
+.bet-stake .wager-chips { margin: 0; }
 
 .expected-payout {
   font-size: 16px; color: #80ff80;

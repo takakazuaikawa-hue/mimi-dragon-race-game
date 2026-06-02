@@ -61,6 +61,22 @@ const TL_DURATION = {
   max: 66           // never longer than this at 1×
 };
 
+// Finish-line DRAMA profile (presentation only). The decided finalPower gaps
+// still set the WITHIN-group proportions, but we re-cast the crossings so the
+// race climaxes the way a broadcast does: the lead trio compresses into a tight
+// dead-heat cluster, a clear break opens behind them, and the chasers string out
+// — the field visually thins to three by the line. This reshapes only the
+// SPACING of crossings; finishTaus remain strictly increasing, so the crossing
+// order still equals raceResult order (odds, payouts, and coins never change).
+// All knobs live here so the drama stays tunable / data-driven.
+const TL_FINISH_DRAMA = {
+  leadPack: 3,      // dragons in the climactic dead-heat group
+  packSpan: 0.20,   // fraction of the finish window the lead trio occupies (tight)
+  breakSpan: 0.20,  // empty gap between the trio and the chasers (visible break)
+  spreadMin: 0.07,  // overall leader→last window, lower bound (τ)
+  spreadMax: 0.18   // …upper bound — keeps the winner's crossing in the climax zone
+};
+
 // ---- small deterministic RNG so a race replays identically every render ----
 function tlHash(str) {
   let h = 2166136261 >>> 0;
@@ -146,7 +162,11 @@ function buildRaceTimeline(race, raceResult, oddsResult, bet) {
   const phaseStats = tlPhaseStats(entries);
   const phaseKeys = ["early", "mid", "development", "late", "finish"];
 
-  // ---- 1) finish times from finalPower gaps (margins → photo finishes) ----
+  // ---- 1) finish times: drama profile (tight lead trio + strung-out chasers) --
+  // Raw per-place margins from the decided finalPower gaps (closer power → closer
+  // at the line). We keep these PROPORTIONS for within-group spacing, then re-cast
+  // them so the lead trio clusters into a dead heat and the chasers fan out behind
+  // (see TL_FINISH_DRAMA). Order-preserving: finishTaus stays strictly increasing.
   const KGAP = 0.013, MMIN = 0.006, MMAX = 0.060;
   const rawCum = [0];
   for (let k = 0; k < N - 1; k++) {
@@ -155,13 +175,29 @@ function buildRaceTimeline(race, raceResult, oddsResult, bet) {
     rawCum.push(rawCum[k] + m);
   }
   const rawSpread = rawCum[N - 1] || 0.0001;
-  // Scale the leader→last window to a readable fraction of the race.
-  const spread = clamp(rawSpread, 0.05, 0.20);
+
+  // Normalised finishing positions q[i] ∈ [0,1] (q[0]=0 leader … q[N-1]=1 last).
+  const K = Math.max(1, Math.min(TL_FINISH_DRAMA.leadPack, N));
+  const q = new Array(N).fill(0);
+  if (N <= K) {
+    // tiny field — just the proportional spacing, all tight
+    for (let i = 0; i < N; i++) q[i] = rawCum[i] / rawSpread;
+  } else {
+    const packSpan = TL_FINISH_DRAMA.packSpan;
+    const chaseStart = packSpan + TL_FINISH_DRAMA.breakSpan;
+    const packBase = (rawCum[K - 1] - rawCum[0]) || 1e-9;     // lead trio → [0, packSpan]
+    for (let i = 0; i < K; i++) q[i] = ((rawCum[i] - rawCum[0]) / packBase) * packSpan;
+    const chaseBase = (rawCum[N - 1] - rawCum[K - 1]) || 1e-9; // chasers → [chaseStart, 1]
+    for (let i = K; i < N; i++) q[i] = chaseStart + ((rawCum[i] - rawCum[K - 1]) / chaseBase) * (1 - chaseStart);
+  }
+
+  // Overall leader→last window as a readable fraction of the race clock.
+  const spread = clamp(rawSpread, TL_FINISH_DRAMA.spreadMin, TL_FINISH_DRAMA.spreadMax);
   const leaderTau = 1 - spread;
-  const finishTaus = rawCum.map(c => leaderTau + (c / rawSpread) * spread);
-  // Top-of-field closeness → photo finish flag (mirrors broadcast close_finish).
-  const photoFinish = (finishTaus[1] - finishTaus[0]) < spread * 0.18;
-  const closeFinish = (finishTaus[1] - finishTaus[0]) < spread * 0.32;
+  const finishTaus = q.map(qi => leaderTau + qi * spread);
+  // Win-margin closeness → photo finish; the lead trio is always a close group.
+  const photoFinish = N > 1 && (finishTaus[1] - finishTaus[0]) < spread * 0.085;
+  const closeFinish = N > 1 && (finishTaus[Math.min(K, N) - 1] - finishTaus[0]) < spread * 0.42;
 
   // ---- 2) per-dragon tempo curve + cumulative distance + events ----
   const dragons = entries.map((entry, idx) => {
@@ -299,6 +335,8 @@ function buildRaceTimeline(race, raceResult, oddsResult, bet) {
     byId,
     crossings,               // finish order (== raceResult order)
     order: ordered.map(dr => dr.id),
+    leadPackSize: K,                              // size of the climactic group
+    leadPackIds: ordered.slice(0, K).map(dr => dr.id),  // the dead-heat trio (finish order)
     photoFinish,
     closeFinish,
     durationSecHint,

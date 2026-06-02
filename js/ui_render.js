@@ -446,6 +446,137 @@ function renderRaceDetail(race) {
   `;
   app.appendChild(info);
 
+  // Popularity-sorted entries — shared by the pick cards and the detail table.
+  const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
+  const betCap = RANKS[race.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1.0);
+
+  // ===== Betting panel — placed FIRST so the primary action needs no scrolling.
+  // Selection is a grid of tappable dragon cards that fold the key handicapping
+  // info (人気・脚質・単/複オッズ・印・近走) into the very thing you tap, so the
+  // player reads-and-picks in one place instead of cross-referencing a dropdown.
+  app.appendChild(el("h3", null, "賭けパネル"));
+  const panel = el("div", "card bet-panel");
+  panel.innerHTML = `
+    <div class="bet-tabs">
+      <button data-type="win" class="active">単竜<small>1着</small></button>
+      <button data-type="place">複竜<small>3着以内</small></button>
+      <button data-type="wide">ワイド竜<small>2頭が3着以内</small></button>
+    </div>
+    <div class="bet-pick">
+      <div class="bet-pick-head">
+        <span id="pick-instruction"></span>
+        <span class="pick-count" id="pick-count"></span>
+      </div>
+      <div class="bet-pick-grid" id="bet-pick-grid"></div>
+    </div>
+    <div class="bet-stake">
+      <label class="wager-field">賭金 <input id="wager" type="number" min="1" step="1" value="100" max="${betCap}" inputmode="numeric"></label>
+      <div class="wager-chips" id="wager-chips"></div>
+    </div>
+    <div class="payout-box empty" id="expected-payout"><div class="po-hint">竜と賭金を選ぶと払戻が表示されます</div></div>
+    <div class="actions">
+      <button id="bet-confirm" disabled>この賭けで出走</button>
+      <button id="back-race-select" class="secondary">戻る</button>
+    </div>
+    <div class="condition-line">所持: ${fmtCoins(state.player.coins)}コイン ／ 上限賭金: ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
+  `;
+  app.appendChild(panel);
+
+  // ---- tappable dragon selection (replaces the sel-a/sel-b dropdowns) ----
+  state.current.betSel = [];                          // selected ids, in pick order
+  const pickGrid = $("bet-pick-grid");
+  const pickCardById = {};
+  const maxSelFor = type => (type === "wide" ? 2 : 1);
+  const pickInstruction = type =>
+    type === "wide" ? "3着以内に入る2頭をタップ"
+      : type === "place" ? "3着以内に入る本命を1頭タップ"
+        : "1着になる本命を1頭タップ";
+
+  function renderPickState() {
+    const type = state.current.bet.type;
+    const max = maxSelFor(type);
+    const sel = state.current.betSel;
+    sorted.forEach(od => {
+      const card = pickCardById[od.dragonId];
+      const at = sel.indexOf(od.dragonId);
+      card.classList.toggle("selected", at >= 0);
+      card.setAttribute("aria-pressed", at >= 0 ? "true" : "false");
+      const ord = card.querySelector(".bp-order");
+      if (at >= 0) { ord.textContent = max > 1 ? (at === 0 ? "①" : "②") : "✓"; ord.style.display = "flex"; }
+      else ord.style.display = "none";
+      card.querySelector(".bp-win").classList.toggle("dim", type === "place");
+      card.querySelector(".bp-place").classList.toggle("dim", type === "win");
+    });
+    $("pick-instruction").textContent = pickInstruction(type);
+    $("pick-count").textContent = `${sel.length} / ${max}`;
+  }
+
+  function togglePick(id) {
+    const sel = state.current.betSel;
+    const max = maxSelFor(state.current.bet.type);
+    const at = sel.indexOf(id);
+    if (at >= 0) sel.splice(at, 1);                   // tap again to deselect
+    else { if (sel.length >= max) sel.shift(); sel.push(id); }  // drop oldest when full
+    renderPickState();
+    updateExpected();
+  }
+
+  sorted.forEach(od => {
+    const d = DRAGONS.find(x => x.id === od.dragonId);
+    const rk = od.popularityRank;
+    const card = el("button", "bet-pick-card");
+    card.type = "button";
+    card.dataset.id = d.id;
+    card.innerHTML = `
+      <span class="bp-order" style="display:none"></span>
+      <span class="bp-pop p${rk <= 3 ? rk : ""}">${rk}<small>人気</small></span>
+      <span class="bp-main">
+        <span class="bp-name"><span class="dragon-icon" style="background:${dragonColor(d)}">${d.name.charAt(0)}</span>${d.name}</span>
+        <span class="bp-sub"><span class="style-${d.style}">${STYLE_LABEL[d.style]}</span>${d.newspaperMark ? `<span class="bp-mark">${d.newspaperMark}</span>` : ""}<span class="bp-form">${recentResultLabel(d.recentResult)}</span></span>
+      </span>
+      <span class="bp-odds">
+        <span class="bp-win"><b>${od.winOdds.toFixed(1)}</b><small>単</small></span>
+        <span class="bp-place"><b>${od.placeOdds.toFixed(1)}</b><small>複</small></span>
+      </span>
+    `;
+    card.onclick = () => togglePick(d.id);
+    pickCardById[d.id] = card;
+    pickGrid.appendChild(card);
+  });
+
+  // Tabs — switch bet type, trimming the selection to the new max.
+  panel.querySelectorAll(".bet-tabs button").forEach(btn => {
+    btn.onclick = () => {
+      panel.querySelectorAll(".bet-tabs button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.current.bet.type = btn.dataset.type;
+      const max = maxSelFor(btn.dataset.type);
+      if (state.current.betSel.length > max) state.current.betSel = state.current.betSel.slice(0, max);
+      runEventHooks("beforeBet", { race, bet: state.current.bet });
+      renderPickState();
+      updateExpected();
+    };
+  });
+  $("wager").oninput = updateExpected;
+  $("bet-confirm").onclick = onConfirmBet;
+  $("back-race-select").onclick = renderRaceSelect;
+
+  // Wager quick-chips — each clamped to the effective cap and the player's coins.
+  const chipsEl = $("wager-chips");
+  [100, 500, 1000].forEach(v => {
+    if (v > betCap) return;                           // skip amounts above this rank's cap
+    const chip = el("button", "chip", fmtCoins(v));
+    chip.onclick = () => { $("wager").value = Math.max(1, Math.min(v, betCap, state.player.coins)); updateExpected(); };
+    chipsEl.appendChild(chip);
+  });
+  const maxChip = el("button", "chip", "最大");
+  maxChip.onclick = () => { $("wager").value = Math.max(1, Math.floor(Math.min(betCap, state.player.coins))); updateExpected(); };
+  chipsEl.appendChild(maxChip);
+
+  renderPickState();
+  updateExpected();   // initial payout hint + confirm-disabled state
+
+  // ===== Detailed reference below (deep stats for those who want them) =====
   // Entry list
   app.appendChild(el("h3", null, "出走表"));
   const tbl = el("table", "entry-table");
@@ -459,8 +590,6 @@ function renderRaceDetail(race) {
     </tr></thead>
   `;
   const tbody = el("tbody");
-  // Sort by popularity rank
-  const sorted = [...oddsResult.oddsData].sort((a,b) => a.popularityRank - b.popularityRank);
   sorted.forEach(od => {
     const d = DRAGONS.find(x => x.id === od.dragonId);
     const tr = el("tr");
@@ -530,70 +659,6 @@ function renderRaceDetail(race) {
     app.appendChild(hintBox);
   }
 
-  // Betting panel
-  app.appendChild(el("h3", null, "賭けパネル"));
-  const panel = el("div", "card");
-  const betCap = RANKS[race.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1.0);
-  panel.innerHTML = `
-    <div class="bet-tabs">
-      <button data-type="win" class="active">単竜<small>1着</small></button>
-      <button data-type="place">複竜<small>3着以内</small></button>
-      <button data-type="wide">ワイド竜<small>2頭が3着以内</small></button>
-    </div>
-    <div class="selectors">
-      <label>1頭目: <select id="sel-a"></select></label>
-      <label id="sel-b-row" style="display:none;">2頭目: <select id="sel-b"></select></label>
-      <label>賭金: <input id="wager" type="number" min="1" step="1" value="100" max="${betCap}"></label>
-      <div class="wager-chips" id="wager-chips"></div>
-      <div class="payout-box empty" id="expected-payout"><div class="po-hint">竜と賭金を選ぶと払戻が表示されます</div></div>
-    </div>
-    <div class="actions">
-      <button id="bet-confirm" disabled>この賭けで出走</button>
-      <button id="back-race-select" class="secondary">戻る</button>
-    </div>
-    <div class="condition-line">所持: ${fmtCoins(state.player.coins)}コイン ／ 上限賭金: ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
-  `;
-  app.appendChild(panel);
-
-  // Populate selectors
-  const optHTML = sorted.map(od => {
-    const d = DRAGONS.find(x => x.id === od.dragonId);
-    return `<option value="${d.id}">${od.popularityRank}人気 ${d.name}</option>`;
-  }).join("");
-  $("sel-a").innerHTML = `<option value="">--選択--</option>` + optHTML;
-  $("sel-b").innerHTML = `<option value="">--選択--</option>` + optHTML;
-
-  // Tabs
-  panel.querySelectorAll(".bet-tabs button").forEach(btn => {
-    btn.onclick = () => {
-      panel.querySelectorAll(".bet-tabs button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      state.current.bet.type = btn.dataset.type;
-      $("sel-b-row").style.display = (btn.dataset.type === "wide") ? "block" : "none";
-      runEventHooks("beforeBet", { race, bet: state.current.bet });
-      updateExpected();
-    };
-  });
-  $("sel-a").onchange = updateExpected;
-  $("sel-b").onchange = updateExpected;
-  $("wager").oninput = updateExpected;
-  $("bet-confirm").onclick = onConfirmBet;
-  $("back-race-select").onclick = renderRaceSelect;
-
-  // Wager quick-chips — fast, mobile-friendly amount entry (each clamped to the
-  // effective cap and the player's coins so a tap never lands on an invalid bet).
-  const chipsEl = $("wager-chips");
-  [100, 500, 1000].forEach(v => {
-    if (v > betCap) return;                      // skip amounts above this rank's cap
-    const chip = el("button", "chip", fmtCoins(v));
-    chip.onclick = () => { $("wager").value = Math.max(1, Math.min(v, betCap, state.player.coins)); updateExpected(); };
-    chipsEl.appendChild(chip);
-  });
-  const maxChip = el("button", "chip", "最大");
-  maxChip.onclick = () => { $("wager").value = Math.max(1, Math.floor(Math.min(betCap, state.player.coins))); updateExpected(); };
-  chipsEl.appendChild(maxChip);
-
-  updateExpected();   // set the initial payout hint + confirm-disabled state
 }
 
 // §11 §19 placeholder dragon icon — colored disc + name initial.
@@ -658,8 +723,9 @@ function recentResultLabel(v) {
 function updateExpected() {
   const c = state.current;
   const type = document.querySelector(".bet-tabs button.active").dataset.type;
-  const a = $("sel-a").value;
-  const b = $("sel-b").value;
+  const sel = c.betSel || [];                         // tappable-card selection (pick order)
+  const a = sel[0] || "";
+  const b = sel[1] || "";
   const wager = parseInt($("wager").value, 10);
   c.bet = { type, selections: type === "wide" ? [a, b] : [a], wager: Number.isNaN(wager) ? 0 : wager };
 

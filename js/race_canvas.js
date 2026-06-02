@@ -787,7 +787,8 @@ function startRaceCanvas(container, ctx) {
     celebrated: false,  // finish confetti fired once
     confettiT: 0,       // ongoing confetti spawn while celebrating
     banner: null,       // {text,t,max} active phase-entry banner
-    phaseShown: 0       // last phase index a banner was raised for
+    phaseShown: 0,      // last phase index a banner was raised for
+    trioShown: false    // "三つ巴！" lead-trio callout fired once
   };
   dragons.forEach(dr => { S.gait[dr.id] = Math.random() * Math.PI * 2; });
 
@@ -888,13 +889,25 @@ function startRaceCanvas(container, ctx) {
 
   // ---- camera (smoothed follow + dynamic zoom / vertical pan) ----
   function updateCamera() {
+    const K = (timeline.leadPackSize || 3);
     let leaderP = 0, lastP = 1, leaderId = null;
+    const ps = [];
     for (const dr of dragons) {
       const p = timeline.progressAt(dr.id, S.tau);
+      ps.push(p);
       if (p > leaderP) { leaderP = p; leaderId = dr.id; }
       if (p < lastP) lastP = p;
     }
-    const WINW = clamp((leaderP - lastP) + 0.12, 0.20, 0.55);
+    // Progress of the current K-th place (the lead-pack tail). Late in the race
+    // we slide the frame's lower bound up from lastP toward this, tightening the
+    // camera onto the lead trio so trailing dragons drop off-frame — the field
+    // visually thins to three. focusT ramps 0 (whole field) → 1 (trio only).
+    ps.sort((a, b) => b - a);
+    const packTailP = ps[Math.min(K, ps.length) - 1];
+    const focusT = clamp((leaderP - 0.55) / 0.34, 0, 1);
+    const focusLowerP = lastP + (packTailP - lastP) * focusT;
+    S._focusT = focusT;
+    const WINW = clamp((leaderP - focusLowerP) + 0.12, 0.18, 0.55);
     const targetL = leaderP - 0.66 * WINW;
     S.camL += (targetL - S.camL) * 0.12;
     S._winw = WINW;
@@ -1305,6 +1318,15 @@ function startRaceCanvas(container, ctx) {
       const offLeft = x < cw * 0.04;
       const drawX = clamp(x, cw * 0.05, cw * 0.97);
 
+      // Backmarkers that fall behind the lead-pack focus dissolve off the left
+      // edge — reinforces the "field thins to three" read. Tied to focusT so the
+      // whole field stays solid early; only late does the dropped tail fade out.
+      const _ef = clamp((x + cw * 0.02) / (cw * 0.12), 0, 1);
+      const edgeFade = 1 - (1 - _ef) * (S._focusT || 0);
+      if (edgeFade <= 0.04) continue;             // fully behind → off-screen, skip
+      const _prevAlpha = cctx.globalAlpha;
+      cctx.globalAlpha = edgeFade;
+
       // states
       const tired = dr.collapse && ownU > 0.62;
       const slow = intensity < 0.2;
@@ -1404,6 +1426,7 @@ function startRaceCanvas(container, ctx) {
         cctx.font = "10px system-ui, sans-serif";
         cctx.fillText("◀", cw * 0.03, y);
       }
+      cctx.globalAlpha = _prevAlpha;             // end per-dragon edge fade
     }
 
     // --- particles (dust / spark + ambient embers / gusts / leaves) ---
@@ -1639,9 +1662,14 @@ function startRaceCanvas(container, ctx) {
     // advance τ — but ease into slow-motion at the wire on a photo / close finish
     // (pure animation pacing; the finishing order is fixed by the timeline)
     let adv = dt * S.speed / timeline.durationSecHint;
-    if ((timeline.photoFinish || timeline.closeFinish) && S.tau > 0.88) {
-      const k = clamp((S.tau - 0.88) / 0.12, 0, 1);
-      adv *= (1 - 0.62 * k);
+    // Ease into slow-motion as the lead trio hits the wire. Anchored to the
+    // leader's crossing (not a fixed τ) so the dead-heat always plays out in
+    // slow-mo regardless of where the winner crosses. Pure pacing — order fixed.
+    const wireTau = (timeline.crossings && timeline.crossings.length) ? timeline.crossings[0].tau : 0.9;
+    const smoStart = wireTau - 0.06;
+    if ((timeline.photoFinish || timeline.closeFinish) && S.tau > smoStart) {
+      const k = clamp((S.tau - smoStart) / 0.14, 0, 1);
+      adv *= (1 - 0.66 * k);
     }
     S.tau = Math.min(1, S.tau + adv);
 
@@ -1724,6 +1752,22 @@ function startRaceCanvas(container, ctx) {
         addFloat(cw / 2, ch * 0.30, "接戦！", "#ffffff", true);
         S.battleT = 1.8;
         S.zoomBump = Math.min(0.18, (S.zoomBump || 0) + 0.06);
+      }
+    }
+
+    // --- "三つ巴！" — the field has thinned and the lead trio is fighting it out
+    // nose-to-nose into the wire (fires once at the climax; presentation only) ---
+    if (!S.trioShown && (S._focusT || 0) > 0.7 && S.tau < 0.99 && standNow.length >= 4) {
+      const p1 = timeline.progressAt(standNow[0], S.tau);
+      const p3 = timeline.progressAt(standNow[2], S.tau);
+      const p4 = timeline.progressAt(standNow[3], S.tau);
+      // top-3 bunched AND clearly broken away from 4th → a genuine three-horse duel
+      if ((p1 - p3) < 0.055 && (p3 - p4) > 0.02) {
+        S.trioShown = true;
+        S.banner = { text: "三つ巴！", t: 0, max: 2.1 };
+        addFloat(cw / 2, ch * 0.30, "３頭、横一線！", "#ffe06a", true);
+        S.shake = Math.max(S.shake, 4);
+        S.zoomBump = Math.min(0.24, (S.zoomBump || 0) + 0.13);
       }
     }
 
@@ -1879,6 +1923,7 @@ function startRaceCanvas(container, ctx) {
       S.tapeBroken = !!(_winCross && S.tau >= _winCross.tau);
       const _done = S.tau >= 1;
       S.finished = _done; S.finishedAnnounced = _done; S.celebrated = _done; S.confettiT = 0;
+      S.trioShown = false;   // re-arm the "三つ巴！" callout for a forward replay
       // re-arm per-dragon stumble/surge shouts so already-passed ones stay quiet
       // and still-upcoming ones can fire again on a forward replay
       for (const dr of dragons) {
