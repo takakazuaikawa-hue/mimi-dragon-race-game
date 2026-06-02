@@ -154,20 +154,17 @@ function _rcDragonShapes(P, flap) {
     const dp = (a, b) => [(a[0] + b[0]) / 2 * 0.85 + J[0] * 0.15, (a[1] + b[1]) / 2 * 0.85 + J[1] * 0.15];
     S.push({ k: 'D', t: 'poly', p: [J, u1, dp(u1, u2), u2, dp(u2, u3), u3] });
   }
-  // tail — a long tapering dragon tail curving back-down to an arrowhead/spade fin tip
+  // tail — SIMPLE: one clean tapering tail (no deep curl, no spade fin)
   {
     const tr = bx - brx;   // root (body back)
     S.push({ k: 'B', t: 'poly', p: [
-      [tr + 1.2, by - bry * 0.32], [tr - brx * 0.55, by - bry * 0.02], [tr - brx * 1.08, by + bry * 0.5],
-      [tr - brx * 1.48, by + bry * 1.0], [tr - brx * 1.3, by + bry * 1.22], [tr - brx * 0.82, by + bry * 0.82],
-      [tr - brx * 0.38, by + bry * 0.36], [tr + 1.2, by + bry * 0.42]
+      [tr + 1.0, by - bry * 0.26], [tr - brx * 1.34, by + bry * 0.6],
+      [tr - brx * 1.16, by + bry * 0.82], [tr + 1.0, by + bry * 0.5]
     ]});
     S.push({ k: 'M', t: 'poly', p: [
-      [tr - brx * 0.4, by + bry * 0.5], [tr - brx * 0.9, by + bry * 0.9], [tr - brx * 1.38, by + bry * 1.16], [tr - brx * 0.78, by + bry * 0.82]
-    ]});   // shaded underside
-    S.push({ k: 'D', t: 'poly', p: [
-      [tr - brx * 1.38, by + bry * 0.66], [tr - brx * 1.92, by + bry * 0.42], [tr - brx * 1.72, by + bry * 1.12], [tr - brx * 1.28, by + bry * 1.04]
-    ]});   // arrowhead / spade fin tip
+      [tr - brx * 0.3, by + bry * 0.5], [tr - brx * 1.2, by + bry * 0.78],
+      [tr - brx * 1.34, by + bry * 0.6], [tr - brx * 0.55, by + bry * 0.38]
+    ]});   // subtle underside shade
   }
   // tiny TUCKED legs (small claw nubs only — it's a FLYING dragon now)
   S.push({ k: 'M', t: 'ell', p: [bx - brx * 0.28, by + bry * 0.82, 1.4, 1.6] });
