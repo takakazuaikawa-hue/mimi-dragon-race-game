@@ -117,9 +117,9 @@ function rcTerrainInfo(key) { return RC_TERRAIN[key] || RC_TERRAIN.straight; }
 // the flight animation; a floating bob / lean / tumble are applied at draw time.
 // =========================================================================
 const RC_DRG = {
-  GW: 132, GH: 84, res: 3,    // 3x-resolution grid → smooth lines + room for fine detail
-  anchorX: 60, anchorY: 42,   // grid cell mapped to the dragon's (x,y) position (gourd centre)
-  px: 0.593,                  // on-screen cell size = scale * px (so overall size is unchanged)
+  GW: 44, GH: 28,
+  anchorX: 24, anchorY: 16,   // grid cell mapped to the dragon's (x,y) position (body centre, flying)
+  px: 1.78,                    // on-screen cell size = scale * px
   P: { hx: 28, hy: 9, hr: 6.6, bx: 20, by: 16, brx: 6.6, bry: 5.6, eyeK: 0.9, pupK: 0.66 }
 };
 function _rcInEll(gx, gy, cx, cy, rx, ry) { const dx = (gx - cx) / rx, dy = (gy - cy) / ry; return dx * dx + dy * dy <= 1; }
@@ -141,87 +141,86 @@ function _rcNeon(hex) {
   return _rcRgbHex((rr + m) * 255, (gg + m) * 255, (bb + m) * 255);
 }
 function _rcDragonShapes(P, flap) {
-  // Built from a SINGLE coherent layout (original coord space ~44x28), light
-  // from the upper-left. Head + body are TWO clean primitives forming a gourd
-  // silhouette; everything else attaches to that. One pass, no stacked patches.
-  const bcx = 16, bcy = 15.5, brx = 10, bry = 8;        // body
-  const hcx = 30, hcy = 10.5, hr = 7.8;                 // head
-  const scx = 37, scy = 12.4, srx = 3.0, sry = 2.7;     // snout
-  const ecx = 32, ecy = 10.0;                           // eye centre
-  const lift = ((flap == null ? 0.5 : flap) - 0.5) * 3.0;   // wing flap
+  const hx = P.hx, hy = P.hy, hr = P.hr, bx = P.bx, by = P.by, brx = P.brx, bry = P.bry;
+  const sx = hx + hr * 0.86, sy = hy + hr * 0.34, ex = hx + hr * 0.10, ey = hy - hr * 0.10;
+  const lift = ((flap == null ? 0.5 : flap) - 0.5) * 5.0;   // wing-tip vertical travel (flap)
   const S = [];
-  // ===== TAIL (behind) — short upward curl + warm fin =====
-  S.push({ k: 'B', t: 'poly', p: [[8, bcy - 1.5], [3, bcy - 2.8], [1.8, bcy - 6.0], [3.8, bcy - 6.6], [4.8, bcy - 3.6], [8, bcy + 1.5]] });
-  S.push({ k: 'g', t: 'tri', p: [[2.0, bcy - 5.8], [4.0, bcy - 6.6], [2.4, bcy - 8.6]] });
-  S.push({ k: 'M', t: 'tri', p: [[4.6, bcy - 3.4], [2.6, bcy - 5.4], [3.4, bcy - 2.6]] });
-  // ===== FAR wing (behind, dark) =====
-  S.push({ k: 'W', t: 'poly', p: [[18, bcy - 5], [11, bcy - 12 + lift * 0.7], [8.5, bcy - 6.5 + lift * 0.5], [14.5, bcy - 3.5]] });
-  // ===== FAR legs (behind, darker) =====
-  [[10, 22.2], [17.5, 21.8]].forEach(function (L) {
-    S.push({ k: 'M', t: 'ell', p: [L[0], L[1], 2.0, 2.8] });
-    S.push({ k: 'D', t: 'ell', p: [L[0] + 0.6, L[1] + 2.4, 2.7, 1.4] });
-  });
-  // ===== BODY + HEAD (two clean primitives -> gourd silhouette) =====
-  S.push({ k: 'B', t: 'ell', p: [bcx, bcy, brx, bry] });
-  S.push({ k: 'B', t: 'ell', p: [hcx, hcy, hr, hr] });
-  S.push({ k: 'M', t: 'ell', p: [bcx + 2.0, bcy + 3.0, brx * 0.84, bry * 0.58] });   // body underside shade
-  S.push({ k: 'M', t: 'ell', p: [hcx + 2.2, hcy + 2.8, hr * 0.78, hr * 0.68] });     // head underside shade
-  S.push({ k: 'L', t: 'ell', p: [bcx - 3.8, bcy - 4.0, brx * 0.5, bry * 0.42] });    // body highlight
-  S.push({ k: 'L', t: 'ell', p: [hcx - 3.2, hcy - 3.4, hr * 0.5, hr * 0.44] });      // head highlight
-  S.push({ k: 'b', t: 'ell', p: [hcx - 3.8, hcy - 4.0, hr * 0.2, hr * 0.18] });      // hot spot
-  // ===== BELLY (warm orange) + soft scale lines =====
-  S.push({ k: 'g', t: 'ell', p: [bcx + 3.4, bcy + 3.0, brx * 0.5, bry * 0.58] });
-  S.push({ k: 'G', t: 'ell', p: [bcx + 3.4, bcy + 4.8, brx * 0.4, bry * 0.28] });
-  S.push({ k: 'G', t: 'rect', p: [bcx + 1.4, bcy + 2.2, 5.0, 0.5] });
-  S.push({ k: 'G', t: 'rect', p: [bcx + 2.2, bcy + 4.2, 3.8, 0.5] });
-  // ===== NEAR legs (clear: leg + foot + 3 toes) =====
-  [[12, 21.2], [20.5, 20.8]].forEach(function (L) {
-    const lx = L[0], ly = L[1];
-    S.push({ k: 'B', t: 'ell', p: [lx, ly, 2.4, 3.1] });
-    S.push({ k: 'M', t: 'ell', p: [lx - 1.0, ly + 0.6, 1.2, 2.3] });
-    S.push({ k: 'g', t: 'ell', p: [lx + 0.8, ly + 2.8, 3.3, 1.7] });
-    S.push({ k: 'o', t: 'rect', p: [lx - 0.5, ly + 2.9, 0.55, 1.7] });
-    S.push({ k: 'o', t: 'rect', p: [lx + 1.05, ly + 3.0, 0.55, 1.7] });
-    S.push({ k: 'o', t: 'rect', p: [lx + 2.6, ly + 2.8, 0.55, 1.6] });
-  });
-  // ===== SNOUT =====
-  S.push({ k: 'B', t: 'ell', p: [scx, scy, srx, sry] });
-  S.push({ k: 'M', t: 'ell', p: [scx + 0.2, scy + 1.1, srx * 0.85, sry * 0.5] });
-  S.push({ k: 'L', t: 'ell', p: [scx - 0.6, scy - 1.2, srx * 0.46, sry * 0.4] });
-  S.push({ k: 'o', t: 'ell', p: [scx + 1.2, scy - 0.3, 0.7, 0.85] });   // nostril
-  S.push({ k: 'o', t: 'poly', p: [[scx + 1.4, scy + 1.9], [scx - 2.8, scy + 2.3], [scx - 2.8, scy + 2.9], [scx + 1.4, scy + 2.5]] });   // mouth
-  S.push({ k: 'f', t: 'tri', p: [[scx - 1.6, scy + 2.3], [scx - 2.0, scy + 3.3], [scx - 1.1, scy + 2.8]] });   // fang
-  // ===== EYE (big, friendly) + cheek blush =====
-  S.push({ k: 'M', t: 'poly', p: [[ecx - 2.8, ecy - 2.4], [ecx + 3.0, ecy - 2.8], [ecx + 3.2, ecy - 1.3], [ecx - 2.6, ecy - 1.0]] });   // lid/brow
-  S.push({ k: 'e', t: 'ell', p: [ecx, ecy, 2.7, 3.1] });
-  S.push({ k: 'i', t: 'ell', p: [ecx + 0.4, ecy + 0.5, 1.8, 2.1] });
-  S.push({ k: 'o', t: 'ell', p: [ecx + 0.5, ecy + 0.7, 0.95, 1.15] });
-  S.push({ k: 'e', t: 'ell', p: [ecx - 0.5, ecy - 0.7, 0.7, 0.7] });   // shine
-  S.push({ k: 'G', t: 'ell', p: [ecx + 0.6, ecy + 3.8, 1.7, 0.95] });  // cheek blush
-  // ===== HORNS (cream + shade) — nose + ear =====
-  S.push({ k: 'h', t: 'poly', p: [[scx - 1.0, scy - 2.0], [scx - 0.2, scy - 6.2], [scx + 1.2, scy - 6.0], [scx + 1.0, scy - 1.6]] });
-  S.push({ k: 'H', t: 'poly', p: [[scx - 1.0, scy - 2.0], [scx - 0.6, scy - 4.8], [scx + 0.2, scy - 4.7], [scx - 0.1, scy - 1.8]] });
-  S.push({ k: 'h', t: 'poly', p: [[24.5, hcy - 6.6], [23.3, hcy - 9.4], [24.7, hcy - 9.2], [26.0, hcy - 6.2]] });
-  S.push({ k: 'H', t: 'poly', p: [[24.5, hcy - 6.6], [23.8, hcy - 8.4], [24.7, hcy - 8.3], [25.3, hcy - 6.4]] });
-  // ===== NEAR wing (bat) — flaps with the gait =====
+  // far wing (behind, darker) — a fuller dragon wing
   {
-    const wrx = 19, wry = bcy - 5.6;
-    const tip = [9, wry - 6.5 + lift];
-    const mid = [14, wry - 2.2 + lift * 0.6];
-    const low = [11.5, wry + 0.8 + lift * 0.4];
-    S.push({ k: 'w', t: 'poly', p: [[wrx, wry], tip, mid, [wrx - 1, wry + 1.6]] });
-    S.push({ k: 'W', t: 'poly', p: [[wrx, wry], mid, low, [wrx - 1, wry + 1.6]] });
-    S.push({ k: 'W', t: 'poly', p: [[wrx, wry], tip, [tip[0] + 1.3, tip[1] + 0.9], [wrx + 0.6, wry + 0.4]] });
+    const J = [bx + brx * 0.06, by - bry * 0.32];
+    const u1 = [bx - brx * 0.8, by - bry * 2.25 + lift * 0.7];
+    const u2 = [bx - brx * 0.28, by - bry * 1.7 + lift * 0.4];
+    const u3 = [bx + brx * 0.12, by - bry * 0.9 + lift * 0.15];
+    const dp = (a, b) => [(a[0] + b[0]) / 2 * 0.85 + J[0] * 0.15, (a[1] + b[1]) / 2 * 0.85 + J[1] * 0.15];
+    S.push({ k: 'D', t: 'poly', p: [J, u1, dp(u1, u2), u2, dp(u2, u3), u3] });
+  }
+  // tail — a long tapering dragon tail curving back-down to an arrowhead/spade fin tip
+  {
+    const tr = bx - brx;   // root (body back)
+    S.push({ k: 'B', t: 'poly', p: [
+      [tr + 1.2, by - bry * 0.32], [tr - brx * 0.55, by - bry * 0.02], [tr - brx * 1.08, by + bry * 0.5],
+      [tr - brx * 1.48, by + bry * 1.0], [tr - brx * 1.3, by + bry * 1.22], [tr - brx * 0.82, by + bry * 0.82],
+      [tr - brx * 0.38, by + bry * 0.36], [tr + 1.2, by + bry * 0.42]
+    ]});
+    S.push({ k: 'M', t: 'poly', p: [
+      [tr - brx * 0.4, by + bry * 0.5], [tr - brx * 0.9, by + bry * 0.9], [tr - brx * 1.38, by + bry * 1.16], [tr - brx * 0.78, by + bry * 0.82]
+    ]});   // shaded underside
+    S.push({ k: 'D', t: 'poly', p: [
+      [tr - brx * 1.38, by + bry * 0.66], [tr - brx * 1.92, by + bry * 0.42], [tr - brx * 1.72, by + bry * 1.12], [tr - brx * 1.28, by + bry * 1.04]
+    ]});   // arrowhead / spade fin tip
+  }
+  // tiny TUCKED legs (small claw nubs only — it's a FLYING dragon now)
+  S.push({ k: 'M', t: 'ell', p: [bx - brx * 0.28, by + bry * 0.82, 1.4, 1.6] });
+  S.push({ k: 'M', t: 'ell', p: [bx + brx * 0.34, by + bry * 0.78, 1.4, 1.6] });
+  S.push({ k: 'D', t: 'tri', p: [[bx - brx * 0.28 - 1, by + bry * 1.45], [bx - brx * 0.28, by + bry * 1.05], [bx - brx * 0.28 + 1, by + bry * 1.45]] });
+  S.push({ k: 'D', t: 'tri', p: [[bx + brx * 0.34 - 1, by + bry * 1.4], [bx + brx * 0.34, by + bry * 1.0], [bx + brx * 0.34 + 1, by + bry * 1.4]] });
+  // body + belly
+  S.push({ k: 'B', t: 'ell', p: [bx, by, brx, bry] });
+  S.push({ k: 'M', t: 'ell', p: [bx, by + bry * 0.45, brx * 0.85, bry * 0.55] });
+  S.push({ k: 'b', t: 'ell', p: [bx + brx * 0.06, by + bry * 0.5, brx * 0.62, bry * 0.5] });
+  // neck + head
+  S.push({ k: 'B', t: 'ell', p: [(bx + hx) / 2 + 1, (by + hy) / 2, 3.0, Math.abs(by - hy) / 2 + 2.2] });
+  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr, hr * 0.97] });
+  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.36, hy - hr * 0.4, hr * 0.5, hr * 0.36] });
+  S.push({ k: 'B', t: 'ell', p: [sx - hr * 0.06, sy + hr * 0.04, hr * 0.56, hr * 0.48] });   // blunt reptilian muzzle (not a beak)
+  S.push({ k: 'L', t: 'ell', p: [sx - hr * 0.16, sy - hr * 0.2, hr * 0.34, hr * 0.18] });    // nose-bridge highlight
+  // horns
+  // horns — two swept-back horns: a distinct far horn (darker, behind) + a prominent near horn
+  S.push({ k: 'H', t: 'poly', p: [[hx - hr * 0.04, hy - hr * 0.56], [hx - hr * 0.82, hy - hr * 1.12], [hx - hr * 0.62, hy - hr * 1.2], [hx + hr * 0.2, hy - hr * 0.5]] });   // far horn
+  S.push({ k: 'h', t: 'poly', p: [[hx + hr * 0.16, hy - hr * 0.58], [hx - hr * 0.58, hy - hr * 1.3], [hx - hr * 0.34, hy - hr * 1.36], [hx + hr * 0.44, hy - hr * 0.5]] });   // near horn
+  S.push({ k: 'L', t: 'tri', p: [[hx + hr * 0.3, hy - hr * 0.56], [hx - hr * 0.48, hy - hr * 1.28], [hx - hr * 0.3, hy - hr * 1.32]] });   // near-horn highlight
+  // eye (sizes from P.eyeK / P.pupK so variants can be compared)
+  const eK = P.eyeK || 1, pK = P.pupK || 1;
+  S.push({ k: 'e', t: 'ell', p: [ex, ey, hr * 0.46 * eK, hr * 0.52 * eK] });
+  S.push({ k: 'p', t: 'ell', p: [ex + hr * 0.16, ey + hr * 0.16, hr * 0.27 * pK, hr * 0.32 * pK] });
+  S.push({ k: 'n', t: 'rect', p: [sx + hr * 0.34, sy - hr * 0.12, 1.0, 1.0] });   // nostril
+  // CLOSED reptilian mouth — a dark lip line along the lower muzzle (curving up at the
+  // back, NOT a beak split) + clear white fangs poking DOWN from the upper lip.
+  S.push({ k: 'o', t: 'poly', p: [[sx + hr * 0.52, sy + hr * 0.3], [sx + hr * 0.52, sy + hr * 0.4], [sx - hr * 0.14, sy + hr * 0.46], [sx - hr * 0.18, sy + hr * 0.36]] });   // lip line
+  S.push({ k: 'f', t: 'poly', p: [[sx + hr * 0.44, sy + hr * 0.36], [sx + hr * 0.38, sy + hr * 0.66], [sx + hr * 0.5, sy + hr * 0.52]] });   // front fang (big, clear)
+  S.push({ k: 'f', t: 'poly', p: [[sx + hr * 0.24, sy + hr * 0.4], [sx + hr * 0.19, sy + hr * 0.64], [sx + hr * 0.31, sy + hr * 0.54]] });   // second fang
+  // near wing — SIDE PROFILE, FULL & refined: a leading-edge arm rises from the shoulder
+  // to the tip; a BROAD membrane sail trails behind with gentle scallops + finger struts.
+  {
+    const S0 = [bx + brx * 0.3, by - bry * 0.22];                 // shoulder joint
+    const W0 = [bx - brx * 0.28, by - bry * 1.85 + lift * 0.8];   // wrist (mid leading edge)
+    const T0 = [bx - brx * 0.66, by - bry * 2.45 + lift];         // wing tip
+    const e1 = [bx - brx * 1.02, by - bry * 1.42 + lift * 0.55];  // broad trailing edge (out & back)
+    const e2 = [bx - brx * 0.6, by - bry * 0.52 + lift * 0.25];
+    const e3 = [bx - brx * 0.08, by - bry * 0.05];               // trailing edge meeting the back
+    S.push({ k: 'w', t: 'poly', p: [S0, W0, T0, e1, e2, e3] });   // broad membrane sail
+    S.push({ k: 'W', t: 'poly', p: [S0, W0, T0, e1, [(e1[0] + e2[0]) / 2, (e1[1] + e2[1]) / 2]] });  // lit membrane
+    S.push({ k: 'D', t: 'poly', p: [[S0[0] - 0.5, S0[1] - 0.4], [W0[0] - 0.5, W0[1] - 0.4], [T0[0], T0[1]], [T0[0] + 1.0, T0[1] + 0.9], [W0[0] + 0.6, W0[1] + 0.7], [S0[0] + 0.7, S0[1] + 0.6]] });  // leading-edge arm
+    S.push({ k: 'D', t: 'tri', p: [[W0[0], W0[1]], e1, [W0[0] + 0.8, W0[1] + 0.9]] });  // finger strut
+    S.push({ k: 'D', t: 'tri', p: [[W0[0], W0[1]], e2, [W0[0] + 0.8, W0[1] + 0.9]] });  // finger strut
   }
   return S;
 }
 function _rcCover(s, gx, gy) { const cx = gx + 0.5, cy = gy + 0.5; return s.t === 'ell' ? _rcInEll(cx, cy, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'rect' ? _rcInRect(cx, cy, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'poly' ? _rcInPoly(cx, cy, s.p) : _rcInTri(cx, cy, s.p[0], s.p[1], s.p[2]); }
-function _rcCoverPt(s, px, py) { return s.t === 'ell' ? _rcInEll(px, py, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'rect' ? _rcInRect(px, py, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'poly' ? _rcInPoly(px, py, s.p) : _rcInTri(px, py, s.p[0], s.p[1], s.p[2]); }
 function _rcBuildGrid(P, legDX) {
-  const sh = _rcDragonShapes(P, legDX), GW = RC_DRG.GW, GH = RC_DRG.GH, res = RC_DRG.res || 1;
+  const sh = _rcDragonShapes(P, legDX), GW = RC_DRG.GW, GH = RC_DRG.GH;
   const g = []; for (let y = 0; y < GH; y++) g.push(new Array(GW).fill(null));
-  // sample each fine cell at its centre in the shapes' original coordinate space
-  for (const s of sh) for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (_rcCoverPt(s, (x + 0.5) / res, (y + 0.5) / res)) g[y][x] = s.k; }
+  for (const s of sh) for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (_rcCover(s, x, y)) g[y][x] = s.k; }
   const og = g.map(r => r.slice());
   const fil = (x, y) => x >= 0 && x < GW && y >= 0 && y < GH && g[y][x] != null;
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (g[y][x] == null && (fil(x - 1, y) || fil(x + 1, y) || fil(x, y - 1) || fil(x, y + 1))) og[y][x] = 'o'; }
@@ -233,7 +232,7 @@ function _rcDragonPal(base) {
   // Natural (distinguishable) base colours, but keep the "pop": brighter highlights
   // + a deep-violet outline. The luminous halo (drawn separately) carries the glow.
   const b0 = base || '#8a8a8a';
-  return { 'o': '#201425', 'D': rcShade(b0, -46), 'M': rcShade(b0, -20), 'B': b0, 'L': rcShade(b0, 40), 'b': rcShade(b0, 82), 'g': '#f0a85a', 'G': rcShade('#f0a85a', -34), 'i': '#ffb845', 'h': '#f1e8cf', 'H': rcShade('#f1e8cf', -42), 'w': rcShade(b0, -6), 'W': rcShade(b0, 36), 'e': '#ffffff', 'p': '#2b39c8', 'f': '#ffffff', 'm': '#4a1018', 'n': '#201425' };
+  return { 'o': '#201425', 'D': rcShade(b0, -46), 'M': rcShade(b0, -20), 'B': b0, 'L': rcShade(b0, 40), 'b': rcShade(b0, 82), 'h': '#f1e8cf', 'H': rcShade('#f1e8cf', -42), 'w': rcShade(b0, -6), 'W': rcShade(b0, 36), 'e': '#ffffff', 'p': '#2b39c8', 'f': '#ffffff', 'm': '#4a1018', 'n': '#201425' };
 }
 function rcDrawDragonPixel(ctx, o) {
   let fi = Math.floor((o.gait || 0) / (Math.PI / 2)) % RC_DRAGON_FRAMES.length;
@@ -262,17 +261,9 @@ function rcDrawDragonPixel(ctx, o) {
     ctx.fillStyle = ag; ctx.beginPath(); ctx.ellipse(0, -8 * pxc, 26, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
   const ox = -RC_DRG.anchorX * pxc, oy = -RC_DRG.anchorY * pxc, GW = RC_DRG.GW, GH = RC_DRG.GH;
-  for (let y = 0; y < GH; y++) {
-    const row = grid[y], ry = Math.round(oy + y * pxc), rh = Math.max(1, Math.round(oy + (y + 1) * pxc) - ry);
-    let x = 0;
-    while (x < GW) {
-      const k = row[x];
-      if (!k) { x++; continue; }
-      let x2 = x + 1; while (x2 < GW && row[x2] === k) x2++;   // horizontal run of one colour
-      const rx = Math.round(ox + x * pxc), rw = Math.max(1, Math.round(ox + x2 * pxc) - rx);
-      ctx.fillStyle = pal[k]; ctx.fillRect(rx, ry, rw, rh);
-      x = x2;
-    }
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    const k = grid[y][x]; if (!k) continue;
+    ctx.fillStyle = pal[k]; ctx.fillRect(Math.round(ox + x * pxc), Math.round(oy + y * pxc), Math.ceil(pxc), Math.ceil(pxc));
   }
   ctx.restore();
 }
