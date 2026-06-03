@@ -251,6 +251,55 @@ function photoOr(src, fallbackHTML) {
 }
 
 // =========================================================================
+// (3) Celestia's 神眼 — opt-in consult on the race-detail screen (unlocked at
+// 総資産 1億). Reveals the race winner but COLLAPSES that dragon's market odds
+// (§7.3), teaching "knowing the winner ≠ growing assets". The finish ORDER is
+// never altered — only this one dragon's odds for this one race change, and
+// only because the player chose to ask.
+// =========================================================================
+function applyCelestiaCollapse(oddsResult, dragonId) {
+  const od = oddsResult.oddsData.find(o => o.dragonId === dragonId);
+  if (od) { od.winOdds = 1.01; od.placeOdds = Math.min(od.placeOdds, 1.01); od._celestia = true; }
+  Object.keys(oddsResult.wideOdds || {}).forEach(k => {
+    if (k.split("|").indexOf(dragonId) !== -1) oddsResult.wideOdds[k].odds = Math.min(oddsResult.wideOdds[k].odds, 1.01);
+  });
+}
+function consultCelestia() {
+  const c = state.current;
+  if (!c || c._celestiaRevealed) return;
+  if (!c._fixedResult) c._fixedResult = runRace(c.race, c.trialForms);  // fix the result so the reveal is TRUE and the race plays to it
+  const winId = c._fixedResult.entries[0].dragon.id;
+  applyCelestiaCollapse(c.oddsResult, winId);
+  c._celestiaRevealed = winId;
+  renderRaceDetail(c.race);   // re-render; the consult guard reuses the collapsed odds + fixed forms
+}
+function celestiaSectionEl() {
+  const c = state.current;
+  if (!c || !c.race) return null;
+  if ((state.player.totalAssets || 0) < castUnlockAt("celestia")) return null;   // not met yet
+  const cast = STORY_CAST.celestia;
+  const box = el("div", "card celestia-box");
+  box.style.setProperty("--cg", cast.color);
+  if (c._celestiaRevealed) {
+    const win = DRAGONS.find(d => d.id === c._celestiaRevealed);
+    const nm = win ? win.name : "？";
+    box.classList.add("revealed");
+    box.innerHTML =
+      `<div class="cel-head">${cast.symbol} セレスティアの神眼</div>` +
+      `<div class="cel-reveal">この一戦、生き残る一頭は <b>${nm}</b>。</div>` +
+      `<div class="cel-warn">……ただし答えは知れ渡った。<b>${nm}</b> の単竜オッズは弾けて消え（×1.01）、絡む複・ワイドも沈んだ。1着を知ることと、価値を残すことは違うわ。</div>`;
+  } else {
+    box.innerHTML =
+      `<div class="cel-head">${cast.symbol} セレスティアに1着を聞く</div>` +
+      `<div class="cel-warn">神眼は1着を教えてくれる。ただし開示した瞬間、その竜のオッズは弾けて消える（×1.01）。それでも聞く？</div>`;
+    const btn = el("button", "cel-ask", "神眼で1着を聞く");
+    btn.onclick = () => consultCelestia();
+    box.appendChild(btn);
+  }
+  return box;
+}
+
+// =========================================================================
 // Story screen (specs 31–34): a chapter reader with a 一枚絵CG placeholder slot
 // per chapter (themed by the introduced advisor; ready to drop real art into
 // later) + the long「件。」chapter text. Read/cosmetic only — gated by asset
@@ -557,6 +606,10 @@ function renderRaceDetail(race) {
 
   // §09 §12-16 Entry encouragement opportunity (may modify entries).
   state.current = state.current || {};
+  // (3) Celestia consult is per-race: reset its reveal when a NEW race opens.
+  const _prevRaceId = state.current.race && state.current.race.id;
+  if (_prevRaceId !== race.id) { state.current._celestiaRevealed = null; state.current._fixedResult = null; }
+  const _consultActive = !!state.current._celestiaRevealed && _prevRaceId === race.id;
   const offer = maybeOfferEntryEncouragement(race);
   if (offer) {
     state.current._encouragementOverride = offer;
@@ -568,13 +621,15 @@ function renderRaceDetail(race) {
 
   // Compute odds (market simulation).
   runEventHooks("beforeEntryList", { race });
-  const oddsResult = simulateMarket(race);
+  // When Celestia's 神眼 has been consulted this race, REUSE the (collapsed)
+  // odds + fixed forms so the reveal stays consistent; otherwise compute fresh.
+  const oddsResult = _consultActive ? state.current.oddsResult : simulateMarket(race);
   // Generate trial-run forms shown to the player (cached so they stay
   // consistent during this race-detail session per §07 §11).
-  const trialForms = {};
-  getRaceDragons(race).forEach(d => trialForms[d.id] = generateForm(d));
+  const trialForms = _consultActive ? state.current.trialForms
+    : (() => { const tf = {}; getRaceDragons(race).forEach(d => tf[d.id] = generateForm(d)); return tf; })();
 
-  Object.assign(state.current, { race, oddsResult, trialForms, bet: { type: "win", selections: [], wager: 100 } });
+  Object.assign(state.current, { race, oddsResult, trialForms, bet: _consultActive && state.current.bet ? state.current.bet : { type: "win", selections: [], wager: 100 } });
   // Tense tag for panyu hook when overpopular favorite has bad fit
   const fav = oddsResult.oddsData.find(o => o.popularityRank === 1);
   const tense = fav && fav.winOdds <= 2.5;
@@ -612,6 +667,9 @@ function renderRaceDetail(race) {
 
   // (b) advisor voice — a met advisor's perspective on picking this race.
   const _av = advisorVoiceEl("race"); if (_av) app.appendChild(_av);
+
+  // (3) Celestia's 神眼 consult (once met) — reveals the winner, collapses its odds.
+  const _cel = celestiaSectionEl(); if (_cel) app.appendChild(_cel);
 
   // Popularity-sorted entries — shared by the pick cards and the detail table.
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
@@ -948,7 +1006,8 @@ function onConfirmBet(skipDialog) {
   runEventHooks("afterBet", { race: c.race, bet: c.bet });
   // Run race using the trial-run forms shown to the player.
   runEventHooks("duringRace", { race: c.race });
-  const raceResult = runRace(c.race, c.trialForms);
+  // (3) reuse the result Celestia's 神眼 already fixed, so the reveal stays true.
+  const raceResult = c._fixedResult || runRace(c.race, c.trialForms);
   // Spec #27: broadcast cache invalidated for each new race run.
   c.broadcast = null; c.commentary = null; c.broadcastState = null;
   // Canvas-race rebuild: drop the old timeline + stop any running player.
@@ -957,6 +1016,7 @@ function onConfirmBet(skipDialog) {
   // Spec #29: recap is rebuilt per race; result-screen hooks fire once.
   c.recap = null; c.recapTab = "result"; c.resultHooksRan = false;
   c.raceResult = raceResult;
+  c._fixedResult = null; c._celestiaRevealed = null;   // consult is consumed by the run
   const betResult = resolveBet(c.bet, raceResult, c.oddsResult);
   c.betResult = betResult;
   // Award payout
