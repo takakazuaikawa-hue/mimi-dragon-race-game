@@ -792,6 +792,23 @@ function onConfirmBet(skipDialog) {
   c.raceResult = raceResult;
   const betResult = resolveBet(c.bet, raceResult, c.oddsResult);
   c.betResult = betResult;
+  // Defer the payout + all result-derived progression to the result screen so
+  // watching the race never spoils the outcome via the coin counter. settleRace()
+  // runs exactly once on 答え合わせ. The up-front wager deduction is already saved.
+  c.settled = false;
+  saveGame();
+  renderRaceRun();
+}
+
+// §settlement — apply the race outcome to the wallet + progression exactly once,
+// when the result screen (答え合わせ) is reached. Kept out of onConfirmBet so the
+// coin counter doesn't reveal the result before the player watches the race.
+function settleRace() {
+  const c = state.current;
+  if (c.settled || !c.betResult || !c.raceResult) return;
+  c.settled = true;
+  const betResult = c.betResult;
+  const raceResult = c.raceResult;
   // Award payout
   state.player.coins += betResult.payout;
   state.player.completedRaces += 1;
@@ -816,7 +833,6 @@ function onConfirmBet(skipDialog) {
   }
   saveGame();
   updateHeader();
-  renderRaceRun();
 }
 
 // §07 §13 Bet confirmation modal.
@@ -1340,6 +1356,9 @@ const RECAP_TABS = [
 function renderResult() {
   state.ui.screen = "result";
   const c = state.current;
+  // Settle the wallet + progression now that the race is over — once per race,
+  // before the bankruptcy/reaction hooks below (which read the settled coins).
+  settleRace();
   // Stop any running broadcast auto-timer when leaving the race screen.
   stopAutoTimer();
 
