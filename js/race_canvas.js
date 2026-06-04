@@ -942,6 +942,10 @@ function startRaceCanvas(container, ctx) {
     const WINW = cam.WINW;
     const leaderP = cam.leaderP;
     const g = trackGeom();
+    // SREF = screen px a fixed ground point travels per unit camL. EVERY scrolling
+    // cue (bunting, speed-streaks) is scaled off this so they move at the SAME real
+    // rate as the track — no element flies past on a different plane (= natural).
+    const SREF = (cw * 0.86) / WINW;
 
     // Screen-shake is deliberately neutralised: viewport jitter wrecks immersion.
     // Impact now reads from zoom push-in + slow-mo + telop + confetti, never from
@@ -975,7 +979,7 @@ function startRaceCanvas(container, ctx) {
 
     // stadium dressing (skyline + clock tower + crowd) only on ground courses
     if (stadium) {
-      const skl = (S.camL * 340) % 60;
+      const skl = (S.camL * 210) % 60;
       cctx.fillStyle = "rgba(20,26,52,0.9)";
       for (let i = -1; i < cw / 60 + 1; i++) {
         const x = i * 60 - skl;
@@ -983,13 +987,13 @@ function startRaceCanvas(container, ctx) {
         cctx.fillRect(x, g.top - h - 6, 44, h);
       }
       cctx.fillStyle = "rgba(40,46,78,0.95)";
-      const tx = cw * 0.62 - (S.camL * 190 % cw);
+      const tx = cw * 0.62 - (S.camL * 110 % cw);
       cctx.fillRect(tx, g.top - 64, 26, 64);
       cctx.fillStyle = "rgba(255,240,200,0.85)";
       cctx.beginPath(); cctx.arc(tx + 13, g.top - 50, 7, 0, Math.PI * 2); cctx.fill();
       cctx.fillStyle = "#181d33";
       cctx.fillRect(0, g.top - 6, cw, 10);
-      const crowdScroll = (S.camL * 900) % 14;
+      const crowdScroll = (S.camL * 560) % 14;
       for (let x = -crowdScroll; x < cw; x += 14) {
         cctx.fillStyle = ["#3a4474", "#46406e", "#523b5e", "#3e4a6b"][(Math.floor(x) % 4 + 4) % 4];
         cctx.beginPath(); cctx.arc(x, g.top - 2, 3, 0, Math.PI * 2); cctx.fill();
@@ -1002,7 +1006,7 @@ function startRaceCanvas(container, ctx) {
     // keyed to its world index (not the frame), so colours never flicker — seamless.
     // Stops naturally when the camera stops (start gate / after finish).
     {
-      const pGap = 30, pScroll = S.camL * cw * 24;
+      const pGap = 30, pScroll = S.camL * SREF * 0.9;   // ~ground rate (slight parallax) → moves WITH the scene
       const pcols = ["#ff6b8a", "#ffd34d", "#5ad1ff", "#9b8cff", "#7CFFB2"];
       const nC = pcols.length, first = Math.floor(pScroll / pGap), railY = g.top - 8;
       cctx.strokeStyle = "rgba(255,255,255,0.22)"; cctx.lineWidth = 1;
@@ -1073,11 +1077,13 @@ function startRaceCanvas(container, ctx) {
         const sy = g.top + (li + 0.5) * g.laneH;
         const len = 40 + depth * 56;          // near streaks much longer
         const gap = 38 + depth * 16;          // denser → more streaks tear past
-        const spd = 64 + depth * 40;          // near streaks scroll faster
+        const mul = 1.2 + depth * 0.55;       // near streaks blur a touch faster than the ground
         const h = depth > 0.6 ? 3 : 2;        // near streaks thicker
-        const a = (0.16 + depth * 0.18).toFixed(3);   // clearly visible on the track
+        const a = (0.14 + depth * 0.16).toFixed(3);
         cctx.fillStyle = "rgba(255,255,255," + a + ")";
-        const off = (S.camL * cw * spd + li * 23) % gap;
+        // scroll keyed to the REAL ground rate (× small blur factor) so streaks read
+        // as motion blur ON the track — not objects flying past on another plane.
+        const off = (S.camL * SREF * mul + li * 23) % gap;
         for (let sx = -off; sx < cw; sx += gap) {
           cctx.fillRect(sx, sy - 1, len, h);
         }
@@ -1561,7 +1567,7 @@ function startRaceCanvas(container, ctx) {
       // winner's across — the result is decided; ease the pace up and rush the rest
       // to the line so we never linger on last place. The ramp (1→6×) keeps the
       // slow-mo→fast transition smooth instead of snapping.
-      S.ffwd = (S.ffwd || 1) + (6 - (S.ffwd || 1)) * 0.06;
+      S.ffwd = (S.ffwd || 1) + (4 - (S.ffwd || 1)) * 0.05;
       adv *= S.ffwd;
     } else {
       S.ffwd = 1;
