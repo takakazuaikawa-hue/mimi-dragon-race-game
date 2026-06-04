@@ -76,63 +76,101 @@ function renderHome() {
   document.body.classList.remove("title-mode");
   const app = $("app"); app.innerHTML = "";
   const p = state.player;
+  if (typeof recomputeAssets === "function") recomputeAssets(state);
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
   const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : 0;
+  const total = p.totalAssets || 0;
+  const nextT = (typeof nextAssetThreshold === "function") ? nextAssetThreshold(total) : null;
+  const fillPct = nextT ? Math.max(5, Math.min(100, total / nextT * 100)) : 100;
+  let stageLabel = "";
+  try { const st = (typeof lifeStageFor === "function" && state.assets) ? lifeStageFor(state.assets.unlockedLifeStages) : null; stageLabel = (st && (st.label || st.name || st.title)) || ""; } catch (e) {}
 
-  // --- player banner: mascot + identity + balance ---
-  const banner = el("div", "home-banner");
-  banner.innerHTML = `
-    <canvas class="hb-dragon" width="100" height="80"></canvas>
-    <div class="hb-id">
-      <div class="hb-greet">ようこそ、予想家さん</div>
-      <div class="hb-rank">ランク <b>${p.rank}</b>${rankLabel ? ` <span>${rankLabel}</span>` : ""}</div>
-    </div>
-    <div class="hb-coins"><span>所持コイン</span><b>${fmtCoins(p.coins)}</b></div>`;
-  app.appendChild(banner);
+  // --- calm fixed ambient (drop images/home_ambient.png to layer a backdrop) ---
+  const bg = el("div", "hw-bg");
+  bg.innerHTML = (typeof photoOr === "function" ? photoOr("images/home_ambient.png", "") : "");
+  app.appendChild(bg);
 
-  // --- record strip ---
-  const rcell = (k, v) => `<div class="hr-cell"><span>${k}</span><b>${v}</b></div>`;
-  const rec = el("div", "home-record");
-  rec.innerHTML = rcell("出走", p.completedRaces) + rcell("単勝", p.wins) + rcell("勝率", winRate + "%") + rcell("最高配当", fmtCoins(p.biggestPayout || 0));
-  app.appendChild(rec);
+  const wrap = el("div", "home2");
 
-  // --- the single primary action ---
-  const cta = el("button", "home-cta2", "🐉　レースへ進む");
+  // --- the world vista: distant volcano, jungle ridges, lantern string ---
+  // (CSS diorama fallback; drop images/home_vista_day.png to layer a painted banner on top)
+  const vista = el("div", "hw-vista");
+  vista.innerHTML =
+    `<div class="hwv-sky"></div><div class="hwv-sun"></div>` +
+    `<div class="hwv-volcano"><div class="hwv-crater"></div></div>` +
+    `<div class="hwv-smoke"></div>` +
+    `<div class="hwv-ridge-far"></div><div class="hwv-haze"></div><div class="hwv-ridge-near"></div>` +
+    `<div class="hwv-lanterns" id="hw-lanterns"></div>` +
+    (typeof photoOr === "function" ? photoOr("images/home_vista_day.png", "") : "") +
+    `<div class="hwv-fade"></div>` +
+    `<div class="hwv-label"><i></i>聖龍レース都市・ヴォルカ街道</div>`;
+  wrap.appendChild(vista);
+  const lr = vista.querySelector("#hw-lanterns");
+  if (lr) [10, 26, 42, 58, 74, 90].forEach((xp, i) => { const L = el("div", "hw-lantern"); L.style.left = xp + "%"; L.style.top = (7 + (i % 2) * 4) + "px"; lr.appendChild(L); });
+
+  // hero — player status
+  const hero = el("div", "glass-panel hw-hero");
+  hero.innerHTML =
+    `<canvas class="hb-dragon" width="92" height="74"></canvas>` +
+    `<div class="hw-hero-id"><div class="hw-greet">ようこそ、聖龍都市へ</div>` +
+    `<div class="hw-name">予想家 ミミ</div>` +
+    `<div class="hw-rank">ランク <b>${p.rank}</b>${rankLabel ? "　" + rankLabel : ""}</div></div>` +
+    `<div class="hw-coins"><span>所持コイン</span><b>${fmtCoins(p.coins)}</b></div>`;
+  wrap.appendChild(hero);
+
+  // total-asset bar
+  let stageInfo = stageLabel ? "暮らし：" + stageLabel : "";
+  if (nextT) stageInfo += (stageInfo ? " ／ " : "") + "次の段階まで あと " + fmtCoins(Math.max(0, nextT - total));
+  else if (!stageLabel) stageInfo = "最終段階に到達";
+  const asset = el("div", "glass-panel hw-asset");
+  asset.innerHTML =
+    `<div class="hw-asset-row"><span>総資産（ミミの再起度）</span><b>${fmtCoins(total)}</b></div>` +
+    `<div class="hw-asset-bar"><div class="hw-asset-fill" style="width:${fillPct}%"></div></div>` +
+    `<div class="hw-asset-stage">${stageInfo}</div>`;
+  wrap.appendChild(asset);
+
+  // record chips
+  const rec = el("div", "hw-rec");
+  const rc = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
+  rec.innerHTML = rc("出走", p.completedRaces) + rc("単勝", p.wins) + rc("勝率", winRate + "%") + rc("最高配当", fmtCoins(p.biggestPayout || 0));
+  wrap.appendChild(rec);
+
+  // the public-race ticket — the most important button (§18.3)
+  const cta = el("button", "hw-cta",
+    `<span class="hw-cta-tag">公営 聖龍レース・出走券</span><span class="hw-cta-main">レースへ進む<span class="hw-cta-mon">🐉</span></span>`);
   cta.onclick = () => renderRaceSelect();
-  app.appendChild(cta);
+  wrap.appendChild(cta);
 
-  // --- grouped navigation ---
+  // tourist-board menu
   const tile = (icon, label, sub, onClick) => {
-    const b = el("button", "home-tile2",
-      `<span class="ht-ic">${icon}</span><span class="ht-tx"><span class="ht-l">${label}</span><span class="ht-s">${sub}</span></span>`);
-    b.onclick = onClick;
-    return b;
+    const b = el("button", "hw-tile",
+      `<span class="hw-tile-ic">${icon}</span><span class="hw-tile-tx"><span class="hw-tile-l">${label}</span><span class="hw-tile-s">${sub}</span></span>`);
+    b.onclick = onClick; return b;
   };
-  app.appendChild(el("div", "home-grouplabel", "育成・記録"));
-  const g1 = el("div", "home-menu");
+  wrap.appendChild(el("div", "hw-seclabel", "育成・記録"));
+  const g1 = el("div", "hw-menu2");
   g1.appendChild(tile("🏠", "暮らしと資産", "総資産と暮らしの歩み", () => renderAssets()));
   g1.appendChild(tile("📜", "ストーリー", "ミミと5人の物語", () => renderStory()));
   g1.appendChild(tile("📖", "竜図鑑", "出会った竜の記録", () => renderCollection()));
   g1.appendChild(tile("🏘️", "竜の村", "竜たちと交流する", () => renderVillage()));
-  app.appendChild(g1);
-  app.appendChild(el("div", "home-grouplabel", "サポート"));
-  const g2 = el("div", "home-menu");
+  wrap.appendChild(g1);
+  wrap.appendChild(el("div", "hw-seclabel", "サポート"));
+  const g2 = el("div", "hw-menu2");
   g2.appendChild(tile("💬", "相談する", "顧問に視点をもらう", () => renderConsult()));
   g2.appendChild(tile("🎓", "予想入門", "賭けの基礎を学ぶ", () => renderHelp()));
   g2.appendChild(tile("📣", "シェア", "友達に教える", shareGameInfo));
-  app.appendChild(g2);
+  wrap.appendChild(g2);
 
-  // --- subtle footer ---
-  const foot = el("div", "actions home-foot");
-  const reset = el("button", "secondary ghost", "データをリセット");
-  reset.onclick = () => {
-    if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); }
-  };
+  const foot = el("div", "hw-foot");
+  const reset = el("button", null, "データをリセット");
+  reset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
   foot.appendChild(reset);
-  app.appendChild(foot);
+  wrap.appendChild(foot);
 
-  // --- mascot animation (reuses the race sprite) ---
-  const cv = banner.querySelector(".hb-dragon");
+  app.appendChild(wrap);
+
+  // mascot animation (reuses the race sprite)
+  const cv = hero.querySelector(".hb-dragon");
   if (cv && cv.getContext && typeof rcDrawDragon === "function") {
     const tctx = cv.getContext("2d");
     let g = 1.0;
@@ -140,7 +178,7 @@ function renderHome() {
       if (!document.body.contains(cv)) return;
       tctx.clearRect(0, 0, cv.width, cv.height);
       g += 0.1;
-      rcDrawDragon(tctx, { x: cv.width / 2, y: cv.height / 2 + Math.sin(g * 0.5) * 4, scale: 1.5, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.5 });
+      rcDrawDragon(tctx, { x: cv.width / 2, y: cv.height / 2 + Math.sin(g * 0.5) * 4, scale: 1.4, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.5 });
       requestAnimationFrame(frame);
     })();
   }

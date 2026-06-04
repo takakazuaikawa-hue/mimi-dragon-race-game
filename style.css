@@ -1,20 +1,53 @@
+/* =========================================================================
+   聖龍爆走録ミミ — VISUAL WORLD TOKENS (spec 36)
+   A volcanic-jungle tourist race city: jade × mist × volcanic stone × ancient
+   stone × gold × lantern red × sea blue. NOT a purple casino. The volcano —
+   never an odds tower — is the anchor. All art is CSS/canvas; image drop-in
+   slots (.photo-fill) layer real backgrounds on top when present.
+   ========================================================================= */
+:root {
+  --jade: #2ea884;        --jade-bright: #49c89c;   --jade-deep: #1c6e57;
+  --mist: #eef4f0;        --mist-soft: #d7e3dc;
+  --vstone: #3b3a3e;      --vstone-2: #4c4a50;      --vstone-deep: #232227;
+  --astone: #8d897c;      --astone-2: #a9a394;
+  --gold: #e6b24a;        --gold-bright: #ffd877;   --gold-line: #caa24a;
+  --lantern: #d6452f;     --lantern-glow: #ff6f4d;
+  --sea: #2f86b6;         --sea-bright: #57b1dd;
+  --lava: #e0552e;        --lava-glow: #ff7a3a;
+  --ink: #20232a;         --cream: #f3ecdc;         --paper: #efe7d4;
+  /* surfaces */
+  --bg-world: radial-gradient(128% 92% at 50% 6%, #223440 0%, #16262d 38%, #0e1b1e 72%, #0a1417 100%);
+  --glass: rgba(231,242,236,0.085);
+  --glass-2: rgba(231,242,236,0.045);
+  --glass-border: rgba(231,242,236,0.20);
+  --plate: linear-gradient(180deg, rgba(64,66,72,0.92), rgba(40,41,47,0.94));
+  --plate-border: rgba(180,170,140,0.28);
+  --radius: 12px;
+  --shadow-1: 0 6px 20px -10px rgba(0,0,0,0.6);
+}
+
 * { box-sizing: border-box; }
 body {
   font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
   margin: 0; padding: 0;
-  background: linear-gradient(180deg, #1a1530 0%, #2a2050 100%);
-  color: #f0e8d0;
+  background: var(--bg-world);
+  background-attachment: fixed;
+  color: var(--cream);
   min-height: 100vh;
 }
 #header {
   display: flex; justify-content: space-between; align-items: center;
   padding: 10px 20px; gap: 16px;
-  background: rgba(0,0,0,0.4);
-  border-bottom: 2px solid #d4a850;
+  background: linear-gradient(180deg, rgba(42,43,49,0.92), rgba(26,27,32,0.95));
+  border-bottom: 1px solid var(--gold-line);
+  box-shadow: 0 2px 14px -7px rgba(0,0,0,0.7);
   flex-wrap: wrap;
+  position: relative; z-index: 20;
 }
+/* keep the main content column above the fixed home world scene */
+#app { position: relative; z-index: 1; }
 #header h1 {
-  margin: 0; font-size: 18px; color: #ffd870;
+  margin: 0; font-size: 18px; color: var(--gold-bright);
   flex: 0 1 auto; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 60vw;
@@ -1039,11 +1072,12 @@ button.secondary { background: #604070; color: #f0e8d0; }
 button.secondary:hover { background: #806090; }
 
 .card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid #604040;
-  border-radius: 6px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
   padding: 14px;
   margin-bottom: 12px;
+  backdrop-filter: blur(2px);
 }
 
 .race-card {
@@ -1871,3 +1905,118 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   border-color: #ffd278; box-shadow: 0 0 0 2px rgba(255,210,120,0.42) inset;
   background: linear-gradient(180deg, rgba(255,210,120,0.22), rgba(255,210,120,0.08));
 }
+
+/* =========================================================================
+   VOLCANIC-JUNGLE MATERIALS + HOME WORLD  (spec 36)
+   ========================================================================= */
+.glass-panel { background: rgba(12,19,21,0.5); border: 1px solid var(--glass-border); border-radius: var(--radius); backdrop-filter: blur(4px); }
+.fire-plate  { background: var(--plate); border: 1px solid var(--plate-border); border-radius: var(--radius); box-shadow: var(--shadow-1); }
+
+/* ---- HOME : sacred-dragon-race tourist city ---- */
+.home2 { position: relative; z-index: 1; }
+
+/* calm fixed ambient: a faint volcano warmth up top + soft vignette, over --bg-world.
+   Drop images/home_ambient.png to layer a full backdrop on top. */
+.hw-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  background:
+    radial-gradient(78% 46% at 50% 0%, rgba(255,142,72,0.12), rgba(255,142,72,0) 60%),
+    radial-gradient(120% 70% at 50% 120%, rgba(0,0,0,0.38), rgba(0,0,0,0) 62%); }
+
+/* === the world vista: a composed daytime window onto the volcanic-jungle city === */
+.hw-vista { position: relative; height: 170px; border-radius: 14px; overflow: hidden;
+  margin: 2px 0 14px; border: 1px solid rgba(231,242,236,0.16);
+  box-shadow: 0 12px 32px -16px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(255,255,255,0.04); }
+.hw-vista > * { position: absolute; }
+.hwv-sky { inset: 0; background: linear-gradient(180deg,
+  #6fb1c7 0%, #84bcc4 26%, #a9cdb4 50%, #d4d6a4 74%, #ecd9a4 90%, #e6cd97 100%); }
+.hwv-sun { left: 63%; top: 8%; width: 90px; height: 90px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,250,228,0.95) 0%, rgba(255,240,198,0.42) 42%, rgba(255,240,198,0) 70%); }
+.hwv-volcano { left: 50%; bottom: 30%; width: 234px; height: 104px; transform: translateX(-50%);
+  background: linear-gradient(165deg, #7b7280 0%, #5b5363 48%, #3f3848 100%);
+  clip-path: polygon(40% 5%, 60% 5%, 100% 100%, 0 100%); }
+.hwv-volcano::before { content: ""; position: absolute; left: 0; bottom: 0; width: 50%; height: 100%;
+  background: linear-gradient(90deg, rgba(255,150,80,0.16), rgba(255,150,80,0) 70%); }
+.hwv-crater { position: absolute; left: 50%; top: -7px; width: 42%; height: 18px; transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 100%, rgba(255,160,70,0.95) 0%, rgba(255,120,46,0.45) 55%, rgba(255,120,46,0) 78%);
+  filter: blur(1px); }
+.hwv-smoke { left: 50%; bottom: 55%; width: 84px; height: 92px; transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 100%, rgba(228,221,210,0.5) 0%, rgba(228,221,210,0) 70%);
+  filter: blur(5px); animation: hwSmoke 7s ease-in-out infinite; }
+@keyframes hwSmoke { 0%,100%{ transform: translateX(-50%) scale(1); opacity:.5; } 50%{ transform: translateX(-56%) scale(1.14); opacity:.72; } }
+.hwv-ridge-far { left: -2%; right: -2%; bottom: 23%; height: 42%; opacity: .9;
+  background: linear-gradient(180deg, #76a489 0%, #5f8c77 100%);
+  clip-path: polygon(0 62%,10% 44%,20% 60%,32% 38%,44% 58%,56% 40%,70% 60%,82% 42%,92% 58%,100% 46%,100% 100%,0 100%); }
+.hwv-haze { left: -6%; right: -6%; bottom: 27%; height: 18%;
+  background: linear-gradient(180deg, rgba(236,244,238,0) 0%, rgba(236,244,238,0.62) 50%, rgba(236,244,238,0) 100%);
+  filter: blur(3px); }
+.hwv-ridge-near { left: -2%; right: -2%; bottom: 0; height: 42%;
+  background: linear-gradient(180deg, #20614c 0%, #123d31 100%);
+  clip-path: polygon(0 52%,12% 30%,24% 52%,38% 24%,50% 50%,62% 26%,76% 52%,88% 30%,100% 50%,100% 100%,0 100%); }
+.hwv-fade { left: 0; right: 0; bottom: 0; height: 50%;
+  background: linear-gradient(180deg, rgba(13,24,24,0) 0%, rgba(12,22,22,0.5) 58%, rgba(11,19,19,0.94) 100%); }
+.hwv-label { left: 12px; bottom: 9px; display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #f3ecdc; text-shadow: 0 1px 3px rgba(0,0,0,0.75); }
+.hwv-label i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold-bright); box-shadow: 0 0 8px var(--gold); }
+/* lantern string (in the vista foreground) */
+.hwv-lanterns { left: 0; right: 0; top: 0; height: 30px; }
+.hwv-lanterns::before { content: ""; position: absolute; left: 6%; right: 6%; top: 6px; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(40,28,18,0.5) 12%, rgba(40,28,18,0.5) 88%, transparent); }
+.hw-lantern { position: absolute; top: 7px; width: 14px; height: 18px; transform: translateX(-50%);
+  background: radial-gradient(circle at 38% 32%, #ff8a5e, #d6452f 72%); border-radius: 46%;
+  box-shadow: 0 0 11px 1px rgba(255,96,54,0.55); }
+.hw-lantern::after { content: ""; position: absolute; left: 50%; bottom: -3px; width: 3px; height: 4px; transform: translateX(-50%); background: #b8842e; }
+
+/* ---- HOME UI column ---- */
+.hw-hero { display: flex; align-items: center; gap: 12px; padding: 14px; margin: 0 0 12px; }
+.hw-hero .hb-dragon { flex: 0 0 auto; }
+.hw-hero-id { flex: 1; min-width: 0; }
+.hw-greet { font-size: 12px; color: var(--jade-bright); letter-spacing: .03em; }
+.hw-name { font-size: 18px; font-weight: 800; color: #fff; margin-top: 1px; }
+.hw-rank { font-size: 12px; color: var(--cream); opacity: .85; margin-top: 3px; }
+.hw-rank b { color: var(--gold-bright); }
+.hw-coins { text-align: right; flex: 0 0 auto; }
+.hw-coins span { display: block; font-size: 10.5px; color: var(--mist-soft); opacity: .8; }
+.hw-coins b { font-size: 18px; color: var(--gold-bright); }
+/* total-asset progress bar */
+.hw-asset { padding: 10px 13px; margin-bottom: 12px; }
+.hw-asset-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--cream); }
+.hw-asset-row b { color: var(--jade-bright); font-size: 15px; }
+.hw-asset-bar { height: 7px; border-radius: 5px; background: rgba(255,255,255,0.12); margin-top: 7px; overflow: hidden; }
+.hw-asset-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--jade-deep), var(--jade-bright)); }
+.hw-asset-stage { font-size: 10.5px; color: var(--mist-soft); opacity: .8; margin-top: 5px; }
+/* record chips */
+.hw-rec { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; margin-bottom: 14px; }
+.hw-rec div { text-align: center; padding: 7px 4px; border-radius: 9px; background: rgba(231,242,236,0.06); border: 1px solid rgba(231,242,236,0.1); }
+.hw-rec span { display: block; font-size: 10px; color: var(--mist-soft); opacity: .8; }
+.hw-rec b { font-size: 14px; color: var(--cream); }
+
+/* the public-race ticket — the most important button (§18.3) */
+.hw-cta { display: block; width: 100%; margin: 4px 0 18px; padding: 15px 18px; cursor: pointer;
+  border: none; border-radius: 14px; position: relative; text-align: left;
+  background: linear-gradient(135deg, #ffe9a6 0%, #f3bd54 44%, #d99a32 100%);
+  color: #4a2e08; box-shadow: 0 10px 26px -10px rgba(217,154,50,0.75), inset 0 1px 0 rgba(255,255,255,0.55);
+  transition: transform .12s ease, box-shadow .2s; overflow: hidden; }
+.hw-cta:hover { transform: translateY(-2px); }
+.hw-cta:active { transform: translateY(1px); }
+.hw-cta::before { content: ""; position: absolute; inset: 5px; border: 1.5px dashed rgba(74,46,8,0.4); border-radius: 9px; pointer-events: none; }
+.hw-cta-tag { font-size: 10.5px; font-weight: 800; letter-spacing: .14em; opacity: .8; }
+.hw-cta-main { display: flex; align-items: center; gap: 8px; font-size: 21px; font-weight: 900; letter-spacing: .03em; margin-top: 2px; }
+.hw-cta-mon { margin-left: auto; font-size: 22px; opacity: .85; }
+
+/* tourist-board / wood-tag menu tiles (§18.4) */
+.hw-seclabel { font-size: 11px; color: var(--mist-soft); opacity: .75; margin: 4px 2px 8px; letter-spacing: .06em; }
+.hw-menu2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; margin-bottom: 14px; }
+.hw-tile { display: flex; align-items: center; gap: 10px; padding: 11px 12px; cursor: pointer; text-align: left;
+  border-radius: 11px; color: var(--cream);
+  background: linear-gradient(180deg, rgba(231,242,236,0.07), rgba(231,242,236,0.03));
+  border: 1px solid rgba(231,242,236,0.14); border-left: 3px solid var(--jade);
+  transition: transform .12s ease, border-color .15s, background .2s; }
+.hw-tile:hover { transform: translateY(-2px); border-left-color: var(--gold); background: linear-gradient(180deg, rgba(231,242,236,0.11), rgba(231,242,236,0.04)); }
+.hw-tile-ic { width: 34px; height: 34px; flex: 0 0 34px; display: flex; align-items: center; justify-content: center; font-size: 19px;
+  border-radius: 9px; background: rgba(20,30,28,0.55); border: 1px solid rgba(231,242,236,0.12); }
+.hw-tile-tx { min-width: 0; line-height: 1.4; }
+.hw-tile-l { font-size: 13.5px; font-weight: 700; }
+.hw-tile-s { font-size: 10.5px; color: var(--mist-soft); opacity: .8; }
+.hw-foot { margin-top: 6px; text-align: center; }
+.hw-foot button { background: transparent; border: 1px solid rgba(231,242,236,0.2); color: var(--mist-soft); font-size: 11px; padding: 6px 12px; border-radius: 8px; cursor: pointer; opacity: .7; }
+.hw-foot button:hover { opacity: 1; }
