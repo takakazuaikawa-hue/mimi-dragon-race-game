@@ -1974,35 +1974,51 @@ function startRaceCanvas(container, ctx) {
     }
 
     // --- phase-entry banner (slides in from the side, holds, slides out) ---
-    // --- terrain sign: a compact broadcast card that SLIDES IN FROM THE LEFT (kept clear
-    // of the central action) as the leader enters a section — names the feature + its demand ---
+    // --- terrain sign: an anime-style CUT-IN — a slanted banner that SLAMS in from the
+    // left (speed lines + impact flash) as the leader enters a section, then snaps out.
+    // Auto-sized & left-anchored, so it dramatises the course info without burying the race. ---
     if (S.terrainSign && !S.finished && S.preT <= 0) {
-      const ts = S.terrainSign;
-      const appear = clamp(ts.t / 0.3, 0, 1);
-      const out = clamp((ts.max - ts.t) / 0.5, 0, 1);
-      const a = Math.min(appear, out);
-      const ease = 1 - Math.pow(1 - appear, 3);                     // easeOut slide-in
+      const ts = S.terrainSign, t = ts.t, mx = ts.max;
+      const inP = clamp(t / 0.26, 0, 1);
+      const outP = clamp((mx - t) / 0.3, 0, 1);
+      const c1 = 1.8, c3 = c1 + 1;
+      const eb = inP >= 1 ? 1 : (1 + c3 * Math.pow(inP - 1, 3) + c1 * Math.pow(inP - 1, 2));  // easeOutBack slam
+      const a = Math.min(clamp(inP / 0.35, 0, 1), outP);
       const accent = (RC_THEME[ts.key] || RC_THEME.straight).accent;
       cctx.save();
-      cctx.font = "bold 17px system-ui, sans-serif";
+      cctx.font = "bold 19px system-ui, sans-serif";
       const tw = cctx.measureText(ts.label).width;
-      cctx.font = "bold 11px system-ui, sans-serif";
-      const dw = ts.demand ? cctx.measureText("▶ " + ts.demand).width : 0;
-      const iconW = 30, padX = 12, h = ts.demand ? 46 : 38;
-      const w = Math.min(cw * 0.58, iconW + Math.max(tw, dw) + padX * 2);
-      const x0 = 6 - ((1 - ease) + (1 - out)) * (w + 16);           // off-left → 6 → off-left
-      const y0 = ch * 0.28;
+      const iconW = 30, padX = 14, h = 42, slant = 14;
+      const bw = Math.min(cw * 0.62, iconW + tw + padX * 2 + 16);
+      const enterX = -bw - 50, restX = -8;
+      let x = enterX + (restX - enterX) * eb;               // slam in (overshoot, settle)
+      if (outP < 1) x -= (1 - outP) * (bw + 60);            // snap out to the left
+      const y0 = ch * 0.30;
       cctx.globalAlpha = clamp(a, 0, 1);
-      cctx.fillStyle = "rgba(10,12,24,0.8)"; cctx.fillRect(x0, y0, w, h);
-      cctx.fillStyle = accent; cctx.fillRect(x0, y0, 4, h); cctx.fillRect(x0, y0, w, 2); cctx.fillRect(x0, y0 + h - 2, w, 2);
+      // speed lines trailing the slam-in
+      if (inP < 1) {
+        cctx.strokeStyle = rcRgba(accent, 0.55 * (1 - inP)); cctx.lineWidth = 2.5;
+        for (let i = 0; i < 5; i++) { const ly = y0 + 5 + i * 8; cctx.beginPath(); cctx.moveTo(x + bw, ly); cctx.lineTo(x + bw + 26 + i * 16, ly); cctx.stroke(); }
+      }
+      // slanted banner (parallelogram): top edge sheared right by `slant`
+      cctx.fillStyle = "rgba(9,11,22,0.92)";
+      cctx.beginPath(); cctx.moveTo(x + slant, y0); cctx.lineTo(x + bw + slant, y0); cctx.lineTo(x + bw, y0 + h); cctx.lineTo(x, y0 + h); cctx.closePath(); cctx.fill();
+      cctx.fillStyle = accent;                              // accent slash down the left edge
+      cctx.beginPath(); cctx.moveTo(x + slant, y0); cctx.lineTo(x + slant + 7, y0); cctx.lineTo(x + 7, y0 + h); cctx.lineTo(x, y0 + h); cctx.closePath(); cctx.fill();
+      cctx.fillStyle = rcRgba(accent, 0.9); cctx.fillRect(x + slant, y0, bw, 1.5); cctx.fillRect(x, y0 + h - 1.5, bw, 1.5);   // top/bottom edges
+      // content (upright text on the slanted band)
+      const cx = x + slant + 12;
       cctx.textBaseline = "middle"; cctx.textAlign = "center";
       cctx.font = "20px system-ui, sans-serif"; cctx.fillStyle = "#fff";
-      cctx.fillText(ts.icon, x0 + padX + 9, y0 + h / 2);                                   // terrain icon
-      cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 17px system-ui, sans-serif";
-      cctx.fillText(ts.label, x0 + iconW + padX, y0 + (ts.demand ? 16 : h / 2));           // section label
-      if (ts.demand) {                                                                     // what it TESTS
-        cctx.fillStyle = accent; cctx.font = "bold 11px system-ui, sans-serif";
-        cctx.fillText("▶ " + ts.demand, x0 + iconW + padX, y0 + 33);
+      cctx.fillText(ts.icon, cx + 9, y0 + h / 2);
+      cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 19px system-ui, sans-serif";
+      cctx.fillText(ts.label, cx + iconW, y0 + (ts.demand ? 15 : h / 2));
+      if (ts.demand) { cctx.fillStyle = accent; cctx.font = "bold 11px system-ui, sans-serif"; cctx.fillText("▶ " + ts.demand, cx + iconW, y0 + 31); }
+      // impact flash right after it lands
+      const flash = (t >= 0.26) ? clamp(1 - (t - 0.26) / 0.16, 0, 1) : 0;
+      if (flash > 0) {
+        cctx.globalAlpha = clamp(a, 0, 1) * flash * 0.5; cctx.fillStyle = "#fff";
+        cctx.beginPath(); cctx.moveTo(x + slant, y0); cctx.lineTo(x + bw + slant, y0); cctx.lineTo(x + bw, y0 + h); cctx.lineTo(x, y0 + h); cctx.closePath(); cctx.fill();
       }
       cctx.restore(); cctx.globalAlpha = 1;
     }
