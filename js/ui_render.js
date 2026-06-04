@@ -114,7 +114,8 @@ function renderHome() {
     `<canvas class="hb-dragon" width="92" height="74"></canvas>` +
     `<div class="hw-hero-id"><div class="hw-greet">ようこそ、聖龍都市へ</div>` +
     `<div class="hw-name">予想家 ミミ</div>` +
-    `<div class="hw-rank">ランク <b>${p.rank}</b>${rankLabel ? "　" + rankLabel : ""}</div></div>` +
+    `<div class="hw-rank">ランク <b>${p.rank}</b>${rankLabel ? "　" + rankLabel : ""}` +
+      `${p.streak >= 2 ? ` <span class="hw-streak">🔥 ${p.streak}連勝</span>` : ""}</div></div>` +
     `<div class="hw-coins"><span>所持コイン</span><b>${fmtCoins(p.coins)}</b></div>`;
   wrap.appendChild(hero);
 
@@ -1501,6 +1502,23 @@ function settleRace() {
     state.player.wins += 1;
     state.player.winsByRank[c.race.rank] = (state.player.winsByRank[c.race.rank] || 0) + 1;
   }
+  // §37 Tier 2 — win streak (連勝). Any hit extends it; a miss breaks it. At
+  // milestone streaks a "連勝ボーナス" is paid (scaled by THIS payout, so it
+  // tracks the bet size / rank). The base payout formula is unchanged.
+  const prevStreak = state.player.streak || 0;
+  let streakBonus = 0, streakMilestone = 0;
+  if (betResult.hit) {
+    state.player.streak = prevStreak + 1;
+    if (state.player.streak > (state.player.bestStreak || 0)) state.player.bestStreak = state.player.streak;
+    const f = STREAK_BONUS_FACTOR[state.player.streak];
+    if (f) { streakBonus = Math.floor(betResult.payout * f); streakMilestone = state.player.streak; state.player.coins += streakBonus; }
+  } else {
+    state.player.streak = 0;
+  }
+  c.streakInfo = {
+    streak: state.player.streak, best: state.player.bestStreak || 0, prev: prevStreak,
+    broke: (!betResult.hit && prevStreak >= 2), bonus: streakBonus, milestone: streakMilestone
+  };
   updateCollectionFromRace(raceResult, c.bet, betResult);
   gainVillageExp(c.race, betResult && betResult.hit, raceResult._newDragonsThisRace || 0);
   checkEconomyMilestones(betResult);
@@ -2142,7 +2160,20 @@ const RESULT_TIER = {
   4: { word: "伝説の的中！！！", cls: "t4",   sfx: "legendary" }
 };
 
+// §37 Tier 2 — milestone streak bonus, as a multiple of the race's payout (so
+// it scales with the bet size / rank). Paid only when the streak hits a key.
+const STREAK_BONUS_FACTOR = { 3: 0.3, 5: 0.7, 7: 1.2, 10: 2.0, 15: 4.0, 20: 7.0, 30: 15.0 };
+
 function fmtSigned(n) { return (n < 0 ? "−" : "+") + fmtCoins(Math.abs(n)); }
+
+// Build the streak line shown in the reward hero (and reused on home).
+function streakLineHtml(si) {
+  if (!si) return "";
+  if (si.bonus > 0) return `🔥 <b>${si.streak}連勝！</b> 連勝ボーナス <b>＋${fmtCoins(si.bonus)}</b>`;
+  if (si.streak >= 2) return `🔥 <b>${si.streak}連勝中</b>　最高 ${si.best}`;
+  if (si.broke) return `連勝ストップ… （${si.prev}連勝でした）`;
+  return "";
+}
 
 function buildResultHero(ps, tier, c) {
   const info = RESULT_TIER[tier] || RESULT_TIER[0];
@@ -2161,7 +2192,7 @@ function buildResultHero(ps, tier, c) {
         ? `${ps.typeLabel} × ${ps.odds.toFixed(1)}倍　／　収支 <b>${fmtSigned(ps.profit)}</b>`
         : `${ps.typeLabel}　／　今回は届かず`) +
       `　・　所持 <b>${fmtCoins(state.player.coins)}</b></div>` +
-    `<div class="rs-streak" id="rs-streak"></div>`;
+    `<div class="rs-streak" id="rs-streak">${streakLineHtml(c && c.streakInfo)}</div>`;
 
   const mb = hero.querySelector(".rs-mute");
   if (mb) mb.onclick = (e) => {
@@ -2203,6 +2234,7 @@ function whenResultVisible(cb) {
 
 function celebrateResult(hero, ps, tier, info) {
   if (!hero || !document.body.contains(hero)) return;
+  const si = state.current && state.current.streakInfo;
   try { if (window.Sfx) Sfx.play(ps.hit ? info.sfx : "miss"); } catch (e) {}
   const stamp = hero.querySelector(".rs-stamp");
   if (stamp) stamp.classList.add("rs-stamp-go");
@@ -2210,9 +2242,15 @@ function celebrateResult(hero, ps, tier, info) {
   const cnt = hero.querySelector("#rs-count");
   if (cnt) countUp(cnt, ps.payout, 900 + tier * 220);
   const conf = hero.querySelector(".rs-confetti");
-  const n = [0, 18, 32, 50, 72][tier] || 18;
+  let n = [0, 18, 32, 50, 72][tier] || 18;
+  if (si && si.streak >= 3) n += Math.min(si.streak, 12) * 4;   // hotter streaks rain more
   if (conf) spawnConfetti(conf, n, tier);
-  if (tier >= 3) {
+  // streak milestone bonus → a second confetti burst + a reward chime
+  if (si && si.bonus > 0) {
+    try { if (window.Sfx) setTimeout(() => Sfx.play("unlock"), 520); } catch (e) {}
+    if (conf) setTimeout(() => spawnConfetti(conf, 24, Math.max(tier, 3)), 480);
+  }
+  if (tier >= 3 || (si && si.streak >= 5)) {
     hero.classList.remove("rs-shake"); void hero.offsetWidth; hero.classList.add("rs-shake");
     setTimeout(() => hero.classList.remove("rs-shake"), 700);
   }

@@ -2037,6 +2037,10 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hw-name { font-size: 18px; font-weight: 800; color: #fff; margin-top: 1px; }
 .hw-rank { font-size: 12px; color: var(--cream); opacity: .85; margin-top: 3px; }
 .hw-rank b { color: var(--gold-bright); }
+.hw-streak { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 10px;
+  font-size: 11px; font-weight: 800; color: #fff;
+  background: linear-gradient(180deg, rgba(255,122,58,0.92), rgba(214,69,47,0.92));
+  box-shadow: 0 0 10px rgba(255,110,60,0.5); }
 .hw-coins { text-align: right; flex: 0 0 auto; }
 .hw-coins span { display: block; font-size: 10.5px; color: var(--mist-soft); opacity: .8; }
 .hw-coins b { font-size: 18px; color: var(--gold-bright); }
