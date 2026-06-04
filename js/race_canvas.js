@@ -1058,9 +1058,19 @@ function startRaceCanvas(container, ctx) {
     grd.addColorStop(1,   rcMix(tb.a.ground[2], tb.b.ground[2], tb.t));
     cctx.fillStyle = grd;
     cctx.fillRect(-20, g.top, cw + 40, (ch - g.top) + 26);   // overscan covers camera tilt/pan
-    // mowed-stripe banding for a groomed-turf look
-    cctx.fillStyle = "rgba(255,255,255,0.020)";
-    for (let i = 0; i < 8; i += 2) cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH);
+    // groomed turf: alternating two-tone mow bands + a soft depth grade (darker far,
+    // a touch lifted near) give the lawn real dimension without adding clutter.
+    for (let i = 0; i < 8; i++) {
+      cctx.fillStyle = (i % 2 === 0) ? "rgba(255,255,255,0.030)" : "rgba(0,26,12,0.06)";
+      cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH + 0.5);
+    }
+    {
+      const ts = cctx.createLinearGradient(0, g.top, 0, g.bottom);
+      ts.addColorStop(0,   "rgba(0,0,0,0.16)");
+      ts.addColorStop(0.4, "rgba(0,0,0,0)");
+      ts.addColorStop(1,   "rgba(255,255,255,0.045)");
+      cctx.fillStyle = ts; cctx.fillRect(0, g.top, cw, g.bottom - g.top);
+    }
     // theme surface treatment (fog veil / lava cracks / bridge planks)
     drawGroundOverlay(tb.keyA, g, WINW);
 
@@ -1079,12 +1089,14 @@ function startRaceCanvas(container, ctx) {
       }
       cctx.stroke();
     }
-    // scrolling distance ticks (denser) → ground speed sensation
-    cctx.fillStyle = "rgba(255,255,255,0.10)";
+    // scrolling distance gridlines — subtle structure (the streaks carry the speed),
+    // with a slightly brighter line each furlong (0.1) for a sense of measured ground.
     const firstTick = Math.ceil(S.camL / 0.025) * 0.025;
     for (let P = firstTick; P < S.camL + WINW + 0.05; P += 0.025) {
       const x = screenX(P, WINW);
-      cctx.fillRect(x - 1, g.top, 2, g.bottom - g.top);
+      const furlong = Math.abs((P / 0.1) - Math.round(P / 0.1)) < 0.002;
+      cctx.fillStyle = furlong ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.045)";
+      cctx.fillRect(x - (furlong ? 1 : 0.5), g.top, furlong ? 2 : 1, g.bottom - g.top);
     }
     // fast ground speed-streaks — screen-space motion blur scrolling well faster
     // than the world, so a long course really reads as a high-speed run. Drawn ONLY
@@ -1111,12 +1123,17 @@ function startRaceCanvas(container, ctx) {
         }
       }
     }
-    // rails (far + near) frame the running surface
-    cctx.strokeStyle = "rgba(180,200,230,0.35)";
-    cctx.lineWidth = 2;
-    cctx.beginPath(); cctx.moveTo(0, g.top + 1); cctx.lineTo(cw, g.top + 1); cctx.stroke();
-    cctx.strokeStyle = "rgba(210,225,245,0.30)";
-    cctx.beginPath(); cctx.moveTo(0, g.bottom - 1); cctx.lineTo(cw, g.bottom - 1); cctx.stroke();
+    // --- running rails: a crisp white far-side rail with a soft shadow beneath it,
+    // plus a soft near-edge shadow that grounds the field on the turf (premium depth). ---
+    cctx.fillStyle = "rgba(0,0,0,0.16)";
+    cctx.fillRect(0, g.top + 2.5, cw, 3);                                                          // shadow under the far rail
+    cctx.strokeStyle = "rgba(244,248,255,0.72)"; cctx.lineWidth = 2.5;
+    cctx.beginPath(); cctx.moveTo(0, g.top + 1.5); cctx.lineTo(cw, g.top + 1.5); cctx.stroke();    // far rail (white)
+    const nearSh = cctx.createLinearGradient(0, g.bottom - 16, 0, g.bottom);
+    nearSh.addColorStop(0, "rgba(0,0,0,0)"); nearSh.addColorStop(1, "rgba(0,0,0,0.22)");
+    cctx.fillStyle = nearSh; cctx.fillRect(0, g.bottom - 16, cw, 16);                               // near-edge shadow
+    cctx.strokeStyle = "rgba(220,230,245,0.28)"; cctx.lineWidth = 1.5;
+    cctx.beginPath(); cctx.moveTo(0, g.bottom - 1); cctx.lineTo(cw, g.bottom - 1); cctx.stroke();   // near rail (subtle)
 
     // roadside props for the current terrain (torches, turn flags, rocks, …)
     drawProps(g, WINW);
