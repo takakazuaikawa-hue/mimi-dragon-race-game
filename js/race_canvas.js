@@ -597,12 +597,30 @@ function startRaceCanvas(container, ctx) {
     const c = clamp((P - 0.6) / 0.4, 0, 1);
     return c * c * 0.28;
   }
+  // The course visibly CURVES through turn sections: the running ribbon shifts
+  // vertically with progress. Big turns (大旋回 / 最終大旋回) draw ONE large gentle
+  // arc; tight turns (小回り連続) draw several quick S-curves; straights stay flat.
+  // The bend is 0 with zero slope at each third's boundary, so sections join
+  // seamlessly. Cosmetic only — horizontal progress / finishing order is untouched.
+  function trackBendY(P) {
+    const pc = clamp(P, 0, 1);
+    const t = thirdAtP(pc);
+    const key = sectionKeyAtThird(t);
+    let amp, waves;
+    if (key === "grand_turn" || key === "final_grand_turn") { amp = 0.075; waves = 0; }   // big sweep (single arc)
+    else if (key === "repeated_small_turns") { amp = 0.05; waves = 5; }                    // tight S-curves
+    else return 0;
+    const u = pc * 3 - t;                              // 0..1 within this third
+    const win = (1 - Math.cos(u * Math.PI * 2)) / 2;   // smooth window: 0 at ends (flat), 1 mid, zero slope
+    const shape = waves ? Math.sin(u * Math.PI * waves) * win : win;
+    return -amp * ch * shape;                          // negative = ribbon arcs upward
+  }
   function laneBaseY(idx, g) { return g.bottom - (idx + 0.5) * g.laneH; }
   function laneY(dr, g) {
     const baseY = laneBaseY(laneOf[dr.id], g);
     const centerY = g.top + (g.bottom - g.top) * 0.5;
     const P = timeline.progressAt(dr.id, S.tau);
-    return baseY + (centerY - baseY) * convAtP(P);
+    return baseY + (centerY - baseY) * convAtP(P) + trackBendY(P);
   }
 
   // ---- terrain helpers: which SECTION is at a given track fraction ----
@@ -899,7 +917,8 @@ function startRaceCanvas(container, ctx) {
       if (P < 0 || P > 1) continue;
       const key = themeKeyAtP(P);
       const j = Math.abs(Math.sin(P * 99.7));
-      drawProp(key, screenX(P, WINW), g, j);
+      const b = trackBendY(P);   // props ride the curved rail through turns
+      drawProp(key, screenX(P, WINW), { top: g.top + b, bottom: g.bottom + b, laneH: g.laneH }, j);
     }
   }
   // ambient terrain particles (embers / gusts / leaves); mist is an overlay
@@ -1054,15 +1073,25 @@ function startRaceCanvas(container, ctx) {
     cctx.translate(fx, fy); cctx.scale(S.zoom, S.zoom); cctx.rotate(S.tilt); cctx.translate(-fx, -fy);
     cctx.translate(S.shakeX, S.camY + S.shakeY);
 
-    // --- track ground (themed turf, apron below to survive pan/zoom) ---
+    // --- track ground (themed turf) — the running ribbon CURVES through turns: its
+    // top edge follows trackBendY(P). The fill runs from that curved top down to the
+    // apron so there's never a gap when the ribbon arcs upward. ---
     const grd = cctx.createLinearGradient(0, g.top, 0, g.bottom);
     grd.addColorStop(0,   rcMix(tb.a.ground[0], tb.b.ground[0], tb.t));
     grd.addColorStop(0.5, rcMix(tb.a.ground[1], tb.b.ground[1], tb.t));
     grd.addColorStop(1,   rcMix(tb.a.ground[2], tb.b.ground[2], tb.t));
-    cctx.fillStyle = grd;
-    cctx.fillRect(-20, g.top, cw + 40, (ch - g.top) + 26);   // overscan covers camera tilt/pan
-    // groomed turf: alternating two-tone mow bands + a soft depth grade (darker far,
-    // a touch lifted near) give the lawn real dimension without adding clutter.
+    const _turfPath = function () {
+      cctx.beginPath();
+      let first = true;
+      for (let P = S.camL - 0.06; P <= S.camL + WINW + 0.06; P += (WINW + 0.12) / 48) {
+        const px = screenX(P, WINW), py = g.top + trackBendY(P);
+        if (first) { cctx.moveTo(px, py); first = false; } else cctx.lineTo(px, py);
+      }
+      cctx.lineTo(cw + 20, ch + 26); cctx.lineTo(-20, ch + 26); cctx.closePath();
+    };
+    _turfPath(); cctx.fillStyle = grd; cctx.fill();
+    // groomed turf detail (two-tone mow bands + depth grade), clipped to the curved surface
+    cctx.save(); _turfPath(); cctx.clip();
     for (let i = 0; i < 8; i++) {
       cctx.fillStyle = (i % 2 === 0) ? "rgba(255,255,255,0.030)" : "rgba(0,26,12,0.06)";
       cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH + 0.5);
@@ -1074,6 +1103,7 @@ function startRaceCanvas(container, ctx) {
       ts.addColorStop(1,   "rgba(255,255,255,0.045)");
       cctx.fillStyle = ts; cctx.fillRect(0, g.top, cw, g.bottom - g.top);
     }
+    cctx.restore();
     // theme surface treatment (fog veil / lava cracks / bridge planks)
     drawGroundOverlay(tb.keyA, g, WINW);
 
@@ -1086,7 +1116,7 @@ function startRaceCanvas(container, ctx) {
       cctx.beginPath();
       let first = true;
       for (let P = S.camL - 0.04; P <= S.camL + WINW + 0.04; P += 0.02) {
-        const ly = baseY + (_cy - baseY) * convAtP(P);
+        const ly = baseY + (_cy - baseY) * convAtP(P) + trackBendY(P);
         const lx = screenX(P, WINW);
         if (first) { cctx.moveTo(lx, ly); first = false; } else cctx.lineTo(lx, ly);
       }
@@ -1096,10 +1126,10 @@ function startRaceCanvas(container, ctx) {
     // with a slightly brighter line each furlong (0.1) for a sense of measured ground.
     const firstTick = Math.ceil(S.camL / 0.025) * 0.025;
     for (let P = firstTick; P < S.camL + WINW + 0.05; P += 0.025) {
-      const x = screenX(P, WINW);
+      const x = screenX(P, WINW), b = trackBendY(P);
       const furlong = Math.abs((P / 0.1) - Math.round(P / 0.1)) < 0.002;
       cctx.fillStyle = furlong ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.045)";
-      cctx.fillRect(x - (furlong ? 1 : 0.5), g.top, furlong ? 2 : 1, g.bottom - g.top);
+      cctx.fillRect(x - (furlong ? 1 : 0.5), g.top + b, furlong ? 2 : 1, g.bottom - g.top);
     }
     // fast ground speed-streaks — screen-space motion blur scrolling well faster
     // than the world, so a long course really reads as a high-speed run. Drawn ONLY
@@ -1126,17 +1156,20 @@ function startRaceCanvas(container, ctx) {
         }
       }
     }
-    // --- running rails: a crisp white far-side rail with a soft shadow beneath it,
-    // plus a soft near-edge shadow that grounds the field on the turf (premium depth). ---
-    cctx.fillStyle = "rgba(0,0,0,0.16)";
-    cctx.fillRect(0, g.top + 2.5, cw, 3);                                                          // shadow under the far rail
-    cctx.strokeStyle = "rgba(244,248,255,0.72)"; cctx.lineWidth = 2.5;
-    cctx.beginPath(); cctx.moveTo(0, g.top + 1.5); cctx.lineTo(cw, g.top + 1.5); cctx.stroke();    // far rail (white)
-    const nearSh = cctx.createLinearGradient(0, g.bottom - 16, 0, g.bottom);
-    nearSh.addColorStop(0, "rgba(0,0,0,0)"); nearSh.addColorStop(1, "rgba(0,0,0,0.22)");
-    cctx.fillStyle = nearSh; cctx.fillRect(0, g.bottom - 16, cw, 16);                               // near-edge shadow
-    cctx.strokeStyle = "rgba(220,230,245,0.28)"; cctx.lineWidth = 1.5;
-    cctx.beginPath(); cctx.moveTo(0, g.bottom - 1); cctx.lineTo(cw, g.bottom - 1); cctx.stroke();   // near rail (subtle)
+    // --- running rails follow the curved ribbon: a crisp white far rail with a soft
+    // shadow beneath it, and a subtle near rail (premium depth, bends through turns). ---
+    const railLine = function (yBase, off) {
+      cctx.beginPath();
+      let first = true;
+      for (let P = S.camL - 0.06; P <= S.camL + WINW + 0.06; P += (WINW + 0.12) / 44) {
+        const px = screenX(P, WINW), py = yBase + trackBendY(P) + off;
+        if (first) { cctx.moveTo(px, py); first = false; } else cctx.lineTo(px, py);
+      }
+      cctx.stroke();
+    };
+    cctx.strokeStyle = "rgba(0,0,0,0.16)"; cctx.lineWidth = 3;    railLine(g.top, 3.5);     // shadow under the far rail
+    cctx.strokeStyle = "rgba(244,248,255,0.72)"; cctx.lineWidth = 2.5; railLine(g.top, 1.5); // far rail (white)
+    cctx.strokeStyle = "rgba(220,230,245,0.26)"; cctx.lineWidth = 1.5; railLine(g.bottom, -1); // near rail (subtle)
 
     // roadside props for the current terrain (torches, turn flags, rocks, …)
     drawProps(g, WINW);
