@@ -1032,13 +1032,17 @@ function startRaceCanvas(container, ctx) {
       cctx.fillRect(x - 1, g.top, 2, g.bottom - g.top);
     }
     // fast ground speed-streaks — screen-space motion blur scrolling well faster
-    // than the world, so a long course really reads as a high-speed run.
-    cctx.fillStyle = "rgba(255,255,255,0.085)";
-    const _ssp = (S.camL * cw * 46) % 58;
-    for (let li = 0; li < 8; li++) {
-      const sy = g.top + (li + 0.5) * g.laneH;
-      for (let sx = -((_ssp + li * 21) % 58); sx < cw; sx += 58) {
-        cctx.fillRect(sx, sy - 1, 26, 2);
+    // than the world, so a long course really reads as a high-speed run. Drawn ONLY
+    // while the field is actually running — not during the start countdown (dragons
+    // frozen at the gate) nor after the finish (would freeze into a static grid).
+    if (S.preT <= 0 && !S.finished) {
+      cctx.fillStyle = "rgba(255,255,255,0.085)";
+      const _ssp = (S.camL * cw * 46) % 58;
+      for (let li = 0; li < 8; li++) {
+        const sy = g.top + (li + 0.5) * g.laneH;
+        for (let sx = -((_ssp + li * 21) % 58); sx < cw; sx += 58) {
+          cctx.fillRect(sx, sy - 1, 26, 2);
+        }
       }
     }
     // rails (far + near) frame the running surface
@@ -1128,6 +1132,9 @@ function startRaceCanvas(container, ctx) {
       // reads cleanly even when the field bunches up (rank-based, ramps with focusT).
       const _K = timeline.leadPackSize || 3;
       if ((standMap[dr.id] || 9) > _K) edgeFade *= (1 - 0.92 * (S._finishFade || 0));
+      // the player must ALWAYS be able to watch their own pick — never fade it out,
+      // even when it trails the lead trio (it just sits at the edge of frame).
+      if (betSet.has(dr.id)) edgeFade = Math.max(edgeFade, 0.88);
       if (edgeFade <= 0.04) continue;             // fully behind → off-screen, skip
       const _prevAlpha = cctx.globalAlpha;
       cctx.globalAlpha = edgeFade;

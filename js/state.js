@@ -99,6 +99,13 @@ function loadGame() {
       // §30 migration: pre-1.1 saves lack maxCoinsReached — seed it from coins
       // so an existing player's progression isn't reset to zero.
       if (state.player.maxCoinsReached == null) state.player.maxCoinsReached = state.player.coins || 0;
+      // Durability: a race confirmed but abandoned before its 答え合わせ left an owed
+      // payout (settleRace never ran). Credit it now so no winning ticket is lost.
+      if (state.player.pendingPayout > 0) {
+        state.player.coins += state.player.pendingPayout;
+        if (state.player.coins > (state.player.maxCoinsReached || 0)) state.player.maxCoinsReached = state.player.coins;
+      }
+      state.player.pendingPayout = 0;
       return true;
     }
   } catch (e) {

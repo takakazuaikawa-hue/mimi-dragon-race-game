@@ -695,7 +695,7 @@ function renderRaceDetail(race) {
       <div class="bet-pick-grid" id="bet-pick-grid"></div>
     </div>
     <div class="bet-stake">
-      <label class="wager-field">賭金 <input id="wager" type="number" min="1" step="1" value="100" max="${betCap}" inputmode="numeric"></label>
+      <label class="wager-field">賭金 <input id="wager" type="number" min="1" step="1" value="${(_consultActive && state.current.bet && state.current.bet.wager) || 100}" max="${betCap}" inputmode="numeric"></label>
       <div class="wager-chips" id="wager-chips"></div>
     </div>
     <div class="payout-box empty" id="expected-payout"><div class="po-hint">竜と賭金を選ぶと払戻が表示されます</div></div>
@@ -708,7 +708,10 @@ function renderRaceDetail(race) {
   app.appendChild(panel);
 
   // ---- tappable dragon selection (replaces the sel-a/sel-b dropdowns) ----
-  state.current.betSel = [];                          // selected ids, in pick order
+  // Preserve the in-progress pick across a Celestia consult re-render — otherwise
+  // asking 神眼 would silently wipe the player's already-tapped selection.
+  state.current.betSel = (_consultActive && state.current.bet && state.current.bet.selections)
+    ? state.current.bet.selections.slice() : [];      // selected ids, in pick order
   const pickGrid = $("bet-pick-grid");
   const pickCardById = {};
   const maxSelFor = type => (type === "wide" ? 2 : 1);
@@ -1023,6 +1026,9 @@ function onConfirmBet(skipDialog) {
   // watching the race never spoils the outcome via the coin counter. settleRace()
   // runs exactly once on 答え合わせ. The up-front wager deduction is already saved.
   c.settled = false;
+  // Durability: persist the owed payout so an abandoned race (reload/close mid-watch)
+  // is still credited on next load — state.current itself is not persisted.
+  state.player.pendingPayout = (c.betResult && c.betResult.payout) || 0;
   saveGame();
   renderRaceRun();
 }
@@ -1035,6 +1041,7 @@ function settleRace() {
   const c = state.current;
   if (c.settled || !c.betResult || !c.raceResult) return;
   c.settled = true;
+  state.player.pendingPayout = 0;   // consumed normally — nothing to reconcile on next load
   const betResult = c.betResult, raceResult = c.raceResult;
   // Award payout
   state.player.coins += betResult.payout;
