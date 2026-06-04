@@ -356,12 +356,30 @@ function celestiaSectionEl() {
       `<div class="cel-reveal">この一戦、生き残る一頭は <b>${nm}</b>。</div>` +
       `<div class="cel-warn">……ただし答えは知れ渡った。<b>${nm}</b> の単竜オッズは弾けて消え（×1.01）、絡む複・ワイドも沈んだ。1着を知ることと、価値を残すことは違うわ。</div>`;
   } else {
-    box.innerHTML =
-      `<div class="cel-head">${cast.symbol} セレスティアに1着を聞く</div>` +
-      `<div class="cel-warn">神眼は1着を教えてくれる。ただし開示した瞬間、その竜のオッズは弾けて消える（×1.01）。それでも聞く？</div>`;
-    const btn = el("button", "cel-ask", "神眼で1着を聞く");
-    btn.onclick = () => consultCelestia();
-    box.appendChild(btn);
+    // Progressive disclosure: a compact ask button up front. Pressing it reveals the
+    // catch (odds collapse) AND the real 聞く / やめる choice — so the screen isn't
+    // pre-loaded with the warning before the player has opted to look.
+    const renderClosed = () => {
+      box.classList.remove("cel-open");
+      box.innerHTML = `<div class="cel-head">${cast.symbol} セレスティアに1着を聞く</div>`;
+      const ask = el("button", "cel-ask", "🔮 聞いてみる");
+      ask.onclick = renderOpen;
+      box.appendChild(ask);
+    };
+    const renderOpen = () => {
+      box.classList.add("cel-open");
+      box.innerHTML =
+        `<div class="cel-head">${cast.symbol} セレスティアに1着を聞く</div>` +
+        `<div class="cel-warn">神眼は1着を教えてくれる。ただし開示した瞬間、その竜のオッズは弾けて消える（×1.01）。それでも聞く？</div>`;
+      const row = el("div", "cel-choice");
+      const yes = el("button", "cel-ask", "聞く（×1.01覚悟）");
+      yes.onclick = () => consultCelestia();
+      const no = el("button", "cel-ask ghost", "やめておく");
+      no.onclick = renderClosed;
+      row.appendChild(yes); row.appendChild(no);
+      box.appendChild(row);
+    };
+    renderClosed();
   }
   return box;
 }
@@ -775,14 +793,20 @@ function renderRaceDetail(race) {
       </div>
       <div class="bet-pick-grid" id="bet-pick-grid"></div>
     </div>
-    <div class="bet-stake">
-      <label class="wager-field">賭金 <input id="wager" type="number" min="1" step="1" value="${(_consultActive && state.current.bet && state.current.bet.wager) || 100}" max="${betCap}" inputmode="numeric"></label>
-      <div class="wager-chips" id="wager-chips"></div>
-    </div>
-    <div class="payout-box empty" id="expected-payout"><div class="po-hint">竜と賭金を選ぶと払戻が表示されます</div></div>
-    <div class="actions">
-      <button id="bet-confirm" disabled>この賭けで出走</button>
+    <div class="bet-step1" id="bet-step1">
+      <button id="bet-start" class="bet-start-btn" disabled>🐉 この本命で賭ける</button>
       <button id="back-race-select" class="secondary">戻る</button>
+    </div>
+    <div class="bet-step2" id="bet-step2" style="display:none">
+      <div class="bet-stake">
+        <label class="wager-field">賭金 <input id="wager" type="number" min="1" step="1" value="${(_consultActive && state.current.bet && state.current.bet.wager) || 100}" max="${betCap}" inputmode="numeric"></label>
+        <div class="wager-chips" id="wager-chips"></div>
+      </div>
+      <div class="payout-box empty" id="expected-payout"><div class="po-hint">賭金を選ぶと払戻が表示されます</div></div>
+      <div class="actions">
+        <button id="bet-confirm" disabled>この内容で出走</button>
+        <button id="bet-cancel" class="secondary">やめる</button>
+      </div>
     </div>
     <div class="condition-line">所持: ${fmtCoins(state.player.coins)}コイン ／ 上限賭金: ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
   `;
@@ -818,6 +842,10 @@ function renderRaceDetail(race) {
     });
     $("pick-instruction").textContent = pickInstruction(type);
     $("pick-count").textContent = `${sel.length} / ${max}`;
+    const complete = sel.length === max;
+    const startBtn = $("bet-start");
+    if (startBtn) startBtn.disabled = !complete;
+    if (!complete) showBetStep(1);   // pick broke → fold the wager step back away
   }
 
   function togglePick(id) {
@@ -863,13 +891,23 @@ function renderRaceDetail(race) {
       const max = maxSelFor(btn.dataset.type);
       if (state.current.betSel.length > max) state.current.betSel = state.current.betSel.slice(0, max);
       runEventHooks("beforeBet", { race, bet: state.current.bet });
+      showBetStep(1);
       renderPickState();
       updateExpected();
     };
   });
+  // Two-step bet: pick → 賭ける (commit) → wager + 出走/やめる. Keeps the wager UI
+  // hidden until the player has decided to bet, so the panel reads cleanly.
+  function showBetStep(n) {
+    const s1 = $("bet-step1"), s2 = $("bet-step2");
+    if (s1) s1.style.display = n === 1 ? "" : "none";
+    if (s2) s2.style.display = n === 2 ? "" : "none";
+  }
   $("wager").oninput = updateExpected;
   $("bet-confirm").onclick = onConfirmBet;
   $("back-race-select").onclick = renderRaceSelect;
+  $("bet-start").onclick = () => { showBetStep(2); updateExpected(); const w = $("wager"); if (w) { w.focus(); w.select(); } };
+  $("bet-cancel").onclick = () => showBetStep(1);
 
   // Wager quick-chips — each clamped to the effective cap and the player's coins.
   const chipsEl = $("wager-chips");
