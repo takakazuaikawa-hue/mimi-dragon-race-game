@@ -21,7 +21,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const rerenderCurrent = () => {
     const map = {
-      home: renderHome, race_select: renderRaceSelect,
+      title: renderTitle, home: renderHome, race_select: renderRaceSelect,
       race_detail: () => renderRaceDetail(state.current.race),
       race_run: renderRaceRun, result: renderResult, analysis: renderAnalysis,
       assets: renderAssets, village: renderVillage, collection: renderCollection, help: renderHelp,
@@ -47,5 +47,5 @@ window.addEventListener("DOMContentLoaded", () => {
     setTimeout(flushEventQueue, 50);
   });
 
-  renderHome();
+  renderTitle();
 });

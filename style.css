@@ -1516,3 +1516,65 @@ table.entry-table {
   border: none; border-radius: 9px; color: #fff;
   background: linear-gradient(90deg, color-mix(in srgb, var(--cg,#9a6ad0) 75%, #160f2b), color-mix(in srgb, var(--cg,#9a6ad0) 45%, #160f2b));
 }
+
+/* ===================== Title screen (commercial first impression) ===================== */
+body.title-mode #header { display: none; }
+body.title-mode #app { max-width: none; padding: 0; margin: 0; }
+.title-screen {
+  position: relative; min-height: 100vh; min-height: 100dvh;
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+.title-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(125% 85% at 50% 122%, #5a2f73 0%, #34205a 28%, #180e34 58%, #0a0820 100%);
+}
+.title-bg::after {                                  /* warm horizon glow */
+  content: ""; position: absolute; left: -10%; right: -10%; bottom: 0; height: 46%;
+  background: radial-gradient(70% 100% at 50% 135%, rgba(255,176,86,0.26), rgba(255,120,162,0.10) 48%, transparent 74%);
+}
+.title-stars {
+  position: absolute; inset: 0; opacity: 0.9;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 16%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 26% 30%, #cfe8ff, transparent),
+    radial-gradient(1.2px 1.2px at 41% 11%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 63% 22%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 79% 13%, #fff7e0, transparent),
+    radial-gradient(1.5px 1.5px at 89% 28%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 53% 36%, #d8f3ff, transparent),
+    radial-gradient(1.3px 1.3px at 7% 40%, #fff, transparent);
+  animation: title-twinkle 4.5s ease-in-out infinite alternate;
+}
+@keyframes title-twinkle { from { opacity: 0.55; } to { opacity: 1; } }
+.title-moon {
+  position: absolute; top: 8%; right: 13%; width: 80px; height: 80px; border-radius: 50%;
+  background: radial-gradient(circle at 36% 34%, #fff8e4, #ffe9b8 56%, #f1cd86 100%);
+  box-shadow: 0 0 64px 16px rgba(255,238,190,0.30);
+}
+.title-inner { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 26px 22px 40px; text-align: center; }
+.title-kicker { font-size: 12px; letter-spacing: 0.46em; text-indent: 0.46em; color: #ffd34d; font-weight: 700; opacity: 0.9; margin-bottom: 12px; }
+.title-logo { margin: 0; line-height: 1.0; font-weight: 900; font-size: clamp(30px, 11vw, 54px); letter-spacing: 0.02em; white-space: nowrap; }
+.title-logo .tl-mimi { margin-left: 0.12em; }
+.title-logo .tl-main {
+  background: linear-gradient(180deg, #fff6d8 0%, #ffd24a 46%, #e2901f 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 0 rgba(110,55,8,0.55)) drop-shadow(0 0 18px rgba(255,200,90,0.35));
+}
+.title-logo .tl-mimi {
+  background: linear-gradient(180deg, #ffdcee 0%, #ff7ab0 58%, #c54f86 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(110,20,58,0.55));
+}
+.title-novel { font-size: 10.5px; color: #b6b0d6; margin: 11px auto 2px; max-width: 350px; line-height: 1.55; }
+.title-dragon { display: block; margin: 4px auto 0; }
+.title-tagline { font-size: 15px; color: #f0eefb; margin: 4px 0 22px; line-height: 1.75; }
+.title-tagline b { color: #ffd34d; }
+.title-cta {
+  display: inline-block; min-width: 244px; padding: 16px 30px; font-size: 19px; font-weight: 800; color: #3a2200;
+  background: linear-gradient(180deg, #ffe27e, #f3b22c); border: none; border-radius: 14px; cursor: pointer;
+  box-shadow: 0 6px 0 #b9801c, 0 12px 26px rgba(0,0,0,0.42); animation: title-cta-pulse 1.9s ease-in-out infinite;
+}
+.title-cta:active { transform: translateY(4px); box-shadow: 0 2px 0 #b9801c, 0 6px 16px rgba(0,0,0,0.42); }
+@keyframes title-cta-pulse { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.title-hint { font-size: 12px; color: #cfc9ea; margin-top: 15px; }
+.title-foot { font-size: 10px; color: #6f6aa0; margin-top: 26px; letter-spacing: 0.12em; }

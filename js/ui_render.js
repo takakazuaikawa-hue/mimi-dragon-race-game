@@ -19,8 +19,61 @@ function updateHeader() {
   $("rank-display").textContent = state.player.rank;
 }
 
+// =========================================================================
+// Title screen — the commercial first impression. No image files (hard
+// constraint): the key art is pure CSS (night sky, moon, stars, gradient
+// logo) plus an animated pixel-dragon mascot rendered on a canvas by reusing
+// the race sprite. Hides the dev HUD header for a clean opening beat.
+// =========================================================================
+function renderTitle() {
+  state.ui.screen = "title";
+  document.body.classList.add("title-mode");
+  const app = $("app"); app.innerHTML = "";
+  const wrap = el("div", "title-screen");
+  wrap.innerHTML = `
+    <div class="title-bg"></div>
+    <div class="title-stars"></div>
+    <div class="title-moon"></div>
+    <div class="title-inner">
+      <div class="title-kicker">── 競竜 予想ドラマ ──</div>
+      <h1 class="title-logo"><span class="tl-main">聖龍爆走録</span> <span class="tl-mimi">ミミ</span></h1>
+      <div class="title-novel">転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件</div>
+      <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
+      <div class="title-tagline">市場のオッズと、真の実力。<br>その<b>ズレ</b>を読み切れ。</div>
+      <div class="title-actions"></div>
+      <div class="title-foot">v0.1 ・ ぱほぱほスタジオ</div>
+    </div>`;
+  app.appendChild(wrap);
+
+  const acts = wrap.querySelector(".title-actions");
+  const start = el("button", "title-cta", "▶ はじめる");
+  start.onclick = () => renderHome();
+  acts.appendChild(start);
+  const p = state.player;
+  acts.appendChild(el("div", "title-hint",
+    p.completedRaces > 0 ? `おかえりなさい — ${p.completedRaces}戦 ・ ${fmtCoins(p.coins)}` : "ようこそ、予想家の世界へ"));
+
+  // animated pixel-dragon mascot (reuses the race sprite); self-stops on screen change
+  const cv = document.getElementById("title-dragon");
+  if (cv && cv.getContext && typeof rcDrawDragon === "function") {
+    const tctx = cv.getContext("2d");
+    let g = 1.7;
+    (function frame() {
+      if (!document.body.contains(cv)) return;
+      tctx.clearRect(0, 0, cv.width, cv.height);
+      g += 0.11;
+      rcDrawDragon(tctx, {
+        x: cv.width / 2, y: cv.height / 2 + Math.sin(g * 0.5) * 5, scale: 1.95,
+        color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.5, glow: 0.6
+      });
+      requestAnimationFrame(frame);
+    })();
+  }
+}
+
 function renderHome() {
   state.ui.screen = "home";
+  document.body.classList.remove("title-mode");
   const app = $("app"); app.innerHTML = "";
   app.appendChild(el("h2", null, "ホーム"));
 
