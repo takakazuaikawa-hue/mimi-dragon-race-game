@@ -764,12 +764,18 @@ function renderRaceDetail(race) {
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
   const betCap = RANKS[race.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1.0);
 
-  // ===== Advisor hub — four character "marks" up top, each opening ONE focused
-  // panel below. Nothing opens until the player taps a face, so the screen starts
-  // calm (progressive disclosure); each lens lives where its mentor would give it:
-  //   サケ＝現場の条件 ／ マクラ＝竜の力と試走 ／ スミカ＝賭け金の目安 ／ セレスティア＝神眼。
-  // Core handicapping info is ALWAYS reachable; meeting an advisor only adds their
-  // voice, and Celestia's reveal stays gated as the late-game power. =====
+  // ===== レース条件は常時表示（折りたたまない）。サケの現場眼を一言添える。 =====
+  const condWrap = el("div", "race-conditions-always");
+  const _sakeV = advVoiceHeader("sake"); if (_sakeV) condWrap.appendChild(_sakeV);
+  condWrap.appendChild(info);
+  app.appendChild(condWrap);
+
+  // ===== Advisor hub — character "marks" up top, each opening ONE focused panel
+  // below. Nothing opens until the player taps a face (progressive disclosure);
+  // each lens lives where its mentor would give it:
+  //   ミズ＝分析予想 ／ マクラ＝竜の力と試走 ／ スミカ＝賭け金の目安 ／ セレスティア＝神眼。
+  // (レース条件は上に常時表示。) Core handicapping info is ALWAYS reachable; meeting an
+  // advisor only adds their voice. Mizu's analysis & Celestia's reveal stay gated. =====
   app.appendChild(buildAdvisorHub());
 
   // -- advisor voice line, shown atop a panel once that advisor has been met --
@@ -788,7 +794,7 @@ function renderRaceDetail(race) {
   // -- the hub itself: a row of advisor marks + a single panel host below --
   function buildAdvisorHub() {
     const ADVS = [
-      { key: "sake",     label: "レース条件",   build: buildConditionsPanel },
+      { key: "mizu",     label: "分析予想",     build: buildMizuPanel, gated: true },
       { key: "makura",   label: "ドラゴン情報", build: buildDragonPanel },
       { key: "sumika",   label: "財政状況",     build: buildFinancePanel },
       { key: "celestia", label: "1着を聞く",    build: buildCelestiaPanel, gated: true },
@@ -828,11 +834,47 @@ function renderRaceDetail(race) {
     return hub;
   }
 
-  // -- サケ：レース条件パネル（既存の条件カードを内包） --
-  function buildConditionsPanel() {
-    const wrap = el("div", "adv-panel");
-    const v = advVoiceHeader("sake"); if (v) wrap.appendChild(v);
-    wrap.appendChild(info);
+  // -- ミズ：分析予想パネル — 人気の理由を分解→はがした実力評価で本命/対抗/穴。
+  //    総資産3000でミズと出会うまではロック表示（彼女の章「ミズの分析予想」に対応）。 --
+  function buildMizuPanel() {
+    const unlocked = (state.player.totalAssets || 0) >= castUnlockAt("mizu");
+    if (!unlocked) {
+      const cast = STORY_CAST.mizu;
+      const wrap = el("div", "card adv-panel adv-locked mizu-locked");
+      wrap.style.setProperty("--cg", cast.color);
+      wrap.innerHTML =
+        `<div class="cel-lock-row"><span class="cel-lock-sym">🔒</span>` +
+        `<div class="cel-lock-body"><div class="cel-lock-title">ミズの分析予想は、まだ読めない</div>` +
+        `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("mizu"))} でミズと出会うと、人気の理由を分解した本命・対抗・穴が読めます。</div></div></div>`;
+      return wrap;
+    }
+    const a = generateMizuAnalysis(race, oddsResult, state.current.trialForms);
+    const wrap = el("div", "card adv-panel mizu-panel");
+    const v = advVoiceHeader("mizu"); if (v) wrap.appendChild(v);
+    // 人気の理由を分解（はがす前）
+    const pop = el("div", "mz-pop");
+    pop.innerHTML = `<div class="mz-h">人気の理由を分解</div>` +
+      a.popular.map(p =>
+        `<div class="mz-pop-row${p.overhyped ? " over" : ""}">` +
+        `<span class="mz-pop-rank">${p.popRank}番人気</span>` +
+        `<span class="mz-pop-body"><b>${p.name}</b><span class="mz-pop-reason">${p.reason}</span></span>` +
+        `<span class="mz-pop-verdict">${p.verdict}</span></div>`
+      ).join("");
+    wrap.appendChild(pop);
+    // はがした上での本命・対抗・穴
+    const picks = el("div", "mz-picks");
+    const card = (role, label, p) =>
+      `<div class="mz-pick ${role}">` +
+      `<span class="mz-badge">${label}</span>` +
+      `<span class="mz-pick-main"><b>${p.name}</b>` +
+      `<span class="mz-pick-meta">${p.popRank}番人気・単${p.winOdds.toFixed(1)}・${p.style}</span>` +
+      `<span class="mz-pick-why">${p.why}</span></span></div>`;
+    picks.innerHTML = `<div class="mz-h">人気をはがした、私の予想</div>` +
+      card("honmei", "◎ 本命", a.honmei) +
+      card("taikou", "○ 対抗", a.taikou) +
+      card("ana", "★ 穴", a.ana);
+    wrap.appendChild(picks);
+    wrap.appendChild(el("div", "mz-foot", "※ オッズは観客の願望が混ざった値。これは公開情報からの実力評価による予想で、的中を保証するものではありません。"));
     return wrap;
   }
 
@@ -1204,6 +1246,67 @@ function generateValueHints(race, oddsResult, trialForms) {
   });
   if (hints.length === 0) hints.push("今回は市場と実力の差が小さい平穏なレースです。");
   return hints;
+}
+
+// ミズの分析予想 — 人気の理由を（公開情報の）成分に分解し、人気バイアスを「はがした」
+// 実力評価から本命・対抗・穴を出す。fit は generateValueHints と同じ公開情報ベースの
+// 合成値（持ち能力・コース適性・天候・調子）で、レース結果や「このレースで効く力」を
+// 明かすものではない＝予想であって正解ではない。
+function generateMizuAnalysis(race, oddsResult, trialForms) {
+  const items = getRaceDragons(race).map(d => {
+    const cp = coursePower(d, race);
+    const wp = weightedStat(d.stats, WEATHERS[race.weather].weights);
+    const fp = formPower(trialForms[d.id]);
+    const fit = basePower(d) * 0.35 + cp.total * 0.20 + wp * 0.10 + fp * 0.15;
+    const od = oddsResult.oddsData.find(o => o.dragonId === d.id) || {};
+    return { d, fit, pop: od.popularityPower || 0, popRank: od.popularityRank || 99,
+             winOdds: od.winOdds || 0, comp: od.components || {} };
+  });
+  const byFit = [...items].sort((a, b) => b.fit - a.fit);
+  byFit.forEach((it, i) => { it.fitRank = i + 1; });
+  const byPop = [...items].sort((a, b) => a.popRank - b.popRank);
+
+  // why a favorite is popular — pick the strongest VISIBLE driver (incl. pure hype)
+  const reasonFor = it => {
+    const c = it.comp, d = it.d, cands = [];
+    if ((d.recentResult || 60) >= 88) cands.push(["前走勝ち級の勢い", 3.0]);
+    else if ((d.recentResult || 60) >= 74) cands.push(["前走の好走", 2.6]);
+    if (d.newspaperMark === "◎") cands.push(["新聞の本命◎印", 2.4]);
+    else if (d.newspaperMark === "○") cands.push(["新聞の対抗○印", 2.0]);
+    if ((c.visiblePower || 0) >= 72) cands.push(["持ち数字の高さ", 1.9]);
+    if ((c.fanBias || 0) >= 68 || (c.publicImage || 0) >= 68) cands.push(["ファン人気・知名度", 1.6]);
+    if ((c.courseReputation || 0) >= 72) cands.push(["コース実績の評判", 1.3]);
+    if ((c.formImpression || 0) >= 70) cands.push(["パドックの好調感", 1.1]);
+    cands.sort((x, y) => y[1] - x[1]);
+    return cands.length ? cands[0][0] : "全体的な安定感";
+  };
+  // Compare ability RANK vs popularity RANK — robust to the fit/pop scale gap
+  // (pop weights sum to 1.0, fit to 0.8, so raw pop−fit is always positive).
+  const popular = byPop.slice(0, 3).map(it => {
+    const gap = it.fitRank - it.popRank;             // +: popularity ahead of ability
+    return {
+      name: it.d.name, popRank: it.popRank, winOdds: it.winOdds, reason: reasonFor(it),
+      overhyped: gap >= 2,
+      verdict: gap >= 2 ? `実力評価は${it.fitRank}番手——人気先行`
+        : gap <= -1 ? "人気以上に実力上位"
+          : "支持に実力が伴う"
+    };
+  });
+
+  // peel popularity away → rank by ability; 穴 = most undervalued among the unpopular
+  const honmei = byFit[0], taikou = byFit[1];
+  const anaPool = items.filter(it => it.popRank >= 4 && it !== honmei && it !== taikou);
+  const ana = anaPool.length
+    ? anaPool.slice().sort((x, y) => (y.popRank - y.fitRank) - (x.popRank - x.fitRank))[0]
+    : (byFit.find(it => it !== honmei && it !== taikou) || byFit[2] || byFit[0]);
+
+  const why = (it, role) =>
+    role === "honmei" ? `実力評価1番手。${it.popRank <= 2 ? "人気でも中身が伴う" : "人気以上の総合力"}。`
+      : role === "taikou" ? "実力評価2番手。展開ひとつで逆転も。"
+        : `市場は${it.popRank}番人気と低評価だが、実力評価は${it.fitRank}番手。妙味は十分。`;
+  const fmt = (it, role) => ({ name: it.d.name, popRank: it.popRank, winOdds: it.winOdds,
+                               style: STYLE_LABEL[it.d.style], why: why(it, role) });
+  return { popular, honmei: fmt(honmei, "honmei"), taikou: fmt(taikou, "taikou"), ana: fmt(ana, "ana") };
 }
 
 function recentResultLabel(v) {

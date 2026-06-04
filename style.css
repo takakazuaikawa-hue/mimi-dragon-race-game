@@ -1778,3 +1778,48 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .cel-lock-sym { font-size: 26px; opacity: .85; }
 .cel-lock-title { font-size: 13.5px; font-weight: 800; color: color-mix(in srgb, var(--cg,#9a6ad0) 50%, #fff); }
 .cel-lock-sub { font-size: 12px; color: #ccbfe6; margin-top: 3px; line-height: 1.6; }
+
+/* ===================== レース条件：常時表示（サケの現場眼を添える） ===================== */
+.race-conditions-always { margin-bottom: 8px; }
+.race-conditions-always > .adv-voice { margin-bottom: 8px; }
+.race-conditions-always > .race-detail-card { margin-bottom: 0; }
+
+/* ===================== ミズ：分析予想パネル =====================
+   人気の理由を分解 → はがした実力評価で 本命/対抗/穴。fit は公開情報ベースの合成値で、
+   「効く力」やレース結果は明かさない＝あくまで予想。 */
+.mz-h { font-size: 12px; font-weight: 800; color: #bcd3f0; margin: 2px 0 7px; letter-spacing: .03em; }
+.mz-pop { margin-bottom: 13px; }
+.mz-pop-row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center;
+  padding: 7px 9px; border-radius: 8px; margin-bottom: 5px;
+  background: rgba(63,127,208,0.08); border: 1px solid rgba(63,127,208,0.16);
+}
+.mz-pop-row.over { background: rgba(224,88,74,0.10); border-color: rgba(224,88,74,0.22); }
+.mz-pop-rank { font-size: 11px; font-weight: 800; color: #9fc0ea; white-space: nowrap; }
+.mz-pop-row.over .mz-pop-rank { color: #f0a89a; }
+.mz-pop-body { display: flex; flex-direction: column; line-height: 1.4; min-width: 0; }
+.mz-pop-body b { font-size: 13px; }
+.mz-pop-reason { font-size: 11px; color: #c7d6ea; }
+.mz-pop-verdict { font-size: 10.5px; color: #9fb4cc; text-align: right; white-space: nowrap; }
+.mz-pop-row.over .mz-pop-verdict { color: #f0a89a; font-weight: 700; }
+.mz-picks { display: flex; flex-direction: column; gap: 7px; }
+.mz-pick {
+  display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; border-radius: 10px;
+  border: 1px solid #3a4a5a; background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+}
+.mz-pick.honmei { border-color: rgba(255,210,120,0.55); box-shadow: inset 0 0 0 1px rgba(255,210,120,0.16); }
+.mz-pick.taikou { border-color: rgba(150,180,220,0.45); }
+.mz-pick.ana    { border-color: rgba(205,135,215,0.45); }
+.mz-badge { font-size: 12.5px; font-weight: 900; white-space: nowrap; padding-top: 1px; }
+.mz-pick.honmei .mz-badge { color: #ffd278; }
+.mz-pick.taikou .mz-badge { color: #b9ccea; }
+.mz-pick.ana .mz-badge { color: #dca0e8; }
+.mz-pick-main { display: flex; flex-direction: column; line-height: 1.45; min-width: 0; }
+.mz-pick-main b { font-size: 14px; }
+.mz-pick-meta { font-size: 11px; color: #9fb4cc; }
+.mz-pick-why { font-size: 11.5px; color: #d6e0ee; margin-top: 2px; }
+.mz-foot { font-size: 10.5px; color: #8fa3bb; opacity: .85; margin-top: 11px; line-height: 1.5; }
+.mizu-locked {
+  border: 1px dashed color-mix(in srgb, var(--cg,#3f7fd0) 45%, #4a3a52);
+  background: color-mix(in srgb, var(--cg,#3f7fd0) 8%, rgba(255,255,255,0.03));
+}
