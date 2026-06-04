@@ -483,6 +483,29 @@ function startRaceCanvas(container, ctx) {
     return beh;
   }
 
+  // ---- ENTRANCE: the field walks in from the left to take its place at the gate. ----
+  // Eager 逃げ types stride in first; laid-back chasers amble in last. Cosmetic.
+  const ENTRY_DUR = 1.8;
+  function entranceBehaviorOf(dr) {
+    const beh = { jump: 0, spin: 0, squash: 1, down: true, mood: "serious", lean: 0, dx: 0 };
+    const id = dr.id, pd = persoOf(id);
+    const vmood = pd.visualMood || 55;
+    const style = pd.style || dr.style;
+    const ph = dragonPhase(id);
+    const now = performance.now() / 1000;
+    const prog = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);            // 0→1 across the parade
+    const eager = (style === "escape" ? 0.85 : style === "front" ? 0.6 : style === "late" ? 0.4 : 0.25) + (vmood - 55) / 150;
+    const arr = clamp(0.95 - eager * 0.4, 0.5, 0.92);             // eager → reaches the gate sooner
+    const myProg = clamp(prog / arr, 0, 1);
+    const ease = 1 - Math.pow(1 - myProg, 2);                     // ease to a stop at the line
+    beh.dx = -(1 - ease) * (cw * 0.42);                           // walk in from off the left
+    if (myProg < 1) beh.jump = Math.abs(Math.sin(now * 7 + ph)) * 0.045;   // walking bob
+    else beh.down = false;                                        // arrived — settle at the gate
+    const sleepy = vmood < 56 && (style === "chase" || style === "late");
+    beh.mood = sleepy ? "yawn" : (eager > 0.7 ? "serious" : "relaxed");
+    return beh;
+  }
+
   // ---- PRE-START idle: cute, 思想-driven fidget at the gate during the 3-2-1. ----
   // Eager 逃げ types prance & lean forward; calm temperaments stand composed; the
   // sleepy chaser yawns; nervous types fidget. Purely cosmetic — the gun fires the same.
@@ -634,6 +657,8 @@ function startRaceCanvas(container, ctx) {
     finishedAnnounced: false,
     countdown: 0,
     // --- presentation drama ---
+    entryT: ENTRY_DUR,  // entrance walk-in (holds τ; the field parades to the gate first)
+    mood: {},           // per-dragon held expression {m,t} — debounces face flicker
     preT: 3.0,          // pre-start 3-2-1 countdown (holds τ at the gate)
     goFlash: 0,         // "GO！" burst after the countdown
     zoomBump: 0,        // extra push-in impulse from overtakes / close battles
@@ -1576,33 +1601,35 @@ function startRaceCanvas(container, ctx) {
       // the whole field reads cleanly at the start without crowding/overlap.
       const dep = laneDepth(dr);
       const sprScale = 0.66 * dep;
-      // per-dragon behavior (jump / spin / walk / pre-start fidget) from personality + situation
-      const beh = (S.preT > 0) ? prestartBehaviorOf(dr)
+      // per-dragon behavior (entrance walk-in / pre-start fidget / racing / post-goal)
+      const beh = (S.entryT > 0) ? entranceBehaviorOf(dr)
+                : (S.preT > 0) ? prestartBehaviorOf(dr)
                 : (P < 1) ? behaviorOf(dr, P, ownU, intensity, tired, surging)
                 : postgoalBehaviorOf(dr, standMap[dr.id] || 9);
       const jumpY = beh.jump * 26 * dep;            // airborne lift
       const spriteY = y - jumpY;
+      const dcx = drawX + (beh.dx || 0);            // horizontal offset (entrance walk-in)
       const grounded = 1 - 0.5 * beh.jump;          // shadow shrinks as it leaves the turf
       // soft contact shadow grounds the dragon on the turf (stays put during a jump)
       cctx.fillStyle = `rgba(0,0,0,${0.18 * grounded})`;
       cctx.beginPath();
-      cctx.ellipse(drawX, baseY + 8 * dep, 8 * dep * grounded, 2.2 * dep * grounded, 0, 0, Math.PI * 2);
+      cctx.ellipse(dcx, baseY + 8 * dep, 8 * dep * grounded, 2.2 * dep * grounded, 0, 0, Math.PI * 2);
       cctx.fill();
       // pick spotlight — a soft, pulsing halo so the eye always tracks your dragon
       if (betSet.has(dr.id) && !finishedNow) {
         const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-        const rg = cctx.createRadialGradient(drawX, spriteY - 4, 3, drawX, spriteY - 4, 25 * dep);
+        const rg = cctx.createRadialGradient(dcx, spriteY - 4, 3, dcx, spriteY - 4, 25 * dep);
         rg.addColorStop(0, `rgba(255,211,77,${0.2 + 0.13 * pulse})`);
         rg.addColorStop(1, "rgba(255,211,77,0)");
         cctx.fillStyle = rg;
-        cctx.beginPath(); cctx.arc(drawX, spriteY - 4, 25 * dep, 0, Math.PI * 2); cctx.fill();
+        cctx.beginPath(); cctx.arc(dcx, spriteY - 4, 25 * dep, 0, Math.PI * 2); cctx.fill();
       }
       // terrain shapes body language: bank into turns, spread wings on wind lanes
       const tkey = themeKeyAtP(P);
       const bank = tkey === "turn" ? clamp(0.42 + intensity * 0.45, 0, 1.05) : 0;
       const spread = tkey === "wind" ? clamp(0.45 + intensity * 0.4, 0, 1) : 0;
       rcDrawDragon(cctx, {
-        x: drawX, y: spriteY, scale: sprScale,
+        x: dcx, y: spriteY, scale: sprScale,
         color: dr.color, style: dr.style, design: dragonDesign(dr.id),
         gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6,
         lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
@@ -1616,7 +1643,7 @@ function startRaceCanvas(container, ctx) {
       const _place = standMap[dr.id] || 9;
       let _mood = "neutral";
       if (P >= 1) _mood = _place <= 3 ? "joy" : "tired";                    // post-line: winners beam, others blow
-      else if (beh.mood) _mood = beh.mood;                                  // behavior-driven (spin / tired / surge-joy)
+      else if (beh.mood) _mood = beh.mood;                                  // behavior-driven (entrance / spin / tired / surge-joy)
       else if (stumbling) _mood = "surprised";
       else if (_fit < 0 && intensity < 0.55) _mood = "confused";           // labouring on a weak section
       else if (_place >= dragons.length - 1 && intensity < 0.82 && S.tau > 0.45) _mood = "panic";  // tailed off & flustered late
@@ -1626,11 +1653,19 @@ function startRaceCanvas(container, ctx) {
       else if (intensity > 0.92) _mood = "effort";
       else if (intensity > 0.62) _mood = "serious";
       else if (_fit < 0) _mood = "confused";
-      rcDrawDragonFace(cctx, drawX, spriteY, dep, _mood, performance.now());
+      // hold each expression for a beat so it doesn't flicker frame-to-frame
+      {
+        const _now = performance.now() / 1000;
+        const st = S.mood[dr.id] || (S.mood[dr.id] = { m: _mood, t: _now });
+        const urgent = _mood === "surprised" || _mood === "spin";
+        if (_mood !== st.m && (urgent || _now - st.t >= 1.1)) { st.m = _mood; st.t = _now; }
+        _mood = st.m;
+      }
+      rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now());
       // bet reticle (player's pick)
       if (betSet.has(dr.id)) {
         cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;
-        cctx.beginPath(); cctx.arc(drawX, spriteY - 4, 26 * dep, 0, Math.PI * 2); cctx.stroke();
+        cctx.beginPath(); cctx.arc(dcx, spriteY - 4, 26 * dep, 0, Math.PI * 2); cctx.stroke();
       }
       // rank tag (live standing) — dark halo for legibility on turf
       const rk = standMap[dr.id] || dr.rank;
@@ -1638,16 +1673,16 @@ function startRaceCanvas(container, ctx) {
       cctx.font = "bold 13px system-ui, sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
       cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.85)";
-      cctx.strokeText(rk, drawX, tagY);
+      cctx.strokeText(rk, dcx, tagY);
       cctx.fillStyle = betSet.has(dr.id) ? "#ffd34d" : (popRank[dr.id] === 1 ? "#7fd1ff" : "#ffffff");
-      cctx.fillText(rk, drawX, tagY);
+      cctx.fillText(rk, dcx, tagY);
       // name plate under the dragon
       const nm = commentaryName(dr.id);
       cctx.font = "10px system-ui, sans-serif";
       cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.8)";
-      cctx.strokeText(nm, drawX, baseY + 22);
+      cctx.strokeText(nm, dcx, baseY + 22);
       cctx.fillStyle = "rgba(255,255,255,0.95)";
-      cctx.fillText(nm, drawX, baseY + 22);
+      cctx.fillText(nm, dcx, baseY + 22);
       // off-screen-behind indicator
       if (offLeft) {
         cctx.fillStyle = "rgba(255,255,255,0.6)";
@@ -1716,8 +1751,21 @@ function startRaceCanvas(container, ctx) {
     }
     cctx.globalAlpha = 1;
 
+    // --- entrance caption while the field parades in from the side ---
+    if (S.entryT > 0) {
+      const a = Math.min(clamp(S.entryT / 0.4, 0, 1), clamp((ENTRY_DUR - S.entryT) / 0.3, 0, 1));
+      cctx.save();
+      cctx.globalAlpha = clamp(a, 0, 1) * 0.92;
+      cctx.textAlign = "center"; cctx.textBaseline = "middle";
+      cctx.font = "bold 22px system-ui, sans-serif";
+      cctx.lineWidth = 5; cctx.strokeStyle = "rgba(10,12,24,0.65)";
+      cctx.fillStyle = "#ffe9a8";
+      cctx.strokeText("🐉 入場", cw / 2, ch * 0.18);
+      cctx.fillText("🐉 入場", cw / 2, ch * 0.18);
+      cctx.restore(); cctx.globalAlpha = 1;
+    }
     // --- start 3-2-1 countdown / GO burst ---
-    if (S.preT > 0) {
+    if (S.preT > 0 && S.entryT <= 0) {
       const n = Math.min(3, Math.max(1, Math.ceil(S.preT)));
       const frac = S.preT - Math.floor(S.preT);     // ~1 right after a tick → 0 before next
       const pulse = 0.7 + frac * 0.75;
@@ -1911,6 +1959,13 @@ function startRaceCanvas(container, ctx) {
     // pause while a Mimi/Sake modal is open (don't race behind a dialogue)
     const ov = document.getElementById("event-overlay");
     if (ov && !ov.classList.contains("hidden")) return;
+
+    // --- entrance: parade the field in from the side before the countdown ---
+    if (S.entryT > 0) {
+      S.entryT -= dt * S.speed;
+      if (S.entryT < 0) S.entryT = 0;
+      return;   // hold at the gate while they walk in; the countdown starts after
+    }
 
     // --- pre-start 3-2-1 countdown: hold τ at the gate, then fire GO ---
     if (S.preT > 0) {
