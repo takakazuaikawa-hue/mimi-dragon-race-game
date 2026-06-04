@@ -1578,3 +1578,46 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 @keyframes title-cta-pulse { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 .title-hint { font-size: 12px; color: #cfc9ea; margin-top: 15px; }
 .title-foot { font-size: 10px; color: #6f6aa0; margin-top: 26px; letter-spacing: 0.12em; }
+
+/* ===================== Home hub (commercial) ===================== */
+.home-banner {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(244,179,44,0.18), rgba(120,70,150,0.26));
+  border: 1px solid rgba(255,210,120,0.22); box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+.hb-dragon { flex: 0 0 auto; }
+.hb-id { flex: 1 1 auto; min-width: 0; }
+.hb-greet { font-size: 12px; color: #d8c89a; }
+.hb-rank { font-size: 17px; color: #fff0c8; font-weight: 700; }
+.hb-rank b { color: #ffd54a; font-size: 21px; }
+.hb-rank span { font-size: 12px; color: #d8b878; font-weight: 500; }
+.hb-coins { flex: 0 0 auto; text-align: right; }
+.hb-coins span { display: block; font-size: 11px; color: #b0a070; }
+.hb-coins b { font-size: 20px; color: #ffe6a8; }
+.home-record { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 8px; }
+.hr-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; background: rgba(0,0,0,0.24); border-radius: 9px; }
+.hr-cell span { font-size: 10.5px; color: #a89c78; }
+.hr-cell b { font-size: 15px; color: #ffe6a8; }
+.home-cta2 {
+  display: block; width: 100%; margin-top: 12px; padding: 16px; font-size: 18px; font-weight: 800; color: #2a1810;
+  background: linear-gradient(180deg, #ffd87a, #e8a93a); border: none; border-radius: 13px; cursor: pointer;
+  box-shadow: 0 5px 0 #a87820, 0 8px 18px rgba(0,0,0,0.32); letter-spacing: 0.02em;
+}
+.home-cta2:hover { filter: brightness(1.04); }
+.home-cta2:active { transform: translateY(3px); box-shadow: 0 2px 0 #a87820, 0 4px 12px rgba(0,0,0,0.32); }
+.home-grouplabel { font-size: 12px; font-weight: 700; color: #b39bd6; letter-spacing: 0.14em; margin: 18px 2px 8px; }
+.home-tile2 {
+  display: flex; align-items: center; gap: 11px; text-align: left; padding: 11px 12px;
+  background: rgba(60,46,86,0.5); color: #f0e8d0; border: 1px solid rgba(150,120,180,0.28);
+  border-radius: 11px; cursor: pointer; transition: background .12s, border-color .12s, transform .06s;
+}
+.home-tile2:hover { background: rgba(96,68,128,0.6); border-color: rgba(180,140,210,0.5); }
+.home-tile2:active { transform: scale(0.98); }
+.ht-ic {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 10px; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,210,120,0.12); border: 1px solid rgba(255,210,120,0.2);
+}
+.ht-tx { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ht-l { font-size: 14px; font-weight: 700; color: #ffe6a8; }
+.ht-s { font-size: 11px; color: #c0a8c0; }

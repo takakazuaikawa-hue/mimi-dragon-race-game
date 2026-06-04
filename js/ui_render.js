@@ -75,61 +75,75 @@ function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
   const app = $("app"); app.innerHTML = "";
-  app.appendChild(el("h2", null, "ホーム"));
-
   const p = state.player;
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
-  const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : null;
+  const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : 0;
 
-  // --- hero: welcome + the single primary action ---
-  const hero = el("div", "card home-hero");
-  hero.innerHTML = `
-    <div class="home-hero-title">ようこそ、<b>聖龍爆走録ミミ</b> へ</div>
-    <p class="home-hero-sub">市場のオッズと真の実力のズレを読み、賭けで利益を出す——予想家の物語。</p>
-  `;
-  const cta = el("button", "home-cta", "🐉 レースを選ぶ");
+  // --- player banner: mascot + identity + balance ---
+  const banner = el("div", "home-banner");
+  banner.innerHTML = `
+    <canvas class="hb-dragon" width="100" height="80"></canvas>
+    <div class="hb-id">
+      <div class="hb-greet">ようこそ、予想家さん</div>
+      <div class="hb-rank">ランク <b>${p.rank}</b>${rankLabel ? ` <span>${rankLabel}</span>` : ""}</div>
+    </div>
+    <div class="hb-coins"><span>所持コイン</span><b>${fmtCoins(p.coins)}</b></div>`;
+  app.appendChild(banner);
+
+  // --- record strip ---
+  const rcell = (k, v) => `<div class="hr-cell"><span>${k}</span><b>${v}</b></div>`;
+  const rec = el("div", "home-record");
+  rec.innerHTML = rcell("出走", p.completedRaces) + rcell("単勝", p.wins) + rcell("勝率", winRate + "%") + rcell("最高配当", fmtCoins(p.biggestPayout || 0));
+  app.appendChild(rec);
+
+  // --- the single primary action ---
+  const cta = el("button", "home-cta2", "🐉　レースへ進む");
   cta.onclick = () => renderRaceSelect();
-  hero.appendChild(cta);
-  app.appendChild(hero);
+  app.appendChild(cta);
 
-  // --- player stat strip ---
-  const stat = (k, v) => `<div class="home-stat"><span class="k">${k}</span><span class="v">${v}</span></div>`;
-  const stats = el("div", "card home-stats");
-  let statHTML =
-    stat("所持コイン", fmtCoins(p.coins)) +
-    stat("ランク", p.rank + (rankLabel ? ` <small>${rankLabel}</small>` : "")) +
-    stat("出走数", p.completedRaces + " 戦") +
-    stat("単竜的中", p.wins + " 勝");
-  if (winRate !== null) statHTML += stat("単勝率", winRate + " %");
-  stats.innerHTML = statHTML;
-  app.appendChild(stats);
-
-  // --- secondary navigation tiles ---
-  app.appendChild(el("h3", null, "メニュー"));
+  // --- grouped navigation ---
   const tile = (icon, label, sub, onClick) => {
-    const b = el("button", "home-tile",
-      `<span class="ht-icon">${icon}</span><span class="ht-body"><span class="ht-label">${label}</span><span class="ht-sub">${sub}</span></span>`);
+    const b = el("button", "home-tile2",
+      `<span class="ht-ic">${icon}</span><span class="ht-tx"><span class="ht-l">${label}</span><span class="ht-s">${sub}</span></span>`);
     b.onclick = onClick;
     return b;
   };
-  const menu = el("div", "home-menu");
-  menu.appendChild(tile("🏠", "暮らしと資産", "総資産と暮らしの歩み", () => renderAssets()));
-  menu.appendChild(tile("📜", "ストーリー", "ミミと5人の物語", () => renderStory()));
-  menu.appendChild(tile("💬", "相談する", "顧問に視点をもらう", () => renderConsult()));
-  menu.appendChild(tile("🏘️", "竜の村を訪れる", "竜たちと交流する", () => renderVillage()));
-  menu.appendChild(tile("📖", "竜図鑑", "出会った竜の記録", () => renderCollection()));
-  menu.appendChild(tile("🎓", "予想入門", "賭けの基礎を学ぶ", () => renderHelp()));
-  menu.appendChild(tile("📣", "ゲームをシェア", "友達に教える", shareGameInfo));
-  app.appendChild(menu);
+  app.appendChild(el("div", "home-grouplabel", "育成・記録"));
+  const g1 = el("div", "home-menu");
+  g1.appendChild(tile("🏠", "暮らしと資産", "総資産と暮らしの歩み", () => renderAssets()));
+  g1.appendChild(tile("📜", "ストーリー", "ミミと5人の物語", () => renderStory()));
+  g1.appendChild(tile("📖", "竜図鑑", "出会った竜の記録", () => renderCollection()));
+  g1.appendChild(tile("🏘️", "竜の村", "竜たちと交流する", () => renderVillage()));
+  app.appendChild(g1);
+  app.appendChild(el("div", "home-grouplabel", "サポート"));
+  const g2 = el("div", "home-menu");
+  g2.appendChild(tile("💬", "相談する", "顧問に視点をもらう", () => renderConsult()));
+  g2.appendChild(tile("🎓", "予想入門", "賭けの基礎を学ぶ", () => renderHelp()));
+  g2.appendChild(tile("📣", "シェア", "友達に教える", shareGameInfo));
+  app.appendChild(g2);
 
-  // --- footer: low-key reset ---
+  // --- subtle footer ---
   const foot = el("div", "actions home-foot");
-  const reset = el("button", "secondary ghost", "プレイヤー状態をリセット");
+  const reset = el("button", "secondary ghost", "データをリセット");
   reset.onclick = () => {
     if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); }
   };
   foot.appendChild(reset);
   app.appendChild(foot);
+
+  // --- mascot animation (reuses the race sprite) ---
+  const cv = banner.querySelector(".hb-dragon");
+  if (cv && cv.getContext && typeof rcDrawDragon === "function") {
+    const tctx = cv.getContext("2d");
+    let g = 1.0;
+    (function frame() {
+      if (!document.body.contains(cv)) return;
+      tctx.clearRect(0, 0, cv.width, cv.height);
+      g += 0.1;
+      rcDrawDragon(tctx, { x: cv.width / 2, y: cv.height / 2 + Math.sin(g * 0.5) * 4, scale: 1.5, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.5 });
+      requestAnimationFrame(frame);
+    })();
+  }
 }
 
 // =========================================================================
