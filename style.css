@@ -1648,3 +1648,17 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .ana-pane { display: none; }
 .ana-pane.active { display: block; }
 .value-hint { font-size: 13px; line-height: 1.7; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+
+/* ===== "効く力" demand banner + per-card ability/feature display ===== */
+.bet-demand { font-size: 12px; color: #ffd9a0; margin: 2px 0 8px; padding: 6px 10px; background: rgba(255,200,90,0.10); border: 1px solid rgba(255,200,90,0.22); border-radius: 8px; }
+.bet-demand b { color: #ffe6a8; font-size: 14px; margin-left: 5px; letter-spacing: 0.1em; }
+.bet-demand .bd-note { color: #c0a878; font-size: 10.5px; margin-left: 6px; }
+.bp-fit { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
+.bp-fitstat { display: inline-flex; align-items: center; gap: 1px; font-size: 10.5px; padding: 1px 6px; border-radius: 6px; background: rgba(0,0,0,0.30); color: #cfc4a8; }
+.bp-fitstat b { font-size: 12.5px; }
+.bp-fitstat.rank-S b { color: #ffd34d; }
+.bp-fitstat.rank-A b { color: #7fe0a0; }
+.bp-fitstat.rank-B b { color: #9bd4ff; }
+.bp-fitstat.rank-C b { color: #cfc4a8; }
+.bp-fitstat.rank-D b { color: #d89a9a; }
+.bp-traits { font-size: 10.5px; color: #b6a6c8; margin-top: 3px; line-height: 1.35; }
