@@ -563,11 +563,12 @@ function startRaceCanvas(container, ctx) {
   // past 1 (coasting, decelerating) from the moment IT crossed, so the field flows
   // through the line in finishing order. Presentation only: the official order is
   // already fixed by timeline.crossings and the result screen is authoritative.
-  const RUNOUT_SMO   = 0.42;   // run-out plays at this fraction of real time = cinematic
-                               // slow-MOTION (full stride/effort kept), not "tired & slow"
-  const RUNOUT_COAST = 0.13;   // progress coasted past the wire (× crossing speed)
-  const RUNOUT_TAU   = 4.6;    // gentle glide constant (≈ constant slow-mo velocity over the run-out)
-  const RUNOUT_DUR   = 1.2;    // slow-mo clock units of run-out (≈ 1.2/SMO ≈ 2.9 s real) before the result
+  const RUNOUT_SMO     = 0.40;  // DEEPEST slow-mo, right at the wire; lifts to 1 over RUNOUT_RELEASE
+  const RUNOUT_RELEASE = 0.40;  // coast-clock units over which slow-mo lifts back to NORMAL speed
+                                // → slow-motion is only a brief beat AT the goal, then a normal run-through
+  const RUNOUT_COAST   = 0.09;  // progress coasted past the wire (tuned so the normal-speed run-out ≈ gallop)
+  const RUNOUT_TAU     = 4.6;   // gentle pull-up constant
+  const RUNOUT_DUR     = 1.8;   // coast-clock units of run-out before the result (≈ 2 s real)
   function visProgress(id) {
     const c = S.crossClock[id];
     if (c != null) {
@@ -578,7 +579,9 @@ function startRaceCanvas(container, ctx) {
   }
   // subtle depth: back lanes (top of screen) a touch smaller/dimmer than near
   // lanes (bottom), so the field reads with perspective without hurting rank legibility.
-  function laneDepth(dr) { return 0.93 + (laneOf[dr.id] / 7) * 0.17; }
+  // Subtle lane perspective only (was 0.93–1.10 ≈ 18%, which made identical dragons
+  // look like different SIZES). Now ~5% so the field reads as one consistent size.
+  function laneDepth(dr) { return 0.975 + (laneOf[dr.id] / 7) * 0.05; }
   function screenX(P, WINW) {
     const usableLeft = cw * 0.08, usableRight = cw * 0.94;
     const frac = (P - S.camL) / WINW;
@@ -1545,7 +1548,12 @@ function startRaceCanvas(container, ctx) {
     // tiring. Applied uniformly to gait / particles / coast / τ so nothing desyncs.
     const _winId = timeline.crossings.length ? timeline.crossings[0].id : null;
     const inRunout = _winId != null && S.crossClock[_winId] != null;
-    const smo = inRunout ? RUNOUT_SMO : 1;
+    // slow-mo is only a brief beat AT the wire: deepest right as the winner crosses,
+    // then it lifts back to NORMAL speed over RUNOUT_RELEASE so the gallop-through
+    // (and the trailers crossing behind) play at normal pace.
+    const smo = inRunout
+      ? RUNOUT_SMO + (1 - RUNOUT_SMO) * clamp((S.crossClock[_winId] || 0) / RUNOUT_RELEASE, 0, 1)
+      : 1;
     const sdt = dt * smo;
 
     // gait clocks advance with each dragon's speed (slowed in slow-mo, but FULL stride —
@@ -1627,13 +1635,13 @@ function startRaceCanvas(container, ctx) {
     // leader's crossing (not a fixed τ) so the dead-heat always plays out in
     // slow-mo regardless of where the winner crosses. Pure pacing — order fixed.
     const wireTau = (timeline.crossings && timeline.crossings.length) ? timeline.crossings[0].tau : 0.9;
-    const smoStart = wireTau - 0.06;
+    const smoStart = wireTau - 0.02;   // slow-mo only kicks in REALLY just before the wire
     if (S.tapeBroken) {
-      adv *= smo;   // KEEP the slow-motion running through the run-out (trailers cross in slow-mo too)
+      adv *= smo;   // brief slow-mo beat at the wire (smo lifts back to 1 over the run-out)
     } else if (S.tau > smoStart) {
       const k = clamp((S.tau - smoStart) / Math.max(0.0001, wireTau - smoStart), 0, 1);
-      const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.72 : 0.5;
-      adv *= (1 - depth * k);   // dramatic slow-mo INTO the winner's crossing
+      const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.62 : 0.58;   // dip to ≈ RUNOUT_SMO at the wire
+      adv *= (1 - depth * k);   // sharp slow-mo INTO the winner's crossing only
     }
     S.tau = Math.min(1, S.tau + adv);
 
