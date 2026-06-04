@@ -1621,3 +1621,30 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .ht-tx { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .ht-l { font-size: 14px; font-weight: 700; color: #ffe6a8; }
 .ht-s { font-size: 11px; color: #c0a8c0; }
+
+/* ===================== Collapsible (fold/expand) sections ===================== */
+.ui-collapse { margin-bottom: 8px; border: 1px solid rgba(150,120,180,0.22); border-radius: 10px; overflow: hidden; background: rgba(30,22,46,0.5); }
+.ui-collapse-head {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  padding: 11px 13px; background: rgba(60,46,86,0.45); color: #ffe6a8; font-weight: 700; font-size: 13.5px;
+  border: none; cursor: pointer; text-align: left;
+}
+.ui-collapse-head:hover { background: rgba(80,60,110,0.5); }
+.uc-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.uc-sum { font-size: 11.5px; font-weight: 500; color: #c0b0d0; }
+.uc-chev { transition: transform .18s; color: #b39bd6; flex: 0 0 auto; }
+.ui-collapse.open .uc-chev { transform: rotate(180deg); }
+.ui-collapse-body { display: none; padding: 10px 12px; }
+.ui-collapse.open .ui-collapse-body { display: block; }
+.ui-collapse-body > .card { margin: 0; }
+
+/* ===================== Analysis tabs (出走表 / 試走 / 妙味) ===================== */
+.ana-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.ana-tabs button {
+  flex: 1; padding: 8px 6px; font-size: 13px; font-weight: 700; cursor: pointer;
+  background: rgba(0,0,0,0.25); color: #c8bcd8; border: 1px solid transparent; border-radius: 8px;
+}
+.ana-tabs button.active { background: linear-gradient(180deg, rgba(255,210,120,0.22), rgba(255,210,120,0.10)); color: #ffe6a8; border-color: rgba(255,210,120,0.35); }
+.ana-pane { display: none; }
+.ana-pane.active { display: block; }
+.value-hint { font-size: 13px; line-height: 1.7; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }

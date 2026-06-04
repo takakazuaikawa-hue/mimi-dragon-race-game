@@ -667,6 +667,18 @@ function renderRaceSelect() {
   app.appendChild(back);
 }
 
+// Reusable fold/expand (accordion) section — lets the player control how much of
+// each info block is shown, so the bet flow isn't buried under reference data.
+function uiCollapsible(headerHTML, openByDefault) {
+  const wrap = el("div", "ui-collapse" + (openByDefault ? " open" : ""));
+  const head = el("button", "ui-collapse-head",
+    `<span class="uc-title">${headerHTML}</span><span class="uc-chev">▾</span>`);
+  const body = el("div", "ui-collapse-body");
+  head.onclick = () => wrap.classList.toggle("open");
+  wrap.appendChild(head); wrap.appendChild(body);
+  return { wrap, body };
+}
+
 function renderRaceDetail(race) {
   state.ui.screen = "race_detail";
   runEventHooks("afterRaceSelect", { race });
@@ -730,10 +742,12 @@ function renderRaceDetail(race) {
       <div class="condition-line">${race.purpose}</div>
     </div>
   `;
-  app.appendChild(info);
+  const _condC = uiCollapsible(`📋 レース条件 <span class="uc-sum">Rank ${race.rank}・${DISTANCE[race.distance].label}・${WEATHERS[race.weather].label}</span>`, false);
+  _condC.body.appendChild(info); app.appendChild(_condC.wrap);
 
-  // (b) advisor voice — a met advisor's perspective on picking this race.
-  const _av = advisorVoiceEl("race"); if (_av) app.appendChild(_av);
+  // (b) advisor voice — a met advisor's perspective on picking this race (foldable).
+  const _av = advisorVoiceEl("race");
+  if (_av) { const _avC = uiCollapsible("💬 顧問の声", false); _avC.body.appendChild(_av); app.appendChild(_avC.wrap); }
 
   // (3) Celestia's 神眼 consult (once met) — reveals the winner, collapses its odds.
   const _cel = celestiaSectionEl(); if (_cel) app.appendChild(_cel);
@@ -871,9 +885,21 @@ function renderRaceDetail(race) {
   renderPickState();
   updateExpected();   // initial payout hint + confirm-disabled state
 
-  // ===== Detailed reference below (deep stats for those who want them) =====
-  // Entry list
-  app.appendChild(el("h3", null, "出走表"));
+  // ===== Deep reference — folded into ONE collapsible + tabbed card so studying the
+  // form never buries the betting action: 出走表 / 試走 / 妙味, one view at a time. =====
+  const _anaC = uiCollapsible("📊 出走表・分析", true);
+  app.appendChild(_anaC.wrap);
+  const showTrial = state.ui.infoLevel !== "simple";
+  const showValue = state.ui.infoLevel === "advanced" || state.ui.infoLevel === "expert";
+  const anaTabs = el("div", "ana-tabs");
+  anaTabs.innerHTML =
+    `<button data-pane="form" class="active">出走表</button>` +
+    (showTrial ? `<button data-pane="trial">試走</button>` : "") +
+    (showValue ? `<button data-pane="value">妙味</button>` : "");
+  _anaC.body.appendChild(anaTabs);
+
+  // -- pane: 出走表 (entry table) --
+  const paneForm = el("div", "ana-pane active"); paneForm.dataset.pane = "form";
   const tbl = el("table", "entry-table");
   tbl.innerHTML = `
     <thead><tr>
@@ -911,11 +937,12 @@ function renderRaceDetail(race) {
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
-  app.appendChild(tbl);
+  paneForm.appendChild(tbl);
+  _anaC.body.appendChild(paneForm);
 
-  // Trial Run Summary (§07 §11) — visible at standard+
-  if (state.ui.infoLevel !== "simple") {
-    app.appendChild(el("h3", null, "試走サマリー"));
+  // -- pane: 試走サマリー (standard+) --
+  if (showTrial) {
+    const paneTrial = el("div", "ana-pane"); paneTrial.dataset.pane = "trial";
     const trialTbl = el("table", "trial-table");
     trialTbl.innerHTML = `<thead><tr>
       <th>竜名</th><th>体調</th><th>集中</th>
@@ -942,17 +969,26 @@ function renderRaceDetail(race) {
       tbody2.appendChild(tr);
     });
     trialTbl.appendChild(tbody2);
-    app.appendChild(trialTbl);
+    paneTrial.appendChild(trialTbl);
+    _anaC.body.appendChild(paneTrial);
   }
 
-  // Advanced/Expert: show value-bet hints (market vs true rough estimate)
-  if (state.ui.infoLevel === "advanced" || state.ui.infoLevel === "expert") {
-    app.appendChild(el("h3", null, "妙味の手がかり（詳細モード）"));
-    const hintBox = el("div", "card");
+  // -- pane: 妙味の手がかり (advanced/expert) --
+  if (showValue) {
+    const paneValue = el("div", "ana-pane"); paneValue.dataset.pane = "value";
     const hints = generateValueHints(race, oddsResult, state.current.trialForms);
-    hints.forEach(h => hintBox.appendChild(el("div", null, h)));
-    app.appendChild(hintBox);
+    hints.forEach(h => paneValue.appendChild(el("div", "value-hint", h)));
+    _anaC.body.appendChild(paneValue);
   }
+
+  // tab wiring — switch the visible analysis pane
+  anaTabs.querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => {
+      anaTabs.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+      btn.classList.add("active");
+      _anaC.body.querySelectorAll(".ana-pane").forEach(p => p.classList.toggle("active", p.dataset.pane === btn.dataset.pane));
+    };
+  });
 
 }
 
