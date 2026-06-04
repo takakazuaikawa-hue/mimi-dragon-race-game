@@ -481,8 +481,17 @@ function startRaceCanvas(container, ctx) {
 
   // ---- ENTRANCE: the field walks in from the left to take its place at the gate. ----
   // Eager 逃げ types stride in first; laid-back chasers amble in last. Cosmetic.
-  const ENTRY_DUR = 10.0;       // long ceremonial entrance: walk in (staggered) then wait at the gate
-  const ENTRY_WALK = 4.0;       // each dragon's natural walk-in duration
+  // ---- ENTRANCE timing: walk in (staggered by 思想), then a BRIEF settle → countdown.
+  // ENTRY_DUR is DYNAMIC = (last dragon's arrival) + a short settle, so there's no dead
+  // standing-around wait between "everyone's in position" and the count starting. ----
+  const ENTRY_WALK = 3.8, ENTRY_STAGGER = 5.0, ENTRY_SETTLE = 0.6;
+  function entranceEager(dr) {
+    const pd = persoOf(dr.id), vmood = pd.visualMood || 55, style = pd.style || dr.style;
+    return clamp((style === "escape" ? 0.85 : style === "front" ? 0.6 : style === "late" ? 0.4 : 0.25) + (vmood - 55) / 150, 0, 1);
+  }
+  let _entMaxArrival = 0;
+  dragons.forEach(dr => { _entMaxArrival = Math.max(_entMaxArrival, (1 - entranceEager(dr)) * ENTRY_STAGGER + ENTRY_WALK); });
+  const ENTRY_DUR = _entMaxArrival + ENTRY_SETTLE;
   function entranceBehaviorOf(dr) {
     const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: "serious", lean: 0, dx: 0 };
     const id = dr.id, pd = persoOf(id);
@@ -492,9 +501,9 @@ function startRaceCanvas(container, ctx) {
     const ph = dragonPhase(id);
     const now = performance.now() / 1000;
     const elapsed = ENTRY_DUR - S.entryT;                          // seconds into the parade
-    const eager = clamp((style === "escape" ? 0.85 : style === "front" ? 0.6 : style === "late" ? 0.4 : 0.25) + (vmood - 55) / 150, 0, 1);
+    const eager = entranceEager(dr);
     const sleepy = vmood < 56 && (style === "chase" || style === "late");
-    const startDelay = (1 - eager) * 2.5;                          // eager set off first; the rest amble in later
+    const startDelay = (1 - eager) * ENTRY_STAGGER;               // eager set off first; the rest amble in later
     const walkProg = clamp((elapsed - startDelay) / ENTRY_WALK, 0, 1);
     // easeInOut → a steady walk at a natural pace (no zoom), settling at the line
     const ease = walkProg < 0.5 ? 2 * walkProg * walkProg : 1 - Math.pow(-2 * walkProg + 2, 2) / 2;
