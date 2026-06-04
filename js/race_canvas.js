@@ -975,7 +975,7 @@ function startRaceCanvas(container, ctx) {
 
     // stadium dressing (skyline + clock tower + crowd) only on ground courses
     if (stadium) {
-      const skl = (S.camL * 220) % 60;
+      const skl = (S.camL * 340) % 60;
       cctx.fillStyle = "rgba(20,26,52,0.9)";
       for (let i = -1; i < cw / 60 + 1; i++) {
         const x = i * 60 - skl;
@@ -983,17 +983,39 @@ function startRaceCanvas(container, ctx) {
         cctx.fillRect(x, g.top - h - 6, 44, h);
       }
       cctx.fillStyle = "rgba(40,46,78,0.95)";
-      const tx = cw * 0.62 - (S.camL * 120 % cw);
+      const tx = cw * 0.62 - (S.camL * 190 % cw);
       cctx.fillRect(tx, g.top - 64, 26, 64);
       cctx.fillStyle = "rgba(255,240,200,0.85)";
       cctx.beginPath(); cctx.arc(tx + 13, g.top - 50, 7, 0, Math.PI * 2); cctx.fill();
       cctx.fillStyle = "#181d33";
       cctx.fillRect(0, g.top - 6, cw, 10);
-      const crowdScroll = (S.camL * 600) % 14;
+      const crowdScroll = (S.camL * 900) % 14;
       for (let x = -crowdScroll; x < cw; x += 14) {
         cctx.fillStyle = ["#3a4474", "#46406e", "#523b5e", "#3e4a6b"][(Math.floor(x) % 4 + 4) % 4];
         cctx.beginPath(); cctx.arc(x, g.top - 2, 3, 0, Math.PI * 2); cctx.fill();
       }
+    }
+
+    // back-rail bunting — a string of pennant flags whipping past just above the far
+    // rail, on EVERY course. Scrolls with the camera (much faster than the distant
+    // backdrop) so "the flags in back" clearly convey speed. Each flag's colour is
+    // keyed to its world index (not the frame), so colours never flicker — seamless.
+    // Stops naturally when the camera stops (start gate / after finish).
+    {
+      const pGap = 30, pScroll = S.camL * cw * 24;
+      const pcols = ["#ff6b8a", "#ffd34d", "#5ad1ff", "#9b8cff", "#7CFFB2"];
+      const nC = pcols.length, first = Math.floor(pScroll / pGap), railY = g.top - 8;
+      cctx.strokeStyle = "rgba(255,255,255,0.22)"; cctx.lineWidth = 1;
+      cctx.beginPath(); cctx.moveTo(0, railY); cctx.lineTo(cw, railY); cctx.stroke();
+      cctx.globalAlpha = 0.85;
+      for (let k = 0; k * pGap <= cw + pGap; k++) {
+        const wi = first + k, x = wi * pGap - pScroll;
+        cctx.fillStyle = pcols[((wi % nC) + nC) % nC];
+        cctx.beginPath();
+        cctx.moveTo(x, railY); cctx.lineTo(x + 11, railY); cctx.lineTo(x + 5.5, railY + 8); cctx.closePath();
+        cctx.fill();
+      }
+      cctx.globalAlpha = 1;
     }
 
     // ============ WORLD GROUP (dynamic camera: zoom + pan + shake) ============
@@ -1046,18 +1068,18 @@ function startRaceCanvas(container, ctx) {
       // Two layers of horizontal motion-blur streaks at different speeds/lengths.
       // The near (lower) lanes get longer, brighter, faster streaks so the running
       // surface really tears past the screen — this is the dominant speed cue.
-      const lp = cam.leaderId ? timeline.progressAt(cam.leaderId, S.tau) : 0;
       for (let li = 0; li < 8; li++) {
         const depth = li / 7;                 // 0 = far/top, 1 = near/bottom
         const sy = g.top + (li + 0.5) * g.laneH;
-        const len = 34 + depth * 40;          // near streaks much longer
-        const gap = 50 + depth * 18;
-        const spd = 58 + depth * 34;          // near streaks scroll faster
-        const a = (0.10 + depth * 0.10).toFixed(3);
+        const len = 40 + depth * 56;          // near streaks much longer
+        const gap = 38 + depth * 16;          // denser → more streaks tear past
+        const spd = 64 + depth * 40;          // near streaks scroll faster
+        const h = depth > 0.6 ? 3 : 2;        // near streaks thicker
+        const a = (0.16 + depth * 0.18).toFixed(3);   // clearly visible on the track
         cctx.fillStyle = "rgba(255,255,255," + a + ")";
         const off = (S.camL * cw * spd + li * 23) % gap;
         for (let sx = -off; sx < cw; sx += gap) {
-          cctx.fillRect(sx, sy - 1, len, 2);
+          cctx.fillRect(sx, sy - 1, len, h);
         }
       }
     }

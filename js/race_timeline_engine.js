@@ -54,11 +54,11 @@ const TL_PHASE_TAU = [0.18, 0.44, 0.66, 0.86, 1.01];
 // races; this NEVER affects the finishing order, odds, payouts, or coins —
 // it is only how fast the fixed result is played back).
 const TL_DURATION = {
-  base: 54,         // seconds at the reference distance
+  base: 46,         // seconds at the reference distance (snappier — was 54)
   refMeters: 1200,  // distance that maps to `base`
-  perKm: 8,         // extra seconds per +1000m of distance
-  min: 50,          // never shorter than this at 1×
-  max: 66           // never longer than this at 1×
+  perKm: 7,         // extra seconds per +1000m of distance
+  min: 42,          // never shorter than this at 1×
+  max: 56           // never longer than this at 1×
 };
 
 // Finish-line DRAMA profile (presentation only). The decided finalPower gaps
