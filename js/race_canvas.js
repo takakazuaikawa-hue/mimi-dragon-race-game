@@ -492,6 +492,20 @@ function startRaceCanvas(container, ctx) {
   let _entMaxArrival = 0;
   dragons.forEach(dr => { _entMaxArrival = Math.max(_entMaxArrival, (1 - entranceEager(dr)) * ENTRY_STAGGER + ENTRY_WALK); });
   const ENTRY_DUR = _entMaxArrival + ENTRY_SETTLE;
+
+  // pre-race spectacle scales with rank: R1 modest, R7 grand (flashes / beams / glitter / wording).
+  const rankHype = clamp(((race.rank || 1) - 1) / 6, 0, 1);
+  const _hypeLines = (function () {
+    const N = dragons.length, r = race.rank || 1;
+    const mid = r >= 6 ? `頂上決戦——${N}頭、運命のゲートイン！`
+      : r >= 4 ? `大一番——${N}頭が闘志を燃やす。`
+        : r >= 2 ? `注目の一戦、${N}頭が出そろった。`
+          : `さあ、${N}頭が位置についた。`;
+    const closer = r >= 6 ? "歴史が、いま動く。まもなく——発走！"
+      : r >= 4 ? "張りつめた空気。まもなく発走だ！"
+        : "息を呑む静けさ。まもなく、発走！";
+    return [raceFullName(race), mid, closer];
+  })();
   function entranceBehaviorOf(dr) {
     const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: "serious", lean: 0, dx: 0 };
     const id = dr.id, pd = persoOf(id);
@@ -1761,26 +1775,52 @@ function startRaceCanvas(container, ctx) {
       const ent = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);              // 0→1 across the entrance
       const hbRate = 1.1 + ent * 1.1;                                 // heartbeat quickens (~66→132 bpm)
       const beat = Math.pow(Math.max(0, Math.sin(nowA * Math.PI * hbRate)), 12);
-      // spotlight vignette: clear centre, darkening edges, pulsing with the heartbeat
-      const dim = 0.20 + ent * 0.14 + beat * 0.12;
+      // spotlight vignette: clear centre, darkening edges, pulsing with the heartbeat (darker at higher rank)
+      const dim = 0.20 + ent * 0.14 + beat * 0.12 + rankHype * 0.06;
       const vg = cctx.createRadialGradient(cw / 2, ch * 0.56, ch * 0.14, cw / 2, ch * 0.56, ch * 1.0);
       vg.addColorStop(0, "rgba(6,8,20,0)");
       vg.addColorStop(0.55, `rgba(6,8,20,${(dim * 0.45).toFixed(3)})`);
       vg.addColorStop(1, `rgba(3,5,14,${dim.toFixed(3)})`);
       cctx.fillStyle = vg; cctx.fillRect(0, 0, cw, ch);
-      // camera flashes from the stands — quick sporadic white pops in the upper band
-      for (let i = 0; i < 8; i++) {
-        const fx = ((i * 0.173 + 0.06) % 1) * cw;
+      // sweeping spotlight beams from above — grandeur that grows with rank (none at R1)
+      const beams = Math.round(rankHype * 4);
+      for (let i = 0; i < beams; i++) {
+        const apexX = cw * (0.5 + (i - (beams - 1) / 2) * 0.18);
+        const sweep = Math.sin(nowA * 0.6 + i * 1.9) * cw * 0.16;
+        const baseY = ch * 0.66, halfW = cw * 0.07;
+        const bg = cctx.createLinearGradient(apexX, -10, apexX + sweep, baseY);
+        bg.addColorStop(0, `rgba(255,246,214,${(0.12 + 0.06 * beat).toFixed(3)})`);
+        bg.addColorStop(1, "rgba(255,246,214,0)");
+        cctx.fillStyle = bg;
+        cctx.beginPath();
+        cctx.moveTo(apexX - 5, -10); cctx.lineTo(apexX + 5, -10);
+        cctx.lineTo(apexX + sweep + halfW, baseY); cctx.lineTo(apexX + sweep - halfW, baseY);
+        cctx.closePath(); cctx.fill();
+      }
+      // camera flashes from the stands — denser & brighter the higher the rank
+      const flashN = Math.round(7 + rankHype * 16);
+      for (let i = 0; i < flashN; i++) {
+        const fx = ((i * 0.139 + 0.04) % 1) * cw;
         const fy = ch * (0.05 + ((i * 0.37) % 1) * 0.15);
         const fb = Math.pow(Math.max(0, Math.sin(nowA * (2.6 + i * 0.7) + i * 2.3)), 22);
         if (fb > 0.04) {
-          const fr = 13 + fb * 6;
+          const fr = (12 + fb * 6) * (1 + rankHype * 0.4);
           const fg = cctx.createRadialGradient(fx, fy, 0, fx, fy, fr);
-          fg.addColorStop(0, `rgba(255,255,255,${(0.85 * fb * (0.5 + 0.5 * ent)).toFixed(3)})`);
+          fg.addColorStop(0, `rgba(255,255,255,${(0.8 * fb * (0.5 + 0.5 * ent) * (0.7 + 0.6 * rankHype)).toFixed(3)})`);
           fg.addColorStop(1, "rgba(255,255,255,0)");
           cctx.fillStyle = fg; cctx.beginPath(); cctx.arc(fx, fy, fr, 0, Math.PI * 2); cctx.fill();
         }
       }
+      // golden glitter rain — only at the higher grades
+      const sparkN = Math.round(rankHype * 14);
+      for (let i = 0; i < sparkN; i++) {
+        const sxr = ((i * 0.0917 + 0.03) % 1) * cw;
+        const fall = (nowA * 0.16 + i * 0.123) % 1;
+        const tw = 0.5 + 0.5 * Math.sin(nowA * 4 + i);
+        cctx.globalAlpha = (1 - fall) * 0.5 * tw;
+        rcSparkle(cctx, sxr, fall * ch * 0.9, 2.3, "#ffe9a0");
+      }
+      cctx.globalAlpha = 1;
     }
 
     // --- floating texts (screen space) ---
@@ -1795,23 +1835,27 @@ function startRaceCanvas(container, ctx) {
     }
     cctx.globalAlpha = 1;
 
-    // --- entrance captions: "入場" as they parade in → "まもなく発走…" once the field is set ---
-    if (S.entryT > 0) {
-      const settling = S.entryT <= (ENTRY_SETTLE + 0.5);              // near the end → all in position
-      const intoEntry = ENTRY_DUR - S.entryT;
-      const txt = settling ? "まもなく発走…" : "🐉 入場";
-      const a = settling
-        ? clamp(((ENTRY_SETTLE + 0.5) - S.entryT) / 0.3, 0, 1)         // fade in for the final beat
-        : clamp(intoEntry / 0.3, 0, 1) * clamp((3.0 - intoEntry) / 0.6, 0, 1);   // brief title flash
-      if (a > 0.01) {
+    // --- 実況あおりテロップ: a broadcast-style lower-third that builds the hype as the
+    // field parades in (race name → 煽り → まもなく発走). Accent grander at higher ranks. ---
+    if (S.entryT > 0 && _hypeLines.length) {
+      const ent2 = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);
+      const n = _hypeLines.length;
+      const idx = Math.min(n - 1, Math.floor(ent2 * n));
+      const seg = ent2 * n - idx;                                    // 0→1 within this line
+      const fade = clamp(seg / 0.16, 0, 1) * clamp((1 - seg) / 0.16, 0, 1);
+      const txt = _hypeLines[idx];
+      if (fade > 0.02 && txt) {
+        const accent = rankHype > 0.66 ? "#ffd34d" : rankHype > 0.33 ? "#ff9a5a" : "#7fd1ff";
+        const tagW = 30, padX = 14, bh = 28, bx = 6, by = ch * 0.835, bw = cw - 12;
         cctx.save();
-        cctx.globalAlpha = clamp(a, 0, 1) * 0.95;
-        cctx.textAlign = "center"; cctx.textBaseline = "middle";
-        cctx.font = "bold 22px system-ui, sans-serif";
-        cctx.lineWidth = 5; cctx.strokeStyle = "rgba(10,12,24,0.7)";
-        cctx.fillStyle = settling ? "#ffd36a" : "#ffe9a8";
-        cctx.strokeText(txt, cw / 2, ch * 0.17);
-        cctx.fillText(txt, cw / 2, ch * 0.17);
+        cctx.globalAlpha = clamp(fade, 0, 1);
+        cctx.fillStyle = "rgba(10,12,24,0.84)"; cctx.fillRect(bx, by, bw, bh);
+        cctx.fillStyle = accent; cctx.fillRect(bx, by, 4, bh); cctx.fillRect(bx, by, bw, 2);
+        cctx.textBaseline = "middle"; cctx.textAlign = "center";
+        cctx.font = "14px system-ui, sans-serif"; cctx.fillStyle = accent;
+        cctx.fillText("🎙", bx + tagW / 2 + 4, by + bh / 2);
+        cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 14px system-ui, sans-serif";
+        cctx.fillText(txt, bx + tagW + padX, by + bh / 2);
         cctx.restore(); cctx.globalAlpha = 1;
       }
     }
