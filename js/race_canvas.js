@@ -377,6 +377,8 @@ function startRaceCanvas(container, ctx) {
     floats: [],
     crossedSet: new Set(),
     tapeBroken: false,
+    crossClock: {},     // per-dragon seconds since it crossed the wire (run-through)
+    crossV: {},         // per-dragon speed at the moment it crossed (coast distance ∝ this)
     showLog: false,
     finishedAnnounced: false,
     countdown: 0,
@@ -500,7 +502,7 @@ function startRaceCanvas(container, ctx) {
     let leaderP = 0, lastP = 1, leaderId = null;
     const ps = [];
     for (const dr of dragons) {
-      const p = timeline.progressAt(dr.id, S.tau);
+      const p = visProgress(dr.id);   // extends past 1 during the run-out so the camera follows through the wire
       ps.push(p);
       if (p > leaderP) { leaderP = p; leaderId = dr.id; }
       if (p < lastP) lastP = p;
@@ -553,6 +555,26 @@ function startRaceCanvas(container, ctx) {
   function trackGeom() {
     const top = ch * 0.34, bottom = ch * 0.965;
     return { top, bottom, laneH: (bottom - top) / 8 };
+  }
+
+  // ---- run-through ("pull-up") ----------------------------------------------
+  // Real horses gallop THROUGH the wire and decelerate over the next stretch — they
+  // don't stop on the line. After a dragon crosses, its visual progress keeps growing
+  // past 1 (coasting, decelerating) from the moment IT crossed, so the field flows
+  // through the line in finishing order. Presentation only: the official order is
+  // already fixed by timeline.crossings and the result screen is authoritative.
+  const RUNOUT_COAST = 0.10;   // progress coasted past the wire (× crossing speed)
+  const RUNOUT_TAU   = 4.6;    // deceleration time-constant (s): tuned so the coast starts
+                               // at ~gallop speed (continuous velocity at the wire — no
+                               // speed-up) and only decelerates from there. big = gentler.
+  const RUNOUT_DUR   = 2.6;    // seconds of run-out shown before cutting to the result
+  function visProgress(id) {
+    const c = S.crossClock[id];
+    if (c != null) {
+      const v = S.crossV[id] || 1;
+      return 1 + v * RUNOUT_COAST * (1 - Math.exp(-c / RUNOUT_TAU));
+    }
+    return timeline.progressAt(id, S.tau);
   }
   // subtle depth: back lanes (top of screen) a touch smaller/dimmer than near
   // lanes (bottom), so the field reads with perspective without hurting rank legibility.
@@ -917,9 +939,9 @@ function startRaceCanvas(container, ctx) {
       cctx.fillStyle = (r % 2) ? "#1c2030" : "#f0f0f0"; cctx.fillRect(mx1 + 2, my - 4 + r * 3, 3, 3);
       cctx.fillStyle = (r % 2) ? "#f0f0f0" : "#1c2030"; cctx.fillRect(mx1 + 5, my - 4 + r * 3, 3, 3);
     }
-    // leader
+    // leader (visProgress so the winner stays drawn on top through the run-out)
     let leaderP = -1, leaderId = null;
-    for (const dr of dragons) { const p = timeline.progressAt(dr.id, S.tau); if (p > leaderP) { leaderP = p; leaderId = dr.id; } }
+    for (const dr of dragons) { const p = visProgress(dr.id); if (p > leaderP) { leaderP = p; leaderId = dr.id; } }
     // draw the pack, with pick & leader last so they sit on top
     const order = [...dragons].sort((a, b) =>
       ((a.id === leaderId ? 2 : 0) + (betSet.has(a.id) ? 1 : 0)) -
@@ -1155,11 +1177,15 @@ function startRaceCanvas(container, ctx) {
     const drawList = [...dragons].sort((a, b) => laneOf[b.id] - laneOf[a.id]);
     for (const dr of drawList) {
       const P = timeline.progressAt(dr.id, S.tau);
+      const Pvis = visProgress(dr.id);          // extends past 1 during the run-out
       const v = timeline.speedAt(dr.id, S.tau);
-      const intensity = clamp((v - 0.85) / 0.55, 0, 1.4);
+      let intensity = clamp((v - 0.85) / 0.55, 0, 1.4);
+      // during the pull-up, ease the gallop down so legs/dust visibly relax (not a hard stop)
+      const _rc = S.crossClock[dr.id];
+      if (_rc != null) intensity *= (0.45 + 0.55 * Math.exp(-_rc / 2.2));
       const ownU = Math.min(1, S.tau / dr.finishTau);
 
-      let x = screenX(P, WINW);
+      let x = screenX(Pvis, WINW);
       const baseY = laneY(dr, g);
       const bob = Math.sin(S.gait[dr.id]) * (1.6 + intensity);
       const y = baseY + bob;
@@ -1498,7 +1524,9 @@ function startRaceCanvas(container, ctx) {
     // gait clocks advance with each dragon's current speed
     for (const dr of dragons) {
       const v = timeline.speedAt(dr.id, S.tau);
-      const rate = (v < 0.2) ? 3 : 9 + v * 6;
+      let rate = (v < 0.2) ? 3 : 9 + v * 6;
+      const _rc = S.crossClock[dr.id];
+      if (_rc != null) rate *= (0.3 + 0.7 * Math.exp(-_rc / 2.2));   // wing-beat eases off during the pull-up
       S.gait[dr.id] += dt * rate;
     }
     // particles — dust/spark fall under gravity; ambient embers rise, gusts/leaves drift
@@ -1554,6 +1582,18 @@ function startRaceCanvas(container, ctx) {
       return;   // the field stays on the line until "GO！"
     }
 
+    // --- run-through / pull-up: once the winner crosses, advance the global run-out
+    // timer and every crossed dragon's coast clock (visProgress reads these to carry
+    // them on past the wire). Cut to the result once the lead group has galloped on —
+    // we don't wait for the tail-enders. Presentation only; order is already fixed. ---
+    for (const dr of dragons) if (S.crossClock[dr.id] != null) S.crossClock[dr.id] += dt * S.speed;
+    {
+      const _wid = timeline.crossings.length ? timeline.crossings[0].id : null;   // winner
+      if (_wid != null && S.crossClock[_wid] != null && S.crossClock[_wid] >= RUNOUT_DUR && !S.finishedAnnounced) {
+        onAllFinished(); return;   // cut to the result once the winner has fully run out
+      }
+    }
+
     const prevTau = S.tau;
     // advance τ — but ease into slow-motion at the wire on a photo / close finish
     // (pure animation pacing; the finishing order is fixed by the timeline)
@@ -1564,13 +1604,13 @@ function startRaceCanvas(container, ctx) {
     const wireTau = (timeline.crossings && timeline.crossings.length) ? timeline.crossings[0].tau : 0.9;
     const smoStart = wireTau - 0.06;
     if (S.tapeBroken) {
-      // winner's across — the result is decided; ease the pace up and rush the rest
-      // to the line so we never linger on last place. The ramp (1→6×) keeps the
-      // slow-mo→fast transition smooth instead of snapping.
-      S.ffwd = (S.ffwd || 1) + (4 - (S.ffwd || 1)) * 0.05;
+      // winner's across — release the slow-mo back to normal pace over a beat. The
+      // run-through coast (visProgress) carries the leaders on past the wire while the
+      // rest cross behind; no fast-forward, so nothing looks artificially sped-up.
+      S.ffwd = (S.ffwd || 0.4) + (1 - (S.ffwd || 0.4)) * 0.08;
       adv *= S.ffwd;
     } else {
-      S.ffwd = 1;
+      S.ffwd = 0.4;
       if (S.tau > smoStart) {
         const k = clamp((S.tau - smoStart) / Math.max(0.0001, wireTau - smoStart), 0, 1);
         const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.72 : 0.5;
@@ -1609,6 +1649,8 @@ function startRaceCanvas(container, ctx) {
     for (const cr of timeline.crossings) {
       if (!S.crossedSet.has(cr.id) && S.tau >= cr.tau) {
         S.crossedSet.add(cr.id);
+        S.crossClock[cr.id] = 0;                                   // begin this dragon's run-through
+        S.crossV[cr.id] = Math.max(0.6, timeline.speedAt(cr.id, S.tau));
         const dr = timeline.byId[cr.id];
         const g = trackGeom();
         const gx = screenX(1, S._winw || 0.3);
@@ -1712,7 +1754,9 @@ function startRaceCanvas(container, ctx) {
 
     pumpTelop();
 
-    if (S.tau >= 1 && !S.finishedAnnounced) onAllFinished();
+    // safety net only: the run-out block ends the race after the winner crosses.
+    // This catches the degenerate case where no winner-crossing was ever detected.
+    if (S.tau >= 1 && !S.tapeBroken && !S.finishedAnnounced) onAllFinished();
   }
 
   function onAllFinished() {
@@ -1840,7 +1884,17 @@ function startRaceCanvas(container, ctx) {
       S.crossedSet = new Set(timeline.crossings.filter(c => S.tau >= c.tau).map(c => c.id));
       const _winCross = timeline.crossings.find(c => c.place === 1);
       S.tapeBroken = !!(_winCross && S.tau >= _winCross.tau);
-      const _done = S.tau >= 1;
+      // run-through state, reconstructed from the scrubbed time: each crossed dragon
+      // has been coasting past the wire since its OWN crossing (presentation only).
+      S.crossClock = {}; S.crossV = {};
+      for (const cr of timeline.crossings) {
+        if (S.tau >= cr.tau) {
+          S.crossClock[cr.id] = clamp((S.tau - cr.tau) * timeline.durationSecHint, 0, RUNOUT_DUR);
+          S.crossV[cr.id] = Math.max(0.6, timeline.speedAt(cr.id, cr.tau));
+        }
+      }
+      const _wid = _winCross ? _winCross.id : null;
+      const _done = S.tau >= 1 || (_wid != null && S.crossClock[_wid] != null && S.crossClock[_wid] >= RUNOUT_DUR);
       S.finished = _done; S.finishedAnnounced = _done; S.celebrated = _done; S.confettiT = 0;
       S.trioShown = false;   // re-arm the "三つ巴！" callout for a forward replay
       S.terrainSign = null;  // baseline the terrain sign to the scrubbed-to section
