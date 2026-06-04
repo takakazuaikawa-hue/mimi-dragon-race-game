@@ -515,6 +515,7 @@ function startRaceCanvas(container, ctx) {
     const focusT = clamp((leaderP - 0.25) / 0.5, 0, 1);
     const focusLowerP = lastP + (packTailP - lastP) * focusT;
     S._focusT = focusT;
+    S._finishFade = clamp((leaderP - 0.82) / 0.18, 0, 1);   // last-18%: isolate the lead trio
     const WINW = clamp((leaderP - focusLowerP) + 0.12, 0.18, 0.55);
     const targetL = leaderP - 0.66 * WINW;
     S.camL += (targetL - S.camL) * 0.12;
@@ -527,7 +528,7 @@ function startRaceCanvas(container, ctx) {
     // held tight on the trio after the line. The curve (squared) only ramps hard in
     // the final stretch, so there are no mid-race "bumps" that read as a glitch.
     const fpEase = finishProx * finishProx;
-    S.zoomT = S.finished ? 1.34 : (1 + 0.36 * fpEase + 0.03 * bunch);
+    S.zoomT = S.finished ? 1.26 : (1 + 0.28 * fpEase + 0.03 * bunch);
     S.zoom += (S.zoomT - S.zoom) * 0.07;
 
     // gentle vertical pan toward the leader's lane → the camera "follows"
@@ -558,8 +559,22 @@ function startRaceCanvas(container, ctx) {
     const frac = (P - S.camL) / WINW;
     return usableLeft + frac * (usableRight - usableLeft);
   }
+  // Near the goal, lanes (and the dragons in them) funnel toward the track centre
+  // so the climactic battle gathers mid-frame and stays visible under the finish
+  // zoom. `convAtP` is the funnel amount at a track fraction P; because a dragon's
+  // screen-x corresponds to its own progress, applying convAtP with that progress
+  // keeps the dragon sitting exactly ON its funneling lane. Cosmetic only —
+  // horizontal progress (= finishing order) is never touched.
+  function convAtP(P) {
+    const c = clamp((P - 0.6) / 0.4, 0, 1);
+    return c * c * 0.28;
+  }
+  function laneBaseY(idx, g) { return g.bottom - (idx + 0.5) * g.laneH; }
   function laneY(dr, g) {
-    return g.bottom - (laneOf[dr.id] + 0.5) * g.laneH;
+    const baseY = laneBaseY(laneOf[dr.id], g);
+    const centerY = g.top + (g.bottom - g.top) * 0.5;
+    const P = timeline.progressAt(dr.id, S.tau);
+    return baseY + (centerY - baseY) * convAtP(P);
   }
 
   // ---- terrain helpers: which SECTION is at a given track fraction ----
@@ -997,9 +1012,17 @@ function startRaceCanvas(container, ctx) {
     // lane stripes
     cctx.strokeStyle = "rgba(255,255,255,0.06)";
     cctx.lineWidth = 1;
+    const _cy = g.top + (g.bottom - g.top) * 0.5;
     for (let i = 1; i < 8; i++) {
-      const y = g.top + i * g.laneH;
-      cctx.beginPath(); cctx.moveTo(0, y); cctx.lineTo(cw, y); cctx.stroke();
+      const baseY = g.top + i * g.laneH;
+      cctx.beginPath();
+      let first = true;
+      for (let P = S.camL - 0.04; P <= S.camL + WINW + 0.04; P += 0.02) {
+        const ly = baseY + (_cy - baseY) * convAtP(P);
+        const lx = screenX(P, WINW);
+        if (first) { cctx.moveTo(lx, ly); first = false; } else cctx.lineTo(lx, ly);
+      }
+      cctx.stroke();
     }
     // scrolling distance ticks (every 5% of track) → ground speed sensation
     cctx.fillStyle = "rgba(255,255,255,0.10)";
@@ -1090,7 +1113,11 @@ function startRaceCanvas(container, ctx) {
       // edge — reinforces the "field thins to three" read. Tied to focusT so the
       // whole field stays solid early; only late does the dropped tail fade out.
       const _ef = clamp((x + cw * 0.02) / (cw * 0.26), 0, 1);
-      const edgeFade = 1 - (1 - _ef) * (S._focusT || 0);
+      let edgeFade = 1 - (1 - _ef) * (S._focusT || 0);
+      // At the finish, dim everything OUTSIDE the lead trio so the centre battle
+      // reads cleanly even when the field bunches up (rank-based, ramps with focusT).
+      const _K = timeline.leadPackSize || 3;
+      if ((standMap[dr.id] || 9) > _K) edgeFade *= (1 - 0.92 * (S._finishFade || 0));
       if (edgeFade <= 0.04) continue;             // fully behind → off-screen, skip
       const _prevAlpha = cctx.globalAlpha;
       cctx.globalAlpha = edgeFade;
