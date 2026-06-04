@@ -1974,35 +1974,35 @@ function startRaceCanvas(container, ctx) {
     }
 
     // --- phase-entry banner (slides in from the side, holds, slides out) ---
-    // --- terrain sign: a centred plate that names the course feature on entry ---
+    // --- terrain sign: a compact broadcast card that SLIDES IN FROM THE LEFT (kept clear
+    // of the central action) as the leader enters a section — names the feature + its demand ---
     if (S.terrainSign && !S.finished && S.preT <= 0) {
       const ts = S.terrainSign;
-      const appear = clamp(ts.t / 0.28, 0, 1);
-      const a = Math.min(appear, clamp((ts.max - ts.t) / 0.5, 0, 1));
-      const scale = 0.84 + 0.16 * appear;
+      const appear = clamp(ts.t / 0.3, 0, 1);
+      const out = clamp((ts.max - ts.t) / 0.5, 0, 1);
+      const a = Math.min(appear, out);
+      const ease = 1 - Math.pow(1 - appear, 3);                     // easeOut slide-in
       const accent = (RC_THEME[ts.key] || RC_THEME.straight).accent;
-      const cx = cw / 2, cy = ch * 0.49;
       cctx.save();
-      cctx.globalAlpha = clamp(a, 0, 1);
-      cctx.translate(cx, cy); cctx.scale(scale, scale); cctx.translate(-cx, -cy);
-      cctx.font = "bold 23px system-ui, sans-serif";
+      cctx.font = "bold 17px system-ui, sans-serif";
       const tw = cctx.measureText(ts.label).width;
-      cctx.font = "bold 12px system-ui, sans-serif";
-      const dw = ts.demand ? cctx.measureText(ts.demand).width : 0;
-      const iconW = 44, padX = 22, h = ts.demand ? 56 : 48, w = iconW + Math.max(tw, dw) + padX * 2;
-      const x0 = cx - w / 2, y0 = cy - h / 2;
-      cctx.fillStyle = "rgba(12,12,24,0.9)"; cctx.fillRect(x0, y0, w, h);
-      cctx.fillStyle = accent;
-      cctx.fillRect(x0, y0, 5, h);                                   // accent spine
-      cctx.fillRect(x0, y0, w, 2); cctx.fillRect(x0, y0 + h - 2, w, 2);
-      cctx.textBaseline = "middle";
-      cctx.font = "26px system-ui, sans-serif"; cctx.textAlign = "center";
-      cctx.fillText(ts.icon, x0 + padX + 12, cy + (ts.demand ? -4 : 1));   // terrain icon
-      cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 23px system-ui, sans-serif";
-      cctx.fillText(ts.label, x0 + iconW + padX, cy + (ts.demand ? -7 : 1)); // section label
-      if (ts.demand) {                                              // what the section TESTS
-        cctx.fillStyle = accent; cctx.font = "bold 12.5px system-ui, sans-serif";
-        cctx.fillText("▶ " + ts.demand, x0 + iconW + padX, cy + 13);
+      cctx.font = "bold 11px system-ui, sans-serif";
+      const dw = ts.demand ? cctx.measureText("▶ " + ts.demand).width : 0;
+      const iconW = 30, padX = 12, h = ts.demand ? 46 : 38;
+      const w = Math.min(cw * 0.58, iconW + Math.max(tw, dw) + padX * 2);
+      const x0 = 6 - ((1 - ease) + (1 - out)) * (w + 16);           // off-left → 6 → off-left
+      const y0 = ch * 0.28;
+      cctx.globalAlpha = clamp(a, 0, 1);
+      cctx.fillStyle = "rgba(10,12,24,0.8)"; cctx.fillRect(x0, y0, w, h);
+      cctx.fillStyle = accent; cctx.fillRect(x0, y0, 4, h); cctx.fillRect(x0, y0, w, 2); cctx.fillRect(x0, y0 + h - 2, w, 2);
+      cctx.textBaseline = "middle"; cctx.textAlign = "center";
+      cctx.font = "20px system-ui, sans-serif"; cctx.fillStyle = "#fff";
+      cctx.fillText(ts.icon, x0 + padX + 9, y0 + h / 2);                                   // terrain icon
+      cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 17px system-ui, sans-serif";
+      cctx.fillText(ts.label, x0 + iconW + padX, y0 + (ts.demand ? 16 : h / 2));           // section label
+      if (ts.demand) {                                                                     // what it TESTS
+        cctx.fillStyle = accent; cctx.font = "bold 11px system-ui, sans-serif";
+        cctx.fillText("▶ " + ts.demand, x0 + iconW + padX, y0 + 33);
       }
       cctx.restore(); cctx.globalAlpha = 1;
     }
