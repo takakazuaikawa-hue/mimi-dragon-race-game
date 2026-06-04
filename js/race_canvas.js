@@ -474,25 +474,34 @@ function startRaceCanvas(container, ctx) {
 
   // ---- ENTRANCE: the field walks in from the left to take its place at the gate. ----
   // Eager 逃げ types stride in first; laid-back chasers amble in last. Cosmetic.
-  const ENTRY_DUR = 3.0;
+  const ENTRY_DUR = 10.0;       // long ceremonial entrance: walk in (staggered) then wait at the gate
+  const ENTRY_WALK = 4.0;       // each dragon's natural walk-in duration
   function entranceBehaviorOf(dr) {
-    const beh = { jump: 0, spin: 0, squash: 1, down: true, mood: "serious", lean: 0, dx: 0 };
+    const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: "serious", lean: 0, dx: 0 };
     const id = dr.id, pd = persoOf(id);
+    const nerve = (pd.stats && pd.stats.nerve) || 60;
     const vmood = pd.visualMood || 55;
     const style = pd.style || dr.style;
     const ph = dragonPhase(id);
     const now = performance.now() / 1000;
-    const prog = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);            // 0→1 across the parade
-    const eager = (style === "escape" ? 0.85 : style === "front" ? 0.6 : style === "late" ? 0.4 : 0.25) + (vmood - 55) / 150;
-    const arr = clamp(0.95 - eager * 0.4, 0.5, 0.92);             // eager → reaches the gate sooner
-    const myProg = clamp(prog / arr, 0, 1);
-    // easeInOut → a steady walk (no fast zoom-in), settling gently at the line
-    const ease = myProg < 0.5 ? 2 * myProg * myProg : 1 - Math.pow(-2 * myProg + 2, 2) / 2;
-    beh.dx = -(1 - ease) * (cw * 0.42);                           // walk in from off the left
-    if (myProg < 1) beh.jump = Math.abs(Math.sin(now * 6 + ph)) * 0.04;   // small walking bob
-    else beh.down = false;                                        // arrived — settle at the gate
+    const elapsed = ENTRY_DUR - S.entryT;                          // seconds into the parade
+    const eager = clamp((style === "escape" ? 0.85 : style === "front" ? 0.6 : style === "late" ? 0.4 : 0.25) + (vmood - 55) / 150, 0, 1);
     const sleepy = vmood < 56 && (style === "chase" || style === "late");
-    beh.mood = sleepy ? "yawn" : (eager > 0.7 ? "serious" : "relaxed");
+    const startDelay = (1 - eager) * 2.5;                          // eager set off first; the rest amble in later
+    const walkProg = clamp((elapsed - startDelay) / ENTRY_WALK, 0, 1);
+    // easeInOut → a steady walk at a natural pace (no zoom), settling at the line
+    const ease = walkProg < 0.5 ? 2 * walkProg * walkProg : 1 - Math.pow(-2 * walkProg + 2, 2) / 2;
+    beh.dx = -(1 - ease) * (cw * 0.46);                            // walk in from off the left
+    if (walkProg < 1) {                                           // still walking in
+      beh.down = true;
+      beh.jump = Math.abs(Math.sin(now * 6 + ph)) * 0.04;          // small walking bob
+      beh.mood = sleepy ? "yawn" : "serious";
+    } else {                                                       // arrived — wait at the gate, by disposition (calm)
+      if (sleepy) { beh.down = true; beh.mood = (Math.sin(now * 0.7 + ph) > 0.3) ? "yawn" : "relaxed"; }
+      else if (eager > 0.7) { beh.lean = 0.4; beh.mood = "serious"; beh.jump = Math.max(0, Math.sin(now * 2.4 + ph)) * 0.03; }
+      else if (nerve < 60) { beh.mood = (Math.sin(now * 1.2 + ph) > 0.35) ? "panic" : "serious"; }
+      else { beh.mood = (Math.sin(now * 0.6 + ph) > 0.5) ? "relaxed" : "serious"; }
+    }
     return beh;
   }
 
@@ -1741,9 +1750,10 @@ function startRaceCanvas(container, ctx) {
     }
     cctx.globalAlpha = 1;
 
-    // --- entrance caption while the field parades in from the side ---
+    // --- entrance caption: a brief title flash as the field parades in ---
     if (S.entryT > 0) {
-      const a = Math.min(clamp(S.entryT / 0.4, 0, 1), clamp((ENTRY_DUR - S.entryT) / 0.3, 0, 1));
+      const intoEntry = ENTRY_DUR - S.entryT;
+      const a = clamp(intoEntry / 0.3, 0, 1) * clamp((3.5 - intoEntry) / 0.6, 0, 1);
       cctx.save();
       cctx.globalAlpha = clamp(a, 0, 1) * 0.92;
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
