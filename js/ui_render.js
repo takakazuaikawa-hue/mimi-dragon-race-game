@@ -1466,7 +1466,8 @@ function onConfirmBet(skipDialog) {
   c.timeline = null;
   if (typeof stopRacePlayer === "function") stopRacePlayer();
   // Spec #29: recap is rebuilt per race; result-screen hooks fire once.
-  c.recap = null; c.recapTab = "result"; c.resultHooksRan = false;
+  // Spec #37: the win-moment celebration also re-arms for the new race.
+  c.recap = null; c.recapTab = "result"; c.resultHooksRan = false; c.celebrated = false;
   c.raceResult = raceResult;
   c._fixedResult = null; c._celestiaRevealed = null;   // consult is consumed by the run
   const betResult = resolveBet(c.bet, raceResult, c.oddsResult);
@@ -2081,14 +2082,10 @@ function drawRecapScreen() {
   const app = $("app"); app.innerHTML = "";
   app.appendChild(el("h2", null, "答え合わせ"));
 
-  // --- Hit/miss banner (always on top so the verdict is instant) ---
+  // --- Reward hero: lead with the emotional verdict (spec #37 Tier 1) ---
   const ps = recap.payoutSummary;
   if (ps) {
-    const banner = el("div", "card");
-    banner.innerHTML =
-      `<div class="${ps.hit ? 'result-hit' : 'result-miss'}">${ps.hit ? '的中！' : 'ハズレ'}</div>` +
-      `<div>払戻: <b>${fmtCoins(ps.payout)}</b>コイン ／ 収支: <b>${ps.profit >= 0 ? '+' : ''}${fmtCoins(ps.profit)}</b></div>`;
-    app.appendChild(banner);
+    app.appendChild(buildResultHero(ps, resultTierOf(ps), c));
   }
 
   // --- Tab bar ---
@@ -2119,6 +2116,147 @@ function drawRecapScreen() {
   const next = el("button", null, "次のレースへ"); next.onclick = renderRaceSelect;
   actions.appendChild(next);
   app.appendChild(actions);
+}
+
+// =========================================================================
+// Spec #37 Tier 1 — the WIN MOMENT. The race result/odds/payout are NEVER
+// changed here; this is pure presentation that makes the payout reveal land.
+// =========================================================================
+
+// Win tier from the payout odds — the thrill scales with the 穴 you cracked.
+function resultTierOf(ps) {
+  if (!ps || !ps.hit) return 0;            // miss
+  const o = ps.odds || 1;
+  if (o >= 15) return 4;                    // 伝説の的中
+  if (o >= 7)  return 3;                    // 超的中
+  if (o >= 3)  return 2;                    // 大的中
+  return 1;                                 // 的中
+}
+
+const RESULT_TIER = {
+  0: { word: "ハズレ",           cls: "miss", sfx: "miss" },
+  1: { word: "的中！",           cls: "t1",   sfx: "win" },
+  2: { word: "大的中！",         cls: "t2",   sfx: "bigwin" },
+  3: { word: "超的中！！",       cls: "t3",   sfx: "legendary" },
+  4: { word: "伝説の的中！！！", cls: "t4",   sfx: "legendary" }
+};
+
+function fmtSigned(n) { return (n < 0 ? "−" : "+") + fmtCoins(Math.abs(n)); }
+
+function buildResultHero(ps, tier, c) {
+  const info = RESULT_TIER[tier] || RESULT_TIER[0];
+  const hit = !!ps.hit;
+  const muteIc = (window.Sfx && Sfx.isMuted()) ? "🔇" : "🔊";
+  const hero = el("div", "rs-hero rs-" + info.cls);
+  hero.innerHTML =
+    `<button class="rs-mute" title="サウンド切替">${muteIc}</button>` +
+    `<div class="rs-confetti" aria-hidden="true"></div>` +
+    `<div class="rs-stamp">${info.word}</div>` +
+    (hit
+      ? `<div class="rs-payout"><span class="rs-plus">+</span><span class="rs-count" id="rs-count">0</span><span class="rs-unit">コイン</span></div>`
+      : `<div class="rs-payout rs-payout-miss">−${fmtCoins(Math.abs(ps.profit))}<span class="rs-unit"> コイン</span></div>`) +
+    `<div class="rs-sub">` +
+      (hit
+        ? `${ps.typeLabel} × ${ps.odds.toFixed(1)}倍　／　収支 <b>${fmtSigned(ps.profit)}</b>`
+        : `${ps.typeLabel}　／　今回は届かず`) +
+      `　・　所持 <b>${fmtCoins(state.player.coins)}</b></div>` +
+    `<div class="rs-streak" id="rs-streak"></div>`;
+
+  const mb = hero.querySelector(".rs-mute");
+  if (mb) mb.onclick = (e) => {
+    e.stopPropagation();
+    if (window.Sfx) {
+      Sfx.setMuted(!Sfx.isMuted());
+      mb.textContent = Sfx.isMuted() ? "🔇" : "🔊";
+      if (!Sfx.isMuted()) Sfx.play("click");
+    }
+  };
+
+  // Celebrate exactly once per race; on later re-renders (tab switches) just
+  // show the final number statically.
+  if (!c.celebrated) {
+    c.celebrated = true;
+    // Wait until any Mimi/event popup is dismissed so the confetti + count-up
+    // are actually seen (otherwise they'd play hidden under the overlay).
+    whenResultVisible(() => celebrateResult(hero, ps, tier, info));
+  } else if (hit) {
+    const cnt = hero.querySelector("#rs-count");
+    if (cnt) cnt.textContent = fmtCoins(ps.payout);
+  }
+  return hero;
+}
+
+// Run cb once the result screen is actually visible — i.e. the modal event
+// overlay (Mimi reaction / story / rank-up popups) has been dismissed.
+function whenResultVisible(cb) {
+  const hidden = () => {
+    const ov = document.getElementById("event-overlay");
+    return !ov || ov.classList.contains("hidden");
+  };
+  if (hidden()) { requestAnimationFrame(cb); return; }
+  let tries = 0;
+  const iv = setInterval(() => {
+    if (hidden() || ++tries > 600) { clearInterval(iv); requestAnimationFrame(cb); }
+  }, 90);
+}
+
+function celebrateResult(hero, ps, tier, info) {
+  if (!hero || !document.body.contains(hero)) return;
+  try { if (window.Sfx) Sfx.play(ps.hit ? info.sfx : "miss"); } catch (e) {}
+  const stamp = hero.querySelector(".rs-stamp");
+  if (stamp) stamp.classList.add("rs-stamp-go");
+  if (!ps.hit) return;
+  const cnt = hero.querySelector("#rs-count");
+  if (cnt) countUp(cnt, ps.payout, 900 + tier * 220);
+  const conf = hero.querySelector(".rs-confetti");
+  const n = [0, 18, 32, 50, 72][tier] || 18;
+  if (conf) spawnConfetti(conf, n, tier);
+  if (tier >= 3) {
+    hero.classList.remove("rs-shake"); void hero.offsetWidth; hero.classList.add("rs-shake");
+    setTimeout(() => hero.classList.remove("rs-shake"), 700);
+  }
+}
+
+// Number count-up through fmtCoins (easeOutCubic), with soft ticks.
+function countUp(node, to, dur) {
+  if (!node) return;
+  to = Math.max(0, Math.round(to));
+  const start = performance.now();
+  let lastTick = 0;
+  (function frame(now) {
+    if (!document.body.contains(node)) return;
+    const p = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    node.textContent = fmtCoins(Math.round(to * eased));
+    if (window.Sfx && p < 1 && now - lastTick > 70) { lastTick = now; Sfx.play("tick"); }
+    if (p < 1) requestAnimationFrame(frame);
+    else node.textContent = fmtCoins(to);
+  })(start);
+}
+
+// Lightweight DOM confetti — no assets, colours from the world palette.
+const RS_CONFETTI_COLORS = ["#ffd877", "#e6b24a", "#49c89c", "#2ea884", "#ff6f4d", "#57b1dd", "#f3ecdc"];
+function spawnConfetti(container, n, tier) {
+  if (!container) return;
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement("i");
+    p.className = "rs-confetto";
+    const left = Math.random() * 100;
+    const dur = 1.1 + Math.random() * 1.1;
+    const delay = Math.random() * 0.5;
+    const size = 5 + Math.random() * (tier >= 3 ? 8 : 5);
+    const rot = (Math.random() * 720 - 360) | 0;
+    const drift = (Math.random() * 60 - 30) | 0;
+    p.style.cssText =
+      `left:${left}%;width:${size.toFixed(1)}px;height:${(size * (0.5 + Math.random())).toFixed(1)}px;` +
+      `background:${RS_CONFETTI_COLORS[(Math.random() * RS_CONFETTI_COLORS.length) | 0]};` +
+      `animation-duration:${dur.toFixed(2)}s;animation-delay:${delay.toFixed(2)}s;` +
+      `--rs-rot:${rot}deg;--rs-drift:${drift}px;`;
+    frag.appendChild(p);
+  }
+  container.appendChild(frag);
+  setTimeout(() => { if (container) container.innerHTML = ""; }, 2800);
 }
 
 function recapSection(label, lines) {
