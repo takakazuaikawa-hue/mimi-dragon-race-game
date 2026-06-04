@@ -31,6 +31,7 @@ const state = {
     biggestPayout: 0,
     // §37 Tier 2 — win streak (連勝): consecutive bet hits (any type).
     streak: 0, bestStreak: 0,
+    lastLoginDay: null, loginStreak: 0,   // §37 daily login reward
     flags: {
       seenFirstRaceTutorial: false,
       seenFirstWideTutorial: false,
@@ -104,6 +105,8 @@ function loadGame() {
       // §37 migration: pre-streak saves lack the streak fields.
       if (state.player.streak == null) state.player.streak = 0;
       if (state.player.bestStreak == null) state.player.bestStreak = 0;
+      if (state.player.lastLoginDay === undefined) state.player.lastLoginDay = null;
+      if (state.player.loginStreak == null) state.player.loginStreak = 0;
       // Durability: a race confirmed but abandoned before its 答え合わせ left an owed
       // payout (settleRace never ran). Credit it now so no winning ticket is lost.
       if (state.player.pendingPayout > 0) {
@@ -119,6 +122,37 @@ function loadGame() {
   return false;
 }
 
+// §37 — daily login reward. _epochDay() is a local-midnight day index so
+// "consecutive days" is robust; page code may use Date freely.
+const LOGIN_DAY_MULT = [1, 1.5, 2, 2.5, 3, 4, 7];   // 7-day escalating cycle
+function _epochDay(d) {
+  d = d || new Date();
+  return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
+}
+// Returns the bonus due today (or null if already claimed today). Does NOT grant.
+function checkDailyLogin() {
+  const today = _epochDay();
+  const last = state.player.lastLoginDay;
+  if (last === today) return null;                       // already claimed today
+  let streak;
+  if (last == null || today > last + 1) streak = 1;       // first ever / chain broke
+  else streak = (state.player.loginStreak || 0) + 1;      // last === today-1 → consecutive
+  const cycleDay = ((streak - 1) % 7) + 1;
+  const base = Math.max(200, Math.floor((state.player.maxCoinsReached || 0) * 0.005));
+  const bonus = Math.floor(base * LOGIN_DAY_MULT[cycleDay - 1]);
+  return { today, streak, cycleDay, bonus };
+}
+function claimDailyLogin(info) {
+  if (!info) return;
+  state.player.coins += info.bonus;
+  state.player.lastLoginDay = info.today;
+  state.player.loginStreak = info.streak;
+  if (typeof bumpMaxCoins === "function") bumpMaxCoins();
+  if (typeof recomputeAssets === "function") recomputeAssets(state);
+  saveGame();
+  if (typeof updateHeader === "function") updateHeader();
+}
+
 function resetGame() {
   state.player = {
     coins: 1000, maxCoinsReached: 1000, totalAssets: 0,
@@ -128,6 +162,7 @@ function resetGame() {
     winsByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
     biggestPayout: 0,
     streak: 0, bestStreak: 0,
+    lastLoginDay: null, loginStreak: 0,   // §37 daily login reward
     flags: {
       seenFirstRaceTutorial:false, seenFirstWideTutorial:false,
       reachedCoins_10000:false, reachedCoins_100000000:false,

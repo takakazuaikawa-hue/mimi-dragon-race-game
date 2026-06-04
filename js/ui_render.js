@@ -77,6 +77,11 @@ function renderHome() {
   const app = $("app"); app.innerHTML = "";
   const p = state.player;
   if (typeof recomputeAssets === "function") recomputeAssets(state);
+  // daily login reward — checked once per session, shown just after home paints
+  if (!window._mimiLoginChecked) {
+    window._mimiLoginChecked = true;
+    try { const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin(); if (_lb) setTimeout(() => showLoginBonus(_lb), 420); } catch (e) {}
+  }
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
   const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : 0;
   const total = p.totalAssets || 0;
@@ -2296,6 +2301,35 @@ function spawnConfetti(container, n, tier) {
   }
   container.appendChild(frag);
   setTimeout(() => { if (container) container.innerHTML = ""; }, 2800);
+}
+
+// §37 — daily login reward modal (shown once per session on home if a new day).
+function showLoginBonus(info) {
+  if (!info) return;
+  const ov = el("div", "login-ov");
+  const strip = [1, 2, 3, 4, 5, 6, 7].map(d => {
+    const cls = d < info.cycleDay ? "done" : (d === info.cycleDay ? "now" : "");
+    return `<div class="lb-day ${cls}">${d === 7 ? "★" : d}</div>`;
+  }).join("");
+  ov.innerHTML =
+    `<div class="login-card">` +
+      `<div class="lb-title">✦ ログインボーナス ✦</div>` +
+      `<div class="lb-streak">${info.streak}日連続ログイン</div>` +
+      `<div class="lb-strip">${strip}</div>` +
+      `<div class="lb-amount">＋<b id="lb-count">0</b> コイン</div>` +
+      `<button class="lb-claim">受け取る</button>` +
+    `</div>`;
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => {
+    try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+    const cnt = ov.querySelector("#lb-count");
+    if (cnt) { if (typeof countUp === "function") countUp(cnt, info.bonus, 800); else cnt.textContent = fmtCoins(info.bonus); }
+  });
+  ov.querySelector(".lb-claim").onclick = () => {
+    if (typeof claimDailyLogin === "function") claimDailyLogin(info);
+    ov.remove();
+    if (state.ui.screen === "home") renderHome();
+  };
 }
 
 function recapSection(label, lines) {
