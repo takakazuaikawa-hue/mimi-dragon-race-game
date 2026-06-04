@@ -508,16 +508,30 @@ function startRaceCanvas(container, ctx) {
 
   // pre-race spectacle scales with rank: R1 modest, R7 grand (flashes / beams / glitter / wording).
   const rankHype = clamp(((race.rank || 1) - 1) / 6, 0, 1);
+  // 煽り (実況) lines — weave in the COURSE (distance / weather / key terrain & its demand)
+  // and the RACE'S 意義 (grade + purpose), grander wording at higher ranks.
   const _hypeLines = (function () {
     const N = dragons.length, r = race.rank || 1;
-    const mid = r >= 6 ? `頂上決戦——${N}頭、運命のゲートイン！`
-      : r >= 4 ? `大一番——${N}頭が闘志を燃やす。`
-        : r >= 2 ? `注目の一戦、${N}頭が出そろった。`
-          : `さあ、${N}頭が位置についた。`;
-    const closer = r >= 6 ? "歴史が、いま動く。まもなく——発走！"
-      : r >= 4 ? "張りつめた空気。まもなく発走だ！"
-        : "息を呑む静けさ。まもなく、発走！";
-    return [raceFullName(race), mid, closer];
+    const gradeL = (typeof RANKS !== "undefined" && RANKS[r] && RANKS[r].label) ? RANKS[r].label : ("Rank" + r);
+    const distL = (typeof DISTANCE !== "undefined" && DISTANCE[race.distance] && DISTANCE[race.distance].label) || "";
+    const wxL = (typeof WEATHERS !== "undefined" && WEATHERS[race.weather] && WEATHERS[race.weather].label) || "";
+    const midSec = (typeof getSection === "function") ? getSection("mid", race.mid) : null;
+    const midLabel = (midSec && midSec.label) || "";
+    const midStat = STAT_JP[_sectionStat[1]] || "総合力";
+    const lines = [];
+    lines.push(`【${gradeL}】${raceFullName(race)}、まもなく発走！`);
+    lines.push(midLabel
+      ? `舞台は${distL}・${wxL}。中盤の「${midLabel}」、${midStat}が問われる難所だ。`
+      : `舞台は${distL}・${wxL}。${N}頭の真価が問われる。`);
+    if (race.purpose) lines.push(`この一戦の意義——${race.purpose}。`);
+    lines.push(r >= 6 ? "頂点を懸けた、運命の決戦。歴史が動く！"
+      : r >= 4 ? "格を懸けた、譲れぬ大一番。"
+        : r >= 2 ? "未来へ繋ぐ、大切な一戦。"
+          : "ここから、物語が始まる。");
+    lines.push(r >= 6 ? "張りつめた空気——いざ、発走！"
+      : r >= 4 ? "息を呑む静けさ。さあ、発走だ！"
+        : "さあ、運命のゲートが開く。発走！");
+    return lines;
   })();
   function entranceBehaviorOf(dr) {
     const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: "serious", lean: 0, dx: 0 };
@@ -749,20 +763,30 @@ function startRaceCanvas(container, ctx) {
     }
   }
   const shownLines = [];
+  function renderTelop() {
+    linesEl.innerHTML = "";
+    shownLines.slice(-3).forEach((line, i, arr) => {
+      const d = document.createElement("div");
+      d.className = i === arr.length - 1 ? "line is-latest" : "line-prev";
+      d.textContent = line;
+      linesEl.appendChild(d);
+    });
+  }
   function pumpTelop() {
     let changed = false;
     for (const t of telopSchedule) {
       if (!t.fired && S.tau >= t.tau) { t.fired = true; shownLines.push(t.line); changed = true; }
     }
-    if (changed) {
-      linesEl.innerHTML = "";
-      shownLines.slice(-3).forEach((line, i, arr) => {
-        const d = document.createElement("div");
-        d.className = i === arr.length - 1 ? "line is-latest" : "line-prev";
-        d.textContent = line;
-        linesEl.appendChild(d);
-      });
-    }
+    if (changed) renderTelop();
+  }
+  // entrance 煽り — fed into the SAME 実況 telop so the hype reads as live commentary
+  const _entHype = _hypeLines.map((line, i) => ({ at: (i + 0.4) / _hypeLines.length, line, fired: false }));
+  function pumpEntranceTelop() {
+    if (S.entryT <= 0) return;
+    const ent = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);
+    let changed = false;
+    for (const h of _entHype) { if (!h.fired && ent >= h.at) { h.fired = true; shownLines.push(h.line); changed = true; } }
+    if (changed) renderTelop();
   }
 
   // ---- floating shout / placement text ----
@@ -1917,30 +1941,7 @@ function startRaceCanvas(container, ctx) {
     }
     cctx.globalAlpha = 1;
 
-    // --- 実況あおりテロップ: a broadcast-style lower-third that builds the hype as the
-    // field parades in (race name → 煽り → まもなく発走). Accent grander at higher ranks. ---
-    if (S.entryT > 0 && _hypeLines.length) {
-      const ent2 = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);
-      const n = _hypeLines.length;
-      const idx = Math.min(n - 1, Math.floor(ent2 * n));
-      const seg = ent2 * n - idx;                                    // 0→1 within this line
-      const fade = clamp(seg / 0.16, 0, 1) * clamp((1 - seg) / 0.16, 0, 1);
-      const txt = _hypeLines[idx];
-      if (fade > 0.02 && txt) {
-        const accent = rankHype > 0.66 ? "#ffd34d" : rankHype > 0.33 ? "#ff9a5a" : "#7fd1ff";
-        const tagW = 30, padX = 14, bh = 28, bx = 6, by = ch * 0.835, bw = cw - 12;
-        cctx.save();
-        cctx.globalAlpha = clamp(fade, 0, 1);
-        cctx.fillStyle = "rgba(10,12,24,0.84)"; cctx.fillRect(bx, by, bw, bh);
-        cctx.fillStyle = accent; cctx.fillRect(bx, by, 4, bh); cctx.fillRect(bx, by, bw, 2);
-        cctx.textBaseline = "middle"; cctx.textAlign = "center";
-        cctx.font = "14px system-ui, sans-serif"; cctx.fillStyle = accent;
-        cctx.fillText("🎙", bx + tagW / 2 + 4, by + bh / 2);
-        cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 14px system-ui, sans-serif";
-        cctx.fillText(txt, bx + tagW + padX, by + bh / 2);
-        cctx.restore(); cctx.globalAlpha = 1;
-      }
-    }
+    // (the entrance 煽り now shows in the 実況 telop below the canvas — see pumpEntranceTelop)
     // --- start 3-2-1 countdown / GO burst ---
     if (S.preT > 0 && S.entryT <= 0) {
       const n = Math.min(3, Math.max(1, Math.ceil(S.preT)));
@@ -2150,6 +2151,7 @@ function startRaceCanvas(container, ctx) {
     if (S.entryT > 0) {
       S.entryT -= dt * S.speed;
       if (S.entryT < 0) S.entryT = 0;
+      pumpEntranceTelop();   // the 煽り appears in the 実況 (commentary) as the field parades in
       // livestream "いいね" pour in during the entrance — more & faster at higher ranks
       S.likeT -= dt * S.speed;
       const likeIv = 1 / (2.5 + rankHype * 7);
