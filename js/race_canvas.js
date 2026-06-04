@@ -451,7 +451,6 @@ function startRaceCanvas(container, ctx) {
     const ph = dragonPhase(id);
     const now = performance.now() / 1000;
     const tkey = themeKeyAtP(P);
-    const bounce = clamp((vmood - 45) / 50 + (style === "escape" ? 0.25 : 0) - (style === "chase" ? 0.2 : 0), 0, 1);
 
     // tired → walk it out, head down
     if (tired) { beh.down = true; beh.mood = "tired"; return beh; }
@@ -468,24 +467,14 @@ function startRaceCanvas(container, ctx) {
       }
     }
 
-    // surge → a clean leap
-    if (surging) { beh.jump = 1; beh.mood = "joy"; }
-
-    // ambient hops + an occasional BIG jump while running well (livelier = bouncier)
-    if (intensity > 0.4) {
-      const period = 1.5 - 0.7 * bounce;
-      const hopT = ((now + ph) % period) / period;
-      if (hopT < 0.30) beh.jump = Math.max(beh.jump, Math.sin(hopT / 0.30 * Math.PI) * (0.22 + 0.3 * bounce));
-      const bigT = ((now + ph * 2.1) % 5.5) / 5.5;
-      if (bigT < 0.10 && (bounce > 0.45 || style === "escape")) beh.jump = Math.max(beh.jump, Math.sin(bigT / 0.10 * Math.PI));
-    }
-    if (beh.jump > 0.02) beh.squash = 1 + beh.jump * 0.16;        // stretch as it leaves the turf
+    // surge reads via the glow + sparkle + a joyful face (no jump — constant hopping looked too busy)
+    if (surging) beh.mood = "joy";
     return beh;
   }
 
   // ---- ENTRANCE: the field walks in from the left to take its place at the gate. ----
   // Eager 逃げ types stride in first; laid-back chasers amble in last. Cosmetic.
-  const ENTRY_DUR = 1.8;
+  const ENTRY_DUR = 3.0;
   function entranceBehaviorOf(dr) {
     const beh = { jump: 0, spin: 0, squash: 1, down: true, mood: "serious", lean: 0, dx: 0 };
     const id = dr.id, pd = persoOf(id);
@@ -497,9 +486,10 @@ function startRaceCanvas(container, ctx) {
     const eager = (style === "escape" ? 0.85 : style === "front" ? 0.6 : style === "late" ? 0.4 : 0.25) + (vmood - 55) / 150;
     const arr = clamp(0.95 - eager * 0.4, 0.5, 0.92);             // eager → reaches the gate sooner
     const myProg = clamp(prog / arr, 0, 1);
-    const ease = 1 - Math.pow(1 - myProg, 2);                     // ease to a stop at the line
+    // easeInOut → a steady walk (no fast zoom-in), settling gently at the line
+    const ease = myProg < 0.5 ? 2 * myProg * myProg : 1 - Math.pow(-2 * myProg + 2, 2) / 2;
     beh.dx = -(1 - ease) * (cw * 0.42);                           // walk in from off the left
-    if (myProg < 1) beh.jump = Math.abs(Math.sin(now * 7 + ph)) * 0.045;   // walking bob
+    if (myProg < 1) beh.jump = Math.abs(Math.sin(now * 6 + ph)) * 0.04;   // small walking bob
     else beh.down = false;                                        // arrived — settle at the gate
     const sleepy = vmood < 56 && (style === "chase" || style === "late");
     beh.mood = sleepy ? "yawn" : (eager > 0.7 ? "serious" : "relaxed");
@@ -526,7 +516,7 @@ function startRaceCanvas(container, ctx) {
     // arrival shuffle in the first beat — a couple of settling steps into the gate
     if (pre < 0.22) {
       const k = pre / 0.22;
-      beh.jump = Math.abs(Math.sin(now * 9 + ph)) * 0.16 * (1 - k);
+      beh.jump = Math.abs(Math.sin(now * 9 + ph)) * 0.08 * (1 - k);
       beh.down = true; beh.mood = "serious";
       return beh;
     }
@@ -537,14 +527,14 @@ function startRaceCanvas(container, ctx) {
       beh.jump = Math.max(0, Math.sin(now * 0.5 + ph)) * 0.05;       // slow drowsy nod
     } else if (eager > 0.7) {
       const ex = 0.55 + 0.45 * pre;                                  // ramps up as the gun nears
-      beh.jump = Math.max(0, Math.sin(now * (5 + 3 * pre) + ph)) * 0.2 * ex;   // prancing hops
-      beh.lean = 0.55 * ex;                                          // leaning at the line
+      beh.jump = Math.max(0, Math.sin(now * (3.5 + 2 * pre) + ph)) * 0.05 * ex;   // subtle bob
+      beh.lean = 0.6 * ex;                                           // leaning eagerly at the line
       beh.mood = pre > 0.72 ? "panic" : "serious";                   // 焦り right before GO
     } else if (calm > 0.55) {
       beh.mood = (Math.sin(now * 0.6 + ph) > 0.5) ? "relaxed" : "serious";
-      beh.jump = Math.max(0, Math.sin(now * 3 + ph)) * 0.05;         // gentle composed sway
+      beh.jump = Math.max(0, Math.sin(now * 3 + ph)) * 0.03;         // gentle composed sway
     } else {
-      beh.jump = Math.max(0, Math.sin(now * 6 + ph)) * 0.1;          // nervous fidget
+      beh.jump = Math.max(0, Math.sin(now * 5 + ph)) * 0.05;         // small nervous fidget
       beh.mood = (Math.sin(now * 1.3 + ph) > 0.2) ? "panic" : "serious";
     }
     return beh;
@@ -556,9 +546,9 @@ function startRaceCanvas(container, ctx) {
     const ph = dragonPhase(dr.id);
     const now = performance.now() / 1000;
     if (place <= 3) {
-      beh.jump = Math.max(0, Math.sin(now * 4 + ph)) * (place === 1 ? 0.7 : 0.42);   // bounding for joy
+      beh.jump = Math.max(0, Math.sin(now * 2.6 + ph)) * (place === 1 ? 0.32 : 0.18);   // gentle happy bob
       beh.mood = "joy";
-      if (beh.jump > 0.05) beh.squash = 1 + beh.jump * 0.18;
+      if (beh.jump > 0.05) beh.squash = 1 + beh.jump * 0.16;
     } else {
       beh.down = true; beh.mood = "tired";                                            // blowing, pulling up
     }
@@ -1914,7 +1904,7 @@ function startRaceCanvas(container, ctx) {
     // never a tired cadence drop)
     for (const dr of dragons) {
       const v = timeline.speedAt(dr.id, S.tau);
-      const rate = (v < 0.2) ? 3 : 9 + v * 6;
+      const rate = (S.entryT > 0) ? 5 : (v < 0.2) ? 3 : 9 + v * 6;   // walking cadence during the entrance
       S.gait[dr.id] += sdt * rate;
     }
     // particles — world FX run on slow-mo time so dust hangs during the run-out;
