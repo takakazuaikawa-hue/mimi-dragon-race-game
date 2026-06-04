@@ -907,8 +907,8 @@ function renderRaceDetail(race) {
         `<span class="ft-pct">所持の${Math.round(t.pct * 100)}%</span>` +
         `<span class="ft-note">${t.note}</span>`;
       b.onclick = () => {
-        const w = $("wager"); if (w) w.value = amt;
-        if (typeof updateExpected === "function") updateExpected();
+        if (typeof setWager === "function") setWager(amt);   // keeps slider + chips in sync
+        else { const w = $("wager"); if (w) w.value = amt; if (typeof updateExpected === "function") updateExpected(); }
         row.querySelectorAll(".fin-tier").forEach(x => x.classList.remove("chosen"));
         b.classList.add("chosen");
         const need = !(state.current.betSel && state.current.betSel.length);
@@ -941,6 +941,9 @@ function renderRaceDetail(race) {
   // info (人気・脚質・単/複オッズ・印・近走) into the very thing you tap, so the
   // player reads-and-picks in one place instead of cross-referencing a dropdown.
   app.appendChild(el("h3", null, "賭けパネル"));
+  // Wager bounds for the tap/drag stake controls (no number-typing required).
+  const effMax = Math.max(1, Math.floor(Math.min(betCap, state.player.coins)));
+  const wagerInit = Math.max(1, Math.min((_consultActive && state.current.bet && state.current.bet.wager) || Math.min(100, effMax), effMax));
   const panel = el("div", "card bet-panel");
   panel.innerHTML = `
     <div class="bet-tabs">
@@ -960,9 +963,17 @@ function renderRaceDetail(race) {
       <button id="back-race-select" class="secondary">戻る</button>
     </div>
     <div class="bet-step2" id="bet-step2" style="display:none">
-      <div class="bet-stake">
-        <label class="wager-field">賭金 <input id="wager" type="number" min="1" step="1" value="${(_consultActive && state.current.bet && state.current.bet.wager) || 100}" max="${betCap}" inputmode="numeric"></label>
-        <div class="wager-chips" id="wager-chips"></div>
+      <div class="wager-box">
+        <div class="wager-head">
+          <span class="wager-label">賭金</span>
+          <span class="wager-amount"><input id="wager" class="wager-big" type="text" inputmode="numeric" value="${wagerInit}"><span class="wager-unit">コイン</span></span>
+        </div>
+        <div class="wager-slider-row">
+          <button class="wager-step" id="wager-minus" type="button" aria-label="減らす">−</button>
+          <input id="wager-slider" class="wager-slider" type="range" min="1" max="${effMax}" step="1" value="${wagerInit}">
+          <button class="wager-step" id="wager-plus" type="button" aria-label="増やす">＋</button>
+        </div>
+        <div class="wager-quick" id="wager-chips"></div>
       </div>
       <div class="payout-box empty" id="expected-payout"><div class="po-hint">賭金を選ぶと払戻が表示されます</div></div>
       <div class="actions">
@@ -1065,23 +1076,42 @@ function renderRaceDetail(race) {
     if (s1) s1.style.display = n === 1 ? "" : "none";
     if (s2) s2.style.display = n === 2 ? "" : "none";
   }
-  $("wager").oninput = updateExpected;
-  $("bet-confirm").onclick = onConfirmBet;
-  $("back-race-select").onclick = renderRaceSelect;
-  $("bet-start").onclick = () => { showBetStep(2); updateExpected(); const w = $("wager"); if (w) { w.focus(); w.select(); } };
-  $("bet-cancel").onclick = () => showBetStep(1);
-
-  // Wager quick-chips — each clamped to the effective cap and the player's coins.
+  // ---- Stake controls: slider + −/+ stepper + fraction chips. Tap or drag to set
+  // the wager — no number-typing needed. The field stays editable for power users
+  // but is NEVER auto-focused, so the mobile keyboard no longer pops up on every bet. ----
+  const stepAmt = betStepSize(effMax);
+  const wagerCur = () => { const n = parseInt(String($("wager").value || "").replace(/[^0-9]/g, ""), 10); return Number.isNaN(n) ? 0 : n; };
+  function setWager(v) {
+    v = Math.round(v); if (Number.isNaN(v)) v = 0;
+    v = Math.max(1, Math.min(v, effMax));
+    const w = $("wager"); if (w) w.value = v;
+    const sl = $("wager-slider"); if (sl) sl.value = v;
+    const cg = $("wager-chips"); if (cg) cg.querySelectorAll(".wchip").forEach(c => c.classList.toggle("chosen", +c.dataset.amt === v));
+    updateExpected();
+  }
+  $("wager-slider").oninput = () => setWager(+$("wager-slider").value);
+  $("wager-minus").onclick = () => setWager(wagerCur() - stepAmt);
+  $("wager-plus").onclick = () => setWager(wagerCur() + stepAmt);
+  $("wager").oninput = () => {                         // optional manual typing
+    const n = wagerCur(); const sl = $("wager-slider");
+    if (sl && n >= 1) sl.value = Math.min(n, effMax);
+    updateExpected();
+  };
+  $("wager").onblur = () => setWager(wagerCur());       // clamp once they finish typing
   const chipsEl = $("wager-chips");
-  [100, 500, 1000].forEach(v => {
-    if (v > betCap) return;                           // skip amounts above this rank's cap
-    const chip = el("button", "chip", fmtCoins(v));
-    chip.onclick = () => { $("wager").value = Math.max(1, Math.min(v, betCap, state.player.coins)); updateExpected(); };
+  [{ l: "¼", a: Math.round(effMax * 0.25) }, { l: "½", a: Math.round(effMax * 0.5) }, { l: "最大", a: effMax }].forEach(c => {
+    const amt = Math.max(1, Math.min(c.a, effMax));
+    const chip = el("button", "wchip");
+    chip.type = "button"; chip.dataset.amt = amt;
+    chip.innerHTML = `<span class="wchip-amt">${fmtCoins(amt)}</span><span class="wchip-sub">${c.l}</span>`;
+    chip.onclick = () => setWager(amt);
     chipsEl.appendChild(chip);
   });
-  const maxChip = el("button", "chip", "最大");
-  maxChip.onclick = () => { $("wager").value = Math.max(1, Math.floor(Math.min(betCap, state.player.coins))); updateExpected(); };
-  chipsEl.appendChild(maxChip);
+
+  $("bet-confirm").onclick = onConfirmBet;
+  $("back-race-select").onclick = renderRaceSelect;
+  $("bet-start").onclick = () => { showBetStep(2); setWager(wagerCur()); };
+  $("bet-cancel").onclick = () => showBetStep(1);
 
   renderPickState();
   updateExpected();   // initial payout hint + confirm-disabled state
@@ -1314,6 +1344,19 @@ function recentResultLabel(v) {
   if (v >= 75) return "好走";
   if (v >= 55) return "普通";
   return "凡走";
+}
+
+// Stake stepper increment — a "nice" round step scaled to the effective max, so
+// the −/+ buttons feel right whether this race's cap is 100 or 1,000,000.
+function betStepSize(max) {
+  if (max <= 50) return 5;
+  if (max <= 200) return 10;
+  if (max <= 1000) return 50;
+  if (max <= 5000) return 100;
+  if (max <= 20000) return 500;
+  if (max <= 100000) return 1000;
+  if (max <= 1000000) return 10000;
+  return Math.max(1, Math.round(max / 100));
 }
 
 function updateExpected() {
