@@ -1024,12 +1024,22 @@ function startRaceCanvas(container, ctx) {
       }
       cctx.stroke();
     }
-    // scrolling distance ticks (every 5% of track) → ground speed sensation
+    // scrolling distance ticks (denser) → ground speed sensation
     cctx.fillStyle = "rgba(255,255,255,0.10)";
-    const firstTick = Math.ceil(S.camL / 0.05) * 0.05;
-    for (let P = firstTick; P < S.camL + WINW + 0.05; P += 0.05) {
+    const firstTick = Math.ceil(S.camL / 0.025) * 0.025;
+    for (let P = firstTick; P < S.camL + WINW + 0.05; P += 0.025) {
       const x = screenX(P, WINW);
       cctx.fillRect(x - 1, g.top, 2, g.bottom - g.top);
+    }
+    // fast ground speed-streaks — screen-space motion blur scrolling well faster
+    // than the world, so a long course really reads as a high-speed run.
+    cctx.fillStyle = "rgba(255,255,255,0.085)";
+    const _ssp = (S.camL * cw * 46) % 58;
+    for (let li = 0; li < 8; li++) {
+      const sy = g.top + (li + 0.5) * g.laneH;
+      for (let sx = -((_ssp + li * 21) % 58); sx < cw; sx += 58) {
+        cctx.fillRect(sx, sy - 1, 26, 2);
+      }
     }
     // rails (far + near) frame the running surface
     cctx.strokeStyle = "rgba(180,200,230,0.35)";
@@ -1143,21 +1153,21 @@ function startRaceCanvas(container, ctx) {
       const effort = (intensity > 0.95) || surging || (P > 0.9 && P < 1);
       const finishedNow = P >= 1;
 
-      // speed lines behind
-      if (intensity > 0.5 && !down) {
-        cctx.strokeStyle = rcRgba(dr.color, 0.18 + 0.12 * intensity);
+      // speed lines behind — longer & denser the faster it runs (sense of pace)
+      if (intensity > 0.3 && !down) {
+        cctx.strokeStyle = rcRgba(dr.color, 0.2 + 0.16 * intensity);
         cctx.lineWidth = 1.5;
-        for (let l = 0; l < 3; l++) {
-          const ly = y - 6 + l * 5;
+        for (let l = 0; l < 5; l++) {
+          const ly = y - 9 + l * 4.5;
           cctx.beginPath();
-          cctx.moveTo(drawX - 16 - l * 4, ly);
-          cctx.lineTo(drawX - 30 - intensity * 18 - l * 6, ly);
+          cctx.moveTo(drawX - 14 - l * 3, ly);
+          cctx.lineTo(drawX - 30 - intensity * 34 - l * 7, ly);
           cctx.stroke();
         }
       }
 
-      // dust at feet (scale with speed)
-      if (!down && intensity > 0.3 && Math.random() < 0.4) spawnDust(drawX, baseY + 14, 1, intensity);
+      // dust at feet (scale with speed) — kicked up harder the faster it runs
+      if (!down && intensity > 0.3 && Math.random() < 0.6) spawnDust(drawX, baseY + 14, intensity > 0.8 ? 2 : 1, intensity);
       if (surging && Math.random() < 0.5) spawnSpark(drawX, y - 4, dr.color);
 
       // gait advance handled in update(); draw sprite (depth-scaled). Sized so
