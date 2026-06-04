@@ -504,7 +504,8 @@ function startRaceCanvas(container, ctx) {
     // visually thins to three. focusT ramps 0 (whole field) → 1 (trio only).
     ps.sort((a, b) => b - a);
     const packTailP = ps[Math.min(K, ps.length) - 1];
-    const focusT = clamp((leaderP - 0.55) / 0.34, 0, 1);
+    // ramp earlier & over more of the race so the field "段々" thins to the trio
+    const focusT = clamp((leaderP - 0.42) / 0.44, 0, 1);
     const focusLowerP = lastP + (packTailP - lastP) * focusT;
     S._focusT = focusT;
     const WINW = clamp((leaderP - focusLowerP) + 0.12, 0.18, 0.55);
@@ -1124,22 +1125,23 @@ function startRaceCanvas(container, ctx) {
       if (!down && intensity > 0.3 && Math.random() < 0.4) spawnDust(drawX, baseY + 14, 1, intensity);
       if (surging && Math.random() < 0.5) spawnSpark(drawX, y - 4, dr.color);
 
-      // gait advance handled in update(); draw sprite (depth-scaled)
+      // gait advance handled in update(); draw sprite (depth-scaled). Sized so
+      // the whole field reads cleanly at the start without crowding/overlap.
       const dep = laneDepth(dr);
-      const sprScale = 1.28 * dep;
+      const sprScale = 0.9 * dep;
       // soft contact shadow grounds the dragon on the turf
       cctx.fillStyle = "rgba(0,0,0,0.18)";
       cctx.beginPath();
-      cctx.ellipse(drawX, baseY + 15 * dep, 15 * dep, 4 * dep, 0, 0, Math.PI * 2);
+      cctx.ellipse(drawX, baseY + 11 * dep, 11 * dep, 3 * dep, 0, 0, Math.PI * 2);
       cctx.fill();
       // pick spotlight — a soft, pulsing halo so the eye always tracks your dragon
       if (betSet.has(dr.id) && !finishedNow) {
         const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-        const rg = cctx.createRadialGradient(drawX, y - 4, 4, drawX, y - 4, 42 * dep);
+        const rg = cctx.createRadialGradient(drawX, y - 4, 4, drawX, y - 4, 33 * dep);
         rg.addColorStop(0, `rgba(255,211,77,${0.18 + 0.12 * pulse})`);
         rg.addColorStop(1, "rgba(255,211,77,0)");
         cctx.fillStyle = rg;
-        cctx.beginPath(); cctx.arc(drawX, y - 4, 42 * dep, 0, Math.PI * 2); cctx.fill();
+        cctx.beginPath(); cctx.arc(drawX, y - 4, 33 * dep, 0, Math.PI * 2); cctx.fill();
       }
       // terrain shapes body language: bank into turns, spread wings on wind lanes
       const tkey = themeKeyAtP(P);
