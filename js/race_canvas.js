@@ -321,6 +321,11 @@ function startRaceCanvas(container, ctx) {
 
   const canvas = wrap.querySelector("#rc-canvas");
   const cctx = canvas.getContext("2d");
+  if (!cctx) {
+    // 2D canvas が使えない環境 — 視覚レースを飛ばして結果画面へ直行し、進行を止めない
+    if (typeof renderResult === "function") renderResult();
+    return null;
+  }
   const remainEl = wrap.querySelector("#rc-remain");
   const phaseEl = wrap.querySelector("#rc-phase");
   const sectionEl = wrap.querySelector("#rc-section");
@@ -335,7 +340,9 @@ function startRaceCanvas(container, ctx) {
   // ---- responsive canvas sizing (devicePixelRatio aware) ----
   let cw = 0, ch = 0, dpr = 1;
   function resize() {
-    const rect = canvas.parentElement.getBoundingClientRect();
+    const parent = canvas.parentElement;
+    if (!parent) return;          // canvas が DOM から外れている — リサイズをスキップ
+    const rect = parent.getBoundingClientRect();
     cw = Math.max(280, rect.width);
     ch = Math.max(280, Math.min(480, Math.round(cw * 0.55)));
     dpr = window.devicePixelRatio || 1;
