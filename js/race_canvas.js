@@ -270,6 +270,81 @@ function rcDrawDragon(ctx, o) {
 }
 
 // =========================================================================
+// Cute facial EXPRESSIONS — a manga-style mood overlaid on the dragon's head so
+// the field reads with personality and you can SEE how each course suits a dragon:
+//   joy ✨  (flying / on a section it's built for)   effort 💧 (digging in, pushing)
+//   confused ？ (stumbling / a section it's weak at)  weary … (spent / stamina gone)
+//   surprise ！ (a sudden trip)                       neutral (default sprite face)
+// Small but legible at sprite scale: a floating symbol carries the mood, with a
+// light change to the single (side-view) eye. Cosmetic only.
+// =========================================================================
+function rcSparkle(ctx, x, y, r, col) {
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2;
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a - 0.4) * r * 0.38, y + Math.sin(a - 0.4) * r * 0.38);
+    ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    ctx.lineTo(x + Math.cos(a + 0.4) * r * 0.38, y + Math.sin(a + 0.4) * r * 0.38);
+  }
+  ctx.fill();
+}
+function rcSweatDrop(ctx, x, y, s, col) {
+  ctx.fillStyle = col || "rgba(150,210,255,0.95)";
+  ctx.beginPath();
+  ctx.moveTo(x, y - 2.4 * s);
+  ctx.quadraticCurveTo(x + 1.7 * s, y + 0.4 * s, x, y + 1.9 * s);
+  ctx.quadraticCurveTo(x - 1.7 * s, y + 0.4 * s, x, y - 2.4 * s);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.beginPath(); ctx.arc(x - 0.5 * s, y, 0.5 * s, 0, Math.PI * 2); ctx.fill();
+}
+function rcMoodGlyph(ctx, x, y, ch, col, d) {
+  // a mood letter/symbol with a dark halo so it pops on the busy track
+  ctx.font = "bold " + (11 * d).toFixed(1) + "px system-ui, sans-serif";
+  ctx.lineWidth = 2.4 * d; ctx.strokeStyle = "rgba(12,10,24,0.9)"; ctx.strokeText(ch, x, y);
+  ctx.fillStyle = col; ctx.fillText(ch, x, y);
+}
+function rcDrawDragonFace(ctx, cx, cy, dep, mood, now) {
+  if (!mood || mood === "neutral") return;
+  const d = Math.max(0.85, dep), t = now / 600;
+  const ex = cx + 4.6 * d, ey = cy - 8.4 * d;                   // ≈ the sprite's eye
+  const sx = cx + 12.5 * d, sy = cy - 18 * d + Math.sin(t) * 1.4; // floating mood symbol
+  const INK = "#23142e";
+  ctx.save();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  if (mood === "joy") {
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
+    ctx.beginPath(); ctx.arc(ex, ey + 1.4 * d, 2.5 * d, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke(); // ^ happy eye
+    rcSparkle(ctx, sx, sy, 4.4 * d, "#fff0a0");
+    rcSparkle(ctx, sx + 5.5 * d, sy + 5 * d, 2.4 * d, "#fff7cf");
+  } else if (mood === "effort") {
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.9 * d;
+    ctx.beginPath(); ctx.moveTo(ex - 2.2 * d, ey + 0.2 * d); ctx.lineTo(ex + 2.2 * d, ey + 1.2 * d); ctx.stroke();   // squint
+    ctx.beginPath(); ctx.moveTo(ex - 2.4 * d, ey - 3.0 * d); ctx.lineTo(ex + 1.8 * d, ey - 1.6 * d); ctx.stroke();   // brow
+    rcSweatDrop(ctx, sx, sy + 2 * d, 1.5 * d);
+  } else if (mood === "confused") {
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.5 * d;
+    ctx.beginPath();
+    for (let a = 0; a < Math.PI * 2.8; a += 0.45) { const r = 0.5 * d + a * 0.42 * d; const px = ex + Math.cos(a + t * 3) * r, py = ey + Math.sin(a + t * 3) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+    ctx.stroke();
+    rcMoodGlyph(ctx, sx, sy, "?", "#ffd34d", d);
+  } else if (mood === "tired") {
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.8 * d;
+    ctx.beginPath(); ctx.moveTo(ex - 2.4 * d, ey + 0.2 * d); ctx.lineTo(ex + 2.4 * d, ey + 0.2 * d); ctx.stroke();   // half-closed
+    rcSweatDrop(ctx, sx - 2.5 * d, sy + 3 * d, 1.25 * d);
+    rcSweatDrop(ctx, sx + 2 * d, sy + 1 * d, 1.0 * d);
+  } else if (mood === "surprised") {
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, 2.2 * d, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex, ey, 1.15 * d, 0, Math.PI * 2); ctx.fill();
+    rcMoodGlyph(ctx, sx, sy, "!", "#ff9a9a", d);
+  }
+  ctx.restore();
+}
+
+// =========================================================================
 // Player
 // =========================================================================
 function startRaceCanvas(container, ctx) {
@@ -290,6 +365,32 @@ function startRaceCanvas(container, ctx) {
   const popRank = {};
   (oddsResult.oddsData || []).forEach(o => { popRank[o.dragonId] = o.popularityRank; });
   const betSet = new Set((bet && bet.selections) || []);
+
+  // --- course fitness: which dragons SUIT each section, so the course's effect on a
+  // dragon (and its speed) is visible & legible. For each third, the section's dominant
+  // stat is its "demand"; a dragon's standing in that stat among the field marks it
+  // suited (+1) / neutral (0) / weak (-1). Presentation only — the timeline already
+  // bakes the true effect into the run; this just surfaces the WHY for the player. ---
+  const statById = {};
+  (typeof getRaceDragons === "function" ? getRaceDragons(race) : []).forEach(d => { if (d && d.stats) statById[d.id] = d.stats; });
+  const STAT_JP = { speed: "速さ", stamina: "底力", fire: "闘志", wing: "翼", turn: "旋回", nerve: "気性" };
+  const _sectionStat = [0, 1, 2].map(t => {
+    const sec = (typeof getSection === "function") ? getSection(phaseOfThird(t), sectionKeyAtThird(t)) : null;
+    if (!sec || !sec.weights) return "speed";
+    let best = "speed", bw = -1;
+    for (const k in sec.weights) if (sec.weights[k] > bw) { bw = sec.weights[k]; best = k; }
+    return best;
+  });
+  const _fitByThird = [0, 1, 2].map(t => {
+    const stat = _sectionStat[t];
+    const vals = dragons.map(dr => (statById[dr.id] && statById[dr.id][stat]) || 50).sort((a, b) => a - b);
+    const lo = vals[Math.floor((vals.length - 1) * 0.34)], hi = vals[Math.ceil((vals.length - 1) * 0.66)];
+    const m = {};
+    dragons.forEach(dr => { const v = (statById[dr.id] && statById[dr.id][stat]) || 50; m[dr.id] = (hi > lo && v >= hi) ? 1 : (hi > lo && v <= lo ? -1 : 0); });
+    return m;
+  });
+  function dragonFitnessAtP(id, P) { return (_fitByThird[thirdAtP(clamp(P, 0, 1))] || {})[id] || 0; }
+  function sectionStatAtP(P) { return _sectionStat[thirdAtP(clamp(P, 0, 1))]; }
 
   // ---- DOM shell ----
   container.innerHTML = "";
@@ -1351,11 +1452,19 @@ function startRaceCanvas(container, ctx) {
         bank: bank, spread: spread
       });
 
-      // sweat when tired
-      if (down) {
-        cctx.fillStyle = "rgba(150,200,255,0.85)";
-        cctx.beginPath(); cctx.arc(drawX + 14 * dep, y - 12 * dep, 1.9, 0, Math.PI * 2); cctx.fill();
-      }
+      // facial expression — reflects state AND how this section suits the dragon, so
+      // the course's effect (esp. on speed) reads at a glance.
+      const _fit = dragonFitnessAtP(dr.id, P);
+      let _mood = "neutral";
+      if (P >= 1) _mood = (standMap[dr.id] || 9) <= 3 ? "joy" : "neutral";  // post-line: winners beam
+      else if (stumbling) _mood = "surprised";
+      else if (tired) _mood = "tired";
+      else if (_fit < 0 && intensity < 0.55) _mood = "confused";            // labouring on a weak section
+      else if (surging || (_fit > 0 && intensity > 0.7)) _mood = "joy";     // suited / breaking clear
+      else if (dr.id === cam.leaderId && intensity > 0.55) _mood = "joy";
+      else if (intensity > 0.9) _mood = "effort";
+      else if (_fit < 0) _mood = "confused";
+      rcDrawDragonFace(cctx, drawX, y, dep, _mood, performance.now());
       // bet reticle (player's pick)
       if (betSet.has(dr.id)) {
         cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;
@@ -1490,7 +1599,9 @@ function startRaceCanvas(container, ctx) {
       cctx.translate(cx, cy); cctx.scale(scale, scale); cctx.translate(-cx, -cy);
       cctx.font = "bold 23px system-ui, sans-serif";
       const tw = cctx.measureText(ts.label).width;
-      const iconW = 44, padX = 22, h = 48, w = iconW + tw + padX * 2;
+      cctx.font = "bold 12px system-ui, sans-serif";
+      const dw = ts.demand ? cctx.measureText(ts.demand).width : 0;
+      const iconW = 44, padX = 22, h = ts.demand ? 56 : 48, w = iconW + Math.max(tw, dw) + padX * 2;
       const x0 = cx - w / 2, y0 = cy - h / 2;
       cctx.fillStyle = "rgba(12,12,24,0.9)"; cctx.fillRect(x0, y0, w, h);
       cctx.fillStyle = accent;
@@ -1498,9 +1609,13 @@ function startRaceCanvas(container, ctx) {
       cctx.fillRect(x0, y0, w, 2); cctx.fillRect(x0, y0 + h - 2, w, 2);
       cctx.textBaseline = "middle";
       cctx.font = "26px system-ui, sans-serif"; cctx.textAlign = "center";
-      cctx.fillText(ts.icon, x0 + padX + 12, cy + 1);                // terrain icon
+      cctx.fillText(ts.icon, x0 + padX + 12, cy + (ts.demand ? -4 : 1));   // terrain icon
       cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 23px system-ui, sans-serif";
-      cctx.fillText(ts.label, x0 + iconW + padX, cy + 1);            // section label
+      cctx.fillText(ts.label, x0 + iconW + padX, cy + (ts.demand ? -7 : 1)); // section label
+      if (ts.demand) {                                              // what the section TESTS
+        cctx.fillStyle = accent; cctx.font = "bold 12.5px system-ui, sans-serif";
+        cctx.fillText("▶ " + ts.demand, x0 + iconW + padX, cy + 13);
+      }
       cctx.restore(); cctx.globalAlpha = 1;
     }
 
@@ -1699,8 +1814,21 @@ function startRaceCanvas(container, ctx) {
       S.sectionShown = third;
       const tkey = themeKeyAtP(leadPnow), info = rcTerrainInfo(tkey), label = sectionLabelAtP(leadPnow);
       if (label) {
-        S.terrainSign = { icon: info.icon, label: label, key: tkey, t: 0, max: 2.6 };
+        const dname = STAT_JP[_sectionStat[third]] || "総合力";
+        S.terrainSign = { icon: info.icon, label: label, demand: dname + "が問われる", key: tkey, t: 0, max: 2.8 };
         if (info.turn) S.shake = Math.max(S.shake, 1.6);
+        // tell the player how THEIR pick fits this section — so the course's effect
+        // becomes something they can carry into the next prediction.
+        for (const dr of dragons) {
+          if (!betSet.has(dr.id)) continue;
+          const fit = dragonFitnessAtP(dr.id, leadPnow);
+          if (!fit) continue;
+          const gp = trackGeom();
+          const xx = clamp(screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3), cw * 0.12, cw * 0.88);
+          const yy = laneY(dr, gp) - 22;
+          if (fit > 0) addFloat(xx, yy, dname + "が得意！", "#9bffa0", true);
+          else addFloat(xx, yy, dname + "は苦手…", "#9bd4ff", false);
+        }
       }
     }
 
