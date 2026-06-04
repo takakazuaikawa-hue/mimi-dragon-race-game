@@ -101,9 +101,16 @@ const RANK_UNLOCK = {
 };
 
 // §08 §6 §20 Allowed maximum wager.
+// §37 — early-stakes floor: the flat rank cap (e.g. 100 on a 1,000 bankroll)
+// made the first races feel weightless. The player may now always wager up to
+// 40% of their bankroll, but never more than 4× the race's rank cap — so rank
+// still sets the ceiling at scale (high ranks are unchanged) and the floor only
+// lifts the early game. This does not touch odds, finish order, or payout math.
 function getAllowedMaxWager(player, race) {
   const rankCap = RANKS[race.rank].maxWager;
   const villMult = VILLAGE_MULT[player.villageLevel] || 1.0;
   const cap = rankCap * villMult;
-  return Math.min(player.coins, cap);
+  const fractionFloor = Math.min(Math.floor(player.coins * 0.4), cap * 4);
+  const effective = Math.max(cap, fractionFloor);
+  return Math.min(player.coins, effective);
 }
