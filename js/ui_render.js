@@ -705,7 +705,7 @@ function renderRaceDetail(race) {
   state.current = state.current || {};
   // (3) Celestia consult is per-race: reset its reveal when a NEW race opens.
   const _prevRaceId = state.current.race && state.current.race.id;
-  if (_prevRaceId !== race.id) { state.current._celestiaRevealed = null; state.current._fixedResult = null; }
+  if (_prevRaceId !== race.id) { state.current._celestiaRevealed = null; state.current._fixedResult = null; state.current._openAdvisor = null; }
   const _consultActive = !!state.current._celestiaRevealed && _prevRaceId === race.id;
   const offer = maybeOfferEntryEncouragement(race);
   if (offer) {
@@ -760,19 +760,139 @@ function renderRaceDetail(race) {
       <div class="condition-line">${race.purpose}</div>
     </div>
   `;
-  const _condC = uiCollapsible(`📋 レース条件 <span class="uc-sum">Rank ${race.rank}・${DISTANCE[race.distance].label}・${WEATHERS[race.weather].label}</span>`, false);
-  _condC.body.appendChild(info); app.appendChild(_condC.wrap);
-
-  // (b) advisor voice — a met advisor's perspective on picking this race (foldable).
-  const _av = advisorVoiceEl("race");
-  if (_av) { const _avC = uiCollapsible("💬 顧問の声", false); _avC.body.appendChild(_av); app.appendChild(_avC.wrap); }
-
-  // (3) Celestia's 神眼 consult (once met) — reveals the winner, collapses its odds.
-  const _cel = celestiaSectionEl(); if (_cel) app.appendChild(_cel);
-
-  // Popularity-sorted entries — shared by the pick cards and the detail table.
+  // Popularity-sorted entries — shared by the pick cards and the dragon-info table.
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
   const betCap = RANKS[race.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1.0);
+
+  // ===== Advisor hub — four character "marks" up top, each opening ONE focused
+  // panel below. Nothing opens until the player taps a face, so the screen starts
+  // calm (progressive disclosure); each lens lives where its mentor would give it:
+  //   サケ＝現場の条件 ／ マクラ＝竜の力と試走 ／ スミカ＝賭け金の目安 ／ セレスティア＝神眼。
+  // Core handicapping info is ALWAYS reachable; meeting an advisor only adds their
+  // voice, and Celestia's reveal stays gated as the late-game power. =====
+  app.appendChild(buildAdvisorHub());
+
+  // -- advisor voice line, shown atop a panel once that advisor has been met --
+  function advVoiceHeader(key) {
+    const cast = STORY_CAST[key];
+    if (!cast || (state.player.totalAssets || 0) < castUnlockAt(key)) return null;
+    const v = el("div", "adv-voice");
+    v.style.setProperty("--cg", cast.color);
+    v.innerHTML =
+      `<span class="adv-voice-sym">${cast.symbol}</span>` +
+      `<span class="adv-voice-body"><span class="adv-voice-name">${cast.name.split("・")[0]}<small>（${cast.tag}）</small></span>` +
+      `<span class="adv-voice-line">${STORY_RACE_VOICE[key] || cast.consult}</span></span>`;
+    return v;
+  }
+
+  // -- the hub itself: a row of advisor marks + a single panel host below --
+  function buildAdvisorHub() {
+    const ADVS = [
+      { key: "sake",     label: "レース条件",   build: buildConditionsPanel },
+      { key: "makura",   label: "ドラゴン情報", build: buildDragonPanel },
+      { key: "sumika",   label: "財政状況",     build: buildFinancePanel },
+      { key: "celestia", label: "1着を聞く",    build: buildCelestiaPanel, gated: true },
+    ];
+    const hub = el("div", "advisor-hub");
+    hub.appendChild(el("div", "adv-hub-cap", "🎴 相談役をタップすると、その視点だけが開きます"));
+    const tabRow = el("div", "adv-tabs");
+    const host = el("div", "adv-panel-host");
+    const btnByKey = {};
+    ADVS.forEach(a => {
+      const cast = STORY_CAST[a.key];
+      const locked = a.gated && (state.player.totalAssets || 0) < castUnlockAt(a.key);
+      const b = el("button", "adv-tab" + (locked ? " locked" : ""));
+      b.dataset.key = a.key;
+      b.style.setProperty("--cg", cast.color);
+      b.innerHTML =
+        `<span class="adv-mark">${locked ? "🔒" : cast.symbol}</span>` +
+        `<span class="adv-tab-label">${a.label}</span>` +
+        `<span class="adv-tab-name">${cast.name.split("・")[0]}</span>`;
+      b.onclick = () => setOpen(state.current._openAdvisor === a.key ? null : a.key);
+      btnByKey[a.key] = b;
+      tabRow.appendChild(b);
+    });
+    hub.appendChild(tabRow);
+    hub.appendChild(host);
+    function setOpen(key) {
+      state.current._openAdvisor = key || null;
+      Object.keys(btnByKey).forEach(k => btnByKey[k].classList.toggle("active", k === key));
+      host.innerHTML = "";
+      host.classList.toggle("open", !!key);
+      if (key) {
+        const a = ADVS.find(x => x.key === key);
+        if (a) { const p = a.build(); if (p) host.appendChild(p); }
+      }
+    }
+    setOpen(state.current._openAdvisor || null);   // restore across same-race re-renders
+    return hub;
+  }
+
+  // -- サケ：レース条件パネル（既存の条件カードを内包） --
+  function buildConditionsPanel() {
+    const wrap = el("div", "adv-panel");
+    const v = advVoiceHeader("sake"); if (v) wrap.appendChild(v);
+    wrap.appendChild(info);
+    return wrap;
+  }
+
+  // -- スミカ：財政状況パネル（所持金から賭け金の目安を提案。タップで賭金へセット） --
+  function buildFinancePanel() {
+    const wrap = el("div", "card adv-panel fin-panel");
+    const v = advVoiceHeader("sumika"); if (v) wrap.appendChild(v);
+    const coins = Math.max(0, Math.floor(state.player.coins));
+    const cap = Math.floor(betCap);
+    const head = el("div", "fin-head");
+    head.innerHTML =
+      `<div class="fin-stat"><span class="fin-k">所持金</span><span class="fin-v">${fmtCoins(coins)}</span></div>` +
+      `<div class="fin-stat"><span class="fin-k">この一戦の上限</span><span class="fin-v">${fmtCoins(cap)}</span></div>`;
+    wrap.appendChild(head);
+    wrap.appendChild(el("div", "fin-lead", "いまの所持金から、無理なく賭けられる目安です。タップすると賭金にセットします。"));
+    const tiers = [
+      { label: "手堅く",     pct: 0.05, cls: "t-safe", note: "日々を切らさない最小の勝負" },
+      { label: "ほどほど",   pct: 0.10, cls: "t-mid",  note: "生活と両立する標準の賭け" },
+      { label: "勝負どころ", pct: 0.20, cls: "t-bold", note: "自信があるときの上限目安" },
+    ];
+    const amtOf = pct => Math.max(1, Math.min(Math.floor(coins * pct), cap, coins));
+    const row = el("div", "fin-tiers");
+    const tip = el("div", "fin-tip");
+    tiers.forEach(t => {
+      const amt = amtOf(t.pct);
+      const b = el("button", "fin-tier " + t.cls);
+      b.innerHTML =
+        `<span class="ft-label">${t.label}</span>` +
+        `<span class="ft-amt">${fmtCoins(amt)}</span>` +
+        `<span class="ft-pct">所持の${Math.round(t.pct * 100)}%</span>` +
+        `<span class="ft-note">${t.note}</span>`;
+      b.onclick = () => {
+        const w = $("wager"); if (w) w.value = amt;
+        if (typeof updateExpected === "function") updateExpected();
+        row.querySelectorAll(".fin-tier").forEach(x => x.classList.remove("chosen"));
+        b.classList.add("chosen");
+        const need = !(state.current.betSel && state.current.betSel.length);
+        tip.textContent = `賭金を ${fmtCoins(amt)} コインにセット。${need ? "本命を選んでから" : ""}「賭ける」へ進めます。`;
+      };
+      row.appendChild(b);
+    });
+    wrap.appendChild(row);
+    wrap.appendChild(tip);
+    wrap.appendChild(el("div", "fin-caution", "全額は賭けない——余力が、次の一戦を生みます。"));
+    return wrap;
+  }
+
+  // -- セレスティア：1着を聞く（解放済みなら2段階の神眼、未解放ならロック表示） --
+  function buildCelestiaPanel() {
+    const unlocked = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
+    if (unlocked) { const cel = celestiaSectionEl(); if (cel) return cel; }
+    const cast = STORY_CAST.celestia;
+    const wrap = el("div", "card adv-panel cel-locked");
+    wrap.style.setProperty("--cg", cast.color);
+    wrap.innerHTML =
+      `<div class="cel-lock-row"><span class="cel-lock-sym">🔒</span>` +
+      `<div class="cel-lock-body"><div class="cel-lock-title">セレスティアの神眼は、まだ開かない</div>` +
+      `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("celestia"))} に届くと、この一戦の1着を聞けるようになります。</div></div></div>`;
+    return wrap;
+  }
 
   // ===== Betting panel — placed FIRST so the primary action needs no scrolling.
   // Selection is a grid of tappable dragon cards that fold the key handicapping
@@ -924,110 +1044,113 @@ function renderRaceDetail(race) {
   renderPickState();
   updateExpected();   // initial payout hint + confirm-disabled state
 
-  // ===== Deep reference — folded into ONE collapsible + tabbed card so studying the
-  // form never buries the betting action: 出走表 / 試走 / 妙味, one view at a time. =====
-  const _anaC = uiCollapsible("📊 出走表・分析", true);
-  app.appendChild(_anaC.wrap);
-  const showTrial = state.ui.infoLevel !== "simple";
-  const showValue = state.ui.infoLevel === "advanced" || state.ui.infoLevel === "expert";
-  const anaTabs = el("div", "ana-tabs");
-  anaTabs.innerHTML =
-    `<button data-pane="form" class="active">出走表</button>` +
-    (showTrial ? `<button data-pane="trial">試走</button>` : "") +
-    (showValue ? `<button data-pane="value">妙味</button>` : "");
-  _anaC.body.appendChild(anaTabs);
+  // -- マクラ：ドラゴン情報パネル — 出走表 / 試走 / 妙味 をタブで1つずつ。中身は常に
+  //    見られる中核情報。マクラと出会うと彼女の声が上に乗る。 --
+  function buildDragonPanel() {
+    const wrap = el("div", "card adv-panel");
+    const v = advVoiceHeader("makura"); if (v) wrap.appendChild(v);
+    const showTrial = state.ui.infoLevel !== "simple";
+    const showValue = state.ui.infoLevel === "advanced" || state.ui.infoLevel === "expert";
+    const anaTabs = el("div", "ana-tabs");
+    anaTabs.innerHTML =
+      `<button data-pane="form" class="active">出走表</button>` +
+      (showTrial ? `<button data-pane="trial">試走</button>` : "") +
+      (showValue ? `<button data-pane="value">妙味</button>` : "");
+    wrap.appendChild(anaTabs);
 
-  // -- pane: 出走表 (entry table) --
-  const paneForm = el("div", "ana-pane active"); paneForm.dataset.pane = "form";
-  const tbl = el("table", "entry-table");
-  tbl.innerHTML = `
-    <thead><tr>
-      <th>人気</th><th>竜名</th><th>脚質</th>
-      <th>速</th><th>耐</th><th>回</th><th>翼</th><th>火</th><th>気</th>
-      <th>印</th><th>近</th>
-      <th>単オッズ</th><th>複オッズ</th>
-      <th>特徴</th>
-    </tr></thead>
-  `;
-  const tbody = el("tbody");
-  sorted.forEach(od => {
-    const d = DRAGONS.find(x => x.id === od.dragonId);
-    const tr = el("tr");
-    const rk = od.popularityRank;
-    tr.innerHTML = `
-      <td><span class="popularity-rank p${rk<=3?rk:""}">${rk}</span></td>
-      <td><span class="dragon-icon-row">${dragonIconPlaceholder(d)}<b>${d.name}</b></span></td>
-      <td class="style-${d.style}">${STYLE_LABEL[d.style]}</td>
-      <td class="num rank-${statRank(d.stats.speed)}">${statRank(d.stats.speed)}</td>
-      <td class="num rank-${statRank(d.stats.stamina)}">${statRank(d.stats.stamina)}</td>
-      <td class="num rank-${statRank(d.stats.turn)}">${statRank(d.stats.turn)}</td>
-      <td class="num rank-${statRank(d.stats.wing)}">${statRank(d.stats.wing)}</td>
-      <td class="num rank-${statRank(d.stats.fire)}">${statRank(d.stats.fire)}</td>
-      <td class="num rank-${statRank(d.stats.nerve)}">${statRank(d.stats.nerve)}</td>
-      <td class="mark">${d.newspaperMark || "-"}</td>
-      <td class="num">${recentResultLabel(d.recentResult)}</td>
-      <td class="num odds-win">${od.winOdds.toFixed(1)}</td>
-      <td class="num odds-place">${od.placeOdds.toFixed(1)}</td>
-      <td class="dragon-traits">${d.traits.join(" / ")}</td>
+    // -- pane: 出走表 (entry table) --
+    const paneForm = el("div", "ana-pane active"); paneForm.dataset.pane = "form";
+    const tbl = el("table", "entry-table");
+    tbl.innerHTML = `
+      <thead><tr>
+        <th>人気</th><th>竜名</th><th>脚質</th>
+        <th>速</th><th>耐</th><th>回</th><th>翼</th><th>火</th><th>気</th>
+        <th>印</th><th>近</th>
+        <th>単オッズ</th><th>複オッズ</th>
+        <th>特徴</th>
+      </tr></thead>
     `;
-    if (state.ui.debug) {
-      tr.appendChild(el("td", "debug-info", `pop=${od.popularityPower.toFixed(1)} winP=${(od.marketWinProb*100).toFixed(1)}% placeP=${(od.marketPlaceProb*100).toFixed(1)}%`));
-    }
-    tbody.appendChild(tr);
-  });
-  tbl.appendChild(tbody);
-  paneForm.appendChild(tbl);
-  _anaC.body.appendChild(paneForm);
-
-  // -- pane: 試走サマリー (standard+) --
-  if (showTrial) {
-    const paneTrial = el("div", "ana-pane"); paneTrial.dataset.pane = "trial";
-    const trialTbl = el("table", "trial-table");
-    trialTbl.innerHTML = `<thead><tr>
-      <th>竜名</th><th>体調</th><th>集中</th>
-      <th>試走スタート</th><th>試走旋回</th><th>試走終い</th>
-      <th>騎手呼吸</th><th>注釈</th>
-    </tr></thead>`;
-    const tbody2 = el("tbody");
+    const tbody = el("tbody");
     sorted.forEach(od => {
       const d = DRAGONS.find(x => x.id === od.dragonId);
-      const f = state.current.trialForms[d.id];
-      const cls = v => v >= 75 ? "trial-good" : v >= 55 ? "trial-mid" : "trial-bad";
-      const note = trialNote(d, f);
       const tr = el("tr");
+      const rk = od.popularityRank;
       tr.innerHTML = `
-        <td><b>${d.name}</b></td>
-        <td class="${cls(f.bodyCondition)}">${statRank(f.bodyCondition)}</td>
-        <td class="${cls(f.focus)}">${statRank(f.focus)}</td>
-        <td class="${cls(f.trialStart)}">${statRank(f.trialStart)}</td>
-        <td class="${cls(f.trialTurn)}">${statRank(f.trialTurn)}</td>
-        <td class="${cls(f.trialFinish)}">${statRank(f.trialFinish)}</td>
-        <td class="${cls(f.riderSync)}">${statRank(f.riderSync)}</td>
-        <td class="trial-note">${note}</td>
+        <td><span class="popularity-rank p${rk<=3?rk:""}">${rk}</span></td>
+        <td><span class="dragon-icon-row">${dragonIconPlaceholder(d)}<b>${d.name}</b></span></td>
+        <td class="style-${d.style}">${STYLE_LABEL[d.style]}</td>
+        <td class="num rank-${statRank(d.stats.speed)}">${statRank(d.stats.speed)}</td>
+        <td class="num rank-${statRank(d.stats.stamina)}">${statRank(d.stats.stamina)}</td>
+        <td class="num rank-${statRank(d.stats.turn)}">${statRank(d.stats.turn)}</td>
+        <td class="num rank-${statRank(d.stats.wing)}">${statRank(d.stats.wing)}</td>
+        <td class="num rank-${statRank(d.stats.fire)}">${statRank(d.stats.fire)}</td>
+        <td class="num rank-${statRank(d.stats.nerve)}">${statRank(d.stats.nerve)}</td>
+        <td class="mark">${d.newspaperMark || "-"}</td>
+        <td class="num">${recentResultLabel(d.recentResult)}</td>
+        <td class="num odds-win">${od.winOdds.toFixed(1)}</td>
+        <td class="num odds-place">${od.placeOdds.toFixed(1)}</td>
+        <td class="dragon-traits">${d.traits.join(" / ")}</td>
       `;
-      tbody2.appendChild(tr);
+      if (state.ui.debug) {
+        tr.appendChild(el("td", "debug-info", `pop=${od.popularityPower.toFixed(1)} winP=${(od.marketWinProb*100).toFixed(1)}% placeP=${(od.marketPlaceProb*100).toFixed(1)}%`));
+      }
+      tbody.appendChild(tr);
     });
-    trialTbl.appendChild(tbody2);
-    paneTrial.appendChild(trialTbl);
-    _anaC.body.appendChild(paneTrial);
-  }
+    tbl.appendChild(tbody);
+    paneForm.appendChild(tbl);
+    wrap.appendChild(paneForm);
 
-  // -- pane: 妙味の手がかり (advanced/expert) --
-  if (showValue) {
-    const paneValue = el("div", "ana-pane"); paneValue.dataset.pane = "value";
-    const hints = generateValueHints(race, oddsResult, state.current.trialForms);
-    hints.forEach(h => paneValue.appendChild(el("div", "value-hint", h)));
-    _anaC.body.appendChild(paneValue);
-  }
+    // -- pane: 試走サマリー (standard+) --
+    if (showTrial) {
+      const paneTrial = el("div", "ana-pane"); paneTrial.dataset.pane = "trial";
+      const trialTbl = el("table", "trial-table");
+      trialTbl.innerHTML = `<thead><tr>
+        <th>竜名</th><th>体調</th><th>集中</th>
+        <th>試走スタート</th><th>試走旋回</th><th>試走終い</th>
+        <th>騎手呼吸</th><th>注釈</th>
+      </tr></thead>`;
+      const tbody2 = el("tbody");
+      sorted.forEach(od => {
+        const d = DRAGONS.find(x => x.id === od.dragonId);
+        const f = state.current.trialForms[d.id];
+        const cls = v => v >= 75 ? "trial-good" : v >= 55 ? "trial-mid" : "trial-bad";
+        const note = trialNote(d, f);
+        const tr = el("tr");
+        tr.innerHTML = `
+          <td><b>${d.name}</b></td>
+          <td class="${cls(f.bodyCondition)}">${statRank(f.bodyCondition)}</td>
+          <td class="${cls(f.focus)}">${statRank(f.focus)}</td>
+          <td class="${cls(f.trialStart)}">${statRank(f.trialStart)}</td>
+          <td class="${cls(f.trialTurn)}">${statRank(f.trialTurn)}</td>
+          <td class="${cls(f.trialFinish)}">${statRank(f.trialFinish)}</td>
+          <td class="${cls(f.riderSync)}">${statRank(f.riderSync)}</td>
+          <td class="trial-note">${note}</td>
+        `;
+        tbody2.appendChild(tr);
+      });
+      trialTbl.appendChild(tbody2);
+      paneTrial.appendChild(trialTbl);
+      wrap.appendChild(paneTrial);
+    }
 
-  // tab wiring — switch the visible analysis pane
-  anaTabs.querySelectorAll("button").forEach(btn => {
-    btn.onclick = () => {
-      anaTabs.querySelectorAll("button").forEach(x => x.classList.remove("active"));
-      btn.classList.add("active");
-      _anaC.body.querySelectorAll(".ana-pane").forEach(p => p.classList.toggle("active", p.dataset.pane === btn.dataset.pane));
-    };
-  });
+    // -- pane: 妙味の手がかり (advanced/expert) --
+    if (showValue) {
+      const paneValue = el("div", "ana-pane"); paneValue.dataset.pane = "value";
+      const hints = generateValueHints(race, oddsResult, state.current.trialForms);
+      hints.forEach(h => paneValue.appendChild(el("div", "value-hint", h)));
+      wrap.appendChild(paneValue);
+    }
+
+    // tab wiring — switch the visible pane (scoped to THIS panel)
+    anaTabs.querySelectorAll("button").forEach(btn => {
+      btn.onclick = () => {
+        anaTabs.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+        btn.classList.add("active");
+        wrap.querySelectorAll(".ana-pane").forEach(p => p.classList.toggle("active", p.dataset.pane === btn.dataset.pane));
+      };
+    });
+    return wrap;
+  }
 
 }
 

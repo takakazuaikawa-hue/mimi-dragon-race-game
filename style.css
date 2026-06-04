@@ -1675,3 +1675,106 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .cel-choice { display: flex; gap: 8px; margin-top: 10px; }
 .cel-choice .cel-ask { flex: 1; margin-top: 0; }
 .cel-ask.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.28); color: #cfc4e0; }
+
+/* ===================== Race-detail advisor hub — 相談役マークのボタン =====================
+   Four character "marks" up top; tapping one opens exactly ONE focused panel below.
+   サケ=レース条件 / マクラ=ドラゴン情報 / スミカ=財政状況 / セレスティア=1着を聞く。
+   Calm by default (nothing open) → progressive disclosure of just the lens you tap. */
+.advisor-hub { margin: 2px 0 14px; }
+.adv-hub-cap { font-size: 11.5px; color: #b9add0; opacity: .82; margin: 0 2px 8px; }
+.adv-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 560px) { .adv-tabs { grid-template-columns: repeat(2, 1fr); } }
+.adv-tab {
+  min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 11px 8px 9px; cursor: pointer;
+  border: 1px solid #4a3a52; border-radius: 13px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+  color: #e9e3f5; transition: transform .12s ease, border-color .15s, box-shadow .2s, background .2s;
+}
+.adv-tab:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--cg,#888) 58%, #4a3a52); }
+.adv-tab:active { transform: translateY(0); }
+.adv-mark {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--cg,#888) 50%, #160f2b), color-mix(in srgb, var(--cg,#888) 22%, #160f2b));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cg,#888) 45%, transparent);
+}
+.adv-tab-label { font-size: 13px; font-weight: 800; letter-spacing: .02em; }
+.adv-tab-name { font-size: 10.5px; font-weight: 600; color: color-mix(in srgb, var(--cg,#aaa) 70%, #d9d0ec); opacity: .92; }
+.adv-tab.active {
+  border-color: color-mix(in srgb, var(--cg,#888) 80%, #fff);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cg,#888) 30%, #160f2b), color-mix(in srgb, var(--cg,#888) 12%, #160f2b));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cg,#888) 48%, transparent), 0 8px 20px -10px color-mix(in srgb, var(--cg,#888) 75%, transparent);
+}
+.adv-tab.active .adv-mark { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cg,#888) 70%, transparent), 0 0 14px -2px color-mix(in srgb, var(--cg,#888) 75%, transparent); }
+.adv-tab.locked { opacity: .6; }
+.adv-tab.locked .adv-mark { background: #241c38; box-shadow: inset 0 0 0 1px #4a3a52; filter: grayscale(.35); }
+
+.adv-panel-host { display: none; }
+.adv-panel-host.open { display: block; margin-top: 9px; }
+.adv-panel-host.open > * { animation: advPanelIn .22s ease both; }
+@keyframes advPanelIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+.adv-panel { margin-bottom: 0; }
+.adv-panel > .card { margin-bottom: 0; }
+.adv-panel .ana-tabs { margin-top: 2px; }
+
+/* advisor voice header shown atop a panel once that mentor has been met */
+.adv-voice {
+  display: flex; gap: 10px; align-items: center;
+  padding: 9px 11px; margin-bottom: 11px; border-radius: 10px;
+  background: color-mix(in srgb, var(--cg,#666) 13%, rgba(255,255,255,0.03));
+  border-left: 3px solid color-mix(in srgb, var(--cg,#666) 72%, transparent);
+}
+.adv-voice-sym {
+  width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 17px;
+  background: color-mix(in srgb, var(--cg,#666) 42%, #160f2b);
+}
+.adv-voice-body { display: flex; flex-direction: column; line-height: 1.5; }
+.adv-voice-name { font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--cg,#aaa) 68%, #e9e3f5); }
+.adv-voice-name small { opacity: .7; font-weight: 400; }
+.adv-voice-line { font-size: 13px; color: #e9e3f5; }
+
+/* スミカ：財政状況パネル — 所持金から賭け金の目安。タップで賭金にセット */
+.fin-head { display: flex; gap: 10px; margin-bottom: 9px; }
+.fin-stat {
+  flex: 1; display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 10px; border-radius: 9px;
+  background: rgba(106,192,106,0.08); border: 1px solid rgba(106,192,106,0.22);
+}
+.fin-k { font-size: 11px; color: #bfe6bf; }
+.fin-v { font-size: 16px; font-weight: 800; color: #eafaea; }
+.fin-lead { font-size: 12px; color: #cfe3cf; margin-bottom: 9px; line-height: 1.6; }
+.fin-tiers { display: flex; gap: 8px; flex-wrap: wrap; }
+.fin-tier {
+  flex: 1 1 98px; min-width: 96px;
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 9px 11px; cursor: pointer; text-align: left;
+  border: 1px solid #4a5a4a; border-radius: 10px; color: #eafaea;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  transition: transform .12s ease, border-color .15s, box-shadow .2s;
+}
+.fin-tier:hover { transform: translateY(-2px); }
+.ft-label { font-size: 12px; font-weight: 800; }
+.ft-amt { font-size: 17px; font-weight: 900; color: #fff; }
+.ft-pct { font-size: 10.5px; opacity: .75; }
+.ft-note { font-size: 10.5px; opacity: .82; line-height: 1.4; }
+.fin-tier.t-safe { border-color: rgba(106,192,106,0.5); }
+.fin-tier.t-mid  { border-color: rgba(212,168,80,0.5); }
+.fin-tier.t-bold { border-color: rgba(224,88,74,0.5); }
+.fin-tier.t-safe.chosen { box-shadow: 0 0 0 2px rgba(106,192,106,0.85) inset; }
+.fin-tier.t-mid.chosen  { box-shadow: 0 0 0 2px rgba(212,168,80,0.9) inset; }
+.fin-tier.t-bold.chosen { box-shadow: 0 0 0 2px rgba(224,88,74,0.9) inset; }
+.fin-tip { font-size: 12px; color: #ffe6a8; min-height: 16px; margin-top: 9px; line-height: 1.5; }
+.fin-caution { font-size: 11px; color: #b9add0; opacity: .82; margin-top: 6px; }
+
+/* セレスティア：未解放ロック表示 */
+.cel-locked {
+  border: 1px dashed color-mix(in srgb, var(--cg,#9a6ad0) 45%, #4a3a52);
+  background: color-mix(in srgb, var(--cg,#9a6ad0) 8%, rgba(255,255,255,0.03));
+}
+.cel-lock-row { display: flex; gap: 12px; align-items: center; }
+.cel-lock-sym { font-size: 26px; opacity: .85; }
+.cel-lock-title { font-size: 13.5px; font-weight: 800; color: color-mix(in srgb, var(--cg,#9a6ad0) 50%, #fff); }
+.cel-lock-sub { font-size: 12px; color: #ccbfe6; margin-top: 3px; line-height: 1.6; }
