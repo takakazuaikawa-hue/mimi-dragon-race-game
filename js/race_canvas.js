@@ -521,13 +521,14 @@ function startRaceCanvas(container, ctx) {
     S._winw = WINW;
 
     // push in near the finish and when the field bunches up; pull back when spread
-    const finishProx = clamp((leaderP - 0.74) / 0.26, 0, 1);
+    const finishProx = clamp((leaderP - 0.72) / 0.28, 0, 1);
     const bunch = clamp(1 - (leaderP - lastP) / 0.22, 0, 1);
-    // Steady camera: only a gentle, smooth push-in toward the finish. The old
-    // per-event zoom "bumps" (overtake / close-battle / callout) read as a glitch,
-    // so they no longer drive the zoom — drama is carried by shake + telop instead.
-    S.zoomT = S.finished ? 1.12 : (1 + 0.07 * finishProx + 0.02 * bunch);
-    S.zoom += (S.zoomT - S.zoom) * 0.05;
+    // Strong, ACCELERATING push-in for the finish so ゴール直前 is a real close-up,
+    // held tight on the trio after the line. The curve (squared) only ramps hard in
+    // the final stretch, so there are no mid-race "bumps" that read as a glitch.
+    const fpEase = finishProx * finishProx;
+    S.zoomT = S.finished ? 1.34 : (1 + 0.36 * fpEase + 0.03 * bunch);
+    S.zoom += (S.zoomT - S.zoom) * 0.07;
 
     // gentle vertical pan toward the leader's lane → the camera "follows"
     const g = trackGeom();
@@ -1474,9 +1475,10 @@ function startRaceCanvas(container, ctx) {
     // slow-mo regardless of where the winner crosses. Pure pacing — order fixed.
     const wireTau = (timeline.crossings && timeline.crossings.length) ? timeline.crossings[0].tau : 0.9;
     const smoStart = wireTau - 0.06;
-    if ((timeline.photoFinish || timeline.closeFinish) && S.tau > smoStart) {
+    if (S.tau > smoStart) {
       const k = clamp((S.tau - smoStart) / 0.14, 0, 1);
-      adv *= (1 - 0.66 * k);
+      const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.74 : 0.55;
+      adv *= (1 - depth * k);   // always run slow-mo into the wire; deeper for a photo/close finish
     }
     S.tau = Math.min(1, S.tau + adv);
 
