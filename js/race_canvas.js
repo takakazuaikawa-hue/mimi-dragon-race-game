@@ -1754,6 +1754,35 @@ function startRaceCanvas(container, ctx) {
     }
     cctx.globalAlpha = 1;
 
+    // --- PRE-RACE ATMOSPHERE during the entrance: the arena dims with a quickening
+    // heartbeat and camera flashes pop from the stands — building the ドキドキ tension. ---
+    if (S.entryT > 0) {
+      const nowA = performance.now() / 1000;
+      const ent = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);              // 0→1 across the entrance
+      const hbRate = 1.1 + ent * 1.1;                                 // heartbeat quickens (~66→132 bpm)
+      const beat = Math.pow(Math.max(0, Math.sin(nowA * Math.PI * hbRate)), 12);
+      // spotlight vignette: clear centre, darkening edges, pulsing with the heartbeat
+      const dim = 0.20 + ent * 0.14 + beat * 0.12;
+      const vg = cctx.createRadialGradient(cw / 2, ch * 0.56, ch * 0.14, cw / 2, ch * 0.56, ch * 1.0);
+      vg.addColorStop(0, "rgba(6,8,20,0)");
+      vg.addColorStop(0.55, `rgba(6,8,20,${(dim * 0.45).toFixed(3)})`);
+      vg.addColorStop(1, `rgba(3,5,14,${dim.toFixed(3)})`);
+      cctx.fillStyle = vg; cctx.fillRect(0, 0, cw, ch);
+      // camera flashes from the stands — quick sporadic white pops in the upper band
+      for (let i = 0; i < 8; i++) {
+        const fx = ((i * 0.173 + 0.06) % 1) * cw;
+        const fy = ch * (0.05 + ((i * 0.37) % 1) * 0.15);
+        const fb = Math.pow(Math.max(0, Math.sin(nowA * (2.6 + i * 0.7) + i * 2.3)), 22);
+        if (fb > 0.04) {
+          const fr = 13 + fb * 6;
+          const fg = cctx.createRadialGradient(fx, fy, 0, fx, fy, fr);
+          fg.addColorStop(0, `rgba(255,255,255,${(0.85 * fb * (0.5 + 0.5 * ent)).toFixed(3)})`);
+          fg.addColorStop(1, "rgba(255,255,255,0)");
+          cctx.fillStyle = fg; cctx.beginPath(); cctx.arc(fx, fy, fr, 0, Math.PI * 2); cctx.fill();
+        }
+      }
+    }
+
     // --- floating texts (screen space) ---
     cctx.textAlign = "center";
     for (const f of S.floats) {
@@ -1766,19 +1795,25 @@ function startRaceCanvas(container, ctx) {
     }
     cctx.globalAlpha = 1;
 
-    // --- entrance caption: a brief title flash as the field parades in ---
+    // --- entrance captions: "入場" as they parade in → "まもなく発走…" once the field is set ---
     if (S.entryT > 0) {
+      const settling = S.entryT <= (ENTRY_SETTLE + 0.5);              // near the end → all in position
       const intoEntry = ENTRY_DUR - S.entryT;
-      const a = clamp(intoEntry / 0.3, 0, 1) * clamp((3.5 - intoEntry) / 0.6, 0, 1);
-      cctx.save();
-      cctx.globalAlpha = clamp(a, 0, 1) * 0.92;
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.font = "bold 22px system-ui, sans-serif";
-      cctx.lineWidth = 5; cctx.strokeStyle = "rgba(10,12,24,0.65)";
-      cctx.fillStyle = "#ffe9a8";
-      cctx.strokeText("🐉 入場", cw / 2, ch * 0.18);
-      cctx.fillText("🐉 入場", cw / 2, ch * 0.18);
-      cctx.restore(); cctx.globalAlpha = 1;
+      const txt = settling ? "まもなく発走…" : "🐉 入場";
+      const a = settling
+        ? clamp(((ENTRY_SETTLE + 0.5) - S.entryT) / 0.3, 0, 1)         // fade in for the final beat
+        : clamp(intoEntry / 0.3, 0, 1) * clamp((3.0 - intoEntry) / 0.6, 0, 1);   // brief title flash
+      if (a > 0.01) {
+        cctx.save();
+        cctx.globalAlpha = clamp(a, 0, 1) * 0.95;
+        cctx.textAlign = "center"; cctx.textBaseline = "middle";
+        cctx.font = "bold 22px system-ui, sans-serif";
+        cctx.lineWidth = 5; cctx.strokeStyle = "rgba(10,12,24,0.7)";
+        cctx.fillStyle = settling ? "#ffd36a" : "#ffe9a8";
+        cctx.strokeText(txt, cw / 2, ch * 0.17);
+        cctx.fillText(txt, cw / 2, ch * 0.17);
+        cctx.restore(); cctx.globalAlpha = 1;
+      }
     }
     // --- start 3-2-1 countdown / GO burst ---
     if (S.preT > 0 && S.entryT <= 0) {
