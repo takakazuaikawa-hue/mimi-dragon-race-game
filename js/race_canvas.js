@@ -302,6 +302,19 @@ function rcSparkle(ctx, x, y, r, col) {
   }
   ctx.fill();
 }
+function rcHeart(ctx, x, y, s, col, a) {
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * 0.35);
+  ctx.bezierCurveTo(x - s * 0.1, y, x - s, y - s * 0.15, x - s, y - s * 0.6);
+  ctx.bezierCurveTo(x - s, y - s * 1.05, x - s * 0.35, y - s * 1.1, x, y - s * 0.62);
+  ctx.bezierCurveTo(x + s * 0.35, y - s * 1.1, x + s, y - s * 1.05, x + s, y - s * 0.6);
+  ctx.bezierCurveTo(x + s, y - s * 0.15, x + s * 0.1, y, x, y + s * 0.35);
+  ctx.fill();
+  ctx.restore();
+}
 function rcSweatDrop(ctx, x, y, s, col) {
   ctx.fillStyle = col || "rgba(150,210,255,0.95)";
   ctx.beginPath();
@@ -676,6 +689,7 @@ function startRaceCanvas(container, ctx) {
     _winw: 0.3,
     gait: {},          // per-dragon gait clock
     particles: [],
+    likes: [], likeCount: 0, likeT: 0,   // livestream-style "いいね" hearts (entrance + on tap)
     ambT: 0,           // ambient-particle spawn accumulator
     floats: [],
     crossedSet: new Set(),
@@ -800,6 +814,23 @@ function startRaceCanvas(container, ctx) {
       });
     }
   }
+  function spawnLike(x, y, opts) {
+    opts = opts || {};
+    const gold = opts.gold || (rankHype > 0.55 && Math.random() < 0.4);
+    const hue = gold ? "#ffd34d" : (Math.random() < 0.5 ? "#ff6a86" : "#ff9ab0");
+    S.likes.push({
+      x: x, y: y, vx: (Math.random() - 0.5) * 22, vy: -(26 + Math.random() * 26),
+      life: 1, max: 1.3 + Math.random() * 0.8, s: opts.big ? 11 : (6.5 + Math.random() * 4),
+      hue: hue, sway: Math.random() * Math.PI * 2
+    });
+    S.likeCount++;
+  }
+  // tap anywhere on the canvas to send a "いいね" — a little burst of hearts (livestream vibe)
+  canvas.addEventListener("click", function (ev) {
+    const r = canvas.getBoundingClientRect();
+    const x = ev.clientX - r.left, y = ev.clientY - r.top;
+    for (let i = 0; i < 6; i++) spawnLike(x + (Math.random() - 0.5) * 24, y - Math.random() * 10, { big: i === 0 });
+  });
 
   // ---- camera (smoothed follow + dynamic zoom / vertical pan) ----
   function updateCamera() {
@@ -1508,6 +1539,42 @@ function startRaceCanvas(container, ctx) {
       }
     }
 
+    // --- start gate (gantry at the start line) — grows grander with rank; recedes as the field pulls away ---
+    const startGX = screenX(0, WINW);
+    if (startGX > -90 && startGX < cw + 40 && (S.entryT > 0 || S.preT > 0 || S.tau < 0.06)) {
+      const rh = rankHype, gt = g.top, gb = g.bottom;
+      const archH = 22 + rh * 30, postW = 4 + rh * 2, bw = 7;
+      const postCol = rh > 0.66 ? "#e8c860" : rh > 0.33 ? "#c9b27a" : "#8a8f9e";
+      const bannerCol = rh > 0.66 ? "#cf9a1e" : rh > 0.33 ? "#a85f33" : "#3a4a6a";
+      const bannerH = 15 + rh * 6, spanL = startGX - bw - postW, spanW = (bw + postW) * 2;
+      if (rh > 0.5) {                                                   // soft golden glow at the top grades
+        cctx.save(); cctx.globalAlpha = 0.16 + 0.14 * rh;
+        const gg = cctx.createRadialGradient(startGX, gt - archH + 6, 4, startGX, gt - archH + 6, 70 + rh * 40);
+        gg.addColorStop(0, "rgba(255,224,120,0.7)"); gg.addColorStop(1, "rgba(255,224,120,0)");
+        cctx.fillStyle = gg; cctx.fillRect(startGX - 130, gt - archH - 36, 260, 140); cctx.restore();
+      }
+      const rows = 12, rhh = (gb - gt) / rows;                          // start band
+      for (let r = 0; r < rows; r++) { cctx.fillStyle = (r % 2 === 0) ? "rgba(235,240,255,0.45)" : "rgba(40,46,70,0.45)"; cctx.fillRect(startGX - bw, gt + r * rhh, bw * 2, rhh); }
+      cctx.fillStyle = postCol; cctx.fillRect(spanL, gt - archH, postW, (gb - gt) + archH); cctx.fillRect(startGX + bw, gt - archH, postW, (gb - gt) + archH);
+      cctx.fillStyle = bannerCol; cctx.fillRect(spanL, gt - archH, spanW, bannerH);
+      if (rh > 0.33) { cctx.fillStyle = "#ffe9a8"; cctx.fillRect(spanL, gt - archH, spanW, 2); cctx.fillRect(spanL, gt - archH + bannerH - 2, spanW, 2); }
+      cctx.fillStyle = "#fff"; cctx.font = "bold " + (9 + rh * 3).toFixed(0) + "px system-ui, sans-serif";
+      cctx.textAlign = "center"; cctx.textBaseline = "middle"; cctx.fillText("START", startGX, gt - archH + bannerH / 2);
+      const flags = Math.round(2 + rh * 6), fy = gt - archH - 1, fdiv = (flags - 1) || 1;   // pennant bunting
+      for (let i = 0; i < flags; i++) {
+        const fx = spanL - 4 + ((spanW + 8) / fdiv) * i;
+        cctx.fillStyle = (typeof CONFETTI_COLORS !== "undefined") ? CONFETTI_COLORS[i % CONFETTI_COLORS.length] : "#ffcf6a";
+        cctx.beginPath(); cctx.moveTo(fx - 3, fy); cctx.lineTo(fx + 3, fy); cctx.lineTo(fx, fy + 6); cctx.closePath(); cctx.fill();
+      }
+      if (rh > 0.6) {                                                   // marquee lights along the banner
+        for (let i = 0; i < 6; i++) {
+          const lx = spanL + (spanW / 5) * i, lb = 0.5 + 0.5 * Math.sin(performance.now() / 200 + i);
+          cctx.fillStyle = `rgba(255,236,150,${(0.45 + 0.45 * lb).toFixed(3)})`;
+          cctx.beginPath(); cctx.arc(lx, gt - archH + bannerH + 3, 2.2, 0, Math.PI * 2); cctx.fill();
+        }
+      }
+    }
+
     // --- leader golden speed trail (world space, behind the field) ---
     if (cam.leaderId && !S.finished && S.preT <= 0) {
       const lp = timeline.progressAt(cam.leaderId, S.tau);
@@ -1823,6 +1890,21 @@ function startRaceCanvas(container, ctx) {
       cctx.globalAlpha = 1;
     }
 
+    // --- いいね hearts (livestream reactions rising) + a "♥ N" counter in the pre-show ---
+    for (const lk of S.likes) rcHeart(cctx, lk.x, lk.y, lk.s, lk.hue, clamp(lk.life, 0, 1) * 0.92);
+    if (S.entryT > 0) {
+      const lc = S.likeCount, lcTxt = lc >= 1000 ? (lc / 1000).toFixed(1) + "k" : String(lc);
+      const tx = cw - 12, ty = ch * 0.62;
+      cctx.save();
+      rcHeart(cctx, tx - 3, ty, 8, "#ff6a86", 0.95);
+      cctx.textAlign = "right"; cctx.textBaseline = "middle";
+      cctx.font = "bold 14px system-ui, sans-serif";
+      cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.7)";
+      cctx.strokeText(lcTxt, tx - 16, ty - 3);
+      cctx.fillStyle = "#fff"; cctx.fillText(lcTxt, tx - 16, ty - 3);
+      cctx.restore();
+    }
+
     // --- floating texts (screen space) ---
     cctx.textAlign = "center";
     for (const f of S.floats) {
@@ -2026,6 +2108,15 @@ function startRaceCanvas(container, ctx) {
       p.life -= pdt / p.max;
     }
     S.particles = S.particles.filter(p => p.life > 0);
+    // いいね hearts rise + sway + fade
+    for (const lk of S.likes) {
+      lk.sway += dt * 3;
+      lk.x += (lk.vx + Math.sin(lk.sway) * 9) * dt;
+      lk.y += lk.vy * dt;
+      lk.vy += 7 * dt;                 // ease the rise
+      lk.life -= dt / lk.max;
+    }
+    S.likes = S.likes.filter(lk => lk.life > 0);
     // floats
     for (const f of S.floats) { f.y += f.vy * dt; f.life -= dt * 0.7; }
     S.floats = S.floats.filter(f => f.life > 0);
@@ -2059,6 +2150,14 @@ function startRaceCanvas(container, ctx) {
     if (S.entryT > 0) {
       S.entryT -= dt * S.speed;
       if (S.entryT < 0) S.entryT = 0;
+      // livestream "いいね" pour in during the entrance — more & faster at higher ranks
+      S.likeT -= dt * S.speed;
+      const likeIv = 1 / (2.5 + rankHype * 7);
+      let guard = 0;
+      while (S.likeT <= 0 && guard++ < 12) {
+        spawnLike(cw * (0.64 + Math.random() * 0.32), ch * (0.74 + Math.random() * 0.10));
+        S.likeT += likeIv;
+      }
       return;   // hold at the gate while they walk in; the countdown starts after
     }
 
