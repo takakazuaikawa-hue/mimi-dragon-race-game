@@ -563,11 +563,11 @@ function startRaceCanvas(container, ctx) {
   // past 1 (coasting, decelerating) from the moment IT crossed, so the field flows
   // through the line in finishing order. Presentation only: the official order is
   // already fixed by timeline.crossings and the result screen is authoritative.
-  const RUNOUT_COAST = 0.10;   // progress coasted past the wire (× crossing speed)
-  const RUNOUT_TAU   = 4.6;    // deceleration time-constant (s): tuned so the coast starts
-                               // at ~gallop speed (continuous velocity at the wire — no
-                               // speed-up) and only decelerates from there. big = gentler.
-  const RUNOUT_DUR   = 2.6;    // seconds of run-out shown before cutting to the result
+  const RUNOUT_SMO   = 0.42;   // run-out plays at this fraction of real time = cinematic
+                               // slow-MOTION (full stride/effort kept), not "tired & slow"
+  const RUNOUT_COAST = 0.13;   // progress coasted past the wire (× crossing speed)
+  const RUNOUT_TAU   = 4.6;    // gentle glide constant (≈ constant slow-mo velocity over the run-out)
+  const RUNOUT_DUR   = 1.2;    // slow-mo clock units of run-out (≈ 1.2/SMO ≈ 2.9 s real) before the result
   function visProgress(id) {
     const c = S.crossClock[id];
     if (c != null) {
@@ -1170,6 +1170,30 @@ function startRaceCanvas(container, ctx) {
       }
     }
 
+    // --- world-space particles (foot-dust + ambient embers/gusts/leaves) drawn
+    // BEFORE the dragons, so kicked-up dust sits behind the field and never paints
+    // over a rival in front. (Confetti/fireworks are screen-space, drawn after.) ---
+    for (const p of S.particles) {
+      if (p.scr) continue;
+      const a = clamp(p.life, 0, 1);
+      if (p.kind === "dust") {
+        cctx.fillStyle = `rgba(184,174,154,${0.42 * a})`;
+        cctx.beginPath(); cctx.arc(p.x, p.y, p.size * (1 + (1 - a)), 0, Math.PI * 2); cctx.fill();
+      } else if (p.kind === "ember") {
+        cctx.fillStyle = `rgba(255,${150 + Math.floor(80 * a)},80,${0.85 * a})`;
+        cctx.beginPath(); cctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); cctx.fill();
+      } else if (p.kind === "gust") {
+        cctx.strokeStyle = `rgba(205,226,255,${0.22 * a})`; cctx.lineWidth = 2;
+        cctx.beginPath(); cctx.moveTo(p.x, p.y); cctx.lineTo(p.x + p.size, p.y); cctx.stroke();
+      } else if (p.kind === "leaf") {
+        cctx.fillStyle = `rgba(120,170,90,${0.7 * a})`;
+        cctx.fillRect(p.x, p.y, p.size, p.size * 0.6);
+      } else {
+        cctx.fillStyle = p.color ? rcRgba(p.color, a) : `rgba(255,230,150,${a})`;
+        cctx.beginPath(); cctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); cctx.fill();
+      }
+    }
+
     // --- dragons (draw far lanes first for overlap) ---
     const standings = timeline.standingsAt(S.tau);
     const standMap = {}; standings.forEach((id, i) => { standMap[id] = i + 1; });
@@ -1179,10 +1203,7 @@ function startRaceCanvas(container, ctx) {
       const P = timeline.progressAt(dr.id, S.tau);
       const Pvis = visProgress(dr.id);          // extends past 1 during the run-out
       const v = timeline.speedAt(dr.id, S.tau);
-      let intensity = clamp((v - 0.85) / 0.55, 0, 1.4);
-      // during the pull-up, ease the gallop down so legs/dust visibly relax (not a hard stop)
-      const _rc = S.crossClock[dr.id];
-      if (_rc != null) intensity *= (0.45 + 0.55 * Math.exp(-_rc / 2.2));
+      const intensity = clamp((v - 0.85) / 0.55, 0, 1.4);   // FULL effort kept through the run-out (it's slow-mo, not tired)
       const ownU = Math.min(1, S.tau / dr.finishTau);
 
       let x = screenX(Pvis, WINW);
@@ -1244,7 +1265,7 @@ function startRaceCanvas(container, ctx) {
       }
 
       // dust at feet (scale with speed) — kicked up harder the faster it runs
-      if (!down && intensity > 0.3 && Math.random() < 0.6) spawnDust(drawX, baseY + 14, intensity > 0.8 ? 2 : 1, intensity);
+      if (!down && intensity > 0.3 && Math.random() < (S.crossClock[dr.id] != null ? 0.2 : 0.6)) spawnDust(drawX, baseY + 14, intensity > 0.8 ? 2 : 1, intensity);
       if (surging && Math.random() < 0.5) spawnSpark(drawX, y - 4, dr.color);
 
       // gait advance handled in update(); draw sprite (depth-scaled). Sized so
@@ -1312,27 +1333,8 @@ function startRaceCanvas(container, ctx) {
       cctx.globalAlpha = _prevAlpha;             // end per-dragon edge fade
     }
 
-    // --- particles (dust / spark + ambient embers / gusts / leaves) ---
-    for (const p of S.particles) {
-      if (p.scr) continue;   // screen-space FX (confetti / fireworks) drawn after restore
-      const a = clamp(p.life, 0, 1);
-      if (p.kind === "dust") {
-        cctx.fillStyle = `rgba(180,170,150,${0.5 * a})`;
-        cctx.beginPath(); cctx.arc(p.x, p.y, p.size * (1 + (1 - a)), 0, Math.PI * 2); cctx.fill();
-      } else if (p.kind === "ember") {
-        cctx.fillStyle = `rgba(255,${150 + Math.floor(80 * a)},80,${0.85 * a})`;
-        cctx.beginPath(); cctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); cctx.fill();
-      } else if (p.kind === "gust") {
-        cctx.strokeStyle = `rgba(205,226,255,${0.22 * a})`; cctx.lineWidth = 2;
-        cctx.beginPath(); cctx.moveTo(p.x, p.y); cctx.lineTo(p.x + p.size, p.y); cctx.stroke();
-      } else if (p.kind === "leaf") {
-        cctx.fillStyle = `rgba(120,170,90,${0.7 * a})`;
-        cctx.fillRect(p.x, p.y, p.size, p.size * 0.6);
-      } else {
-        cctx.fillStyle = p.color ? rcRgba(p.color, a) : `rgba(255,230,150,${a})`;
-        cctx.beginPath(); cctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); cctx.fill();
-      }
-    }
+    // (world-space dust / ambient particles are drawn BEFORE the dragon loop now,
+    // so foot-dust sits behind the field and never paints over other dragons.)
 
     cctx.restore();   // ============ end WORLD GROUP ============
 
@@ -1521,24 +1523,33 @@ function startRaceCanvas(container, ctx) {
   // UPDATE
   // =====================================================================
   function update(dt) {
-    // gait clocks advance with each dragon's current speed
+    // run-out slow-MOTION: once the winner crosses, dilate time so the finish reads as
+    // a cinematic slow-mo gallop-through with FULL stride & effort — not the dragons
+    // tiring. Applied uniformly to gait / particles / coast / τ so nothing desyncs.
+    const _winId = timeline.crossings.length ? timeline.crossings[0].id : null;
+    const inRunout = _winId != null && S.crossClock[_winId] != null;
+    const smo = inRunout ? RUNOUT_SMO : 1;
+    const sdt = dt * smo;
+
+    // gait clocks advance with each dragon's speed (slowed in slow-mo, but FULL stride —
+    // never a tired cadence drop)
     for (const dr of dragons) {
       const v = timeline.speedAt(dr.id, S.tau);
-      let rate = (v < 0.2) ? 3 : 9 + v * 6;
-      const _rc = S.crossClock[dr.id];
-      if (_rc != null) rate *= (0.3 + 0.7 * Math.exp(-_rc / 2.2));   // wing-beat eases off during the pull-up
-      S.gait[dr.id] += dt * rate;
+      const rate = (v < 0.2) ? 3 : 9 + v * 6;
+      S.gait[dr.id] += sdt * rate;
     }
-    // particles — dust/spark fall under gravity; ambient embers rise, gusts/leaves drift
+    // particles — world FX run on slow-mo time so dust hangs during the run-out;
+    // screen-space confetti keeps real time
     for (const p of S.particles) {
-      p.x += p.vx * dt; p.y += p.vy * dt;
+      const pdt = p.scr ? dt : sdt;
+      p.x += p.vx * pdt; p.y += p.vy * pdt;
       if (p.kind === "confetti") {
         p.vy += 26 * dt;                       // gentle fall
         p.vx += Math.sin((p.rot || 0) * 2) * 18 * dt; // flutter sway
         p.rot = (p.rot || 0) + (p.vr || 0) * dt;
-      } else if (!p.amb) { p.vy += 60 * dt; }
-      else if (p.kind === "ember") { p.vy -= 9 * dt; }
-      p.life -= dt / p.max;
+      } else if (!p.amb) { p.vy += 60 * pdt; }
+      else if (p.kind === "ember") { p.vy -= 9 * pdt; }
+      p.life -= pdt / p.max;
     }
     S.particles = S.particles.filter(p => p.life > 0);
     // floats
@@ -1586,12 +1597,9 @@ function startRaceCanvas(container, ctx) {
     // timer and every crossed dragon's coast clock (visProgress reads these to carry
     // them on past the wire). Cut to the result once the lead group has galloped on —
     // we don't wait for the tail-enders. Presentation only; order is already fixed. ---
-    for (const dr of dragons) if (S.crossClock[dr.id] != null) S.crossClock[dr.id] += dt * S.speed;
-    {
-      const _wid = timeline.crossings.length ? timeline.crossings[0].id : null;   // winner
-      if (_wid != null && S.crossClock[_wid] != null && S.crossClock[_wid] >= RUNOUT_DUR && !S.finishedAnnounced) {
-        onAllFinished(); return;   // cut to the result once the winner has fully run out
-      }
+    for (const dr of dragons) if (S.crossClock[dr.id] != null) S.crossClock[dr.id] += sdt * S.speed;
+    if (_winId != null && S.crossClock[_winId] != null && S.crossClock[_winId] >= RUNOUT_DUR && !S.finishedAnnounced) {
+      onAllFinished(); return;   // cut to the result once the winner has fully run out (slow-mo)
     }
 
     const prevTau = S.tau;
@@ -1604,18 +1612,11 @@ function startRaceCanvas(container, ctx) {
     const wireTau = (timeline.crossings && timeline.crossings.length) ? timeline.crossings[0].tau : 0.9;
     const smoStart = wireTau - 0.06;
     if (S.tapeBroken) {
-      // winner's across — release the slow-mo back to normal pace over a beat. The
-      // run-through coast (visProgress) carries the leaders on past the wire while the
-      // rest cross behind; no fast-forward, so nothing looks artificially sped-up.
-      S.ffwd = (S.ffwd || 0.4) + (1 - (S.ffwd || 0.4)) * 0.08;
-      adv *= S.ffwd;
-    } else {
-      S.ffwd = 0.4;
-      if (S.tau > smoStart) {
-        const k = clamp((S.tau - smoStart) / Math.max(0.0001, wireTau - smoStart), 0, 1);
-        const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.72 : 0.5;
-        adv *= (1 - depth * k);   // dramatic slow-mo INTO the winner's crossing only
-      }
+      adv *= smo;   // KEEP the slow-motion running through the run-out (trailers cross in slow-mo too)
+    } else if (S.tau > smoStart) {
+      const k = clamp((S.tau - smoStart) / Math.max(0.0001, wireTau - smoStart), 0, 1);
+      const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.72 : 0.5;
+      adv *= (1 - depth * k);   // dramatic slow-mo INTO the winner's crossing
     }
     S.tau = Math.min(1, S.tau + adv);
 
