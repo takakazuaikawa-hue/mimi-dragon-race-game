@@ -135,6 +135,19 @@ function renderHome() {
     `<div class="hw-asset-stage">${stageInfo}</div>`;
   wrap.appendChild(asset);
 
+  // next-goal card (north star) — always show a concrete target or two
+  try {
+    const goals = (typeof nextGoals === "function") ? nextGoals(state) : [];
+    if (goals.length) {
+      const gc = el("div", "glass-panel hw-goals");
+      gc.innerHTML = `<div class="hw-goals-h">次の目標</div>` + goals.slice(0, 3).map(g =>
+        `<div class="hw-goal"><div class="hw-goal-top"><span>${g.icon} ${g.label}</span><b>${g.sub}</b></div>` +
+        `<div class="hw-goal-bar"><div class="hw-goal-fill" style="width:${g.pct}%"></div></div></div>`
+      ).join("");
+      wrap.appendChild(gc);
+    }
+  } catch (e) {}
+
   // record chips
   const rec = el("div", "hw-rec");
   const rc = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
@@ -2111,6 +2124,14 @@ function drawRecapScreen() {
   if (ps) {
     app.appendChild(buildResultHero(ps, resultTierOf(ps), c));
   }
+  // next-goal nudge (north star) — keep a target in view after every race
+  try {
+    const goals = (typeof nextGoals === "function") ? nextGoals(state) : [];
+    if (goals.length) {
+      const g = goals[0];
+      app.appendChild(el("div", "rs-nextgoal", `🎯 次の目標：${g.icon} ${g.label} — <b>${g.sub}</b>`));
+    }
+  } catch (e) {}
 
   // --- Tab bar ---
   const bar = el("div", "recap-tabs");
@@ -2178,6 +2199,39 @@ function streakLineHtml(si) {
   if (si.streak >= 2) return `🔥 <b>${si.streak}連勝中</b>　最高 ${si.best}`;
   if (si.broke) return `連勝ストップ… （${si.prev}連勝でした）`;
   return "";
+}
+
+// §37 — surface the nearest unlocks so there's always a concrete target
+// (bridges the geometric dead zones between life-stage thresholds).
+function nextGoals(state) {
+  const p = state.player, goals = [];
+  const coins = p.coins, total = p.totalAssets || 0;
+  // rank up
+  const nr = p.rank + 1;
+  if (typeof RANK_UNLOCK !== "undefined" && RANK_UNLOCK[nr]) {
+    const u = RANK_UNLOCK[nr];
+    const racesDone = (p.completedByRank && p.completedByRank[p.rank]) || 0;
+    const byRaces = Math.max(0, u.completedAtLowerRank - racesDone);
+    const byCoins = Math.max(0, u.coins - coins);
+    const rl = (RANKS[nr] && RANKS[nr].label) || "";
+    if (byRaces === 0 || byCoins === 0) {
+      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub: "次のレースで解放！", pct: 100 });
+    } else {
+      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub: `あと ${byRaces}戦 または ${fmtCoins(byCoins)}コイン`, pct: clamp(coins / u.coins * 100, 2, 99) });
+    }
+  }
+  // next life stage (総資産)
+  const nextT = (typeof nextAssetThreshold === "function") ? nextAssetThreshold(total) : null;
+  if (nextT && nextT > total) {
+    goals.push({ kind: "stage", icon: "🏠", label: "暮らしの段階アップ", sub: `総資産 あと ${fmtCoins(nextT - total)}`, pct: clamp(total / nextT * 100, 2, 99) });
+  }
+  // next story chapter
+  if (typeof STORY_CHAPTERS !== "undefined" && typeof storyUnlockAt === "function") {
+    let best = null, bestAt = Infinity;
+    STORY_CHAPTERS.forEach(ch => { const at = storyUnlockAt(ch.id); if (at > total && at < bestAt) { bestAt = at; best = ch; } });
+    if (best) goals.push({ kind: "story", icon: "📖", label: best.title || ("物語 " + best.id), sub: `総資産 あと ${fmtCoins(bestAt - total)}`, pct: clamp(total / bestAt * 100, 2, 99) });
+  }
+  return goals;
 }
 
 function buildResultHero(ps, tier, c) {
