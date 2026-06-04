@@ -1595,6 +1595,7 @@ function renderRaceRun() {
   app.appendChild(host);
   startRaceCanvas(host, {
     race: c.race, raceResult: c.raceResult, oddsResult: c.oddsResult, bet: c.bet,
+    betResult: c.betResult,
     timeline: c.timeline, commentary: c.commentary, broadcast: c.broadcast
   });
 }

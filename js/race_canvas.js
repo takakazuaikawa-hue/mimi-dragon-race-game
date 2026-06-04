@@ -409,7 +409,7 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now) {
 function startRaceCanvas(container, ctx) {
   stopRacePlayer();
 
-  const { race, raceResult, oddsResult, bet, timeline, commentary, broadcast } = ctx;
+  const { race, raceResult, oddsResult, bet, betResult, timeline, commentary, broadcast } = ctx;
   const dragons = timeline.dragons;
 
   // stable lane assignment (varied, not by rank) for vertical separation
@@ -712,6 +712,7 @@ function startRaceCanvas(container, ctx) {
     crossV: {},         // per-dragon speed at the moment it crossed (coast distance ∝ this)
     showLog: false,
     finishedAnnounced: false,
+    rewardT: 0,         // seconds since the goal-moment reward reveal began (spec #37)
     countdown: 0,
     // --- presentation drama ---
     entryT: ENTRY_DUR,  // entrance walk-in (holds τ; the field parades to the gate first)
@@ -2046,22 +2047,54 @@ function startRaceCanvas(container, ctx) {
       cctx.restore(); cctx.globalAlpha = 1;
     }
 
-    // --- finish celebration banner ---
+    // --- finish celebration + goal-moment reward reveal (spec #37) ---
     if (S.finished) {
       const winner = timeline.crossings[0];
+      const rt = S.rewardT || 0;
+      const _fc = (n) => (typeof fmtCoins === "function" ? fmtCoins(n) : String(n));
+      cctx.save();
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 27px system-ui, sans-serif";
-      cctx.fillText("ゴールイン！", cw / 2, ch * 0.22);
-      cctx.fillStyle = "#fff"; cctx.font = "bold 17px system-ui, sans-serif";
-      cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.22 + 28);
-      const hit = computeBetHit();
-      if (hit === true) {
-        cctx.fillStyle = "#8df0a6"; cctx.font = "bold 23px system-ui, sans-serif";
-        cctx.fillText("🎯 的中！", cw / 2, ch * 0.22 + 60);
-      } else if (hit === false) {
-        cctx.fillStyle = "#ff9a8a"; cctx.font = "bold 15px system-ui, sans-serif";
-        cctx.fillText("残念…次こそ！", cw / 2, ch * 0.22 + 58);
+      // headline fades in first
+      cctx.globalAlpha = Math.min(1, rt / 0.22);
+      cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 25px system-ui, sans-serif";
+      cctx.fillText("ゴールイン！", cw / 2, ch * 0.16);
+      cctx.fillStyle = "#fff"; cctx.font = "bold 15px system-ui, sans-serif";
+      cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.16 + 24);
+      cctx.globalAlpha = 1;
+      // the reward plate pops in a beat later, showing the actual payout
+      if (betResult) {
+        const rp = Math.max(0, Math.min(1, (rt - 0.18) / 0.4));
+        const ease = 1 - Math.pow(1 - rp, 3);
+        const overshoot = rp < 1 ? Math.sin(rp * Math.PI) * 0.08 : 0;
+        const sc = 0.62 + 0.38 * ease + overshoot;
+        const hit = betResult.hit;
+        const tier = hit ? ((typeof resultTierOf === "function") ? resultTierOf(betResult)
+          : (betResult.odds >= 7 ? 3 : betResult.odds >= 3 ? 2 : 1)) : 0;
+        const col = !hit ? "#ff9a8a"
+          : tier >= 4 ? "#ffd877" : tier >= 3 ? "#ffb070" : tier >= 2 ? "#ffe09a" : "#8df0a6";
+        const word = !hit ? "ハズレ"
+          : tier >= 4 ? "伝説の的中！" : tier >= 3 ? "超的中！" : tier >= 2 ? "大的中！" : "的中！";
+        const amount = hit ? ("＋" + _fc(betResult.payout) + " コイン")
+          : ("−" + _fc(Math.abs(betResult.profit)) + " コイン");
+        cctx.save();
+        cctx.translate(cw / 2, ch * 0.35);
+        cctx.scale(sc, sc);
+        cctx.globalAlpha = Math.min(1, rp * 1.4);
+        const pw = 252, ph = 70;
+        cctx.beginPath();
+        if (cctx.roundRect) cctx.roundRect(-pw / 2, -ph / 2, pw, ph, 15);
+        else cctx.rect(-pw / 2, -ph / 2, pw, ph);
+        cctx.fillStyle = "rgba(8,12,18,0.84)"; cctx.fill();
+        cctx.lineWidth = 2.5; cctx.strokeStyle = col;
+        if (hit && tier >= 3) { cctx.shadowColor = col; cctx.shadowBlur = 18; }
+        cctx.stroke(); cctx.shadowBlur = 0;
+        cctx.fillStyle = col; cctx.font = "bold 22px system-ui, sans-serif";
+        cctx.fillText(word, 0, -12);
+        cctx.fillStyle = "#fff"; cctx.font = "bold 21px system-ui, sans-serif";
+        cctx.fillText(amount, 0, 15);
+        cctx.restore();
       }
+      cctx.restore();
     }
 
     // HUD updates
@@ -2151,6 +2184,7 @@ function startRaceCanvas(container, ctx) {
       S.confettiT -= dt;
       if (Math.random() < 0.45) spawnConfetti(3);
     }
+    if (S.finished) S.rewardT += dt;   // drives the goal-moment reward pop-in (spec #37)
 
     if (!S.playing || S.finished) return;
     // ambient terrain particles (embers / gusts / leaves) for the current section
@@ -2367,15 +2401,27 @@ function startRaceCanvas(container, ctx) {
     if (!S.celebrated) {
       S.celebrated = true;
       S.confettiT = 1.5;
+      S.rewardT = 0;            // restart the reward pop-in
       spawnConfetti(90);
       spawnFirework(cw * 0.50, ch * 0.32, "#ffe06a");
       spawnFirework(cw * 0.30, ch * 0.42, "#ff7aa0");
       spawnFirework(cw * 0.70, ch * 0.42, "#7fd1ff");
       // an extra pop when the player's bet lands
-      if (computeBetHit() === true) {
+      const _betHit = computeBetHit();
+      if (_betHit === true) {
         spawnConfetti(60);
         spawnFirework(cw * 0.50, ch * 0.50, "#8df0a6");
       }
+      // goal-moment reward sound (spec #37) — synthesized, mutable, no files
+      try {
+        if (window.Sfx && betResult) {
+          if (betResult.hit) {
+            const _t = (typeof resultTierOf === "function") ? resultTierOf(betResult)
+              : (betResult.odds >= 7 ? 3 : betResult.odds >= 3 ? 2 : 1);
+            Sfx.play(_t >= 3 ? "legendary" : _t >= 2 ? "bigwin" : "win");
+          } else { Sfx.play("miss"); }
+        }
+      } catch (e) {}
     }
     playBtn.style.display = "none";
     renderControls();
