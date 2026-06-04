@@ -240,8 +240,13 @@ function rcDrawDragonPixel(ctx, o) {
   const bob = Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);   // gentle floating (flight)
   ctx.save();
   ctx.translate(o.x, o.y);
+  if (o.spin) ctx.rotate(o.spin);                                  // full-body spin (a wind gust catches it)
   if (o.tumble) ctx.rotate(o.tumble);
   ctx.rotate(-(o.lean || 0) * 0.06 + (o.bank || 0) * 0.10);
+  if (o.squash && o.squash !== 1) {                                // squash & stretch (jump take-off / landing)
+    const sq = Math.max(0.7, Math.min(1.3, o.squash));
+    ctx.scale(2 - sq, sq);
+  }
   ctx.translate(0, -bob * pxc * 0.9);
   // soft luminous halo — keeps the eye-catching "pop" without washing out the colours
   {
@@ -340,6 +345,40 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now) {
     ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, 2.2 * d, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex, ey, 1.15 * d, 0, Math.PI * 2); ctx.fill();
     rcMoodGlyph(ctx, sx, sy, "!", "#ff9a9a", d);
+  } else if (mood === "serious") {
+    // 真剣 — sharp focused brow over a hard little eye (no comedic glyph)
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.0 * d;
+    ctx.beginPath(); ctx.moveTo(ex - 2.8 * d, ey - 2.8 * d); ctx.lineTo(ex + 2.2 * d, ey - 1.1 * d); ctx.stroke(); // angled brow
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex + 0.2 * d, ey + 0.5 * d, 1.15 * d, 0, Math.PI * 2); ctx.fill(); // intense eye
+    rcSparkle(ctx, sx + 1 * d, sy + 1 * d, 2.0 * d, "#bfe3ff");                                                  // a cool focus glint
+  } else if (mood === "panic") {
+    // 焦り — wide darting eye, worried brow, flurry of sweat + ！？
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, 2.5 * d, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex + Math.sin(t * 5) * 0.7 * d, ey + 0.6 * d, 1.0 * d, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.4 * d;
+    ctx.beginPath(); ctx.moveTo(ex - 3.2 * d, ey - 3.4 * d); ctx.lineTo(ex - 0.4 * d, ey - 2.0 * d); ctx.stroke(); // worried brow
+    rcSweatDrop(ctx, sx - 3.2 * d, sy + 1.5 * d, 1.55 * d);
+    rcSweatDrop(ctx, sx + 1.2 * d, sy - 1 * d, 1.2 * d);
+    rcMoodGlyph(ctx, sx + 4 * d, sy + 3.2 * d, "!?", "#ff9a9a", d * 0.85);
+  } else if (mood === "relaxed") {
+    // 余裕・油断 — lazy half-lidded eye + a carefree ♪
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
+    ctx.beginPath(); ctx.arc(ex, ey - 1.3 * d, 2.4 * d, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke();            // relaxed ∪ eye
+    rcMoodGlyph(ctx, sx, sy, "♪", "#bdf3c6", d);
+  } else if (mood === "spin") {
+    // dizzy (a gust spun it) — swirl eye + orbiting stars
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.4 * d;
+    ctx.beginPath();
+    for (let a = 0; a < Math.PI * 2.6; a += 0.4) { const r = 0.4 * d + a * 0.5 * d; const px = ex + Math.cos(a) * r, py = ey + Math.sin(a) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+    ctx.stroke();
+    for (let i = 0; i < 3; i++) { const a = t * 4 + i * Math.PI * 2 / 3; rcSparkle(ctx, sx + Math.cos(a) * 5 * d, sy + Math.sin(a) * 3 * d, 1.9 * d, "#ffe06a"); }
+  } else if (mood === "yawn") {
+    // sleepy — drooped closed eye + zzz
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
+    ctx.beginPath(); ctx.arc(ex, ey + 1.0 * d, 2.2 * d, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
+    ctx.font = "italic bold " + (8.5 * d).toFixed(1) + "px system-ui, sans-serif";
+    ctx.fillStyle = "rgba(185,205,255,0.95)";
+    ctx.fillText("z", sx, sy + 1 * d); ctx.fillText("z", sx + 4 * d, sy - 4.5 * d);
   }
   ctx.restore();
 }
@@ -373,6 +412,12 @@ function startRaceCanvas(container, ctx) {
   // bakes the true effect into the run; this just surfaces the WHY for the player. ---
   const statById = {};
   (typeof getRaceDragons === "function" ? getRaceDragons(race) : []).forEach(d => { if (d && d.stats) statById[d.id] = d.stats; });
+  // full personality records (思想) — style / nerve / visualMood drive each dragon's
+  // pre-start fidget and in-race flourishes (jumps, wind-spins, the relaxed/serious face).
+  const persoById = {};
+  (typeof getRaceDragons === "function" ? getRaceDragons(race) : (typeof DRAGONS !== "undefined" ? DRAGONS : [])).forEach(d => { if (d) persoById[d.id] = d; });
+  function persoOf(id) { return persoById[id] || {}; }
+  function dragonPhase(id) { return ((tlHash(id) % 997) / 997) * Math.PI * 2; }   // desync per dragon
   const STAT_JP = { speed: "速さ", stamina: "底力", fire: "闘志", wing: "翼", turn: "旋回", nerve: "気性" };
   const _sectionStat = [0, 1, 2].map(t => {
     const sec = (typeof getSection === "function") ? getSection(phaseOfThird(t), sectionKeyAtThird(t)) : null;
@@ -391,6 +436,111 @@ function startRaceCanvas(container, ctx) {
   });
   function dragonFitnessAtP(id, P) { return (_fitByThird[thirdAtP(clamp(P, 0, 1))] || {})[id] || 0; }
   function sectionStatAtP(P) { return _sectionStat[thirdAtP(clamp(P, 0, 1))]; }
+
+  // ---- per-dragon BEHAVIOR layer (presentation only; never touches order/result) ----
+  // Returns motion offsets + a suggested mood for the running phase, from the dragon's
+  // 思想 (style/nerve/visualMood) and the live situation (terrain / tired / surge).
+  function behaviorOf(dr, P, ownU, intensity, tired, surging) {
+    const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: null };
+    if (P >= 1) return beh;                       // post-line handled separately
+    const id = dr.id, pd = persoOf(id);
+    const nerve = (pd.stats && pd.stats.nerve) || 60;
+    const wing = (pd.stats && pd.stats.wing) || 60;
+    const vmood = pd.visualMood || 55;
+    const style = pd.style || dr.style;
+    const ph = dragonPhase(id);
+    const now = performance.now() / 1000;
+    const tkey = themeKeyAtP(P);
+    const bounce = clamp((vmood - 45) / 50 + (style === "escape" ? 0.25 : 0) - (style === "chase" ? 0.2 : 0), 0, 1);
+
+    // tired → walk it out, head down
+    if (tired) { beh.down = true; beh.mood = "tired"; return beh; }
+
+    // a gust catches a flighty dragon on the wind lanes → it spins (強風で回転)
+    if (tkey === "wind" && intensity > 0.25) {
+      const prone = clamp((72 - nerve) / 38, 0, 1) * clamp((70 - wing) / 40, 0, 1);
+      const win = Math.sin(now * 0.9 + ph * 1.3);                 // slow per-dragon window
+      if (prone > 0.18 && win > 0.93) {
+        const k = (win - 0.93) / 0.07;                           // 0..1 across the gust
+        beh.spin = Math.sin(k * Math.PI) * Math.PI * 2;          // a full eased rotation
+        beh.mood = "spin";
+        return beh;
+      }
+    }
+
+    // surge → a clean leap
+    if (surging) { beh.jump = 1; beh.mood = "joy"; }
+
+    // ambient hops + an occasional BIG jump while running well (livelier = bouncier)
+    if (intensity > 0.4) {
+      const period = 1.5 - 0.7 * bounce;
+      const hopT = ((now + ph) % period) / period;
+      if (hopT < 0.30) beh.jump = Math.max(beh.jump, Math.sin(hopT / 0.30 * Math.PI) * (0.22 + 0.3 * bounce));
+      const bigT = ((now + ph * 2.1) % 5.5) / 5.5;
+      if (bigT < 0.10 && (bounce > 0.45 || style === "escape")) beh.jump = Math.max(beh.jump, Math.sin(bigT / 0.10 * Math.PI));
+    }
+    if (beh.jump > 0.02) beh.squash = 1 + beh.jump * 0.16;        // stretch as it leaves the turf
+    return beh;
+  }
+
+  // ---- PRE-START idle: cute, 思想-driven fidget at the gate during the 3-2-1. ----
+  // Eager 逃げ types prance & lean forward; calm temperaments stand composed; the
+  // sleepy chaser yawns; nervous types fidget. Purely cosmetic — the gun fires the same.
+  const PRE_TOTAL = 3.0;
+  function prestartBehaviorOf(dr) {
+    const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: "serious", lean: 0 };
+    const id = dr.id, pd = persoOf(id);
+    const nerve = (pd.stats && pd.stats.nerve) || 60;
+    const vmood = pd.visualMood || 55;
+    const style = pd.style || dr.style;
+    const ph = dragonPhase(id);
+    const now = performance.now() / 1000;
+    const pre = clamp(1 - S.preT / PRE_TOTAL, 0, 1);                 // 0→1 across the countdown
+    const eager = (style === "escape" ? 0.9 : style === "front" ? 0.55 : style === "late" ? 0.32 : 0.18) + (vmood - 55) / 120;
+    const calm = clamp((nerve - 55) / 45, 0, 1);
+    const sleepy = vmood < 56 && (style === "chase" || style === "late");
+
+    // arrival shuffle in the first beat — a couple of settling steps into the gate
+    if (pre < 0.22) {
+      const k = pre / 0.22;
+      beh.jump = Math.abs(Math.sin(now * 9 + ph)) * 0.16 * (1 - k);
+      beh.down = true; beh.mood = "serious";
+      return beh;
+    }
+    // idle fidget, by disposition
+    if (sleepy) {
+      beh.down = true;
+      beh.mood = (Math.sin(now * 0.7 + ph) > 0.3) ? "yawn" : "relaxed";
+      beh.jump = Math.max(0, Math.sin(now * 0.5 + ph)) * 0.05;       // slow drowsy nod
+    } else if (eager > 0.7) {
+      const ex = 0.55 + 0.45 * pre;                                  // ramps up as the gun nears
+      beh.jump = Math.max(0, Math.sin(now * (5 + 3 * pre) + ph)) * 0.2 * ex;   // prancing hops
+      beh.lean = 0.55 * ex;                                          // leaning at the line
+      beh.mood = pre > 0.72 ? "panic" : "serious";                   // 焦り right before GO
+    } else if (calm > 0.55) {
+      beh.mood = (Math.sin(now * 0.6 + ph) > 0.5) ? "relaxed" : "serious";
+      beh.jump = Math.max(0, Math.sin(now * 3 + ph)) * 0.05;         // gentle composed sway
+    } else {
+      beh.jump = Math.max(0, Math.sin(now * 6 + ph)) * 0.1;          // nervous fidget
+      beh.mood = (Math.sin(now * 1.3 + ph) > 0.2) ? "panic" : "serious";
+    }
+    return beh;
+  }
+
+  // ---- POST-GOAL: winners celebrate (joyful leaps), the rest pull up to a walk. ----
+  function postgoalBehaviorOf(dr, place) {
+    const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: null };
+    const ph = dragonPhase(dr.id);
+    const now = performance.now() / 1000;
+    if (place <= 3) {
+      beh.jump = Math.max(0, Math.sin(now * 4 + ph)) * (place === 1 ? 0.7 : 0.42);   // bounding for joy
+      beh.mood = "joy";
+      if (beh.jump > 0.05) beh.squash = 1 + beh.jump * 0.18;
+    } else {
+      beh.down = true; beh.mood = "tired";                                            // blowing, pulling up
+    }
+    return beh;
+  }
 
   // ---- DOM shell ----
   container.innerHTML = "";
@@ -669,7 +819,7 @@ function startRaceCanvas(container, ctx) {
                                 // → slow-motion is only a brief beat AT the goal, then a normal run-through
   const RUNOUT_COAST   = 0.09;  // progress coasted past the wire (tuned so the normal-speed run-out ≈ gallop)
   const RUNOUT_TAU     = 4.6;   // gentle pull-up constant
-  const RUNOUT_DUR     = 1.8;   // coast-clock units of run-out before the result (≈ 2 s real)
+  const RUNOUT_DUR     = 2.2;   // run-out + post-goal celebration window before the result
   function visProgress(id) {
     const c = S.crossClock[id];
     if (c != null) {
@@ -1426,49 +1576,61 @@ function startRaceCanvas(container, ctx) {
       // the whole field reads cleanly at the start without crowding/overlap.
       const dep = laneDepth(dr);
       const sprScale = 0.66 * dep;
-      // soft contact shadow grounds the dragon on the turf
-      cctx.fillStyle = "rgba(0,0,0,0.18)";
+      // per-dragon behavior (jump / spin / walk / pre-start fidget) from personality + situation
+      const beh = (S.preT > 0) ? prestartBehaviorOf(dr)
+                : (P < 1) ? behaviorOf(dr, P, ownU, intensity, tired, surging)
+                : postgoalBehaviorOf(dr, standMap[dr.id] || 9);
+      const jumpY = beh.jump * 26 * dep;            // airborne lift
+      const spriteY = y - jumpY;
+      const grounded = 1 - 0.5 * beh.jump;          // shadow shrinks as it leaves the turf
+      // soft contact shadow grounds the dragon on the turf (stays put during a jump)
+      cctx.fillStyle = `rgba(0,0,0,${0.18 * grounded})`;
       cctx.beginPath();
-      cctx.ellipse(drawX, baseY + 8 * dep, 8 * dep, 2.2 * dep, 0, 0, Math.PI * 2);
+      cctx.ellipse(drawX, baseY + 8 * dep, 8 * dep * grounded, 2.2 * dep * grounded, 0, 0, Math.PI * 2);
       cctx.fill();
       // pick spotlight — a soft, pulsing halo so the eye always tracks your dragon
       if (betSet.has(dr.id) && !finishedNow) {
         const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-        const rg = cctx.createRadialGradient(drawX, y - 4, 3, drawX, y - 4, 25 * dep);
+        const rg = cctx.createRadialGradient(drawX, spriteY - 4, 3, drawX, spriteY - 4, 25 * dep);
         rg.addColorStop(0, `rgba(255,211,77,${0.2 + 0.13 * pulse})`);
         rg.addColorStop(1, "rgba(255,211,77,0)");
         cctx.fillStyle = rg;
-        cctx.beginPath(); cctx.arc(drawX, y - 4, 25 * dep, 0, Math.PI * 2); cctx.fill();
+        cctx.beginPath(); cctx.arc(drawX, spriteY - 4, 25 * dep, 0, Math.PI * 2); cctx.fill();
       }
       // terrain shapes body language: bank into turns, spread wings on wind lanes
       const tkey = themeKeyAtP(P);
       const bank = tkey === "turn" ? clamp(0.42 + intensity * 0.45, 0, 1.05) : 0;
       const spread = tkey === "wind" ? clamp(0.45 + intensity * 0.4, 0, 1) : 0;
       rcDrawDragon(cctx, {
-        x: drawX, y: y, scale: sprScale,
+        x: drawX, y: spriteY, scale: sprScale,
         color: dr.color, style: dr.style, design: dragonDesign(dr.id),
         gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6,
-        lean: intensity, down: down, tumble: tumble, glow: glow, effort: effort,
-        bank: bank, spread: spread
+        lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
+        bank: bank, spread: spread, spin: beh.spin, squash: beh.squash
       });
 
-      // facial expression — reflects state AND how this section suits the dragon, so
-      // the course's effect (esp. on speed) reads at a glance.
+      // facial expression — reflects state, course fitness, AND personality (真剣/焦り/余裕…)
       const _fit = dragonFitnessAtP(dr.id, P);
+      const _pd = persoOf(dr.id);
+      const _nerve = (_pd.stats && _pd.stats.nerve) || 60;
+      const _place = standMap[dr.id] || 9;
       let _mood = "neutral";
-      if (P >= 1) _mood = (standMap[dr.id] || 9) <= 3 ? "joy" : "neutral";  // post-line: winners beam
+      if (P >= 1) _mood = _place <= 3 ? "joy" : "tired";                    // post-line: winners beam, others blow
+      else if (beh.mood) _mood = beh.mood;                                  // behavior-driven (spin / tired / surge-joy)
       else if (stumbling) _mood = "surprised";
-      else if (tired) _mood = "tired";
-      else if (_fit < 0 && intensity < 0.55) _mood = "confused";            // labouring on a weak section
-      else if (surging || (_fit > 0 && intensity > 0.7)) _mood = "joy";     // suited / breaking clear
-      else if (dr.id === cam.leaderId && intensity > 0.55) _mood = "joy";
-      else if (intensity > 0.9) _mood = "effort";
+      else if (_fit < 0 && intensity < 0.55) _mood = "confused";           // labouring on a weak section
+      else if (_place >= dragons.length - 1 && intensity < 0.82 && S.tau > 0.45) _mood = "panic";  // tailed off & flustered late
+      else if (surging || (_fit > 0 && intensity > 0.72)) _mood = "joy";   // suited / breaking clear
+      else if (_place === 1 && intensity < 0.8 && _nerve < 70) _mood = "relaxed";   // cruising in front, a touch careless
+      else if (dr.id === cam.leaderId && intensity > 0.55) _mood = "serious";       // leading & locked in
+      else if (intensity > 0.92) _mood = "effort";
+      else if (intensity > 0.62) _mood = "serious";
       else if (_fit < 0) _mood = "confused";
-      rcDrawDragonFace(cctx, drawX, y, dep, _mood, performance.now());
+      rcDrawDragonFace(cctx, drawX, spriteY, dep, _mood, performance.now());
       // bet reticle (player's pick)
       if (betSet.has(dr.id)) {
         cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;
-        cctx.beginPath(); cctx.arc(drawX, y - 4, 26 * dep, 0, Math.PI * 2); cctx.stroke();
+        cctx.beginPath(); cctx.arc(drawX, spriteY - 4, 26 * dep, 0, Math.PI * 2); cctx.stroke();
       }
       // rank tag (live standing) — dark halo for legibility on turf
       const rk = standMap[dr.id] || dr.rank;
@@ -1695,13 +1857,9 @@ function startRaceCanvas(container, ctx) {
     // a cinematic slow-mo gallop-through with FULL stride & effort — not the dragons
     // tiring. Applied uniformly to gait / particles / coast / τ so nothing desyncs.
     const _winId = timeline.crossings.length ? timeline.crossings[0].id : null;
-    const inRunout = _winId != null && S.crossClock[_winId] != null;
-    // slow-mo is only a brief beat AT the wire: deepest right as the winner crosses,
-    // then it lifts back to NORMAL speed over RUNOUT_RELEASE so the gallop-through
-    // (and the trailers crossing behind) play at normal pace.
-    const smo = inRunout
-      ? RUNOUT_SMO + (1 - RUNOUT_SMO) * clamp((S.crossClock[_winId] || 0) / RUNOUT_RELEASE, 0, 1)
-      : 1;
+    // Goal slow-motion REMOVED — the finish and the gallop-through play at normal
+    // speed; the post-goal beat is carried by celebration / pull-up behavior instead.
+    const smo = 1;
     const sdt = dt * smo;
 
     // gait clocks advance with each dragon's speed (slowed in slow-mo, but FULL stride —
@@ -1776,21 +1934,9 @@ function startRaceCanvas(container, ctx) {
     }
 
     const prevTau = S.tau;
-    // advance τ — but ease into slow-motion at the wire on a photo / close finish
-    // (pure animation pacing; the finishing order is fixed by the timeline)
+    // advance τ at full speed through the wire (goal slow-motion removed — the
+    // finish reads as a real gallop-through, then celebration / pull-up behavior)
     let adv = dt * S.speed / timeline.durationSecHint;
-    // Ease into slow-motion as the lead trio hits the wire. Anchored to the
-    // leader's crossing (not a fixed τ) so the dead-heat always plays out in
-    // slow-mo regardless of where the winner crosses. Pure pacing — order fixed.
-    const wireTau = (timeline.crossings && timeline.crossings.length) ? timeline.crossings[0].tau : 0.9;
-    const smoStart = wireTau - 0.02;   // slow-mo only kicks in REALLY just before the wire
-    if (S.tapeBroken) {
-      adv *= smo;   // brief slow-mo beat at the wire (smo lifts back to 1 over the run-out)
-    } else if (S.tau > smoStart) {
-      const k = clamp((S.tau - smoStart) / Math.max(0.0001, wireTau - smoStart), 0, 1);
-      const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.62 : 0.58;   // dip to ≈ RUNOUT_SMO at the wire
-      adv *= (1 - depth * k);   // sharp slow-mo INTO the winner's crossing only
-    }
     S.tau = Math.min(1, S.tau + adv);
 
     // --- phase-entry banner: a sweeping caption as the field rolls into a new
