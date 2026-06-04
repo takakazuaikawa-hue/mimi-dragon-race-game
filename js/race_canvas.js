@@ -232,12 +232,19 @@ function _rcDragonPal(base) {
   return { 'o': '#201425', 'D': rcShade(b0, -46), 'M': rcShade(b0, -20), 'B': b0, 'L': rcShade(b0, 40), 'b': rcShade(b0, 82), 'h': '#f1e8cf', 'H': rcShade('#f1e8cf', -42), 'w': rcShade(b0, -6), 'W': rcShade(b0, 36), 'e': '#ffffff', 'p': '#2b39c8', 'f': '#ffffff', 'm': '#4a1018', 'n': '#201425' };
 }
 function rcDrawDragonPixel(ctx, o) {
-  let fi = Math.floor((o.gait || 0) / (Math.PI / 2)) % RC_DRAGON_FRAMES.length;
-  if (fi < 0) fi += RC_DRAGON_FRAMES.length;
+  let fi;
+  if (o.grounded) {
+    fi = 0;                                          // wings folded down — a GROUNDED stance (walking, not flying)
+  } else {
+    fi = Math.floor((o.gait || 0) / (Math.PI / 2)) % RC_DRAGON_FRAMES.length;
+    if (fi < 0) fi += RC_DRAGON_FRAMES.length;
+  }
   const grid = RC_DRAGON_FRAMES[fi];
   const pal = _rcDragonPal(o.color || '#8a8a8a');
   const pxc = (o.scale || 1) * RC_DRG.px;
-  const bob = Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);   // gentle floating (flight)
+  const bob = o.grounded
+    ? Math.abs(Math.sin(o.gait || 0)) * 0.5          // small grounded step-bounce (a walk)
+    : Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);   // gentle floating (flight)
   ctx.save();
   ctx.translate(o.x, o.y);
   if (o.spin) ctx.rotate(o.spin);                                  // full-body spin (a wind gust catches it)
@@ -1632,7 +1639,7 @@ function startRaceCanvas(container, ctx) {
         color: dr.color, style: dr.style, design: dragonDesign(dr.id),
         gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6,
         lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
-        bank: bank, spread: spread, spin: beh.spin, squash: beh.squash
+        bank: bank, spread: spread, spin: beh.spin, squash: beh.squash, grounded: S.entryT > 0
       });
 
       // facial expression — reflects state, course fitness, AND personality (真剣/焦り/余裕…)
@@ -1914,7 +1921,7 @@ function startRaceCanvas(container, ctx) {
     // never a tired cadence drop)
     for (const dr of dragons) {
       const v = timeline.speedAt(dr.id, S.tau);
-      const rate = (S.entryT > 0) ? 5 : (v < 0.2) ? 3 : 9 + v * 6;   // walking cadence during the entrance
+      const rate = (S.entryT > 0) ? 3.5 : (v < 0.2) ? 3 : 9 + v * 6;   // slow walking cadence during the entrance
       S.gait[dr.id] += sdt * rate;
     }
     // particles — world FX run on slow-mo time so dust hangs during the run-out;
