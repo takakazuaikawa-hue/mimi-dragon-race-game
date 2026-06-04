@@ -516,7 +516,10 @@ function startRaceCanvas(container, ctx) {
     const focusLowerP = lastP + (packTailP - lastP) * focusT;
     S._focusT = focusT;
     S._finishFade = clamp((leaderP - 0.82) / 0.18, 0, 1);   // last-18%: isolate the lead trio
-    const WINW = clamp((leaderP - focusLowerP) + 0.12, 0.18, 0.55);
+    // Tighter window than before: a narrower slice of track on screen means the
+    // ground (mapped through WINW) scrolls past noticeably faster → real speed,
+    // and the field spreads out horizontally instead of clumping.
+    const WINW = clamp((leaderP - focusLowerP) * 0.9 + 0.075, 0.135, 0.4);
     const targetL = leaderP - 0.66 * WINW;
     S.camL += (targetL - S.camL) * 0.12;
     S._winw = WINW;
@@ -864,7 +867,9 @@ function startRaceCanvas(container, ctx) {
     }
   }
   function drawProps(g, WINW) {
-    const step = 0.05, startP = Math.floor(S.camL / step) * step;
+    // denser spacing than before → more roadside objects whip past per second,
+    // reinforcing the sense of speed now that the window is tighter.
+    const step = 0.038, startP = Math.floor(S.camL / step) * step;
     for (let P = startP; P < S.camL + WINW + step; P += step) {
       if (P < 0 || P > 1) continue;
       const key = themeKeyAtP(P);
@@ -938,9 +943,11 @@ function startRaceCanvas(container, ctx) {
     const leaderP = cam.leaderP;
     const g = trackGeom();
 
-    // per-frame shake offset (decays in update)
-    S.shakeX = S.shake > 0.05 ? (Math.random() * 2 - 1) * S.shake : 0;
-    S.shakeY = S.shake > 0.05 ? (Math.random() * 2 - 1) * S.shake : 0;
+    // Screen-shake is deliberately neutralised: viewport jitter wrecks immersion.
+    // Impact now reads from zoom push-in + slow-mo + telop + confetti, never from
+    // shaking the camera. (S.shake still accrues harmlessly; it just isn't applied.)
+    S.shakeX = 0;
+    S.shakeY = 0;
 
     // blended terrain theme around the leader → tints the whole scene
     const tb = themeBlendAtP(leaderP);
@@ -1036,12 +1043,21 @@ function startRaceCanvas(container, ctx) {
     // while the field is actually running — not during the start countdown (dragons
     // frozen at the gate) nor after the finish (would freeze into a static grid).
     if (S.preT <= 0 && !S.finished) {
-      cctx.fillStyle = "rgba(255,255,255,0.085)";
-      const _ssp = (S.camL * cw * 46) % 58;
+      // Two layers of horizontal motion-blur streaks at different speeds/lengths.
+      // The near (lower) lanes get longer, brighter, faster streaks so the running
+      // surface really tears past the screen — this is the dominant speed cue.
+      const lp = cam.leaderId ? timeline.progressAt(cam.leaderId, S.tau) : 0;
       for (let li = 0; li < 8; li++) {
+        const depth = li / 7;                 // 0 = far/top, 1 = near/bottom
         const sy = g.top + (li + 0.5) * g.laneH;
-        for (let sx = -((_ssp + li * 21) % 58); sx < cw; sx += 58) {
-          cctx.fillRect(sx, sy - 1, 26, 2);
+        const len = 34 + depth * 40;          // near streaks much longer
+        const gap = 50 + depth * 18;
+        const spd = 58 + depth * 34;          // near streaks scroll faster
+        const a = (0.10 + depth * 0.10).toFixed(3);
+        cctx.fillStyle = "rgba(255,255,255," + a + ")";
+        const off = (S.camL * cw * spd + li * 23) % gap;
+        for (let sx = -off; sx < cw; sx += gap) {
+          cctx.fillRect(sx, sy - 1, len, 2);
         }
       }
     }
@@ -1519,10 +1535,19 @@ function startRaceCanvas(container, ctx) {
     // slow-mo regardless of where the winner crosses. Pure pacing — order fixed.
     const wireTau = (timeline.crossings && timeline.crossings.length) ? timeline.crossings[0].tau : 0.9;
     const smoStart = wireTau - 0.06;
-    if (S.tau > smoStart) {
-      const k = clamp((S.tau - smoStart) / 0.14, 0, 1);
-      const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.74 : 0.55;
-      adv *= (1 - depth * k);   // always run slow-mo into the wire; deeper for a photo/close finish
+    if (S.tapeBroken) {
+      // winner's across — the result is decided; ease the pace up and rush the rest
+      // to the line so we never linger on last place. The ramp (1→6×) keeps the
+      // slow-mo→fast transition smooth instead of snapping.
+      S.ffwd = (S.ffwd || 1) + (6 - (S.ffwd || 1)) * 0.06;
+      adv *= S.ffwd;
+    } else {
+      S.ffwd = 1;
+      if (S.tau > smoStart) {
+        const k = clamp((S.tau - smoStart) / Math.max(0.0001, wireTau - smoStart), 0, 1);
+        const depth = (timeline.photoFinish || timeline.closeFinish) ? 0.72 : 0.5;
+        adv *= (1 - depth * k);   // dramatic slow-mo INTO the winner's crossing only
+      }
     }
     S.tau = Math.min(1, S.tau + adv);
 
