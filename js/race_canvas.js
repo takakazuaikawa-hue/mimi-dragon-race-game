@@ -405,12 +405,12 @@ function startRaceCanvas(container, ctx) {
       <div class="rc-hud-right">
         <span class="rc-weather">${(WEATHERS[race.weather] || {}).label || ""}</span>
         <span class="rc-remain" id="rc-remain">残り ${timeline.distanceMeters}m</span>
+        <span class="rc-bet" id="rc-bet" style="display:none"></span>
       </div>
     </div>
     <div class="rc-rankbar" id="rc-rankbar"></div>
     <div class="rc-stage">
       <canvas id="rc-canvas"></canvas>
-      <div class="rc-bet" id="rc-bet" style="display:none"></div>
       <button class="rc-play" id="rc-play" title="再生/一時停止">⏸</button>
     </div>
     <div class="rc-telop" id="rc-telop"><div class="lines" id="rc-lines"></div></div>

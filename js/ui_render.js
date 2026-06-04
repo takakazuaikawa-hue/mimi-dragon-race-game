@@ -756,18 +756,6 @@ function renderRaceDetail(race) {
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
   const betCap = RANKS[race.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1.0);
 
-  // The stats THIS race leans on (the top-weighted stat of each section) — surfaced in
-  // the panel and on every card so the player can match 竜の能力 to レース条件 at a glance.
-  const STAT_JP_SHORT = { speed: "速", stamina: "耐", turn: "回", wing: "翼", fire: "火", nerve: "気" };
-  const _demandStats = [...new Set(["early", "mid", "late"].map(ph => {
-    const sec = getSection(ph, race[ph]);
-    if (!sec || !sec.weights) return null;
-    let best = "speed", bw = -1;
-    for (const k in sec.weights) if (sec.weights[k] > bw) { bw = sec.weights[k]; best = k; }
-    return best;
-  }).filter(Boolean))];
-  const _demandLabel = _demandStats.map(s => STAT_JP_SHORT[s]).join("・");
-
   // ===== Betting panel — placed FIRST so the primary action needs no scrolling.
   // Selection is a grid of tappable dragon cards that fold the key handicapping
   // info (人気・脚質・単/複オッズ・印・近走) into the very thing you tap, so the
@@ -785,7 +773,6 @@ function renderRaceDetail(race) {
         <span id="pick-instruction"></span>
         <span class="pick-count" id="pick-count"></span>
       </div>
-      <div class="bet-demand">⚑ このレースで効く力 <b>${_demandLabel}</b><span class="bd-note">（カードの${_demandLabel}と見比べて）</span></div>
       <div class="bet-pick-grid" id="bet-pick-grid"></div>
     </div>
     <div class="bet-stake">
@@ -855,7 +842,6 @@ function renderRaceDetail(race) {
       <span class="bp-main">
         <span class="bp-name"><span class="dragon-icon" style="background:${dragonColor(d)}">${d.name.charAt(0)}</span>${d.name}</span>
         <span class="bp-sub"><span class="style-${d.style}">${STYLE_LABEL[d.style]}</span>${d.newspaperMark ? `<span class="bp-mark">${d.newspaperMark}</span>` : ""}<span class="bp-form">${recentResultLabel(d.recentResult)}</span></span>
-        <span class="bp-fit">${_demandStats.map(s => `<span class="bp-fitstat rank-${statRank(d.stats[s])}">${STAT_JP_SHORT[s]}<b>${statRank(d.stats[s])}</b></span>`).join("")}</span>
         <span class="bp-traits">${d.traits.join("・")}</span>
       </span>
       <span class="bp-odds">
