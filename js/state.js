@@ -83,6 +83,7 @@ function saveGame() {
       version: SAVE_VERSION,
       player: state.player,
       assets: state.assets,   // §30 total-asset / lifestyle store
+      settings: { infoLevel: state.ui.infoLevel },   // persisted UI preferences
       savedAt: Date.now()
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -99,6 +100,7 @@ function loadGame() {
     if (data && data.player) {
       Object.assign(state.player, data.player);
       if (data.assets) Object.assign(state.assets, data.assets);
+      if (data.settings && data.settings.infoLevel) state.ui.infoLevel = data.settings.infoLevel;
       // §30 migration: pre-1.1 saves lack maxCoinsReached — seed it from coins
       // so an existing player's progression isn't reset to zero.
       if (state.player.maxCoinsReached == null) state.player.maxCoinsReached = state.player.coins || 0;

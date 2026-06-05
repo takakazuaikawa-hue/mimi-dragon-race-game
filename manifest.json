@@ -1,0 +1,15 @@
+{
+  "name": "聖龍爆走録ミミ",
+  "short_name": "ミミ競竜",
+  "description": "ファンタジー公営龍レース予想カジノ — 市場のオッズと真の実力のズレを読む予想家の物語。",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1b1e",
+  "theme_color": "#16262d",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
