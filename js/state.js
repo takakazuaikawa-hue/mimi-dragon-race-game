@@ -27,6 +27,7 @@ const state = {
     wins: 0,
     // §08 §17 progression
     completedByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
+    featuredDoneDay: null, collectionRewards: [],   // §37 注目レース日次ボーナス + 図鑑コンプ報酬
     winsByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
     biggestPayout: 0,
     // §37 Tier 2 — win streak (連勝): consecutive bet hits (any type).
@@ -107,6 +108,8 @@ function loadGame() {
       if (state.player.bestStreak == null) state.player.bestStreak = 0;
       if (state.player.lastLoginDay === undefined) state.player.lastLoginDay = null;
       if (state.player.loginStreak == null) state.player.loginStreak = 0;
+      if (state.player.featuredDoneDay === undefined) state.player.featuredDoneDay = null;
+      if (!Array.isArray(state.player.collectionRewards)) state.player.collectionRewards = [];
       // Durability: a race confirmed but abandoned before its 答え合わせ left an owed
       // payout (settleRace never ran). Credit it now so no winning ticket is lost.
       if (state.player.pendingPayout > 0) {
@@ -159,6 +162,7 @@ function resetGame() {
     rank: 1, villageLevel: 1,
     completedRaces: 0, wins: 0,
     completedByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
+    featuredDoneDay: null, collectionRewards: [],   // §37 注目レース日次ボーナス + 図鑑コンプ報酬
     winsByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
     biggestPayout: 0,
     streak: 0, bestStreak: 0,

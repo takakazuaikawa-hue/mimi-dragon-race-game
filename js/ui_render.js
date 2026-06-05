@@ -660,6 +660,24 @@ function renderCollection() {
   const seenCount = Object.values(state.player.collection || {}).filter(e => e.seen).length;
   app.appendChild(el("div", "card", `見た竜: <b>${seenCount}</b> / ${DRAGONS.length} 種`));
 
+  // §37 — 図鑑コンプリート報酬の進捗
+  try {
+    const total = DRAGONS.length || 1;
+    const pct = Math.round(seenCount / total * 100);
+    const got = state.player.collectionRewards || [];
+    const chips = COLLECTION_MILESTONES.map(m => {
+      const claimed = got.indexOf(String(m.frac)) >= 0;
+      const reached = seenCount / total + 1e-9 >= m.frac;
+      return `<div class="dex-chip ${claimed ? "claimed" : (reached ? "ready" : "")}">${Math.round(m.frac * 100)}%</div>`;
+    }).join("");
+    const prog = el("div", "card dex-prog");
+    prog.innerHTML =
+      `<div class="dex-prog-top"><span>図鑑コンプリート報酬</span><b>${pct}%</b></div>` +
+      `<div class="dex-prog-bar"><div class="dex-prog-fill" style="width:${pct}%"></div></div>` +
+      `<div class="dex-chips">${chips}</div>`;
+    app.appendChild(prog);
+  } catch (e) {}
+
   const tbl = el("table", "entry-table");
   tbl.innerHTML = `<thead><tr>
     <th>竜名</th><th>脚質</th><th>解放ノート</th>
@@ -712,11 +730,75 @@ function renderCollection() {
   app.appendChild(actions);
 }
 
+// §37 — 本日の注目レース: a daily-rotating spotlight among unlocked races. Gives
+// the day a focal point + a once-daily completion bonus (a meta-reward like the
+// login bonus — it does NOT change the race's odds / finish / payout formula).
+function featuredRaceToday() {
+  const unlocked = RACES.filter(r => r.rank <= state.player.rank);
+  const pool = unlocked.length ? unlocked : RACES;
+  const day = (typeof _epochDay === "function") ? _epochDay() : 0;
+  return pool[((day % pool.length) + pool.length) % pool.length];
+}
+function featuredBonusAmount() {
+  return Math.max(300, Math.floor((state.player.maxCoinsReached || 0) * 0.015));
+}
+
+// §37 — 図鑑コンプ報酬: milestone rewards as the dragon collection fills in.
+const COLLECTION_MILESTONES = [
+  { frac: 0.25, mult: 1, label: "図鑑 25%" },
+  { frac: 0.50, mult: 2, label: "図鑑 50%" },
+  { frac: 0.75, mult: 3, label: "図鑑 75%" },
+  { frac: 1.00, mult: 6, label: "図鑑コンプリート" }
+];
+function collectionSeenCount() {
+  return Object.values(state.player.collection || {}).filter(e => e && e.seen).length;
+}
+// Grant any newly-reached collection milestones; returns the awards granted this
+// call ({label, reward}) so the result screen can celebrate them.
+function checkCollectionRewards() {
+  const total = DRAGONS.length || 1;
+  const frac = collectionSeenCount() / total;
+  const got = state.player.collectionRewards || (state.player.collectionRewards = []);
+  const base = Math.max(500, Math.floor((state.player.maxCoinsReached || 0) * 0.01));
+  const granted = [];
+  COLLECTION_MILESTONES.forEach(m => {
+    const key = String(m.frac);
+    if (frac + 1e-9 >= m.frac && got.indexOf(key) < 0) {
+      got.push(key);
+      const reward = base * m.mult;
+      state.player.coins += reward;
+      granted.push({ label: m.label, reward });
+    }
+  });
+  return granted;
+}
+
 function renderRaceSelect() {
   state.ui.screen = "race_select";
   runEventHooks("beforeRaceSelect");
   const app = $("app"); app.innerHTML = "";
   app.appendChild(el("h2", null, "レース選択"));
+
+  // 本日の注目レース — a prominent, daily-rotating spotlight
+  try {
+    const feat = featuredRaceToday();
+    if (feat) {
+      const claimed = (typeof _epochDay === "function") && state.player.featuredDoneDay === _epochDay();
+      const fc = el("div", "feat-race");
+      const theme = REGION_THEME[feat.region];
+      if (theme) fc.style.setProperty("--region-accent", theme.accent);
+      fc.innerHTML =
+        `<div class="feat-tag">★ 本日の注目レース ★</div>` +
+        `<div class="feat-name">${raceFullName(feat)}</div>` +
+        `<div class="feat-meta">Rank ${feat.rank}　${RANKS[feat.rank].label}　｜　${DISTANCE[feat.distance].label}　｜　${WEATHERS[feat.weather].label}</div>` +
+        `<div class="feat-purpose">${feat.purpose}</div>` +
+        `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の達成ボーナス 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
+        `<button class="feat-go">注目レースへ ▶</button>`;
+      fc.querySelector(".feat-go").onclick = () => renderRaceDetail(feat);
+      app.appendChild(fc);
+    }
+  } catch (e) {}
+
   const list = el("div");
   RACES.forEach(r => {
     const locked = r.rank > state.player.rank;
@@ -1538,6 +1620,19 @@ function settleRace() {
     broke: (!betResult.hit && prevStreak >= 2), bonus: streakBonus, milestone: streakMilestone
   };
   updateCollectionFromRace(raceResult, c.bet, betResult);
+  // §37 — 注目レース日次ボーナス + 図鑑コンプ報酬 (meta-rewards; not part of payout).
+  try {
+    const fday = (typeof _epochDay === "function") ? _epochDay() : null;
+    if (fday != null && c.race && typeof featuredRaceToday === "function" &&
+        featuredRaceToday().id === c.race.id && state.player.featuredDoneDay !== fday) {
+      state.player.featuredDoneDay = fday;
+      const fb = featuredBonusAmount();
+      state.player.coins += fb;
+      c.featuredBonus = fb;
+    }
+  } catch (e) {}
+  try { c.collectionAwards = (typeof checkCollectionRewards === "function") ? checkCollectionRewards() : []; }
+  catch (e) { c.collectionAwards = []; }
   gainVillageExp(c.race, betResult && betResult.hit, raceResult._newDragonsThisRace || 0);
   checkEconomyMilestones(betResult);
   checkRankProgression();
@@ -2124,6 +2219,11 @@ function drawRecapScreen() {
   if (ps) {
     app.appendChild(buildResultHero(ps, resultTierOf(ps), c));
   }
+  // meta-reward banners: 注目レース達成 + 図鑑マイルストーン (spec #37)
+  try {
+    if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));
+    (c.collectionAwards || []).forEach(a => app.appendChild(el("div", "rs-bonus rs-bonus-dex", `📖 ${a.label} 達成！　<b>＋${fmtCoins(a.reward)}</b>`)));
+  } catch (e) {}
   // living advisor reaction — a character speaks to what just happened (spec #37)
   try {
     const ar = (typeof pickAdvisorReaction === "function") ? pickAdvisorReaction(ps, c) : null;

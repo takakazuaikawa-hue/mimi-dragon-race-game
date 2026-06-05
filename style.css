@@ -1323,6 +1323,45 @@ table.entry-table {
 .rs-adv-name span { margin-left: 6px; font-size: 10px; font-weight: 400; color: var(--mist-soft); opacity: .8; }
 .rs-adv-line { font-size: 13px; color: var(--cream); line-height: 1.55; margin-top: 3px; }
 
+/* === 本日の注目レース (spec #37) === */
+.feat-race { position: relative; margin-bottom: 16px; padding: 16px 16px 14px; border-radius: 14px; overflow: hidden;
+  background: linear-gradient(135deg, rgba(214,69,47,0.22), rgba(40,34,22,0.92) 62%), var(--plate);
+  border: 1px solid var(--gold-line); box-shadow: 0 12px 30px -14px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,216,119,0.15); }
+.feat-race::before { content: ""; position: absolute; right: -30px; top: -30px; width: 120px; height: 120px; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,140,70,0.3), transparent 70%); }
+.feat-tag { position: relative; font-size: 11px; font-weight: 800; letter-spacing: .12em; color: var(--gold-bright); }
+.feat-name { position: relative; font-size: 18px; font-weight: 900; color: #fff; margin: 3px 0 4px; }
+.feat-meta { position: relative; font-size: 11.5px; color: var(--mist-soft); }
+.feat-purpose { position: relative; font-size: 12px; color: var(--cream); opacity: .92; margin: 6px 0 10px; line-height: 1.5; }
+.feat-reward { position: relative; display: inline-block; font-size: 11.5px; font-weight: 700; color: #4a2e08; margin-bottom: 12px;
+  padding: 4px 10px; border-radius: 999px; background: linear-gradient(135deg, #ffe9a6, #f3bd54); }
+.feat-reward.done { background: rgba(255,255,255,0.1); color: var(--mist-soft); font-weight: 400; }
+.feat-go { position: relative; display: block; width: 100%; padding: 12px; border: none; border-radius: 11px; cursor: pointer;
+  font-size: 15px; font-weight: 800; color: #4a2e08;
+  background: linear-gradient(135deg, #ffe9a6 0%, #f3bd54 44%, #d99a32 100%);
+  box-shadow: 0 8px 20px -10px rgba(217,154,50,0.8); transition: transform .12s; }
+.feat-go:hover { transform: translateY(-2px); }
+.feat-go:active { transform: translateY(1px); }
+
+/* === result meta-reward banners (spec #37) === */
+.rs-bonus { text-align: center; font-size: 13px; color: var(--gold-bright); margin: 0 0 8px; padding: 9px 12px;
+  border-radius: 10px; background: linear-gradient(180deg, rgba(255,200,90,0.14), rgba(255,200,90,0.05));
+  border: 1px solid rgba(255,200,90,0.35); animation: lbPop .5s cubic-bezier(.2,1.4,.4,1); }
+.rs-bonus b { color: #fff; }
+.rs-bonus-dex { color: var(--jade-bright); border-color: rgba(73,200,156,0.35);
+  background: linear-gradient(180deg, rgba(73,200,156,0.14), rgba(73,200,156,0.05)); }
+
+/* === 図鑑コンプリート報酬 progress (spec #37) === */
+.dex-prog-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--cream); }
+.dex-prog-top b { font-size: 15px; color: var(--gold-bright); }
+.dex-prog-bar { height: 8px; border-radius: 5px; background: rgba(255,255,255,0.1); margin: 8px 0; overflow: hidden; }
+.dex-prog-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--jade-deep), var(--jade-bright)); }
+.dex-chips { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+.dex-chip { text-align: center; font-size: 11px; font-weight: 700; padding: 6px 2px; border-radius: 8px; color: var(--mist-soft);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.dex-chip.ready { color: #4a2e08; background: linear-gradient(180deg, #ffe09a, #e6b24a); border-color: var(--gold-line); }
+.dex-chip.claimed { color: #fff; background: linear-gradient(180deg, var(--jade), var(--jade-deep)); border-color: var(--jade-bright); }
+
 .analysis-section { margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.2); border-left: 3px solid #d4a850; border-radius: 3px; }
 .analysis-section .label { color: #ffd870; font-weight: bold; display: block; margin-bottom: 4px; }
 
