@@ -2124,6 +2124,19 @@ function drawRecapScreen() {
   if (ps) {
     app.appendChild(buildResultHero(ps, resultTierOf(ps), c));
   }
+  // living advisor reaction — a character speaks to what just happened (spec #37)
+  try {
+    const ar = (typeof pickAdvisorReaction === "function") ? pickAdvisorReaction(ps, c) : null;
+    if (ar && ar.cast) {
+      const card = el("div", "rs-advisor");
+      card.style.setProperty("--ac", ar.cast.color || "#2ea884");
+      card.innerHTML =
+        `<div class="rs-adv-face">${ar.cast.symbol || "🐲"}</div>` +
+        `<div class="rs-adv-tx"><div class="rs-adv-name">${ar.cast.name}<span>${ar.cast.tag || ""}</span></div>` +
+        `<div class="rs-adv-line">${ar.line}</div></div>`;
+      app.appendChild(card);
+    }
+  } catch (e) {}
   // next-goal nudge (north star) — keep a target in view after every race
   try {
     const goals = (typeof nextGoals === "function") ? nextGoals(state) : [];
@@ -2232,6 +2245,109 @@ function nextGoals(state) {
     if (best) goals.push({ kind: "story", icon: "📖", label: best.title || ("物語 " + best.id), sub: `総資産 あと ${fmtCoins(bestAt - total)}`, pct: clamp(total / bestAt * 100, 2, 99) });
   }
   return goals;
+}
+
+// §37 — living advisor reactions. The 5 advisors unlock with 総資産 (sake from
+// the start, the rest later), and each owns a domain; on the result screen the
+// one whose domain best fits what just happened speaks, with a varied line so it
+// never feels canned. sake closes every situation list, so the early game always
+// has a voice and the chorus fills in as advisors are met. "{n}" → streak count.
+const ADVISOR_LINES = {
+  legendary: [
+    { key: "mizu", lines: [
+      "市場のズレ、完璧に突いたわね。これが期待値の勝ちよ、あはん。",
+      "誰も見ていない価値を、あなたは見た。お見事であるわ。",
+      "人気と実力の差――そこにしかお金は落ちていないの。よく拾ったわね。" ] },
+    { key: "celestia", lines: [
+      "世界の天井から見ても、見事な一撃。価値の残る賭けだったわね。",
+      "市場の歪みを射抜いた。これが神眼に届く予想よ。" ] },
+    { key: "sake", lines: [
+      "気配だけで選んだな。数字じゃ説明できねぇ、いい目だ。" ] }
+  ],
+  bigwin: [
+    { key: "sumika", lines: [
+      "大きいですね。住居も食事も、これで一段と潤います。",
+      "総資産がぐっと伸びました。再起の土台が固まりますね。" ] },
+    { key: "makura", lines: [
+      "うおおお盛り上がってきたァ！今の的中、配信なら切り抜き確定だぜ！",
+      "観客のボルテージ最高潮！この熱、視聴者にも伝わってるぜ！" ] },
+    { key: "sake", lines: [
+      "派手に獲ったな。気配を読み切った証だ。" ] }
+  ],
+  streak: [
+    { key: "makura", lines: [
+      "{n}連勝うおおお！会場のボルテージやばいぞ、止まんねぇ！",
+      "{n}連勝だ！この流れ、視聴者が見逃すわけねぇ！乗ってけ！" ] },
+    { key: "celestia", lines: [
+      "{n}連勝――悪くないわ。波に乗っているうちは、的を絞りなさい。" ] },
+    { key: "sake", lines: [
+      "{n}連勝か。調子いいときほど、竜の気配をよく見ろよ。" ] }
+  ],
+  favorite_hit: [
+    { key: "sake", lines: [
+      "本命が順当に。コースの空気も味方したな。",
+      "堅く取ったな。こういう積み重ねが土台になる。" ] },
+    { key: "mizu", lines: [
+      "順当な的中。確実に拾うのも、立派な戦略であるわ。" ] },
+    { key: "sumika", lines: [
+      "堅実な勝ち。こういう一戦が、暮らしを支えます。" ] }
+  ],
+  narrow_miss: [
+    { key: "makura", lines: [
+      "うわー惜しい！あの子、最後まで諦めてなかったぜ…！次だ次！",
+      "あと一歩ォ！今のは悔しいが、いい勝負だった！" ] },
+    { key: "sake", lines: [
+      "際どかったな。展開が少し違えば獲れていた。悪い読みじゃない。" ] },
+    { key: "celestia", lines: [
+      "惜しい。けれど一着と二着の間には、深い谷があるの。次に活かしなさい。" ] }
+  ],
+  upset_loss: [
+    { key: "sake", lines: [
+      "荒れたな。こういう日は誰にも読み切れねぇ。引きずるな。",
+      "波乱だ。気配が乱れる日もある。次のレースだ。" ] },
+    { key: "celestia", lines: [
+      "市場が歪んだわね。読めない波乱もある。価値を見失わないことよ。" ] },
+    { key: "mizu", lines: [
+      "人気が裏切られたわね。…でも長い目で見れば、期待値は嘘をつかないわ。" ] }
+  ],
+  miss: [
+    { key: "mizu", lines: [
+      "今回は外れ。でも一回の結果に意味はないの。試行を重ねれば、価値が効いてくるわ。",
+      "ハズレ。大事なのは、その賭けに価値があったかどうかよ、あはん。" ] },
+    { key: "sake", lines: [
+      "外したか。気にするな、次の竜の気配を見ろ。" ] },
+    { key: "sumika", lines: [
+      "負けても大丈夫。総資産という土台がある限り、何度でも立て直せます。" ] }
+  ]
+};
+
+function pickAdvisorReaction(ps, c) {
+  if (!ps || typeof STORY_CAST === "undefined") return null;
+  const met = k => (typeof castUnlockAt !== "function") || castUnlockAt(k) <= (state.player.totalAssets || 0);
+  const tier = (typeof resultTierOf === "function") ? resultTierOf(ps) : 0;
+  const streak = state.player.streak || 0;
+  let winnerPopRank = 1;
+  try {
+    const w = c.raceResult.entries[0];
+    const od = c.oddsResult.oddsData.find(o => o.dragonId === w.dragon.id);
+    winnerPopRank = (od && od.popularityRank) || 1;
+  } catch (e) {}
+  const pickRank = (ps.selections && ps.selections[0] && ps.selections[0].rank) || 99;
+  let situation;
+  if (ps.hit && streak >= 3) situation = "streak";
+  else if (ps.hit && tier >= 3) situation = "legendary";
+  else if (ps.hit && tier === 2) situation = "bigwin";
+  else if (ps.hit) situation = "favorite_hit";
+  else if (pickRank <= 4) situation = "narrow_miss";
+  else if (winnerPopRank >= 4) situation = "upset_loss";
+  else situation = "miss";
+  const cands = ADVISOR_LINES[situation] || ADVISOR_LINES.miss;
+  let chosen = cands.find(cand => met(cand.key));
+  if (!chosen) chosen = ADVISOR_LINES.miss.find(x => x.key === "sake");
+  const cast = STORY_CAST[chosen.key];
+  let line = chosen.lines[Math.floor(Math.random() * chosen.lines.length)];
+  line = line.replace("{n}", streak);
+  return { cast, line, situation };
 }
 
 function buildResultHero(ps, tier, c) {
