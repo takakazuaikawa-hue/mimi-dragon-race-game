@@ -15,7 +15,14 @@
  */
 
 function updateHeader() {
-  $("coin-display").textContent = fmtCoins(state.player.coins);
+  const coinEl = $("coin-display");
+  const next = fmtCoins(state.player.coins);
+  // Pop the counter whenever the balance actually changes (win / spend), so the
+  // header gives a beat of feedback instead of silently swapping numbers.
+  if (coinEl && coinEl.dataset.v != null && coinEl.dataset.v !== next) {
+    coinEl.classList.remove("coin-bump"); void coinEl.offsetWidth; coinEl.classList.add("coin-bump");
+  }
+  if (coinEl) { coinEl.textContent = next; coinEl.dataset.v = next; }
   $("rank-display").textContent = state.player.rank;
 }
 
@@ -40,6 +47,7 @@ function beginScreen() {
   const screen = state.ui.screen;
   const prev = _prevScreen;
   app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart");
+  if (prev !== screen) window.scrollTo(0, 0);   // start every new screen at the top
 
   // Hero "expand from the tapped card" (race card → detail) takes priority.
   if (_heroRect && screen === "race_detail") {

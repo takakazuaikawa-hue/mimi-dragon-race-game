@@ -18,6 +18,9 @@ window.addEventListener("DOMContentLoaded", () => {
   bumpMaxCoins();
   recomputeAssets(state);
   updateHeader();
+  // Restore the persisted "情報量" preference into its selector on boot.
+  const _infoSel = document.getElementById("info-level");
+  if (_infoSel && state.ui.infoLevel) _infoSel.value = state.ui.infoLevel;
 
   const rerenderCurrent = () => {
     const map = {
@@ -38,7 +41,19 @@ window.addEventListener("DOMContentLoaded", () => {
   // Info level selector
   document.getElementById("info-level").addEventListener("change", (e) => {
     state.ui.infoLevel = e.target.value;
+    saveGame();              // persist the preference across reloads
     rerenderCurrent();
+  });
+
+  // Esc closes the event overlay (keyboard parity with the 次へ button).
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const ov = document.getElementById("event-overlay");
+      if (ov && !ov.classList.contains("hidden")) {
+        ov.classList.add("hidden");
+        setTimeout(flushEventQueue, 50);
+      }
+    }
   });
 
   // Event overlay close
