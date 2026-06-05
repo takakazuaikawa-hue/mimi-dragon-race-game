@@ -113,6 +113,7 @@ function renderTitle() {
     <div class="title-bg"></div>
     <div class="title-stars"></div>
     <div class="title-moon"></div>
+    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.jpg", "") : ""}</div>
     <div class="title-inner">
       <div class="title-kicker">── 競竜 予想ドラマ ──</div>
       <h1 class="title-logo"><span class="tl-main">聖龍爆走録</span> <span class="tl-mimi">ミミ</span></h1>
@@ -185,7 +186,7 @@ function renderHome() {
     `<div class="hwv-smoke"></div>` +
     `<div class="hwv-ridge-far"></div><div class="hwv-haze"></div><div class="hwv-ridge-near"></div>` +
     `<div class="hwv-lanterns" id="hw-lanterns"></div>` +
-    (typeof photoOr === "function" ? photoOr("images/home_vista_day.png", "") : "") +
+    (typeof photoOr === "function" ? photoOr("images/home_vista_day.jpg", "") : "") +
     `<div class="hwv-fade"></div>` +
     `<div class="hwv-label"><i></i>聖龍レース都市・ヴォルカ街道</div>`;
   wrap.appendChild(vista);
@@ -260,7 +261,10 @@ function renderHome() {
   wrap.appendChild(g2);
 
   const foot = el("div", "hw-foot");
-  const reset = el("button", null, "データをリセット");
+  const toTitle = el("button", "hw-foot-btn", "タイトルへ戻る");
+  toTitle.onclick = () => renderTitle();
+  foot.appendChild(toTitle);
+  const reset = el("button", "hw-foot-btn", "データをリセット");
   reset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
   foot.appendChild(reset);
   wrap.appendChild(foot);
@@ -852,11 +856,20 @@ function checkCollectionRewards() {
   return granted;
 }
 
+// reusable photo header banner (image + scrim + title); CSS stone-plate fallback
+function screenHeader(title, imgSrc) {
+  const h = el("div", "screen-header");
+  h.innerHTML =
+    (typeof photoOr === "function" ? photoOr(imgSrc, "") : "") +
+    `<div class="screen-header-scrim"></div><div class="screen-header-title">${title}</div>`;
+  return h;
+}
+
 function renderRaceSelect() {
   state.ui.screen = "race_select";
   runEventHooks("beforeRaceSelect");
   const app = beginScreen();
-  app.appendChild(el("h2", null, "レース選択"));
+  app.appendChild(screenHeader("レース選択", "images/race_header.jpg"));
 
   // 本日の注目レース — a prominent, daily-rotating spotlight
   try {
