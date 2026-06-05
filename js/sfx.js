@@ -127,6 +127,9 @@ var Sfx = (function () {
         case "click": // soft UI tap
           tone(330, t, 0.03, "sine", 0.12);
           break;
+        case "nav": // soft navigation swoosh (screen change)
+          tone(520, t, 0.08, "sine", 0.10, 820);
+          break;
         case "miss": // gentle low "とすっ" — never harsh
           tone(220, t, 0.22, "sine", 0.22, 150);
           tone(165, t + 0.05, 0.28, "sine", 0.16, 120);

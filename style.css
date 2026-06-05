@@ -1071,6 +1071,51 @@ button:disabled { background: #555; color: #888; cursor: not-allowed; }
 button.secondary { background: #604070; color: #f0e8d0; }
 button.secondary:hover { background: #806090; }
 
+/* ===================================================================
+   UI polish: tactile button feedback + screen transitions.
+   Speed is kept short (≤0.28s) so navigation stays snappy; the motion
+   only exists to give depth and a "where it came from" spatial cue.
+   =================================================================== */
+button { transition: background .15s ease, transform .07s ease, box-shadow .15s ease; }
+button:active:not(:disabled) { transform: translateY(1px) scale(.985); }
+
+/* Screen entrance — every render routes through beginScreen(), which sets
+   one of these classes on #app; its fresh children animate in on insertion. */
+#app.nav-fwd  > * { animation: scrInFwd .22s cubic-bezier(.22,.61,.36,1) both; }
+#app.nav-back > * { animation: scrInBack .22s cubic-bezier(.22,.61,.36,1) both; }
+#app.nav-same > * { animation: scrFade .14s ease both; }
+#app.nav-racestart > * { animation: scrRaceStart .34s cubic-bezier(.22,.61,.36,1) both; }
+
+/* translateX/Y + opacity only — no scale on the screen container, so
+   canvas-backed screens (race_run) keep their measured width correct. */
+@keyframes scrInFwd  { from { opacity: 0; transform: translateX(26px);  } to { opacity: 1; transform: none; } }
+@keyframes scrInBack { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+@keyframes scrFade   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scrRaceStart {
+  0%   { opacity: 0; transform: translateY(12px); filter: brightness(1.6); }
+  55%  { opacity: 1; }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+
+/* Staggered cascade for the marquee card lists (nested inside the screen
+   slide for a layered, polished entrance). */
+.race-card, .bet-pick-card { animation: cardCascade .3s ease both; }
+.race-card:nth-child(1),.bet-pick-card:nth-child(1){ animation-delay:.02s }
+.race-card:nth-child(2),.bet-pick-card:nth-child(2){ animation-delay:.06s }
+.race-card:nth-child(3),.bet-pick-card:nth-child(3){ animation-delay:.10s }
+.race-card:nth-child(4),.bet-pick-card:nth-child(4){ animation-delay:.14s }
+.race-card:nth-child(5),.bet-pick-card:nth-child(5){ animation-delay:.18s }
+.race-card:nth-child(6),.bet-pick-card:nth-child(6){ animation-delay:.22s }
+.race-card:nth-child(7),.bet-pick-card:nth-child(7){ animation-delay:.26s }
+.race-card:nth-child(n+8),.bet-pick-card:nth-child(n+8){ animation-delay:.30s }
+@keyframes cardCascade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Respect reduced-motion: keep the app usable without the flourish. */
+@media (prefers-reduced-motion: reduce) {
+  #app > *, .race-card, .bet-pick-card, button { animation: none !important; }
+  button:active:not(:disabled) { transform: none; }
+}
+
 .card {
   background: var(--glass);
   border: 1px solid var(--glass-border);

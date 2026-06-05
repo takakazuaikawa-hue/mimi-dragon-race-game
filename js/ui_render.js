@@ -19,6 +19,77 @@ function updateHeader() {
   $("rank-display").textContent = state.player.rank;
 }
 
+// =====================================================================
+// Screen transition controller — gives navigation a sense of depth and a
+// tactile feel, so moving between menus reads like a polished app instead
+// of a hard cut. Every screen render routes its app.innerHTML="" through
+// beginScreen(), which picks a forward/back slide (by screen depth), a
+// "into the race" zoom, or an expand-from-the-tapped-card hero transition.
+// =====================================================================
+const SCREEN_DEPTH = {
+  title: 0, home: 1,
+  race_select: 2, village: 2, collection: 2, assets: 2, help: 2,
+  story: 3, consult: 3, race_detail: 3,
+  race_run: 4, result: 5, analysis: 6
+};
+let _prevScreen = null;
+let _heroRect = null;   // rect of a tapped card, to expand from on the next screen
+
+function beginScreen() {
+  const app = $("app");
+  const screen = state.ui.screen;
+  const prev = _prevScreen;
+  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart");
+
+  // Hero "expand from the tapped card" (race card → detail) takes priority.
+  if (_heroRect && screen === "race_detail") {
+    const from = _heroRect; _heroRect = null;
+    app.innerHTML = "";
+    _prevScreen = screen;
+    requestAnimationFrame(() => flipExpand(app, from));
+    return app;
+  }
+
+  let cls = "nav-same";
+  if (prev !== screen) {
+    if (screen === "race_run") {
+      cls = "nav-racestart";                 // anticipation zoom into the broadcast
+    } else {
+      const a = SCREEN_DEPTH[prev] != null ? SCREEN_DEPTH[prev] : 0;
+      const b = SCREEN_DEPTH[screen] != null ? SCREEN_DEPTH[screen] : 0;
+      cls = b >= a ? "nav-fwd" : "nav-back";
+    }
+    if (window.Sfx) Sfx.play(screen === "race_run" ? "streak" : "nav");
+  }
+  app.classList.add(cls);
+  app.innerHTML = "";
+  _prevScreen = screen;
+  return app;
+}
+
+// FLIP "container transform": animate the freshly-rendered screen out from
+// the rect of the element that was tapped (translateY/scale only — never
+// touches layout, so it's safe to run over canvas-backed screens too).
+function flipExpand(app, from) {
+  const to = app.getBoundingClientRect();
+  if (!from || !to.width || !to.height) return;
+  const sx = Math.max(0.05, from.width / to.width);
+  const sy = Math.max(0.05, from.height / to.height);
+  const tx = from.left - to.left;
+  const ty = from.top - to.top;
+  app.style.transformOrigin = "top left";
+  app.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + sx + "," + sy + ")";
+  app.style.opacity = "0.55";
+  void app.offsetWidth;                       // commit the start frame
+  app.style.transition = "transform .28s cubic-bezier(.22,.61,.36,1), opacity .24s ease";
+  app.style.transform = "none";
+  app.style.opacity = "1";
+  window.setTimeout(() => {
+    app.style.transition = ""; app.style.transformOrigin = "";
+    app.style.transform = ""; app.style.opacity = "";
+  }, 320);
+}
+
 // =========================================================================
 // Title screen — the commercial first impression. No image files (hard
 // constraint): the key art is pure CSS (night sky, moon, stars, gradient
@@ -28,7 +99,7 @@ function updateHeader() {
 function renderTitle() {
   state.ui.screen = "title";
   document.body.classList.add("title-mode");
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   const wrap = el("div", "title-screen");
   wrap.innerHTML = `
     <div class="title-bg"></div>
@@ -74,7 +145,7 @@ function renderTitle() {
 function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   const p = state.player;
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   // daily login reward — checked once per session, shown just after home paints
@@ -217,7 +288,7 @@ function renderAssets() {
   const total = p.totalAssets;
   const level = a.unlockedLifeStages;
   const stage = lifeStageFor(level);
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, "暮らしと資産"));
 
   // --- Headline: total assets + the coins/maxCoins distinction (§16) ---
@@ -451,7 +522,7 @@ function renderStory() {
   state.ui.screen = "story";
   recomputeAssets(state);
   const total = state.player.totalAssets;
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, "ストーリー"));
 
   const intro = el("div", "card story-intro");
@@ -510,7 +581,7 @@ function renderConsult() {
   state.ui.screen = "consult";
   recomputeAssets(state);
   const total = state.player.totalAssets;
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, "相談する"));
   app.appendChild(el("p", "consult-sub", "出会った顧問に話を聞けます。相談は「答え合わせ」ではなく「視点の切り替え」です。"));
 
@@ -549,7 +620,7 @@ function renderConsult() {
 function renderVillage() {
   state.ui.screen = "village";
   runEventHooks("onVillageUpdate", { villageLevel: state.player.villageLevel });
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   const v = state.player.village || { level: 1, name: "泣き虫ドラゴン村" };
   app.appendChild(el("h2", null, `${v.name} (Lv ${v.level})`));
 
@@ -584,7 +655,7 @@ function renderVillage() {
 // §07 §20 Help / Tutorial screen — §10 explains all V1 prediction concepts.
 function renderHelp() {
   state.ui.screen = "help";
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, "予想入門"));
 
   const section = (title, body) => {
@@ -655,7 +726,7 @@ function renderHelp() {
 // §09 §8,§9,§10 Collection screen
 function renderCollection() {
   state.ui.screen = "collection";
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, "竜図鑑"));
   const seenCount = Object.values(state.player.collection || {}).filter(e => e.seen).length;
   app.appendChild(el("div", "card", `見た竜: <b>${seenCount}</b> / ${DRAGONS.length} 種`));
@@ -776,7 +847,7 @@ function checkCollectionRewards() {
 function renderRaceSelect() {
   state.ui.screen = "race_select";
   runEventHooks("beforeRaceSelect");
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, "レース選択"));
 
   // 本日の注目レース — a prominent, daily-rotating spotlight
@@ -816,7 +887,7 @@ function renderRaceSelect() {
       </div>
       <div><button ${locked ? 'disabled' : ''}>${locked ? 'ロック中' : 'このレースを見る'}</button></div>
     `;
-    if (!locked) card.querySelector("button").onclick = () => renderRaceDetail(r);
+    if (!locked) card.querySelector("button").onclick = () => { _heroRect = card.getBoundingClientRect(); renderRaceDetail(r); };
     list.appendChild(card);
   });
   app.appendChild(list);
@@ -873,7 +944,7 @@ function renderRaceDetail(race) {
   runEventHooks("beforeDragonPreview", { race });
   runEventHooks("afterDragonPreview", { race, tags: tense ? ["tense_race"] : [] });
 
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, raceFullName(race)));
 
   // Race info card with region theme (§11 §23)
@@ -1721,7 +1792,7 @@ function renderRaceRun() {
   if (!c.timeline) {
     c.timeline = buildRaceTimeline(c.race, c.raceResult, c.oddsResult, c.bet);
   }
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   const host = el("div"); host.id = "race-canvas-host";
   app.appendChild(host);
   startRaceCanvas(host, {
@@ -1794,7 +1865,7 @@ function renderBroadcastScreen() {
   let wrap = document.getElementById("broadcast-wrap");
   if (!wrap || wrap.dataset.raceId !== c.race.id) {
     wrap = buildBroadcastShell(c);
-    const app = $("app"); app.innerHTML = "";
+    const app = beginScreen();
     app.appendChild(wrap);
   }
   updateBroadcastFrame(wrap, c);
@@ -2211,7 +2282,7 @@ function showRecapTab(id) {
 function drawRecapScreen() {
   const c = state.current;
   const recap = c.recap;
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, "答え合わせ"));
 
   // --- Reward hero: lead with the emotional verdict (spec #37 Tier 1) ---
@@ -2760,7 +2831,7 @@ function renderAnalysis() {
   state.ui.screen = "analysis";
   const c = state.current;
   const analysis = buildAnalysis(c.race, c.raceResult, c.oddsResult, c.betResult, c.broadcast);
-  const app = $("app"); app.innerHTML = "";
+  const app = beginScreen();
   app.appendChild(el("h2", null, "レース後分析"));
   runEventHooks("afterRaceAnalysis", { race: c.race, analysis });
 

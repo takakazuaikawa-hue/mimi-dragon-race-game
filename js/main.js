@@ -47,5 +47,14 @@ window.addEventListener("DOMContentLoaded", () => {
     setTimeout(flushEventQueue, 50);
   });
 
+  // Soft tap feedback on any interactive control (paired with the screen
+  // transition swoosh in beginScreen). Delegated so it covers re-rendered UI.
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t && t.closest && t.closest("button, .race-card, .bet-pick-card, .consult-mark, .uc-head")) {
+      if (window.Sfx && !(t.closest("button") && t.closest("button").disabled)) Sfx.play("click");
+    }
+  });
+
   renderTitle();
 });
