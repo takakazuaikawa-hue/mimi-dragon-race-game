@@ -112,10 +112,11 @@ registerEvent({
   id: "first_bankruptcy_rescue",
   hook: "onBankruptcy",
   condition: { once: false },
+  // §38 — 自動支給はやめ、ホームの「無心する」ボタンから受け取る方式に変更。
+  // （rescue の額・計算は不変。受け取り方を“無心”の演出にしただけ。）
   actions: [
     { type: "dialogue", speaker: "sake_udada",
-      text: "ミミ、まだ終わりじゃない。レースは外した後に、次をどう読むかで強くなる。村の予備コインだ。もう一度、竜を見てみよう。" },
-    { type: "coin_rescue", amountFromVillageLevel: true }
+      text: "ミミ、コインが尽きたな。…まだ終わりじゃない。ホームで『無心する』んだ。村のみんなが、基準額をそっと握らせてくれるさ。" }
   ]
 });
 

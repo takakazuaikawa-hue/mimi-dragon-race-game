@@ -2282,3 +2282,295 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   background: linear-gradient(180deg, rgba(8,12,16,0.12), rgba(8,12,16,0.42) 64%, rgba(8,12,16,0.8)); }
 .screen-header-title { position: absolute; left: 16px; bottom: 11px; z-index: 1;
   color: #fff; font-size: 21px; font-weight: 800; letter-spacing: .02em; text-shadow: 0 2px 8px rgba(0,0,0,0.75); }
+
+/* ============================================================
+   §30 暮らしと資産 — 「再起ジャーニー」 visual overhaul
+   表示専用。着順・オッズ・配当には一切影響しない。
+   ============================================================ */
+.as-sec {
+  margin: 18px 2px 9px; font-size: 13px; font-weight: 800; letter-spacing: .04em;
+  color: var(--gold-bright); display: flex; align-items: center; gap: 8px;
+}
+.as-sec::before { content: ""; width: 4px; height: 15px; border-radius: 2px;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold-line)); box-shadow: 0 0 8px rgba(255,216,119,.5); }
+
+/* ---- HERO: 再起度 + グレード ---- */
+.as-hero {
+  background: linear-gradient(165deg, rgba(70,58,30,.55), rgba(36,32,24,.62) 60%, rgba(24,28,30,.66));
+  border: 1px solid rgba(202,162,74,.5);
+  box-shadow: inset 0 0 0 1px rgba(255,216,119,.14), 0 14px 38px -16px rgba(230,178,74,.55);
+  padding: 16px 16px 15px;
+}
+.as-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.as-hero-lbl { font-size: 11px; color: var(--astone-2); letter-spacing: .03em; }
+.as-hero-total { font-size: 30px; font-weight: 900; line-height: 1.1; color: var(--gold-bright);
+  font-variant-numeric: tabular-nums; text-shadow: 0 2px 14px rgba(230,178,74,.45); margin-top: 1px; }
+.as-grade {
+  flex: none; text-align: center; min-width: 92px; padding: 8px 10px 7px;
+  background: radial-gradient(120% 120% at 50% 18%, rgba(255,216,119,.22), rgba(0,0,0,.18));
+  border: 1px solid rgba(202,162,74,.55); border-radius: 14px;
+}
+.as-grade-ic { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 5px rgba(0,0,0,.4)); }
+.as-grade-lv { font-size: 11px; font-weight: 800; color: var(--cream); margin-top: 3px; letter-spacing: .02em; }
+.as-grade-stars { font-size: 12px; color: var(--gold-bright); letter-spacing: 1px; margin-top: 1px; }
+.as-grade-name { font-size: 13.5px; color: var(--mist); margin: 11px 0 9px; line-height: 1.5; }
+.as-grade-name b { color: var(--gold-bright); font-size: 15px; }
+.as-prog-bar { height: 12px; border-radius: 7px; background: rgba(0,0,0,.34);
+  border: 1px solid rgba(255,255,255,.08); overflow: hidden; }
+.as-prog-fill { height: 100%; border-radius: 7px 4px 4px 7px;
+  background: linear-gradient(90deg, var(--gold-line), var(--gold-bright));
+  box-shadow: 0 0 10px rgba(255,216,119,.6); transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.as-prog-cap { font-size: 12px; color: var(--mist-soft); margin-top: 7px; }
+.as-prog-cap b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.as-prog-cap.as-maxed { color: var(--gold-bright); font-weight: 700; }
+.as-hero-sub { font-size: 12px; color: var(--mist-soft); margin-top: 10px;
+  padding-top: 9px; border-top: 1px solid rgba(255,255,255,.08); line-height: 1.6; }
+.as-hero-sub b { color: var(--cream); font-variant-numeric: tabular-nums; }
+.as-hero-sub .as-hint { color: var(--astone-2); font-size: 11px; }
+
+/* ---- ROADMAP ---- */
+.as-road { margin: 2px 0 4px; }
+.as-step { display: flex; gap: 11px; align-items: stretch; }
+.as-step-rail { position: relative; width: 34px; flex: none; }
+.as-step-dot {
+  position: relative; z-index: 2; width: 32px; height: 32px; margin: 1px auto 0;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800; background: var(--vstone-deep);
+  border: 2px solid var(--vstone-2); color: var(--astone-2);
+}
+.as-step:not(:last-child) .as-step-rail::after {
+  content: ""; position: absolute; left: 50%; top: 17px; bottom: -8px; width: 2px;
+  transform: translateX(-50%); background: var(--glass-border); z-index: 1;
+}
+.as-step-body { flex: 1; padding: 0 0 16px; min-width: 0; }
+.as-step-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.as-step-ic { font-size: 17px; }
+.as-step-name { font-size: 14px; font-weight: 800; color: var(--mist); }
+.as-step-sum { font-size: 12px; color: var(--astone-2); margin-top: 3px; line-height: 1.5; }
+.as-step-tag { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 9px;
+  background: rgba(0,0,0,.28); color: var(--astone-2); border: 1px solid var(--glass-border);
+  font-variant-numeric: tabular-nums; }
+.as-step-tag.now { background: var(--gold); color: #2a1d06; border-color: var(--gold-bright); }
+.as-step-tag.done { color: var(--jade-bright); border-color: rgba(73,200,156,.4); }
+.as-step.done .as-step-dot { background: rgba(28,110,87,.34); border-color: var(--jade); color: var(--jade-bright); }
+.as-step.done .as-step-rail::after { background: rgba(73,200,156,.4); }
+.as-step.done .as-step-name { color: var(--mist-soft); }
+.as-step.now .as-step-dot {
+  background: radial-gradient(120% 120% at 50% 25%, var(--gold-bright), var(--gold));
+  border-color: var(--gold-bright); color: #2a1d06; transform: scale(1.16);
+  box-shadow: 0 0 0 4px rgba(255,216,119,.16), 0 4px 14px rgba(230,178,74,.5);
+}
+.as-step.now .as-step-name { color: var(--gold-bright); }
+.as-step.now .as-step-sum { color: var(--mist-soft); }
+.as-step.lock .as-step-dot { opacity: .6; }
+.as-step.lock .as-step-name, .as-step.lock .as-step-ic { opacity: .62; }
+.as-step.lock .as-step-sum { opacity: .5; }
+
+/* ---- LIFE snapshot grid ---- */
+.as-life { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+.as-life-cell { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: center;
+  background: var(--glass-2); border: 1px solid var(--glass-border); border-radius: 10px; padding: 9px 10px; }
+.as-life-ic { grid-row: span 2; font-size: 21px; }
+.as-life-k { font-size: 10.5px; font-weight: 700; color: var(--gold); letter-spacing: .02em; }
+.as-life-v { grid-column: 2; font-size: 12px; color: var(--mist-soft); line-height: 1.35; }
+
+/* ---- TEASER (next stage preview) ---- */
+.as-teaser { background: linear-gradient(160deg, rgba(47,134,182,.18), rgba(30,40,48,.4));
+  border: 1px dashed rgba(87,177,221,.55); }
+.as-teaser-h { font-size: 13px; font-weight: 800; color: var(--sea-bright); margin-bottom: 9px; }
+.as-teaser-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.as-teaser-grid span { font-size: 11.5px; color: var(--mist-soft); background: rgba(0,0,0,.22);
+  border: 1px solid var(--glass-border); border-radius: 8px; padding: 4px 9px; }
+.as-teaser-foot { margin-top: 10px; font-size: 12.5px; color: var(--cream); text-align: center; }
+.as-teaser-foot b { color: var(--sea-bright); font-variant-numeric: tabular-nums; }
+
+/* ---- BREAKDOWN segmented bar ---- */
+.as-break-bar { display: flex; height: 18px; border-radius: 9px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.1); background: rgba(0,0,0,.3); }
+.as-break-bar > div { height: 100%; min-width: 2px; transition: width .5s ease; }
+.as-break-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 11px; }
+.as-break-legend span { font-size: 11.5px; color: var(--mist-soft); display: inline-flex; align-items: center; gap: 6px;
+  font-variant-numeric: tabular-nums; }
+.as-break-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.as-break-rescue { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08);
+  font-size: 12px; color: var(--jade-bright); }
+.as-break-rescue b { color: var(--mist); font-variant-numeric: tabular-nums; }
+
+/* ---- ITEMS collection ---- */
+.as-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 8px; }
+.as-item { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center;
+  padding: 10px 6px 8px; border-radius: 11px; background: var(--glass-2);
+  border: 1px solid var(--glass-border); }
+.as-item-ic { font-size: 22px; line-height: 1; }
+.as-item-nm { font-size: 10.5px; line-height: 1.25; color: var(--mist-soft); }
+.as-item-tag { font-size: 11px; font-weight: 800; color: var(--astone-2); margin-top: 1px; }
+.as-item.owned { background: linear-gradient(165deg, rgba(230,178,74,.24), rgba(60,48,24,.34));
+  border-color: rgba(202,162,74,.55); }
+.as-item.owned .as-item-nm { color: var(--cream); }
+.as-item.owned .as-item-tag { color: var(--gold-bright); }
+.as-item.lock { opacity: .52; filter: saturate(.4); }
+.as-item.buyable { opacity: 1; filter: none; cursor: pointer; border-color: rgba(87,177,221,.5);
+  background: linear-gradient(165deg, rgba(47,134,182,.16), rgba(30,40,48,.34)); transition: transform .12s, border-color .12s; }
+.as-item.buyable:hover { transform: translateY(-2px); border-color: var(--sea-bright); }
+.as-item.buyable .as-item-tag { color: var(--sea-bright); }
+
+/* ---- STORY bar (compact) ---- */
+.as-storybar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.as-storybar-tx { font-size: 13px; color: var(--mist-soft); }
+.as-storybar-tx b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.as-storybar .hw-foot-btn { flex: none; width: auto; min-width: 0; padding: 9px 16px; }
+
+/* ===== 暮らしのステップ（51段マイルストーン）===== */
+.as-grade-tier { font-size: 11px; font-weight: 800; margin-top: 2px; letter-spacing: .02em; }
+.as-prog-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.as-prog-n { color: var(--astone-2); font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.as-prog-bar.lg { height: 15px; }
+
+/* NEXT — 次の1段だけが見える“ねらい目”カード */
+.as-next { --tier: var(--gold-bright); position: relative; overflow: hidden;
+  border: 1px solid var(--tier);
+  background: linear-gradient(162deg, rgba(255,255,255,.06), rgba(22,26,30,.5) 72%);
+  box-shadow: 0 14px 34px -18px rgba(0,0,0,.7); }
+.as-next::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--tier); }
+.as-next-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 11px; }
+.as-next-kicker { font-size: 12px; font-weight: 800; color: var(--tier); letter-spacing: .04em; }
+.as-next-tier { font-size: 10.5px; font-weight: 800; padding: 2px 9px; border-radius: 9px;
+  background: rgba(0,0,0,.34); border: 1px solid; }
+.as-next-main { display: flex; gap: 13px; align-items: center; margin-bottom: 12px; }
+.as-next-ic { font-size: 38px; line-height: 1; flex: none; filter: drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
+.as-next-tx { min-width: 0; flex: 1; }
+.as-next-title { font-size: 17px; font-weight: 900; color: var(--mist); letter-spacing: .01em; line-height: 1.3; }
+.as-next-desc { font-size: 12.5px; color: var(--mist-soft); line-height: 1.55; margin-top: 4px; }
+.as-next-foot { margin-top: 9px; text-align: center; font-size: 13px; color: var(--cream); }
+.as-next-foot b { color: var(--gold-bright); font-size: 15px; font-variant-numeric: tabular-nums; }
+
+/* この先はロック（ミステリー） */
+.as-locks { margin: 9px 0 4px; display: flex; flex-direction: column; gap: 6px; }
+.as-lock { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-radius: 10px;
+  background: rgba(0,0,0,.22); border: 1px dashed var(--glass-border); opacity: .82; }
+.as-lock-ic { font-size: 14px; filter: grayscale(.3); }
+.as-lock-q { font-size: 14px; font-weight: 800; color: var(--astone-2); letter-spacing: 2px; flex: 1; }
+.as-lock-at { font-size: 11px; color: var(--astone); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* これまで歩んだ暮らし（達成ログ） */
+.as-log { display: flex; flex-direction: column; gap: 8px; }
+.as-logrow { display: flex; gap: 12px; align-items: flex-start; background: var(--glass-2);
+  border: 1px solid var(--glass-border); border-radius: 11px; padding: 10px 12px; }
+.as-log-ic { flex: none; width: 38px; height: 38px; border-radius: 10px; display: flex;
+  align-items: center; justify-content: center; font-size: 20px;
+  background: rgba(0,0,0,.28); border: 1.5px solid var(--glass-border); }
+.as-log-tx { min-width: 0; flex: 1; }
+.as-log-title { font-size: 13.5px; font-weight: 800; color: var(--cream);
+  display: flex; align-items: center; gap: 6px; }
+.as-log-check { color: var(--jade-bright); font-size: 12px; }
+.as-log-desc { font-size: 12px; color: var(--astone-2); line-height: 1.5; margin-top: 3px; }
+.as-log-more { display: block; width: 100%; margin: 10px 0 2px; padding: 11px; min-height: 44px;
+  background: var(--glass-2); border: 1px solid var(--glass-border); border-radius: 10px;
+  color: var(--gold-bright); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.as-log-more:hover { background: var(--glass); border-color: var(--gold-line); }
+
+/* ===== §38 くらしスキルツリー ===== */
+.lt-hero { background: linear-gradient(165deg, rgba(70,58,30,.5), rgba(28,32,36,.6));
+  border: 1px solid rgba(202,162,74,.45); box-shadow: inset 0 0 0 1px rgba(255,216,119,.12); }
+.lt-hero-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.lt-hero-id { min-width: 0; }
+.lt-pcard { flex: none; text-align: center; min-width: 90px; padding: 9px 12px 7px;
+  background: radial-gradient(120% 120% at 50% 12%, rgba(255,216,119,.3), rgba(0,0,0,.2));
+  border: 1px solid rgba(202,162,74,.6); border-radius: 14px; }
+.lt-pnum { font-size: 27px; font-weight: 900; color: var(--gold-bright); line-height: 1;
+  font-variant-numeric: tabular-nums; text-shadow: 0 2px 10px rgba(230,178,74,.5); }
+.lt-plbl { font-size: 11px; font-weight: 800; color: var(--cream); margin-top: 3px; letter-spacing: .02em; }
+.lt-hero-sub { font-size: 12px; color: var(--mist-soft); margin-top: 11px; padding-top: 9px;
+  border-top: 1px solid rgba(255,255,255,.08); line-height: 1.6; }
+.lt-hero-sub b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.lt-hero-sub .as-hint { color: var(--astone-2); font-size: 11px; }
+
+/* 枝タブ（3×2） */
+.lt-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 2px 0 13px; }
+.lt-tab { --bc: var(--gold); position: relative; display: flex; flex-direction: column; align-items: center;
+  gap: 1px; padding: 8px 4px 6px; border-radius: 11px; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); color: var(--mist-soft); }
+.lt-tab-ic { font-size: 19px; line-height: 1.1; }
+.lt-tab-nm { font-size: 11px; font-weight: 800; }
+.lt-tab-pg { font-size: 10px; color: var(--astone-2); font-variant-numeric: tabular-nums; }
+.lt-tab.on { border-color: var(--bc); box-shadow: inset 0 0 0 1px var(--bc), 0 4px 14px -8px var(--bc); color: var(--mist); }
+.lt-tab.on .lt-tab-nm { color: var(--bc); }
+.lt-tab.ready::after { content: ""; position: absolute; top: 5px; right: 6px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--gold-bright); box-shadow: 0 0 6px var(--gold-bright); }
+
+/* 枝チェーン */
+.lt-chain { --bc: var(--gold); display: flex; flex-direction: column; margin-bottom: 4px; }
+.lt-node { display: flex; gap: 10px; align-items: stretch; }
+.lt-node-rail { position: relative; width: 36px; flex: none; }
+.lt-node-dot { position: relative; z-index: 2; width: 34px; height: 34px; margin: 1px auto 0;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;
+  background: var(--vstone-deep); border: 2px solid var(--vstone-2); }
+.lt-node:not(:last-child) .lt-node-rail::after { content: ""; position: absolute; left: 50%;
+  top: 18px; bottom: -6px; width: 2px; transform: translateX(-50%); background: var(--glass-border); }
+.lt-node-body { flex: 1; min-width: 0; padding: 3px 0 15px; }
+.lt-node-title { font-size: 13.5px; font-weight: 800; color: var(--mist); line-height: 1.3; }
+.lt-node-desc { font-size: 11.5px; color: var(--astone-2); line-height: 1.5; margin-top: 3px; }
+.lt-locked { color: var(--astone); font-style: italic; }
+.lt-node-right { flex: none; display: flex; align-items: center; padding-left: 2px; }
+.lt-node-cost { font-size: 12.5px; font-weight: 800; color: var(--astone-2); text-align: center;
+  font-variant-numeric: tabular-nums; }
+.lt-node-cost.done { color: var(--jade-bright); font-size: 17px; }
+.lt-node-cost.short small { display: block; font-size: 9px; font-weight: 700; color: var(--lantern-glow); margin-top: 1px; }
+.lt-node-cost.lock { color: var(--astone); opacity: .55; }
+.lt-buy { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #2a1d06;
+  font-weight: 800; border: none; border-radius: 9px; padding: 5px 11px; font-size: 11px;
+  line-height: 1.15; cursor: pointer; min-height: 42px; white-space: nowrap; }
+.lt-buy b { display: block; font-size: 13px; margin-top: 1px; }
+.lt-buy:hover { filter: brightness(1.08); }
+/* 状態別 */
+.lt-node.unlocked .lt-node-dot { background: var(--bc); border-color: var(--bc); }
+.lt-node.ready .lt-node-dot { border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(255,216,119,.16); }
+.lt-node.ready .lt-node-title { color: var(--gold-bright); }
+.lt-node.nopoints .lt-node-dot { filter: saturate(.5); opacity: .9; }
+.lt-node.prereq { opacity: .5; }
+.lt-node.prereq .lt-node-dot { filter: grayscale(.4); }
+
+/* 振り直し */
+.lt-respec { display: block; width: 100%; margin: 6px 0 2px; padding: 11px; min-height: 44px;
+  background: var(--glass-2); border: 1px solid var(--glass-border); border-radius: 10px;
+  color: var(--astone-2); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.lt-respec:hover { border-color: var(--lantern); color: var(--lantern-glow); }
+
+/* ===== §38 破産時の「無心する」＋ぱほぱほ演出 ===== */
+.hw-broke { border: 1px solid var(--lantern); text-align: center;
+  background: linear-gradient(160deg, rgba(214,69,47,.22), rgba(30,24,24,.5)); }
+.hw-broke-h { font-size: 16px; font-weight: 900; color: var(--lantern-glow); margin-bottom: 6px; }
+.hw-broke-tx { font-size: 12.5px; color: var(--mist-soft); line-height: 1.6; margin-bottom: 12px; }
+.hw-broke-tx b { color: var(--gold-bright); }
+.hw-broke-btn { width: 100%; min-height: 50px; border: none; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #2a1d06; font-weight: 900; font-size: 16px; }
+.hw-broke-btn span { font-size: 11px; font-weight: 700; opacity: .82; margin-left: 2px; }
+.hw-broke-btn:hover { filter: brightness(1.08); }
+
+.mushin-overlay { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(8,10,14,.82); backdrop-filter: blur(3px); animation: mushinIn .25s ease; }
+@keyframes mushinIn { from { opacity: 0; } to { opacity: 1; } }
+.mushin-overlay.dark { background: #05060a; backdrop-filter: none; transition: background .45s ease; }
+.mushin-card { width: 100%; max-width: 360px; text-align: center;
+  background: linear-gradient(165deg, rgba(60,52,40,.6), rgba(24,26,30,.72)); border: 1px solid rgba(202,162,74,.5);
+  border-radius: 18px; padding: 26px 22px 22px; box-shadow: 0 24px 60px -20px rgba(0,0,0,.8); }
+.mushin-q { font-size: 13px; color: var(--mist-soft); }
+.mushin-title { font-size: 26px; font-weight: 900; color: var(--gold-bright); margin: 6px 0 12px;
+  text-shadow: 0 2px 12px rgba(230,178,74,.5); }
+.mushin-sub { font-size: 12.5px; color: var(--mist-soft); line-height: 1.7; }
+.mushin-sub b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.mushin-go { margin-top: 18px; min-height: 50px; padding: 0 26px; border: none; border-radius: 13px; cursor: pointer;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #2a1d06; font-weight: 900; font-size: 17px; }
+.mushin-go:hover { filter: brightness(1.08); }
+.mushin-paho { text-align: center; }
+.paho-line { font-size: 24px; font-weight: 800; color: rgba(240,235,225,.92); letter-spacing: .12em;
+  margin: 12px 0; opacity: 0; animation: pahoPop .5s ease forwards; text-shadow: 0 0 18px rgba(130,130,150,.4); }
+@keyframes pahoPop { 0% { opacity: 0; transform: translateY(8px) scale(.96); }
+  60% { opacity: 1; transform: translateY(0) scale(1.05); } 100% { opacity: .92; transform: scale(1); } }
+.mushin-overlay.done .mushin-card { border-color: rgba(255,216,119,.7); }
+.mushin-got-ic { font-size: 44px; animation: pahoPop .5s ease; }
+.mushin-got { font-size: 13.5px; color: var(--mist-soft); margin: 6px 0 8px; }
+.mushin-amt { font-size: 34px; font-weight: 900; color: var(--gold-bright); font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 14px rgba(230,178,74,.55); }
+.mushin-amt span { font-size: 14px; color: var(--cream); }

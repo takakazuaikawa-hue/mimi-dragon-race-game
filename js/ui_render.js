@@ -204,6 +204,19 @@ function renderHome() {
     `<div class="hw-coins"><span>所持コイン</span><b>${fmtCoins(p.coins)}</b></div>`;
   wrap.appendChild(hero);
 
+  // §38 — 破産（コイン0）時：村に「無心する」導線。基準額（救済額）を“ぱほぱほ”演出付きで受け取る。
+  if (p.coins <= 0) {
+    const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
+    const broke = el("div", "glass-panel hw-broke");
+    broke.innerHTML =
+      `<div class="hw-broke-h">😵‍💫 コインが尽きた…！</div>` +
+      `<div class="hw-broke-tx">でも、ミミの再起はここから。村のみんなに頭を下げれば、<b>基準額</b>をそっと握らせてくれる。</div>`;
+    const beg = el("button", "hw-broke-btn", `🙏 無心する　<span>基準額 ${fmtCoins(begAmt)} 相当</span>`);
+    beg.onclick = () => showMushinOverlay();
+    broke.appendChild(beg);
+    wrap.appendChild(broke);
+  }
+
   // total-asset bar
   let stageInfo = stageLabel ? "暮らし：" + stageLabel : "";
   if (nextT) stageInfo += (stageInfo ? " ／ " : "") + "次の段階まで あと " + fmtCoins(Math.max(0, nextT - total));
@@ -293,111 +306,205 @@ function renderHome() {
 // read/cosmetic only — it never changes coins except via an explicit purchase,
 // and never touches race results.
 // =========================================================================
+// =========================================================================
+// §38 — 「無心する」演出（破産リカバリー）。ホームの無心ボタンから呼ぶ。受け取る額 =
+// calculateRescueCoins（基準の救済額）。額の計算は一切変えず、“受け取り方”を黒背景の
+// 「ぱほぱほ。。。」という小芝居にしただけ（着順/オッズ/配当には非干渉）。
+// =========================================================================
+function showMushinOverlay() {
+  if (document.getElementById("mushin-ov")) return;
+  const ov = el("div", "mushin-overlay"); ov.id = "mushin-ov";
+  const amt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, state.player.rank) : 300;
+  ov.innerHTML =
+    `<div class="mushin-card">` +
+      `<div class="mushin-q">村のみんなに……</div>` +
+      `<div class="mushin-title">無心する？</div>` +
+      `<div class="mushin-sub">そっと頭を下げて、基準額をお願いする。<br>賭けに使えるコインを <b>${fmtCoins(amt)}</b> もらえます。</div>` +
+    `</div>`;
+  const card = ov.querySelector(".mushin-card");
+  const go = el("button", "mushin-go", "🙏 無心する");
+  go.onclick = () => runMushin(ov, amt);
+  card.appendChild(go);
+  document.body.appendChild(ov);
+}
+
+// 黒背景に「ぱほぱほ。。。」を少しずつ出してから、受け取り画面へ。
+function runMushin(ov, amt) {
+  ov.classList.add("dark");
+  ov.innerHTML = `<div class="mushin-paho" id="mushin-paho"></div>`;
+  const box = ov.querySelector("#mushin-paho");
+  const lines = ["ぱほ。。。", "ぱほぱほ。。。", "ぱほぱほ。。。ぱほぱほ。。。"];
+  let i = 0;
+  (function step() {
+    if (i < lines.length) {
+      box.appendChild(el("div", "paho-line", lines[i]));
+      try { if (window.Sfx) Sfx.play("tick"); } catch (e) {}
+      i++;
+      setTimeout(step, 760);
+    } else {
+      setTimeout(() => finishMushin(ov, amt), 720);
+    }
+  })();
+}
+
+function finishMushin(ov, amt) {
+  state.player.coins += amt;                          // 額・計算は不変（基準の救済額）
+  if (typeof bumpMaxCoins === "function") bumpMaxCoins();
+  if (typeof recomputeAssets === "function") recomputeAssets(state);
+  if (typeof saveGame === "function") saveGame();
+  try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
+  ov.classList.remove("dark"); ov.classList.add("done");
+  ov.innerHTML =
+    `<div class="mushin-card">` +
+      `<div class="mushin-got-ic">💰</div>` +
+      `<div class="mushin-got">村のみんなが、そっと握らせてくれた</div>` +
+      `<div class="mushin-amt">+${fmtCoins(amt)}<span> コイン</span></div>` +
+      `<div class="mushin-sub">ありがとう。…次は、当てる。</div>` +
+    `</div>`;
+  const done = el("button", "mushin-go", "立て直す ▶");
+  done.onclick = () => { ov.remove(); if (typeof updateHeader === "function") updateHeader(); renderHome(); };
+  ov.querySelector(".mushin-card").appendChild(done);
+}
+
+// §30/§38 — 暮らしと資産：総資産から貯まる「暮らしポイント」を生活の方向（食/住/装/移/遊/格）に
+// 振り分けて、約200の生活アップグレードを解放していく“くらしスキルツリー”。完全に表示専用のメタ進行で、
+// コイン・着順・オッズ・配当・賭け経済には一切触れない（暮らしPは総資産＝再起度から導出するだけ）。
+let _lifeTab = null;   // 選択中の枝（null は自動選択）
+
 function renderAssets() {
   state.ui.screen = "assets";
-  recomputeAssets(state);  // keep the view in sync (idempotent, monotonic)
+  recomputeAssets(state);
   const p = state.player, a = state.assets;
   const total = p.totalAssets;
-  const level = a.unlockedLifeStages;
-  const stage = lifeStageFor(level);
+  const level = Math.max(0, Math.min(a.unlockedLifeStages || 0, 5));  // コレクション解放用（従来通り）
+  const st = lifeTreeStats();
   const app = beginScreen();
   app.appendChild(el("h2", null, "暮らしと資産"));
 
-  // --- Headline: total assets + the coins/maxCoins distinction (§16) ---
-  const head = el("div", "card");
-  const nextT = nextAssetThreshold(total);
-  head.innerHTML =
-    `<div class="asset-total">総資産：<b>${fmtCoins(total)}</b> コイン相当</div>` +
-    `<div class="asset-coins">手持ち：<b>${fmtCoins(p.coins)}</b> ／ 最大到達：<b>${fmtCoins(p.maxCoinsReached)}</b></div>` +
-    `<div class="asset-coins-note">※ 手持ちは賭けに使うお金、総資産はミミの再起度です（賭けに負けても総資産は下がりません）。</div>` +
-    (nextT ? `<div class="asset-next">次の段階まで：あと <b>${fmtCoins(Math.max(0, nextT - total))}</b></div>`
-           : `<div class="asset-next">最終段階に到達しています。</div>`);
-  app.appendChild(head);
+  // === HERO: 総資産 + 暮らしポイント ===
+  const hero = el("div", "card lt-hero");
+  hero.innerHTML =
+    `<div class="lt-hero-top">` +
+      `<div class="lt-hero-id"><div class="as-hero-lbl">総資産（ミミの再起度）</div><div class="as-hero-total">${fmtCoins(total)}</div></div>` +
+      `<div class="lt-pcard"><div class="lt-pnum">${st.available}</div><div class="lt-plbl">暮らしP</div></div>` +
+    `</div>` +
+    `<div class="lt-hero-sub">解放 <b>${st.unlockedCount} / ${st.totalNodes}</b>　暮らしP 残り <b>${st.available}</b> ／ 累計 ${st.earned}` +
+      `<br><span class="as-hint">レースで総資産が増える＝暮らしPが貯まる。賭けコインは減りません。</span></div>`;
+  app.appendChild(hero);
 
-  // (b) Sumika's voice on 総資産 (once she has been met).
   const _avA = advisorVoiceEl("assets"); if (_avA) app.appendChild(_avA);
 
-  // --- B. ミミの生活 ---
-  const life = el("div", "card");
-  life.appendChild(el("div", "asset-stage-title", `ミミの生活：${stage.summary}`));
-  const rows = [
-    ["住居", stage.housing], ["衣装", stage.outfit], ["食事", stage.food],
-    ["部屋飾り", stage.decor], ["実況道具", stage.tool],
-    ["支援者", stage.supporter], ["名声", stage.fame], ["村の様子", stage.village]
-  ];
-  const grid = el("div", "asset-life-grid");
-  rows.forEach(([k, v]) => {
-    const row = el("div", "asset-life-row");
-    row.appendChild(el("span", "k", k));
-    row.appendChild(el("span", "v", v));
-    grid.appendChild(row);
+  // === くらしスキルツリー ===
+  app.appendChild(el("div", "as-sec", "くらしスキルツリー — 暮らしPを振り分け"));
+
+  // 未選択なら「いま振り分けられる枝」を自動で開く
+  if (!_lifeTab || !LIFE_TREE[_lifeTab]) {
+    _lifeTab = LIFE_BRANCHES[0].id;
+    for (let i = 0; i < LIFE_BRANCHES.length; i++) {
+      const pr = lifeBranchProgress(LIFE_BRANCHES[i].id);
+      if (pr.next && lifeNodeState(pr.next) === "ready") { _lifeTab = LIFE_BRANCHES[i].id; break; }
+    }
+  }
+
+  // 枝タブ
+  const tabs = el("div", "lt-tabs");
+  LIFE_BRANCHES.forEach(b => {
+    const pr = lifeBranchProgress(b.id);
+    const tab = el("button", "lt-tab" + (b.id === _lifeTab ? " on" : ""),
+      `<span class="lt-tab-ic">${b.icon}</span><span class="lt-tab-nm">${b.name}</span>` +
+      `<span class="lt-tab-pg">${pr.done}/${pr.total}</span>`);
+    tab.style.setProperty("--bc", b.color);
+    if (pr.next && lifeNodeState(pr.next) === "ready") tab.classList.add("ready");  // 振れる合図
+    tab.onclick = () => { _lifeTab = b.id; renderAssets(); };
+    tabs.appendChild(tab);
   });
-  life.appendChild(grid);
-  life.appendChild(el("div", "asset-rescue", `救済見込み額：${fmtCoins(calculateRescueCoins(state, p.rank))}（破産時に世界が支えてくれる額）`));
-  app.appendChild(life);
+  app.appendChild(tabs);
 
-  // --- A. 数値一覧（内訳） ---
-  app.appendChild(el("h3", null, "内訳"));
-  const breakdown = el("table", "ranking-table");
-  breakdown.innerHTML =
-    `<tr><th>項目</th><th>価値</th></tr>` +
-    `<tr><td>最大到達コイン</td><td>${fmtCoins(p.maxCoinsReached)}</td></tr>` +
-    `<tr><td>村資産</td><td>${fmtCoins(a.villageValue)}</td></tr>` +
-    `<tr><td>施設価値</td><td>${fmtCoins(a.facilityValue)}</td></tr>` +
-    `<tr><td>生活資産</td><td>${fmtCoins(a.livingValue)}</td></tr>` +
-    `<tr><td>名声価値</td><td>${fmtCoins(a.fameValue)}</td></tr>` +
-    `<tr><td>ドラゴン資産</td><td>${fmtCoins(a.dragonValue)}</td></tr>` +
-    `<tr class="top1"><td><b>総資産</b></td><td><b>${fmtCoins(total)}</b></td></tr>`;
-  app.appendChild(breakdown);
-
-  // --- ストーリー進行 (§7) ---
-  app.appendChild(el("h3", null, "ストーリー進行"));
-  const story = el("div", "card");
-  STORY_CHAPTERS.forEach(ch => {
-    const unlocked = total >= storyUnlockAt(ch.id);
-    const row = el("div", "asset-story-row" + (unlocked ? " unlocked" : " locked"));
-    const head2 = el("div", "asset-story-head");
-    head2.appendChild(el("span", "t", ch.title));
-    head2.appendChild(el("span", "s", unlocked ? "解放" : `総資産 ${fmtCoins(storyUnlockAt(ch.id))} で解放`));
-    row.appendChild(head2);
-    if (unlocked) row.appendChild(el("div", "asset-story-body", ch.body));
-    story.appendChild(row);
+  // 選択中の枝のチェーン（安い順に上から。前提＝ひとつ上のノード）
+  const branch = LIFE_BRANCHES.find(b => b.id === _lifeTab);
+  const chain = el("div", "lt-chain");
+  chain.style.setProperty("--bc", branch.color);
+  LIFE_TREE[_lifeTab].forEach(node => {
+    const stt = lifeNodeState(node);             // unlocked | ready | nopoints | prereq
+    const dot = stt === "prereq" ? "🔒" : node.icon;
+    let desc;
+    if (stt === "prereq") {
+      const miss = lifeNodeMissingPrereqs(node);
+      const names = miss.slice(0, 2).map(pr => {
+        const bb = LIFE_BRANCHES.find(b => b.id === pr.branch);
+        return `${bb ? bb.icon : ""}${pr.title}`;
+      }).join("／");
+      desc = `<span class="lt-locked">🔒 ${names}${miss.length > 2 ? ` ほか${miss.length - 2}件` : ""} が必要</span>`;
+    } else {
+      desc = node.desc;
+    }
+    let right;
+    if (stt === "unlocked")      right = `<span class="lt-node-cost done">✓</span>`;
+    else if (stt === "ready")    right = `<button class="lt-buy">振り分け<b>◇${node.cost}</b></button>`;
+    else if (stt === "nopoints") right = `<span class="lt-node-cost short">◇${node.cost}<small>P不足</small></span>`;
+    else                         right = `<span class="lt-node-cost lock">◇${node.cost}</span>`;
+    const row = el("div", "lt-node " + stt,
+      `<div class="lt-node-rail"><div class="lt-node-dot">${dot}</div></div>` +
+      `<div class="lt-node-body"><div class="lt-node-title">${node.title}</div>` +
+        `<div class="lt-node-desc">${desc}</div></div>` +
+      `<div class="lt-node-right">${right}</div>`);
+    if (stt === "ready") {
+      const btn = row.querySelector(".lt-buy");
+      if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { if (typeof Sfx !== "undefined" && Sfx.coin) Sfx.coin(); renderAssets(); } };
+    }
+    chain.appendChild(row);
   });
-  app.appendChild(story);
+  app.appendChild(chain);
 
-  // --- 生活資産アイテム (§5: auto-unlocked + purchasable) ---
-  app.appendChild(el("h3", null, "生活資産"));
-  const items = el("div", "card");
+  // 振り直し（リスペック）
+  const respec = el("button", "lt-respec", "↺ 暮らしPを振り直す（解放をすべて戻す）");
+  respec.onclick = () => {
+    if (confirm("解放をすべて解除して、暮らしPを振り直しますか？\n（総資産・コインはそのまま。ノードはいつでも取り直せます）")) {
+      respecLifeTree(); renderAssets();
+    }
+  };
+  app.appendChild(respec);
+
+  // === 総資産の内訳（セグメントバー） ===
+  app.appendChild(el("div", "as-sec", "総資産の内訳"));
+  const parts = [
+    ["最大到達", p.maxCoinsReached, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
+    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
+  ].filter(x => x[1] > 0);
+  const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
+  app.appendChild(el("div", "card as-break",
+    `<div class="as-break-bar">${parts.map(x => `<div style="width:${x[1] / sum * 100}%;background:${x[2]}"></div>`).join("")}</div>` +
+    `<div class="as-break-legend">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} ${fmtCoins(x[1])}</span>`).join("")}</div>` +
+    `<div class="as-break-rescue">💛 破産しても安心 — 救済見込み <b>${fmtCoins(calculateRescueCoins(state, p.rank))}</b></div>`));
+
+  // === 生活資産コレクション（所持＝金／未解放＝灰） ===
+  app.appendChild(el("div", "as-sec", "生活資産コレクション"));
+  const itemsWrap = el("div", "as-items");
+  const CAT_IC = { housing: "🏠", food: "🍽️", outfit: "👗", tool: "🎤", decor: "🖼️", supporter: "🤝" };
   LIFE_ASSETS.forEach(item => {
     const owned = isLifeAssetUnlocked(state, item, level);
-    const row = el("div", "asset-item-row" + (owned ? " owned" : ""));
-    const info = el("div", "asset-item-info");
-    info.appendChild(el("span", "cat", LIFE_CATEGORY_LABEL[item.category] || item.category));
-    info.appendChild(el("span", "nm", item.name));
-    info.appendChild(el("span", "ds", item.description));
-    row.appendChild(info);
-    const right = el("div", "asset-item-right");
-    if (item.unlockType === "auto") {
-      right.appendChild(el("span", "tag", owned ? "解放済み" : `Lv${item.unlockAssetLevel}で解放`));
-    } else if (owned) {
-      right.appendChild(el("span", "tag", "購入済み"));
-    } else {
-      const buy = el("button", "secondary", `購入 ${fmtCoins(item.price)}`);
-      buy.disabled = state.player.coins < item.price;
-      buy.onclick = () => {
-        const res = buyLifeItem(item.id);
-        if (res.ok) renderAssets();
-        else if (res.reason === "poor") alert("コインが足りません。");
-      };
-      right.appendChild(buy);
+    const right = item.unlockType === "auto" ? (owned ? "✓" : `Lv${item.unlockAssetLevel}`) : (owned ? "✓" : "🛒");
+    const cell = el("div", "as-item " + (owned ? "owned" : "lock"),
+      `<span class="as-item-ic">${CAT_IC[item.category] || "📦"}</span><span class="as-item-nm">${item.name}</span><span class="as-item-tag">${right}</span>`);
+    if (item.unlockType !== "auto" && !owned) {
+      cell.classList.add("buyable");
+      cell.title = `購入 ${fmtCoins(item.price)}`;
+      cell.onclick = () => { const res = buyLifeItem(item.id); if (res.ok) renderAssets(); else if (res.reason === "poor") alert("コインが足りません。"); };
     }
-    row.appendChild(right);
-    items.appendChild(row);
+    itemsWrap.appendChild(cell);
   });
-  app.appendChild(items);
+  app.appendChild(itemsWrap);
+
+  // === ストーリー進行（コンパクト → 物語へ） ===
+  const unlockedCh = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
+  const storyCard = el("div", "card as-storybar",
+    `<div class="as-storybar-tx">📖 ストーリー進行　<b>${unlockedCh} / ${STORY_CHAPTERS.length}</b> 話 解放</div>`);
+  const sb = el("button", "hw-foot-btn", "物語を読む ▶"); sb.onclick = () => renderStory();
+  storyCard.appendChild(sb);
+  app.appendChild(storyCard);
 
   const actions = el("div", "actions");
-  const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
+  const back = el("button", "secondary", "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(back);
   app.appendChild(actions);
 }

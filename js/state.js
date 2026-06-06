@@ -69,6 +69,9 @@ const state = {
     unlockedLifeStages: 0,    // high-water asset level (story gate; never drops)
     rescueBonus: 0            // flat rescue add from unlocked life assets
   },
+  // §38 — 暮らしスキルツリー（くらしツリー）の解放状態。完全に表示専用のメタ進行で、
+  // コイン・着順・オッズ・配当・経済には一切干渉しない（暮らしPは総資産から導出）。
+  lifeTree: { unlocked: {} },   // { unlocked: { "<ノードのtitle>": true } }
   ui: {
     screen: "home",           // home | race_select | race_detail | bet | race_run | result | analysis
     debug: false,
@@ -84,6 +87,7 @@ function saveGame() {
       version: SAVE_VERSION,
       player: state.player,
       assets: state.assets,   // §30 total-asset / lifestyle store
+      lifeTree: state.lifeTree,   // §38 暮らしスキルツリーの解放状態
       settings: { infoLevel: state.ui.infoLevel },   // persisted UI preferences
       savedAt: Date.now()
     };
@@ -101,6 +105,8 @@ function loadGame() {
     if (data && data.player) {
       Object.assign(state.player, data.player);
       if (data.assets) Object.assign(state.assets, data.assets);
+      if (data.lifeTree && data.lifeTree.unlocked) state.lifeTree = data.lifeTree;   // §38
+      if (!state.lifeTree || !state.lifeTree.unlocked) state.lifeTree = { unlocked: {} };
       if (data.settings && data.settings.infoLevel) state.ui.infoLevel = data.settings.infoLevel;
       // §30 migration: pre-1.1 saves lack maxCoinsReached — seed it from coins
       // so an existing player's progression isn't reset to zero.
@@ -188,6 +194,7 @@ function resetGame() {
     fameValue: 0, dragonValue: 0,
     lifeItems: [], unlockedLifeStages: 0, rescueBonus: 0
   };
+  state.lifeTree = { unlocked: {} };   // §38 reset 暮らしツリー
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   saveGame();
   if (typeof updateHeader === "function") updateHeader();
