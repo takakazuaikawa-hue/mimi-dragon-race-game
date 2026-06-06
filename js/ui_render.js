@@ -366,6 +366,43 @@ function finishMushin(ov, amt) {
   ov.querySelector(".mushin-card").appendChild(done);
 }
 
+// §38 — スキルツリー解放カットイン。地味な生活アップグレードを大げさに祝う“ばかばかしさ”。
+// 表示専用：状態は一切変えない。約1.1秒で自動消滅／タップで即スキップ。
+const LT_CUTIN_LINES = [
+  "ミミ、また一歩……！", "これが、再起の証……！", "暮らしが、進化した。", "村が、どよめいた。",
+  "伝説は、こうして紡がれる。", "世界が、ミミに気づきはじめる。", "今日も、生きててえらい。", "聖龍も、頷いている。"
+];
+let _ltCutinTimer = null;
+function showLifeCutin(node) {
+  try {
+    const ex = document.getElementById("lt-cutin"); if (ex) ex.remove();
+    if (_ltCutinTimer) { clearTimeout(_ltCutinTimer); _ltCutinTimer = null; }
+    const branch = (typeof LIFE_BRANCHES !== "undefined") ? LIFE_BRANCHES.find(b => b.id === node.branch) : null;
+    const color = (branch && branch.color) || "#e6b24a";
+    const sub = LT_CUTIN_LINES[Math.floor(Math.random() * LT_CUTIN_LINES.length)];
+    const ov = el("div", "lt-cutin"); ov.id = "lt-cutin";
+    ov.style.setProperty("--bc", color);
+    ov.innerHTML =
+      `<div class="lt-cutin-flash"></div><div class="lt-cutin-lines"></div>` +
+      `<div class="lt-cutin-band"><div class="lt-cutin-inner">` +
+        `<div class="lt-cutin-ic">${node.icon}</div>` +
+        `<div class="lt-cutin-tx">` +
+          `<div class="lt-cutin-kicker">${branch ? branch.icon + " " + branch.name + "・解放！" : "解放！"}</div>` +
+          `<div class="lt-cutin-title">${node.title}</div>` +
+          `<div class="lt-cutin-sub">${sub}</div>` +
+        `</div>` +
+      `</div></div>`;
+    ov.onclick = () => { if (_ltCutinTimer) { clearTimeout(_ltCutinTimer); _ltCutinTimer = null; } ov.remove(); };
+    document.body.appendChild(ov);
+    try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+    _ltCutinTimer = setTimeout(() => {
+      const o = document.getElementById("lt-cutin");
+      if (o) { o.classList.add("out"); setTimeout(() => { if (o) o.remove(); }, 260); }
+      _ltCutinTimer = null;
+    }, 1150);
+  } catch (e) {}
+}
+
 // §30/§38 — 暮らしと資産：総資産から貯まる「暮らしポイント」を生活の方向（食/住/装/移/遊/格）に
 // 振り分けて、約200の生活アップグレードを解放していく“くらしスキルツリー”。完全に表示専用のメタ進行で、
 // コイン・着順・オッズ・配当・賭け経済には一切触れない（暮らしPは総資産＝再起度から導出するだけ）。
@@ -450,7 +487,7 @@ function renderAssets() {
       `<div class="lt-node-right">${right}</div>`);
     if (stt === "ready") {
       const btn = row.querySelector(".lt-buy");
-      if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { if (typeof Sfx !== "undefined" && Sfx.coin) Sfx.coin(); renderAssets(); } };
+      if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { renderAssets(); showLifeCutin(node); } };
     }
     chain.appendChild(row);
   });
