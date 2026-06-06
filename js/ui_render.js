@@ -133,6 +133,14 @@ function renderTitle() {
   acts.appendChild(el("div", "title-hint",
     p.completedRaces > 0 ? `おかえりなさい — ${p.completedRaces}戦 ・ ${fmtCoins(p.coins)}` : "ようこそ、予想家の世界へ"));
 
+  // §40 — 一枚絵を“全景”で鑑賞するモード：テキスト/UIを任意に隠して全画面表示。
+  // タップでテキストに戻る。表示専用（状態は変えない）。
+  const artBtn = el("button", "title-artbtn", "🖼 イラストを全画面で見る");
+  artBtn.onclick = (e) => { e.stopPropagation(); wrap.classList.add("art-only"); };
+  acts.appendChild(artBtn);
+  wrap.appendChild(el("div", "title-artback", "タップでテキストを表示"));
+  wrap.addEventListener("click", () => { if (wrap.classList.contains("art-only")) wrap.classList.remove("art-only"); });
+
   // animated pixel-dragon mascot (reuses the race sprite); self-stops on screen change
   const cv = document.getElementById("title-dragon");
   if (cv && cv.getContext && typeof rcDrawDragon === "function") {
@@ -204,7 +212,13 @@ function renderHome() {
     `<div class="hw-coins"><span>所持コイン</span><b>${fmtCoins(p.coins)}</b></div>`;
   wrap.appendChild(hero);
 
-  // §38 — 破産（コイン0）時：村に「無心する」導線。基準額（救済額）を“ぱほぱほ”演出付きで受け取る。
+  // 戦績はプロフィールに統合（出走/単勝/勝率/最高配当の小チップ）
+  const rec = el("div", "hw-rec");
+  const rc = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
+  rec.innerHTML = rc("出走", p.completedRaces) + rc("単勝", p.wins) + rc("勝率", winRate + "%") + rc("最高配当", fmtCoins(p.biggestPayout || 0));
+  wrap.appendChild(rec);
+
+  // §38 — 破産（コイン0）時：最優先で「無心する」導線（条件表示）。
   if (p.coins <= 0) {
     const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
     const broke = el("div", "glass-panel hw-broke");
@@ -217,41 +231,30 @@ function renderHome() {
     wrap.appendChild(broke);
   }
 
-  // total-asset bar
-  let stageInfo = stageLabel ? "暮らし：" + stageLabel : "";
-  if (nextT) stageInfo += (stageInfo ? " ／ " : "") + "次の段階まで あと " + fmtCoins(Math.max(0, nextT - total));
-  else if (!stageLabel) stageInfo = "最終段階に到達";
-  const asset = el("div", "glass-panel hw-asset");
-  asset.innerHTML =
-    `<div class="hw-asset-row"><span>総資産（ミミの再起度）</span><b>${fmtCoins(total)}</b></div>` +
-    `<div class="hw-asset-bar"><div class="hw-asset-fill" style="width:${fillPct}%"></div></div>` +
-    `<div class="hw-asset-stage">${stageInfo}</div>`;
-  wrap.appendChild(asset);
-
-  // next-goal card (north star) — always show a concrete target or two
-  try {
-    const goals = (typeof nextGoals === "function") ? nextGoals(state) : [];
-    if (goals.length) {
-      const gc = el("div", "glass-panel hw-goals");
-      gc.innerHTML = `<div class="hw-goals-h">次の目標</div>` + goals.slice(0, 3).map(g =>
-        `<div class="hw-goal"><div class="hw-goal-top"><span>${g.icon} ${g.label}</span><b>${g.sub}</b></div>` +
-        `<div class="hw-goal-bar"><div class="hw-goal-fill" style="width:${g.pct}%"></div></div></div>`
-      ).join("");
-      wrap.appendChild(gc);
-    }
-  } catch (e) {}
-
-  // record chips
-  const rec = el("div", "hw-rec");
-  const rc = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
-  rec.innerHTML = rc("出走", p.completedRaces) + rc("単勝", p.wins) + rc("勝率", winRate + "%") + rc("最高配当", fmtCoins(p.biggestPayout || 0));
-  wrap.appendChild(rec);
-
-  // the public-race ticket — the most important button (§18.3)
+  // ▶ いちばん大事な行動を最上段に（§18.3）。深い情報は各画面へ委譲する設計。
   const cta = el("button", "hw-cta",
     `<span class="hw-cta-tag">公営 聖龍レース・出走券</span><span class="hw-cta-main">レースへ進む<span class="hw-cta-mon">🐉</span></span>`);
   cta.onclick = () => renderRaceSelect();
   wrap.appendChild(cta);
+
+  // 今の一手：総資産（再起度）＋いちばん近い目標を1つだけ焦点に。詳細は「暮らしと資産」へ。
+  let stageInfo = stageLabel ? "暮らし：" + stageLabel : "";
+  if (nextT) stageInfo += (stageInfo ? " ／ " : "") + "次の段階まで あと " + fmtCoins(Math.max(0, nextT - total));
+  else if (!stageLabel) stageInfo = "最終段階に到達";
+  let nearest = null;
+  try { const goals = (typeof nextGoals === "function") ? nextGoals(state) : []; nearest = goals[0] || null; } catch (e) {}
+  const focal = el("div", "glass-panel hw-focal");
+  focal.innerHTML =
+    `<div class="hw-focal-asset"><div class="hwf-a-top"><span>総資産（再起度）</span><b>${fmtCoins(total)}</b></div>` +
+      `<div class="hw-asset-bar"><div class="hw-asset-fill" style="width:${fillPct}%"></div></div>` +
+      `<div class="hw-asset-stage">${stageInfo}<span class="hwf-more">暮らしと資産へ ›</span></div></div>` +
+    (nearest
+      ? `<div class="hw-focal-goal"><div class="hwf-g-h">🎯 次の目標</div>` +
+        `<div class="hw-goal"><div class="hw-goal-top"><span>${nearest.icon} ${nearest.label}</span><b>${nearest.sub}</b></div>` +
+        `<div class="hw-goal-bar"><div class="hw-goal-fill" style="width:${nearest.pct}%"></div></div></div></div>`
+      : "");
+  const fa = focal.querySelector(".hw-focal-asset"); if (fa) { fa.style.cursor = "pointer"; fa.onclick = () => renderAssets(); }
+  wrap.appendChild(focal);
 
   // tourist-board menu
   const tile = (icon, label, sub, onClick) => {
@@ -562,7 +565,7 @@ function showStoryUnlock(chapters, idx) {
   if (cast) modal.style.setProperty("--cg", cast.color);
   modal.innerHTML =
     `<div class="su-badge">✦ 新エピソード解放 ✦</div>` +
-    `<div class="story-cg"><div class="story-cg-art">${photoOr("images/story/" + ch.id + ".png", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}</div>` +
+    `<div class="story-cg"><div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}</div>` +
       `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div></div>` +
     `<div class="su-title">${ch.title}</div>` +
     (cast ? `<div class="su-cast"><span class="su-cast-sym" style="--cg:${cast.color}">${photoOr("images/cast/" + ch.cast + ".png", cast.symbol)}</span>${cast.name}<small>（${cast.tag}）</small></div>` : "") +
@@ -674,6 +677,29 @@ function celestiaSectionEl() {
 // later) + the long「件。」chapter text. Read/cosmetic only — gated by asset
 // level, never touches race math.
 // =========================================================================
+// §40 — ストーリー一枚絵の全画面ビューア。CGを全景(contain)で見せ、ADV風のテキストを
+// 任意に表示/非表示できる（画面タップで切替）。表示専用：状態・物語進行は変えない。
+function showStoryArt(ch) {
+  if (!ch) return;
+  const ex = document.getElementById("story-viewer"); if (ex) ex.remove();
+  const cast = (typeof STORY_CAST !== "undefined") ? STORY_CAST[ch.cast] : null;
+  const ov = el("div", "story-viewer"); ov.id = "story-viewer";
+  if (cast) ov.style.setProperty("--cg", cast.color);
+  ov.innerHTML =
+    `<div class="sv-art">${typeof photoOr === "function" ? photoOr("images/story/" + ch.id + ".jpg", `<span class="sv-sym">${cast ? cast.symbol : "🐲"}</span>`) : ""}</div>` +
+    `<div class="sv-textbox">` +
+      `<div class="sv-title">${ch.title || ""}${cast ? ` <span class="sv-cast">— ${cast.name}</span>` : ""}</div>` +
+      `<div class="sv-body">${ch.body || ch.scene || ""}</div>` +
+    `</div>` +
+    `<div class="sv-hint">画面タップで テキスト表示/非表示</div>` +
+    `<button class="sv-close" aria-label="閉じる">×</button>`;
+  const toggle = () => ov.classList.toggle("text-hidden");
+  ov.querySelector(".sv-art").onclick = toggle;
+  ov.querySelector(".sv-textbox").onclick = (e) => { e.stopPropagation(); toggle(); };
+  ov.querySelector(".sv-close").onclick = (e) => { e.stopPropagation(); ov.remove(); };
+  document.body.appendChild(ov);
+}
+
 function renderStory() {
   state.ui.screen = "story";
   recomputeAssets(state);
@@ -694,13 +720,14 @@ function renderStory() {
     const card = el("div", "card story-chapter" + (unlocked ? "" : " locked"));
 
     // 一枚絵CG placeholder slot (real art can be dropped in here later)
-    const cg = el("div", "story-cg" + (unlocked ? "" : " locked"));
+    const cg = el("div", "story-cg" + (unlocked ? " viewable" : " locked"));
     if (cast) cg.style.setProperty("--cg", cast.color);
     cg.innerHTML = unlocked
-      ? `<div class="story-cg-art">${photoOr("images/story/" + ch.id + ".png", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}</div>` +
+      ? `<div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
         `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div>`
       : `<div class="story-cg-art"><span class="story-cg-sym">🔒</span></div>` +
         `<div class="story-cg-cap">総資産 ${fmtCoins(storyUnlockAt(ch.id))} で解放</div>`;
+    if (unlocked) cg.onclick = () => showStoryArt(ch);
     card.appendChild(cg);
 
     card.appendChild(el("div", "story-ch-title", ch.title));
@@ -777,33 +804,55 @@ function renderVillage() {
   state.ui.screen = "village";
   runEventHooks("onVillageUpdate", { villageLevel: state.player.villageLevel });
   const app = beginScreen();
-  const v = state.player.village || { level: 1, name: "泣き虫ドラゴン村" };
-  app.appendChild(el("h2", null, `${v.name} (Lv ${v.level})`));
-
-  const card = el("div", "card");
+  const v = state.player.village || { level: 1, name: "泣き虫ドラゴン村", facilities: {}, unlockedDragonIds: [] };
   const rescue = RESCUE_COINS[v.level] || 300;
   const villMult = VILLAGE_MULT[v.level] || 1.0;
-  card.innerHTML = `
-    <div><b>村レベル:</b> ${v.level}</div>
-    <div><b>救済コイン:</b> ${fmtCoins(rescue)} (破産時に支給)</div>
-    <div><b>賭金倍率:</b> ×${villMult}</div>
-    <div><b>解放された竜:</b> ${v.unlockedDragonIds.length} / ${DRAGONS.length}</div>
-    <div class="condition-line">※ 村機能は将来のフェーズで拡張されます (§09 §25)。</div>
-  `;
-  app.appendChild(card);
+  app.appendChild(el("h2", null, "竜の村"));
 
-  // Facilities placeholder (§09 §17)
-  app.appendChild(el("h3", null, "村の施設"));
-  const facList = el("div", "card");
-  const facLabel = { paddock:"竜見せ広場", newspaper:"予想新聞社", grandstand:"応援席",
-                     riderPost:"ライダー詰所", dragonStable:"竜舎", exchange:"交換所" };
-  for (const k in facLabel) {
-    facList.appendChild(el("div", null, `${facLabel[k]}: Lv ${v.facilities[k] || 0} (未解放)`));
-  }
-  app.appendChild(facList);
+  // 村ヒーロー：名前＋レベル＋一言
+  const hero = el("div", "card vil-hero");
+  hero.innerHTML =
+    `<div class="vil-hero-top"><div class="vil-hero-id"><div class="vil-name">🏘️ ${v.name}</div>` +
+      `<div class="vil-sub">ミミと竜たちが暮らす、再起の拠点。</div></div>` +
+      `<div class="vil-lv"><span>村Lv</span><b>${v.level}</b></div></div>`;
+  app.appendChild(hero);
+
+  // 村の効果（救済・賭金倍率・解放竜）をタイルで
+  const stats = el("div", "vil-stats");
+  const stat = (ic, k, val, sub) =>
+    `<div class="vil-stat"><div class="vil-stat-ic">${ic}</div><div class="vil-stat-k">${k}</div>` +
+    `<div class="vil-stat-v">${val}</div><div class="vil-stat-s">${sub}</div></div>`;
+  stats.innerHTML =
+    stat("💛", "救済コイン", fmtCoins(rescue), "破産時に支給") +
+    stat("🎰", "賭金倍率", "×" + villMult, "上限が広がる") +
+    stat("🐉", "解放した竜", `${(v.unlockedDragonIds || []).length}/${DRAGONS.length}`, "図鑑と連動");
+  app.appendChild(stats);
+
+  // 施設ロードマップ（解放済み＝色／未解放＝灰）
+  app.appendChild(el("div", "as-sec", "村の施設"));
+  const facMeta = [
+    ["paddock", "竜見せ広場", "🐉", "出走前の竜をじっくり観察できる"],
+    ["newspaper", "予想新聞社", "📰", "新聞印と予想記事が読める"],
+    ["grandstand", "応援席", "📣", "推し竜の応援で士気が上がる"],
+    ["riderPost", "ライダー詰所", "🏇", "騎手情報と詰所の助言"],
+    ["dragonStable", "竜舎", "🏚️", "竜の体調・気性を知る"],
+    ["exchange", "交換所", "💱", "コインと品を交換する"]
+  ];
+  const facGrid = el("div", "vil-facs");
+  facMeta.forEach(([k, name, ic, desc]) => {
+    const lv = (v.facilities && v.facilities[k]) || 0;
+    const open = lv > 0;
+    facGrid.appendChild(el("div", "vil-fac" + (open ? "" : " locked"),
+      `<div class="vil-fac-ic">${ic}</div>` +
+      `<div class="vil-fac-tx"><div class="vil-fac-n">${name}</div><div class="vil-fac-d">${desc}</div></div>` +
+      `<div class="vil-fac-lv">${open ? "Lv " + lv : "未解放"}</div>`));
+  });
+  app.appendChild(facGrid);
+  app.appendChild(el("div", "condition-line",
+    "村レベルが上がると施設が解放され、救済・賭金上限・特典が強化されます（順次アップデート）。"));
 
   const actions = el("div", "actions");
-  const home = el("button", null, "ホームへ"); home.onclick = renderHome;
+  const home = el("button", "secondary", "ホームへ"); home.onclick = renderHome;
   actions.appendChild(home);
   app.appendChild(actions);
 }
@@ -880,6 +929,46 @@ function renderHelp() {
 }
 
 // §09 §8,§9,§10 Collection screen
+// §41 — 図鑑：竜カードの詳細ポップ（大きめスプライト＋特徴＋記録＋解放ノート＋お気に入り）。
+let _dexFilter = "all";
+function showDragonDetail(d) {
+  const entry = (state.player.collection || {})[d.id];
+  if (!entry || !entry.seen) return;
+  const r = entry.records || {};
+  const notes = (typeof getCollectionNoteText === "function") ? getCollectionNoteText(entry, d) : [];
+  const ex = document.getElementById("dex-detail"); if (ex) ex.remove();
+  const col = (typeof dragonColor === "function") ? dragonColor(d) : (d.color || "#888");
+  const ov = el("div", "dex-detail-ov"); ov.id = "dex-detail";
+  ov.style.setProperty("--dc", col);
+  const rec = (k, v) => `<div class="dd-rec"><span>${k}</span><b>${v || 0}</b></div>`;
+  const card = el("div", "card dex-detail");
+  card.innerHTML =
+    `<button class="dex-detail-x" aria-label="閉じる">×</button>` +
+    `<div class="dd-head"><div class="dd-art"><canvas width="124" height="90"></canvas></div>` +
+      `<div class="dd-id"><div class="dd-name">${d.name}</div>` +
+        `<div class="dd-style style-${d.style}">${STYLE_LABEL[d.style] || ""}</div>` +
+        `<div class="dd-traits">${(d.traits || []).map(t => `<span>${t}</span>`).join("")}</div></div></div>` +
+    `<div class="dd-records">` + rec("観戦", r.racesSeen) + rec("勝ち", r.winsSeen) + rec("複圏", r.top3Seen) + rec("賭け", r.playerBetCount) + rec("的中", r.playerHitCount) + `</div>` +
+    `<div class="dd-notes">${notes.length ? notes.map(n => `<div class="dd-note">📝 ${n}</div>`).join("") : `<div class="dd-note muted">観戦・予想を重ねると、気性・適性・物語が解放されます。</div>`}</div>` +
+    `<button class="dd-fav ${entry.favorite ? "on" : ""}">${entry.favorite ? "★ お気に入り" : "☆ お気に入りに追加"}</button>`;
+  ov.appendChild(card);
+  document.body.appendChild(ov);
+  const cv = card.querySelector(".dd-art canvas");
+  if (cv && cv.getContext && typeof rcDrawDragon === "function") {
+    rcDrawDragon(cv.getContext("2d"), { x: 62, y: 50, scale: 1.9, color: col, style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.5 });
+  }
+  card.querySelector(".dex-detail-x").onclick = () => ov.remove();
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  card.querySelector(".dd-fav").onclick = () => {
+    const en = ensureCollectionEntry(d.id);
+    en.favorite = !en.favorite;
+    const list = state.player.village.favoriteDragonIds;
+    if (en.favorite && !list.includes(d.id)) list.push(d.id);
+    else if (!en.favorite) { const i = list.indexOf(d.id); if (i >= 0) list.splice(i, 1); }
+    saveGame(); ov.remove(); renderCollection();
+  };
+}
+
 function renderCollection() {
   state.ui.screen = "collection";
   const app = beginScreen();
@@ -905,51 +994,52 @@ function renderCollection() {
     app.appendChild(prog);
   } catch (e) {}
 
-  const tbl = el("table", "entry-table");
-  tbl.innerHTML = `<thead><tr>
-    <th>竜名</th><th>脚質</th><th>解放ノート</th>
-    <th>見た数</th><th>勝</th><th>複圏</th>
-    <th>賭けた数</th><th>的中</th><th>★</th>
-  </tr></thead>`;
-  const tbody = el("tbody");
+  // フィルタ（すべて / 見た / お気に入り）
+  const fbar = el("div", "dex-filter");
+  [["all", "すべて"], ["seen", "見た"], ["fav", "★"]].forEach(([k, lbl]) => {
+    const c = el("button", "dex-fchip" + (_dexFilter === k ? " on" : ""), lbl);
+    c.onclick = () => { _dexFilter = k; renderCollection(); };
+    fbar.appendChild(c);
+  });
+  app.appendChild(fbar);
+
+  // 竜カード・グリッド（識別色のミニ竜スプライト＋見た/未発見）
+  const grid = el("div", "dex-grid");
+  let shown = 0;
   DRAGONS.forEach(d => {
     const entry = (state.player.collection || {})[d.id];
-    const seen = entry && entry.seen;
-    const r = entry ? entry.records : { racesSeen:0, winsSeen:0, top3Seen:0, playerBetCount:0, playerHitCount:0 };
-    const notes = seen ? getCollectionNoteText(entry, d) : [];
-    const tr = el("tr");
-    tr.innerHTML = `
-      <td><b>${seen ? d.name : "？？？"}</b></td>
-      <td class="style-${d.style}">${seen ? STYLE_LABEL[d.style] : "－"}</td>
-      <td class="trial-note">${notes.length ? notes.join("<br>") : "<span style=\"color:#666\">未確認</span>"}</td>
-      <td class="num">${r.racesSeen}</td>
-      <td class="num">${r.winsSeen}</td>
-      <td class="num">${r.top3Seen}</td>
-      <td class="num">${r.playerBetCount}</td>
-      <td class="num">${r.playerHitCount}</td>
-      <td><button class="fav-btn" data-id="${d.id}">${entry && entry.favorite ? "★" : "☆"}</button></td>
-    `;
-    tbody.appendChild(tr);
+    const seen = !!(entry && entry.seen);
+    const fav = !!(entry && entry.favorite);
+    if (_dexFilter === "seen" && !seen) return;
+    if (_dexFilter === "fav" && !fav) return;
+    shown++;
+    const rc = (entry && entry.records) || { racesSeen: 0 };
+    const card = el("div", "dex-card" + (seen ? "" : " unseen") + (fav ? " fav" : ""));
+    card.style.setProperty("--dc", (typeof dragonColor === "function") ? dragonColor(d) : (d.color || "#888"));
+    card.innerHTML =
+      `<div class="dex-card-art"><canvas width="78" height="56"></canvas>${seen ? "" : `<span class="dex-q">？</span>`}</div>` +
+      `<div class="dex-card-name">${seen ? d.name : "？？？"}</div>` +
+      (seen
+        ? `<div class="dex-card-meta"><span class="dex-style style-${d.style}">${STYLE_LABEL[d.style] || ""}</span><span class="dex-seen">観${rc.racesSeen}</span></div>`
+        : `<div class="dex-card-meta"><span class="dex-locked">未発見</span></div>`) +
+      (fav ? `<span class="dex-fav">★</span>` : "");
+    if (seen) {
+      const cv = card.querySelector("canvas");
+      if (cv && cv.getContext && typeof rcDrawDragon === "function")
+        rcDrawDragon(cv.getContext("2d"), { x: 39, y: 31, scale: 1.18, color: dragonColor(d), style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.4 });
+      card.onclick = () => showDragonDetail(d);
+    } else {
+      const cv = card.querySelector("canvas"); if (cv) cv.style.display = "none";
+    }
+    grid.appendChild(card);
   });
-  tbl.appendChild(tbody);
-  app.appendChild(tbl);
-  app.appendChild(el("div", "condition-line", "ノート解放: 1戦=基本 / 3戦=気性 / 5戦=適性 / 2賭=市場印象 / 8戦+複圏経験=物語"));
-
-  app.querySelectorAll(".fav-btn").forEach(btn => {
-    btn.onclick = () => {
-      const id = btn.dataset.id;
-      const entry = ensureCollectionEntry(id);
-      entry.favorite = !entry.favorite;
-      const list = state.player.village.favoriteDragonIds;
-      if (entry.favorite && !list.includes(id)) list.push(id);
-      else if (!entry.favorite) {
-        const i = list.indexOf(id);
-        if (i >= 0) list.splice(i, 1);
-      }
-      saveGame();
-      renderCollection();
-    };
-  });
+  app.appendChild(grid);
+  if (shown === 0)
+    app.appendChild(el("div", "condition-line", _dexFilter === "fav"
+      ? "お気に入りはまだありません（カード詳細から★を付けられます）。"
+      : "まだ見た竜がいません。レースを観戦すると図鑑に記録されます。"));
+  app.appendChild(el("div", "condition-line",
+    "カードをタップで詳細。ノート解放: 1戦=基本 / 3戦=気性 / 5戦=適性 / 2賭=市場印象 / 8戦+複圏=物語"));
 
   const actions = el("div", "actions");
   const home = el("button", null, "ホームへ"); home.onclick = renderHome;
@@ -1035,27 +1125,40 @@ function renderRaceSelect() {
     }
   } catch (e) {}
 
-  const list = el("div");
-  RACES.forEach(r => {
-    const locked = r.rank > state.player.rank;
-    const card = el("div", "card race-card");
+  // 1枚のレースカード（地方アクセント＋距離/天候/上限チップ＋コース早→中→後＋目的）
+  const buildRaceCard = (r, locked) => {
     const theme = REGION_THEME[r.region];
-    if (theme) {
-      card.setAttribute("data-region", r.region);
-      card.style.setProperty("--region-accent", theme.accent);
+    const card = el("div", "rs-card" + (locked ? " locked" : ""));
+    if (theme) { card.setAttribute("data-region", r.region); card.style.setProperty("--region-accent", theme.accent); }
+    const wager = fmtCoins(RANKS[r.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1));
+    card.innerHTML =
+      `<div class="rs-name">${raceFullName(r)}</div>` +
+      `<div class="rs-chips"><span class="rs-chip">${DISTANCE[r.distance].label}</span><span class="rs-chip">${WEATHERS[r.weather].label}</span><span class="rs-chip wager">上限 ${wager}</span></div>` +
+      `<div class="rs-course"><span>${getSection("early", r.early).label}</span><i>→</i><span>${getSection("mid", r.mid).label}</span><i>→</i><span>${getSection("late", r.late).label}</span></div>` +
+      `<div class="rs-purpose">${r.purpose}</div>` +
+      `<button class="rs-go" ${locked ? "disabled" : ""}>${locked ? `🔒 ランク${r.rank}で解放` : "このレースを見る ▶"}</button>`;
+    if (!locked) card.querySelector(".rs-go").onclick = () => { _heroRect = card.getBoundingClientRect(); renderRaceDetail(r); };
+    return card;
+  };
+
+  // ランク別にグループ化：解放済みは展開、未解放はたたんで提示（多レースでも見やすく）
+  const byRank = {};
+  RACES.forEach(r => { (byRank[r.rank] = byRank[r.rank] || []).push(r); });
+  Object.keys(byRank).map(Number).sort((a, b) => a - b).forEach(rk => {
+    const races = byRank[rk];
+    const lockedRank = rk > state.player.rank;
+    const label = (RANKS[rk] && RANKS[rk].label) || "";
+    if (lockedRank) {
+      const col = uiCollapsible(`🔒 Rank ${rk}　${label}<small>　${races.length}レース・ランク${rk}で解放</small>`, false);
+      races.forEach(r => col.body.appendChild(buildRaceCard(r, true)));
+      app.appendChild(col.wrap);
+    } else {
+      app.appendChild(el("div", "rs-rank-head", `Rank ${rk}　${label}<span class="rs-rank-n">${races.length}レース</span>`));
+      const body = el("div", "rs-rank-body");
+      races.forEach(r => body.appendChild(buildRaceCard(r, false)));
+      app.appendChild(body);
     }
-    card.innerHTML = `
-      <div>
-        <div><b>${raceFullName(r)}</b> <span class="rank-${statRank(r.rank*15)}">[Rank ${r.rank}]</span>${locked ? ` <span class="locked-badge">🔒 ランク${r.rank}解放後</span>` : ""}</div>
-        <div class="race-meta">${DISTANCE[r.distance].label} ／ ${WEATHERS[r.weather].label} ／ ${getSection("early",r.early).label}→${getSection("mid",r.mid).label}→${getSection("late",r.late).label}</div>
-        <div class="race-meta">目的: ${r.purpose} ／ 賭金上限: ${fmtCoins(RANKS[r.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel]||1))}</div>
-      </div>
-      <div><button ${locked ? 'disabled' : ''}>${locked ? 'ロック中' : 'このレースを見る'}</button></div>
-    `;
-    if (!locked) card.querySelector("button").onclick = () => { _heroRect = card.getBoundingClientRect(); renderRaceDetail(r); };
-    list.appendChild(card);
   });
-  app.appendChild(list);
   const back = el("button", "secondary", "ホームへ"); back.onclick = renderHome;
   app.appendChild(back);
 }
@@ -2503,11 +2606,13 @@ function drawRecapScreen() {
   }[c.recapTab] || recapTabResult)(body, recap, c);
   app.appendChild(body);
 
-  // --- Persistent actions ---
+  // --- Persistent actions（導線：ホーム／詳しい分析＝副、次のレース＝主CTA） ---
   const actions = el("div", "actions");
+  const home2 = el("button", "secondary", "ホーム"); home2.onclick = renderHome;
+  actions.appendChild(home2);
   const detail = el("button", "secondary", "詳しい分析"); detail.onclick = renderAnalysis;
   actions.appendChild(detail);
-  const next = el("button", null, "次のレースへ"); next.onclick = renderRaceSelect;
+  const next = el("button", null, "次のレースへ ▶"); next.onclick = renderRaceSelect;
   actions.appendChild(next);
   app.appendChild(actions);
 }
