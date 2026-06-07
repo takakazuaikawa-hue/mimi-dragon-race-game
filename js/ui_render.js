@@ -948,7 +948,7 @@ function showDragonDetail(d) {
   const card = el("div", "card dex-detail");
   card.innerHTML =
     `<button class="dex-detail-x" aria-label="閉じる">×</button>` +
-    `<div class="dd-head"><div class="dd-art"><canvas width="124" height="90"></canvas></div>` +
+    `<div class="dd-head"><div class="dd-art"><canvas width="300" height="150"></canvas></div>` +
       `<div class="dd-id"><div class="dd-name">${d.name}</div>` +
         `<div class="dd-style style-${d.style}">${STYLE_LABEL[d.style] || ""}</div>` +
         `<div class="dd-traits">${(d.traits || []).map(t => `<span>${t}</span>`).join("")}</div></div></div>` +
@@ -959,7 +959,7 @@ function showDragonDetail(d) {
   document.body.appendChild(ov);
   const cv = card.querySelector(".dd-art canvas");
   if (cv && cv.getContext && typeof rcDrawDragon === "function") {
-    rcDrawDragon(cv.getContext("2d"), { x: 67, y: 64, scale: 1.3, color: col, style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.5 });
+    rcDrawDragon(cv.getContext("2d"), { x: 162, y: 122, scale: 3.2, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.5 });
   }
   card.querySelector(".dex-detail-x").onclick = () => ov.remove();
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
@@ -1030,7 +1030,7 @@ function renderCollection() {
     if (seen) {
       const cv = card.querySelector("canvas");
       if (cv && cv.getContext && typeof rcDrawDragon === "function")
-        rcDrawDragon(cv.getContext("2d"), { x: 42, y: 40, scale: 0.8, color: dragonColor(d), style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.4 });
+        rcDrawDragon(cv.getContext("2d"), { x: 42, y: 40, scale: 0.8, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 });
       card.onclick = () => showDragonDetail(d);
     } else {
       const cv = card.querySelector("canvas"); if (cv) cv.style.display = "none";

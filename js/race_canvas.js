@@ -184,6 +184,7 @@ const RC_DRG = {
   px: 0.55,                   // on-screen cell size = scale * px (keeps the old in-race footprint width)
   P: {}                       // (legacy; the procedural shape builder below is no longer used)
 };
+const _RC_INRACE = 0.86;      // in-race sprite scale = _RC_INRACE * laneDepth (raised from 0.66 so the long, low traced dragon reads bigger)
 function _rcInEll(gx, gy, cx, cy, rx, ry) { const dx = (gx - cx) / rx, dy = (gy - cy) / ry; return dx * dx + dy * dy <= 1; }
 function _rcInRect(gx, gy, x, y, w, h) { return gx >= x && gx < x + w && gy >= y && gy < y + h; }
 function _rcSgn(ax, ay, bx, by, cx, cy) { return (ax - cx) * (by - cy) - (bx - cx) * (ay - cy); }
@@ -335,6 +336,25 @@ function _rcClassify(r, g, b) {
   if (!warm && sat < 32) { if (br >= 224) return 'e'; return br < 60 ? 'k' : 'K'; }
   if (br >= 224) return 'C'; if (br >= 170) return 'B'; if (br >= 104) return 'M'; return 'D';
 }
+// Build a gentle wing-beat cycle from one traced pose: the region ABOVE the back-line
+// (the wing) is scaled vertically toward a pivot at the back, so the wing dips & lifts
+// while the body/head/tail stay put. Inverse row-mapping = no gaps/holes. The head sits
+// below the pivot so it never bobs from the flap.
+function _rcBuildFlapFrames(base, GW, GH) {
+  const yp = Math.round(GH * 0.60);                 // pivot ≈ wing root / back-line (head is below this)
+  const sUp = [1.0, 0.93, 0.86, 0.93];             // spread → dip → spread (downstroke wing-beat)
+  return sUp.map(s => {
+    if (s === 1) return base;
+    const out = []; for (let y = 0; y < GH; y++) out.push(new Array(GW).fill(null));
+    for (let y = 0; y < GH; y++) {
+      const r = Math.round(y < yp ? yp + (y - yp) / s : y);
+      if (r < 0 || r >= GH) continue;
+      const src = base[r], dst = out[y];
+      for (let x = 0; x < GW; x++) dst[x] = src[x];
+    }
+    return out;
+  });
+}
 // trace the reference PNG → key-grid; set RC_DRG dims/anchor/eye + RC_DRAGON_FRAMES
 function _rcLoadTracedDragon() {
   const img = new Image();
@@ -364,7 +384,7 @@ function _rcLoadTracedDragon() {
     RC_DRG.GW = GW; RC_DRG.GH = GH; RC_DRG.anchorX = Math.round(sx / sn); RC_DRG.anchorY = lowest - 2;
     RC_DRG.eyeX = en ? Math.round(exs / en) : Math.round(sx / sn); RC_DRG.eyeY = en ? Math.round(eys / en) : Math.round(GH * 0.5);
     for (const k in _rcFrameCache) delete _rcFrameCache[k];   // any colours cached from a stale grid
-    RC_DRAGON_FRAMES = [grid];
+    RC_DRAGON_FRAMES = _rcBuildFlapFrames(grid, GW, GH);
   } catch (e) { _rcFallbackDragon(); } };
   img.onerror = function () { _rcFallbackDragon(); };
   img.src = 'images/dragon_ref/ref.png';
@@ -495,7 +515,7 @@ function rcMoodGlyph(ctx, x, y, ch, col, d) {
 function rcDrawDragonFace(ctx, cx, cy, dep, mood, now) {
   if (!mood || mood === "neutral") return;
   const d = Math.max(0.85, dep), t = now / 600;
-  const _k = RC_DRG.px * 0.66;                                  // grid-cell → on-screen (in-race scale = 0.66·dep)
+  const _k = RC_DRG.px * _RC_INRACE;                           // grid-cell → on-screen (in-race scale = _RC_INRACE·dep)
   const ex = cx + (RC_DRG.eyeX - RC_DRG.anchorX) * _k * d, ey = cy + (RC_DRG.eyeY - RC_DRG.anchorY) * _k * d;  // the traced eye
   const sx = ex + 2 * d, sy = ey - 12 * d + Math.sin(t) * 1.4;  // floating mood symbol above the head
   const INK = "#23142e";
@@ -1901,7 +1921,7 @@ function startRaceCanvas(container, ctx) {
       // gait advance handled in update(); draw sprite (depth-scaled). Sized so
       // the whole field reads cleanly at the start without crowding/overlap.
       const dep = laneDepth(dr);
-      const sprScale = 0.66 * dep;
+      const sprScale = _RC_INRACE * dep;
       // per-dragon behavior (entrance walk-in / pre-start fidget / racing / post-goal)
       const beh = (S.entryT > 0) ? entranceBehaviorOf(dr)
                 : (S.preT > 0) ? prestartBehaviorOf(dr)
