@@ -28,6 +28,70 @@ function stopRacePlayer() {
   if (window.Sfx && Sfx.stopCrowd) Sfx.stopCrowd();     // ゴールの歓声ループも止める
 }
 
+// ===== 時間帯別の遠景ベース（_bg_render.html「Liminal Horizons」を移植）=====
+// 画像アセットではなくゲームのcanvasに直接描く（同じCanvas APIなので雲のblurまで
+// 再現／書き出し不要）。レース開始時にオフスクリーンへ一度焼いて毎フレーム転写する。
+// この上に既存の地形演出（火山/霧/風…）が重なって「時間帯×地形」になる。
+var RC_SKY_CONF = {
+  morning: { sky: [[0, '#a9c3d4'], [0.40, '#cdd6d2'], [0.70, '#eedcc0'], [1, '#f7cda4']],
+    sun: { x: 0.27, y: 0.64, r: 30, glow: 300, c0: 'rgba(255,248,228,0.95)', c1: 'rgba(255,224,168,0.40)', disc: 'rgba(255,250,232,0.95)' },
+    haze: '#f3dcc0', land: '#aab6ad', landDark: '#5f7269', cloud: 'rgba(255,248,238,0.62)', cloudY: 0.30, stars: 0, glowH: '#f7d9b0' },
+  day: { sky: [[0, '#5d93c8'], [0.45, '#8fb6d8'], [0.78, '#cfe0e2'], [1, '#e7eee0']],
+    sun: { x: 0.74, y: 0.20, r: 24, glow: 230, c0: 'rgba(255,255,245,0.95)', c1: 'rgba(255,250,210,0.30)', disc: 'rgba(255,255,250,0.96)' },
+    haze: '#dfe9df', land: '#9db9a4', landDark: '#4f7059', cloud: 'rgba(255,255,255,0.7)', cloudY: 0.26, stars: 0, glowH: '#e9f1e2' },
+  sunset: { sky: [[0, '#3a4d80'], [0.38, '#8a5e93'], [0.66, '#e08a6a'], [1, '#f6c879']],
+    sun: { x: 0.30, y: 0.70, r: 40, glow: 360, c0: 'rgba(255,238,196,0.98)', c1: 'rgba(255,160,96,0.45)', disc: 'rgba(255,236,196,0.97)' },
+    haze: '#f3b878', land: '#7a5e5e', landDark: '#3a2a36', cloud: 'rgba(255,206,168,0.55)', cloudY: 0.32, stars: 0, glowH: '#f4a866' },
+  dusk: { sky: [[0, '#1c2247'], [0.40, '#3b3464'], [0.72, '#7c5170'], [1, '#c97a66']],
+    sun: { x: 0.72, y: 0.74, r: 30, glow: 280, c0: 'rgba(255,224,188,0.80)', c1: 'rgba(214,120,110,0.35)', disc: 'rgba(255,228,196,0.85)' },
+    haze: '#b86a5e', land: '#494060', landDark: '#241d33', cloud: 'rgba(150,120,150,0.40)', cloudY: 0.30, stars: 60, glowH: '#a85e5a' },
+  night: { sky: [[0, '#0a0e22'], [0.45, '#14193a'], [0.78, '#222a4c'], [1, '#34335a']],
+    sun: { x: 0.78, y: 0.18, r: 22, glow: 200, c0: 'rgba(238,242,255,0.92)', c1: 'rgba(150,170,220,0.22)', disc: 'rgba(244,247,255,0.95)' },
+    haze: '#2e3358', land: '#1d2440', landDark: '#0c1020', cloud: 'rgba(110,124,170,0.26)', cloudY: 0.24, stars: 150, glowH: '#3a3a64' }
+};
+function rcHx2(h) { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join(''); var n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function rcMix2(a, b, t) { var A = rcHx2(a), B = rcHx2(b); return 'rgb(' + Math.round(A[0] + (B[0] - A[0]) * t) + ',' + Math.round(A[1] + (B[1] - A[1]) * t) + ',' + Math.round(A[2] + (B[2] - A[2]) * t) + ')'; }
+function rcSoftCloud(x, cx, cy, s, col) {
+  x.save(); x.filter = 'blur(14px)'; x.fillStyle = col;
+  for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2; x.beginPath(); x.ellipse(cx + Math.cos(a) * s * 0.7, cy + Math.sin(a) * s * 0.22, s * (0.5 + 0.18 * ((i * 7) % 3)), s * 0.34, 0, 0, 7); x.fill(); }
+  x.beginPath(); x.ellipse(cx, cy, s * 1.0, s * 0.42, 0, 0, 7); x.fill(); x.restore();
+}
+function rcFillRidge(x, W, H, baseY, amp, seed, fill) {
+  x.beginPath(); x.moveTo(0, H);
+  for (var px = 0; px <= W; px += 4) { var u = px / W; x.lineTo(px, baseY - amp * (0.55 * Math.sin(u * 6.3 + seed) + 0.28 * Math.sin(u * 13.7 + seed * 1.7) + 0.17 * Math.sin(u * 23.1 + seed * 2.3))); }
+  x.lineTo(W, H); x.closePath(); x.fillStyle = fill; x.fill();
+}
+function rcRenderSkyBase(x, W, H, time) {
+  var c = RC_SKY_CONF[time] || RC_SKY_CONF.night;
+  var HOR = H * 0.74, sc = W / 1536;
+  var g = x.createLinearGradient(0, 0, 0, H); c.sky.forEach(function (s) { g.addColorStop(s[0], s[1]); }); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  if (c.stars) { for (var i = 0; i < c.stars; i++) { var sx0 = (i * 73) % W, sy0 = (i * 131) % (HOR * 0.92), a0 = 0.25 + ((i * 37) % 50) / 100 * 0.7, r0 = (i % 9 === 0) ? 1.6 : 0.9; x.fillStyle = 'rgba(255,255,255,' + a0 + ')'; x.beginPath(); x.arc(sx0, sy0, r0, 0, 7); x.fill(); } }
+  var s = c.sun, sx = s.x * W, sy = s.y * H, rg = x.createRadialGradient(sx, sy, 0, sx, sy, s.glow * sc);
+  rg.addColorStop(0, s.c0); rg.addColorStop(0.42, s.c1); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+  x.beginPath(); x.arc(sx, sy, s.r * sc, 0, 7); x.fillStyle = s.disc; x.fill();
+  rcSoftCloud(x, W * 0.20, H * c.cloudY, 120 * sc, c.cloud);
+  rcSoftCloud(x, W * 0.58, H * (c.cloudY - 0.06), 95 * sc, c.cloud);
+  rcSoftCloud(x, W * 0.85, H * (c.cloudY + 0.05), 140 * sc, c.cloud);
+  rcFillRidge(x, W, H, HOR - 6 * sc, 46 * sc, 0.6, rcMix2(c.haze, c.land, 0.30));
+  rcFillRidge(x, W, H, HOR + 18 * sc, 64 * sc, 2.1, rcMix2(c.haze, c.landDark, 0.52));
+  rcFillRidge(x, W, H, HOR + 46 * sc, 86 * sc, 3.4, rcMix2(c.land, c.landDark, 0.78));
+  var gx = W * 0.60, gy = HOR - 4 * sc, gate = rcMix2(c.land, c.landDark, 0.85);
+  x.fillStyle = gate; x.globalAlpha = 0.9;
+  x.fillRect(gx - 46 * sc, gy - 58 * sc, 9 * sc, 58 * sc); x.fillRect(gx + 37 * sc, gy - 58 * sc, 9 * sc, 58 * sc);
+  x.fillRect(gx - 58 * sc, gy - 66 * sc, 116 * sc, 9 * sc); x.fillRect(gx - 50 * sc, gy - 52 * sc, 100 * sc, 6 * sc);
+  x.beginPath(); x.moveTo(gx - 110 * sc, gy); x.quadraticCurveTo(gx - 150 * sc, gy - 34 * sc, gx - 200 * sc, gy); x.closePath(); x.fill();
+  x.beginPath(); x.ellipse(gx + 150 * sc, gy, 62 * sc, 26 * sc, 0, Math.PI, 0); x.fill();
+  x.globalAlpha = 1;
+  var hb = x.createLinearGradient(0, HOR - 110 * sc, 0, HOR + 30 * sc); hb.addColorStop(0, 'rgba(0,0,0,0)'); hb.addColorStop(0.7, c.glowH); hb.addColorStop(1, c.glowH);
+  x.save(); x.globalAlpha = 0.5; x.fillStyle = hb; x.fillRect(0, HOR - 110 * sc, W, 150 * sc); x.restore();
+  var vg = x.createRadialGradient(W / 2, H * 0.1, H * 0.2, W / 2, H * 0.1, W * 0.7); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(8,10,20,0.18)'); x.fillStyle = vg; x.fillRect(0, 0, W, H);
+}
+// 時間帯はランクで進行：新人=朝 → … → 神兎大=夜（演出のみ・結果に無関係）
+function rcRaceTime(race) {
+  var r = (race && race.rank) || 1;
+  return r <= 1 ? "morning" : r === 2 ? "day" : r <= 4 ? "sunset" : r <= 6 ? "dusk" : "night";
+}
+
 // Phase-entry banners — a big sweeping caption the instant the field rolls into
 // a new act of the race. Indexed to timeline.phaseIndexAt() (序盤/中盤/展開/終盤/
 // ゴール前). Index 0 is intentionally blank so the opening act doesn't double up
@@ -673,6 +737,16 @@ function startRaceCanvas(container, ctx) {
 
   // ---- responsive canvas sizing (devicePixelRatio aware) ----
   let cw = 0, ch = 0, dpr = 1;
+  let skyBase = null;            // offscreen time-of-day far-backdrop, rebuilt on resize
+  function buildSkyBase() {
+    if (!cw || !ch) { skyBase = null; return; }
+    try {
+      const oc = document.createElement("canvas");
+      oc.width = Math.round(cw); oc.height = Math.round(ch);
+      rcRenderSkyBase(oc.getContext("2d"), oc.width, oc.height, rcRaceTime(race));
+      skyBase = oc;
+    } catch (e) { skyBase = null; }
+  }
   function resize() {
     const parent = canvas.parentElement;
     if (!parent) return;          // canvas が DOM から外れている — リサイズをスキップ
@@ -685,6 +759,7 @@ function startRaceCanvas(container, ctx) {
     canvas.width = Math.round(cw * dpr);
     canvas.height = Math.round(ch * dpr);
     cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    buildSkyBase();
   }
   const onResize = () => { resize(); draw(); };
   window.addEventListener("resize", onResize);
@@ -1368,26 +1443,31 @@ function startRaceCanvas(container, ctx) {
     // terrain now shows its own dedicated backdrop so the course reads at a glance.
     const stadium = (tb.keyA === "straight");
 
-    // --- sky (themed) ---
-    const sky = cctx.createLinearGradient(0, 0, 0, ch);
-    sky.addColorStop(0,    rcMix(tb.a.sky[0], tb.b.sky[0], tb.t));
-    sky.addColorStop(0.55, rcMix(tb.a.sky[1], tb.b.sky[1], tb.t));
-    sky.addColorStop(1,    rcMix(tb.a.sky[2], tb.b.sky[2], tb.t));
-    cctx.fillStyle = sky;
-    cctx.fillRect(0, 0, cw, ch);
-
-    // moon
-    cctx.fillStyle = "rgba(255,247,224,0.92)";
-    cctx.beginPath(); cctx.arc(cw * 0.82, ch * 0.16, 22, 0, Math.PI * 2); cctx.fill();
-    cctx.fillStyle = "rgba(255,247,224,0.10)";
-    cctx.beginPath(); cctx.arc(cw * 0.82, ch * 0.16, 34, 0, Math.PI * 2); cctx.fill();
+    // --- sky: painted time-of-day base (combine) OR the themed procedural sky ---
+    if (skyBase) {
+      // far backdrop incl. sun/moon, clouds, distant ridges, 聖龍門 & grandstand, haze
+      cctx.drawImage(skyBase, 0, 0, cw, ch);
+    } else {
+      const sky = cctx.createLinearGradient(0, 0, 0, ch);
+      sky.addColorStop(0,    rcMix(tb.a.sky[0], tb.b.sky[0], tb.t));
+      sky.addColorStop(0.55, rcMix(tb.a.sky[1], tb.b.sky[1], tb.t));
+      sky.addColorStop(1,    rcMix(tb.a.sky[2], tb.b.sky[2], tb.t));
+      cctx.fillStyle = sky;
+      cctx.fillRect(0, 0, cw, ch);
+      // moon
+      cctx.fillStyle = "rgba(255,247,224,0.92)";
+      cctx.beginPath(); cctx.arc(cw * 0.82, ch * 0.16, 22, 0, Math.PI * 2); cctx.fill();
+      cctx.fillStyle = "rgba(255,247,224,0.10)";
+      cctx.beginPath(); cctx.arc(cw * 0.82, ch * 0.16, 34, 0, Math.PI * 2); cctx.fill();
+    }
 
     // distant terrain identity (volcano / clouds / hills / canyon / pylons)
     drawThemeBackdrop(tb.keyA, g, 1);
     if (tb.keyB !== tb.keyA) drawThemeBackdrop(tb.keyB, g, tb.t);
 
     // stadium dressing (skyline + clock tower + crowd) only on ground courses
-    if (stadium) {
+    // (skipped when the painted base is active — it already has 聖龍門 + grandstand)
+    if (stadium && !skyBase) {
       const skl = (S.camL * 210) % 60;
       cctx.fillStyle = "rgba(20,26,52,0.9)";
       for (let i = -1; i < cw / 60 + 1; i++) {
