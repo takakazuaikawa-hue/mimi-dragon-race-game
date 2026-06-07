@@ -23,6 +23,7 @@ var Sfx = (function () {
   var ctx = null;
   var master = null;
   var muted = false;
+  var crowd = null;                 // sustained goal-crowd controller (loops until stopped)
   var MUTE_KEY = "mimi_muted";
 
   // restore mute preference
@@ -171,9 +172,70 @@ var Sfx = (function () {
     } catch (e) {}
   }
 
+  // ---- sustained crowd roar (goal celebration) — loops until stopCrowd() ----
+  // ゴールで「ワーッ」と湧き、結果を見る（stopCrowd）まで鳴り続ける厚い歓声。
+  // 帯域の違うループノイズを重ね、各層をゆっくり揺らして“生きた群衆”にする。
+  function startCrowd() {
+    if (muted) return;
+    if (!ensure()) return;
+    resume();
+    stopCrowd(true);                                            // 念のため前の歓声を消す
+    try {
+      var now = ctx.currentTime;
+      var out = ctx.createGain();
+      out.gain.setValueAtTime(0.0001, now);
+      out.gain.exponentialRampToValueAtTime(0.42, now + 0.35);  // ワーッ！と湧く頂点
+      out.gain.exponentialRampToValueAtTime(0.27, now + 1.3);   // 持続レベルへ落ち着く
+      out.connect(master);
+      var len = Math.floor(ctx.sampleRate * 2);                 // 2秒ループのホワイトノイズ
+      var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      var bands = [
+        { f: 520,  q: 0.5, g: 0.55 },   // 低いどよめき
+        { f: 1300, q: 0.7, g: 0.70 },   // 主体
+        { f: 2400, q: 0.9, g: 0.40 },   // 明るい層
+        { f: 3600, q: 1.1, g: 0.22 }    // きらめき
+      ];
+      var nodes = [];
+      bands.forEach(function (b, k) {
+        var src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+        src.playbackRate.value = 0.85 + k * 0.12;               // 層ごとに微妙にずらして厚く
+        var bp = ctx.createBiquadFilter(); bp.type = "bandpass";
+        bp.frequency.value = b.f; bp.Q.value = b.q;
+        var g = ctx.createGain(); g.gain.value = b.g;
+        var lfo = ctx.createOscillator(); lfo.type = "sine";
+        lfo.frequency.value = 0.45 + k * 0.33;                  // ゆっくりした波（生きた群衆）
+        var lfoG = ctx.createGain(); lfoG.gain.value = b.g * 0.4;
+        lfo.connect(lfoG); lfoG.connect(g.gain);
+        src.connect(bp); bp.connect(g); g.connect(out);
+        src.start(now); lfo.start(now);
+        nodes.push(src, lfo);
+      });
+      crowd = { out: out, nodes: nodes };
+    } catch (e) { crowd = null; }
+  }
+  function stopCrowd(immediate) {
+    if (!crowd) return;
+    var c = crowd; crowd = null;
+    try {
+      var now = ctx ? ctx.currentTime : 0;
+      var rel = immediate ? 0.05 : 0.4;
+      if (ctx && c.out) {
+        var cur = 0.27;
+        try { cur = Math.max(0.0001, c.out.gain.value); } catch (e) {}
+        c.out.gain.cancelScheduledValues(now);
+        c.out.gain.setValueAtTime(cur, now);
+        c.out.gain.exponentialRampToValueAtTime(0.0001, now + rel);
+      }
+      c.nodes.forEach(function (n) { try { n.stop(now + rel + 0.05); } catch (e) {} });
+    } catch (e) {}
+  }
+
   function setMuted(m) {
     muted = !!m;
     try { localStorage.setItem(MUTE_KEY, muted ? "1" : "0"); } catch (e) {}
+    if (muted) stopCrowd(true);                                 // ミュートで歓声ループも止める
     if (!muted) { ensure(); resume(); }
   }
 
@@ -187,6 +249,8 @@ var Sfx = (function () {
 
   return {
     play: play,
+    startCrowd: startCrowd,
+    stopCrowd: stopCrowd,
     setMuted: setMuted,
     isMuted: function () { return muted; },
     unlock: unlock
