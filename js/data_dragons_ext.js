@@ -229,19 +229,25 @@
       early:"long_straight_start", mid:"aerial_wind_lane", late:"long_final_straight", purpose:"祝祭⑤：月下の大一番" }
   ];
   const EVE_OVERRIDES = {
-    // 第四 = 各地域「第二」の出走表をコピー（検証済み）
-    race_grandclock_4: ["kogane","nagi","susu","goro","chiri","poro","akane","momu"],            // = grandclock_2
-    race_lumina_4:     ["akane","shio","yoi","tsumuji","hibana","kabe","kogane","poro"],          // = lumina_2
-    race_ringrosso_4:  ["tsumuji","yoi","kabe","akane","hibana","shio","nagi","momu"],            // = ringrosso_open
-    race_caldera_4:    ["benio","taiga","kazemaru","sazare","yumeji","murasame","akane","momu"],  // = caldera_karyu2
-    race_mistlake_4:   ["benio","kazemaru","sazare","murasame","taiga","yumeji","hibana","poro"], // = mistlake_2
-    race_vento_4:      ["shakunetsu","hayate","arashi","konron","shirahae","kirari","benio","taiga"], // = vento_2
-    race_notte_4:      ["guren","raijin","sora","banju","gekka","senpu","shakunetsu","arashi"],   // = notte_2
-    race_lapan_4:      ["enma","hayao","tenku","gozan","yugiri","reppu","guren","stella"],        // = lapan_2
-    // 第五 = 各地域「第一」の出走表。ORIGINAL_8 の地域(grandclock/lumina/ringrosso/caldera/mistlake)は指定不要。
-    race_vento_5:      ["stella","seram","raika","phenix","miruka","poro","rosso","momu"],        // = vento_1
-    race_notte_5:      ["stella","seram","miruka","glaze","rosso","gando","momu","raika"],        // = notte_1
-    race_lapan_5:      ["phenix","stella","raika","rubel","baran","seram","rosso","gando"]        // = lapan_festival
+    // 第四・第五は“別物”の独自出走表（同ティア帯／別の本命・別の顔ぶれ）。
+    // sim検証で最大勝率を確認（≦約50%、カルデラ⑤のみ強本命寄りで68%＝既存87%枠内）。
+    // 同地域の第一〜第三とは4頭以上入れ替わり、本命が変わる＝別レースとして読める。
+    race_grandclock_4: ["poro","hibana","momu","yoi","nagi","kabe","susu","shio"],
+    race_grandclock_5: ["chiri","kabe","kogane","yoi","akane","susu","shio","tsumuji"],
+    race_lumina_4:     ["kogane","momu","yoi","poro","nagi","chiri","tsumuji","goro"],
+    race_lumina_5:     ["kabe","poro","hibana","chiri","nagi","susu","akane","goro"],
+    race_ringrosso_4:  ["susu","nagi","poro","akane","hibana","kogane","chiri","kabe"],
+    race_ringrosso_5:  ["hibana","goro","tsumuji","momu","chiri","poro","susu","shio"],
+    race_caldera_4:    ["gando","poro","rosso","murasame","taiga","kazemaru","rubel","yumeji"],
+    race_caldera_5:    ["gando","benio","kazemaru","seram","rubel","momu","yumeji","hibana"],
+    race_mistlake_4:   ["rubel","miruka","murasame","sazare","rosso","yumeji","kazemaru","seram"],
+    race_mistlake_5:   ["murasame","rubel","hibana","kazemaru","rosso","baran","poro","akane"],
+    race_vento_4:      ["taiga","momu","gando","arashi","kirari","poro","miruka","kazemaru"],
+    race_vento_5:      ["seram","miruka","arashi","taiga","konron","poro","sazare","shirahae"],
+    race_notte_4:      ["gekka","banju","stella","sora","shirahae","seram","gando","miruka"],
+    race_notte_5:      ["arashi","glaze","gekka","stella","raika","miruka","konron","banju"],
+    race_lapan_4:      ["gekka","senpu","yugiri","phenix","banju","enma","rubel","raijin"],
+    race_lapan_5:      ["phenix","hayao","senpu","gekka","gozan","tenku","raika","raijin"]
   };
   if (typeof RACES !== "undefined") EVE_RACES.forEach(r => { if (!RACES.some(x => x.id === r.id)) RACES.push(r); });
   if (typeof RACE_ENTRY_OVERRIDES !== "undefined") Object.assign(RACE_ENTRY_OVERRIDES, EVE_OVERRIDES);
