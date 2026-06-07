@@ -74,6 +74,7 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   box-shadow: 0 2px 14px -7px rgba(0,0,0,0.7);
   flex-wrap: wrap;
   position: relative; z-index: 20;
+  max-width: 720px; margin: 0 auto;   /* ステータスバーもゲームフレーム幅に合わせて中央寄せ */
 }
 /* keep the main content column above the fixed home world scene */
 #app { position: relative; z-index: 1; }
@@ -1090,7 +1091,10 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   .rc-race { max-width: 150px; }
 }
 
-#app { padding: 20px; max-width: 1200px; margin: 0 auto; }
+/* 一般的なスマホ＆PC両対応：内容を一定幅のゲームフレームに収め、PCでは中央寄せ。
+   これでレースcanvasのアスペクト(≈1.82:1)がスマホ/PCで一致し、横長すぎる崩れを防ぐ。
+   タイトルだけは body.title-mode で全画面化（下の §タイトル 参照）。 */
+#app { padding: 20px; max-width: 720px; margin: 0 auto; }
 
 h2 { color: #ffd870; border-bottom: 1px solid #604040; padding-bottom: 6px; }
 h3 { color: #ffc850; margin-top: 16px; }
