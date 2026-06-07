@@ -2786,3 +2786,112 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .vil-fac.locked { opacity: .62; }
 .vil-fac.locked .vil-fac-ic { filter: grayscale(1); opacity: .7; }
 .vil-fac.locked .vil-fac-lv { color: var(--mist); background: rgba(120,130,140,.12); border-color: var(--glass-border); }
+
+/* ===================================================================== */
+/* §HR2 — ホーム／レース選択 レイアウト刷新                                  */
+/*  上部：スリムなシステムバー ／ 全画面の背景装飾 ／ 中央：コンパクトな状態   */
+/*  下部：重要ボタンのメニュー（最小文字＋タップで説明ポップアップ）          */
+/* ===================================================================== */
+/* 上部システムバー（全画面共通でスリムに） */
+#header { padding: max(7px, env(safe-area-inset-top)) 14px 7px; gap: 10px; }
+#header h1 { font-size: 14px; max-width: 50vw; }
+#header h1 .subtitle { display: none; }
+.header-info { gap: 10px; font-size: 11.5px; align-items: center; }
+.header-info b { font-size: 13px; }
+.header-info .coins, .header-info .rank { background: rgba(0,0,0,0.26); border: 1px solid var(--glass-border); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.info-level-select { font-size: 11px; opacity: .85; }
+.debug-toggle { font-size: 10.5px; opacity: .6; }
+
+/* 全画面の背景装飾（固定・本文の背後） */
+.hr2-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(130% 80% at 50% -10%, rgba(86,150,178,0.35), rgba(0,0,0,0) 60%),
+    radial-gradient(120% 70% at 50% 118%, rgba(176,86,46,0.40), rgba(0,0,0,0) 62%),
+    linear-gradient(180deg, #18303c 0%, #1a2730 46%, #2a1f24 78%, #160f12 100%); }
+.hr2-bg::after { content: ""; position: absolute; inset: 0;
+  background: radial-gradient(120% 100% at 50% 40%, rgba(0,0,0,0) 55%, rgba(8,10,14,0.55) 100%); }
+.hr2-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .42; }
+
+/* ホーム本体：1画面に収め、メニューを最下部へ */
+.hr2 { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 10px; min-height: calc(100dvh - 96px); }
+.hr2-top { display: flex; justify-content: flex-end; gap: 8px; padding: 0 2px; }
+.hr2-topbtn { font-size: 11px; color: var(--mist-soft); background: rgba(0,0,0,0.28); border: 1px solid var(--glass-border); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+.hr2-topbtn:active { transform: translateY(1px); }
+
+.hr2-stage { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 4px 0; }
+.hr2-dragon { width: 178px; height: 100px; image-rendering: pixelated; filter: drop-shadow(0 7px 12px rgba(0,0,0,0.55)); }
+.hr2-status { width: 100%; max-width: 420px; background: rgba(18,22,28,0.62); border: 1px solid var(--glass-border); border-radius: 14px; padding: 12px 14px; backdrop-filter: blur(5px); box-shadow: 0 12px 34px -18px rgba(0,0,0,0.85); }
+.hr2-greet { font-size: 11px; color: var(--mist-soft); letter-spacing: .05em; }
+.hr2-name { font-size: 17px; font-weight: 900; color: var(--mist); margin-top: 1px; }
+.hr2-rankrow { display: flex; justify-content: center; gap: 7px; align-items: center; margin-top: 3px; font-size: 12px; color: var(--gold); }
+.hr2-rankrow b { color: var(--gold-bright); }
+.hr2-streak { color: #ff9a5c; }
+.hr2-coins { margin-top: 9px; font-size: 12px; color: var(--mist-soft); }
+.hr2-coins b { font-size: 21px; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.hr2-assets { margin-top: 11px; text-align: left; cursor: pointer; }
+.hr2-arow { display: flex; justify-content: space-between; font-size: 11px; color: var(--astone-2); }
+.hr2-arow b { color: var(--mist); }
+.hr2-bar { height: 6px; border-radius: 99px; background: rgba(0,0,0,0.42); overflow: hidden; margin-top: 4px; }
+.hr2-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); }
+.hr2-goal { margin-top: 6px; font-size: 11px; color: var(--mist-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hr2-rec { display: flex; gap: 6px; margin-top: 11px; }
+.hr2-rec > div { flex: 1; background: rgba(0,0,0,0.26); border-radius: 8px; padding: 5px 2px; text-align: center; }
+.hr2-rec span { display: block; font-size: 9px; color: var(--astone-2); }
+.hr2-rec b { font-size: 13px; color: var(--mist); }
+.hr2-broke { margin-top: 2px; width: 100%; max-width: 420px; padding: 11px; border: none; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(180deg, #e0607a, #b53a52); color: #fff; font-weight: 800; font-size: 14px; box-shadow: 0 6px 16px -6px rgba(181,58,82,0.6); }
+
+/* 下部メニュー（重要ボタン） */
+.hr2-menu { flex: 0 0 auto; background: rgba(15,19,25,0.80); border: 1px solid var(--gold-line); border-radius: 16px; padding: 12px; backdrop-filter: blur(6px); box-shadow: 0 -8px 30px -18px rgba(0,0,0,0.9); }
+.hr2-race { width: 100%; padding: 14px; border: none; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; font-weight: 900; font-size: 16px;
+  box-shadow: 0 6px 16px -6px rgba(240,168,56,0.6); display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hr2-race:active { transform: translateY(1px); }
+.hr2-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.hr2-item { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px; cursor: pointer;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 11px; color: var(--mist); }
+.hr2-item:active { transform: translateY(1px); background: rgba(255,255,255,0.10); }
+.hr2-item .ic { font-size: 21px; line-height: 1; }
+.hr2-item .lb { font-size: 10.5px; color: var(--mist-soft); }
+
+/* ナビ説明ポップアップ（最小文字ボタン → 説明＋進む/キャンセル） */
+.navpop-ov { position: fixed; inset: 0; z-index: 9200; display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: rgba(6,8,12,0.70); backdrop-filter: blur(3px); animation: mushinIn .2s ease; }
+.navpop { width: 100%; max-width: 320px; background: linear-gradient(180deg, rgba(34,38,46,0.98), rgba(22,25,31,0.98));
+  border: 1px solid var(--gold-line); border-radius: 16px; padding: 22px 20px; text-align: center; box-shadow: 0 24px 60px -20px rgba(0,0,0,0.85); }
+.navpop-ic { font-size: 42px; line-height: 1; }
+.navpop-t { font-size: 18px; font-weight: 900; color: var(--mist); margin-top: 8px; }
+.navpop-d { font-size: 13px; color: var(--mist-soft); line-height: 1.65; margin-top: 9px; }
+.navpop-btns { display: flex; gap: 10px; margin-top: 20px; }
+.navpop-btns button { flex: 1; padding: 11px; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 14px; }
+.navpop-go { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; border: none; }
+.navpop-cancel { background: rgba(255,255,255,0.06); color: var(--mist-soft); border: 1px solid var(--glass-border); }
+.navpop-go:active, .navpop-cancel:active { transform: translateY(1px); }
+
+/* レース選択：タブ（ホームと一貫したトーン） */
+.hr2-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 9px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.hr2-tabs::-webkit-scrollbar { display: none; }
+.hr2-tab { flex: 0 0 auto; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 700; white-space: nowrap;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--mist-soft); }
+.hr2-tab.on { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; border: none; }
+.hr2-tab.locked { opacity: .5; }
+.hr2-tabpane { margin-top: 2px; }
+.hr2-tabhint { font-size: 11px; color: var(--astone-2); text-align: center; padding: 16px; }
+/* phones: tighten so the whole home fits one screen without scrolling */
+@media (max-width: 480px) {
+  .debug-toggle { display: none; }   /* dev-only; declutter the phone top bar */
+  .hr2 { min-height: calc(100dvh - 150px); gap: 6px; }
+  .hr2-top { padding: 0 2px; }
+  .hr2-dragon { width: 122px; height: 68px; }
+  .hr2-stage { gap: 5px; }
+  .hr2-status { padding: 9px 12px; }
+  .hr2-greet { font-size: 10px; } .hr2-name { font-size: 16px; }
+  .hr2-coins { margin-top: 6px; } .hr2-coins b { font-size: 18px; }
+  .hr2-assets { margin-top: 8px; } .hr2-rec { margin-top: 8px; }
+  .hr2-rec b { font-size: 12px; }
+  .hr2-menu { padding: 9px; }
+  .hr2-race { padding: 11px; font-size: 15px; }
+  .hr2-grid { gap: 6px; margin-top: 8px; }
+  .hr2-item { padding: 6px 2px; }
+  .hr2-item .ic { font-size: 18px; } .hr2-item .lb { font-size: 10px; }
+}

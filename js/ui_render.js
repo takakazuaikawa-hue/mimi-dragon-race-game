@@ -159,6 +159,22 @@ function renderTitle() {
   }
 }
 
+// Minimal-text nav: tapping a menu button opens a small description popup with
+// 進む（proceed）/ キャンセル, so the home stays uncluttered but every button explains itself.
+function showNavConfirm(icon, title, desc, onGo) {
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop");
+  box.innerHTML =
+    `<div class="navpop-ic">${icon}</div><div class="navpop-t">${title}</div><div class="navpop-d">${desc}</div>` +
+    `<div class="navpop-btns"><button class="navpop-cancel">キャンセル</button><button class="navpop-go">進む ▶</button></div>`;
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  box.querySelector(".navpop-cancel").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  box.querySelector(".navpop-go").onclick = () => { close(); onGo(); };
+}
+
 function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
@@ -177,126 +193,89 @@ function renderHome() {
   const fillPct = nextT ? Math.max(5, Math.min(100, total / nextT * 100)) : 100;
   let stageLabel = "";
   try { const st = (typeof lifeStageFor === "function" && state.assets) ? lifeStageFor(state.assets.unlockedLifeStages) : null; stageLabel = (st && (st.label || st.name || st.title)) || ""; } catch (e) {}
-
-  // --- calm fixed ambient (drop images/home_ambient.png to layer a backdrop) ---
-  const bg = el("div", "hw-bg");
-  bg.innerHTML = (typeof photoOr === "function" ? photoOr("images/home_ambient.png", "") : "");
-  app.appendChild(bg);
-
-  const wrap = el("div", "home2");
-
-  // --- the world vista: distant volcano, jungle ridges, lantern string ---
-  // (CSS diorama fallback; drop images/home_vista_day.png to layer a painted banner on top)
-  const vista = el("div", "hw-vista");
-  vista.innerHTML =
-    `<div class="hwv-sky"></div><div class="hwv-sun"></div>` +
-    `<div class="hwv-volcano"><div class="hwv-crater"></div></div>` +
-    `<div class="hwv-smoke"></div>` +
-    `<div class="hwv-ridge-far"></div><div class="hwv-haze"></div><div class="hwv-ridge-near"></div>` +
-    `<div class="hwv-lanterns" id="hw-lanterns"></div>` +
-    (typeof photoOr === "function" ? photoOr("images/home_vista_day.jpg", "") : "") +
-    `<div class="hwv-fade"></div>` +
-    `<div class="hwv-label"><i></i>聖龍レース都市・ヴォルカ街道</div>`;
-  wrap.appendChild(vista);
-  const lr = vista.querySelector("#hw-lanterns");
-  if (lr) [10, 26, 42, 58, 74, 90].forEach((xp, i) => { const L = el("div", "hw-lantern"); L.style.left = xp + "%"; L.style.top = (7 + (i % 2) * 4) + "px"; lr.appendChild(L); });
-
-  // hero — player status
-  const hero = el("div", "glass-panel hw-hero");
-  hero.innerHTML =
-    `<canvas class="hb-dragon" width="92" height="74"></canvas>` +
-    `<div class="hw-hero-id"><div class="hw-greet">ようこそ、聖龍都市へ</div>` +
-    `<div class="hw-name">予想家 ミミ</div>` +
-    `<div class="hw-rank">ランク <b>${p.rank}</b>${rankLabel ? "　" + rankLabel : ""}` +
-      `${p.streak >= 2 ? ` <span class="hw-streak">🔥 ${p.streak}連勝</span>` : ""}</div></div>` +
-    `<div class="hw-coins"><span>所持コイン</span><b>${fmtCoins(p.coins)}</b></div>`;
-  wrap.appendChild(hero);
-
-  // 戦績はプロフィールに統合（出走/単勝/勝率/最高配当の小チップ）
-  const rec = el("div", "hw-rec");
-  const rc = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
-  rec.innerHTML = rc("出走", p.completedRaces) + rc("単勝", p.wins) + rc("勝率", winRate + "%") + rc("最高配当", fmtCoins(p.biggestPayout || 0));
-  wrap.appendChild(rec);
-
-  // §38 — 破産（コイン0）時：最優先で「無心する」導線（条件表示）。
-  if (p.coins <= 0) {
-    const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
-    const broke = el("div", "glass-panel hw-broke");
-    broke.innerHTML =
-      `<div class="hw-broke-h">😵‍💫 コインが尽きた…！</div>` +
-      `<div class="hw-broke-tx">でも、ミミの再起はここから。村のみんなに頭を下げれば、<b>基準額</b>をそっと握らせてくれる。</div>`;
-    const beg = el("button", "hw-broke-btn", `🙏 無心する　<span>基準額 ${fmtCoins(begAmt)} 相当</span>`);
-    beg.onclick = () => showMushinOverlay();
-    broke.appendChild(beg);
-    wrap.appendChild(broke);
-  }
-
-  // ▶ いちばん大事な行動を最上段に（§18.3）。深い情報は各画面へ委譲する設計。
-  const cta = el("button", "hw-cta",
-    `<span class="hw-cta-tag">公営 聖龍レース・出走券</span><span class="hw-cta-main">レースへ進む<span class="hw-cta-mon">🐉</span></span>`);
-  cta.onclick = () => renderRaceSelect();
-  wrap.appendChild(cta);
-
-  // 今の一手：総資産（再起度）＋いちばん近い目標を1つだけ焦点に。詳細は「暮らしと資産」へ。
-  let stageInfo = stageLabel ? "暮らし：" + stageLabel : "";
-  if (nextT) stageInfo += (stageInfo ? " ／ " : "") + "次の段階まで あと " + fmtCoins(Math.max(0, nextT - total));
-  else if (!stageLabel) stageInfo = "最終段階に到達";
   let nearest = null;
   try { const goals = (typeof nextGoals === "function") ? nextGoals(state) : []; nearest = goals[0] || null; } catch (e) {}
-  const focal = el("div", "glass-panel hw-focal");
-  focal.innerHTML =
-    `<div class="hw-focal-asset"><div class="hwf-a-top"><span>総資産（再起度）</span><b>${fmtCoins(total)}</b></div>` +
-      `<div class="hw-asset-bar"><div class="hw-asset-fill" style="width:${fillPct}%"></div></div>` +
-      `<div class="hw-asset-stage">${stageInfo}<span class="hwf-more">暮らしと資産へ ›</span></div></div>` +
-    (nearest
-      ? `<div class="hw-focal-goal"><div class="hwf-g-h">🎯 次の目標</div>` +
-        `<div class="hw-goal"><div class="hw-goal-top"><span>${nearest.icon} ${nearest.label}</span><b>${nearest.sub}</b></div>` +
-        `<div class="hw-goal-bar"><div class="hw-goal-fill" style="width:${nearest.pct}%"></div></div></div></div>`
-      : "");
-  const fa = focal.querySelector(".hw-focal-asset"); if (fa) { fa.style.cursor = "pointer"; fa.onclick = () => renderAssets(); }
-  wrap.appendChild(focal);
 
-  // tourist-board menu
-  const tile = (icon, label, sub, onClick) => {
-    const b = el("button", "hw-tile",
-      `<span class="hw-tile-ic">${icon}</span><span class="hw-tile-tx"><span class="hw-tile-l">${label}</span><span class="hw-tile-s">${sub}</span></span>`);
-    b.onclick = onClick; return b;
+  // full-screen decorative backdrop (drop images/home_bg.jpg to layer a painting on the gradient)
+  const bg = el("div", "hr2-bg");
+  bg.innerHTML = (typeof photoOr === "function" ? photoOr("images/home_bg.jpg", "") : "");
+  app.appendChild(bg);
+
+  const wrap = el("div", "hr2");
+
+  // top: small system buttons (with margin), kept out of the way
+  const top = el("div", "hr2-top");
+  const bTitle = el("button", "hr2-topbtn", "🏠 タイトル"); bTitle.onclick = () => renderTitle();
+  const bReset = el("button", "hr2-topbtn", "🔄 リセット");
+  bReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
+  top.appendChild(bTitle); top.appendChild(bReset);
+  wrap.appendChild(top);
+
+  // center stage: mascot + one compact status card
+  const stage = el("div", "hr2-stage");
+  const dragonCv = el("canvas", "hr2-dragon"); dragonCv.width = 220; dragonCv.height = 124;
+  stage.appendChild(dragonCv);
+
+  let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
+    : (stageLabel ? "暮らし：" + stageLabel : "");
+  if (nextT) goalLine += (goalLine ? "　" : "") + "（次まで " + fmtCoins(Math.max(0, nextT - total)) + "）";
+  const status = el("div", "hr2-status");
+  status.innerHTML =
+    `<div class="hr2-greet">ようこそ、聖龍都市へ</div>` +
+    `<div class="hr2-name">予想家 ミミ</div>` +
+    `<div class="hr2-rankrow">ランク <b>${p.rank}</b>${rankLabel ? " " + rankLabel : ""}` +
+      `${p.streak >= 2 ? ` <span class="hr2-streak">🔥${p.streak}連勝</span>` : ""}</div>` +
+    `<div class="hr2-coins"><span>所持コイン </span><b>${fmtCoins(p.coins)}</b></div>` +
+    `<div class="hr2-assets"><div class="hr2-arow"><span>総資産（再起度）</span><b>${fmtCoins(total)}</b></div>` +
+      `<div class="hr2-bar"><div class="hr2-fill" style="width:${fillPct}%"></div></div>` +
+      `<div class="hr2-goal">${goalLine}</div></div>` +
+    `<div class="hr2-rec"><div><span>出走</span><b>${p.completedRaces}</b></div><div><span>単勝</span><b>${p.wins}</b></div>` +
+      `<div><span>勝率</span><b>${winRate}%</b></div><div><span>最高配当</span><b>${fmtCoins(p.biggestPayout || 0)}</b></div></div>`;
+  const fa = status.querySelector(".hr2-assets"); if (fa) fa.onclick = () => renderAssets();
+  stage.appendChild(status);
+
+  // §38 — 破産時：最優先で「無心」導線
+  if (p.coins <= 0) {
+    const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
+    const broke = el("button", "hr2-broke", `🙏 無心する　基準額 ${fmtCoins(begAmt)} 相当`);
+    broke.onclick = () => showMushinOverlay();
+    stage.appendChild(broke);
+  }
+  wrap.appendChild(stage);
+
+  // bottom: important buttons as a menu (minimal text; tap → description + 進む/キャンセル)
+  const menu = el("div", "hr2-menu");
+  const raceBtn = el("button", "hr2-race", "🐉 レースへ進む");
+  raceBtn.onclick = () => renderRaceSelect();
+  menu.appendChild(raceBtn);
+
+  const grid = el("div", "hr2-grid");
+  const navItem = (icon, label, desc, go) => {
+    const b = el("button", "hr2-item", `<span class="ic">${icon}</span><span class="lb">${label}</span>`);
+    b.onclick = () => showNavConfirm(icon, label, desc, go);
+    return b;
   };
-  wrap.appendChild(el("div", "hw-seclabel", "育成・記録"));
-  const g1 = el("div", "hw-menu2");
-  g1.appendChild(tile("🏠", "暮らしと資産", "総資産と暮らしの歩み", () => renderAssets()));
-  g1.appendChild(tile("📜", "ストーリー", "ミミと5人の物語", () => renderStory()));
-  g1.appendChild(tile("📖", "竜図鑑", "出会った竜の記録", () => renderCollection()));
-  g1.appendChild(tile("🏘️", "竜の村", "竜たちと交流する", () => renderVillage()));
-  wrap.appendChild(g1);
-  wrap.appendChild(el("div", "hw-seclabel", "サポート"));
-  const g2 = el("div", "hw-menu2");
-  g2.appendChild(tile("💬", "相談する", "顧問に視点をもらう", () => renderConsult()));
-  g2.appendChild(tile("🎓", "予想入門", "賭けの基礎を学ぶ", () => renderHelp()));
-  g2.appendChild(tile("📣", "シェア", "友達に教える", shareGameInfo));
-  wrap.appendChild(g2);
-
-  const foot = el("div", "hw-foot");
-  const toTitle = el("button", "hw-foot-btn", "タイトルへ戻る");
-  toTitle.onclick = () => renderTitle();
-  foot.appendChild(toTitle);
-  const reset = el("button", "hw-foot-btn", "データをリセット");
-  reset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
-  foot.appendChild(reset);
-  wrap.appendChild(foot);
+  grid.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
+  grid.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
+  grid.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
+  grid.appendChild(navItem("🏘️", "竜の村", "竜たちと交流し、施設を育てます。", () => renderVillage()));
+  grid.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
+  grid.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
+  grid.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
+  menu.appendChild(grid);
+  wrap.appendChild(menu);
 
   app.appendChild(wrap);
 
   // mascot animation (reuses the race sprite)
-  const cv = hero.querySelector(".hb-dragon");
-  if (cv && cv.getContext && typeof rcDrawDragon === "function") {
-    const tctx = cv.getContext("2d");
+  if (dragonCv.getContext && typeof rcDrawDragon === "function") {
+    const tctx = dragonCv.getContext("2d");
     let g = 1.0;
     (function frame() {
-      if (!document.body.contains(cv)) return;
-      tctx.clearRect(0, 0, cv.width, cv.height);
+      if (!document.body.contains(dragonCv)) return;
+      tctx.clearRect(0, 0, dragonCv.width, dragonCv.height);
       g += 0.1;
-      rcDrawDragon(tctx, { x: cv.width / 2 + 4, y: cv.height / 2 + 14 + Math.sin(g * 0.5) * 4, scale: 0.95, noBuild: true, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.5 });
+      rcDrawDragon(tctx, { x: dragonCv.width / 2 + 8, y: dragonCv.height / 2 + 20 + Math.sin(g * 0.5) * 4, scale: 1.3, noBuild: true, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.55 });
       requestAnimationFrame(frame);
     })();
   }
@@ -1145,24 +1124,40 @@ function renderRaceSelect() {
     return card;
   };
 
-  // ランク別にグループ化：解放済みは展開、未解放はたたんで提示（多レースでも見やすく）
+  // ランク別タブ（ホームと一貫したトーン）。既定は現在ランク、選択は記憶。
   const byRank = {};
   RACES.forEach(r => { (byRank[r.rank] = byRank[r.rank] || []).push(r); });
-  Object.keys(byRank).map(Number).sort((a, b) => a - b).forEach(rk => {
-    const races = byRank[rk];
+  const ranks = Object.keys(byRank).map(Number).sort((a, b) => a - b);
+
+  const tabs = el("div", "hr2-tabs");
+  const pane = el("div", "hr2-tabpane");
+  let activeRk = (state.ui.raceTab && ranks.indexOf(state.ui.raceTab) >= 0) ? state.ui.raceTab
+    : (ranks.indexOf(state.player.rank) >= 0 ? state.player.rank : ranks[0]);
+
+  const paint = (rk) => {
+    activeRk = rk; state.ui.raceTab = rk;
+    Array.from(tabs.children).forEach(t => t.classList.toggle("on", Number(t.dataset.rk) === rk));
+    pane.innerHTML = "";
+    const races = byRank[rk] || [];
     const lockedRank = rk > state.player.rank;
-    const label = (RANKS[rk] && RANKS[rk].label) || "";
-    if (lockedRank) {
-      const col = uiCollapsible(`🔒 Rank ${rk}　${label}<small>　${races.length}レース・ランク${rk}で解放</small>`, false);
-      races.forEach(r => col.body.appendChild(buildRaceCard(r, true)));
-      app.appendChild(col.wrap);
-    } else {
-      app.appendChild(el("div", "rs-rank-head", `Rank ${rk}　${label}<span class="rs-rank-n">${races.length}レース</span>`));
-      const body = el("div", "rs-rank-body");
-      races.forEach(r => body.appendChild(buildRaceCard(r, false)));
-      app.appendChild(body);
-    }
+    pane.appendChild(el("div", "rs-rank-head", `Rank ${rk}　${(RANKS[rk] && RANKS[rk].label) || ""}<span class="rs-rank-n">${races.length}レース</span>`));
+    if (lockedRank) pane.appendChild(el("div", "hr2-tabhint", `🔒 このランクは ランク${rk} で解放されます（プレビュー）`));
+    const body = el("div", "rs-rank-body");
+    races.forEach(r => body.appendChild(buildRaceCard(r, lockedRank)));
+    pane.appendChild(body);
+  };
+
+  ranks.forEach(rk => {
+    const lockedRank = rk > state.player.rank;
+    const tab = el("button", "hr2-tab" + (lockedRank ? " locked" : ""), `${lockedRank ? "🔒 " : ""}Rank ${rk}`);
+    tab.dataset.rk = rk;
+    tab.onclick = () => paint(rk);
+    tabs.appendChild(tab);
   });
+  app.appendChild(tabs);
+  app.appendChild(pane);
+  paint(activeRk);
+
   const back = el("button", "secondary", "ホームへ"); back.onclick = renderHome;
   app.appendChild(back);
 }
