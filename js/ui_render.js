@@ -151,7 +151,7 @@ function renderTitle() {
       tctx.clearRect(0, 0, cv.width, cv.height);
       g += 0.11;
       rcDrawDragon(tctx, {
-        x: cv.width / 2, y: cv.height / 2 + Math.sin(g * 0.5) * 5, scale: 1.95,
+        x: cv.width / 2 + 7, y: cv.height / 2 + 28 + Math.sin(g * 0.5) * 5, scale: 1.9,
         color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.5, glow: 0.6
       });
       requestAnimationFrame(frame);
@@ -296,7 +296,7 @@ function renderHome() {
       if (!document.body.contains(cv)) return;
       tctx.clearRect(0, 0, cv.width, cv.height);
       g += 0.1;
-      rcDrawDragon(tctx, { x: cv.width / 2, y: cv.height / 2 + Math.sin(g * 0.5) * 4, scale: 1.4, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.5 });
+      rcDrawDragon(tctx, { x: cv.width / 2 + 4, y: cv.height / 2 + 14 + Math.sin(g * 0.5) * 4, scale: 0.95, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.5 });
       requestAnimationFrame(frame);
     })();
   }
@@ -959,7 +959,7 @@ function showDragonDetail(d) {
   document.body.appendChild(ov);
   const cv = card.querySelector(".dd-art canvas");
   if (cv && cv.getContext && typeof rcDrawDragon === "function") {
-    rcDrawDragon(cv.getContext("2d"), { x: 62, y: 50, scale: 1.9, color: col, style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.5 });
+    rcDrawDragon(cv.getContext("2d"), { x: 67, y: 64, scale: 1.3, color: col, style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.5 });
   }
   card.querySelector(".dex-detail-x").onclick = () => ov.remove();
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
@@ -1030,7 +1030,7 @@ function renderCollection() {
     if (seen) {
       const cv = card.querySelector("canvas");
       if (cv && cv.getContext && typeof rcDrawDragon === "function")
-        rcDrawDragon(cv.getContext("2d"), { x: 39, y: 31, scale: 1.18, color: dragonColor(d), style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.4 });
+        rcDrawDragon(cv.getContext("2d"), { x: 42, y: 40, scale: 0.8, color: dragonColor(d), style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.4 });
       card.onclick = () => showDragonDetail(d);
     } else {
       const cv = card.querySelector("canvas"); if (cv) cv.style.display = "none";
