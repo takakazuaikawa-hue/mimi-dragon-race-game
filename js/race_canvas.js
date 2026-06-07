@@ -86,10 +86,11 @@ function rcRenderSkyBase(x, W, H, time) {
   x.save(); x.globalAlpha = 0.5; x.fillStyle = hb; x.fillRect(0, HOR - 110 * sc, W, 150 * sc); x.restore();
   var vg = x.createRadialGradient(W / 2, H * 0.1, H * 0.2, W / 2, H * 0.1, W * 0.7); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(8,10,20,0.18)'); x.fillStyle = vg; x.fillRect(0, 0, W, H);
 }
-// 時間帯はランクで進行：新人=朝 → … → 神兎大=夜（演出のみ・結果に無関係）
+// 時間帯はレース番号で進行：第一=朝 → 第二=昼 → 第三=夕 → 第四=黄昏 → 第五=夜
+// （1日の番組が朝から夜へ進むイメージ。演出のみ・結果には無関係）
 function rcRaceTime(race) {
-  var r = (race && race.rank) || 1;
-  return r <= 1 ? "morning" : r === 2 ? "day" : r <= 4 ? "sunset" : r <= 6 ? "dusk" : "night";
+  var n = (race && race.number) || 1;
+  return n <= 1 ? "morning" : n === 2 ? "day" : n === 3 ? "sunset" : n === 4 ? "dusk" : "night";
 }
 
 // Phase-entry banners — a big sweeping caption the instant the field rolls into
