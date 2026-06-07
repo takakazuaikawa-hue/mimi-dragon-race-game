@@ -181,4 +181,68 @@
     NEW_RACES.forEach(r => { if (!RACES.some(x => x.id === r.id)) RACES.push(r); });
   }
   if (typeof RACE_ENTRY_OVERRIDES !== "undefined") Object.assign(RACE_ENTRY_OVERRIDES, NEW_OVERRIDES);
+
+  // ---- 第四(黄昏)・第五(夜)：各主要地域に夕方→夜の番組を追加 ----------------------
+  // 時間帯は number で決まる（第四=黄昏 / 第五=夜）。すべて検証済みの構成
+  //（コース＋出走表）を時間帯違いで再構成しているだけなので、バランスは既存と同一。
+  //   第四 = その地域の第二の構成 / 第五 = その地域の第一の構成 をコピー。
+  const EVE_RACES = [
+    // グランドクロック地域（rank1）
+    { id:"race_grandclock_4", region:"グランドクロック地域", cup:"新人競竜杯", number:4, rank:1, distance:"short", weather:"clear",
+      early:"long_straight_start", mid:"grand_turn", late:"short_final_straight", purpose:"新人④：薄暮の立ち回り" },
+    { id:"race_grandclock_5", region:"グランドクロック地域", cup:"新人競竜杯", number:5, rank:1, distance:"short", weather:"clear",
+      early:"long_straight_start", mid:"grand_turn", late:"short_final_straight", purpose:"新人⑤：月夜の基本戦" },
+    // ルミナ地域（rank2）
+    { id:"race_lumina_4", region:"ルミナ地域", cup:"風翼杯", number:4, rank:2, distance:"mid", weather:"fog",
+      early:"mist_start", mid:"grand_turn", late:"tailwind_straight", purpose:"風翼④：夕霧の追い風" },
+    { id:"race_lumina_5", region:"ルミナ地域", cup:"風翼杯", number:5, rank:2, distance:"mid", weather:"strong_wind",
+      early:"long_straight_start", mid:"aerial_wind_lane", late:"tailwind_straight", purpose:"風翼⑤：月夜の翼勝負" },
+    // リングロッソ地域（rank2）
+    { id:"race_ringrosso_4", region:"リングロッソ地域", cup:"旋角杯", number:4, rank:2, distance:"short", weather:"clear",
+      early:"narrow_start", mid:"grand_turn", late:"tailwind_straight", purpose:"旋角④：薄暮の狭路" },
+    { id:"race_ringrosso_5", region:"リングロッソ地域", cup:"旋角杯", number:5, rank:2, distance:"short", weather:"clear",
+      early:"narrow_start", mid:"repeated_small_turns", late:"final_grand_turn", purpose:"旋角⑤：月夜の回転勝負" },
+    // カルデラ地域（rank3）
+    { id:"race_caldera_4", region:"カルデラ地域", cup:"火竜杯", number:4, rank:3, distance:"short", weather:"clear",
+      early:"fire_gate_start", mid:"grand_turn", late:"short_final_straight", purpose:"火竜④：薄暮の火門" },
+    { id:"race_caldera_5", region:"カルデラ地域", cup:"火竜杯", number:5, rank:3, distance:"mid", weather:"clear",
+      early:"fire_gate_start", mid:"rolling_terrain", late:"volcanic_finish", purpose:"火竜⑤：夜を焦がす火口決戦" },
+    // ミストレイク地域（rank3）
+    { id:"race_mistlake_4", region:"ミストレイク地域", cup:"霧鱗杯", number:4, rank:3, distance:"mid", weather:"fog",
+      early:"mist_start", mid:"grand_turn", late:"short_final_straight", purpose:"霧鱗④：薄暮の霧" },
+    { id:"race_mistlake_5", region:"ミストレイク地域", cup:"霧鱗杯", number:5, rank:3, distance:"long", weather:"fog",
+      early:"mist_start", mid:"rolling_terrain", late:"long_final_straight", purpose:"霧鱗⑤：夜霧のスタミナ" },
+    // ヴェント峡谷地域（rank4）
+    { id:"race_vento_4", region:"ヴェント峡谷地域", cup:"翔風杯", number:4, rank:4, distance:"mid", weather:"clear",
+      early:"long_straight_start", mid:"grand_turn", late:"tailwind_straight", purpose:"翔風④：薄暮の追い風" },
+    { id:"race_vento_5", region:"ヴェント峡谷地域", cup:"翔風杯", number:5, rank:4, distance:"mid", weather:"strong_wind",
+      early:"long_straight_start", mid:"aerial_wind_lane", late:"tailwind_straight", purpose:"翔風⑤：月夜の強風" },
+    // ノッテムーンライト地域（rank5）
+    { id:"race_notte_4", region:"ノッテムーンライト地域", cup:"月光杯", number:4, rank:5, distance:"mid", weather:"fog",
+      early:"mist_start", mid:"grand_turn", late:"tailwind_straight", purpose:"月光④：薄暮の夜霧" },
+    { id:"race_notte_5", region:"ノッテムーンライト地域", cup:"月光杯", number:5, rank:5, distance:"long", weather:"fog",
+      early:"mist_start", mid:"grand_turn", late:"long_final_straight", purpose:"月光⑤：真夜中の直線" },
+    // ラパン祭典地域（rank6）
+    { id:"race_lapan_4", region:"ラパン祭典地域", cup:"兎神祝祭杯", number:4, rank:6, distance:"mid", weather:"clear",
+      early:"long_straight_start", mid:"grand_turn", late:"long_final_straight", purpose:"祝祭④：薄暮の総合力" },
+    { id:"race_lapan_5", region:"ラパン祭典地域", cup:"兎神祝祭杯", number:5, rank:6, distance:"long", weather:"clear",
+      early:"long_straight_start", mid:"aerial_wind_lane", late:"long_final_straight", purpose:"祝祭⑤：月下の大一番" }
+  ];
+  const EVE_OVERRIDES = {
+    // 第四 = 各地域「第二」の出走表をコピー（検証済み）
+    race_grandclock_4: ["kogane","nagi","susu","goro","chiri","poro","akane","momu"],            // = grandclock_2
+    race_lumina_4:     ["akane","shio","yoi","tsumuji","hibana","kabe","kogane","poro"],          // = lumina_2
+    race_ringrosso_4:  ["tsumuji","yoi","kabe","akane","hibana","shio","nagi","momu"],            // = ringrosso_open
+    race_caldera_4:    ["benio","taiga","kazemaru","sazare","yumeji","murasame","akane","momu"],  // = caldera_karyu2
+    race_mistlake_4:   ["benio","kazemaru","sazare","murasame","taiga","yumeji","hibana","poro"], // = mistlake_2
+    race_vento_4:      ["shakunetsu","hayate","arashi","konron","shirahae","kirari","benio","taiga"], // = vento_2
+    race_notte_4:      ["guren","raijin","sora","banju","gekka","senpu","shakunetsu","arashi"],   // = notte_2
+    race_lapan_4:      ["enma","hayao","tenku","gozan","yugiri","reppu","guren","stella"],        // = lapan_2
+    // 第五 = 各地域「第一」の出走表。ORIGINAL_8 の地域(grandclock/lumina/ringrosso/caldera/mistlake)は指定不要。
+    race_vento_5:      ["stella","seram","raika","phenix","miruka","poro","rosso","momu"],        // = vento_1
+    race_notte_5:      ["stella","seram","miruka","glaze","rosso","gando","momu","raika"],        // = notte_1
+    race_lapan_5:      ["phenix","stella","raika","rubel","baran","seram","rosso","gando"]        // = lapan_festival
+  };
+  if (typeof RACES !== "undefined") EVE_RACES.forEach(r => { if (!RACES.some(x => x.id === r.id)) RACES.push(r); });
+  if (typeof RACE_ENTRY_OVERRIDES !== "undefined") Object.assign(RACE_ENTRY_OVERRIDES, EVE_OVERRIDES);
 })();
