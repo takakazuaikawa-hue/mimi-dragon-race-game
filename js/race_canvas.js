@@ -318,17 +318,23 @@ function _rcHsl(hex) { const c = rcHexToRgb(hex); let r = c.r / 255, g = c.g / 2
 function _rcHh(v) { return ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2); }
 function _rcHslHex(h, s, l) { h = ((h % 360) + 360) % 360; const c = (1 - Math.abs(2 * l - 1)) * s, X = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2; let r, g, b; if (h < 60) { r = c; g = X; b = 0; } else if (h < 120) { r = X; g = c; b = 0; } else if (h < 180) { r = 0; g = c; b = X; } else if (h < 240) { r = 0; g = X; b = c; } else if (h < 300) { r = X; g = 0; b = c; } else { r = c; g = 0; b = X; } return '#' + _rcHh((r + m) * 255) + _rcHh((g + m) * 255) + _rcHh((b + m) * 255); }
 const _RC_REF_BL = _rcHsl(_RC_REF.B).l;
-function _rcDragonPal(base) {
+function _rcLighten(hex, dl) { const h = _rcHsl(hex); return _rcHslHex(h.h, h.s * (1 - dl * 0.35), Math.min(0.98, h.l + dl)); }
+function _rcDragonPal(base, bright) {
   const b0 = base || '#8a8a8a', bb = _rcHsl(b0), bh = bb.h, bs = bb.s, bl = bb.l;
   const warm = rk => { const h = _rcHsl(rk); return _rcHslHex(bh, Math.min(1, h.s * bs * 1.5), Math.max(0.06, Math.min(0.97, h.l + (bl - _RC_REF_BL) * 0.55))); };
   const dark = rk => { const h = _rcHsl(rk); return _rcHslHex(bh, Math.min(0.6, 0.08 + 0.3 * bs), Math.max(0.08, Math.min(0.5, h.l + (bl - _RC_REF_BL) * 0.25))); };
-  return {
+  const p = {
     // outline: a soft, slightly hue-tinted dark instead of pure black, so the edge reads
     // less harsh/"黒い" and stays cohesive with each dragon's colour
     'o': _rcHslHex(bh, Math.min(0.3, bs * 0.35), 0.15), 'e': _RC_REF.e, 'p': _rcHslHex(bh, Math.min(0.35, bs * 0.4), 0.16),
     'C': warm(_RC_REF.C), 'B': warm(_RC_REF.B), 'M': warm(_RC_REF.M), 'D': warm(_RC_REF.D),
     'K': dark(_RC_REF.K), 'k': dark(_RC_REF.k)
   };
+  // When the sprite is shrunk (in-race), its many dark cells (outline + charcoal wing +
+  // shadows) blend and read darker than the big view. Lift every tone so the small sprite
+  // keeps the brightness of the large one. Dark keys lifted more (they cause the heaviness).
+  if (bright) { for (const k in p) { if (k === 'e') continue; p[k] = _rcLighten(p[k], (k === 'o' || k === 'p' || k === 'k' || k === 'K' || k === 'D') ? 0.12 : 0.07); } }
+  return p;
 }
 // classify one averaged cell colour into a recolour key (mirrors the offline trace)
 function _rcClassify(r, g, b) {
@@ -402,11 +408,12 @@ function _rcFallbackDragon() {
 // offscreen canvas ONCE, then blit (crisp, nearest-neighbour). Keeps the larger grid
 // cheap even with a full field on a phone.
 const _rcFrameCache = Object.create(null);
-function _rcFrameFor(color, fi) {
-  let arr = _rcFrameCache[color]; if (!arr) arr = _rcFrameCache[color] = [];
+function _rcFrameFor(color, fi, bright) {
+  const ckey = (color || '#8a8a8a') + (bright ? '!' : '');     // brightened variant cached separately
+  let arr = _rcFrameCache[ckey]; if (!arr) arr = _rcFrameCache[ckey] = [];
   let cv = arr[fi];
   if (!cv) {
-    const pal = _rcDragonPal(color), grid = RC_DRAGON_FRAMES[fi], GW = RC_DRG.GW, GH = RC_DRG.GH;
+    const pal = _rcDragonPal(color, bright), grid = RC_DRAGON_FRAMES[fi], GW = RC_DRG.GW, GH = RC_DRG.GH;
     cv = document.createElement('canvas'); cv.width = GW; cv.height = GH;
     const x = cv.getContext('2d');
     for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) { const k = grid[gy][gx]; if (!k) continue; x.fillStyle = pal[k]; x.fillRect(gx, gy, 1, 1); }
@@ -439,8 +446,11 @@ function rcDrawDragonPixel(ctx, o) {
     fi = Math.floor((o.gait || 0) / (Math.PI / 2)) % RC_DRAGON_FRAMES.length;
     if (fi < 0) fi += RC_DRAGON_FRAMES.length;
   }
-  const frame = _rcFrameFor(o.color || '#8a8a8a', fi);
   const pxc = (o.scale || 1) * RC_DRG.px;
+  const b = o.noBuild ? _RC_NOBUILD : _rcBuildFor(o.color);
+  const wsc = pxc * b.sz * b.sx, hsc = pxc * b.sz * b.sy;   // per-dragon build (length × height × size)
+  const down = wsc < 0.96;                                  // shrinking (in-race) → smooth + use the brightened palette
+  const frame = _rcFrameFor(o.color || '#8a8a8a', fi, down);
   const bob = o.grounded
     ? Math.abs(Math.sin(o.gait || 0)) * 0.5          // small grounded step-bounce (a walk)
     : Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);   // gentle floating (flight)
@@ -468,13 +478,11 @@ function rcDrawDragonPixel(ctx, o) {
     ag.addColorStop(0, rcRgba(o.color || '#fff', 0.9)); ag.addColorStop(1, rcRgba(o.color || '#fff', 0));
     ctx.fillStyle = ag; ctx.beginPath(); ctx.ellipse(0, -8 * pxc, 26, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
-  const b = o.noBuild ? _RC_NOBUILD : _rcBuildFor(o.color);
-  const wsc = pxc * b.sz * b.sx, hsc = pxc * b.sz * b.sy;   // per-dragon build (length × height × size)
   const ox = -RC_DRG.anchorX * wsc, oy = -RC_DRG.anchorY * hsc;
   const sm = ctx.imageSmoothingEnabled;
   // smooth when DOWN-scaling (in-race: 150px grid → ~80px) to kill the jagged/harsh edge;
   // stay crisp when UP-scaling (dex/portraits) so big views keep their clean pixel look.
-  ctx.imageSmoothingEnabled = wsc < 0.96;
+  ctx.imageSmoothingEnabled = down;
   ctx.drawImage(frame, ox, oy, RC_DRG.GW * wsc, RC_DRG.GH * hsc);
   ctx.imageSmoothingEnabled = sm;
   ctx.restore();
