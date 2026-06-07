@@ -280,3 +280,92 @@
   if (typeof RACES !== "undefined") EVE3_RACES.forEach(r => { if (!RACES.some(x => x.id === r.id)) RACES.push(r); });
   if (typeof RACE_ENTRY_OVERRIDES !== "undefined") Object.assign(RACE_ENTRY_OVERRIDES, EVE3_OVERRIDES);
 })();
+
+// =====================================================================
+// EVE4 — 高グレードを「各5レースの専用コース」に整備（並びの混在を解消）。
+//  方針：以前あちこちの地域に紛れていた L/GⅢ/GⅡ/GⅠ の単発レースを、
+//  それぞれ専用地域へ“移設”（region ラベルのみ＝出走表もコースも不変＝結果不変）し、
+//  第一〜第五に充足する。充足分は種レースの検証済み出走表を流用し、コース（距離・天候・
+//  馬場）と時間帯（番号）を変えて別レース化する。最大勝率は sim で確認・調整。
+// =====================================================================
+(function () {
+  if (typeof RACES === "undefined") return;
+  if (typeof REGION_THEME !== "undefined") Object.assign(REGION_THEME, {
+    "灼熱回廊地域": { from: "#5a2410", to: "#2a0e06", accent: "#ff8a3c" },  // L：炎将杯
+    "竜王圏地域":   { from: "#3a1832", to: "#1a0c18", accent: "#d873c8" },  // GⅢ：竜王旋杯
+    "煉獄頂地域":   { from: "#5a1e10", to: "#280a06", accent: "#ff6a3a" },  // GⅡ：炎帝杯
+    "白兎神域地域": { from: "#39365a", to: "#161426", accent: "#ffe6a6" }   // GⅠ：神兎大レース
+  });
+  // 1) 移設（region ラベルのみ。出走表・コース・番号は不変なので結果/オッズは一切変わらない）
+  const RELOC = {
+    race_caldera_2: "灼熱回廊地域",          // 炎将杯(L) 第二＝種
+    race_ringrosso_2: "竜王圏地域",          // 竜王旋杯(GⅢ) 第一＝種
+    race_caldera_grand: "煉獄頂地域",        // 炎帝杯(GⅡ) 第三＝種
+    race_lapan_shinto_grand: "白兎神域地域", // 神兎大(GⅠ) 第一＝種
+    race_shinto_2: "白兎神域地域"            // 神兎大(GⅠ) 第二＝種
+  };
+  RACES.forEach(r => { if (RELOC[r.id]) r.region = RELOC[r.id]; });
+
+  // 種レースの検証済み出走表（コース違いで流用＝別レースとして読める）
+  const C_HANSHO = ["phenix", "baran", "raika", "rubel", "glaze", "gando", "seram", "poro"];   // 炎将杯(L)
+  const C_RYUO = ["rosso", "stella", "poro", "miruka", "glaze", "seram", "momu", "raika"];       // 竜王旋杯(GⅢ)
+  const C_ENTEI = ["phenix", "baran", "rubel", "raika", "gando", "glaze", "poro", "seram"];      // 炎帝杯(GⅡ)
+  const C_SHINA = ["phenix", "stella", "raika", "rubel", "seram", "gando", "glaze", "rosso"];    // 神兎(GⅠ)A
+  const C_SHINB = ["goka", "raiou", "souten", "fugaku", "yomi", "phenix", "hayao", "raika"];     // 神兎(GⅠ)B
+  const C_CALD = ["gando", "poro", "rosso", "murasame", "taiga", "kazemaru", "rubel", "yumeji"]; // 火竜杯(OP)
+  // 充足レース用の別編成（sim検証でフェニックス/ステラ独走を解消＝各最大勝率≦約61%）
+  const C_VENTO2 = ["shakunetsu", "hayate", "arashi", "konron", "shirahae", "kirari", "benio", "taiga"]; // R4
+  const C_VENTO3 = ["miruka", "arashi", "momu", "kazemaru", "taiga", "konron", "sazare", "rosso"];       // R4
+  const C_NOTTE2 = ["guren", "raijin", "sora", "banju", "gekka", "senpu", "shakunetsu", "arashi"];       // R5/R6
+  const C_LAPAN2 = ["enma", "hayao", "tenku", "gozan", "yugiri", "reppu", "guren", "stella"];            // R6
+
+  const EVE4_RACES = [
+    // カルデラ OP を第一〜第五に充足（火竜杯③＝夕）
+    { id: "race_caldera_3", region: "カルデラ地域", cup: "火竜杯", number: 3, rank: 3, distance: "mid", weather: "clear",
+      early: "fire_gate_start", mid: "rolling_terrain", late: "volcanic_finish", purpose: "火竜③：夕暮れの火口" },
+    // 炎将杯（灼熱回廊地域 / L）— 種=第二。第一/三/四/五を追加
+    { id: "race_hansho_1", region: "灼熱回廊地域", cup: "炎将杯", number: 1, rank: 4, distance: "short", weather: "clear",
+      early: "fire_gate_start", mid: "grand_turn", late: "short_final_straight", purpose: "炎将①：朝の火門ダッシュ" },
+    { id: "race_hansho_3", region: "灼熱回廊地域", cup: "炎将杯", number: 3, rank: 4, distance: "mid", weather: "strong_wind",
+      early: "fire_gate_start", mid: "rolling_terrain", late: "tailwind_straight", purpose: "炎将③：夕風の起伏" },
+    { id: "race_hansho_4", region: "灼熱回廊地域", cup: "炎将杯", number: 4, rank: 4, distance: "long", weather: "clear",
+      early: "fire_gate_start", mid: "rolling_terrain", late: "volcanic_finish", purpose: "炎将④：薄暮の長丁場" },
+    { id: "race_hansho_5", region: "灼熱回廊地域", cup: "炎将杯", number: 5, rank: 4, distance: "mid", weather: "rain",
+      early: "narrow_start", mid: "crowded_bridge", late: "volcanic_finish", purpose: "炎将⑤：夜雨の火口決戦" },
+    // 竜王旋杯（竜王圏地域 / GⅢ）— 種=第一。第二/三/四/五を追加
+    { id: "race_ryuo_2", region: "竜王圏地域", cup: "竜王旋杯", number: 2, rank: 5, distance: "mid", weather: "clear",
+      early: "long_straight_start", mid: "grand_turn", late: "short_final_straight", purpose: "竜王②：昼の旋回戦" },
+    { id: "race_ryuo_3", region: "竜王圏地域", cup: "竜王旋杯", number: 3, rank: 5, distance: "long", weather: "fog",
+      early: "mist_start", mid: "rolling_terrain", late: "long_final_straight", purpose: "竜王③：夕霧の長距離" },
+    { id: "race_ryuo_4", region: "竜王圏地域", cup: "竜王旋杯", number: 4, rank: 5, distance: "short", weather: "rain",
+      early: "narrow_start", mid: "repeated_small_turns", late: "final_grand_turn", purpose: "竜王④：薄暮の小回り" },
+    { id: "race_ryuo_5", region: "竜王圏地域", cup: "竜王旋杯", number: 5, rank: 5, distance: "mid", weather: "strong_wind",
+      early: "long_straight_start", mid: "aerial_wind_lane", late: "tailwind_straight", purpose: "竜王⑤：月夜の翼風" },
+    // 炎帝杯（煉獄頂地域 / GⅡ）— 種=第三。第一/二/四/五を追加
+    { id: "race_entei_1", region: "煉獄頂地域", cup: "炎帝杯", number: 1, rank: 6, distance: "mid", weather: "clear",
+      early: "fire_gate_start", mid: "grand_turn", late: "volcanic_finish", purpose: "炎帝①：朝の火帝戦" },
+    { id: "race_entei_2", region: "煉獄頂地域", cup: "炎帝杯", number: 2, rank: 6, distance: "long", weather: "clear",
+      early: "long_straight_start", mid: "rolling_terrain", late: "long_final_straight", purpose: "炎帝②：白昼の総合力" },
+    { id: "race_entei_4", region: "煉獄頂地域", cup: "炎帝杯", number: 4, rank: 6, distance: "mid", weather: "thunder",
+      early: "fire_gate_start", mid: "crowded_bridge", late: "volcanic_finish", purpose: "炎帝④：薄暮の雷火" },
+    { id: "race_entei_5", region: "煉獄頂地域", cup: "炎帝杯", number: 5, rank: 6, distance: "long", weather: "strong_wind",
+      early: "long_straight_start", mid: "aerial_wind_lane", late: "long_final_straight", purpose: "炎帝⑤：夜嵐の頂上" },
+    // 神兎大レース（白兎神域地域 / GⅠ）— 種=第一・第二。第三/四/五を追加
+    { id: "race_shinto_3", region: "白兎神域地域", cup: "神兎大レース", number: 3, rank: 7, distance: "marathon", weather: "clear",
+      early: "long_straight_start", mid: "aerial_wind_lane", late: "long_final_straight", purpose: "神兎③：夕焼けの長征" },
+    { id: "race_shinto_4", region: "白兎神域地域", cup: "神兎大レース", number: 4, rank: 7, distance: "long", weather: "strong_wind",
+      early: "long_straight_start", mid: "rolling_terrain", late: "tailwind_straight", purpose: "神兎④：薄暮の神域" },
+    { id: "race_shinto_5", region: "白兎神域地域", cup: "神兎大レース", number: 5, rank: 7, distance: "marathon", weather: "fog",
+      early: "mist_start", mid: "rolling_terrain", late: "long_final_straight", purpose: "神兎⑤：神話の夜" }
+  ];
+  const EVE4_OVERRIDES = {
+    race_caldera_3: C_CALD.slice(),                                                                  // 58%
+    race_hansho_1: C_VENTO2.slice(), race_hansho_3: C_VENTO3.slice(), race_hansho_4: C_VENTO2.slice(), race_hansho_5: C_VENTO3.slice(), // ≦61%
+    race_ryuo_2: C_NOTTE2.slice(), race_ryuo_3: C_RYUO.slice(), race_ryuo_4: C_RYUO.slice(), race_ryuo_5: C_NOTTE2.slice(),             // ≦64%
+    race_entei_1: C_ENTEI.slice(), race_entei_2: C_LAPAN2.slice(), race_entei_4: C_NOTTE2.slice(), race_entei_5: C_LAPAN2.slice(),      // ≦59%
+    race_shinto_3: C_SHINA.slice(), race_shinto_4: C_SHINB.slice(), race_shinto_5: C_SHINA.slice()  // ≦55%
+  };
+  void C_HANSHO;  // 炎将杯の第二（種=race_caldera_2）は既存の検証済み構成のまま使用
+  EVE4_RACES.forEach(r => { if (!RACES.some(x => x.id === r.id)) RACES.push(r); });
+  if (typeof RACE_ENTRY_OVERRIDES !== "undefined") Object.assign(RACE_ENTRY_OVERRIDES, EVE4_OVERRIDES);
+})();
