@@ -1064,7 +1064,8 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .rc-speedseg button.rc-spd:first-child { border-left: none; }
 .rc-speedseg button.rc-spd.on { background: #ff8060; color: #241018; }
 .rc-controls .rc-skip { background: #5a3f7a; color: #f4ecff; }
-@media (max-width: 420px) { .rc-speedseg button.rc-spd { padding: 8px 12px; } }
+.rc-controls .rc-mute { min-width: 46px; padding-left: 12px; padding-right: 12px; font-size: 16px; line-height: 1; margin-left: auto; }
+@media (max-width: 420px) { .rc-speedseg button.rc-spd { padding: 8px 12px; } .rc-controls .rc-mute { margin-left: 0; } }
 
 .rc-finishstrip {
   background: rgba(0,0,0,0.4); border: 1px solid #d4a850;

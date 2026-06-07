@@ -2477,6 +2477,23 @@ function startRaceCanvas(container, ctx) {
       logEl.style.display = S.showLog ? "" : "none";
       if (S.showLog) renderLog();
     }, { secondary: true }));
+    // ミュート切替（レース中もいつでも）。SE・歓声＋BGMをまとめて消音／復帰。
+    const muteOn = !!(window.Sfx && Sfx.isMuted && Sfx.isMuted());
+    const muteBtn = makeBtn(muteOn ? "🔇" : "🔊", () => {
+      if (!window.Sfx) return;
+      const nowMuted = !Sfx.isMuted();
+      Sfx.setMuted(nowMuted);                          // SE・歓声ループを停止＋設定を保存
+      if (nowMuted) {
+        if (window.RaceBgm) RaceBgm.setMuted(true);    // BGMも止める
+      } else {
+        if (!S.finished && S.preT <= 0 && window.RaceBgm) RaceBgm.start();   // 進行中ならBGM再開
+        else if (S.finished && Sfx.startCrowd) Sfx.startCrowd();             // ゴール後なら歓声を鳴らし直す
+      }
+      renderControls();                                // アイコン更新
+    }, { secondary: true });
+    muteBtn.classList.add("rc-mute");
+    muteBtn.setAttribute("aria-label", muteOn ? "ミュート解除" : "ミュート");
+    controlsEl.appendChild(muteBtn);
     if (S.finished) {
       controlsEl.appendChild(makeBtn("結果を見る", () => { stopRacePlayer(); if (typeof renderResult === "function") renderResult(); }));
     }

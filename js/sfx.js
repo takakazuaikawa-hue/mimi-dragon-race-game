@@ -184,18 +184,21 @@ var Sfx = (function () {
       var now = ctx.currentTime;
       var out = ctx.createGain();
       out.gain.setValueAtTime(0.0001, now);
-      out.gain.exponentialRampToValueAtTime(0.42, now + 0.35);  // ワーッ！と湧く頂点
-      out.gain.exponentialRampToValueAtTime(0.27, now + 1.3);   // 持続レベルへ落ち着く
+      out.gain.exponentialRampToValueAtTime(0.58, now + 0.35);  // ワーッ！と湧く頂点（前に出す）
+      out.gain.exponentialRampToValueAtTime(0.40, now + 1.4);   // 持続レベル（前に出す）
       out.connect(master);
       var len = Math.floor(ctx.sampleRate * 2);                 // 2秒ループのホワイトノイズ
       var buf = ctx.createBuffer(1, len, ctx.sampleRate);
       var data = buf.getChannelData(0);
       for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      // 低域を厚く＝地鳴りのような重さ。サブ＆ロー帯を足し、高域は控えめに。
       var bands = [
-        { f: 520,  q: 0.5, g: 0.55 },   // 低いどよめき
-        { f: 1300, q: 0.7, g: 0.70 },   // 主体
-        { f: 2400, q: 0.9, g: 0.40 },   // 明るい層
-        { f: 3600, q: 1.1, g: 0.22 }    // きらめき
+        { f: 110,  q: 0.4, g: 0.78 },   // 地鳴り（サブ）
+        { f: 260,  q: 0.5, g: 0.68 },   // 低いどよめき
+        { f: 600,  q: 0.6, g: 0.60 },   // 主体・下
+        { f: 1300, q: 0.8, g: 0.50 },   // 主体・上
+        { f: 2600, q: 1.0, g: 0.26 },   // 明るい層
+        { f: 3800, q: 1.2, g: 0.14 }    // きらめき（控えめ）
       ];
       var nodes = [];
       bands.forEach(function (b, k) {
