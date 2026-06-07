@@ -40,10 +40,12 @@ function nextAssetThreshold(total) {
   return null;
 }
 
-// §30 §7 — story is gated by asset level, not by complex flags. 5 話 + ED.
-// Texts are the canonical 一文「件。」 style from the story-event spec; each
-// chapter introduces one advisor (STORY_CAST) and carries a 一枚絵 scene caption.
-// `level` is the asset level required to unlock the chapter.
+// §30 §7 — story unlocks by 総資産 (thresholds in STORY_UNLOCK_AT below), not by
+// complex flags. 5 話 + ED. Texts are the canonical 一文「件。」 style from the
+// story-event spec; each chapter introduces one advisor (STORY_CAST) and carries
+// a 一枚絵 scene caption.
+// `level` here is ONLY the chapter's 0-indexed display order — it is NOT a gate.
+// The real unlock threshold lives in STORY_UNLOCK_AT.
 const STORY_CHAPTERS = [
   { id: "1",  level: 0, cast: "sake",     title: "第1話　竜王女サケに拾われる",
     scene: "聖龍レース場の入口で、倒れかけたミミをサケ・ウダダが拾う",
@@ -67,7 +69,8 @@ const STORY_CHAPTERS = [
 
 // Character cast (spec 31). Each advisor unlocks with their chapter and gives
 // Mimi a new "perspective". Display/flavor only — never touches race math.
-// `level` = asset level at which the advisor becomes available (= chapter level).
+// `level` = the advisor's 0-indexed introduction order (= their chapter index);
+// it is NOT a gate — actual availability uses castUnlockAt() → STORY_UNLOCK_AT.
 const STORY_CAST = {
   sake:     { key: "sake",     name: "サケ・ウダダ",                 tag: "竜王女",       level: 0, gives: "竜を見る目",       focus: "現場・竜・気配",        color: "#e0584a", symbol: "🐲",
               consult: "うぐぐ……まず食え、泣くな。息を見ろ、竜は脚より先に息で崩れる。人気じゃなく、現場の気配で選べ。" },
@@ -84,7 +87,13 @@ const STORY_CAST = {
 // spec 32 §9 — story chapters unlock by 総資産 (DECOUPLED from the lifestyle
 // ASSET_LEVELS, so story pacing follows the spec without touching the
 // economy / lifestyle / rescue thresholds). chapter id → 総資産 needed.
-const STORY_UNLOCK_AT = { "1": 0, "2": 3000, "3": 30000, "4": 1000000, "5": 100000000, "ED": 10000000000000000 };
+// ED aligns to the shared "summit" (1兆 / 1e12): the same total at which the
+// final rank (神兎大レース) and the top life tier (聖龍級) unlock, so every
+// system agrees the player has reached the top. (Previously 1京/1e16, which
+// sat 10,000× beyond every other ceiling and made the next-goal pointer jump
+// off-scale after 第5話.) The 一京 in the ED text is the 聖龍の加護 flourish
+// layered on top of that summit, not the unlock gate.
+const STORY_UNLOCK_AT = { "1": 0, "2": 3000, "3": 30000, "4": 1000000, "5": 100000000, "ED": 1000000000000 };
 function storyUnlockAt(chapterId) { const v = STORY_UNLOCK_AT[chapterId]; return v == null ? 0 : v; }
 // 総資産 needed for an advisor (= their introducing chapter's threshold).
 function castUnlockAt(castKey) { const ch = STORY_CHAPTERS.find(c => c.cast === castKey); return ch ? storyUnlockAt(ch.id) : 0; }

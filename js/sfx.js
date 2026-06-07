@@ -80,6 +80,29 @@ var Sfx = (function () {
     } catch (e) {}
   }
 
+  // crowd-roar swell: flat noise → bandpass → a rise/hold/fall gain envelope
+  // (the goal "ワーッ"). Layer several at different bands for a fuller crowd.
+  function noiseSwell(t0, dur, peak, freq, q) {
+    if (!ctx) return;
+    try {
+      var n = Math.floor(ctx.sampleRate * dur);
+      var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+      var src = ctx.createBufferSource(); src.buffer = buf;
+      var bp = ctx.createBiquadFilter(); bp.type = "bandpass";
+      bp.frequency.value = freq || 1500; bp.Q.value = (q == null ? 0.7 : q);
+      var g = ctx.createGain();
+      var p = (peak == null ? 0.18 : peak);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(p, t0 + dur * 0.30);        // swell up
+      g.gain.exponentialRampToValueAtTime(p * 0.82, t0 + dur * 0.6);  // hold
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);          // fade
+      src.connect(bp); bp.connect(g); g.connect(master);
+      src.start(t0); src.stop(t0 + dur + 0.03);
+    } catch (e) {}
+  }
+
   // simple major arpeggio helper
   function arp(freqs, t0, step, dur, type, gain) {
     for (var i = 0; i < freqs.length; i++) tone(freqs[i], t0 + i * step, dur, type, gain);
@@ -133,6 +156,16 @@ var Sfx = (function () {
         case "miss": // gentle low "とすっ" — never harsh
           tone(220, t, 0.22, "sine", 0.22, 150);
           tone(165, t + 0.05, 0.28, "sine", 0.16, 120);
+          break;
+        case "start": // レーススタートの「ドン」（太鼓の一撃）
+          tone(168, t, 0.5, "sine", 0.6, 46);          // 本体：168→46Hz の落下
+          tone(96,  t, 0.46, "triangle", 0.36, 38);    // サブ低域
+          noise(t, 0.05, 0.16, 1400);                  // 打面のアタック
+          break;
+        case "cheer": // ゴールの歓声「ワーッ」（観客のどよめき・スウェル）
+          noiseSwell(t,        1.6, 0.16, 650,  0.5);  // 低いどよめき
+          noiseSwell(t + 0.05, 1.5, 0.20, 1500, 0.7);  // 主体
+          noiseSwell(t + 0.12, 1.3, 0.10, 3000, 0.9);  // 明るい上層
           break;
       }
     } catch (e) {}

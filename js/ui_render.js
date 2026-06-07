@@ -565,11 +565,15 @@ function showStoryUnlock(chapters, idx) {
   if (cast) modal.style.setProperty("--cg", cast.color);
   modal.innerHTML =
     `<div class="su-badge">✦ 新エピソード解放 ✦</div>` +
-    `<div class="story-cg"><div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}</div>` +
+    `<div class="story-cg viewable"><div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
       `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div></div>` +
     `<div class="su-title">${ch.title}</div>` +
     (cast ? `<div class="su-cast"><span class="su-cast-sym" style="--cg:${cast.color}">${photoOr("images/cast/" + ch.cast + ".png", cast.symbol)}</span>${cast.name}<small>（${cast.tag}）</small></div>` : "") +
     `<div class="su-body">${ch.body}</div>`;
+  // 解放ポップアップでも一枚絵をタップ→全画面ビューア（renderStory と同じ挙動）。
+  // story-viewer(z-index 9200) は解放オーバーレイ(1000)の上に出る。
+  const cgEl = modal.querySelector(".story-cg");
+  if (cgEl) cgEl.onclick = () => { if (typeof showStoryArt === "function") showStoryArt(ch); };
   const btn = el("button", "su-close", idx < chapters.length - 1 ? "次へ ▶" : "とじる");
   btn.onclick = () => { ov.remove(); if (idx < chapters.length - 1) showStoryUnlock(chapters, idx + 1); };
   modal.appendChild(btn);
@@ -2815,6 +2819,7 @@ function buildResultHero(ps, tier, c) {
     e.stopPropagation();
     if (window.Sfx) {
       Sfx.setMuted(!Sfx.isMuted());
+      if (window.RaceBgm) RaceBgm.setMuted(Sfx.isMuted());
       mb.textContent = Sfx.isMuted() ? "🔇" : "🔊";
       if (!Sfx.isMuted()) Sfx.play("click");
     }

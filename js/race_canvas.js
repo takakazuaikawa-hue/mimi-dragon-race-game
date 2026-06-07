@@ -24,6 +24,7 @@ let RC_ACTIVE = null;
 
 function stopRacePlayer() {
   if (RC_ACTIVE) { RC_ACTIVE.stop(); RC_ACTIVE = null; }
+  if (typeof RaceBgm !== "undefined") RaceBgm.stop();   // レースBGMも止める
 }
 
 // Phase-entry banners — a big sweeping caption the instant the field rolls into
@@ -656,6 +657,8 @@ function startRaceCanvas(container, ctx) {
     if (typeof renderResult === "function") renderResult();
     return null;
   }
+  // レースBGM：racebgm フォルダの曲からランダムで1曲ループ再生（曲が無ければ無音）。
+  if (typeof RaceBgm !== "undefined") RaceBgm.start();
   const remainEl = wrap.querySelector("#rc-remain");
   const phaseEl = wrap.querySelector("#rc-phase");
   const sectionEl = wrap.querySelector("#rc-section");
@@ -2221,6 +2224,7 @@ function startRaceCanvas(container, ctx) {
         S.goFlash = 0.85;
         S.shake = Math.max(S.shake, 4);
         spawnSpark(cw / 2, ch * 0.40, "#ffe06a");
+        if (window.Sfx) Sfx.play("start");   // スタートの「ドン」
       }
       return;   // the field stays on the line until "GO！"
     }
@@ -2402,6 +2406,9 @@ function startRaceCanvas(container, ctx) {
       S.celebrated = true;
       S.confettiT = 1.5;
       S.rewardT = 0;            // restart the reward pop-in
+      // ゴール演出：観客の「ワーッ」＋ レースBGMをフェードアウト（勝敗に関係なく）
+      if (window.Sfx) Sfx.play("cheer");
+      if (window.RaceBgm) RaceBgm.fadeOut(1400);
       spawnConfetti(90);
       spawnFirework(cw * 0.50, ch * 0.32, "#ffe06a");
       spawnFirework(cw * 0.30, ch * 0.42, "#ff7aa0");
