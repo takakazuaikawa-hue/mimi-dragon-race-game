@@ -1082,6 +1082,15 @@ function screenHeader(title, imgSrc) {
   return h;
 }
 
+// 格付けバッジ（杯名はそのまま＋格を併記＝案A）。表示のみで収支ロジックは不変。
+const RACE_GRADE = { 1: "新人", 2: "1勝", 3: "OP", 4: "L", 5: "GⅢ", 6: "GⅡ", 7: "GⅠ" };
+function gradeBadgeHTML(rank) {
+  const g = RACE_GRADE[rank] || ("R" + rank);
+  const tier = rank >= 7 ? "g1" : rank >= 6 ? "g2" : rank >= 5 ? "g3" : rank >= 4 ? "gl" : "gn";
+  return `<span class="grade-badge ${tier}">${g}</span>`;
+}
+// レース番号＝時間帯（朝→夜）。第一〜第五の並びを直感的に。
+const RACE_TIME_LABEL = { 1: "🌅朝", 2: "☀️昼", 3: "🌇夕", 4: "🌆薄暮", 5: "🌙夜" };
 function renderRaceSelect() {
   state.ui.screen = "race_select";
   runEventHooks("beforeRaceSelect");
@@ -1098,7 +1107,7 @@ function renderRaceSelect() {
       if (theme) fc.style.setProperty("--region-accent", theme.accent);
       fc.innerHTML =
         `<div class="feat-tag">★ 本日の注目レース ★</div>` +
-        `<div class="feat-name">${raceFullName(feat)}</div>` +
+        `<div class="feat-name">${gradeBadgeHTML(feat.rank)}${raceFullName(feat)}</div>` +
         `<div class="feat-meta">Rank ${feat.rank}　${RANKS[feat.rank].label}　｜　${DISTANCE[feat.distance].label}　｜　${WEATHERS[feat.weather].label}</div>` +
         `<div class="feat-purpose">${feat.purpose}</div>` +
         `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の達成ボーナス 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
@@ -1115,8 +1124,8 @@ function renderRaceSelect() {
     if (theme) { card.setAttribute("data-region", r.region); card.style.setProperty("--region-accent", theme.accent); }
     const wager = fmtCoins(RANKS[r.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1));
     card.innerHTML =
-      `<div class="rs-name">${raceFullName(r)}</div>` +
-      `<div class="rs-chips"><span class="rs-chip">${DISTANCE[r.distance].label}</span><span class="rs-chip">${WEATHERS[r.weather].label}</span><span class="rs-chip wager">上限 ${wager}</span></div>` +
+      `<div class="rs-name">${gradeBadgeHTML(r.rank)}${raceFullName(r)}</div>` +
+      `<div class="rs-chips"><span class="rs-chip time">${RACE_TIME_LABEL[r.number] || ("第" + r.number)}</span><span class="rs-chip">${DISTANCE[r.distance].label}</span><span class="rs-chip">${WEATHERS[r.weather].label}</span><span class="rs-chip wager">上限 ${wager}</span></div>` +
       `<div class="rs-course"><span>${getSection("early", r.early).label}</span><i>→</i><span>${getSection("mid", r.mid).label}</span><i>→</i><span>${getSection("late", r.late).label}</span></div>` +
       `<div class="rs-purpose">${r.purpose}</div>` +
       `<button class="rs-go" ${locked ? "disabled" : ""}>${locked ? `🔒 ランク${r.rank}で解放` : "このレースを見る ▶"}</button>`;
@@ -1124,39 +1133,70 @@ function renderRaceSelect() {
     return card;
   };
 
-  // ランク別タブ（ホームと一貫したトーン）。既定は現在ランク、選択は記憶。
-  const byRank = {};
-  RACES.forEach(r => { (byRank[r.rank] = byRank[r.rank] || []).push(r); });
+  // 選び方を2系統で切替：📍場所（地域）別＝第一〜第五が見やすい ／ 🏆格（ランク）別。
+  const byRank = {}, byRegion = {};
+  RACES.forEach(r => { (byRank[r.rank] = byRank[r.rank] || []).push(r); (byRegion[r.region] = byRegion[r.region] || []).push(r); });
   const ranks = Object.keys(byRank).map(Number).sort((a, b) => a - b);
+  const regions = Object.keys(byRegion);   // RACES定義順（おおむねランク昇順）
+
+  let mode = state.ui.raceMode || "region";   // 既定は「場所で選ぶ」
+  const modeRow = el("div", "rs-mode");
+  const mRegion = el("button", "", "📍 場所で選ぶ");
+  const mRank = el("button", "", "🏆 格で選ぶ");
+  modeRow.appendChild(mRegion); modeRow.appendChild(mRank);
+  app.appendChild(modeRow);
 
   const tabs = el("div", "hr2-tabs");
   const pane = el("div", "hr2-tabpane");
-  let activeRk = (state.ui.raceTab && ranks.indexOf(state.ui.raceTab) >= 0) ? state.ui.raceTab
-    : (ranks.indexOf(state.player.rank) >= 0 ? state.player.rank : ranks[0]);
+  app.appendChild(tabs); app.appendChild(pane);
 
-  const paint = (rk) => {
-    activeRk = rk; state.ui.raceTab = rk;
-    Array.from(tabs.children).forEach(t => t.classList.toggle("on", Number(t.dataset.rk) === rk));
+  const renderRankPane = (rk) => {
     pane.innerHTML = "";
-    const races = byRank[rk] || [];
+    const races = (byRank[rk] || []).slice().sort((a, b) => a.region.localeCompare(b.region) || a.number - b.number);
     const lockedRank = rk > state.player.rank;
-    pane.appendChild(el("div", "rs-rank-head", `Rank ${rk}　${(RANKS[rk] && RANKS[rk].label) || ""}<span class="rs-rank-n">${races.length}レース</span>`));
+    pane.appendChild(el("div", "rs-rank-head", `${gradeBadgeHTML(rk)}Rank ${rk}　${(RANKS[rk] && RANKS[rk].label) || ""}<span class="rs-rank-n">${races.length}レース</span>`));
     if (lockedRank) pane.appendChild(el("div", "hr2-tabhint", `🔒 このランクは ランク${rk} で解放されます（プレビュー）`));
     const body = el("div", "rs-rank-body");
     races.forEach(r => body.appendChild(buildRaceCard(r, lockedRank)));
     pane.appendChild(body);
   };
+  const renderRegionPane = (reg) => {
+    pane.innerHTML = "";
+    const races = (byRegion[reg] || []).slice().sort((a, b) => a.number - b.number || a.rank - b.rank);
+    const minRank = races.reduce((m, r) => Math.min(m, r.rank), 99);
+    pane.appendChild(el("div", "rs-rank-head", `${reg}<span class="rs-rank-n">第一〜第五（朝→夜）</span>`));
+    if (races.every(r => r.rank > state.player.rank)) pane.appendChild(el("div", "hr2-tabhint", `🔒 この地域は ランク${minRank} で解放されます（プレビュー）`));
+    const body = el("div", "rs-rank-body");
+    races.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank)));
+    pane.appendChild(body);
+  };
 
-  ranks.forEach(rk => {
-    const lockedRank = rk > state.player.rank;
-    const tab = el("button", "hr2-tab" + (lockedRank ? " locked" : ""), `${lockedRank ? "🔒 " : ""}Rank ${rk}`);
-    tab.dataset.rk = rk;
-    tab.onclick = () => paint(rk);
-    tabs.appendChild(tab);
-  });
-  app.appendChild(tabs);
-  app.appendChild(pane);
-  paint(activeRk);
+  const buildTabs = () => {
+    tabs.innerHTML = "";
+    if (mode === "region") {
+      let activeReg = (state.ui.raceRegion && byRegion[state.ui.raceRegion]) ? state.ui.raceRegion : regions[0];
+      regions.forEach(reg => {
+        const locked = (byRegion[reg] || []).every(r => r.rank > state.player.rank);
+        const tab = el("button", "hr2-tab" + (locked ? " locked" : "") + (reg === activeReg ? " on" : ""), `${locked ? "🔒 " : ""}${reg.replace(/地域$/, "")}`);
+        tab.onclick = () => { state.ui.raceRegion = reg; Array.from(tabs.children).forEach(t => t.classList.remove("on")); tab.classList.add("on"); renderRegionPane(reg); };
+        tabs.appendChild(tab);
+      });
+      renderRegionPane(activeReg);
+    } else {
+      let activeRk = (state.ui.raceTab && ranks.indexOf(state.ui.raceTab) >= 0) ? state.ui.raceTab : (ranks.indexOf(state.player.rank) >= 0 ? state.player.rank : ranks[0]);
+      ranks.forEach(rk => {
+        const locked = rk > state.player.rank;
+        const tab = el("button", "hr2-tab" + (locked ? " locked" : "") + (rk === activeRk ? " on" : ""), `${locked ? "🔒 " : ""}${RACE_GRADE[rk] || ("R" + rk)}`);
+        tab.onclick = () => { state.ui.raceTab = rk; Array.from(tabs.children).forEach(t => t.classList.remove("on")); tab.classList.add("on"); renderRankPane(rk); };
+        tabs.appendChild(tab);
+      });
+      renderRankPane(activeRk);
+    }
+  };
+  const setMode = (m) => { mode = m; state.ui.raceMode = m; mRegion.classList.toggle("on", m === "region"); mRank.classList.toggle("on", m === "rank"); buildTabs(); };
+  mRegion.onclick = () => setMode("region");
+  mRank.onclick = () => setMode("rank");
+  setMode(mode);
 
   const back = el("button", "secondary", "ホームへ"); back.onclick = renderHome;
   app.appendChild(back);

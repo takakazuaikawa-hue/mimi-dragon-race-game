@@ -2877,6 +2877,19 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hr2-tab.locked { opacity: .5; }
 .hr2-tabpane { margin-top: 2px; }
 .hr2-tabhint { font-size: 11px; color: var(--astone-2); text-align: center; padding: 16px; }
+/* 格付けバッジ（GⅠ/GⅡ/GⅢ ＋ 下位の格） */
+.grade-badge { display: inline-block; font-size: 10px; font-weight: 900; line-height: 1; padding: 2px 6px; border-radius: 5px; margin-right: 6px; vertical-align: middle; letter-spacing: .02em; }
+.grade-badge.g1 { background: linear-gradient(180deg, #ffe48c, #e0a020); color: #5a2a00; box-shadow: 0 0 9px -2px rgba(255,200,80,.75); }
+.grade-badge.g2 { background: linear-gradient(180deg, #eef2f6, #aeb8c6); color: #2a3038; }
+.grade-badge.g3 { background: linear-gradient(180deg, #e8bd8e, #bf7e44); color: #3a1e08; }
+.grade-badge.gl { background: rgba(150,185,230,.18); color: #b8d2f0; border: 1px solid rgba(150,185,230,.32); }
+.grade-badge.gn { background: rgba(255,255,255,.07); color: var(--mist-soft); border: 1px solid var(--glass-border); }
+/* レース選択：選び方トグル（場所別／格別） */
+.rs-mode { display: flex; gap: 7px; justify-content: center; margin: 2px 0 9px; }
+.rs-mode button { padding: 6px 16px; border-radius: 999px; cursor: pointer; font-size: 12.5px; font-weight: 700; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--mist-soft); }
+.rs-mode button.on { background: rgba(255,216,102,.16); border-color: var(--gold-line); color: var(--gold-bright); }
+.rs-mode button:active { transform: translateY(1px); }
+.rs-chip.time { background: rgba(120,170,210,.16); border-color: rgba(120,170,210,.32); color: #cfe4f4; }
 /* phones: tighten so the whole home fits one screen without scrolling */
 @media (max-width: 480px) {
   .debug-toggle { display: none; }   /* dev-only; declutter the phone top bar */
