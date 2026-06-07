@@ -565,17 +565,16 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
   // super-simple old-manga eye: a big white oval + a plain dark pupil + one tiny highlight + a thin
   // delicate outline. No iris, no eyebrow, no eyelash — light and minimal.
   function openEye(pxo, pyo, scl) {
-    const s = scl || 1, rx = ER, ry = ER * 1.16, pupR = ER * 0.40 * s;
+    const s = scl || 1, rx = ER, ry = ER * 1.16, pupR = ER * 0.27 * s;   // small pupil
     const px = ex + (pxo == null ? 0.18 : pxo) * d, py = ey + (pyo == null ? 0.3 : pyo) * d;
     ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, 6.2832); ctx.fill();
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(px, py, pupR, pupR * 1.28, 0, 0, 6.2832); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.beginPath(); ctx.arc(px - pupR * 0.34, py - pupR * 0.55, pupR * 0.36, 0, 6.2832); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 0.9 * d; ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, 6.2832); ctx.stroke();
+    ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(px, py, pupR, 0, 6.2832); ctx.fill();   // a tiny solid-black dot (no highlight)
+    ctx.strokeStyle = INK; ctx.lineWidth = 0.8 * d; ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, 6.2832); ctx.stroke();
   }
   // a smooth, thin closed/squint eye arc (the eye itself — no lashes)
-  function lid(yoff, curve, w) { ctx.strokeStyle = INK; ctx.lineWidth = (w || 1.6) * d; ctx.beginPath(); ctx.moveTo(ex - ER, ey + yoff * d); ctx.quadraticCurveTo(ex, ey + (yoff + curve) * d, ex + ER, ey + yoff * d); ctx.stroke(); }
+  function lid(yoff, curve, w) { ctx.strokeStyle = INK; ctx.lineWidth = (w || 1.2) * d; ctx.beginPath(); ctx.moveTo(ex - ER, ey + yoff * d); ctx.quadraticCurveTo(ex, ey + (yoff + curve) * d, ex + ER, ey + yoff * d); ctx.stroke(); }
   if (mood === "joy") {
-    lid(0.4, -3.6, 1.7);                                                                  // ‿ happy closed eye
+    lid(0.4, -3.6, 1.2);                                                                  // ‿ happy closed eye (thin)
     rcSparkle(ctx, sx, sy, 4.8 * d, "#fff0a0"); rcSparkle(ctx, sx + 5.5 * d, sy + 5 * d, 2.6 * d, "#fff7cf");
   } else if (mood === "effort") {
     openEye(0.2, 0.7, 0.9);                                                               // determined, pupil low
@@ -584,20 +583,20 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
     openEye(0.2, 0.3, 0.85);
     rcMoodGlyph(ctx, sx, sy, "?", "#ffd86a", d * 1.2);
   } else if (mood === "tired") {
-    lid(0.3, 2.0, 1.7);                                                                   // droopy half-lid
+    lid(0.3, 2.0, 1.2);                                                                   // droopy half-lid (thin)
     rcSweatDrop(ctx, sx - 2.5 * d, sy + 3 * d, 1.4 * d); rcSweatDrop(ctx, sx + 2 * d, sy + 1 * d, 1.15 * d);
   } else if (mood === "surprised") {
-    openEye(0, 0.1, 0.58);                                                                // wide eye, small pupil
+    openEye(0, 0.1, 0.9);                                                                 // wide eye
     rcMoodGlyph(ctx, sx, sy, "!", "#ff9a9a", d * 1.25);
   } else if (mood === "serious") {
-    openEye(0.24, 0.34, 0.66);                                                            // sharp small pupil = focused
+    openEye(0.24, 0.34, 1.0);                                                             // focused (small dot) + glint
     rcSparkle(ctx, sx + 1 * d, sy + 1 * d, 2.1 * d, "#bfe3ff");
   } else if (mood === "panic") {
-    openEye(Math.sin(t * 5) * 0.9, 0.5, 0.6);                                             // wide, darting small pupil
+    openEye(Math.sin(t * 5) * 0.9, 0.5, 0.9);                                             // darting pupil
     rcSweatDrop(ctx, sx - 3.2 * d, sy + 1.5 * d, 1.7 * d); rcSweatDrop(ctx, sx + 1.2 * d, sy - 1 * d, 1.3 * d);
     rcMoodGlyph(ctx, sx + 4 * d, sy + 3.2 * d, "!?", "#ff9a9a", d * 1.0);
   } else if (mood === "relaxed") {
-    lid(-1.0, 3.3, 1.7);                                                                  // ⌣ content eye
+    lid(-1.0, 3.3, 1.2);                                                                  // ⌣ content eye (thin)
     rcMoodGlyph(ctx, sx, sy, "♪", "#bdf3c6", d * 1.2);
   } else if (mood === "spin") {
     ctx.strokeStyle = INK; ctx.lineWidth = 1.8 * d; ctx.beginPath();
@@ -605,7 +604,7 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
     ctx.stroke();
     for (let i = 0; i < 3; i++) { const a = t * 4 + i * 2.0944; rcSparkle(ctx, sx + Math.cos(a) * 5 * d, sy + Math.sin(a) * 3 * d, 2.0 * d, "#ffe06a"); }
   } else if (mood === "yawn") {
-    lid(0.8, -2.7, 1.7);
+    lid(0.8, -2.7, 1.2);
     ctx.font = "italic 900 " + (9 * d).toFixed(1) + "px system-ui, sans-serif"; ctx.fillStyle = "rgba(190,210,255,0.95)";
     ctx.fillText("z", sx, sy + 1 * d); ctx.fillText("z", sx + 4 * d, sy - 4.5 * d);
   } else {
