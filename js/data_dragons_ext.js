@@ -251,4 +251,32 @@
   };
   if (typeof RACES !== "undefined") EVE_RACES.forEach(r => { if (!RACES.some(x => x.id === r.id)) RACES.push(r); });
   if (typeof RACE_ENTRY_OVERRIDES !== "undefined") Object.assign(RACE_ENTRY_OVERRIDES, EVE_OVERRIDES);
+
+  // ---- 第三(夕)：第三が無かった6地域に追加し、全地域を 1〜5(朝→夜)に揃える ----
+  // 出走表は第一〜第五とは別の独自編成（sim検証済み）。コースは各地域の検証済み馬場。
+  const EVE3_RACES = [
+    { id:"race_lumina_3", region:"ルミナ地域", cup:"風翼杯", number:3, rank:2, distance:"mid", weather:"strong_wind",
+      early:"long_straight_start", mid:"aerial_wind_lane", late:"tailwind_straight", purpose:"風翼③：夕焼けの翼比べ" },
+    { id:"race_ringrosso_3", region:"リングロッソ地域", cup:"旋角杯", number:3, rank:2, distance:"short", weather:"clear",
+      early:"narrow_start", mid:"repeated_small_turns", late:"final_grand_turn", purpose:"旋角③：夕陽の回転戦" },
+    { id:"race_mistlake_3", region:"ミストレイク地域", cup:"霧鱗杯", number:3, rank:3, distance:"long", weather:"fog",
+      early:"mist_start", mid:"rolling_terrain", late:"long_final_straight", purpose:"霧鱗③：夕霧のスタミナ" },
+    { id:"race_vento_3", region:"ヴェント峡谷地域", cup:"翔風杯", number:3, rank:4, distance:"mid", weather:"strong_wind",
+      early:"long_straight_start", mid:"aerial_wind_lane", late:"tailwind_straight", purpose:"翔風③：夕暮れの強風" },
+    { id:"race_notte_3", region:"ノッテムーンライト地域", cup:"月光杯", number:3, rank:5, distance:"long", weather:"fog",
+      early:"mist_start", mid:"grand_turn", late:"long_final_straight", purpose:"月光③：宵闇の直線" },
+    { id:"race_lapan_3", region:"ラパン祭典地域", cup:"兎神祝祭杯", number:3, rank:6, distance:"long", weather:"clear",
+      early:"long_straight_start", mid:"aerial_wind_lane", late:"long_final_straight", purpose:"祝祭③：夕焼けの総合力" }
+  ];
+  const EVE3_OVERRIDES = {
+    // sim 検証で得た独自出走表（第一〜第五とは別編成・最大勝率≦約53%）。
+    race_lumina_3:    ["momu","tsumuji","kogane","susu","yoi","rosso","chiri","rubel"],
+    race_ringrosso_3: ["nagi","miruka","rosso","kabe","goro","seram","poro","hibana"],
+    race_mistlake_3:  ["seram","baran","murasame","rubel","yumeji","momu","kazemaru","poro"],
+    race_vento_3:     ["miruka","arashi","momu","kazemaru","taiga","konron","sazare","rosso"],
+    race_notte_3:     ["sora","konron","shirahae","seram","senpu","glaze","raika","stella"],
+    race_lapan_3:     ["sora","senpu","yugiri","stella","tenku","raijin","reppu","phenix"]
+  };
+  if (typeof RACES !== "undefined") EVE3_RACES.forEach(r => { if (!RACES.some(x => x.id === r.id)) RACES.push(r); });
+  if (typeof RACE_ENTRY_OVERRIDES !== "undefined") Object.assign(RACE_ENTRY_OVERRIDES, EVE3_OVERRIDES);
 })();
