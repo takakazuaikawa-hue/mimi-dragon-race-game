@@ -558,7 +558,7 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
   const _k = RC_DRG.px * _RC_INRACE;                           // grid-cell → on-screen (in-race scale = _RC_INRACE·dep)
   const ex = cx + (RC_DRG.eyeX - RC_DRG.anchorX) * _k * _b.sz * _b.sx * d, ey = cy + (RC_DRG.eyeY - RC_DRG.anchorY) * _k * _b.sz * _b.sy * d;  // the traced eye (build-adjusted)
   const sx = ex + 1 * d, sy = ey - 13 * d + Math.sin(t) * 1.4;  // floating mood symbol above the head
-  const INK = "#2a2030", ER = 4.4 * d;                         // soft thin ink; ER = (bigger) white radius
+  const INK = "#2a2030", ER = 4.1 * d;                         // soft thin ink; ER = white radius (a touch smaller)
   ctx.save();
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineCap = "round"; ctx.lineJoin = "round";
