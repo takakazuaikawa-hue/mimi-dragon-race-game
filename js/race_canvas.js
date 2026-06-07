@@ -413,6 +413,21 @@ function _rcFrameFor(color, fi) {
   return cv;
 }
 _rcLoadTracedDragon();   // kick off the reference trace at load (async; populates RC_DRAGON_FRAMES)
+// Per-dragon BUILD: a stable, distinct physique (length × height × overall size) derived from
+// the dragon's colour, so each reads as its own body-type even sharing the traced base shape.
+// (Procedural v1 — richer per-body silhouettes can be added later as extra traced archetypes.)
+const _rcBuildCache = Object.create(null);
+const _RC_NOBUILD = { sx: 1, sy: 1, sz: 1 };
+function _rcBuildFor(color) {
+  const key = color || '#8a8a8a';
+  let b = _rcBuildCache[key];
+  if (!b) {
+    let h = 2166136261; for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    const rnd = () => { h = (Math.imul(h, 1103515245) + 12345) >>> 0; return h / 4294967296; };
+    b = _rcBuildCache[key] = { sx: 0.91 + rnd() * 0.19, sy: 0.92 + rnd() * 0.16, sz: 0.96 + rnd() * 0.08 };  // length / height / size
+  }
+  return b;
+}
 function rcDrawDragonPixel(ctx, o) {
   if (!RC_DRAGON_FRAMES) return;   // trace not ready yet (a few ms at startup)
   let fi;
@@ -451,9 +466,11 @@ function rcDrawDragonPixel(ctx, o) {
     ag.addColorStop(0, rcRgba(o.color || '#fff', 0.9)); ag.addColorStop(1, rcRgba(o.color || '#fff', 0));
     ctx.fillStyle = ag; ctx.beginPath(); ctx.ellipse(0, -8 * pxc, 26, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
-  const ox = -RC_DRG.anchorX * pxc, oy = -RC_DRG.anchorY * pxc;
+  const b = o.noBuild ? _RC_NOBUILD : _rcBuildFor(o.color);
+  const wsc = pxc * b.sz * b.sx, hsc = pxc * b.sz * b.sy;   // per-dragon build (length × height × size)
+  const ox = -RC_DRG.anchorX * wsc, oy = -RC_DRG.anchorY * hsc;
   const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(frame, ox, oy, RC_DRG.GW * pxc, RC_DRG.GH * pxc);
+  ctx.drawImage(frame, ox, oy, RC_DRG.GW * wsc, RC_DRG.GH * hsc);
   ctx.imageSmoothingEnabled = sm;
   ctx.restore();
 }
@@ -512,11 +529,12 @@ function rcMoodGlyph(ctx, x, y, ch, col, d) {
   ctx.lineWidth = 2.4 * d; ctx.strokeStyle = "rgba(12,10,24,0.9)"; ctx.strokeText(ch, x, y);
   ctx.fillStyle = col; ctx.fillText(ch, x, y);
 }
-function rcDrawDragonFace(ctx, cx, cy, dep, mood, now) {
+function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
   if (!mood || mood === "neutral") return;
   const d = Math.max(0.85, dep), t = now / 600;
+  const _b = _rcBuildFor(col);                                 // match the sprite's per-dragon build
   const _k = RC_DRG.px * _RC_INRACE;                           // grid-cell → on-screen (in-race scale = _RC_INRACE·dep)
-  const ex = cx + (RC_DRG.eyeX - RC_DRG.anchorX) * _k * d, ey = cy + (RC_DRG.eyeY - RC_DRG.anchorY) * _k * d;  // the traced eye
+  const ex = cx + (RC_DRG.eyeX - RC_DRG.anchorX) * _k * _b.sz * _b.sx * d, ey = cy + (RC_DRG.eyeY - RC_DRG.anchorY) * _k * _b.sz * _b.sy * d;  // the traced eye (build-adjusted)
   const sx = ex + 2 * d, sy = ey - 12 * d + Math.sin(t) * 1.4;  // floating mood symbol above the head
   const INK = "#23142e";
   ctx.save();
@@ -1982,7 +2000,7 @@ function startRaceCanvas(container, ctx) {
         if (_mood !== st.m && (urgent || _now - st.t >= 1.1)) { st.m = _mood; st.t = _now; }
         _mood = st.m;
       }
-      rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now());
+      rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);
       // bet reticle (player's pick)
       if (betSet.has(dr.id)) {
         cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;
