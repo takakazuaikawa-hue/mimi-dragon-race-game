@@ -323,7 +323,9 @@ function _rcDragonPal(base) {
   const warm = rk => { const h = _rcHsl(rk); return _rcHslHex(bh, Math.min(1, h.s * bs * 1.5), Math.max(0.06, Math.min(0.97, h.l + (bl - _RC_REF_BL) * 0.55))); };
   const dark = rk => { const h = _rcHsl(rk); return _rcHslHex(bh, Math.min(0.6, 0.08 + 0.3 * bs), Math.max(0.08, Math.min(0.5, h.l + (bl - _RC_REF_BL) * 0.25))); };
   return {
-    'o': _RC_REF.o, 'e': _RC_REF.e, 'p': _RC_REF.p,
+    // outline: a soft, slightly hue-tinted dark instead of pure black, so the edge reads
+    // less harsh/"黒い" and stays cohesive with each dragon's colour
+    'o': _rcHslHex(bh, Math.min(0.3, bs * 0.35), 0.15), 'e': _RC_REF.e, 'p': _rcHslHex(bh, Math.min(0.35, bs * 0.4), 0.16),
     'C': warm(_RC_REF.C), 'B': warm(_RC_REF.B), 'M': warm(_RC_REF.M), 'D': warm(_RC_REF.D),
     'K': dark(_RC_REF.K), 'k': dark(_RC_REF.k)
   };
@@ -469,7 +471,10 @@ function rcDrawDragonPixel(ctx, o) {
   const b = o.noBuild ? _RC_NOBUILD : _rcBuildFor(o.color);
   const wsc = pxc * b.sz * b.sx, hsc = pxc * b.sz * b.sy;   // per-dragon build (length × height × size)
   const ox = -RC_DRG.anchorX * wsc, oy = -RC_DRG.anchorY * hsc;
-  const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+  const sm = ctx.imageSmoothingEnabled;
+  // smooth when DOWN-scaling (in-race: 150px grid → ~80px) to kill the jagged/harsh edge;
+  // stay crisp when UP-scaling (dex/portraits) so big views keep their clean pixel look.
+  ctx.imageSmoothingEnabled = wsc < 0.96;
   ctx.drawImage(frame, ox, oy, RC_DRG.GW * wsc, RC_DRG.GH * hsc);
   ctx.imageSmoothingEnabled = sm;
   ctx.restore();
@@ -530,75 +535,74 @@ function rcMoodGlyph(ctx, x, y, ch, col, d) {
   ctx.fillStyle = col; ctx.fillText(ch, x, y);
 }
 function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
-  if (!mood || mood === "neutral") return;
-  const d = Math.max(0.85, dep), t = now / 600;
+  if (!mood) return;
+  const d = Math.max(0.9, dep), t = now / 600;
   const _b = _rcBuildFor(col);                                 // match the sprite's per-dragon build
   const _k = RC_DRG.px * _RC_INRACE;                           // grid-cell → on-screen (in-race scale = _RC_INRACE·dep)
   const ex = cx + (RC_DRG.eyeX - RC_DRG.anchorX) * _k * _b.sz * _b.sx * d, ey = cy + (RC_DRG.eyeY - RC_DRG.anchorY) * _k * _b.sz * _b.sy * d;  // the traced eye (build-adjusted)
-  const sx = ex + 2 * d, sy = ey - 12 * d + Math.sin(t) * 1.4;  // floating mood symbol above the head
-  const INK = "#23142e";
+  const sx = ex + 1 * d, sy = ey - 13 * d + Math.sin(t) * 1.4;  // floating mood symbol above the head
+  const INK = "#23142e", ER = 3.7 * d;                         // ER = eye radius — enlarged so the white reads & expressions are clear in-race
   ctx.save();
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineCap = "round"; ctx.lineJoin = "round";
+  // a clean, prominent open eye (dark rim + white sclera + pupil + glint); pupil offsets in cells
+  function openEye(pxo, pyo, pr) {
+    const px = ex + (pxo == null ? 0.6 : pxo) * d, py = ey + (pyo == null ? 0.5 : pyo) * d, R = pr || ER * 0.5;
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(ex, ey, ER + 1.2, ER * 1.06 + 1.2, 0, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(ex, ey, ER, ER * 1.06, 0, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(px, py, R, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.beginPath(); ctx.arc(px - R * 0.4, py - R * 0.45, R * 0.42, 0, 6.2832); ctx.fill();
+  }
   if (mood === "joy") {
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
-    ctx.beginPath(); ctx.arc(ex, ey + 1.4 * d, 2.5 * d, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke(); // ^ happy eye
-    rcSparkle(ctx, sx, sy, 4.4 * d, "#fff0a0");
-    rcSparkle(ctx, sx + 5.5 * d, sy + 5 * d, 2.4 * d, "#fff7cf");
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.3 * d;
+    ctx.beginPath(); ctx.arc(ex, ey + 1.6 * d, ER, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();   // ^ happy (closed) eye
+    rcSparkle(ctx, sx, sy, 4.8 * d, "#fff0a0"); rcSparkle(ctx, sx + 5.5 * d, sy + 5 * d, 2.6 * d, "#fff7cf");
   } else if (mood === "effort") {
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.9 * d;
-    ctx.beginPath(); ctx.moveTo(ex - 2.2 * d, ey + 0.2 * d); ctx.lineTo(ex + 2.2 * d, ey + 1.2 * d); ctx.stroke();   // squint
-    ctx.beginPath(); ctx.moveTo(ex - 2.4 * d, ey - 3.0 * d); ctx.lineTo(ex + 1.8 * d, ey - 1.6 * d); ctx.stroke();   // brow
-    rcSweatDrop(ctx, sx, sy + 2 * d, 1.5 * d);
+    openEye(0.4, 1.2, ER * 0.42);                                                                   // straining, pupil low
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.1 * d;
+    ctx.beginPath(); ctx.moveTo(ex - ER * 0.95, ey - ER * 1.0); ctx.lineTo(ex + ER * 0.7, ey - ER * 0.35); ctx.stroke();   // strained brow
+    rcSweatDrop(ctx, sx, sy + 2 * d, 1.8 * d);
   } else if (mood === "confused") {
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.5 * d;
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.9 * d;
     ctx.beginPath();
-    for (let a = 0; a < Math.PI * 2.8; a += 0.45) { const r = 0.5 * d + a * 0.42 * d; const px = ex + Math.cos(a + t * 3) * r, py = ey + Math.sin(a + t * 3) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+    for (let a = 0; a < Math.PI * 2.8; a += 0.4) { const r = 0.7 * d + a * 0.5 * d; const px = ex + Math.cos(a + t * 3) * r, py = ey + Math.sin(a + t * 3) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
     ctx.stroke();
-    rcMoodGlyph(ctx, sx, sy, "?", "#ffd34d", d);
+    rcMoodGlyph(ctx, sx, sy, "?", "#ffd34d", d * 1.15);
   } else if (mood === "tired") {
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.8 * d;
-    ctx.beginPath(); ctx.moveTo(ex - 2.4 * d, ey + 0.2 * d); ctx.lineTo(ex + 2.4 * d, ey + 0.2 * d); ctx.stroke();   // half-closed
-    rcSweatDrop(ctx, sx - 2.5 * d, sy + 3 * d, 1.25 * d);
-    rcSweatDrop(ctx, sx + 2 * d, sy + 1 * d, 1.0 * d);
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.2 * d;
+    ctx.beginPath(); ctx.moveTo(ex - ER, ey); ctx.lineTo(ex + ER, ey + 0.3 * d); ctx.stroke();      // half-closed
+    rcSweatDrop(ctx, sx - 2.5 * d, sy + 3 * d, 1.4 * d); rcSweatDrop(ctx, sx + 2 * d, sy + 1 * d, 1.15 * d);
   } else if (mood === "surprised") {
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, 2.2 * d, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex, ey, 1.15 * d, 0, Math.PI * 2); ctx.fill();
-    rcMoodGlyph(ctx, sx, sy, "!", "#ff9a9a", d);
+    openEye(0, 0, ER * 0.46);                                                                       // wide eye
+    rcMoodGlyph(ctx, sx, sy, "!", "#ff9a9a", d * 1.2);
   } else if (mood === "serious") {
-    // 真剣 — sharp focused brow over a hard little eye (no comedic glyph)
-    ctx.strokeStyle = INK; ctx.lineWidth = 2.0 * d;
-    ctx.beginPath(); ctx.moveTo(ex - 2.8 * d, ey - 2.8 * d); ctx.lineTo(ex + 2.2 * d, ey - 1.1 * d); ctx.stroke(); // angled brow
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex + 0.2 * d, ey + 0.5 * d, 1.15 * d, 0, Math.PI * 2); ctx.fill(); // intense eye
-    rcSparkle(ctx, sx + 1 * d, sy + 1 * d, 2.0 * d, "#bfe3ff");                                                  // a cool focus glint
+    openEye(0.6, 0.5, ER * 0.46);
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.5 * d;
+    ctx.beginPath(); ctx.moveTo(ex - ER * 1.05, ey - ER * 0.95); ctx.lineTo(ex + ER * 0.8, ey - ER * 0.2); ctx.stroke(); // sharp focused brow
+    rcSparkle(ctx, sx + 1 * d, sy + 1 * d, 2.1 * d, "#bfe3ff");
   } else if (mood === "panic") {
-    // 焦り — wide darting eye, worried brow, flurry of sweat + ！？
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, 2.5 * d, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex + Math.sin(t * 5) * 0.7 * d, ey + 0.6 * d, 1.0 * d, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.4 * d;
-    ctx.beginPath(); ctx.moveTo(ex - 3.2 * d, ey - 3.4 * d); ctx.lineTo(ex - 0.4 * d, ey - 2.0 * d); ctx.stroke(); // worried brow
-    rcSweatDrop(ctx, sx - 3.2 * d, sy + 1.5 * d, 1.55 * d);
-    rcSweatDrop(ctx, sx + 1.2 * d, sy - 1 * d, 1.2 * d);
-    rcMoodGlyph(ctx, sx + 4 * d, sy + 3.2 * d, "!?", "#ff9a9a", d * 0.85);
+    openEye(Math.sin(t * 5) * 0.9, 0.7, ER * 0.4);                                                  // darting pupil
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
+    ctx.beginPath(); ctx.moveTo(ex - ER * 1.1, ey - ER * 1.15); ctx.lineTo(ex - ER * 0.1, ey - ER * 0.55); ctx.stroke(); // worried brow
+    rcSweatDrop(ctx, sx - 3.2 * d, sy + 1.5 * d, 1.7 * d); rcSweatDrop(ctx, sx + 1.2 * d, sy - 1 * d, 1.3 * d);
+    rcMoodGlyph(ctx, sx + 4 * d, sy + 3.2 * d, "!?", "#ff9a9a", d * 0.95);
   } else if (mood === "relaxed") {
-    // 余裕・油断 — lazy half-lidded eye + a carefree ♪
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
-    ctx.beginPath(); ctx.arc(ex, ey - 1.3 * d, 2.4 * d, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke();            // relaxed ∪ eye
-    rcMoodGlyph(ctx, sx, sy, "♪", "#bdf3c6", d);
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.2 * d;
+    ctx.beginPath(); ctx.arc(ex, ey - 1.4 * d, ER, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke();     // ∪ relaxed eye
+    rcMoodGlyph(ctx, sx, sy, "♪", "#bdf3c6", d * 1.15);
   } else if (mood === "spin") {
-    // dizzy (a gust spun it) — swirl eye + orbiting stars
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.4 * d;
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.8 * d;
     ctx.beginPath();
-    for (let a = 0; a < Math.PI * 2.6; a += 0.4) { const r = 0.4 * d + a * 0.5 * d; const px = ex + Math.cos(a) * r, py = ey + Math.sin(a) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+    for (let a = 0; a < Math.PI * 2.6; a += 0.38) { const r = 0.5 * d + a * 0.62 * d; const px = ex + Math.cos(a) * r, py = ey + Math.sin(a) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
     ctx.stroke();
-    for (let i = 0; i < 3; i++) { const a = t * 4 + i * Math.PI * 2 / 3; rcSparkle(ctx, sx + Math.cos(a) * 5 * d, sy + Math.sin(a) * 3 * d, 1.9 * d, "#ffe06a"); }
+    for (let i = 0; i < 3; i++) { const a = t * 4 + i * 2.0944; rcSparkle(ctx, sx + Math.cos(a) * 5 * d, sy + Math.sin(a) * 3 * d, 2.0 * d, "#ffe06a"); }
   } else if (mood === "yawn") {
-    // sleepy — drooped closed eye + zzz
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
-    ctx.beginPath(); ctx.arc(ex, ey + 1.0 * d, 2.2 * d, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
-    ctx.font = "italic bold " + (8.5 * d).toFixed(1) + "px system-ui, sans-serif";
-    ctx.fillStyle = "rgba(185,205,255,0.95)";
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.2 * d;
+    ctx.beginPath(); ctx.arc(ex, ey + 1.2 * d, ER * 0.95, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    ctx.font = "italic bold " + (9 * d).toFixed(1) + "px system-ui, sans-serif"; ctx.fillStyle = "rgba(185,205,255,0.95)";
     ctx.fillText("z", sx, sy + 1 * d); ctx.fillText("z", sx + 4 * d, sy - 4.5 * d);
+  } else {
+    openEye();   // neutral — a clean, readable open eye so the dragon never looks blank in-race
   }
   ctx.restore();
 }
