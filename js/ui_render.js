@@ -72,6 +72,16 @@ function beginScreen() {
   app.classList.add(cls);
   app.innerHTML = "";
   _prevScreen = screen;
+  // quick "← ホーム" pinned at the very top of menu/info sub-pages, so you don't have to
+  // scroll to the bottom to get back. (Bottom buttons stay too.)
+  const HOME_TOP_SCREENS = { race_select: 1, assets: 1, village: 1, collection: 1, help: 1, story: 1, consult: 1 };
+  if (HOME_TOP_SCREENS[screen]) {
+    const tb = el("div", "topback");
+    const b = el("button", "topback-btn", "← ホーム");
+    b.onclick = () => renderHome();
+    tb.appendChild(b);
+    app.appendChild(tb);
+  }
   return app;
 }
 

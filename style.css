@@ -2890,6 +2890,12 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .rs-mode button.on { background: rgba(255,216,102,.16); border-color: var(--gold-line); color: var(--gold-bright); }
 .rs-mode button:active { transform: translateY(1px); }
 .rs-chip.time { background: rgba(120,170,210,.16); border-color: rgba(120,170,210,.32); color: #cfe4f4; }
+/* サブページ最上部の「← ホーム」（スクロール中も上部に固定） */
+.topback { position: sticky; top: 0; z-index: 30; display: flex; padding: 4px 0 8px; }
+.topback-btn { font-size: 13px; font-weight: 800; color: var(--gold-bright); background: rgba(14,18,24,0.92);
+  border: 1px solid var(--gold-line); border-radius: 999px; padding: 7px 16px; cursor: pointer;
+  backdrop-filter: blur(5px); box-shadow: 0 5px 16px -7px rgba(0,0,0,0.8); }
+.topback-btn:active { transform: translateY(1px); }
 /* phones: tighten so the whole home fits one screen without scrolling */
 @media (max-width: 480px) {
   .debug-toggle { display: none; }   /* dev-only; declutter the phone top bar */
