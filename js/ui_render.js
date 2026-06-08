@@ -714,6 +714,12 @@ function showStoryArt(ch) {
   document.body.appendChild(ov);
 }
 
+// 物語の表示タイトル＝キャラクター名（エンディングだけ「エンディング」のまま）。
+function chapterDisplayTitle(ch) {
+  if (ch.id === "ED") return "エンディング";
+  const c = STORY_CAST[ch.cast];
+  return (c && c.name) || ch.title;
+}
 function renderStory() {
   state.ui.screen = "story";
   recomputeAssets(state);
@@ -737,8 +743,8 @@ function renderStory() {
     if (cast) row.style.setProperty("--cg", cast.color);
     row.innerHTML =
       `<span class="story-row-cg">${unlocked ? photoOr("images/story/" + ch.id + ".jpg", `<span>${cast ? cast.symbol : "🐲"}</span>`) : "<span>🔒</span>"}</span>` +
-      `<span class="story-row-tx"><span class="story-row-t">${ch.title}</span>` +
-        `<span class="story-row-s">${unlocked ? (cast ? `${cast.name}（${cast.tag}）` : "") : "総資産 " + fmtCoins(storyUnlockAt(ch.id)) + " で解放"}</span></span>` +
+      `<span class="story-row-tx"><span class="story-row-t">${chapterDisplayTitle(ch)}</span>` +
+        `<span class="story-row-s">${unlocked ? (ch.id === "ED" ? "次の物語へ" : ch.title) : "総資産 " + fmtCoins(storyUnlockAt(ch.id)) + " で解放"}</span></span>` +
       (unlocked ? `<span class="story-row-ch">›</span>` : "");
     if (unlocked) row.onclick = () => renderStoryChapter(ch.id);
     list.appendChild(row);
@@ -761,7 +767,8 @@ function renderStoryChapter(chId) {
   state.ui.screen = "story_read";
   const cast = STORY_CAST[ch.cast];
   const app = beginScreen();   // 上部に「← 物語」
-  app.appendChild(el("h2", null, ch.title));
+  app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
+  if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
   const card = el("div", "card story-chapter");
   const cg = el("div", "story-cg viewable");
   if (cast) cg.style.setProperty("--cg", cast.color);
