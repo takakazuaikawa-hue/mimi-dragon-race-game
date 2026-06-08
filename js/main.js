@@ -38,8 +38,10 @@ window.addEventListener("DOMContentLoaded", () => {
     state.ui.debug = e.target.checked;
     rerenderCurrent();
   });
-  // Info level selector
-  document.getElementById("info-level").addEventListener("change", (e) => {
+  // Info level selector (情報量 is now changed from the ⚙️設定 screen; the header
+  // <select> was removed for a cleaner HUD, so this binding is optional/guarded).
+  const _infoLevelEl = document.getElementById("info-level");
+  if (_infoLevelEl) _infoLevelEl.addEventListener("change", (e) => {
     state.ui.infoLevel = e.target.value;
     saveGame();              // persist the preference across reloads
     rerenderCurrent();
