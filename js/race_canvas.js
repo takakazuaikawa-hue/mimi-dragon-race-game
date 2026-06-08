@@ -178,11 +178,13 @@ function rcTerrainInfo(key) { return RC_TERRAIN[key] || RC_TERRAIN.straight; }
 // the flight animation; a floating bob / lean / tumble are applied at draw time.
 // =========================================================================
 const RC_DRG = {
-  GW: 44, GH: 28,
-  anchorX: 24, anchorY: 16,   // grid cell mapped to the dragon's (x,y) position (body centre, flying)
-  px: 1.78,                    // on-screen cell size = scale * px
-  P: { hx: 28, hy: 9, hr: 6.6, bx: 20, by: 16, brx: 6.6, bry: 5.6, eyeK: 0.9, pupK: 0.66 }
+  // dims/anchor/eye are filled in by _rcLoadTracedDragon() from images/dragon_ref/ref.png;
+  // these defaults match that trace (150×59) so portraits size correctly even before it loads.
+  GW: 150, GH: 59, anchorX: 82, anchorY: 56, eyeX: 134, eyeY: 46,
+  px: 0.55,                   // on-screen cell size = scale * px (keeps the old in-race footprint width)
+  P: {}                       // (legacy; the procedural shape builder below is no longer used)
 };
+const _RC_INRACE = 0.86;      // in-race sprite scale = _RC_INRACE * laneDepth (raised from 0.66 so the long, low traced dragon reads bigger)
 function _rcInEll(gx, gy, cx, cy, rx, ry) { const dx = (gx - cx) / rx, dy = (gy - cy) / ry; return dx * dx + dy * dy <= 1; }
 function _rcInRect(gx, gy, x, y, w, h) { return gx >= x && gx < x + w && gy >= y && gy < y + h; }
 function _rcSgn(ax, ay, bx, by, cx, cy) { return (ax - cx) * (by - cy) - (bx - cx) * (ay - cy); }
@@ -202,76 +204,92 @@ function _rcNeon(hex) {
   return _rcRgbHex((rr + m) * 255, (gg + m) * 255, (bb + m) * 255);
 }
 function _rcDragonShapes(P, flap) {
-  const hx = P.hx, hy = P.hy, hr = P.hr, bx = P.bx, by = P.by, brx = P.brx, bry = P.bry;
-  const sx = hx + hr * 0.86, sy = hy + hr * 0.34, ex = hx + hr * 0.10, ey = hy - hr * 0.10;
-  const lift = ((flap == null ? 0.5 : flap) - 0.5) * 5.0;   // wing-tip vertical travel (flap)
+  // Reference-based dashing two-tone wyvern (facing right): cream belly/wing-upper +
+  // charcoal back/wing-membrane, big eye, radiating crest, spiky fish-tail, running legs.
+  // Laid out directly in the 72×42 grid space; `flap` (0..1) drives the wing-beat.
+  const lift = ((flap == null ? 0.5 : flap) - 0.5) * 5.0;
   const S = [];
-  // far wing (behind, darker) — a fuller dragon wing
-  {
-    const J = [bx + brx * 0.06, by - bry * 0.32];
-    const u1 = [bx - brx * 0.8, by - bry * 2.25 + lift * 0.7];
-    const u2 = [bx - brx * 0.28, by - bry * 1.7 + lift * 0.4];
-    const u3 = [bx + brx * 0.12, by - bry * 0.9 + lift * 0.15];
-    const dp = (a, b) => [(a[0] + b[0]) / 2 * 0.85 + J[0] * 0.15, (a[1] + b[1]) / 2 * 0.85 + J[1] * 0.15];
-    S.push({ k: 'D', t: 'poly', p: [J, u1, dp(u1, u2), u2, dp(u2, u3), u3] });
-  }
-  // tail — SIMPLE: one clean tapering tail (no deep curl, no spade fin)
-  {
-    const tr = bx - brx;   // root (body back)
-    S.push({ k: 'B', t: 'poly', p: [
-      [tr + 1.0, by - bry * 0.26], [tr - brx * 1.34, by + bry * 0.6],
-      [tr - brx * 1.16, by + bry * 0.82], [tr + 1.0, by + bry * 0.5]
-    ]});
-    S.push({ k: 'M', t: 'poly', p: [
-      [tr - brx * 0.3, by + bry * 0.5], [tr - brx * 1.2, by + bry * 0.78],
-      [tr - brx * 1.34, by + bry * 0.6], [tr - brx * 0.55, by + bry * 0.38]
-    ]});   // subtle underside shade
-  }
-  // tiny TUCKED legs (small claw nubs only — it's a FLYING dragon now)
-  S.push({ k: 'M', t: 'ell', p: [bx - brx * 0.28, by + bry * 0.82, 1.4, 1.6] });
-  S.push({ k: 'M', t: 'ell', p: [bx + brx * 0.34, by + bry * 0.78, 1.4, 1.6] });
-  S.push({ k: 'D', t: 'tri', p: [[bx - brx * 0.28 - 1, by + bry * 1.45], [bx - brx * 0.28, by + bry * 1.05], [bx - brx * 0.28 + 1, by + bry * 1.45]] });
-  S.push({ k: 'D', t: 'tri', p: [[bx + brx * 0.34 - 1, by + bry * 1.4], [bx + brx * 0.34, by + bry * 1.0], [bx + brx * 0.34 + 1, by + bry * 1.4]] });
-  // body + belly
+  const bx = 34, by = 26.5, brx = 13, bry = 5.3;            // body (low, long)
+  const hx = 55.5, hy = 22.0, hr = 7.6;                     // head (forward-right, slightly up)
+  const sx = hx + hr * 0.72, sy = hy + hr * 0.5;            // snout tip
+  const sh = [bx + brx * 0.52, by - bry * 0.7];             // shoulder
+
+  // FAR wing (behind, darkest) for depth
+  { const W = [bx - brx * 0.02, by - bry * 2.9 + lift * 0.7], T = [bx - brx * 0.78, by - bry * 3.7 + lift];
+    S.push({ k: 'k', t: 'poly', p: [[sh[0] - 1.4, sh[1]], W, T, [bx - brx * 1.0, by - bry * 1.3 + lift * 0.4], [bx - brx * 0.05, by - bry * 0.2]] }); }
+
+  // TAIL — taper left, cream fin-spikes on top, fish-tail cluster at the tip
+  { const tr = bx - brx * 0.92, ty = by, tip = [tr - brx * 1.42, by + bry * 0.8];
+    S.push({ k: 'B', t: 'poly', p: [[tr, ty - bry * 0.5], [tr - brx * 0.86, by - bry * 0.05], [tip[0] + 0.5, tip[1] - 1.0], [tip[0] + 0.5, tip[1] + 0.8], [tr - brx * 0.78, by + bry * 0.72], [tr, ty + bry * 0.55]] });
+    S.push({ k: 'M', t: 'poly', p: [[tr - brx * 0.24, ty + bry * 0.3], [tr - brx * 0.86, by + bry * 0.52], [tip[0] + 0.6, tip[1] + 0.5], [tip[0] + 1.8, tip[1] - 0.3]] });
+    const fb = [[tr - 0.6, ty - bry * 0.42], [tr - brx * 0.5, by - bry * 0.26], [tr - brx * 1.0, by - bry * 0.02], [tr - brx * 1.46, by + bry * 0.32]];
+    fb.forEach((p, i) => { const h = 3.2 - i * 0.35; S.push({ k: 'C', t: 'tri', p: [[p[0] - 0.9, p[1] + 0.4], [p[0] + 1.1, p[1] - h], [p[0] + 1.5, p[1] + 0.6]] }); });
+    S.push({ k: 'C', t: 'tri', p: [[tip[0] + 1.5, tip[1] - 0.4], [tip[0] - 3.0, tip[1] - 2.9], [tip[0] - 0.3, tip[1] - 0.6]] });
+    S.push({ k: 'C', t: 'tri', p: [[tip[0] + 1.5, tip[1] + 0.2], [tip[0] - 3.4, tip[1] + 0.4], [tip[0] - 0.2, tip[1] + 1.2]] });
+    S.push({ k: 'M', t: 'tri', p: [[tip[0] + 1.3, tip[1] - 0.2], [tip[0] - 1.3, tip[1] - 0.6], [tip[0] - 1.0, tip[1] + 0.5]] }); }
+
+  // FAR legs (tucked, darker, bent)
+  [[-0.42, -1], [0.6, 1]].forEach(d => { const hipx = bx + brx * d[0], hy0 = by + bry * 0.8;
+    S.push({ k: 'M', t: 'poly', p: [[hipx, hy0], [hipx + d[1] * 1.3, hy0 + bry * 1.05], [hipx + d[1] * 2.1, hy0 + bry * 0.95], [hipx + d[1] * 0.85, hy0 + bry * 1.95], [hipx + d[1] * 1.45, hy0 + bry * 2.0], [hipx + d[1] * 2.7, hy0 + bry * 0.85], [hipx + d[1] * 1.25, hy0 - bry * 0.1]] }); });
+
+  // BODY
   S.push({ k: 'B', t: 'ell', p: [bx, by, brx, bry] });
-  S.push({ k: 'M', t: 'ell', p: [bx, by + bry * 0.45, brx * 0.85, bry * 0.55] });
-  S.push({ k: 'b', t: 'ell', p: [bx + brx * 0.06, by + bry * 0.5, brx * 0.62, bry * 0.5] });
-  // neck + head
-  S.push({ k: 'B', t: 'ell', p: [(bx + hx) / 2 + 1, (by + hy) / 2, 3.0, Math.abs(by - hy) / 2 + 2.2] });
-  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr, hr * 0.97] });
-  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.36, hy - hr * 0.4, hr * 0.5, hr * 0.36] });
-  S.push({ k: 'B', t: 'ell', p: [sx - hr * 0.06, sy + hr * 0.04, hr * 0.56, hr * 0.48] });   // blunt reptilian muzzle (not a beak)
-  S.push({ k: 'L', t: 'ell', p: [sx - hr * 0.16, sy - hr * 0.2, hr * 0.34, hr * 0.18] });    // nose-bridge highlight
-  // horns
-  // horns — two swept-back horns: a distinct far horn (darker, behind) + a prominent near horn
-  S.push({ k: 'H', t: 'poly', p: [[hx - hr * 0.04, hy - hr * 0.56], [hx - hr * 0.82, hy - hr * 1.12], [hx - hr * 0.62, hy - hr * 1.2], [hx + hr * 0.2, hy - hr * 0.5]] });   // far horn
-  S.push({ k: 'h', t: 'poly', p: [[hx + hr * 0.16, hy - hr * 0.58], [hx - hr * 0.58, hy - hr * 1.3], [hx - hr * 0.34, hy - hr * 1.36], [hx + hr * 0.44, hy - hr * 0.5]] });   // near horn
-  S.push({ k: 'L', t: 'tri', p: [[hx + hr * 0.3, hy - hr * 0.56], [hx - hr * 0.48, hy - hr * 1.28], [hx - hr * 0.3, hy - hr * 1.32]] });   // near-horn highlight
-  // eye (sizes from P.eyeK / P.pupK so variants can be compared)
-  const eK = P.eyeK || 1, pK = P.pupK || 1;
-  S.push({ k: 'e', t: 'ell', p: [ex, ey, hr * 0.46 * eK, hr * 0.52 * eK] });
-  S.push({ k: 'p', t: 'ell', p: [ex + hr * 0.16, ey + hr * 0.16, hr * 0.27 * pK, hr * 0.32 * pK] });
-  S.push({ k: 'n', t: 'rect', p: [sx + hr * 0.34, sy - hr * 0.12, 1.0, 1.0] });   // nostril
-  // CLOSED reptilian mouth — a dark lip line along the lower muzzle (curving up at the
-  // back, NOT a beak split) + clear white fangs poking DOWN from the upper lip.
-  S.push({ k: 'o', t: 'poly', p: [[sx + hr * 0.52, sy + hr * 0.3], [sx + hr * 0.52, sy + hr * 0.4], [sx - hr * 0.14, sy + hr * 0.46], [sx - hr * 0.18, sy + hr * 0.36]] });   // lip line
-  S.push({ k: 'f', t: 'poly', p: [[sx + hr * 0.44, sy + hr * 0.36], [sx + hr * 0.38, sy + hr * 0.66], [sx + hr * 0.5, sy + hr * 0.52]] });   // front fang (big, clear)
-  S.push({ k: 'f', t: 'poly', p: [[sx + hr * 0.24, sy + hr * 0.4], [sx + hr * 0.19, sy + hr * 0.64], [sx + hr * 0.31, sy + hr * 0.54]] });   // second fang
-  // near wing — SIDE PROFILE, FULL & refined: a leading-edge arm rises from the shoulder
-  // to the tip; a BROAD membrane sail trails behind with gentle scallops + finger struts.
-  {
-    const S0 = [bx + brx * 0.3, by - bry * 0.22];                 // shoulder joint
-    const W0 = [bx - brx * 0.28, by - bry * 1.85 + lift * 0.8];   // wrist (mid leading edge)
-    const T0 = [bx - brx * 0.66, by - bry * 2.45 + lift];         // wing tip
-    const e1 = [bx - brx * 1.02, by - bry * 1.42 + lift * 0.55];  // broad trailing edge (out & back)
-    const e2 = [bx - brx * 0.6, by - bry * 0.52 + lift * 0.25];
-    const e3 = [bx - brx * 0.08, by - bry * 0.05];               // trailing edge meeting the back
-    S.push({ k: 'w', t: 'poly', p: [S0, W0, T0, e1, e2, e3] });   // broad membrane sail
-    S.push({ k: 'W', t: 'poly', p: [S0, W0, T0, e1, [(e1[0] + e2[0]) / 2, (e1[1] + e2[1]) / 2]] });  // lit membrane
-    S.push({ k: 'D', t: 'poly', p: [[S0[0] - 0.5, S0[1] - 0.4], [W0[0] - 0.5, W0[1] - 0.4], [T0[0], T0[1]], [T0[0] + 1.0, T0[1] + 0.9], [W0[0] + 0.6, W0[1] + 0.7], [S0[0] + 0.7, S0[1] + 0.6]] });  // leading-edge arm
-    S.push({ k: 'D', t: 'tri', p: [[W0[0], W0[1]], e1, [W0[0] + 0.8, W0[1] + 0.9]] });  // finger strut
-    S.push({ k: 'D', t: 'tri', p: [[W0[0], W0[1]], e2, [W0[0] + 0.8, W0[1] + 0.9]] });  // finger strut
-  }
+  S.push({ k: 'K', t: 'poly', p: [[bx - brx * 1.0, by - bry * 0.05], [bx - brx * 0.55, by - bry * 0.82], [bx + brx * 0.55, by - bry * 0.88], [bx + brx * 1.0, by - bry * 0.02], [bx + brx * 0.55, by - bry * 0.3], [bx - brx * 0.5, by - bry * 0.26]] });   // dark back
+  S.push({ k: 'L', t: 'ell', p: [bx + brx * 0.08, by + bry * 0.54, brx * 0.82, bry * 0.5] });   // belly light
+  S.push({ k: 'M', t: 'ell', p: [bx - brx * 0.12, by + bry * 0.68, brx * 0.6, bry * 0.3] });    // belly shade
+  [-0.5, -0.16, 0.18, 0.5].forEach(fx => { S.push({ k: 'C', t: 'tri', p: [[bx + brx * fx - 0.9, by - bry * 0.78], [bx + brx * fx, by - bry * 1.32], [bx + brx * fx + 0.9, by - bry * 0.78]] }); });   // back ridge
+
+  // NEAR legs (bent running) + claws
+  { S.push({ k: 'B', t: 'poly', p: [[bx - brx * 0.32, by + bry * 0.6], [bx - brx * 0.58, by + bry * 1.5], [bx - brx * 0.86, by + bry * 1.4], [bx - brx * 0.96, by + bry * 2.15], [bx - brx * 0.58, by + bry * 2.25], [bx - brx * 0.42, by + bry * 1.5], [bx - brx * 0.04, by + bry * 0.95]] });
+    S.push({ k: 'k', t: 'tri', p: [[bx - brx * 1.0, by + bry * 2.1], [bx - brx * 1.32, by + bry * 2.58], [bx - brx * 0.62, by + bry * 2.48]] });
+    S.push({ k: 'B', t: 'poly', p: [[bx + brx * 0.6, by + bry * 0.55], [bx + brx * 0.86, by + bry * 1.4], [bx + brx * 1.2, by + bry * 1.3], [bx + brx * 1.32, by + bry * 2.1], [bx + brx * 0.98, by + bry * 2.2], [bx + brx * 0.8, by + bry * 1.45], [bx + brx * 0.86, by + bry * 0.7]] });
+    S.push({ k: 'k', t: 'tri', p: [[bx + brx * 0.94, by + bry * 2.05], [bx + brx * 1.5, by + bry * 2.45], [bx + brx * 1.34, by + bry * 2.62]] }); }
+
+  // NECK + HEAD
+  S.push({ k: 'B', t: 'poly', p: [[sh[0] - 1.6, sh[1] + 1.0], [hx - hr * 0.84, hy - hr * 0.3], [hx - hr * 0.28, hy + hr * 0.55], [sh[0] + 0.8, sh[1] + 2.8]] });
+  S.push({ k: 'K', t: 'poly', p: [[sh[0] - 1.6, sh[1] + 0.5], [hx - hr * 0.9, hy - hr * 0.48], [hx - hr * 0.52, hy - hr * 0.04], [sh[0] - 0.2, sh[1] + 1.4]] });   // dark nape
+  S.push({ k: 'B', t: 'ell', p: [hx, hy, hr, hr * 0.88] });
+  S.push({ k: 'K', t: 'poly', p: [[hx - hr * 0.92, hy - hr * 0.16], [hx - hr * 0.2, hy - hr * 0.72], [hx + hr * 0.46, hy - hr * 0.48], [hx - hr * 0.28, hy - hr * 0.06]] });   // dark crown
+  S.push({ k: 'L', t: 'ell', p: [hx - hr * 0.1, hy + hr * 0.46, hr * 0.64, hr * 0.4] });   // cheek light
+  S.push({ k: 'B', t: 'ell', p: [sx - hr * 0.4, sy - hr * 0.04, hr * 0.58, hr * 0.44] });   // muzzle
+  S.push({ k: 'L', t: 'ell', p: [sx - hr * 0.48, sy - hr * 0.26, hr * 0.3, hr * 0.17] });   // nose bridge
+  S.push({ k: 'n', t: 'rect', p: [sx + hr * 0.08, sy - hr * 0.06, 1.1, 1.1] });             // nostril
+  S.push({ k: 'o', t: 'poly', p: [[sx + hr * 0.08, sy + hr * 0.34], [sx + hr * 0.08, sy + hr * 0.46], [sx - hr * 0.92, sy + hr * 0.5], [sx - hr * 0.92, sy + hr * 0.38]] });   // mouth line
+
+  // EYE + brow
+  const ex = hx + hr * 0.26, ey = hy - hr * 0.02;
+  S.push({ k: 'o', t: 'poly', p: [[ex - hr * 0.5, ey - hr * 0.5], [ex + hr * 0.5, ey - hr * 0.64], [ex + hr * 0.5, ey - hr * 0.44], [ex - hr * 0.5, ey - hr * 0.32]] });   // brow
+  S.push({ k: 'e', t: 'ell', p: [ex, ey, hr * 0.4, hr * 0.46] });
+  S.push({ k: 'p', t: 'ell', p: [ex + hr * 0.1, ey + hr * 0.1, hr * 0.27, hr * 0.32] });
+  S.push({ k: 'g', t: 'ell', p: [ex - hr * 0.12, ey - hr * 0.14, hr * 0.11, hr * 0.13] });
+
+  // NEAR wing — dark membrane + cream radiating bones + scalloped trailing edge
+  { const S0 = [sh[0] - 0.4, sh[1] + 0.7];
+    const W0 = [bx - brx * 0.04, by - bry * 3.4 + lift * 0.82];
+    const T0 = [bx - brx * 0.72, by - bry * 4.4 + lift];
+    const f1 = [bx - brx * 1.1, by - bry * 2.8 + lift * 0.5];
+    const f2 = [bx - brx * 0.96, by - bry * 1.5 + lift * 0.26];
+    const f3 = [bx - brx * 0.58, by - bry * 0.46 + lift * 0.06];
+    const f4 = [bx + brx * 0.46, by - bry * 0.12];
+    const c1 = [(W0[0] + f1[0]) / 2 + 1.0, (W0[1] + f1[1]) / 2 + 1.2];
+    const c2 = [(W0[0] + f2[0]) / 2 + 1.5, (W0[1] + f2[1]) / 2 + 1.1];
+    const c3 = [(W0[0] + f3[0]) / 2 + 1.7, (W0[1] + f3[1]) / 2 + 0.85];
+    const c4 = [(W0[0] + f4[0]) / 2 + 1.1, (W0[1] + f4[1]) / 2 + 0.5];
+    S.push({ k: 'K', t: 'poly', p: [S0, W0, T0, f1, c1, f2, c2, f3, c3, f4, c4] });   // dark membrane (scalloped)
+    const u1 = [W0[0] * 0.55 + T0[0] * 0.45, W0[1] * 0.55 + T0[1] * 0.45 + 1.4];
+    const u2 = [S0[0] * 0.5 + W0[0] * 0.5 + 0.8, S0[1] * 0.5 + W0[1] * 0.5 + 1.6];
+    S.push({ k: 'B', t: 'poly', p: [S0, W0, T0, u1, u2] });                            // cream upper band
+    S.push({ k: 'L', t: 'poly', p: [S0, W0, T0, [(T0[0] + u1[0]) / 2, (T0[1] + u1[1]) / 2], [(S0[0] + u2[0]) / 2, (S0[1] + u2[1]) / 2]] });   // highlight
+    [f1, f2, f3, f4].forEach(f => { S.push({ k: 'C', t: 'tri', p: [[W0[0], W0[1]], [f[0], f[1]], [f[0] + 0.95, f[1] + 0.85]] }); });   // cream bones
+    S.push({ k: 'C', t: 'poly', p: [[S0[0] - 0.5, S0[1] - 0.4], [W0[0] - 0.5, W0[1] - 0.4], [T0[0] + 0.2, T0[1] + 0.2], [T0[0] + 1.0, T0[1] + 0.9], [W0[0] + 0.6, W0[1] + 0.7], [S0[0] + 0.6, S0[1] + 0.5]] }); }   // leading-edge bone
+
+  // CREST mane (bright, drawn on top) + nape + jaw barbel
+  { const cx0 = hx - hr * 0.04, cy0 = hy - hr * 0.72;
+    const fan = [[1.0, -2.0], [0.6, -2.5], [0.16, -2.85], [-0.32, -2.9], [-0.82, -2.65], [-1.34, -2.28], [-1.86, -1.82]];
+    fan.forEach(d => { const ox = cx0 + d[0] * hr * 0.22, oy = cy0 + Math.max(0, -d[0]) * 0.18; const tx = ox + d[0] * 1.9, ty = oy + d[1] * 1.7;
+      S.push({ k: 'C', t: 'tri', p: [[ox - 1.05, oy + 0.7], [tx, ty], [ox + 1.15, oy + 0.6]] }); });
+    [[hx - hr * 1.02, hy - hr * 0.24, 3.0], [hx - hr * 1.5, hy - hr * 0.0, 2.6]].forEach(p => { S.push({ k: 'C', t: 'tri', p: [[p[0] + 0.8, p[1] + 0.55], [p[0] - p[2] * 0.7, p[1] - p[2]], [p[0] - 0.3, p[1] - 0.1]] }); });
+    S.push({ k: 'C', t: 'tri', p: [[hx - hr * 0.44, hy + hr * 0.78], [hx - hr * 1.12, hy + hr * 1.12], [hx - hr * 0.38, hy + hr * 1.08]] }); }
   return S;
 }
 function _rcCover(s, gx, gy) { const cx = gx + 0.5, cy = gy + 0.5; return s.t === 'ell' ? _rcInEll(cx, cy, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'rect' ? _rcInRect(cx, cy, s.p[0], s.p[1], s.p[2], s.p[3]) : s.t === 'poly' ? _rcInPoly(cx, cy, s.p) : _rcInTri(cx, cy, s.p[0], s.p[1], s.p[2]); }
@@ -284,15 +302,148 @@ function _rcBuildGrid(P, legDX) {
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { if (g[y][x] == null && (fil(x - 1, y) || fil(x + 1, y) || fil(x, y - 1) || fil(x, y + 1))) og[y][x] = 'o'; }
   return og;
 }
-const _RC_FLAP = [0.12, 0.5, 0.92, 0.5];   // wing-flap cycle: down → mid → up → mid
-const RC_DRAGON_FRAMES = _RC_FLAP.map(f => _rcBuildGrid(RC_DRG.P, f));
-function _rcDragonPal(base) {
-  // Natural (distinguishable) base colours, but keep the "pop": brighter highlights
-  // + a deep-violet outline. The luminous halo (drawn separately) carries the glow.
-  const b0 = base || '#8a8a8a';
-  return { 'o': '#201425', 'D': rcShade(b0, -46), 'M': rcShade(b0, -20), 'B': b0, 'L': rcShade(b0, 40), 'b': rcShade(b0, 82), 'h': '#f1e8cf', 'H': rcShade('#f1e8cf', -42), 'w': rcShade(b0, -6), 'W': rcShade(b0, 36), 'e': '#ffffff', 'p': '#2b39c8', 'f': '#ffffff', 'm': '#4a1018', 'n': '#201425' };
+// ---------------------------------------------------------------------------
+// The dragon sprite is a TRACE of the reference art (images/dragon_ref/ref.png),
+// digitised at load into a key-grid, then recoloured per dragon. We ship the PNG
+// and trace it in-browser (Canvas getImageData) so the sprite is the real reference
+// shape, not an approximation. RC_DRAGON_FRAMES stays null until the trace finishes.
+// ---------------------------------------------------------------------------
+let RC_DRAGON_FRAMES = null;
+
+// Canonical palette of the reference art. Recolouring hue-rotates this ramp to each
+// dragon's colour while preserving the reference's light/shadow STRUCTURE, so every
+// dragon is a faithful tonal twin of the original in its own hue.
+const _RC_REF = { C: '#fff0c0', B: '#ffd8a8', M: '#d89030', D: '#a86000', K: '#484848', k: '#303030', o: '#181818', e: '#ffffff', p: '#181818' };
+function _rcHsl(hex) { const c = rcHexToRgb(hex); let r = c.r / 255, g = c.g / 255, b = c.b / 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0, s = 0, l = (mx + mn) / 2; if (d) { s = d / (1 - Math.abs(2 * l - 1)); h = mx === r ? (((g - b) / d) % 6) : mx === g ? ((b - r) / d + 2) : ((r - g) / d + 4); h *= 60; if (h < 0) h += 360; } return { h: h, s: s, l: l }; }
+function _rcHh(v) { return ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2); }
+function _rcHslHex(h, s, l) { h = ((h % 360) + 360) % 360; const c = (1 - Math.abs(2 * l - 1)) * s, X = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2; let r, g, b; if (h < 60) { r = c; g = X; b = 0; } else if (h < 120) { r = X; g = c; b = 0; } else if (h < 180) { r = 0; g = c; b = X; } else if (h < 240) { r = 0; g = X; b = c; } else if (h < 300) { r = X; g = 0; b = c; } else { r = c; g = 0; b = X; } return '#' + _rcHh((r + m) * 255) + _rcHh((g + m) * 255) + _rcHh((b + m) * 255); }
+const _RC_REF_BL = _rcHsl(_RC_REF.B).l;
+function _rcLighten(hex, dl) { const h = _rcHsl(hex); return _rcHslHex(h.h, h.s * (1 - dl * 0.35), Math.min(0.98, h.l + dl)); }
+function _rcDragonPal(base, bright) {
+  const b0 = base || '#8a8a8a', bb = _rcHsl(b0), bh = bb.h, bs = bb.s, bl = bb.l;
+  const warm = rk => { const h = _rcHsl(rk); return _rcHslHex(bh, Math.min(1, h.s * bs * 1.5), Math.max(0.06, Math.min(0.97, h.l + (bl - _RC_REF_BL) * 0.55))); };
+  const dark = rk => { const h = _rcHsl(rk); return _rcHslHex(bh, Math.min(0.6, 0.08 + 0.3 * bs), Math.max(0.08, Math.min(0.5, h.l + (bl - _RC_REF_BL) * 0.25))); };
+  const p = {
+    // outline: a soft, slightly hue-tinted dark instead of pure black, so the edge reads
+    // less harsh/"黒い" and stays cohesive with each dragon's colour
+    'o': _rcHslHex(bh, Math.min(0.3, bs * 0.35), 0.15), 'e': _RC_REF.e, 'p': _rcHslHex(bh, Math.min(0.35, bs * 0.4), 0.16),
+    'C': warm(_RC_REF.C), 'B': warm(_RC_REF.B), 'M': warm(_RC_REF.M), 'D': warm(_RC_REF.D),
+    'K': dark(_RC_REF.K), 'k': dark(_RC_REF.k)
+  };
+  // When the sprite is shrunk (in-race), its dark cells (outline + charcoal wing) blend and
+  // read heavier/blacker than the big view. Lift ONLY the dark keys so the black density drops
+  // while the colour ramp (C/B/M/D) stays exactly as the large view — i.e. colours unchanged.
+  if (bright) {
+    p['o'] = _rcLighten(p['o'], 0.20);   // outline — lift the harsh black most
+    p['p'] = _rcLighten(p['p'], 0.18);   // pupil
+    p['k'] = _rcLighten(p['k'], 0.15);   // charcoal wing (dark)
+    p['K'] = _rcLighten(p['K'], 0.15);   // charcoal wing (mid)
+  }
+  return p;
+}
+// classify one averaged cell colour into a recolour key (mirrors the offline trace)
+function _rcClassify(r, g, b) {
+  const br = (r + g + b) / 3, mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx - mn;
+  if (br < 46) return 'o';
+  const warm = (r - b) > 26 && r >= g - 8;
+  if (!warm && sat < 32) { if (br >= 224) return 'e'; return br < 60 ? 'k' : 'K'; }
+  if (br >= 224) return 'C'; if (br >= 170) return 'B'; if (br >= 104) return 'M'; return 'D';
+}
+// Build a gentle wing-beat cycle from one traced pose: the region ABOVE the back-line
+// (the wing) is scaled vertically toward a pivot at the back, so the wing dips & lifts
+// while the body/head/tail stay put. Inverse row-mapping = no gaps/holes. The head sits
+// below the pivot so it never bobs from the flap.
+function _rcBuildFlapFrames(base, GW, GH) {
+  const yp = Math.round(GH * 0.62);                 // pivot ≈ wing root / back-line (head is below this)
+  const sUp = [1.0, 0.86, 0.72, 0.86];             // spread → dip → spread (bigger downstroke wing-beat)
+  return sUp.map(s => {
+    if (s === 1) return base;
+    const out = []; for (let y = 0; y < GH; y++) out.push(new Array(GW).fill(null));
+    for (let y = 0; y < GH; y++) {
+      const r = Math.round(y < yp ? yp + (y - yp) / s : y);
+      if (r < 0 || r >= GH) continue;
+      const src = base[r], dst = out[y];
+      for (let x = 0; x < GW; x++) dst[x] = src[x];
+    }
+    return out;
+  });
+}
+// trace the reference PNG → key-grid; set RC_DRG dims/anchor/eye + RC_DRAGON_FRAMES
+function _rcLoadTracedDragon() {
+  const img = new Image();
+  img.onload = function () { try {
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    const D = x.getImageData(0, 0, W, H).data, bg = o => D[o + 3] < 30;
+    const colC = new Int32Array(W), rowC = new Int32Array(H);
+    for (let y = 0; y < H; y++) for (let xx = 0; xx < W; xx++) { const o = (y * W + xx) * 4; if (!bg(o)) { colC[xx]++; rowC[y]++; } }
+    let minx = 0; while (minx < W && colC[minx] < 4) minx++; let maxx = W - 1; while (maxx > 0 && colC[maxx] < 4) maxx--;
+    let miny = 0; while (miny < H && rowC[miny] < 4) miny++; let maxy = H - 1; while (maxy > 0 && rowC[maxy] < 4) maxy--;
+    const bw = maxx - minx + 1, bh = maxy - miny + 1, GW = 150, GH = Math.max(1, Math.round(GW * bh / bw)), grid = [];
+    for (let gy = 0; gy < GH; gy++) { const row = new Array(GW).fill(null);
+      for (let gx = 0; gx < GW; gx++) {
+        const x0 = minx + Math.floor(gx * bw / GW); let x1 = minx + Math.floor((gx + 1) * bw / GW); if (x1 <= x0) x1 = x0 + 1;
+        const y0 = miny + Math.floor(gy * bh / GH); let y1 = miny + Math.floor((gy + 1) * bh / GH); if (y1 <= y0) y1 = y0 + 1;
+        const hh = {}; let tot = 0, nb = 0, best = null, bestN = 0;
+        for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) { const o = (yy * W + xx) * 4; tot++; if (bg(o)) continue; nb++;
+          const q = (D[o] >> 4) + ',' + (D[o + 1] >> 4) + ',' + (D[o + 2] >> 4); let e = hh[q]; if (!e) { e = hh[q] = { n: 0, r: 0, g: 0, b: 0 }; } e.n++; e.r += D[o]; e.g += D[o + 1]; e.b += D[o + 2]; if (e.n > bestN) { bestN = e.n; best = e; } }
+        if (tot === 0 || nb / tot < 0.35) continue;
+        row[gx] = _rcClassify(best.r / best.n, best.g / best.n, best.b / best.n);
+      }
+      grid.push(row);
+    }
+    let sx = 0, sn = 0, lowest = 0, exs = 0, eys = 0, en = 0;
+    for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) { const k = grid[gy][gx]; if (!k) continue; sx += gx; sn++; if (gy > lowest) lowest = gy; if (k === 'e') { exs += gx; eys += gy; en++; } }
+    RC_DRG.GW = GW; RC_DRG.GH = GH; RC_DRG.anchorX = Math.round(sx / sn); RC_DRG.anchorY = lowest - 2;
+    RC_DRG.eyeX = en ? Math.round(exs / en) : Math.round(sx / sn); RC_DRG.eyeY = en ? Math.round(eys / en) : Math.round(GH * 0.5);
+    for (const k in _rcFrameCache) delete _rcFrameCache[k];   // any colours cached from a stale grid
+    RC_DRAGON_FRAMES = _rcBuildFlapFrames(grid, GW, GH);
+  } catch (e) { _rcFallbackDragon(); } };
+  img.onerror = function () { _rcFallbackDragon(); };
+  img.src = 'images/dragon_ref/ref.png';
+}
+// minimal silhouette fallback so dragons still render if the trace can't run
+function _rcFallbackDragon() {
+  const GW = 60, GH = 34; RC_DRG.GW = GW; RC_DRG.GH = GH; RC_DRG.anchorX = 30; RC_DRG.anchorY = 24; RC_DRG.eyeX = 44; RC_DRG.eyeY = 15;
+  const g = []; for (let y = 0; y < GH; y++) { const row = new Array(GW).fill(null); for (let x = 0; x < GW; x++) { const dx = (x - 28) / 22, dy = (y - 18) / 8; if (dx * dx + dy * dy <= 1) row[x] = dy < -0.1 ? 'K' : 'B'; } g.push(row); }
+  for (const k in _rcFrameCache) delete _rcFrameCache[k];
+  RC_DRAGON_FRAMES = [g];
+}
+// Per-colour frame cache: rasterise each dragon colour's 4 wing-beat frames to a tiny
+// offscreen canvas ONCE, then blit (crisp, nearest-neighbour). Keeps the larger grid
+// cheap even with a full field on a phone.
+const _rcFrameCache = Object.create(null);
+function _rcFrameFor(color, fi, bright) {
+  const ckey = (color || '#8a8a8a') + (bright ? '!' : '');     // brightened variant cached separately
+  let arr = _rcFrameCache[ckey]; if (!arr) arr = _rcFrameCache[ckey] = [];
+  let cv = arr[fi];
+  if (!cv) {
+    const pal = _rcDragonPal(color, bright), grid = RC_DRAGON_FRAMES[fi], GW = RC_DRG.GW, GH = RC_DRG.GH;
+    cv = document.createElement('canvas'); cv.width = GW; cv.height = GH;
+    const x = cv.getContext('2d');
+    for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) { const k = grid[gy][gx]; if (!k) continue; x.fillStyle = pal[k]; x.fillRect(gx, gy, 1, 1); }
+    arr[fi] = cv;
+  }
+  return cv;
+}
+_rcLoadTracedDragon();   // kick off the reference trace at load (async; populates RC_DRAGON_FRAMES)
+// Per-dragon BUILD: a stable, distinct physique (length × height × overall size) derived from
+// the dragon's colour, so each reads as its own body-type even sharing the traced base shape.
+// (Procedural v1 — richer per-body silhouettes can be added later as extra traced archetypes.)
+const _rcBuildCache = Object.create(null);
+const _RC_NOBUILD = { sx: 1, sy: 1, sz: 1 };
+function _rcBuildFor(color) {
+  const key = color || '#8a8a8a';
+  let b = _rcBuildCache[key];
+  if (!b) {
+    let h = 2166136261; for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    const rnd = () => { h = (Math.imul(h, 1103515245) + 12345) >>> 0; return h / 4294967296; };
+    b = _rcBuildCache[key] = { sx: 0.91 + rnd() * 0.19, sy: 0.92 + rnd() * 0.16, sz: 0.96 + rnd() * 0.08 };  // length / height / size
+  }
+  return b;
 }
 function rcDrawDragonPixel(ctx, o) {
+  if (!RC_DRAGON_FRAMES) return;   // trace not ready yet (a few ms at startup)
   let fi;
   if (o.grounded) {
     fi = 0;                                          // wings folded down — a GROUNDED stance (walking, not flying)
@@ -300,9 +451,11 @@ function rcDrawDragonPixel(ctx, o) {
     fi = Math.floor((o.gait || 0) / (Math.PI / 2)) % RC_DRAGON_FRAMES.length;
     if (fi < 0) fi += RC_DRAGON_FRAMES.length;
   }
-  const grid = RC_DRAGON_FRAMES[fi];
-  const pal = _rcDragonPal(o.color || '#8a8a8a');
   const pxc = (o.scale || 1) * RC_DRG.px;
+  const b = o.noBuild ? _RC_NOBUILD : _rcBuildFor(o.color);
+  const wsc = pxc * b.sz * b.sx, hsc = pxc * b.sz * b.sy;   // per-dragon build (length × height × size)
+  const down = wsc < 0.96;                                  // shrinking (in-race) → smooth + use the brightened palette
+  const frame = _rcFrameFor(o.color || '#8a8a8a', fi, down);
   const bob = o.grounded
     ? Math.abs(Math.sin(o.gait || 0)) * 0.5          // small grounded step-bounce (a walk)
     : Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);   // gentle floating (flight)
@@ -330,11 +483,13 @@ function rcDrawDragonPixel(ctx, o) {
     ag.addColorStop(0, rcRgba(o.color || '#fff', 0.9)); ag.addColorStop(1, rcRgba(o.color || '#fff', 0));
     ctx.fillStyle = ag; ctx.beginPath(); ctx.ellipse(0, -8 * pxc, 26, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
-  const ox = -RC_DRG.anchorX * pxc, oy = -RC_DRG.anchorY * pxc, GW = RC_DRG.GW, GH = RC_DRG.GH;
-  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
-    const k = grid[y][x]; if (!k) continue;
-    ctx.fillStyle = pal[k]; ctx.fillRect(Math.round(ox + x * pxc), Math.round(oy + y * pxc), Math.ceil(pxc), Math.ceil(pxc));
-  }
+  const ox = -RC_DRG.anchorX * wsc, oy = -RC_DRG.anchorY * hsc;
+  const sm = ctx.imageSmoothingEnabled;
+  // smooth when DOWN-scaling (in-race: 150px grid → ~80px) to kill the jagged/harsh edge;
+  // stay crisp when UP-scaling (dex/portraits) so big views keep their clean pixel look.
+  ctx.imageSmoothingEnabled = down;
+  ctx.drawImage(frame, ox, oy, RC_DRG.GW * wsc, RC_DRG.GH * hsc);
+  ctx.imageSmoothingEnabled = sm;
   ctx.restore();
 }
 
@@ -387,79 +542,73 @@ function rcSweatDrop(ctx, x, y, s, col) {
   ctx.beginPath(); ctx.arc(x - 0.5 * s, y, 0.5 * s, 0, Math.PI * 2); ctx.fill();
 }
 function rcMoodGlyph(ctx, x, y, ch, col, d) {
-  // a mood letter/symbol with a dark halo so it pops on the busy track
-  ctx.font = "bold " + (11 * d).toFixed(1) + "px system-ui, sans-serif";
-  ctx.lineWidth = 2.4 * d; ctx.strokeStyle = "rgba(12,10,24,0.9)"; ctx.strokeText(ch, x, y);
+  // a mood symbol with a soft dark outline + a thin light rim so it reads cleanly (not flat text)
+  ctx.save();
+  ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = "900 " + (12 * d).toFixed(1) + "px 'Hiragino Maru Gothic ProN', 'Trebuchet MS', system-ui, sans-serif";
+  ctx.lineWidth = 3.2 * d; ctx.strokeStyle = "rgba(14,11,26,0.92)"; ctx.strokeText(ch, x, y);
+  ctx.lineWidth = 1.1 * d; ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.strokeText(ch, x, y);
   ctx.fillStyle = col; ctx.fillText(ch, x, y);
+  ctx.restore();
 }
-function rcDrawDragonFace(ctx, cx, cy, dep, mood, now) {
-  if (!mood || mood === "neutral") return;
-  const d = Math.max(0.85, dep), t = now / 600;
-  const ex = cx + 4.6 * d, ey = cy - 8.4 * d;                   // ≈ the sprite's eye
-  const sx = cx + 12.5 * d, sy = cy - 18 * d + Math.sin(t) * 1.4; // floating mood symbol
-  const INK = "#23142e";
+function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
+  if (!mood) return;
+  const d = Math.max(0.9, dep), t = now / 600;
+  const _b = _rcBuildFor(col);                                 // match the sprite's per-dragon build
+  const _k = RC_DRG.px * _RC_INRACE;                           // grid-cell → on-screen (in-race scale = _RC_INRACE·dep)
+  const ex = cx + (RC_DRG.eyeX - RC_DRG.anchorX) * _k * _b.sz * _b.sx * d, ey = cy + (RC_DRG.eyeY - RC_DRG.anchorY) * _k * _b.sz * _b.sy * d;  // the traced eye (build-adjusted)
+  const sx = ex + 1 * d, sy = ey - 13 * d + Math.sin(t) * 1.4;  // floating mood symbol above the head
+  const INK = "#2a2030", ER = 3.85 * d;                        // soft thin ink; ER = white radius (a little smaller again)
   ctx.save();
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineCap = "round"; ctx.lineJoin = "round";
+  // super-simple old-manga eye: a big white oval + a plain dark pupil + one tiny highlight + a thin
+  // delicate outline. No iris, no eyebrow, no eyelash — light and minimal.
+  function openEye(pxo, pyo, scl) {
+    const s = scl || 1, rx = ER, ry = ER * 1.16, pupR = ER * 0.27 * s;   // small pupil
+    const px = ex + (pxo == null ? 0.18 : pxo) * d, py = ey + (pyo == null ? 0.3 : pyo) * d;
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(px, py, pupR, 0, 6.2832); ctx.fill();   // a tiny solid-black dot (no highlight)
+    ctx.strokeStyle = INK; ctx.lineWidth = 0.8 * d; ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, 6.2832); ctx.stroke();
+  }
+  // a smooth, thin closed/squint eye arc (the eye itself — no lashes)
+  function lid(yoff, curve, w) { ctx.strokeStyle = INK; ctx.lineWidth = (w || 1.2) * d; ctx.beginPath(); ctx.moveTo(ex - ER, ey + yoff * d); ctx.quadraticCurveTo(ex, ey + (yoff + curve) * d, ex + ER, ey + yoff * d); ctx.stroke(); }
   if (mood === "joy") {
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
-    ctx.beginPath(); ctx.arc(ex, ey + 1.4 * d, 2.5 * d, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke(); // ^ happy eye
-    rcSparkle(ctx, sx, sy, 4.4 * d, "#fff0a0");
-    rcSparkle(ctx, sx + 5.5 * d, sy + 5 * d, 2.4 * d, "#fff7cf");
+    lid(0.4, -3.6, 1.2);                                                                  // ‿ happy closed eye (thin)
+    rcSparkle(ctx, sx, sy, 4.8 * d, "#fff0a0"); rcSparkle(ctx, sx + 5.5 * d, sy + 5 * d, 2.6 * d, "#fff7cf");
   } else if (mood === "effort") {
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.9 * d;
-    ctx.beginPath(); ctx.moveTo(ex - 2.2 * d, ey + 0.2 * d); ctx.lineTo(ex + 2.2 * d, ey + 1.2 * d); ctx.stroke();   // squint
-    ctx.beginPath(); ctx.moveTo(ex - 2.4 * d, ey - 3.0 * d); ctx.lineTo(ex + 1.8 * d, ey - 1.6 * d); ctx.stroke();   // brow
-    rcSweatDrop(ctx, sx, sy + 2 * d, 1.5 * d);
+    openEye(0.2, 0.7, 0.9);                                                               // determined, pupil low
+    rcSweatDrop(ctx, sx, sy + 2 * d, 1.8 * d);
   } else if (mood === "confused") {
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.5 * d;
-    ctx.beginPath();
-    for (let a = 0; a < Math.PI * 2.8; a += 0.45) { const r = 0.5 * d + a * 0.42 * d; const px = ex + Math.cos(a + t * 3) * r, py = ey + Math.sin(a + t * 3) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
-    ctx.stroke();
-    rcMoodGlyph(ctx, sx, sy, "?", "#ffd34d", d);
+    openEye(0.2, 0.3, 0.85);
+    rcMoodGlyph(ctx, sx, sy, "?", "#ffd86a", d * 1.2);
   } else if (mood === "tired") {
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.8 * d;
-    ctx.beginPath(); ctx.moveTo(ex - 2.4 * d, ey + 0.2 * d); ctx.lineTo(ex + 2.4 * d, ey + 0.2 * d); ctx.stroke();   // half-closed
-    rcSweatDrop(ctx, sx - 2.5 * d, sy + 3 * d, 1.25 * d);
-    rcSweatDrop(ctx, sx + 2 * d, sy + 1 * d, 1.0 * d);
+    lid(0.3, 2.0, 1.2);                                                                   // droopy half-lid (thin)
+    rcSweatDrop(ctx, sx - 2.5 * d, sy + 3 * d, 1.4 * d); rcSweatDrop(ctx, sx + 2 * d, sy + 1 * d, 1.15 * d);
   } else if (mood === "surprised") {
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, 2.2 * d, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex, ey, 1.15 * d, 0, Math.PI * 2); ctx.fill();
-    rcMoodGlyph(ctx, sx, sy, "!", "#ff9a9a", d);
+    openEye(0, 0.1, 0.9);                                                                 // wide eye
+    rcMoodGlyph(ctx, sx, sy, "!", "#ff9a9a", d * 1.25);
   } else if (mood === "serious") {
-    // 真剣 — sharp focused brow over a hard little eye (no comedic glyph)
-    ctx.strokeStyle = INK; ctx.lineWidth = 2.0 * d;
-    ctx.beginPath(); ctx.moveTo(ex - 2.8 * d, ey - 2.8 * d); ctx.lineTo(ex + 2.2 * d, ey - 1.1 * d); ctx.stroke(); // angled brow
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex + 0.2 * d, ey + 0.5 * d, 1.15 * d, 0, Math.PI * 2); ctx.fill(); // intense eye
-    rcSparkle(ctx, sx + 1 * d, sy + 1 * d, 2.0 * d, "#bfe3ff");                                                  // a cool focus glint
+    openEye(0.24, 0.34, 1.0);                                                             // focused (small dot) + glint
+    rcSparkle(ctx, sx + 1 * d, sy + 1 * d, 2.1 * d, "#bfe3ff");
   } else if (mood === "panic") {
-    // 焦り — wide darting eye, worried brow, flurry of sweat + ！？
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, 2.5 * d, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(ex + Math.sin(t * 5) * 0.7 * d, ey + 0.6 * d, 1.0 * d, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.4 * d;
-    ctx.beginPath(); ctx.moveTo(ex - 3.2 * d, ey - 3.4 * d); ctx.lineTo(ex - 0.4 * d, ey - 2.0 * d); ctx.stroke(); // worried brow
-    rcSweatDrop(ctx, sx - 3.2 * d, sy + 1.5 * d, 1.55 * d);
-    rcSweatDrop(ctx, sx + 1.2 * d, sy - 1 * d, 1.2 * d);
-    rcMoodGlyph(ctx, sx + 4 * d, sy + 3.2 * d, "!?", "#ff9a9a", d * 0.85);
+    openEye(Math.sin(t * 5) * 0.9, 0.5, 0.9);                                             // darting pupil
+    rcSweatDrop(ctx, sx - 3.2 * d, sy + 1.5 * d, 1.7 * d); rcSweatDrop(ctx, sx + 1.2 * d, sy - 1 * d, 1.3 * d);
+    rcMoodGlyph(ctx, sx + 4 * d, sy + 3.2 * d, "!?", "#ff9a9a", d * 1.0);
   } else if (mood === "relaxed") {
-    // 余裕・油断 — lazy half-lidded eye + a carefree ♪
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
-    ctx.beginPath(); ctx.arc(ex, ey - 1.3 * d, 2.4 * d, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke();            // relaxed ∪ eye
-    rcMoodGlyph(ctx, sx, sy, "♪", "#bdf3c6", d);
+    lid(-1.0, 3.3, 1.2);                                                                  // ⌣ content eye (thin)
+    rcMoodGlyph(ctx, sx, sy, "♪", "#bdf3c6", d * 1.2);
   } else if (mood === "spin") {
-    // dizzy (a gust spun it) — swirl eye + orbiting stars
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.4 * d;
-    ctx.beginPath();
-    for (let a = 0; a < Math.PI * 2.6; a += 0.4) { const r = 0.4 * d + a * 0.5 * d; const px = ex + Math.cos(a) * r, py = ey + Math.sin(a) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.8 * d; ctx.beginPath();
+    for (let a = 0; a < Math.PI * 2.6; a += 0.36) { const r = 0.5 * d + a * 0.62 * d; const px = ex + Math.cos(a) * r, py = ey + Math.sin(a) * r; if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
     ctx.stroke();
-    for (let i = 0; i < 3; i++) { const a = t * 4 + i * Math.PI * 2 / 3; rcSparkle(ctx, sx + Math.cos(a) * 5 * d, sy + Math.sin(a) * 3 * d, 1.9 * d, "#ffe06a"); }
+    for (let i = 0; i < 3; i++) { const a = t * 4 + i * 2.0944; rcSparkle(ctx, sx + Math.cos(a) * 5 * d, sy + Math.sin(a) * 3 * d, 2.0 * d, "#ffe06a"); }
   } else if (mood === "yawn") {
-    // sleepy — drooped closed eye + zzz
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.7 * d;
-    ctx.beginPath(); ctx.arc(ex, ey + 1.0 * d, 2.2 * d, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
-    ctx.font = "italic bold " + (8.5 * d).toFixed(1) + "px system-ui, sans-serif";
-    ctx.fillStyle = "rgba(185,205,255,0.95)";
+    lid(0.8, -2.7, 1.2);
+    ctx.font = "italic 900 " + (9 * d).toFixed(1) + "px system-ui, sans-serif"; ctx.fillStyle = "rgba(190,210,255,0.95)";
     ctx.fillText("z", sx, sy + 1 * d); ctx.fillText("z", sx + 4 * d, sy - 4.5 * d);
+  } else {
+    openEye();   // neutral — a clean, bright open eye so the dragon never looks blank in-race
   }
   ctx.restore();
 }
@@ -1800,7 +1949,7 @@ function startRaceCanvas(container, ctx) {
       // gait advance handled in update(); draw sprite (depth-scaled). Sized so
       // the whole field reads cleanly at the start without crowding/overlap.
       const dep = laneDepth(dr);
-      const sprScale = 0.66 * dep;
+      const sprScale = _RC_INRACE * dep;
       // per-dragon behavior (entrance walk-in / pre-start fidget / racing / post-goal)
       const beh = (S.entryT > 0) ? entranceBehaviorOf(dr)
                 : (S.preT > 0) ? prestartBehaviorOf(dr)
@@ -1861,7 +2010,7 @@ function startRaceCanvas(container, ctx) {
         if (_mood !== st.m && (urgent || _now - st.t >= 1.1)) { st.m = _mood; st.t = _now; }
         _mood = st.m;
       }
-      rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now());
+      rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);
       // bet reticle (player's pick)
       if (betSet.has(dr.id)) {
         cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;

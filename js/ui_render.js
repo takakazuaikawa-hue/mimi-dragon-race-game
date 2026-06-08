@@ -36,8 +36,8 @@ function updateHeader() {
 const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2,
-  story: 3, consult: 3, race_detail: 3,
-  race_run: 4, result: 5, analysis: 6
+  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3,
+  story_read: 4, race_run: 4, result: 5, analysis: 6
 };
 let _prevScreen = null;
 let _heroRect = null;   // rect of a tapped card, to expand from on the next screen
@@ -72,6 +72,21 @@ function beginScreen() {
   app.classList.add(cls);
   app.innerHTML = "";
   _prevScreen = screen;
+  // quick back button pinned at the very top of sub-pages (sticky), so you don't have to
+  // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
+  const TOP_BACK = {
+    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home",
+    life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
+  };
+  const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
+  const bt = BACK_TGT[TOP_BACK[screen]];
+  if (bt) {
+    const tb = el("div", "topback");
+    const b = el("button", "topback-btn", bt.l);
+    b.onclick = () => bt.f();
+    tb.appendChild(b);
+    app.appendChild(tb);
+  }
   return app;
 }
 
@@ -151,12 +166,28 @@ function renderTitle() {
       tctx.clearRect(0, 0, cv.width, cv.height);
       g += 0.11;
       rcDrawDragon(tctx, {
-        x: cv.width / 2, y: cv.height / 2 + Math.sin(g * 0.5) * 5, scale: 1.95,
+        x: cv.width / 2 + 7, y: cv.height / 2 + 28 + Math.sin(g * 0.5) * 5, scale: 1.9, noBuild: true,
         color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.5, glow: 0.6
       });
       requestAnimationFrame(frame);
     })();
   }
+}
+
+// Minimal-text nav: tapping a menu button opens a small description popup with
+// 進む（proceed）/ キャンセル, so the home stays uncluttered but every button explains itself.
+function showNavConfirm(icon, title, desc, onGo) {
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop");
+  box.innerHTML =
+    `<div class="navpop-ic">${icon}</div><div class="navpop-t">${title}</div><div class="navpop-d">${desc}</div>` +
+    `<div class="navpop-btns"><button class="navpop-cancel">キャンセル</button><button class="navpop-go">進む ▶</button></div>`;
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  box.querySelector(".navpop-cancel").onclick = close;
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  box.querySelector(".navpop-go").onclick = () => { close(); onGo(); };
 }
 
 function renderHome() {
@@ -177,129 +208,80 @@ function renderHome() {
   const fillPct = nextT ? Math.max(5, Math.min(100, total / nextT * 100)) : 100;
   let stageLabel = "";
   try { const st = (typeof lifeStageFor === "function" && state.assets) ? lifeStageFor(state.assets.unlockedLifeStages) : null; stageLabel = (st && (st.label || st.name || st.title)) || ""; } catch (e) {}
-
-  // --- calm fixed ambient (drop images/home_ambient.png to layer a backdrop) ---
-  const bg = el("div", "hw-bg");
-  bg.innerHTML = (typeof photoOr === "function" ? photoOr("images/home_ambient.png", "") : "");
-  app.appendChild(bg);
-
-  const wrap = el("div", "home2");
-
-  // --- the world vista: distant volcano, jungle ridges, lantern string ---
-  // (CSS diorama fallback; drop images/home_vista_day.png to layer a painted banner on top)
-  const vista = el("div", "hw-vista");
-  vista.innerHTML =
-    `<div class="hwv-sky"></div><div class="hwv-sun"></div>` +
-    `<div class="hwv-volcano"><div class="hwv-crater"></div></div>` +
-    `<div class="hwv-smoke"></div>` +
-    `<div class="hwv-ridge-far"></div><div class="hwv-haze"></div><div class="hwv-ridge-near"></div>` +
-    `<div class="hwv-lanterns" id="hw-lanterns"></div>` +
-    (typeof photoOr === "function" ? photoOr("images/home_vista_day.jpg", "") : "") +
-    `<div class="hwv-fade"></div>` +
-    `<div class="hwv-label"><i></i>聖龍レース都市・ヴォルカ街道</div>`;
-  wrap.appendChild(vista);
-  const lr = vista.querySelector("#hw-lanterns");
-  if (lr) [10, 26, 42, 58, 74, 90].forEach((xp, i) => { const L = el("div", "hw-lantern"); L.style.left = xp + "%"; L.style.top = (7 + (i % 2) * 4) + "px"; lr.appendChild(L); });
-
-  // hero — player status
-  const hero = el("div", "glass-panel hw-hero");
-  hero.innerHTML =
-    `<canvas class="hb-dragon" width="92" height="74"></canvas>` +
-    `<div class="hw-hero-id"><div class="hw-greet">ようこそ、聖龍都市へ</div>` +
-    `<div class="hw-name">予想家 ミミ</div>` +
-    `<div class="hw-rank">ランク <b>${p.rank}</b>${rankLabel ? "　" + rankLabel : ""}` +
-      `${p.streak >= 2 ? ` <span class="hw-streak">🔥 ${p.streak}連勝</span>` : ""}</div></div>` +
-    `<div class="hw-coins"><span>所持コイン</span><b>${fmtCoins(p.coins)}</b></div>`;
-  wrap.appendChild(hero);
-
-  // 戦績はプロフィールに統合（出走/単勝/勝率/最高配当の小チップ）
-  const rec = el("div", "hw-rec");
-  const rc = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
-  rec.innerHTML = rc("出走", p.completedRaces) + rc("単勝", p.wins) + rc("勝率", winRate + "%") + rc("最高配当", fmtCoins(p.biggestPayout || 0));
-  wrap.appendChild(rec);
-
-  // §38 — 破産（コイン0）時：最優先で「無心する」導線（条件表示）。
-  if (p.coins <= 0) {
-    const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
-    const broke = el("div", "glass-panel hw-broke");
-    broke.innerHTML =
-      `<div class="hw-broke-h">😵‍💫 コインが尽きた…！</div>` +
-      `<div class="hw-broke-tx">でも、ミミの再起はここから。村のみんなに頭を下げれば、<b>基準額</b>をそっと握らせてくれる。</div>`;
-    const beg = el("button", "hw-broke-btn", `🙏 無心する　<span>基準額 ${fmtCoins(begAmt)} 相当</span>`);
-    beg.onclick = () => showMushinOverlay();
-    broke.appendChild(beg);
-    wrap.appendChild(broke);
-  }
-
-  // ▶ いちばん大事な行動を最上段に（§18.3）。深い情報は各画面へ委譲する設計。
-  const cta = el("button", "hw-cta",
-    `<span class="hw-cta-tag">公営 聖龍レース・出走券</span><span class="hw-cta-main">レースへ進む<span class="hw-cta-mon">🐉</span></span>`);
-  cta.onclick = () => renderRaceSelect();
-  wrap.appendChild(cta);
-
-  // 今の一手：総資産（再起度）＋いちばん近い目標を1つだけ焦点に。詳細は「暮らしと資産」へ。
-  let stageInfo = stageLabel ? "暮らし：" + stageLabel : "";
-  if (nextT) stageInfo += (stageInfo ? " ／ " : "") + "次の段階まで あと " + fmtCoins(Math.max(0, nextT - total));
-  else if (!stageLabel) stageInfo = "最終段階に到達";
   let nearest = null;
   try { const goals = (typeof nextGoals === "function") ? nextGoals(state) : []; nearest = goals[0] || null; } catch (e) {}
-  const focal = el("div", "glass-panel hw-focal");
-  focal.innerHTML =
-    `<div class="hw-focal-asset"><div class="hwf-a-top"><span>総資産（再起度）</span><b>${fmtCoins(total)}</b></div>` +
-      `<div class="hw-asset-bar"><div class="hw-asset-fill" style="width:${fillPct}%"></div></div>` +
-      `<div class="hw-asset-stage">${stageInfo}<span class="hwf-more">暮らしと資産へ ›</span></div></div>` +
-    (nearest
-      ? `<div class="hw-focal-goal"><div class="hwf-g-h">🎯 次の目標</div>` +
-        `<div class="hw-goal"><div class="hw-goal-top"><span>${nearest.icon} ${nearest.label}</span><b>${nearest.sub}</b></div>` +
-        `<div class="hw-goal-bar"><div class="hw-goal-fill" style="width:${nearest.pct}%"></div></div></div></div>`
-      : "");
-  const fa = focal.querySelector(".hw-focal-asset"); if (fa) { fa.style.cursor = "pointer"; fa.onclick = () => renderAssets(); }
-  wrap.appendChild(focal);
 
-  // tourist-board menu
-  const tile = (icon, label, sub, onClick) => {
-    const b = el("button", "hw-tile",
-      `<span class="hw-tile-ic">${icon}</span><span class="hw-tile-tx"><span class="hw-tile-l">${label}</span><span class="hw-tile-s">${sub}</span></span>`);
-    b.onclick = onClick; return b;
+  // full-screen decorative backdrop (drop images/home_bg.jpg to layer a painting on the gradient)
+  const bg = el("div", "hr2-bg");
+  bg.innerHTML = (typeof photoOr === "function" ? photoOr("images/home_bg.jpg", "") : "");
+  app.appendChild(bg);
+
+  const wrap = el("div", "hr2");
+
+  // top: small system buttons (with margin), kept out of the way
+  const top = el("div", "hr2-top");
+  const bTitle = el("button", "hr2-topbtn", "🏠 タイトル"); bTitle.onclick = () => renderTitle();
+  const bReset = el("button", "hr2-topbtn", "🔄 リセット");
+  bReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
+  top.appendChild(bTitle); top.appendChild(bReset);
+  wrap.appendChild(top);
+
+  // center stage: mascot (直接 ref.png を表示) + one compact status card
+  const stage = el("div", "hr2-stage");
+  const dragonImg = el("div", "hr2-dragon");
+  dragonImg.innerHTML = (typeof photoOr === "function" ? photoOr("images/dragon_ref/ref.png", "<span class='hr2-dragon-fallback'>🐉</span>") : "🐉");
+  stage.appendChild(dragonImg);
+
+  let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
+    : (stageLabel ? "暮らし：" + stageLabel : "");
+  if (nextT) goalLine += (goalLine ? "　" : "") + "（次まで " + fmtCoins(Math.max(0, nextT - total)) + "）";
+  const status = el("div", "hr2-status");
+  status.innerHTML =
+    `<div class="hr2-greet">ようこそ、聖龍都市へ</div>` +
+    `<div class="hr2-name">予想家 ミミ</div>` +
+    `<div class="hr2-rankrow">ランク <b>${p.rank}</b>${rankLabel ? " " + rankLabel : ""}` +
+      `${p.streak >= 2 ? ` <span class="hr2-streak">🔥${p.streak}連勝</span>` : ""}</div>` +
+    `<div class="hr2-coins"><span>所持コイン </span><b>${fmtCoins(p.coins)}</b></div>` +
+    `<div class="hr2-assets"><div class="hr2-arow"><span>総資産（再起度）</span><b>${fmtCoins(total)}</b></div>` +
+      `<div class="hr2-bar"><div class="hr2-fill" style="width:${fillPct}%"></div></div>` +
+      `<div class="hr2-goal">${goalLine}</div></div>` +
+    `<div class="hr2-rec"><div><span>出走</span><b>${p.completedRaces}</b></div><div><span>単勝</span><b>${p.wins}</b></div>` +
+      `<div><span>勝率</span><b>${winRate}%</b></div><div><span>最高配当</span><b>${fmtCoins(p.biggestPayout || 0)}</b></div></div>`;
+  const fa = status.querySelector(".hr2-assets"); if (fa) fa.onclick = () => renderAssets();
+  stage.appendChild(status);
+
+  // §38 — 破産時：最優先で「無心」導線
+  if (p.coins <= 0) {
+    const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
+    const broke = el("button", "hr2-broke", `🙏 無心する　基準額 ${fmtCoins(begAmt)} 相当`);
+    broke.onclick = () => showMushinOverlay();
+    stage.appendChild(broke);
+  }
+  wrap.appendChild(stage);
+
+  // bottom: important buttons as a menu (minimal text; tap → description + 進む/キャンセル)
+  const menu = el("div", "hr2-menu");
+  const raceBtn = el("button", "hr2-race", "🐉 レースへ進む");
+  raceBtn.onclick = () => renderRaceSelect();
+  menu.appendChild(raceBtn);
+
+  const grid = el("div", "hr2-grid");
+  const navItem = (icon, label, desc, go) => {
+    const b = el("button", "hr2-item", `<span class="ic">${icon}</span><span class="lb">${label}</span>`);
+    b.onclick = () => showNavConfirm(icon, label, desc, go);
+    return b;
   };
-  wrap.appendChild(el("div", "hw-seclabel", "育成・記録"));
-  const g1 = el("div", "hw-menu2");
-  g1.appendChild(tile("🏠", "暮らしと資産", "総資産と暮らしの歩み", () => renderAssets()));
-  g1.appendChild(tile("📜", "ストーリー", "ミミと5人の物語", () => renderStory()));
-  g1.appendChild(tile("📖", "竜図鑑", "出会った竜の記録", () => renderCollection()));
-  g1.appendChild(tile("🏘️", "竜の村", "竜たちと交流する", () => renderVillage()));
-  wrap.appendChild(g1);
-  wrap.appendChild(el("div", "hw-seclabel", "サポート"));
-  const g2 = el("div", "hw-menu2");
-  g2.appendChild(tile("💬", "相談する", "顧問に視点をもらう", () => renderConsult()));
-  g2.appendChild(tile("🎓", "予想入門", "賭けの基礎を学ぶ", () => renderHelp()));
-  g2.appendChild(tile("📣", "シェア", "友達に教える", shareGameInfo));
-  wrap.appendChild(g2);
-
-  const foot = el("div", "hw-foot");
-  const toTitle = el("button", "hw-foot-btn", "タイトルへ戻る");
-  toTitle.onclick = () => renderTitle();
-  foot.appendChild(toTitle);
-  const reset = el("button", "hw-foot-btn", "データをリセット");
-  reset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
-  foot.appendChild(reset);
-  wrap.appendChild(foot);
+  grid.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
+  grid.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
+  grid.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
+  grid.appendChild(navItem("🏘️", "竜の村", "竜たちと交流し、施設を育てます。", () => renderVillage()));
+  grid.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
+  grid.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
+  grid.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
+  menu.appendChild(grid);
+  wrap.appendChild(menu);
 
   app.appendChild(wrap);
-
-  // mascot animation (reuses the race sprite)
-  const cv = hero.querySelector(".hb-dragon");
-  if (cv && cv.getContext && typeof rcDrawDragon === "function") {
-    const tctx = cv.getContext("2d");
-    let g = 1.0;
-    (function frame() {
-      if (!document.body.contains(cv)) return;
-      tctx.clearRect(0, 0, cv.width, cv.height);
-      g += 0.1;
-      rcDrawDragon(tctx, { x: cv.width / 2, y: cv.height / 2 + Math.sin(g * 0.5) * 4, scale: 1.4, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.5 });
-      requestAnimationFrame(frame);
-    })();
-  }
 }
 
 // =========================================================================
@@ -411,33 +393,156 @@ function showLifeCutin(node) {
 // コイン・着順・オッズ・配当・賭け経済には一切触れない（暮らしPは総資産＝再起度から導出するだけ）。
 let _lifeTab = null;   // 選択中の枝（null は自動選択）
 
+// 暮らし＝コンパクトなダッシュボード。状態は小さくグラフィカルに、情報量の多いもの
+//（スキルツリー＝約200ノード／コレクション＝約200点）は専用画面へ遷移させてスクロールを抑える。
 function renderAssets() {
   state.ui.screen = "assets";
   recomputeAssets(state);
   const p = state.player, a = state.assets;
   const total = p.totalAssets;
-  const level = Math.max(0, Math.min(a.unlockedLifeStages || 0, 5));  // コレクション解放用（従来通り）
+  const level = Math.max(0, Math.min(a.unlockedLifeStages || 0, 5));
   const st = lifeTreeStats();
   const app = beginScreen();
   app.appendChild(el("h2", null, "暮らしと資産"));
 
-  // === HERO: 総資産 + 暮らしポイント ===
+  // 状態（コンパクト）：総資産 ＋ 暮らしP
   const hero = el("div", "card lt-hero");
   hero.innerHTML =
     `<div class="lt-hero-top">` +
       `<div class="lt-hero-id"><div class="as-hero-lbl">総資産（ミミの再起度）</div><div class="as-hero-total">${fmtCoins(total)}</div></div>` +
       `<div class="lt-pcard"><div class="lt-pnum">${st.available}</div><div class="lt-plbl">暮らしP</div></div>` +
-    `</div>` +
-    `<div class="lt-hero-sub">解放 <b>${st.unlockedCount} / ${st.totalNodes}</b>　暮らしP 残り <b>${st.available}</b> ／ 累計 ${st.earned}` +
-      `<br><span class="as-hint">レースで総資産が増える＝暮らしPが貯まる。賭けコインは減りません。</span></div>`;
+    `</div>`;
   app.appendChild(hero);
 
   const _avA = advisorVoiceEl("assets"); if (_avA) app.appendChild(_avA);
 
-  // === くらしスキルツリー ===
-  app.appendChild(el("div", "as-sec", "くらしスキルツリー — 暮らしPを振り分け"));
+  // 内訳（小さなセグメントバー＝グラフィカル）
+  const parts = [
+    ["最大到達", p.maxCoinsReached, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
+    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
+  ].filter(x => x[1] > 0);
+  const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
+  app.appendChild(el("div", "card as-break",
+    `<div class="as-break-bar">${parts.map(x => `<div style="width:${x[1] / sum * 100}%;background:${x[2]}"></div>`).join("")}</div>` +
+    `<div class="as-break-legend">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} ${fmtCoins(x[1])}</span>`).join("")}</div>` +
+    `<div class="as-break-rescue">💛 破産しても安心 — 救済見込み <b>${fmtCoins(calculateRescueCoins(state, p.rank))}</b></div>`));
 
-  // 未選択なら「いま振り分けられる枝」を自動で開く
+  // 情報量が多いものは専用画面へ遷移（小さなグラフィカルな入口）
+  let ready = false;
+  LIFE_BRANCHES.forEach(b => { const pr = lifeBranchProgress(b.id); if (pr.next && lifeNodeState(pr.next) === "ready") ready = true; });
+  const colOwned = LIFE_ASSETS.filter(it => isLifeAssetUnlocked(state, it, level)).length;
+  const unlockedCh = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
+  const skTitles = ACTIVE_SKILLS.filter(s => ((p.activeSkills || {})[s.id] || 0) >= s.levels.length).length;
+  const entry = (ic, label, sub, badge, onClick) => {
+    const b = el("button", "as-entry",
+      `<span class="as-entry-ic">${ic}</span><span class="as-entry-tx"><span class="as-entry-l">${label}${badge ? ` <span class="as-entry-badge">${badge}</span>` : ""}</span>` +
+        `<span class="as-entry-s">${sub}</span></span><span class="as-entry-ch">›</span>`);
+    b.onclick = onClick; return b;
+  };
+  const ent = el("div", "as-entries");
+  ent.appendChild(entry("🌳", "くらしスキルツリー", `暮らしP ◇${st.available} 残り ・ 解放 ${st.unlockedCount}/${st.totalNodes}`, ready ? "振れる!" : "", () => renderLifeTree()));
+  ent.appendChild(entry("🎁", "生活資産コレクション", `${colOwned} / ${LIFE_ASSETS.length} 解放`, "", () => renderLifeCollection()));
+  ent.appendChild(entry("🎫", "習い事（アクティブスキル）", `称号 ${skTitles} / ${ACTIVE_SKILLS.length} 獲得 ・ ミミの暮らしの記録`, skTitles >= ACTIVE_SKILLS.length ? "コンプ!" : "", () => renderActiveSkills()));
+  ent.appendChild(entry("📖", "物語", `${unlockedCh} / ${STORY_CHAPTERS.length} 話 解放`, "", () => renderStory()));
+  app.appendChild(ent);
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "ホームへ戻る"); back.onclick = () => renderHome();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// 専用画面：習い事（アクティブスキル）。通うとレベルが上がり、効果テキストと称号がつくだけの
+// 完全な表示専用メタ進行。コイン・総資産・暮らしP・着順・オッズ・配当には一切触れない。
+function renderActiveSkills() {
+  state.ui.screen = "active_skills";
+  if (!state.player.activeSkills) state.player.activeSkills = {};
+  const as = state.player.activeSkills;
+  const app = beginScreen();
+  app.appendChild(el("h2", null, "習い事（アクティブスキル）"));
+
+  const titles = ACTIVE_SKILLS.filter(s => (as[s.id] || 0) >= s.levels.length).length;
+  app.appendChild(el("div", "as-hint2",
+    `称号 <b>${titles} / ${ACTIVE_SKILLS.length}</b> 獲得　` +
+    `<span class="as-hint">通うほど上達。レース結果には影響しない、ミミの“暮らしの記録”です。</span>`));
+
+  const grid = el("div", "askill-grid");
+  ACTIVE_SKILLS.forEach(s => {
+    const max = s.levels.length;
+    const lv = Math.min(as[s.id] || 0, max);
+    const maxed = lv >= max;
+    const dots = Array.from({ length: max }, (_, i) => `<span class="askill-dot${i < lv ? " on" : ""}"></span>`).join("");
+    const card = el("div", "askill" + (maxed ? " maxed" : ""));
+    card.innerHTML =
+      `<div class="askill-top">` +
+        `<span class="askill-ic">${s.icon}</span>` +
+        `<span class="askill-id"><span class="askill-nm">${s.name}</span><span class="askill-tag">${s.tag}</span></span>` +
+        `<span class="askill-lv">${maxed ? "極" : "Lv" + lv}</span>` +
+      `</div>` +
+      `<div class="askill-dots">${dots}</div>` +
+      `<div class="askill-effect">${maxed
+        ? `🏅 称号「${s.title}」を獲得！`
+        : (lv > 0 ? s.levels[lv - 1] : "まだ通っていない。")}</div>`;
+    if (!maxed) {
+      const go = el("button", "askill-go", lv > 0 ? "また通う ▶" : "通ってみる ▶");
+      go.onclick = () => {
+        const nv = Math.min((as[s.id] || 0) + 1, max);
+        as[s.id] = nv;
+        if (typeof saveGame === "function") saveGame();
+        if (nv >= max) showSkillTitleCutin(s);
+        renderActiveSkills();
+      };
+      card.appendChild(go);
+    } else {
+      card.appendChild(el("div", "askill-done", "✓ 達人"));
+    }
+    grid.appendChild(card);
+  });
+  app.appendChild(grid);
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← 暮らしへ戻る"); back.onclick = () => renderAssets();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// 称号獲得カットイン（表示専用・約1.1秒／タップで即スキップ）。showLifeCutin と同じ見た目を流用。
+function showSkillTitleCutin(skill) {
+  try {
+    const ex = document.getElementById("lt-cutin"); if (ex) ex.remove();
+    if (_ltCutinTimer) { clearTimeout(_ltCutinTimer); _ltCutinTimer = null; }
+    const ov = el("div", "lt-cutin"); ov.id = "lt-cutin";
+    ov.style.setProperty("--bc", "#e6b24a");
+    ov.innerHTML =
+      `<div class="lt-cutin-flash"></div><div class="lt-cutin-lines"></div>` +
+      `<div class="lt-cutin-band"><div class="lt-cutin-inner">` +
+        `<div class="lt-cutin-ic">${skill.icon}</div>` +
+        `<div class="lt-cutin-tx">` +
+          `<div class="lt-cutin-kicker">${skill.name}・極めた！</div>` +
+          `<div class="lt-cutin-title">称号「${skill.title}」</div>` +
+          `<div class="lt-cutin-sub">ミミ、また一歩……！</div>` +
+        `</div>` +
+      `</div></div>`;
+    ov.onclick = () => { if (_ltCutinTimer) { clearTimeout(_ltCutinTimer); _ltCutinTimer = null; } ov.remove(); };
+    document.body.appendChild(ov);
+    try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+    _ltCutinTimer = setTimeout(() => {
+      const o = document.getElementById("lt-cutin");
+      if (o) { o.classList.add("out"); setTimeout(() => { if (o) o.remove(); }, 260); }
+      _ltCutinTimer = null;
+    }, 1150);
+  } catch (e) {}
+}
+
+// 専用画面：くらしスキルツリー（枝タブ＋チェーン＋振り直し）
+function renderLifeTree() {
+  state.ui.screen = "life_tree";
+  recomputeAssets(state);
+  const st = lifeTreeStats();
+  const app = beginScreen();   // 上部に「← 暮らし」が付く
+  app.appendChild(el("h2", null, "くらしスキルツリー"));
+  app.appendChild(el("div", "as-hint2", `暮らしP ◇<b>${st.available}</b> 残り ／ 解放 ${st.unlockedCount}/${st.totalNodes}　<span class="as-hint">レースで総資産が増える＝暮らしPが貯まる</span>`));
+
   if (!_lifeTab || !LIFE_TREE[_lifeTab]) {
     _lifeTab = LIFE_BRANCHES[0].id;
     for (let i = 0; i < LIFE_BRANCHES.length; i++) {
@@ -445,27 +550,23 @@ function renderAssets() {
       if (pr.next && lifeNodeState(pr.next) === "ready") { _lifeTab = LIFE_BRANCHES[i].id; break; }
     }
   }
-
-  // 枝タブ
   const tabs = el("div", "lt-tabs");
   LIFE_BRANCHES.forEach(b => {
     const pr = lifeBranchProgress(b.id);
     const tab = el("button", "lt-tab" + (b.id === _lifeTab ? " on" : ""),
-      `<span class="lt-tab-ic">${b.icon}</span><span class="lt-tab-nm">${b.name}</span>` +
-      `<span class="lt-tab-pg">${pr.done}/${pr.total}</span>`);
+      `<span class="lt-tab-ic">${b.icon}</span><span class="lt-tab-nm">${b.name}</span><span class="lt-tab-pg">${pr.done}/${pr.total}</span>`);
     tab.style.setProperty("--bc", b.color);
-    if (pr.next && lifeNodeState(pr.next) === "ready") tab.classList.add("ready");  // 振れる合図
-    tab.onclick = () => { _lifeTab = b.id; renderAssets(); };
+    if (pr.next && lifeNodeState(pr.next) === "ready") tab.classList.add("ready");
+    tab.onclick = () => { _lifeTab = b.id; renderLifeTree(); };
     tabs.appendChild(tab);
   });
   app.appendChild(tabs);
 
-  // 選択中の枝のチェーン（安い順に上から。前提＝ひとつ上のノード）
   const branch = LIFE_BRANCHES.find(b => b.id === _lifeTab);
   const chain = el("div", "lt-chain");
   chain.style.setProperty("--bc", branch.color);
   LIFE_TREE[_lifeTab].forEach(node => {
-    const stt = lifeNodeState(node);             // unlocked | ready | nopoints | prereq
+    const stt = lifeNodeState(node);
     const dot = stt === "prereq" ? "🔒" : node.icon;
     let desc;
     if (stt === "prereq") {
@@ -490,61 +591,54 @@ function renderAssets() {
       `<div class="lt-node-right">${right}</div>`);
     if (stt === "ready") {
       const btn = row.querySelector(".lt-buy");
-      if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { renderAssets(); showLifeCutin(node); } };
+      if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { renderLifeTree(); showLifeCutin(node); } };
     }
     chain.appendChild(row);
   });
   app.appendChild(chain);
 
-  // 振り直し（リスペック）
   const respec = el("button", "lt-respec", "↺ 暮らしPを振り直す（解放をすべて戻す）");
   respec.onclick = () => {
     if (confirm("解放をすべて解除して、暮らしPを振り直しますか？\n（総資産・コインはそのまま。ノードはいつでも取り直せます）")) {
-      respecLifeTree(); renderAssets();
+      respecLifeTree(); renderLifeTree();
     }
   };
   app.appendChild(respec);
 
-  // === 総資産の内訳（セグメントバー） ===
-  app.appendChild(el("div", "as-sec", "総資産の内訳"));
-  const parts = [
-    ["最大到達", p.maxCoinsReached, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
-    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
-  ].filter(x => x[1] > 0);
-  const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
-  app.appendChild(el("div", "card as-break",
-    `<div class="as-break-bar">${parts.map(x => `<div style="width:${x[1] / sum * 100}%;background:${x[2]}"></div>`).join("")}</div>` +
-    `<div class="as-break-legend">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} ${fmtCoins(x[1])}</span>`).join("")}</div>` +
-    `<div class="as-break-rescue">💛 破産しても安心 — 救済見込み <b>${fmtCoins(calculateRescueCoins(state, p.rank))}</b></div>`));
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← 暮らしへ戻る"); back.onclick = () => renderAssets();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
 
-  // === 生活資産コレクション（所持＝金／未解放＝灰） ===
-  app.appendChild(el("div", "as-sec", "生活資産コレクション"));
+// 専用画面：生活資産コレクション（所持＝金／未解放＝灰）
+function renderLifeCollection() {
+  state.ui.screen = "life_collection";
+  recomputeAssets(state);
+  const a = state.assets;
+  const level = Math.max(0, Math.min(a.unlockedLifeStages || 0, 5));
+  const app = beginScreen();   // 上部に「← 暮らし」
+  app.appendChild(el("h2", null, "生活資産コレクション"));
+  const owned = LIFE_ASSETS.filter(it => isLifeAssetUnlocked(state, it, level)).length;
+  app.appendChild(el("div", "as-hint2", `所持 <b>${owned} / ${LIFE_ASSETS.length}</b>　<span class="as-hint">🛒＝コインで購入可／Lv＝資産段階で自動解放</span>`));
   const itemsWrap = el("div", "as-items");
   const CAT_IC = { housing: "🏠", food: "🍽️", outfit: "👗", tool: "🎤", decor: "🖼️", supporter: "🤝" };
   LIFE_ASSETS.forEach(item => {
-    const owned = isLifeAssetUnlocked(state, item, level);
-    const right = item.unlockType === "auto" ? (owned ? "✓" : `Lv${item.unlockAssetLevel}`) : (owned ? "✓" : "🛒");
-    const cell = el("div", "as-item " + (owned ? "owned" : "lock"),
+    const own = isLifeAssetUnlocked(state, item, level);
+    const right = item.unlockType === "auto" ? (own ? "✓" : `Lv${item.unlockAssetLevel}`) : (own ? "✓" : "🛒");
+    const cell = el("div", "as-item " + (own ? "owned" : "lock"),
       `<span class="as-item-ic">${CAT_IC[item.category] || "📦"}</span><span class="as-item-nm">${item.name}</span><span class="as-item-tag">${right}</span>`);
-    if (item.unlockType !== "auto" && !owned) {
+    if (item.unlockType !== "auto" && !own) {
       cell.classList.add("buyable");
       cell.title = `購入 ${fmtCoins(item.price)}`;
-      cell.onclick = () => { const res = buyLifeItem(item.id); if (res.ok) renderAssets(); else if (res.reason === "poor") alert("コインが足りません。"); };
+      cell.onclick = () => { const res = buyLifeItem(item.id); if (res.ok) renderLifeCollection(); else if (res.reason === "poor") alert("コインが足りません。"); };
     }
     itemsWrap.appendChild(cell);
   });
   app.appendChild(itemsWrap);
 
-  // === ストーリー進行（コンパクト → 物語へ） ===
-  const unlockedCh = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
-  const storyCard = el("div", "card as-storybar",
-    `<div class="as-storybar-tx">📖 ストーリー進行　<b>${unlockedCh} / ${STORY_CHAPTERS.length}</b> 話 解放</div>`);
-  const sb = el("button", "hw-foot-btn", "物語を読む ▶"); sb.onclick = () => renderStory();
-  storyCard.appendChild(sb);
-  app.appendChild(storyCard);
-
   const actions = el("div", "actions");
-  const back = el("button", "secondary", "ホームへ戻る"); back.onclick = () => renderHome();
+  const back = el("button", "secondary", "← 暮らしへ戻る"); back.onclick = () => renderAssets();
   actions.appendChild(back);
   app.appendChild(actions);
 }
@@ -704,6 +798,12 @@ function showStoryArt(ch) {
   document.body.appendChild(ov);
 }
 
+// 物語の表示タイトル＝キャラクター名（エンディングだけ「エンディング」のまま）。
+function chapterDisplayTitle(ch) {
+  if (ch.id === "ED") return "エンディング";
+  const c = STORY_CAST[ch.cast];
+  return (c && c.name) || ch.title;
+}
 function renderStory() {
   state.ui.screen = "story";
   recomputeAssets(state);
@@ -718,44 +818,62 @@ function renderStory() {
     `<div class="story-progress">解放：<b>${unlockedCount}</b> / ${STORY_CHAPTERS.length} 話</div>`;
   app.appendChild(intro);
 
+  // コンパクトな一覧（CGサムネ＋タイトル＋話者）。本文は読む画面へ遷移（スクロール減）。
+  const list = el("div", "story-list");
   STORY_CHAPTERS.forEach(ch => {
     const unlocked = total >= storyUnlockAt(ch.id);
     const cast = STORY_CAST[ch.cast];
-    const card = el("div", "card story-chapter" + (unlocked ? "" : " locked"));
-
-    // 一枚絵CG placeholder slot (real art can be dropped in here later)
-    const cg = el("div", "story-cg" + (unlocked ? " viewable" : " locked"));
-    if (cast) cg.style.setProperty("--cg", cast.color);
-    cg.innerHTML = unlocked
-      ? `<div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
-        `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div>`
-      : `<div class="story-cg-art"><span class="story-cg-sym">🔒</span></div>` +
-        `<div class="story-cg-cap">総資産 ${fmtCoins(storyUnlockAt(ch.id))} で解放</div>`;
-    if (unlocked) cg.onclick = () => showStoryArt(ch);
-    card.appendChild(cg);
-
-    card.appendChild(el("div", "story-ch-title", ch.title));
-
-    if (unlocked) {
-      if (cast) {
-        const badge = el("div", "story-cast");
-        badge.innerHTML =
-          `<span class="story-cast-sym" style="--cg:${cast.color}">${cast.symbol}</span>` +
-          `<span class="story-cast-info"><span class="story-cast-name">${cast.name}<small>（${cast.tag}）</small></span>` +
-          `<span class="story-cast-gives">授けるもの：${cast.gives}</span></span>`;
-        card.appendChild(badge);
-      }
-      card.appendChild(el("div", "story-ch-body", ch.body));
-    } else {
-      card.appendChild(el("div", "story-ch-locked", `総資産 ${fmtCoins(storyUnlockAt(ch.id))} に到達すると読めます。`));
-    }
-    app.appendChild(card);
+    const row = el("button", "story-row" + (unlocked ? "" : " locked"));
+    if (cast) row.style.setProperty("--cg", cast.color);
+    row.innerHTML =
+      `<span class="story-row-cg">${unlocked ? photoOr("images/story/" + ch.id + ".jpg", `<span>${cast ? cast.symbol : "🐲"}</span>`) : "<span>🔒</span>"}</span>` +
+      `<span class="story-row-tx"><span class="story-row-t">${chapterDisplayTitle(ch)}</span>` +
+        `<span class="story-row-s">${unlocked ? (ch.id === "ED" ? "次の物語へ" : ch.title) : "総資産 " + fmtCoins(storyUnlockAt(ch.id)) + " で解放"}</span></span>` +
+      (unlocked ? `<span class="story-row-ch">›</span>` : "");
+    if (unlocked) row.onclick = () => renderStoryChapter(ch.id);
+    list.appendChild(row);
   });
+  app.appendChild(list);
 
   const actions = el("div", "actions");
   const consultBtn = el("button", "secondary", "💬 相談する"); consultBtn.onclick = () => renderConsult();
   const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(consultBtn);
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// 専用画面：1話を読む（大きな一枚絵＋話者＋本文）
+function renderStoryChapter(chId) {
+  const ch = STORY_CHAPTERS.find(c => c.id === chId);
+  recomputeAssets(state);
+  if (!ch || state.player.totalAssets < storyUnlockAt(ch.id)) { renderStory(); return; }
+  state.ui.screen = "story_read";
+  const cast = STORY_CAST[ch.cast];
+  const app = beginScreen();   // 上部に「← 物語」
+  app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
+  if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
+  const card = el("div", "card story-chapter");
+  const cg = el("div", "story-cg viewable");
+  if (cast) cg.style.setProperty("--cg", cast.color);
+  cg.innerHTML =
+    `<div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
+    `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div>`;
+  cg.onclick = () => showStoryArt(ch);
+  card.appendChild(cg);
+  if (cast) {
+    const badge = el("div", "story-cast");
+    badge.innerHTML =
+      `<span class="story-cast-sym" style="--cg:${cast.color}">${cast.symbol}</span>` +
+      `<span class="story-cast-info"><span class="story-cast-name">${cast.name}<small>（${cast.tag}）</small></span>` +
+      `<span class="story-cast-gives">授けるもの：${cast.gives}</span></span>`;
+    card.appendChild(badge);
+  }
+  card.appendChild(el("div", "story-ch-body", ch.body));
+  app.appendChild(card);
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← 物語へ戻る"); back.onclick = () => renderStory();
   actions.appendChild(back);
   app.appendChild(actions);
 }
@@ -948,7 +1066,7 @@ function showDragonDetail(d) {
   const card = el("div", "card dex-detail");
   card.innerHTML =
     `<button class="dex-detail-x" aria-label="閉じる">×</button>` +
-    `<div class="dd-head"><div class="dd-art"><canvas width="124" height="90"></canvas></div>` +
+    `<div class="dd-head"><div class="dd-art"><canvas width="300" height="150"></canvas></div>` +
       `<div class="dd-id"><div class="dd-name">${d.name}</div>` +
         `<div class="dd-style style-${d.style}">${STYLE_LABEL[d.style] || ""}</div>` +
         `<div class="dd-traits">${(d.traits || []).map(t => `<span>${t}</span>`).join("")}</div></div></div>` +
@@ -959,7 +1077,7 @@ function showDragonDetail(d) {
   document.body.appendChild(ov);
   const cv = card.querySelector(".dd-art canvas");
   if (cv && cv.getContext && typeof rcDrawDragon === "function") {
-    rcDrawDragon(cv.getContext("2d"), { x: 62, y: 50, scale: 1.9, color: col, style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.5 });
+    rcDrawDragon(cv.getContext("2d"), { x: 161, y: 117, scale: 2.85, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.5 });
   }
   card.querySelector(".dex-detail-x").onclick = () => ov.remove();
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
@@ -1030,7 +1148,7 @@ function renderCollection() {
     if (seen) {
       const cv = card.querySelector("canvas");
       if (cv && cv.getContext && typeof rcDrawDragon === "function")
-        rcDrawDragon(cv.getContext("2d"), { x: 39, y: 31, scale: 1.18, color: dragonColor(d), style: d.style, gait: 1.6, flap: 1.0, lean: 0.4, glow: 0.4 });
+        rcDrawDragon(cv.getContext("2d"), { x: 42, y: 38, scale: 0.72, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 });
       card.onclick = () => showDragonDetail(d);
     } else {
       const cv = card.querySelector("canvas"); if (cv) cv.style.display = "none";
@@ -1103,6 +1221,15 @@ function screenHeader(title, imgSrc) {
   return h;
 }
 
+// 格付けバッジ（杯名はそのまま＋格を併記＝案A）。表示のみで収支ロジックは不変。
+const RACE_GRADE = { 1: "新人", 2: "1勝", 3: "OP", 4: "L", 5: "GⅢ", 6: "GⅡ", 7: "GⅠ" };
+function gradeBadgeHTML(rank) {
+  const g = RACE_GRADE[rank] || ("R" + rank);
+  const tier = rank >= 7 ? "g1" : rank >= 6 ? "g2" : rank >= 5 ? "g3" : rank >= 4 ? "gl" : "gn";
+  return `<span class="grade-badge ${tier}">${g}</span>`;
+}
+// レース番号＝時間帯（朝→夜）。第一〜第五の並びを直感的に。
+const RACE_TIME_LABEL = { 1: "🌅朝", 2: "☀️昼", 3: "🌇夕", 4: "🌆薄暮", 5: "🌙夜" };
 function renderRaceSelect() {
   state.ui.screen = "race_select";
   runEventHooks("beforeRaceSelect");
@@ -1119,7 +1246,7 @@ function renderRaceSelect() {
       if (theme) fc.style.setProperty("--region-accent", theme.accent);
       fc.innerHTML =
         `<div class="feat-tag">★ 本日の注目レース ★</div>` +
-        `<div class="feat-name">${raceFullName(feat)}</div>` +
+        `<div class="feat-name">${gradeBadgeHTML(feat.rank)}${raceFullName(feat)}</div>` +
         `<div class="feat-meta">Rank ${feat.rank}　${RANKS[feat.rank].label}　｜　${DISTANCE[feat.distance].label}　｜　${WEATHERS[feat.weather].label}</div>` +
         `<div class="feat-purpose">${feat.purpose}</div>` +
         `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の達成ボーナス 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
@@ -1136,8 +1263,8 @@ function renderRaceSelect() {
     if (theme) { card.setAttribute("data-region", r.region); card.style.setProperty("--region-accent", theme.accent); }
     const wager = fmtCoins(RANKS[r.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1));
     card.innerHTML =
-      `<div class="rs-name">${raceFullName(r)}</div>` +
-      `<div class="rs-chips"><span class="rs-chip">${DISTANCE[r.distance].label}</span><span class="rs-chip">${WEATHERS[r.weather].label}</span><span class="rs-chip wager">上限 ${wager}</span></div>` +
+      `<div class="rs-name">${gradeBadgeHTML(r.rank)}${raceFullName(r)}</div>` +
+      `<div class="rs-chips"><span class="rs-chip time">${RACE_TIME_LABEL[r.number] || ("第" + r.number)}</span><span class="rs-chip">${DISTANCE[r.distance].label}</span><span class="rs-chip">${WEATHERS[r.weather].label}</span><span class="rs-chip wager">上限 ${wager}</span></div>` +
       `<div class="rs-course"><span>${getSection("early", r.early).label}</span><i>→</i><span>${getSection("mid", r.mid).label}</span><i>→</i><span>${getSection("late", r.late).label}</span></div>` +
       `<div class="rs-purpose">${r.purpose}</div>` +
       `<button class="rs-go" ${locked ? "disabled" : ""}>${locked ? `🔒 ランク${r.rank}で解放` : "このレースを見る ▶"}</button>`;
@@ -1145,24 +1272,71 @@ function renderRaceSelect() {
     return card;
   };
 
-  // ランク別にグループ化：解放済みは展開、未解放はたたんで提示（多レースでも見やすく）
-  const byRank = {};
-  RACES.forEach(r => { (byRank[r.rank] = byRank[r.rank] || []).push(r); });
-  Object.keys(byRank).map(Number).sort((a, b) => a - b).forEach(rk => {
-    const races = byRank[rk];
+  // 選び方を2系統で切替：📍場所（地域）別＝第一〜第五が見やすい ／ 🏆格（ランク）別。
+  const byRank = {}, byRegion = {};
+  RACES.forEach(r => { (byRank[r.rank] = byRank[r.rank] || []).push(r); (byRegion[r.region] = byRegion[r.region] || []).push(r); });
+  const ranks = Object.keys(byRank).map(Number).sort((a, b) => a - b);
+  const regions = Object.keys(byRegion);   // RACES定義順（おおむねランク昇順）
+
+  let mode = state.ui.raceMode || "region";   // 既定は「場所で選ぶ」
+  const modeRow = el("div", "rs-mode");
+  const mRegion = el("button", "", "📍 場所で選ぶ");
+  const mRank = el("button", "", "🏆 格で選ぶ");
+  modeRow.appendChild(mRegion); modeRow.appendChild(mRank);
+  app.appendChild(modeRow);
+
+  const tabs = el("div", "hr2-tabs");
+  const pane = el("div", "hr2-tabpane");
+  app.appendChild(tabs); app.appendChild(pane);
+
+  const renderRankPane = (rk) => {
+    pane.innerHTML = "";
+    const races = (byRank[rk] || []).slice().sort((a, b) => a.region.localeCompare(b.region) || a.number - b.number);
     const lockedRank = rk > state.player.rank;
-    const label = (RANKS[rk] && RANKS[rk].label) || "";
-    if (lockedRank) {
-      const col = uiCollapsible(`🔒 Rank ${rk}　${label}<small>　${races.length}レース・ランク${rk}で解放</small>`, false);
-      races.forEach(r => col.body.appendChild(buildRaceCard(r, true)));
-      app.appendChild(col.wrap);
+    pane.appendChild(el("div", "rs-rank-head", `${gradeBadgeHTML(rk)}Rank ${rk}　${(RANKS[rk] && RANKS[rk].label) || ""}<span class="rs-rank-n">${races.length}レース</span>`));
+    if (lockedRank) pane.appendChild(el("div", "hr2-tabhint", `🔒 このランクは ランク${rk} で解放されます（プレビュー）`));
+    const body = el("div", "rs-rank-body");
+    races.forEach(r => body.appendChild(buildRaceCard(r, lockedRank)));
+    pane.appendChild(body);
+  };
+  const renderRegionPane = (reg) => {
+    pane.innerHTML = "";
+    const races = (byRegion[reg] || []).slice().sort((a, b) => a.number - b.number || a.rank - b.rank);
+    const minRank = races.reduce((m, r) => Math.min(m, r.rank), 99);
+    pane.appendChild(el("div", "rs-rank-head", `${reg}<span class="rs-rank-n">第一〜第五（朝→夜）</span>`));
+    if (races.every(r => r.rank > state.player.rank)) pane.appendChild(el("div", "hr2-tabhint", `🔒 この地域は ランク${minRank} で解放されます（プレビュー）`));
+    const body = el("div", "rs-rank-body");
+    races.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank)));
+    pane.appendChild(body);
+  };
+
+  const buildTabs = () => {
+    tabs.innerHTML = "";
+    if (mode === "region") {
+      let activeReg = (state.ui.raceRegion && byRegion[state.ui.raceRegion]) ? state.ui.raceRegion : regions[0];
+      regions.forEach(reg => {
+        const locked = (byRegion[reg] || []).every(r => r.rank > state.player.rank);
+        const tab = el("button", "hr2-tab" + (locked ? " locked" : "") + (reg === activeReg ? " on" : ""), `${locked ? "🔒 " : ""}${reg.replace(/地域$/, "")}`);
+        tab.onclick = () => { state.ui.raceRegion = reg; Array.from(tabs.children).forEach(t => t.classList.remove("on")); tab.classList.add("on"); renderRegionPane(reg); };
+        tabs.appendChild(tab);
+      });
+      renderRegionPane(activeReg);
     } else {
-      app.appendChild(el("div", "rs-rank-head", `Rank ${rk}　${label}<span class="rs-rank-n">${races.length}レース</span>`));
-      const body = el("div", "rs-rank-body");
-      races.forEach(r => body.appendChild(buildRaceCard(r, false)));
-      app.appendChild(body);
+      let activeRk = (state.ui.raceTab && ranks.indexOf(state.ui.raceTab) >= 0) ? state.ui.raceTab : (ranks.indexOf(state.player.rank) >= 0 ? state.player.rank : ranks[0]);
+      ranks.forEach(rk => {
+        const locked = rk > state.player.rank;
+        const tab = el("button", "hr2-tab" + (locked ? " locked" : "") + (rk === activeRk ? " on" : ""), `${locked ? "🔒 " : ""}${RACE_GRADE[rk] || ("R" + rk)}`);
+        tab.onclick = () => { state.ui.raceTab = rk; Array.from(tabs.children).forEach(t => t.classList.remove("on")); tab.classList.add("on"); renderRankPane(rk); };
+        tabs.appendChild(tab);
+      });
+      renderRankPane(activeRk);
     }
-  });
+  };
+  const setMode = (m) => { mode = m; state.ui.raceMode = m; mRegion.classList.toggle("on", m === "region"); mRank.classList.toggle("on", m === "rank"); buildTabs(); };
+  mRegion.onclick = () => setMode("region");
+  mRank.onclick = () => setMode("rank");
+  setMode(mode);
+
   const back = el("button", "secondary", "ホームへ"); back.onclick = renderHome;
   app.appendChild(back);
 }
