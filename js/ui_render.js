@@ -35,7 +35,7 @@ function updateHeader() {
 // =====================================================================
 const SCREEN_DEPTH = {
   title: 0, home: 1,
-  race_select: 2, village: 2, collection: 2, assets: 2, help: 2,
+  race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2,
   story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3,
   story_read: 4, race_run: 4, result: 5, analysis: 6
 };
@@ -75,7 +75,7 @@ function beginScreen() {
   // quick back button pinned at the very top of sub-pages (sticky), so you don't have to
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
-    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home",
+    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home",
     life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
@@ -226,11 +226,19 @@ function renderHome() {
   top.appendChild(bTitle); top.appendChild(bReset);
   wrap.appendChild(top);
 
-  // center stage: mascot (直接 ref.png を表示) + one compact status card
+  // center stage: 竜マスコット＋ミミの立ち絵（着用中の衣装を反映）＋コンパクトなステータス
   const stage = el("div", "hr2-stage");
+  const cast = el("div", "hr2-cast");
+  const oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "buniqro";
+  const mimi = el("div", "hr2-mimi");
+  mimi.innerHTML = (typeof photoOr === "function" ? photoOr(outfitImg(oid, "smile"), "<span class='hr2-mimi-fallback'>🐰</span>") : "🐰");
+  mimi.title = "ショッピングモール（きせかえ）へ";
+  mimi.onclick = () => renderMall();
   const dragonImg = el("div", "hr2-dragon");
   dragonImg.innerHTML = (typeof photoOr === "function" ? photoOr("images/dragon_ref/ref.png", "<span class='hr2-dragon-fallback'>🐉</span>") : "🐉");
-  stage.appendChild(dragonImg);
+  cast.appendChild(mimi);
+  cast.appendChild(dragonImg);
+  stage.appendChild(cast);
 
   let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
     : (stageLabel ? "暮らし：" + stageLabel : "");
@@ -280,9 +288,10 @@ function renderHome() {
     return b;
   };
   grid.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
+  grid.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
   grid.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
   grid.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
-  grid.appendChild(navItem("🏘️", "竜の村", "竜たちと交流し、施設を育てます。", () => renderVillage()));
+  grid.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   grid.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
   grid.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
   grid.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
@@ -1014,6 +1023,124 @@ function renderVillage() {
   const actions = el("div", "actions");
   const home = el("button", "secondary", "ホームへ"); home.onclick = renderHome;
   actions.appendChild(home);
+  app.appendChild(actions);
+}
+
+// 専用画面：設定（旧・竜の村の枠）。サウンド／情報量／村のようす／データをまとめる。表示・設定のみ。
+function renderSettings() {
+  state.ui.screen = "settings";
+  const app = beginScreen();   // 上部に「← ホーム」
+  app.appendChild(el("h2", null, "⚙️ 設定"));
+
+  // サウンド ON/OFF（効果音・歓声・BGM をまとめて切替）
+  const muted = !!(window.Sfx && Sfx.isMuted && Sfx.isMuted());
+  const sound = el("div", "set-row",
+    `<span class="set-ic">${muted ? "🔇" : "🔊"}</span>` +
+    `<span class="set-tx"><span class="set-nm">サウンド</span><span class="set-sub">効果音・歓声・BGM</span></span>`);
+  const sBtn = el("button", "set-toggle" + (muted ? "" : " on"), muted ? "OFF" : "ON");
+  sBtn.onclick = () => {
+    const m = !(window.Sfx && Sfx.isMuted && Sfx.isMuted());
+    if (window.Sfx && Sfx.setMuted) Sfx.setMuted(m);
+    if (window.RaceBgm && RaceBgm.setMuted) RaceBgm.setMuted(m);
+    if (!m && window.Sfx && Sfx.play) Sfx.play("click");
+    renderSettings();
+  };
+  sound.appendChild(sBtn);
+  app.appendChild(sound);
+
+  // 情報量（ヘッダのセレクタと同じ設定。簡易/標準/詳細/エキスパート）
+  app.appendChild(el("div", "as-sec", "情報量（表示する数値の多さ）"));
+  const INFO = [["simple", "簡易"], ["standard", "標準"], ["advanced", "詳細"], ["expert", "エキスパート"]];
+  const seg = el("div", "set-seg");
+  INFO.forEach(pair => {
+    const b = el("button", "set-seg-b" + (state.ui.infoLevel === pair[0] ? " on" : ""), pair[1]);
+    b.onclick = () => {
+      state.ui.infoLevel = pair[0];
+      if (typeof saveGame === "function") saveGame();
+      const sel = document.getElementById("info-level"); if (sel) sel.value = pair[0];
+      renderSettings();
+    };
+    seg.appendChild(b);
+  });
+  app.appendChild(seg);
+
+  // 竜の村のようす（救済・賭金倍率・解放竜＝経済情報を残す）
+  const v = state.player.village || { level: 1, name: "泣き虫ドラゴン村", facilities: {}, unlockedDragonIds: [] };
+  const rescue = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[v.level]) || 300;
+  const villMult = (typeof VILLAGE_MULT !== "undefined" && VILLAGE_MULT[v.level]) || 1.0;
+  const dn = (typeof DRAGONS !== "undefined") ? DRAGONS.length : 0;
+  app.appendChild(el("div", "as-sec", "竜の村のようす"));
+  app.appendChild(el("div", "card set-village",
+    `<div class="set-vil-top">🏘️ ${v.name}　<b>村Lv ${v.level}</b></div>` +
+    `<div class="set-vil-stats"><span>💛 救済 <b>${fmtCoins(rescue)}</b></span>` +
+      `<span>🎰 賭金 <b>×${villMult}</b></span>` +
+      `<span>🐉 解放竜 <b>${(v.unlockedDragonIds || []).length}/${dn}</b></span></div>`));
+
+  // データ
+  app.appendChild(el("div", "as-sec", "データ"));
+  const data = el("div", "set-data");
+  const bTitle = el("button", "secondary", "🏠 タイトルへ"); bTitle.onclick = () => renderTitle();
+  const bReset = el("button", "set-danger", "🔄 リセット");
+  bReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
+  data.appendChild(bTitle); data.appendChild(bReset);
+  app.appendChild(data);
+  app.appendChild(el("div", "set-ver", "聖龍爆走録ミミ"));
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← ホームへ戻る"); back.onclick = () => renderHome();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// 専用画面：ショッピングモール（ミミのきせかえ）。コイン購入＋条件解放、着替えは無料。
+// 立ち絵を実際に差し替える表示専用コスメ。着順・オッズ・配当には非干渉。
+function renderMall() {
+  state.ui.screen = "mall";
+  if (typeof recomputeAssets === "function") recomputeAssets(state);
+  const app = beginScreen();   // 上部に「← ホーム」
+  app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
+  app.appendChild(el("div", "as-hint2", `ミミのきせかえ　<span class="as-hint">着替えは無料。所持衣装はいつでも切替OK。レース結果には影響しません。</span>`));
+
+  const worn = currentOutfitId();
+  const wo = outfitById(worn);
+  app.appendChild(el("div", "mall-preview",
+    `<div class="mall-prev-img">${photoOr(outfitImg(worn, "smile"), "<span class='mall-fallback'>🐰</span>")}</div>` +
+    `<div class="mall-prev-tx"><div class="mall-prev-lbl">いま着ているのは</div>` +
+      `<div class="mall-prev-nm">${wo.name}</div><div class="mall-prev-fl">${wo.flavor}</div></div>`));
+
+  const grid = el("div", "mall-grid");
+  OUTFITS.forEach(o => {
+    const owned = outfitOwned(o);
+    const isWorn = o.id === worn;
+    const card = el("div", "mall-card" + (isWorn ? " worn" : "") + (owned ? "" : " locked"));
+    let foot;
+    if (isWorn) foot = `<div class="mall-foot is-worn">✓ 着用中</div>`;
+    else if (owned) foot = `<button class="mall-btn wear">着替える</button>`;
+    else if (o.acquire.price != null) {
+      const poor = (state.player.coins || 0) < o.acquire.price;
+      foot = `<button class="mall-btn buy${poor ? " poor" : ""}">🛒 ${fmtCoins(o.acquire.price)}</button>`;
+    } else if (o.acquire.assets != null) {
+      foot = `<div class="mall-foot lock">総資産 ${fmtCoins(o.acquire.assets)} で解放</div>`;
+    } else foot = "";
+    card.innerHTML =
+      `<div class="mall-card-img">${photoOr(outfitImg(o.id, "default"), "<span class='mall-fallback'>🐰</span>")}</div>` +
+      `<div class="mall-card-nm">${o.name}</div>` +
+      `<div class="mall-card-fl">${o.flavor}</div>` + foot;
+    const wb = card.querySelector(".wear");
+    if (wb) wb.onclick = () => { wearOutfit(o.id); if (window.Sfx) Sfx.play("click"); renderMall(); };
+    const bb = card.querySelector(".buy");
+    if (bb) bb.onclick = () => {
+      const r = buyOutfit(o.id);
+      if (r.ok) { wearOutfit(o.id); if (window.Sfx) Sfx.play("coin"); renderMall(); }
+      else if (r.reason === "poor") alert("コインが足りません。");
+    };
+    grid.appendChild(card);
+  });
+  app.appendChild(grid);
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← ホームへ戻る"); back.onclick = () => renderHome();
+  actions.appendChild(back);
   app.appendChild(actions);
 }
 
