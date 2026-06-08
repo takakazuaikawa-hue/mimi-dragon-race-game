@@ -2820,7 +2820,11 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hr2-topbtn:active { transform: translateY(1px); }
 
 .hr2-stage { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 4px 0; }
-.hr2-dragon { width: 178px; height: 100px; image-rendering: pixelated; filter: drop-shadow(0 7px 12px rgba(0,0,0,0.55)); }
+.hr2-dragon { position: relative; width: 240px; max-width: 76vw; aspect-ratio: 1536 / 1024; margin: 0 auto;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,0.5)); animation: hr2float 3.6s ease-in-out infinite; }
+.hr2-dragon img { width: 100%; height: 100%; object-fit: contain; }
+.hr2-dragon-fallback { font-size: 60px; }
+@keyframes hr2float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .hr2-status { width: 100%; max-width: 420px; background: rgba(18,22,28,0.62); border: 1px solid var(--glass-border); border-radius: 14px; padding: 12px 14px; backdrop-filter: blur(5px); box-shadow: 0 12px 34px -18px rgba(0,0,0,0.85); }
 .hr2-greet { font-size: 11px; color: var(--mist-soft); letter-spacing: .05em; }
 .hr2-name { font-size: 17px; font-weight: 900; color: var(--mist); margin-top: 1px; }
@@ -2927,7 +2931,7 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   .debug-toggle { display: none; }   /* dev-only; declutter the phone top bar */
   .hr2 { min-height: calc(100dvh - 150px); gap: 6px; }
   .hr2-top { padding: 0 2px; }
-  .hr2-dragon { width: 122px; height: 68px; }
+  .hr2-dragon { width: 184px; height: auto; }
   .hr2-stage { gap: 5px; }
   .hr2-status { padding: 9px 12px; }
   .hr2-greet { font-size: 10px; } .hr2-name { font-size: 16px; }

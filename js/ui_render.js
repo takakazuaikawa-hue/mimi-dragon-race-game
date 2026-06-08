@@ -226,10 +226,11 @@ function renderHome() {
   top.appendChild(bTitle); top.appendChild(bReset);
   wrap.appendChild(top);
 
-  // center stage: mascot + one compact status card
+  // center stage: mascot (直接 ref.png を表示) + one compact status card
   const stage = el("div", "hr2-stage");
-  const dragonCv = el("canvas", "hr2-dragon"); dragonCv.width = 220; dragonCv.height = 124;
-  stage.appendChild(dragonCv);
+  const dragonImg = el("div", "hr2-dragon");
+  dragonImg.innerHTML = (typeof photoOr === "function" ? photoOr("images/dragon_ref/ref.png", "<span class='hr2-dragon-fallback'>🐉</span>") : "🐉");
+  stage.appendChild(dragonImg);
 
   let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
     : (stageLabel ? "暮らし：" + stageLabel : "");
@@ -281,19 +282,6 @@ function renderHome() {
   wrap.appendChild(menu);
 
   app.appendChild(wrap);
-
-  // mascot animation (reuses the race sprite)
-  if (dragonCv.getContext && typeof rcDrawDragon === "function") {
-    const tctx = dragonCv.getContext("2d");
-    let g = 1.0;
-    (function frame() {
-      if (!document.body.contains(dragonCv)) return;
-      tctx.clearRect(0, 0, dragonCv.width, dragonCv.height);
-      g += 0.1;
-      rcDrawDragon(tctx, { x: dragonCv.width / 2 + 8, y: dragonCv.height / 2 + 20 + Math.sin(g * 0.5) * 4, scale: 1.3, noBuild: true, color: "#ffd54a", style: "escape", gait: g, flap: g * 0.6, lean: 0.4, glow: 0.55 });
-      requestAnimationFrame(frame);
-    })();
-  }
 }
 
 // =========================================================================
