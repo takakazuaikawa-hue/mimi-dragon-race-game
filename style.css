@@ -2914,6 +2914,28 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .as-entry-ch { flex: none; font-size: 20px; color: var(--astone); }
 .as-hint2 { font-size: 12px; color: var(--mist-soft); margin: 0 0 8px; }
 .as-hint2 b { color: var(--gold-bright); }
+
+/* 習い事（アクティブスキル）— コンパクトな2列カード */
+.askill-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 9px; margin: 6px 0 14px; }
+.askill { background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 13px; padding: 12px; display: flex; flex-direction: column; }
+.askill.maxed { border-color: var(--gold-line); background: rgba(255,216,119,0.08); box-shadow: inset 0 0 0 1px rgba(255,216,119,0.18); }
+.askill-top { display: flex; align-items: center; gap: 9px; }
+.askill-ic { font-size: 25px; line-height: 1; flex: none; }
+.askill-id { flex: 1; min-width: 0; }
+.askill-nm { display: block; font-size: 14px; font-weight: 800; color: var(--mist); }
+.askill-tag { display: block; font-size: 10.5px; color: var(--mist-soft); margin-top: 1px; }
+.askill-lv { flex: none; font-size: 12px; font-weight: 900; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.askill-dots { display: flex; gap: 4px; margin: 9px 0; }
+.askill-dot { flex: 1; height: 4px; border-radius: 99px; background: rgba(255,255,255,0.12); }
+.askill-dot.on { background: linear-gradient(90deg, var(--gold), var(--gold-bright)); }
+.askill-effect { font-size: 11.5px; color: var(--mist-soft); line-height: 1.5; min-height: 34px; }
+.askill.maxed .askill-effect { color: var(--gold-bright); font-weight: 700; }
+.askill-go { margin-top: 10px; width: 100%; padding: 8px; border: none; border-radius: 9px; cursor: pointer;
+  font-weight: 800; font-size: 13px; background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #2a1d06; }
+.askill-go:active { transform: translateY(1px); filter: brightness(1.05); }
+.askill-done { margin-top: 10px; text-align: center; font-size: 12px; font-weight: 900; color: var(--gold-bright);
+  padding: 7px; border-radius: 9px; background: rgba(255,216,119,0.12); }
+
 /* 物語：コンパクトな話一覧（タップで読む画面へ） */
 .story-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
 .story-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 10px; cursor: pointer;

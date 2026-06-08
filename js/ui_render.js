@@ -36,7 +36,7 @@ function updateHeader() {
 const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2,
-  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3,
+  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3,
   story_read: 4, race_run: 4, result: 5, analysis: 6
 };
 let _prevScreen = null;
@@ -76,7 +76,7 @@ function beginScreen() {
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
     race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home",
-    life_tree: "assets", life_collection: "assets", story_read: "story"
+    life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
   const bt = BACK_TGT[TOP_BACK[screen]];
@@ -432,6 +432,7 @@ function renderAssets() {
   LIFE_BRANCHES.forEach(b => { const pr = lifeBranchProgress(b.id); if (pr.next && lifeNodeState(pr.next) === "ready") ready = true; });
   const colOwned = LIFE_ASSETS.filter(it => isLifeAssetUnlocked(state, it, level)).length;
   const unlockedCh = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
+  const skTitles = ACTIVE_SKILLS.filter(s => ((p.activeSkills || {})[s.id] || 0) >= s.levels.length).length;
   const entry = (ic, label, sub, badge, onClick) => {
     const b = el("button", "as-entry",
       `<span class="as-entry-ic">${ic}</span><span class="as-entry-tx"><span class="as-entry-l">${label}${badge ? ` <span class="as-entry-badge">${badge}</span>` : ""}</span>` +
@@ -441,6 +442,7 @@ function renderAssets() {
   const ent = el("div", "as-entries");
   ent.appendChild(entry("🌳", "くらしスキルツリー", `暮らしP ◇${st.available} 残り ・ 解放 ${st.unlockedCount}/${st.totalNodes}`, ready ? "振れる!" : "", () => renderLifeTree()));
   ent.appendChild(entry("🎁", "生活資産コレクション", `${colOwned} / ${LIFE_ASSETS.length} 解放`, "", () => renderLifeCollection()));
+  ent.appendChild(entry("🎫", "習い事（アクティブスキル）", `称号 ${skTitles} / ${ACTIVE_SKILLS.length} 獲得 ・ ミミの暮らしの記録`, skTitles >= ACTIVE_SKILLS.length ? "コンプ!" : "", () => renderActiveSkills()));
   ent.appendChild(entry("📖", "物語", `${unlockedCh} / ${STORY_CHAPTERS.length} 話 解放`, "", () => renderStory()));
   app.appendChild(ent);
 
@@ -448,6 +450,88 @@ function renderAssets() {
   const back = el("button", "secondary", "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(back);
   app.appendChild(actions);
+}
+
+// 専用画面：習い事（アクティブスキル）。通うとレベルが上がり、効果テキストと称号がつくだけの
+// 完全な表示専用メタ進行。コイン・総資産・暮らしP・着順・オッズ・配当には一切触れない。
+function renderActiveSkills() {
+  state.ui.screen = "active_skills";
+  if (!state.player.activeSkills) state.player.activeSkills = {};
+  const as = state.player.activeSkills;
+  const app = beginScreen();
+  app.appendChild(el("h2", null, "習い事（アクティブスキル）"));
+
+  const titles = ACTIVE_SKILLS.filter(s => (as[s.id] || 0) >= s.levels.length).length;
+  app.appendChild(el("div", "as-hint2",
+    `称号 <b>${titles} / ${ACTIVE_SKILLS.length}</b> 獲得　` +
+    `<span class="as-hint">通うほど上達。レース結果には影響しない、ミミの“暮らしの記録”です。</span>`));
+
+  const grid = el("div", "askill-grid");
+  ACTIVE_SKILLS.forEach(s => {
+    const max = s.levels.length;
+    const lv = Math.min(as[s.id] || 0, max);
+    const maxed = lv >= max;
+    const dots = Array.from({ length: max }, (_, i) => `<span class="askill-dot${i < lv ? " on" : ""}"></span>`).join("");
+    const card = el("div", "askill" + (maxed ? " maxed" : ""));
+    card.innerHTML =
+      `<div class="askill-top">` +
+        `<span class="askill-ic">${s.icon}</span>` +
+        `<span class="askill-id"><span class="askill-nm">${s.name}</span><span class="askill-tag">${s.tag}</span></span>` +
+        `<span class="askill-lv">${maxed ? "極" : "Lv" + lv}</span>` +
+      `</div>` +
+      `<div class="askill-dots">${dots}</div>` +
+      `<div class="askill-effect">${maxed
+        ? `🏅 称号「${s.title}」を獲得！`
+        : (lv > 0 ? s.levels[lv - 1] : "まだ通っていない。")}</div>`;
+    if (!maxed) {
+      const go = el("button", "askill-go", lv > 0 ? "また通う ▶" : "通ってみる ▶");
+      go.onclick = () => {
+        const nv = Math.min((as[s.id] || 0) + 1, max);
+        as[s.id] = nv;
+        if (typeof saveGame === "function") saveGame();
+        if (nv >= max) showSkillTitleCutin(s);
+        renderActiveSkills();
+      };
+      card.appendChild(go);
+    } else {
+      card.appendChild(el("div", "askill-done", "✓ 達人"));
+    }
+    grid.appendChild(card);
+  });
+  app.appendChild(grid);
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← 暮らしへ戻る"); back.onclick = () => renderAssets();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// 称号獲得カットイン（表示専用・約1.1秒／タップで即スキップ）。showLifeCutin と同じ見た目を流用。
+function showSkillTitleCutin(skill) {
+  try {
+    const ex = document.getElementById("lt-cutin"); if (ex) ex.remove();
+    if (_ltCutinTimer) { clearTimeout(_ltCutinTimer); _ltCutinTimer = null; }
+    const ov = el("div", "lt-cutin"); ov.id = "lt-cutin";
+    ov.style.setProperty("--bc", "#e6b24a");
+    ov.innerHTML =
+      `<div class="lt-cutin-flash"></div><div class="lt-cutin-lines"></div>` +
+      `<div class="lt-cutin-band"><div class="lt-cutin-inner">` +
+        `<div class="lt-cutin-ic">${skill.icon}</div>` +
+        `<div class="lt-cutin-tx">` +
+          `<div class="lt-cutin-kicker">${skill.name}・極めた！</div>` +
+          `<div class="lt-cutin-title">称号「${skill.title}」</div>` +
+          `<div class="lt-cutin-sub">ミミ、また一歩……！</div>` +
+        `</div>` +
+      `</div></div>`;
+    ov.onclick = () => { if (_ltCutinTimer) { clearTimeout(_ltCutinTimer); _ltCutinTimer = null; } ov.remove(); };
+    document.body.appendChild(ov);
+    try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+    _ltCutinTimer = setTimeout(() => {
+      const o = document.getElementById("lt-cutin");
+      if (o) { o.classList.add("out"); setTimeout(() => { if (o) o.remove(); }, 260); }
+      _ltCutinTimer = null;
+    }, 1150);
+  } catch (e) {}
 }
 
 // 専用画面：くらしスキルツリー（枝タブ＋チェーン＋振り直し）
