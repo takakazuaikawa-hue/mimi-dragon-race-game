@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16262d">
+<title>何もしないアプリ</title>
+<style>
+  :root {
+    --bg: #16262d;
+    --fg: #e8eef0;
+    --muted: #7d97a1;
+    --accent: #4db6ac;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+  }
+  body {
+    background: radial-gradient(circle at 50% 30%, #1d333c, var(--bg));
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    text-align: center;
+    padding: 24px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  h1 {
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+    margin: 0 0 0.4em;
+    letter-spacing: 0.04em;
+  }
+  p {
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.7;
+    max-width: 22em;
+    margin: 0.3em 0;
+  }
+  .dot {
+    width: 14px;
+    height: 14px;
+    margin: 28px 0 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(77, 182, 172, 0.6);
+    animation: breathe 4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(77,182,172,0.5); }
+    50%      { transform: scale(1.4); box-shadow: 0 0 0 18px rgba(77,182,172,0); }
+  }
+  .timer {
+    margin-top: 18px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dot { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <h1>何もしないアプリ</h1>
+  <p>このアプリは何もしません。<br>ボタンもなければ、通知もありません。</p>
+  <p>ただ、ここにいるだけ。<br>あなたも、少し休んでいってください。</p>
+
+  <div class="dot" aria-hidden="true"></div>
+
+  <p class="timer" id="timer">何もしていない時間: 0秒</p>
+
+  <script>
+    // 何もしません。
+    // ……とはいえ、何もしていない時間だけはそっと数えています。
+    const start = Date.now();
+    const el = document.getElementById('timer');
+    function fmt(totalSec) {
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      if (h > 0) return `${h}時間${m}分${s}秒`;
+      if (m > 0) return `${m}分${s}秒`;
+      return `${s}秒`;
+    }
+    setInterval(() => {
+      const sec = Math.floor((Date.now() - start) / 1000);
+      el.textContent = '何もしていない時間: ' + fmt(sec);
+    }, 1000);
+  </script>
+</body>
+</html>
