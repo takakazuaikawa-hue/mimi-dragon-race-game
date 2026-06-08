@@ -37,7 +37,7 @@ const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2,
   story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3,
-  race_run: 4, result: 5, analysis: 6
+  story_read: 4, race_run: 4, result: 5, analysis: 6
 };
 let _prevScreen = null;
 let _heroRect = null;   // rect of a tapped card, to expand from on the next screen
@@ -76,13 +76,14 @@ function beginScreen() {
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
     race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home",
-    life_tree: "assets", life_collection: "assets"
+    life_tree: "assets", life_collection: "assets", story_read: "story"
   };
-  const tgt = TOP_BACK[screen];
-  if (tgt) {
+  const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
+  const bt = BACK_TGT[TOP_BACK[screen]];
+  if (bt) {
     const tb = el("div", "topback");
-    const b = el("button", "topback-btn", tgt === "assets" ? "← 暮らし" : "← ホーム");
-    b.onclick = () => (tgt === "assets" ? renderAssets() : renderHome());
+    const b = el("button", "topback-btn", bt.l);
+    b.onclick = () => bt.f();
     tb.appendChild(b);
     app.appendChild(tb);
   }
@@ -739,44 +740,61 @@ function renderStory() {
     `<div class="story-progress">解放：<b>${unlockedCount}</b> / ${STORY_CHAPTERS.length} 話</div>`;
   app.appendChild(intro);
 
+  // コンパクトな一覧（CGサムネ＋タイトル＋話者）。本文は読む画面へ遷移（スクロール減）。
+  const list = el("div", "story-list");
   STORY_CHAPTERS.forEach(ch => {
     const unlocked = total >= storyUnlockAt(ch.id);
     const cast = STORY_CAST[ch.cast];
-    const card = el("div", "card story-chapter" + (unlocked ? "" : " locked"));
-
-    // 一枚絵CG placeholder slot (real art can be dropped in here later)
-    const cg = el("div", "story-cg" + (unlocked ? " viewable" : " locked"));
-    if (cast) cg.style.setProperty("--cg", cast.color);
-    cg.innerHTML = unlocked
-      ? `<div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
-        `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div>`
-      : `<div class="story-cg-art"><span class="story-cg-sym">🔒</span></div>` +
-        `<div class="story-cg-cap">総資産 ${fmtCoins(storyUnlockAt(ch.id))} で解放</div>`;
-    if (unlocked) cg.onclick = () => showStoryArt(ch);
-    card.appendChild(cg);
-
-    card.appendChild(el("div", "story-ch-title", ch.title));
-
-    if (unlocked) {
-      if (cast) {
-        const badge = el("div", "story-cast");
-        badge.innerHTML =
-          `<span class="story-cast-sym" style="--cg:${cast.color}">${cast.symbol}</span>` +
-          `<span class="story-cast-info"><span class="story-cast-name">${cast.name}<small>（${cast.tag}）</small></span>` +
-          `<span class="story-cast-gives">授けるもの：${cast.gives}</span></span>`;
-        card.appendChild(badge);
-      }
-      card.appendChild(el("div", "story-ch-body", ch.body));
-    } else {
-      card.appendChild(el("div", "story-ch-locked", `総資産 ${fmtCoins(storyUnlockAt(ch.id))} に到達すると読めます。`));
-    }
-    app.appendChild(card);
+    const row = el("button", "story-row" + (unlocked ? "" : " locked"));
+    if (cast) row.style.setProperty("--cg", cast.color);
+    row.innerHTML =
+      `<span class="story-row-cg">${unlocked ? photoOr("images/story/" + ch.id + ".jpg", `<span>${cast ? cast.symbol : "🐲"}</span>`) : "<span>🔒</span>"}</span>` +
+      `<span class="story-row-tx"><span class="story-row-t">${ch.title}</span>` +
+        `<span class="story-row-s">${unlocked ? (cast ? `${cast.name}（${cast.tag}）` : "") : "総資産 " + fmtCoins(storyUnlockAt(ch.id)) + " で解放"}</span></span>` +
+      (unlocked ? `<span class="story-row-ch">›</span>` : "");
+    if (unlocked) row.onclick = () => renderStoryChapter(ch.id);
+    list.appendChild(row);
   });
+  app.appendChild(list);
 
   const actions = el("div", "actions");
   const consultBtn = el("button", "secondary", "💬 相談する"); consultBtn.onclick = () => renderConsult();
   const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(consultBtn);
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// 専用画面：1話を読む（大きな一枚絵＋話者＋本文）
+function renderStoryChapter(chId) {
+  const ch = STORY_CHAPTERS.find(c => c.id === chId);
+  recomputeAssets(state);
+  if (!ch || state.player.totalAssets < storyUnlockAt(ch.id)) { renderStory(); return; }
+  state.ui.screen = "story_read";
+  const cast = STORY_CAST[ch.cast];
+  const app = beginScreen();   // 上部に「← 物語」
+  app.appendChild(el("h2", null, ch.title));
+  const card = el("div", "card story-chapter");
+  const cg = el("div", "story-cg viewable");
+  if (cast) cg.style.setProperty("--cg", cast.color);
+  cg.innerHTML =
+    `<div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
+    `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div>`;
+  cg.onclick = () => showStoryArt(ch);
+  card.appendChild(cg);
+  if (cast) {
+    const badge = el("div", "story-cast");
+    badge.innerHTML =
+      `<span class="story-cast-sym" style="--cg:${cast.color}">${cast.symbol}</span>` +
+      `<span class="story-cast-info"><span class="story-cast-name">${cast.name}<small>（${cast.tag}）</small></span>` +
+      `<span class="story-cast-gives">授けるもの：${cast.gives}</span></span>`;
+    card.appendChild(badge);
+  }
+  card.appendChild(el("div", "story-ch-body", ch.body));
+  app.appendChild(card);
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← 物語へ戻る"); back.onclick = () => renderStory();
   actions.appendChild(back);
   app.appendChild(actions);
 }
