@@ -2869,6 +2869,17 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   filter: drop-shadow(0 8px 14px rgba(0,0,0,0.5)); animation: hr2float 3.6s ease-in-out infinite; }
 .hr2-dragon img { width: 100%; height: 100%; object-fit: contain; }
 .hr2-dragon-fallback { font-size: 60px; }
+/* ホームの立ち絵：ミミ（着用衣装を反映・タップでモール）＋竜マスコットを横並び */
+.hr2-cast { display: flex; align-items: flex-end; justify-content: center; gap: 6px; width: 100%; }
+.hr2-cast .hr2-dragon { width: 180px; max-width: 48vw; margin: 0; }
+.hr2-mimi { position: relative; flex: 0 0 auto; width: 120px; max-width: 32vw; aspect-ratio: 256 / 384; cursor: pointer;
+  border-radius: 14px; overflow: hidden; border: 1.5px solid var(--gold-line); background: #f3ecdf;
+  box-shadow: 0 9px 20px -9px rgba(0,0,0,0.65); animation: hr2float 3.6s ease-in-out infinite; animation-delay: .5s; }
+.hr2-mimi img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.hr2-mimi-fallback { font-size: 52px; }
+.hr2-mimi::after { content: "🛍️"; position: absolute; right: 0; bottom: 10px; font-size: 13px; line-height: 1;
+  background: rgba(18,22,28,.82); border: 1px solid var(--gold-line); border-radius: 999px; padding: 3px 5px; }
+.hr2-mimi:active { transform: translateY(1px); }
 @keyframes hr2float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .hr2-status { width: 100%; max-width: 420px; background: rgba(18,22,28,0.62); border: 1px solid var(--glass-border); border-radius: 14px; padding: 12px 14px; backdrop-filter: blur(5px); box-shadow: 0 12px 34px -18px rgba(0,0,0,0.85); }
 .hr2-greet { font-size: 11px; color: var(--mist-soft); letter-spacing: .05em; }
@@ -2993,6 +3004,59 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   border: 1px solid var(--gold-line); border-radius: 10px; padding: 8px 12px; margin: 2px 0 10px; }
 /* ホームのステータスに飾る称号バッジ */
 .hr2-title { font-size: 11px; font-weight: 800; color: var(--gold-bright); margin-left: 4px; }
+
+/* ===== ショッピングモール（ミミのきせかえ） ===== */
+.mall-preview { display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border); border-radius: 14px; padding: 12px; margin: 4px 0 12px; }
+.mall-prev-img { position: relative; flex: 0 0 auto; width: 96px; aspect-ratio: 256 / 384; border-radius: 11px; overflow: hidden; border: 1px solid var(--gold-line); background: #f3ecdf; }
+.mall-prev-img img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.mall-fallback { font-size: 40px; }
+.mall-prev-tx { min-width: 0; }
+.mall-prev-lbl { font-size: 11px; color: var(--mist-soft); }
+.mall-prev-nm { font-size: 18px; font-weight: 900; color: var(--gold-bright); margin: 2px 0 4px; }
+.mall-prev-fl { font-size: 12px; color: var(--mist-soft); line-height: 1.5; }
+.mall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.mall-card { display: flex; flex-direction: column; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border); border-radius: 13px; padding: 10px; }
+.mall-card.worn { border-color: var(--gold-bright); box-shadow: inset 0 0 0 1px var(--gold-bright); }
+.mall-card-img { width: 100%; aspect-ratio: 3 / 4; border-radius: 9px; overflow: hidden; background: #f3ecdf; }
+.mall-card-img img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.mall-card.locked .mall-card-img img { filter: grayscale(.7) brightness(.7); }
+.mall-card-nm { font-size: 13px; font-weight: 800; color: var(--mist); margin-top: 7px; }
+.mall-card-fl { font-size: 10.5px; color: var(--mist-soft); line-height: 1.45; margin-top: 2px; flex: 1 1 auto; min-height: 30px; }
+.mall-btn { margin-top: 8px; width: 100%; padding: 8px; border: none; border-radius: 9px; cursor: pointer; font-weight: 800; font-size: 12.5px; }
+.mall-btn.wear { background: rgba(255,216,119,.14); color: var(--gold-bright); border: 1px solid var(--gold-line); }
+.mall-btn.buy { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #2a1d06; }
+.mall-btn.buy.poor { background: var(--glass-2); color: var(--astone-2); border: 1px solid var(--glass-border); cursor: not-allowed; }
+.mall-btn:active { transform: translateY(1px); }
+.mall-foot { margin-top: 8px; text-align: center; font-size: 11.5px; font-weight: 800; padding: 7px; border-radius: 9px; }
+.mall-foot.is-worn { color: var(--gold-bright); background: rgba(255,216,119,.12); }
+.mall-foot.lock { color: var(--astone-2); background: var(--glass-2); }
+
+/* ===== 設定画面（旧・竜の村の枠） ===== */
+.set-row { display: flex; align-items: center; gap: 11px; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border); border-radius: 12px; padding: 11px 13px; margin: 4px 0 6px; }
+.set-ic { font-size: 22px; flex: none; }
+.set-tx { flex: 1 1 auto; min-width: 0; }
+.set-nm { display: block; font-size: 14px; font-weight: 800; color: var(--mist); }
+.set-sub { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; }
+.set-toggle { flex: none; min-width: 58px; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-weight: 900; font-size: 13px;
+  background: var(--glass-2); color: var(--astone-2); border: 1px solid var(--glass-border); }
+.set-toggle.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #2a1d06; border-color: var(--gold-bright); }
+.set-seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 2px 0 8px; }
+.set-seg-b { padding: 9px 4px; border-radius: 9px; cursor: pointer; font-weight: 800; font-size: 12px;
+  background: var(--glass-2); color: var(--mist-soft); border: 1px solid var(--glass-border); }
+.set-seg-b.on { background: var(--gold); color: #2a1d06; border-color: var(--gold-bright); }
+.set-village { padding: 12px 14px; }
+.set-vil-top { font-size: 14px; font-weight: 800; color: var(--mist); }
+.set-vil-top b { color: var(--gold-bright); margin-left: 4px; }
+.set-vil-stats { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 8px; font-size: 12px; color: var(--mist-soft); }
+.set-vil-stats b { color: var(--cream); font-variant-numeric: tabular-nums; }
+.set-data { display: flex; gap: 8px; }
+.set-data button { flex: 1 1 0; min-height: 44px; }
+.set-danger { background: rgba(214,69,47,.14); color: #ff9a8c; border: 1px solid rgba(214,69,47,.4); border-radius: 10px; font-weight: 800; cursor: pointer; }
+.set-danger:hover { background: rgba(214,69,47,.22); }
+.set-ver { text-align: center; font-size: 10.5px; color: var(--astone); margin: 10px 0 2px; }
 
 /* 物語：コンパクトな話一覧（タップで読む画面へ） */
 .story-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }

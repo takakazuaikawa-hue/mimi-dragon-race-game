@@ -96,6 +96,49 @@ const ACTIVE_SKILLS = [
     title: "村の人気者" }
 ];
 
+// §30+ ショッピングモールの衣装（きせかえ）。ミミの立ち絵を実際に差し替えるコスメ。
+// 入手はコイン購入＋条件解放のハイブリッド、着替え自体は無料。所持後はいつでも切替可。
+// images/cast/mimi/mimi_<id>_<expr>.png（expr: default / smile / panic / happy …）。
+// 表示専用：着順・オッズ・配当には非干渉（コイン購入は既存の生活資産と同じ買い物方式の消費）。
+const OUTFITS = [
+  { id: "buniqro",   name: "ブニクロ普段着",   flavor: "トートとスニーカーの、肩の力が抜けた休日コーデ。", acquire: { free: true } },
+  { id: "newspaper", name: "予想新聞ドレス",   flavor: "競竜新聞をまとった、予想家ミミの正装。",         acquire: { assets: 50000 } },
+  { id: "dara",      name: "きれいめコーデ",   flavor: "ジャケットを羽織って、ちょっとおでかけ気分。",   acquire: { price: 5000 } },
+  { id: "jungle",    name: "ジャングルバニー", flavor: "葉っぱと馬券で武装した、探検スタイル。",         acquire: { price: 15000 } },
+  { id: "tarzan",    name: "野生児ターザン",   flavor: "ヒョウ柄をまとった、聖龍島サバイバル仕様。",     acquire: { price: 40000 } }
+];
+const DEFAULT_OUTFIT = "buniqro";
+
+function outfitById(id) { return OUTFITS.find(o => o.id === id) || OUTFITS.find(o => o.id === DEFAULT_OUTFIT); }
+function currentOutfitId() { return (state.player && state.player.outfit) || DEFAULT_OUTFIT; }
+function outfitImg(id, expr) { return "images/cast/mimi/mimi_" + id + "_" + (expr || "default") + ".png"; }
+function outfitOwned(o) {
+  if (!o) return false;
+  if (o.acquire.free) return true;
+  if (o.acquire.assets != null) return ((state.player && state.player.totalAssets) || 0) >= o.acquire.assets;
+  const bought = (state.player && state.player.outfitsBought) || [];
+  return bought.indexOf(o.id) >= 0;
+}
+function buyOutfit(id) {
+  const o = outfitById(id);
+  if (!o || o.acquire.price == null) return { ok: false, reason: "notbuy" };
+  if (outfitOwned(o)) return { ok: false, reason: "owned" };
+  if ((state.player.coins || 0) < o.acquire.price) return { ok: false, reason: "poor" };
+  state.player.coins -= o.acquire.price;           // コイン消費（既存の生活資産購入と同じ・着順/オッズ/配当には非干渉）
+  if (!state.player.outfitsBought) state.player.outfitsBought = [];
+  state.player.outfitsBought.push(id);
+  if (typeof saveGame === "function") saveGame();
+  if (typeof updateHeader === "function") updateHeader();
+  return { ok: true };
+}
+function wearOutfit(id) {
+  const o = outfitById(id);
+  if (!o || !outfitOwned(o)) return { ok: false };
+  state.player.outfit = id;
+  if (typeof saveGame === "function") saveGame();
+  return { ok: true };
+}
+
 // Character cast (spec 31). Each advisor unlocks with their chapter and gives
 // Mimi a new "perspective". Display/flavor only — never touches race math.
 // `level` = the advisor's 0-indexed introduction order (= their chapter index);
