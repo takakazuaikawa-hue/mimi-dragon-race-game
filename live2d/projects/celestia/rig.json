@@ -1,0 +1,112 @@
+{
+  "format": "mimi-live2d-rig",
+  "version": 1,
+  "name": "celestia",
+  "canvas": {
+    "w": 256,
+    "h": 256
+  },
+  "embed": false,
+  "rootPivot": {
+    "x": 141,
+    "y": 231
+  },
+  "parts": [
+    {
+      "id": "body",
+      "role": "body",
+      "z": 1,
+      "parent": null,
+      "rect": {
+        "x": 26,
+        "y": 119,
+        "w": 230,
+        "h": 137
+      },
+      "pivot": {
+        "x": 141,
+        "y": 256
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 1,
+        "blinkable": false,
+        "sway": {
+          "amp": 0,
+          "freq": 0.25,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": null,
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0,
+        "jiggle": null
+      },
+      "file": "parts/body.png"
+    },
+    {
+      "id": "head",
+      "role": "head",
+      "z": 2,
+      "parent": null,
+      "rect": {
+        "x": 62,
+        "y": 2,
+        "w": 194,
+        "h": 117
+      },
+      "pivot": {
+        "x": 159,
+        "y": 119
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.5,
+        "blinkable": false,
+        "sway": {
+          "amp": 0.05,
+          "freq": 0.3,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": null,
+        "gaze": {
+          "tx": 6,
+          "ty": 4
+        },
+        "flutter": 0,
+        "jiggle": null
+      },
+      "file": "parts/head.png"
+    }
+  ]
+}
