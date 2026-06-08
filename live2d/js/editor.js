@@ -218,6 +218,17 @@ const L2_ED = (function () {
     function flipPart(id, axis) { const p = L2_RIG.byId(S.rig, id); if (!p) return; if (axis === 'h') p.flip.h = !p.flip.h; else p.flip.v = !p.flip.v; renderParts(); refreshPreview(); }
     function deletePart(id) { S.rig.parts = S.rig.parts.filter(p => p.id !== id); if (S.selected === id) S.selected = null; renderParts(); refreshPreview(); }
     function setRole(id, role) { const p = L2_RIG.byId(S.rig, id); if (!p) return; p.role = role; p.motion = L2_RIG.defaultMotionForRole(role); renderParts(); refreshPreview(); }
+    // chest "ぷるぷる" group mode: 'sync' = every chest part shares phase 0 (同時に揺れる),
+    // 'alt' = sort by x and alternate phase 0 / π so neighbours bounce out of step (交互).
+    function chestParts() { return L2_RIG.sortedByZ(S.rig).filter(p => p.role === 'chest').sort((a, b) => a.pivot.x - b.pivot.x); }
+    function setChestJiggleMode(mode) {
+      const cs = chestParts(); if (!cs.length) return;
+      cs.forEach((p, i) => {
+        p.motion.jiggle = p.motion.jiggle || L2_RIG.defaultMotionForRole('chest').jiggle;
+        p.motion.jiggle.phase = (mode === 'alt' && (i % 2 === 1)) ? Math.PI : 0;
+      });
+      renderParts(); refreshPreview(); status('胸のぷるぷる: ' + (mode === 'alt' ? '交互' : '同時') + 'に設定（' + cs.length + 'パーツ）');
+    }
     function moveZ(id, dir) {
       const sorted = L2_RIG.sortedByZ(S.rig); const i = sorted.findIndex(p => p.id === id);
       const j = i + dir; if (j < 0 || j >= sorted.length) return;
@@ -304,6 +315,14 @@ const L2_ED = (function () {
       const panel = refs.panel; U.clear(panel);
       const sorted = L2_RIG.sortedByZ(S.rig).slice().reverse(); // top of list = front
       if (!sorted.length) { panel.appendChild(U.el('div', 'l2-empty', 'まだパーツがありません。左で部位を選び「パーツ化」。')); return; }
+      // chest group control: switch 同時 / 交互 jiggle when there are ≥2 chest parts
+      if (sorted.filter(p => p.role === 'chest').length >= 2) {
+        const bar = U.el('div', 'l2-chest-bar');
+        bar.appendChild(U.el('span', null, '胸ぷるぷる'));
+        bar.appendChild(btn('同時', () => setChestJiggleMode('sync')));
+        bar.appendChild(btn('交互', () => setChestJiggleMode('alt')));
+        panel.appendChild(bar);
+      }
       sorted.forEach(p => {
         const card = U.el('div', 'l2-part' + (S.selected === p.id ? ' sel' : ''));
         const head = U.el('div', 'l2-part-head');
@@ -333,13 +352,21 @@ const L2_ED = (function () {
         card.appendChild(mini('揺れamp', 0, 0.4, 0.01, m.sway.amp, v => setNum(p.id, 'motion.sway.amp', v)));
         card.appendChild(mini('揺れfreq', 0.1, 2, 0.05, m.sway.freq, v => setNum(p.id, 'motion.sway.freq', v)));
         const blink = U.el('label', 'l2-check'); const cb = U.el('input'); cb.type = 'checkbox'; cb.checked = !!m.blinkable; cb.onchange = () => { m.blinkable = cb.checked; refreshPreview(); }; blink.appendChild(cb); blink.appendChild(U.el('span', null, 'まばたき')); card.appendChild(blink);
+        // chest-only: ぷるぷる(jiggle) amplitude / speed / phase sliders. phase 0.00=同位相(同時) 0.50=逆位相(交互)
+        if (p.role === 'chest') {
+          if (!m.jiggle) m.jiggle = L2_RIG.defaultMotionForRole('chest').jiggle;
+          card.appendChild(mini('ぷる量', 0, 1.5, 0.05, m.jiggle.amp, v => setNum(p.id, 'motion.jiggle.amp', v)));
+          card.appendChild(mini('ぷる速', 0.5, 3, 0.05, m.jiggle.freq, v => setNum(p.id, 'motion.jiggle.freq', v)));
+          card.appendChild(mini('位相', 0, 1, 0.05, (m.jiggle.phase || 0) / (Math.PI * 2), v => setNum(p.id, 'motion.jiggle.phase', v * Math.PI * 2), '0=同時 / 0.5=交互'));
+        }
         card.onclick = (e) => { if (e.target === card || e.target.tagName === 'STRONG') { S.selected = p.id; renderParts(); } };
         panel.appendChild(card);
       });
     }
     function btn(label, on) { const b = U.el('button', 'l2-mini-btn', label); b.onclick = (e) => { e.stopPropagation(); on(); }; return b; }
-    function mini(label, min, max, step, val, on) {
-      const wrap = U.el('label', 'l2-mini'); wrap.appendChild(U.el('span', null, label));
+    function mini(label, min, max, step, val, on, title) {
+      const wrap = U.el('label', 'l2-mini'); if (title) wrap.title = title;
+      const lab = U.el('span', null, label); if (title) lab.title = title; wrap.appendChild(lab);
       const inp = U.el('input'); inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = val;
       const out = U.el('span', 'l2-val', (+val).toFixed(2));
       inp.oninput = () => { out.textContent = (+inp.value).toFixed(2); on(+inp.value); };
@@ -357,7 +384,7 @@ const L2_ED = (function () {
 
     renderToolbar();
     return {
-      loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView,
+      loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode,
       get rig() { return S.rig; }, set rig(r) { S.rig = r; renderParts(); },
       loadRig(rig) { S.rig = rig; S.w = rig.canvas.w; S.h = rig.canvas.h; renderParts(); }
     };

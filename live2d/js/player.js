@@ -119,9 +119,10 @@ const L2_PLY = (function () {
       // jiggle — soft "ぷるぷる" jelly bounce for chest/bust. A primary wobble plus a
       // half-amplitude second harmonic gives the springy, slightly asymmetric feel.
       // Volume-preserving (sy up ↔ sx down) and pivoted at the part's top edge, so the
-      // lower edge swings most. per-id phase desyncs the left/right sides naturally.
+      // lower edge swings most. Phase is deterministic (NOT per-id desynced) so left/right
+      // sides can be driven fully in-sync (同時, same phase) or alternating (交互, phase±π).
       if (m.jiggle && m.jiggle.amp) {
-        const f = m.jiggle.freq || 1.5, jp = ph + (m.jiggle.phase || 0), a = m.jiggle.amp;
+        const f = m.jiggle.freq || 1.5, jp = (m.jiggle.phase || 0), a = m.jiggle.amp;
         const wob = Math.sin(2 * Math.PI * f * t + jp) + 0.35 * Math.sin(2 * Math.PI * 2 * f * t + jp);
         sy += 0.06 * a * wob;
         sx -= 0.04 * a * wob;

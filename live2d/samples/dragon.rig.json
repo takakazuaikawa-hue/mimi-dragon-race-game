@@ -261,7 +261,7 @@
         },
         "flutter": 0,
         "jiggle": {
-          "amp": 0.7,
+          "amp": 0.8,
           "freq": 1.5,
           "phase": 3.14
         }
