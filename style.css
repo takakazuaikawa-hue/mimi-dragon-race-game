@@ -67,36 +67,41 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 }
 #header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: max(10px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 10px max(20px, env(safe-area-inset-left));
-  gap: 16px;
-  background: linear-gradient(180deg, rgba(42,43,49,0.92), rgba(26,27,32,0.95));
+  padding: max(9px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 9px max(16px, env(safe-area-inset-left));
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(34,38,46,0.94), rgba(20,24,30,0.96));
   border-bottom: 1px solid var(--gold-line);
-  box-shadow: 0 2px 14px -7px rgba(0,0,0,0.7);
-  flex-wrap: wrap;
+  box-shadow: 0 3px 16px -8px rgba(0,0,0,0.8);
   position: relative; z-index: 20;
   max-width: 720px; margin: 0 auto;   /* ステータスバーもゲームフレーム幅に合わせて中央寄せ */
 }
 /* keep the main content column above the fixed home world scene */
 #app { position: relative; z-index: 1; }
+/* 左：ブランド（紋章＋タイトル） */
+.hd-brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
+.hd-crest { font-size: 20px; line-height: 1; flex: none; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6)); }
 #header h1 {
-  margin: 0; font-size: 18px; color: var(--gold-bright);
-  flex: 0 1 auto; min-width: 0;
+  margin: 0; font-size: 17px; color: var(--gold-bright); min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 60vw;
+  letter-spacing: .02em; text-shadow: 0 1px 6px rgba(0,0,0,0.5);
 }
 #header h1 .subtitle {
   font-size: 11px; color: #c0a070; margin-left: 6px; font-weight: normal;
 }
-.header-info { flex-shrink: 0; }
-.header-info { display: flex; gap: 20px; align-items: center; font-size: 14px; }
-.header-info b { color: #ffe080; font-size: 16px; }
-.debug-toggle { font-size: 12px; color: #aaa; cursor: pointer; }
-.info-level-select { font-size: 12px; color: #c0a070; }
-.info-level-select select {
-  background: #2a2050; color: #f0e8d0;
-  border: 1px solid #604040; border-radius: 3px;
-  padding: 2px 4px; font-size: 12px; margin-left: 4px;
-}
+/* 右：通貨＝主役のピル（￥）＋控えめなランクチップ（視覚的階層） */
+.header-info { flex-shrink: 0; display: flex; gap: 8px; align-items: center; }
+.hd-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px;
+  background: rgba(10,12,16,0.5); border: 1px solid var(--glass-border); line-height: 1; font-variant-numeric: tabular-nums; }
+.hd-pill-ic { font-size: 14px; line-height: 1; }
+.hd-pill-k { font-size: 10px; color: var(--mist-soft); }
+.hd-pill b { font-weight: 900; }
+.hd-coin { border-color: var(--gold-line);
+  background: linear-gradient(180deg, rgba(62,48,18,0.6), rgba(28,22,10,0.62));
+  box-shadow: inset 0 0 0 1px rgba(255,216,119,0.12), 0 3px 12px -6px rgba(230,178,74,0.6); }
+.hd-coin .hd-pill-ic { font-size: 15px; filter: drop-shadow(0 0 4px rgba(255,200,80,0.5)); }
+.hd-coin b { color: var(--gold-bright); font-size: 16px; }
+.hd-rank b { color: var(--cream); font-size: 14px; }
+.debug-toggle { font-size: 11px; color: #8a8f96; cursor: pointer; }
 
 .trial-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
 .trial-table th, .trial-table td { border: 1px solid #604040; padding: 5px 7px; }
@@ -1623,12 +1628,11 @@ table.entry-table {
   html { -webkit-text-size-adjust: 100%; }   /* stop iOS font auto-zoom */
   #app { padding: 12px 10px; }
 
-  /* header: title on its own line (ellipsised), info chips wrap below */
-  #header { padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); gap: 6px 12px; }
-  #header h1 { font-size: 15px; max-width: 100%; flex-basis: 100%; }
+  /* header: single slim row — brand ellipsises on the left, currency/rank pills stay right */
+  #header { padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); gap: 8px; }
+  #header h1 { font-size: 15px; }
   #header h1 .subtitle { font-size: 10px; }
-  .header-info { width: 100%; gap: 10px 14px; flex-wrap: wrap; font-size: 12px; }
-  .header-info b { font-size: 14px; }
+  .header-info { gap: 6px; }
 
   /* two-column grids collapse to one column */
   .bet-panel { grid-template-columns: 1fr; gap: 12px; }
@@ -2839,13 +2843,15 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 /*  下部：重要ボタンのメニュー（最小文字＋タップで説明ポップアップ）          */
 /* ===================================================================== */
 /* 上部システムバー（全画面共通でスリムに） */
-#header { padding: max(7px, env(safe-area-inset-top)) 14px 7px; gap: 10px; }
-#header h1 { font-size: 14px; max-width: 50vw; }
+#header { padding: max(7px, env(safe-area-inset-top)) 12px 7px; gap: 8px; }
+#header h1 { font-size: 14px; }
 #header h1 .subtitle { display: none; }
-.header-info { gap: 10px; font-size: 11.5px; align-items: center; }
-.header-info b { font-size: 13px; }
-.header-info .coins, .header-info .rank { background: rgba(0,0,0,0.26); border: 1px solid var(--glass-border); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
-.info-level-select { font-size: 11px; opacity: .85; }
+.hd-crest { font-size: 17px; }
+.header-info { gap: 6px; }
+.hd-pill { padding: 4px 9px; gap: 4px; }
+.hd-coin b { font-size: 14px; }
+.hd-rank b { font-size: 12.5px; }
+.hd-pill-k { font-size: 9px; }
 .debug-toggle { font-size: 10.5px; opacity: .6; }
 
 /* 全画面の背景装飾（固定・本文の背後） */
