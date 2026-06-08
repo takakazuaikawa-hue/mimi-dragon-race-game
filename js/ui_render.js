@@ -235,10 +235,18 @@ function renderHome() {
   let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
     : (stageLabel ? "暮らし：" + stageLabel : "");
   if (nextT) goalLine += (goalLine ? "　" : "") + "（次まで " + fmtCoins(Math.max(0, nextT - total)) + "）";
+  let eqTitle = "";
+  try {
+    const _eq = p.equippedTitle;
+    if (_eq && typeof ACTIVE_SKILLS !== "undefined") {
+      const _sk = ACTIVE_SKILLS.find(s => s.id === _eq);
+      if (_sk && p.activeSkills && (p.activeSkills[_sk.id] || 0) >= _sk.levels.length) eqTitle = _sk.title;
+    }
+  } catch (e) {}
   const status = el("div", "hr2-status");
   status.innerHTML =
     `<div class="hr2-greet">ようこそ、聖龍都市へ</div>` +
-    `<div class="hr2-name">予想家 ミミ</div>` +
+    `<div class="hr2-name">予想家 ミミ${eqTitle ? ` <span class="hr2-title">🏅「${eqTitle}」</span>` : ""}</div>` +
     `<div class="hr2-rankrow">ランク <b>${p.rank}</b>${rankLabel ? " " + rankLabel : ""}` +
       `${p.streak >= 2 ? ` <span class="hr2-streak">🔥${p.streak}連勝</span>` : ""}</div>` +
     `<div class="hr2-coins"><span>所持コイン </span><b>${fmtCoins(p.coins)}</b></div>` +
@@ -466,13 +474,23 @@ function renderActiveSkills() {
     `称号 <b>${titles} / ${ACTIVE_SKILLS.length}</b> 獲得　` +
     `<span class="as-hint">通うほど上達。レース結果には影響しない、ミミの“暮らしの記録”です。</span>`));
 
+  // ホームに飾っている称号（ロードアウト式・表示専用）
+  const eq = state.player.equippedTitle || null;
+  if (eq) {
+    const ek = ACTIVE_SKILLS.find(s => s.id === eq);
+    if (ek && (as[ek.id] || 0) >= ek.levels.length) {
+      app.appendChild(el("div", "askill-eqbanner", `🏅 ホームに飾り中：称号「${ek.title}」`));
+    }
+  }
+
   const grid = el("div", "askill-grid");
   ACTIVE_SKILLS.forEach(s => {
     const max = s.levels.length;
     const lv = Math.min(as[s.id] || 0, max);
     const maxed = lv >= max;
+    const isEq = eq === s.id;
     const dots = Array.from({ length: max }, (_, i) => `<span class="askill-dot${i < lv ? " on" : ""}"></span>`).join("");
-    const card = el("div", "askill" + (maxed ? " maxed" : ""));
+    const card = el("div", "askill" + (maxed ? " maxed" : "") + (isEq ? " equipped" : ""));
     card.innerHTML =
       `<div class="askill-top">` +
         `<span class="askill-ic">${s.icon}</span>` +
@@ -482,7 +500,8 @@ function renderActiveSkills() {
       `<div class="askill-dots">${dots}</div>` +
       `<div class="askill-effect">${maxed
         ? `🏅 称号「${s.title}」を獲得！`
-        : (lv > 0 ? s.levels[lv - 1] : "まだ通っていない。")}</div>`;
+        : (lv > 0 ? s.levels[lv - 1] : "まだ通っていない。")}</div>` +
+      (!maxed ? `<div class="askill-next"><span>次</span>${s.levels[lv]}</div>` : "");
     if (!maxed) {
       const go = el("button", "askill-go", lv > 0 ? "また通う ▶" : "通ってみる ▶");
       go.onclick = () => {
@@ -494,7 +513,13 @@ function renderActiveSkills() {
       };
       card.appendChild(go);
     } else {
-      card.appendChild(el("div", "askill-done", "✓ 達人"));
+      const eqBtn = el("button", "askill-equip" + (isEq ? " on" : ""), isEq ? "✓ ホームに飾り中" : "🏅 称号を飾る");
+      eqBtn.onclick = () => {
+        state.player.equippedTitle = isEq ? null : s.id;
+        if (typeof saveGame === "function") saveGame();
+        renderActiveSkills();
+      };
+      card.appendChild(eqBtn);
     }
     grid.appendChild(card);
   });
@@ -534,7 +559,9 @@ function showSkillTitleCutin(skill) {
   } catch (e) {}
 }
 
-// 専用画面：くらしスキルツリー（枝タブ＋チェーン＋振り直し）
+// 専用画面：くらしスキルツリー（枝タブ＋星座チェーン＋振り直し）
+// 直近に解放したノード（点灯ポップ演出を一度だけ再生するためのフラグ）
+let _ltJustUnlocked = null;
 function renderLifeTree() {
   state.ui.screen = "life_tree";
   recomputeAssets(state);
@@ -565,9 +592,18 @@ function renderLifeTree() {
   const branch = LIFE_BRANCHES.find(b => b.id === _lifeTab);
   const chain = el("div", "lt-chain");
   chain.style.setProperty("--bc", branch.color);
+  // フロンティア（次に狙える最初の未解放ノード）からの距離で段階開示する
+  const _frPr = lifeBranchProgress(_lifeTab);
+  const frontierPos = _frPr.next ? _frPr.next.pos : LIFE_TREE[_lifeTab].length;
   LIFE_TREE[_lifeTab].forEach(node => {
     const stt = lifeNodeState(node);
     const dot = stt === "prereq" ? "🔒" : node.icon;
+    // 星座＋段階開示クラス：解放済=点灯／フロンティア=次の星／その先は距離で減衰
+    let cz = "";
+    if (stt === "unlocked") cz = " is-lit";
+    else if (node.pos === frontierPos) cz = " is-next";
+    else if (node.pos > frontierPos) { const d = node.pos - frontierPos; cz = d >= 3 ? " is-far3" : (d === 2 ? " is-far2" : " is-far1"); }
+    if (node.nodeId === _ltJustUnlocked) cz += " just";
     let desc;
     if (stt === "prereq") {
       const miss = lifeNodeMissingPrereqs(node);
@@ -584,26 +620,28 @@ function renderLifeTree() {
     else if (stt === "ready")    right = `<button class="lt-buy">振り分け<b>◇${node.cost}</b></button>`;
     else if (stt === "nopoints") right = `<span class="lt-node-cost short">◇${node.cost}<small>P不足</small></span>`;
     else                         right = `<span class="lt-node-cost lock">◇${node.cost}</span>`;
-    const row = el("div", "lt-node " + stt,
+    const row = el("div", "lt-node " + stt + cz,
       `<div class="lt-node-rail"><div class="lt-node-dot">${dot}</div></div>` +
       `<div class="lt-node-body"><div class="lt-node-title">${node.title}</div>` +
         `<div class="lt-node-desc">${desc}</div></div>` +
       `<div class="lt-node-right">${right}</div>`);
     if (stt === "ready") {
       const btn = row.querySelector(".lt-buy");
-      if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { renderLifeTree(); showLifeCutin(node); } };
+      if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { _ltJustUnlocked = node.nodeId; renderLifeTree(); showLifeCutin(node); } };
     }
     chain.appendChild(row);
   });
+  _ltJustUnlocked = null;   // 演出は一度だけ
   app.appendChild(chain);
 
-  const respec = el("button", "lt-respec", "↺ 暮らしPを振り直す（解放をすべて戻す）");
+  const respec = el("button", "lt-respec", "↺ いつでも無料で振り直す");
   respec.onclick = () => {
     if (confirm("解放をすべて解除して、暮らしPを振り直しますか？\n（総資産・コインはそのまま。ノードはいつでも取り直せます）")) {
       respecLifeTree(); renderLifeTree();
     }
   };
   app.appendChild(respec);
+  app.appendChild(el("div", "lt-respec-note", "💡 振り直しは無料。総資産もコインも減りません — 気軽に色々な暮らしを試せます。"));
 
   const actions = el("div", "actions");
   const back = el("button", "secondary", "← 暮らしへ戻る"); back.onclick = () => renderAssets();

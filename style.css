@@ -2684,11 +2684,56 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .lt-node.prereq { opacity: .5; }
 .lt-node.prereq .lt-node-dot { filter: grayscale(.4); }
 
+/* ===== §38b 星座スキルツリー演出（最新ゲームUIリサーチ反映・表示専用） ===== */
+/* 背景の星屑 */
+.lt-chain { position: relative; padding-top: 4px; }
+.lt-chain::before {
+  content: ""; position: absolute; inset: -4px -6px; z-index: 0; border-radius: 14px; pointer-events: none; opacity: .6;
+  background:
+    radial-gradient(1.6px 1.6px at 14% 10%, rgba(255,255,255,.55), transparent 60%),
+    radial-gradient(1.4px 1.4px at 82% 7%, rgba(255,255,255,.4), transparent 60%),
+    radial-gradient(1.2px 1.2px at 36% 28%, rgba(255,255,255,.32), transparent 60%),
+    radial-gradient(1.5px 1.5px at 70% 44%, rgba(255,255,255,.4), transparent 60%),
+    radial-gradient(1.1px 1.1px at 22% 60%, rgba(255,255,255,.3), transparent 60%),
+    radial-gradient(1.4px 1.4px at 88% 70%, rgba(255,255,255,.36), transparent 60%),
+    radial-gradient(1.2px 1.2px at 48% 84%, rgba(255,255,255,.3), transparent 60%),
+    radial-gradient(1.3px 1.3px at 8% 92%, rgba(255,255,255,.3), transparent 60%);
+}
+.lt-node { position: relative; z-index: 1; }
+/* 解放済み＝点灯した星：玉が光り、下へ伸びる連結線（星座のライン）も枝色で灯る */
+.lt-node.is-lit .lt-node-dot { box-shadow: 0 0 12px -2px var(--bc), 0 0 0 1px var(--bc); }
+.lt-node.is-lit:not(:last-child) .lt-node-rail::after { background: var(--bc); width: 2.5px; opacity: .8; box-shadow: 0 0 6px -1px var(--bc); }
+/* 次に狙える星：脈動して視線を誘導 */
+.lt-node.is-next .lt-node-title { color: var(--gold-bright); }
+.lt-node.is-next.ready .lt-node-dot { animation: ltStarPulse 1.5s ease-in-out infinite; }
+.lt-node.is-next.ready .lt-buy { animation: ltBuyPulse 1.6s ease-in-out infinite; }
+/* 段階開示：フロンティアより先は距離で淡くし、遠い星は説明を畳む（圧迫感とスクロールを減らす） */
+.lt-node.is-far1 { opacity: .6; }
+.lt-node.is-far2 { opacity: .4; }
+.lt-node.is-far3 { opacity: .24; }
+.lt-node.is-far3 .lt-node-desc { display: none; }
+/* 解放した瞬間の点灯ポップ */
+.lt-node.just .lt-node-dot { animation: ltStarPop .7s ease both; }
+@keyframes ltStarPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255,216,119,.16), 0 0 8px -2px var(--gold-bright); }
+  50%      { box-shadow: 0 0 0 6px rgba(255,216,119,.05), 0 0 16px 0 var(--gold-bright); }
+}
+@keyframes ltBuyPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,216,119,.5); }
+  50%      { box-shadow: 0 0 0 5px rgba(255,216,119,0); }
+}
+@keyframes ltStarPop {
+  0%   { transform: scale(.6); box-shadow: 0 0 0 0 var(--bc); }
+  40%  { transform: scale(1.35); box-shadow: 0 0 18px 4px var(--bc); }
+  100% { transform: scale(1); box-shadow: 0 0 12px -2px var(--bc); }
+}
+
 /* 振り直し */
 .lt-respec { display: block; width: 100%; margin: 6px 0 2px; padding: 11px; min-height: 44px;
   background: var(--glass-2); border: 1px solid var(--glass-border); border-radius: 10px;
   color: var(--astone-2); font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .lt-respec:hover { border-color: var(--lantern); color: var(--lantern-glow); }
+.lt-respec-note { font-size: 11px; color: var(--astone-2); line-height: 1.5; margin: 6px 2px 2px; text-align: center; }
 
 /* ===== §38 破産時の「無心する」＋ぱほぱほ演出 ===== */
 .hw-broke { border: 1px solid var(--lantern); text-align: center;
@@ -2935,6 +2980,19 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .askill-go:active { transform: translateY(1px); filter: brightness(1.05); }
 .askill-done { margin-top: 10px; text-align: center; font-size: 12px; font-weight: 900; color: var(--gold-bright);
   padding: 7px; border-radius: 9px; background: rgba(255,216,119,0.12); }
+/* 通う前の「次の効果」予告（HSRタレント式の期待感） */
+.askill-next { margin-top: 7px; font-size: 10.5px; color: var(--astone-2); line-height: 1.45; display: flex; gap: 6px; align-items: baseline; }
+.askill-next span { flex: none; font-size: 9px; font-weight: 900; color: #2a1d06; background: var(--mist-soft); border-radius: 4px; padding: 1px 5px; }
+/* 称号を飾る（ロードアウト式・表示専用） */
+.askill-equip { margin-top: 10px; width: 100%; padding: 8px; border-radius: 9px; cursor: pointer; font-weight: 800; font-size: 12.5px;
+  background: rgba(255,216,119,.12); color: var(--gold-bright); border: 1px solid var(--gold-line); }
+.askill-equip:active { transform: translateY(1px); }
+.askill-equip.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #2a1d06; border-color: var(--gold-bright); }
+.askill.equipped { box-shadow: inset 0 0 0 1px var(--gold-bright), 0 6px 18px -10px var(--gold-bright); }
+.askill-eqbanner { font-size: 12px; font-weight: 800; color: var(--gold-bright); background: rgba(255,216,119,.1);
+  border: 1px solid var(--gold-line); border-radius: 10px; padding: 8px 12px; margin: 2px 0 10px; }
+/* ホームのステータスに飾る称号バッジ */
+.hr2-title { font-size: 11px; font-weight: 800; color: var(--gold-bright); margin-left: 4px; }
 
 /* 物語：コンパクトな話一覧（タップで読む画面へ） */
 .story-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
