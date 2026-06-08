@@ -1,0 +1,410 @@
+{
+  "format": "mimi-live2d-rig",
+  "version": 1,
+  "name": "dragon",
+  "canvas": {
+    "w": 1024,
+    "h": 640
+  },
+  "embed": false,
+  "rootPivot": {
+    "x": 540,
+    "y": 400
+  },
+  "parts": [
+    {
+      "id": "wing_far",
+      "role": "wing",
+      "z": 1,
+      "parent": "body",
+      "rect": {
+        "x": 300,
+        "y": 120,
+        "w": 360,
+        "h": 320
+      },
+      "pivot": {
+        "x": 330,
+        "y": 410
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.3,
+        "blinkable": false,
+        "sway": {
+          "amp": 0.14,
+          "freq": 0.9,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": {
+          "amp": 0.16,
+          "freq": 0.9,
+          "axis": "x",
+          "strips": 12,
+          "rootEdge": "right"
+        },
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0.6
+      },
+      "file": "parts/wing_far.png"
+    },
+    {
+      "id": "tail",
+      "role": "tail",
+      "z": 2,
+      "parent": "body",
+      "rect": {
+        "x": 70,
+        "y": 360,
+        "w": 360,
+        "h": 200
+      },
+      "pivot": {
+        "x": 410,
+        "y": 430
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.15,
+        "blinkable": false,
+        "sway": {
+          "amp": 0.13,
+          "freq": 0.55,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": {
+          "amp": 0.18,
+          "freq": 0.55,
+          "axis": "x",
+          "strips": 12,
+          "rootEdge": "right"
+        },
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0
+      },
+      "file": "parts/tail.png"
+    },
+    {
+      "id": "leg_far",
+      "role": "limb",
+      "z": 3,
+      "parent": "body",
+      "rect": {
+        "x": 560,
+        "y": 430,
+        "w": 120,
+        "h": 150
+      },
+      "pivot": {
+        "x": 600,
+        "y": 450
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.2,
+        "blinkable": false,
+        "sway": {
+          "amp": 0.06,
+          "freq": 0.8,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": null,
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0
+      },
+      "file": "parts/leg_far.png"
+    },
+    {
+      "id": "body",
+      "role": "body",
+      "z": 4,
+      "parent": null,
+      "rect": {
+        "x": 300,
+        "y": 280,
+        "w": 520,
+        "h": 280
+      },
+      "pivot": {
+        "x": 560,
+        "y": 400
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 1,
+        "blinkable": false,
+        "sway": {
+          "amp": 0,
+          "freq": 0.25,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": null,
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0
+      },
+      "file": "parts/body.png"
+    },
+    {
+      "id": "wing_near",
+      "role": "wing",
+      "z": 6,
+      "parent": "body",
+      "rect": {
+        "x": 300,
+        "y": 70,
+        "w": 420,
+        "h": 340
+      },
+      "pivot": {
+        "x": 360,
+        "y": 390
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.3,
+        "blinkable": false,
+        "sway": {
+          "amp": 0.14,
+          "freq": 0.9,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": {
+          "amp": 0.16,
+          "freq": 0.9,
+          "axis": "x",
+          "strips": 12,
+          "rootEdge": "right"
+        },
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0.6
+      },
+      "file": "parts/wing_near.png"
+    },
+    {
+      "id": "leg_near",
+      "role": "limb",
+      "z": 7,
+      "parent": "body",
+      "rect": {
+        "x": 470,
+        "y": 440,
+        "w": 120,
+        "h": 150
+      },
+      "pivot": {
+        "x": 510,
+        "y": 460
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.2,
+        "blinkable": false,
+        "sway": {
+          "amp": 0.06,
+          "freq": 0.8,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": null,
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0
+      },
+      "file": "parts/leg_near.png"
+    },
+    {
+      "id": "head",
+      "role": "head",
+      "z": 8,
+      "parent": "body",
+      "rect": {
+        "x": 720,
+        "y": 360,
+        "w": 300,
+        "h": 260
+      },
+      "pivot": {
+        "x": 800,
+        "y": 470
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.5,
+        "blinkable": false,
+        "sway": {
+          "amp": 0.05,
+          "freq": 0.3,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": null,
+        "gaze": {
+          "tx": 6,
+          "ty": 4
+        },
+        "flutter": 0
+      },
+      "file": "parts/head.png"
+    },
+    {
+      "id": "eye",
+      "role": "eye",
+      "z": 9,
+      "parent": "head",
+      "rect": {
+        "x": 880,
+        "y": 470,
+        "w": 70,
+        "h": 70
+      },
+      "pivot": {
+        "x": 915,
+        "y": 505
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0,
+        "blinkable": true,
+        "sway": {
+          "amp": 0,
+          "freq": 1,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": null,
+        "gaze": {
+          "tx": 4,
+          "ty": 3
+        },
+        "flutter": 0
+      },
+      "file": "parts/eye.png"
+    }
+  ]
+}

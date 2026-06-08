@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "mimi-live2d-rig",
+  "type": "object",
+  "required": ["format", "version", "name", "canvas", "parts"],
+  "properties": {
+    "format": { "const": "mimi-live2d-rig" },
+    "version": { "type": "integer", "minimum": 1 },
+    "name": { "type": "string" },
+    "embed": { "type": "boolean" },
+    "canvas": {
+      "type": "object", "required": ["w", "h"],
+      "properties": { "w": { "type": "integer", "minimum": 1 }, "h": { "type": "integer", "minimum": 1 } }
+    },
+    "rootPivot": {
+      "type": "object", "required": ["x", "y"],
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+    },
+    "parts": { "type": "array", "items": { "$ref": "#/definitions/part" } }
+  },
+  "definitions": {
+    "part": {
+      "type": "object",
+      "required": ["id", "role", "z", "rect", "pivot"],
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "enum": ["body", "head", "jaw", "eye", "eyelid", "hair", "wing", "tail", "horn", "limb", "accessory", "other"] },
+        "z": { "type": "integer" },
+        "parent": { "type": ["string", "null"] },
+        "rect": {
+          "type": "object", "required": ["x", "y", "w", "h"],
+          "properties": { "x": { "type": "integer" }, "y": { "type": "integer" }, "w": { "type": "integer", "minimum": 1 }, "h": { "type": "integer", "minimum": 1 } }
+        },
+        "pivot": { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number" }, "y": { "type": "number" } } },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "scale": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" } } },
+        "offset": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" } } },
+        "rot": { "type": "number" },
+        "flip": { "type": "object", "properties": { "h": { "type": "boolean" }, "v": { "type": "boolean" } } },
+        "src": { "type": ["string", "null"], "description": "data:image/png;base64,... when embed=true" },
+        "file": { "type": ["string", "null"], "description": "parts/<id>.png when embed=false" },
+        "motion": {
+          "type": "object",
+          "properties": {
+            "breathing": { "type": "number", "minimum": 0, "maximum": 1 },
+            "blinkable": { "type": "boolean" },
+            "flutter": { "type": "number", "minimum": 0, "maximum": 1 },
+            "sway": {
+              "type": "object",
+              "properties": { "amp": { "type": "number" }, "freq": { "type": "number" }, "phase": { "type": "number" }, "axis": { "enum": ["rot", "tx", "ty"] } }
+            },
+            "bend": {
+              "type": ["object", "null"],
+              "properties": { "amp": { "type": "number" }, "freq": { "type": "number" }, "axis": { "enum": ["x", "y"] }, "strips": { "type": "integer", "minimum": 2 }, "rootEdge": { "enum": ["left", "right", "top", "bottom"] } }
+            },
+            "gaze": { "type": "object", "properties": { "tx": { "type": "number" }, "ty": { "type": "number" } } }
+          }
+        }
+      }
+    }
+  }
+}
