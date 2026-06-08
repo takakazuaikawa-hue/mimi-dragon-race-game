@@ -1,7 +1,7 @@
 # Mimi Live2D ツール — 1枚絵PNG → 分解 → アイドルアニメ
 
 1枚のドラゴンPNGをブラウザ上でパーツに**分解（リギング）**し、Live2Dのように
-**アイドルモーション**（呼吸・まばたき・羽/尻尾の揺れ・体の傾き・視線追従）で
+**アイドルモーション**（呼吸・まばたき・羽/尻尾の揺れ・胸部のぷるぷる・体の傾き・視線追従）で
 動かすスタンドアロンツールです。**依存ゼロ・ビルド不要のバニラJS + Canvas2D**。
 
 ゲーム本体には影響しません（`live2d/` 配下で完全自己完結）。
@@ -25,10 +25,12 @@ python3 -m http.server 8000
    **ブラシ/消し/なげなわ/矩形** で手直し。`拡張/収縮/穴埋め/ゴミ取/最大のみ` で精緻化。
    `↶Undo / ↷Redo`（Ctrl+Z / Ctrl+Shift+Z）。
 3. **✓パーツ化** でマスクをクロップしてパーツ化。右パネルで:
-   - `role`（body/head/eye/wing/tail/hair…）→ 既定モーションを自動付与
+   - `role`（body/head/eye/wing/tail/hair/**chest**…）→ 既定モーションを自動付与
+     （`chest`＝胸部/バスト。左右に分けて置くと**ぷるぷる**＝`jiggle` 揺れが付く。
+     中央胴体の中サイズ塊は自動で `chest` と推定）
    - `▲z/▼z` 重なり順、`◎ピボット` をキャンバスクリックで配置
    - `⇋反転`（左右ミラー＝wing_L→wing_R）/ `⧉複製` / `✎再編集`→`↻再パーツ化` / `🗑`
-   - `opacity / scale / rot` 静的トランスフォーム、`呼吸 / 揺れamp / 揺れfreq / まばたき` モーション
+   - `opacity / scale / rot` 静的トランスフォーム、`呼吸 / 揺れamp / 揺れfreq / まばたき / ぷるぷる(jiggle)` モーション
 4. **⚠取りこぼし確認** で未割当ピクセルをハイライト → パーツ化候補に。
 5. **▶アイドル再生** でプレビュー。**⬇書き出し** で `rig.json` を保存。
    - `embed`: パーツ画像をdataURLで内包した単一ファイル（配布/往復向け）
@@ -46,7 +48,8 @@ python3 -m http.server 8000
 
 スキーマは [`schema/rig.schema.json`](schema/rig.schema.json)。主なフィールド:
 `parts[].{id, role, z, parent, rect, pivot, opacity, scale, offset, rot, flip, motion}`。
-`motion.{breathing, blinkable, flutter, sway{amp,freq,phase,axis}, bend{amp,freq,axis,strips,rootEdge}, gaze{tx,ty}}`。
+`motion.{breathing, blinkable, flutter, sway{amp,freq,phase,axis}, bend{amp,freq,axis,strips,rootEdge}, gaze{tx,ty}, jiggle{amp,freq,phase}}`。
+`jiggle` は胸部の「ぷるぷる」用ゼリー揺れ（上端ピボットで下端が最も揺れる。左右で `phase` を半周ずらすと交互に弾む）。
 
 ## Claude Code 連動（CLI・ブラウザ不要）
 
@@ -85,7 +88,7 @@ live2d/
   js/app.js               エントリ（タブ/ドラッグ&ドロップ/デモ）
   cli.js                  依存ゼロ Node CLI
   schema/rig.schema.json  JSON Schema
-  samples/dragon.rig.json スキーマ例（分離形式・8パーツ）
+  samples/dragon.rig.json スキーマ例（分離形式・10パーツ／左右 chest 含む）
   projects/<name>/        作業プロジェクト（source.png, parts/*.png, rig.json, meta.json）
 ```
 

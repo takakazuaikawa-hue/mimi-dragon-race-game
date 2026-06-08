@@ -67,7 +67,8 @@ switch (cmd) {
           'pivot=' + pt.pivot.x + ',' + pt.pivot.y,
           'rect=' + pt.rect.w + 'x' + pt.rect.h,
           'breath=' + (m.breathing || 0), 'sway=' + ((m.sway && m.sway.amp) || 0),
-          'blink=' + (m.blinkable ? 'Y' : 'n'), 'bend=' + (m.bend ? 'Y' : 'n')
+          'blink=' + (m.blinkable ? 'Y' : 'n'), 'bend=' + (m.bend ? 'Y' : 'n'),
+          'jiggle=' + (m.jiggle && m.jiggle.amp ? m.jiggle.amp : 'n')
         ].join('  ') + '\n');
     });
     break;

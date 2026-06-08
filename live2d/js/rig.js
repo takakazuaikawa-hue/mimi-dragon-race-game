@@ -9,7 +9,7 @@
 const L2_RIG = (function () {
   const FORMAT = 'mimi-live2d-rig';
   const VERSION = 1;
-  const ROLES = ['body', 'head', 'jaw', 'eye', 'eyelid', 'hair', 'wing', 'tail', 'horn', 'limb', 'accessory', 'other'];
+  const ROLES = ['body', 'head', 'jaw', 'eye', 'eyelid', 'hair', 'wing', 'tail', 'horn', 'limb', 'chest', 'accessory', 'other'];
 
   // role → default idle-motion preset. Tuned for the side-view dragon.
   function defaultMotionForRole(role) {
@@ -24,6 +24,8 @@ const L2_RIG = (function () {
       case 'tail': return { breathing: 0.15, blinkable: false, sway: { amp: 0.13, freq: 0.55, phase: 0, axis: 'rot' }, bend: { amp: 0.18, freq: 0.55, axis: 'x', strips: 12, rootEdge: 'right' }, gaze: { tx: 0, ty: 0 }, flutter: 0 };
       case 'horn': return { breathing: 0.2, blinkable: false, sway: { amp: 0.03, freq: 0.6, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 2, ty: 1 }, flutter: 0 };
       case 'limb': return { breathing: 0.2, blinkable: false, sway: { amp: 0.06, freq: 0.8, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 0, ty: 0 }, flutter: 0 };
+      // chest / bust — soft "ぷるぷる" jelly bounce (pivot at the top so the lower edge swings most)
+      case 'chest': return { breathing: 0.4, blinkable: false, sway: { amp: 0.0, freq: 0.25, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 1, ty: 1 }, flutter: 0, jiggle: { amp: 0.8, freq: 1.5, phase: 0 } };
       default: return { breathing: 0.2, blinkable: false, sway: { amp: 0.04, freq: 0.6, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 1, ty: 1 }, flutter: 0 };
     }
   }
@@ -130,9 +132,11 @@ const L2_RIG = (function () {
       sway: { amp: round3(sway.amp || 0), freq: round2(sway.freq || 0), phase: round2(sway.phase || 0), axis: sway.axis || 'rot' },
       bend: null,
       gaze: { tx: Math.round((m.gaze && m.gaze.tx) || 0), ty: Math.round((m.gaze && m.gaze.ty) || 0) },
-      flutter: round2(m.flutter || 0)
+      flutter: round2(m.flutter || 0),
+      jiggle: null
     };
     if (m.bend) o.bend = { amp: round3(m.bend.amp || 0), freq: round2(m.bend.freq || 0), axis: m.bend.axis || 'x', strips: (m.bend.strips | 0) || 10, rootEdge: m.bend.rootEdge || 'left' };
+    if (m.jiggle) o.jiggle = { amp: round3(m.jiggle.amp || 0), freq: round2(m.jiggle.freq || 0), phase: round2(m.jiggle.phase || 0) };
     return o;
   }
   function round2(v) { return Math.round(v * 100) / 100; }

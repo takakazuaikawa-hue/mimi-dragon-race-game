@@ -70,6 +70,23 @@ const L2_DEMO = (function () {
     });
     add('body', 'body', body, { rx: 300, ry: 280, px: 560, py: 400 }, 4, null);
 
+    // ---- chest / bust (two gold bulges on the belly that ぷるぷる jiggle) ----
+    function chestBlob(light) {
+      return part(150, 160, (g) => {
+        g.beginPath(); g.ellipse(75, 82, 62, 70, 0, 0, Math.PI * 2); outline(g, light ? GOLD_L : GOLD, 6);
+        g.globalAlpha = 0.55; g.fillStyle = '#fff';
+        g.beginPath(); g.ellipse(56, 56, 18, 24, -0.3, 0, Math.PI * 2); g.fill();
+        g.globalAlpha = 1;
+      });
+    }
+    // far (viewer-left) chest sits slightly behind; near (viewer-right) in front.
+    add('chest_far', 'chest', chestBlob(false), { rx: 560, ry: 360, px: 635, py: 362 }, 5, 'body');
+    add('chest_near', 'chest', chestBlob(true), { rx: 650, ry: 350, px: 725, py: 352 }, 5, 'body');
+    // desync the two sides so they alternate (left bounces a half-cycle after right)
+    const cF = L2_RIG.byId(rig, 'chest_far'), cN = L2_RIG.byId(rig, 'chest_near');
+    cF.motion.jiggle.phase = Math.PI; cF.motion.jiggle.amp = 0.7;
+    cN.motion.jiggle.phase = 0;       cN.motion.jiggle.amp = 0.9;
+
     // ---- near wing (gold, ribbed, big) ----
     const nearW = part(420, 340, (g) => {
       poly(g, [[30, 320], [120, 40], [400, 30], [330, 150], [410, 130], [200, 320]]);

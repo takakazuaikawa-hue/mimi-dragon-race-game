@@ -167,11 +167,13 @@ const L2_ED = (function () {
       status('パーツ作成: ' + id + ' (role=' + role + ')。右パネルで role/z/pivot/motion を調整。');
     }
     function guessRole(b) {
-      const cx = b.x + b.w / 2;
+      const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       if (b.w > S.w * 0.45 && b.h > S.h * 0.3) return 'body';
       if (cx > S.w * 0.7) return 'head';
       if (cx < S.w * 0.3) return 'tail';
       if (b.y < S.h * 0.4 && b.w > S.w * 0.2) return 'wing';
+      // medium rounded blob in the central torso band → chest/bust (left or right)
+      if (b.w < S.w * 0.3 && b.h < S.h * 0.4 && cy > S.h * 0.35 && cy < S.h * 0.75 && cx > S.w * 0.3 && cx < S.w * 0.7) return 'chest';
       return 'other';
     }
     function uniqueId(base) {

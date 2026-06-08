@@ -116,6 +116,18 @@ const L2_PLY = (function () {
       if (m.flutter) {
         rot += Math.sin(2 * Math.PI * 1.6 * t + ph) * 0.05 * m.flutter;
       }
+      // jiggle — soft "ぷるぷる" jelly bounce for chest/bust. A primary wobble plus a
+      // half-amplitude second harmonic gives the springy, slightly asymmetric feel.
+      // Volume-preserving (sy up ↔ sx down) and pivoted at the part's top edge, so the
+      // lower edge swings most. per-id phase desyncs the left/right sides naturally.
+      if (m.jiggle && m.jiggle.amp) {
+        const f = m.jiggle.freq || 1.5, jp = ph + (m.jiggle.phase || 0), a = m.jiggle.amp;
+        const wob = Math.sin(2 * Math.PI * f * t + jp) + 0.35 * Math.sin(2 * Math.PI * 2 * f * t + jp);
+        sy += 0.06 * a * wob;
+        sx -= 0.04 * a * wob;
+        ty += 4.0 * a * wob;
+        rot += 0.02 * a * Math.sin(2 * Math.PI * f * t + jp + 0.5);
+      }
       // head bob/tilt — handled via sway for rotation; add a slow vertical bob
       if (p.role === 'head' || p.role === 'body') {
         ty += Math.sin(2 * Math.PI * 0.13 * t + ph) * 1.2;

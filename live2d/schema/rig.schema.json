@@ -24,7 +24,7 @@
       "required": ["id", "role", "z", "rect", "pivot"],
       "properties": {
         "id": { "type": "string" },
-        "role": { "enum": ["body", "head", "jaw", "eye", "eyelid", "hair", "wing", "tail", "horn", "limb", "accessory", "other"] },
+        "role": { "enum": ["body", "head", "jaw", "eye", "eyelid", "hair", "wing", "tail", "horn", "limb", "chest", "accessory", "other"] },
         "z": { "type": "integer" },
         "parent": { "type": ["string", "null"] },
         "rect": {
@@ -53,7 +53,12 @@
               "type": ["object", "null"],
               "properties": { "amp": { "type": "number" }, "freq": { "type": "number" }, "axis": { "enum": ["x", "y"] }, "strips": { "type": "integer", "minimum": 2 }, "rootEdge": { "enum": ["left", "right", "top", "bottom"] } }
             },
-            "gaze": { "type": "object", "properties": { "tx": { "type": "number" }, "ty": { "type": "number" } } }
+            "gaze": { "type": "object", "properties": { "tx": { "type": "number" }, "ty": { "type": "number" } } },
+            "jiggle": {
+              "type": ["object", "null"],
+              "description": "soft jelly bounce for chest/bust parts (ぷるぷる)",
+              "properties": { "amp": { "type": "number" }, "freq": { "type": "number" }, "phase": { "type": "number" } }
+            }
           }
         }
       }
