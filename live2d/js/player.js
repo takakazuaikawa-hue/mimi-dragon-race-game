@@ -23,7 +23,14 @@ const L2_PLY = (function () {
       bg: opts.bg || null, showPivots: false
     };
 
-    function setRig(rig) { S.rig = rig; S.partsZ = rig ? L2_RIG.sortedByZ(rig) : []; layout(); resetBlink(); }
+    function setRig(rig) {
+      S.rig = rig; S.partsZ = rig ? L2_RIG.sortedByZ(rig) : [];
+      // 立体感用：z の最小/最大を取り、各パーツの奥行き(0=遠..1=近)を正規化できるように
+      if (rig && rig.parts.length) {
+        const zs = rig.parts.map(p => p.z || 0); S.zmin = Math.min.apply(null, zs); S.zmax = Math.max.apply(null, zs);
+      } else { S.zmin = 0; S.zmax = 1; }
+      layout(); resetBlink();
+    }
     function resetBlink() { S.blink = { next: 1.2 + Math.random() * 3, closing: 0, t: 0, val: 1 }; }
 
     // Fit the rig's canvas-space into the display canvas (contain).
@@ -143,6 +150,12 @@ const L2_PLY = (function () {
         tx += S.gaze.tx * m.gaze.tx;
         ty += S.gaze.ty * m.gaze.ty;
       }
+      // 立体感（パララックス）：z=奥行きで、近いパーツほど視線・微揺れに合わせて大きく動き、
+      // 遠いパーツは控えめ。中景(0.5)を焦点に near(+)/far(-)で相対移動 → 2Dなのに奥行きを知覚。
+      const depth = (S.zmax > S.zmin) ? (((p.z || 0) - S.zmin) / (S.zmax - S.zmin)) : 0.5;
+      const rel = depth - 0.5;
+      tx += S.gaze.tx * rel * 14 + Math.sin(2 * Math.PI * 0.08 * t + ph * 0.3) * rel * 3;
+      ty += S.gaze.ty * rel * 8;
       return { rot, sx, sy, tx, ty };
     }
 
