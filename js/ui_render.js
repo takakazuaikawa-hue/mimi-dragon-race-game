@@ -228,19 +228,29 @@ function startDragonWarp(canvas, img) {
   if (_dragonWarpRAF) { cancelAnimationFrame(_dragonWarpRAF); _dragonWarpRAF = null; }
   const reduce = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const TAU = Math.PI * 2, STRIPS = 30, ctx = canvas.getContext("2d");
+  // ref.png のドラゴンは顔が右側。顔は剛体（無歪み）のまま、ワープは顔から遠いほど（尾・羽の先）
+  // u² で増やす（顔=root）。全体は僅かな回転＋上下＋呼吸の“剛体”モーションで生命感を出す＝顔は歪まない。
+  const FACE_AT = 1;   // 0=左 / 1=右（このドラゴンは右が顔）
   function draw(t) {
     if (!document.contains(canvas) || state.ui.screen !== "home") { _dragonWarpRAF = null; return; }
     const W = canvas.width, H = canvas.height, iw = img.naturalWidth || W, ih = img.naturalHeight || H, s = t / 1000;
     ctx.clearRect(0, 0, W, H);
     const breath = reduce ? 0 : (Math.sin(s * TAU / 4.0) * 0.5 + Math.sin(s * TAU / 5.1) * 0.5);
-    const dh = H * (1 + breath * 0.012), dtop = (H - dh) * 0.85;   // ほぼ下端アンカー＋呼吸
+    // 剛体モーション（顔を歪めない）：下中心を軸にごく僅か回転＋上下＋呼吸スケール
+    const rot = reduce ? 0 : Math.sin(s * TAU / 6.5) * 0.9 * Math.PI / 180;   // ±0.9°
+    const bob = reduce ? 0 : Math.sin(s * TAU / 4.3) * 1.4;                    // ±1.4px
+    const sc = 1 + (reduce ? 0 : (breath * 0.5 + 0.5) * 0.012);
+    ctx.save();
+    ctx.translate(W / 2, H * 0.96); ctx.rotate(rot); ctx.scale(sc, sc); ctx.translate(-W / 2, -H * 0.96 + bob);
+    // 局所ベンド：顔(root)は amp 0、顔から遠いほど u² で増加 → 尾・羽の先だけ柔らかく揺れる
     const isw = iw / STRIPS, dsw = W / STRIPS;
     for (let i = 0; i < STRIPS; i++) {
-      const u = i / (STRIPS - 1), edge = Math.abs(u - 0.5) * 2;     // 端ほど大きく揺れる
-      const amp = reduce ? 0 : (1.2 + 5.0 * edge);
-      const dy = amp * Math.sin(s * 0.9 * TAU / 3 + u * 1.5 * TAU);
-      ctx.drawImage(img, i * isw, 0, isw, ih, i * dsw, dtop + dy, dsw + 0.7, dh);
+      const u = i / (STRIPS - 1), fromFace = Math.abs(u - FACE_AT);            // 0=顔 .. 1=反対端
+      const amp = reduce ? 0 : 4.2 * fromFace * fromFace;
+      const dy = amp * Math.sin(s * 0.8 * TAU / 3 + u * 1.3 * TAU);
+      ctx.drawImage(img, i * isw, 0, isw, ih, i * dsw, dy, dsw + 0.7, H);
     }
+    ctx.restore();
     _dragonWarpRAF = requestAnimationFrame(draw);
   }
   _dragonWarpRAF = requestAnimationFrame(draw);
