@@ -1421,19 +1421,33 @@ function renderRaceSelect() {
     }
   } catch (e) {}
 
-  // 1枚のレースカード（地方アクセント＋距離/天候/上限チップ＋コース早→中→後＋目的）
-  const buildRaceCard = (r, locked) => {
+  // 1枚のレースカード（カード全体タップ＋地方アクセント＋時間帯/距離/天候/上限＋コース早→中→後＋目的）
+  // hideRegion: 地域別タブでは見出しに地域名があるので、カード名から冗長な地域接頭辞を外す。
+  const buildRaceCard = (r, locked, hideRegion) => {
     const theme = REGION_THEME[r.region];
     const card = el("div", "rs-card" + (locked ? " locked" : ""));
     if (theme) { card.setAttribute("data-region", r.region); card.style.setProperty("--region-accent", theme.accent); }
     const wager = fmtCoins(RANKS[r.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1));
+    let name = raceFullName(r);
+    if (hideRegion) {
+      // 地域別タブ：見出しに地域名があるので接頭の地域名を外す。さらにグレード章（新人/1勝…）が
+      // 続く場合はグレードバッジと重複するので外し、「新人 新人競竜杯」のような二重表記を避ける。
+      if (name.indexOf(r.region) === 0) name = name.slice(r.region.length).replace(/^[ 　]+/, "");
+      const gl = RACE_GRADE[r.rank];
+      if (gl && name.indexOf(gl) === 0) name = name.slice(gl.length).replace(/^[ 　]+/, "");
+    }
     card.innerHTML =
-      `<div class="rs-name">${gradeBadgeHTML(r.rank)}${raceFullName(r)}</div>` +
-      `<div class="rs-chips"><span class="rs-chip time">${RACE_TIME_LABEL[r.number] || ("第" + r.number)}</span><span class="rs-chip">${DISTANCE[r.distance].label}</span><span class="rs-chip">${WEATHERS[r.weather].label}</span><span class="rs-chip wager">上限 ${wager}</span></div>` +
-      `<div class="rs-course"><span>${getSection("early", r.early).label}</span><i>→</i><span>${getSection("mid", r.mid).label}</span><i>→</i><span>${getSection("late", r.late).label}</span></div>` +
-      `<div class="rs-purpose">${r.purpose}</div>` +
-      `<button class="rs-go" ${locked ? "disabled" : ""}>${locked ? `🔒 ランク${r.rank}で解放` : "このレースを見る ▶"}</button>`;
-    if (!locked) card.querySelector(".rs-go").onclick = () => { _heroRect = card.getBoundingClientRect(); renderRaceDetail(r); };
+      `<div class="rs-card-main">` +
+        `<div class="rs-head"><span class="rs-time">${RACE_TIME_LABEL[r.number] || ("第" + r.number)}</span>` +
+          `<span class="rs-name">${gradeBadgeHTML(r.rank)}${name}</span></div>` +
+        `<div class="rs-meta"><span class="rs-chip">${DISTANCE[r.distance].label}</span>` +
+          `<span class="rs-chip">${WEATHERS[r.weather].label}</span>` +
+          `<span class="rs-chip wager">上限 ${wager}</span></div>` +
+        `<div class="rs-course"><span>${getSection("early", r.early).label}</span><i>→</i><span>${getSection("mid", r.mid).label}</span><i>→</i><span>${getSection("late", r.late).label}</span></div>` +
+        (locked ? `<div class="rs-lock">🔒 ランク${r.rank} で解放</div>` : `<div class="rs-purpose">${r.purpose}</div>`) +
+      `</div>` +
+      `<div class="rs-arrow" aria-hidden="true">${locked ? "🔒" : "▶"}</div>`;
+    if (!locked) card.onclick = () => { _heroRect = card.getBoundingClientRect(); renderRaceDetail(r); };
     return card;
   };
 
@@ -1471,7 +1485,7 @@ function renderRaceSelect() {
     pane.appendChild(el("div", "rs-rank-head", `${reg}<span class="rs-rank-n">第一〜第五（朝→夜）</span>`));
     if (races.every(r => r.rank > state.player.rank)) pane.appendChild(el("div", "hr2-tabhint", `🔒 この地域は ランク${minRank} で解放されます（プレビュー）`));
     const body = el("div", "rs-rank-body");
-    races.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank)));
+    races.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank, true)));
     pane.appendChild(body);
   };
 
