@@ -297,7 +297,10 @@ function renderHome() {
   const cast = el("div", "hr2-cast");
   const oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "buniqro";
   const mimi = el("div", "hr2-mimi");
-  mimi.innerHTML = (typeof photoOr === "function" ? photoOr(outfitImg(oid, "smile"), "<span class='hr2-mimi-fallback'>🐰</span>") : "🐰");
+  // 透過立ち絵：切り抜き版(_cut)を優先、無ければ元画像(smileは buniqro/dara が既に透過)へフォールバック
+  const _cutSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile_cut") : "";
+  const _origSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile") : "";
+  mimi.innerHTML = "<img alt='ミミ' src='" + _cutSrc + "' onerror=\"this.onerror=null;this.src='" + _origSrc + "'\">";
   mimi.title = "ショッピングモール（きせかえ）へ";
   mimi.onclick = () => renderMall();
   const dragonImg = el("div", "hr2-dragon");
