@@ -39,9 +39,13 @@ const L2_ED = (function () {
     function loadFromSrc(src, name) { return U.loadImage(src).then(img => loadFromImage(img, name)); }
 
     function fitView() {
-      const box = refs.canvas.parentElement.getBoundingClientRect();
-      const fit = Math.min((box.width - 8) / S.w, (box.height - 8) / S.h);
-      S.fit = fit > 0 ? fit : 1;
+      // どんなサイズのPNGも収まるよう「コンテナ幅 × ビューポート高60%」の枠に縦横比維持でフィット。
+      // 旧実装は canvas 直親(=l2-stage, canvas自身のサイズ)を測っていて大きい画像が収まらなかった。
+      const wrap = (refs.canvas.parentElement && refs.canvas.parentElement.parentElement) || refs.canvas.parentElement;
+      const bw = ((wrap && wrap.clientWidth) || 600) - 24;
+      const bh = Math.max(240, Math.round((window.innerHeight || 800) * 0.6));
+      const fit = Math.min(bw / S.w, bh / S.h);
+      S.fit = (fit > 0 && isFinite(fit)) ? fit : 1;
       refs.canvas.style.width = (S.w * S.fit) + 'px'; refs.canvas.style.height = (S.h * S.fit) + 'px';
       refs.overlay.style.width = refs.canvas.style.width; refs.overlay.style.height = refs.canvas.style.height;
     }
@@ -487,6 +491,7 @@ const L2_ED = (function () {
       else if (e.key === ']') { S.brush = Math.min(120, S.brush + 4); renderToolbar(); e.preventDefault(); }
     });
 
+    window.addEventListener('resize', () => { if (S.img) { fitView(); redraw(); } });   // 画面サイズ変更でも収まるよう再フィット
     renderToolbar();
     renderSteps();
     return {

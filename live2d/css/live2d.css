@@ -48,7 +48,8 @@ button.on, .l2-tab.on { background: var(--sel); border-color: var(--jade); color
 
 .l2-workspace { display: flex; gap: 12px; align-items: stretch; }
 .l2-canvas-wrap { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line);
-  border-radius: 10px; padding: 10px; display: flex; align-items: center; justify-content: center; min-height: 460px; }
+  border-radius: 10px; padding: 10px; display: flex; align-items: center; justify-content: center;
+  min-height: 320px; max-height: 64vh; overflow: hidden; }
 .l2-stage { position: relative; line-height: 0; }
 .l2-stage canvas { display: block; image-rendering: auto; border-radius: 6px; }
 .l2-overlay { position: absolute; left: 0; top: 0; cursor: crosshair; }
