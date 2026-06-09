@@ -172,12 +172,14 @@ const L2_PLY = (function () {
       ty += S.gaze.ty * rel * 8;
       // 二次運動（フォロースルー）：体幹(root)を起点に外側へ伝播する微揺れ。root付近は静止、
       // 末端(手足/尾/翼/髪)ほど位相が遅れて揺れる→部位が連動して“生きている”印象に。
-      if (S._reach > 1) {
+      // 二次運動（フォロースルー）は柔らかい末端(尾/髪/翼/装飾)のみ。胴/頭/腕/脚など剛体は揺らさない（不自然防止）。
+      const soft = ({ tail: 1, hair: 1, wing: 0.8, accessory: 0.6 })[p.role] || 0;
+      if (soft > 0 && S._reach > 1) {
         const dxr = p.pivot.x - S._root.x, dyr = p.pivot.y - S._root.y;
         const reach = Math.min(1, Math.sqrt(dxr * dxr + dyr * dyr) / S._reach);   // 0=体幹 .. 1=末端
         const prop = 2 * Math.PI * 0.12 * t - reach * 1.4;                         // 末端ほど位相を遅延
-        ty += Math.sin(prop) * reach * 1.8;
-        rot += Math.cos(prop) * reach * 0.025;
+        ty += Math.sin(prop) * reach * 1.8 * soft;
+        rot += Math.cos(prop) * reach * 0.025 * soft;
       }
       return { rot, sx, sy, tx, ty };
     }
@@ -189,9 +191,9 @@ const L2_PLY = (function () {
       if (S.bg) { ctx.fillStyle = S.bg; ctx.fillRect(0, 0, cw, ch); }
       if (!S.rig) return;
 
-      // whole-character slow drift so it never sits perfectly still
-      const driftX = Math.sin(2 * Math.PI * 0.07 * S.t) * 4;
-      const driftY = Math.cos(2 * Math.PI * 0.05 * S.t) * 3;
+      // whole-character slow drift so it never sits perfectly still（控えめに＝接地キャラの足滑りを抑える）
+      const driftX = Math.sin(2 * Math.PI * 0.06 * S.t) * 2.5;
+      const driftY = Math.cos(2 * Math.PI * 0.05 * S.t) * 1.5;
 
       ctx.save();
       ctx.translate(S.ox + driftX, S.oy + driftY);

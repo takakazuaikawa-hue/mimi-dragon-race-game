@@ -281,9 +281,10 @@ const L2_ED = (function () {
         const armLok = hasArms && armLn > armMin, armRok = hasArms && armRn > armMin;
         if (!armLok) for (let i = 0; i < mArmL.length; i++) if (mArmL[i]) mBody[i] = 255;   // 未採用の腕画素は胴へ
         if (!armRok) for (let i = 0; i < mArmR.length; i++) if (mArmR[i]) mBody[i] = 255;
+        const plant = p => { p.motion = { breathing: 0, blinkable: false, sway: { amp: 0, freq: 0.6, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 0, ty: 0 }, flutter: 0 }; };  // 脚＝接地（足先を揺らさない）
         partFromMask('body', 'body', mBody, axis, (neck + hip) / 2, 1);
-        if (legsSplit) { partFromMask('leg_l', 'limb', mLegL, (x0 + splitX) / 2, hip, 0); partFromMask('leg_r', 'limb', mLegR, (splitX + x1) / 2, hip, 0); }
-        else { for (let i = 0; i < mLegR.length; i++) if (mLegR[i]) mLegL[i] = 255; partFromMask('legs', 'limb', mLegL, axis, hip, 0); }
+        if (legsSplit) { partFromMask('leg_l', 'limb', mLegL, (x0 + splitX) / 2, hip, 0, plant); partFromMask('leg_r', 'limb', mLegR, (splitX + x1) / 2, hip, 0, plant); }
+        else { for (let i = 0; i < mLegR.length; i++) if (mLegR[i]) mLegL[i] = 255; partFromMask('legs', 'limb', mLegL, axis, hip, 0, plant); }
         let arms = 0;
         if (armLok) { partFromMask('arm_l', 'limb', mArmL, armX0, neck + (hip - neck) * 0.12, 2); arms++; }
         if (armRok) { partFromMask('arm_r', 'limb', mArmR, armX1, neck + (hip - neck) * 0.12, 2); arms++; }
@@ -322,6 +323,7 @@ const L2_ED = (function () {
         if (m.jiggle) m.jiggle.amp *= K.jig;
         if (name === 'person' && p.role === 'head') m.blinkable = true;             // 人物：まばたきON
         if (name === 'creature' && p.role === 'limb') m.sway.amp = Math.max(m.sway.amp, 0.08);
+        if (/(^|_)leg/.test(p.id)) { if (m.sway) m.sway.amp = 0; m.breathing = 0; }   // 脚は接地（プリセットでも揺らさない）
       });
       renderParts(); refreshPreview();
       const label = { calm: 'おとなしい', lively: '活発', creature: '生き物', person: '人物' }[name] || name;
