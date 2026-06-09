@@ -21,6 +21,22 @@ button.on, .l2-tab.on { background: var(--sel); border-color: var(--jade); color
 .l2-pane.drag { outline: 3px dashed var(--gold); outline-offset: -8px; }
 .l2-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
 .l2-sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; }
+/* 手順ガイド（番号＝今やること・クリックでその操作を実行） */
+.l2-steps { display: flex; flex-wrap: wrap; align-items: stretch; gap: 4px; margin-bottom: 10px; }
+.l2-step { display: flex; align-items: center; gap: 8px; text-align: left; padding: 7px 11px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--mist); }
+.l2-step:hover { border-color: var(--jade); }
+.l2-step.done { opacity: .85; }
+.l2-step.on { background: var(--sel); border-color: var(--jade); box-shadow: 0 0 0 1px var(--jade); }
+.l2-step-n { flex: none; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 12px; background: var(--panel2); border: 1px solid var(--line); color: var(--ink); }
+.l2-step.on .l2-step-n { background: var(--jade); color: #10241d; border-color: var(--jade); }
+.l2-step.done .l2-step-n { background: var(--sel); color: #cfeee2; }
+.l2-step-tx { display: flex; flex-direction: column; line-height: 1.2; }
+.l2-step-tx b { font-size: 13px; color: var(--ink); }
+.l2-step.on .l2-step-tx b { color: #fff; }
+.l2-step-tx i { font-size: 10.5px; font-style: normal; color: var(--mist); }
+.l2-step-arrow { align-self: center; color: var(--mist); font-size: 16px; padding: 0 1px; }
 
 .l2-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; }

@@ -23,7 +23,7 @@
     editor = L2_ED.create({
       canvas: U.$('ed-canvas'), overlay: U.$('ed-overlay'),
       toolbar: U.$('ed-toolbar'), panel: U.$('ed-parts'),
-      status: U.$('ed-status'), previewCanvas: U.$('ed-preview')
+      status: U.$('ed-status'), previewCanvas: U.$('ed-preview'), steps: U.$('ed-steps')
     });
 
     // editor buttons

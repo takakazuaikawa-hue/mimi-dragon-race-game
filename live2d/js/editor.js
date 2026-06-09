@@ -33,8 +33,8 @@ const L2_ED = (function () {
       S.rig = L2_RIG.create(S.w, S.h, name || 'dragon');
       S.selected = null;
       try { refine('bg'); } catch (e) {}   // Phase2/B: 読み込み時に背景を自動除去（透過はα、白背景は四隅フラッド）
-      fitView(); redraw(); renderParts();
-      status('画像を読み込み、背景を自動除去しました (' + S.w + '×' + S.h + ')。部位をワンド/ブラシで選び「パーツ化」。調整は「背景除去」や各ツールで。');
+      fitView(); redraw(); renderParts(); renderSteps();
+      status('画像を読み込みました (' + S.w + '×' + S.h + ')。次は ②✨自動リグ が一番かんたん（または部位を選んで「パーツ化」）。');
     }
     function loadFromSrc(src, name) { return U.loadImage(src).then(img => loadFromImage(img, name)); }
 
@@ -169,8 +169,8 @@ const L2_ED = (function () {
       S.rig.parts.push(p);
       S.selected = id;
       S.mask = L2_SEG.newMask(S.w, S.h); S.hist = new L2_SEG.History(24); S.hist.snapshot(S.mask);
-      renderParts(); drawOverlay();
-      status('パーツ作成: ' + id + ' (role=' + role + ')。右パネルで role/z/pivot/motion を調整。');
+      renderParts(); drawOverlay(); renderSteps();
+      status('パーツ作成: ' + id + ' (role=' + role + ')。右パネルで role/z/pivot/motion を調整。③で動きを確認できます。');
     }
 
     // ---------- one-click auto-rig (Phase 4 + v2 / A) ----------
@@ -230,7 +230,9 @@ const L2_ED = (function () {
       S.selected = null;
       S.mask = L2_SEG.newMask(S.w, S.h); S.hist = new L2_SEG.History(24); S.hist.snapshot(S.mask);
       renderParts(); drawOverlay();
-      status('✨ 自動リグ完了：' + summary + ' を生成。▶アイドル再生で確認、右パネルで role/motion を微調整できます。');
+      try { startPreview(refs.previewCanvas); } catch (e) {}   // 保存前に結果をすぐプレビュー
+      renderSteps();
+      status('✨ 自動リグ完了：' + summary + ' を生成。下のプレビューで動きを確認 → よければ ④⬇書き出し。右で微調整も可。');
     }
     function guessRole(b) {
       const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
@@ -329,9 +331,9 @@ const L2_ED = (function () {
       stopPreview();
       const rig = JSON.parse(L2_RIG.serialize(S.rig, { embed: true }));
       L2_RIG.deserialize(rig);
-      L2_RIG.hydrate(rig).then(() => { S.previewCtrl = L2_PLY.createController(canvas, { bg: null, zoom: 0.92 }); S.previewCtrl.setRig(rig); S.previewCtrl.start(); });
+      L2_RIG.hydrate(rig).then(() => { S.previewCtrl = L2_PLY.createController(canvas, { bg: null, zoom: 0.92 }); S.previewCtrl.setRig(rig); S.previewCtrl.start(); renderSteps(); });
     }
-    function stopPreview() { if (S.previewCtrl) { S.previewCtrl.stop(); S.previewCtrl = null; } }
+    function stopPreview() { if (S.previewCtrl) { S.previewCtrl.stop(); S.previewCtrl = null; renderSteps(); } }
     function refreshPreview() { if (S.previewCtrl && refs.previewCanvas) startPreview(refs.previewCanvas); }
 
     // ---------- export ----------
@@ -351,6 +353,33 @@ const L2_ED = (function () {
 
     // ---------- UI: toolbar + part list ----------
     function status(msg) { if (refs.status) refs.status.textContent = msg; }
+
+    // ---------- step guide（直感的な手順ナビ。番号＝今やること、クリックでその操作を実行）----------
+    function currentStep() {
+      if (!S.img) return 0;                               // ① 画像を開く
+      if (!S.rig || !S.rig.parts.length) return 1;        // ② 自動リグ / パーツ化
+      if (!S.previewCtrl) return 2;                       // ③ 動きを確認
+      return 3;                                           // ④ 書き出し
+    }
+    function renderSteps() {
+      if (!refs.steps) return;
+      const cur = currentStep();
+      const items = [
+        ['📂', '画像を開く', '竜やキャラのPNGを読み込む', () => { const b = document.getElementById('btn-open'); if (b) b.click(); }],
+        ['✨', '自動リグ', '部位に自動分解＋動きを付与', () => autoRig()],
+        ['▶', '動きを確認', '保存前にアイドルをプレビュー', () => startPreview(refs.previewCanvas)],
+        ['⬇', '書き出し', 'rig.json を保存', () => exportRig(true)]
+      ];
+      U.clear(refs.steps);
+      items.forEach((it, i) => {
+        const b = U.el('button', 'l2-step' + (i === cur ? ' on' : '') + (i < cur ? ' done' : ''),
+          '<span class="l2-step-n">' + (i < cur ? '✓' : (i + 1)) + '</span>' +
+          '<span class="l2-step-tx"><b>' + it[0] + ' ' + it[1] + '</b><i>' + it[2] + '</i></span>');
+        b.onclick = it[3];
+        refs.steps.appendChild(b);
+        if (i < items.length - 1) refs.steps.appendChild(U.el('span', 'l2-step-arrow', '›'));
+      });
+    }
 
     function renderToolbar() {
       const tb = refs.toolbar; U.clear(tb);
@@ -459,6 +488,7 @@ const L2_ED = (function () {
     });
 
     renderToolbar();
+    renderSteps();
     return {
       loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode, autoRig,
       get rig() { return S.rig; }, set rig(r) { S.rig = r; renderParts(); },
