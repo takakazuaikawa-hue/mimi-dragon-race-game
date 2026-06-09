@@ -173,44 +173,64 @@ const L2_ED = (function () {
       status('パーツ作成: ' + id + ' (role=' + role + ')。右パネルで role/z/pivot/motion を調整。');
     }
 
-    // ---------- one-click auto-rig (Phase 4 / A) ----------
-    // ヒューリスティック自動リグ：シルエットを 頭/胴/脚 の帯に分割（首＝上部で最も細い行、
-    // 腰≈高さ58%）。帯は少し重ねて継ぎ目を隠し、role/モーション/ピボット/z を自動付与。
-    // 「画像を開く→ワンクリックで動くリグ」。完璧な解剖ではないが土台として有用、後で微調整可。
+    // ---------- one-click auto-rig (Phase 4 + v2 / A) ----------
+    // 最大連結成分でノイズ(速度線/砂埃)を除去し、縦横比で「人型(縦長)＝頭/胴/脚」か
+    // 「側面クリーチャー(横長)＝頭/胴/翼/尾」を自動判別。帯は少し重ねて継ぎ目を隠し、
+    // role/既定モーション(竜向けに調整済み)/ピボット/z を自動付与。後で右パネルで微調整可。
     function autoRig() {
       if (!S.img) { status('先に画像を開いてください。'); return; }
-      refine('bg');                                  // S.mask = シルエット（透過はα、白背景は四隅フラッド）
+      refine('bg');
+      L2_SEG.keepLargestComponent(S.mask, S.w, S.h);   // 速度線/砂埃などの小blobを除去（竜本体だけ残す）
       const sil = S.mask;
       const sb = L2_SEG.boundingBox(sil, S.w, S.h);
-      if (!sb || sb.h < 8) { status('シルエットが検出できませんでした。背景除去/ワンドで調整してください。'); return; }
-      // 行ごとの幅プロファイル → 首（上部で最も細い行）を推定
-      const widths = new Int32Array(sb.h);
-      for (let y = 0; y < sb.h; y++) { let c = 0; const row = (sb.y + y) * S.w + sb.x; for (let x = 0; x < sb.w; x++) if (sil[row + x]) c++; widths[y] = c; }
-      const nz0 = Math.floor(sb.h * 0.08), nz1 = Math.max(nz0 + 1, Math.floor(sb.h * 0.42));
-      let neckRel = nz0, minW = Infinity;
-      for (let y = nz0; y < nz1; y++) if (widths[y] < minW) { minW = widths[y]; neckRel = y; }
-      const neck = sb.y + neckRel, hip = sb.y + Math.floor(sb.h * 0.58);
-      const ov = Math.max(6, Math.floor(sb.h * 0.02));   // 継ぎ目を隠す重なり
-      S.rig = L2_RIG.create(S.w, S.h, (S.rig && S.rig.name) || 'mimi');
-      S.rig.rootPivot = { x: Math.round(sb.x + sb.w / 2), y: hip };
-      const band = (id, role, top, bot, pivotY, z) => {
+      if (!sb || sb.w < 8 || sb.h < 8) { status('シルエットが検出できませんでした。背景除去/ワンドで調整してください。'); return; }
+      const ovx = Math.max(6, Math.floor(sb.w * 0.02)), ovy = Math.max(6, Math.floor(sb.h * 0.02));
+      S.rig = L2_RIG.create(S.w, S.h, (S.rig && S.rig.name) || 'dragon');
+      const band = (id, role, xa, xb, ya, yb, pvx, pvy, z, tweak) => {
         const m = L2_SEG.newMask(S.w, S.h);
-        const y0 = Math.max(sb.y, top | 0), y1 = Math.min(sb.y + sb.h, bot | 0);
-        for (let y = y0; y < y1; y++) { const row = y * S.w; for (let x = 0; x < sb.w; x++) { const i = row + sb.x + x; if (sil[i]) m[i] = 255; } }
+        const x0 = Math.max(sb.x, xa | 0), x1 = Math.min(sb.x + sb.w, xb | 0);
+        const y0 = Math.max(sb.y, ya | 0), y1 = Math.min(sb.y + sb.h, yb | 0);
+        for (let y = y0; y < y1; y++) { const row = y * S.w; for (let x = x0; x < x1; x++) if (sil[row + x]) m[row + x] = 255; }
         const bb = L2_SEG.boundingBox(m, S.w, S.h); if (!bb) return;
         const cropped = L2_SEG.cropMaskedToCanvas(S.img, m, S.w, S.h, bb);
-        const p = L2_RIG.makePart(uniqueId(id), role, bb, { x: Math.round(bb.x + bb.w / 2), y: pivotY });
+        const p = L2_RIG.makePart(uniqueId(id), role, bb, { x: Math.round(pvx), y: Math.round(pvy) });
         p.z = z; p.src = cropped.toDataURL('image/png');
         p._editState = { mask: Array.from(maskRunLength(m)) };
+        if (tweak) tweak(p);
         S.rig.parts.push(p);
       };
-      band('legs', 'limb', hip - ov, sb.y + sb.h, hip, 0);     // 脚（背面・腰軸でわずかに揺れ）
-      band('body', 'body', neck - ov, hip + ov, hip, 1);       // 胴（呼吸・腰軸）
-      band('head', 'head', sb.y, neck + ov, neck, 2);          // 頭（首軸で揺れ・視線追従）
+      let summary;
+      if (sb.w / sb.h > 1.15) {
+        // 横長＝側面クリーチャー（竜）。端の高い側＝頭 と判定
+        const colH = (xa, xb) => { let t = sb.y + sb.h, b = sb.y; const xl = Math.max(sb.x, xa), xri = Math.min(sb.x + sb.w, xb); for (let x = xl; x < xri; x++) for (let y = sb.y; y < sb.y + sb.h; y++) if (sil[y * S.w + x]) { if (y < t) t = y; if (y > b) b = y; } return b - t; };
+        const headRight = colH(sb.x + Math.floor(sb.w * 0.74), sb.x + sb.w) >= colH(sb.x, sb.x + Math.floor(sb.w * 0.26));
+        const X = (f) => Math.round(headRight ? sb.x + f * sb.w : sb.x + (1 - f) * sb.w);
+        const xr = (a, b) => headRight ? [X(a), X(b)] : [X(b), X(a)];
+        const Y = (f) => sb.y + Math.floor(sb.h * f);
+        let r;
+        r = xr(0, 0.40);     band('tail', 'tail', r[0], r[1], sb.y, sb.y + sb.h, X(0.40), Y(0.55), 0, p => { if (p.motion.bend) p.motion.bend.rootEdge = headRight ? 'right' : 'left'; });
+        r = xr(0.30, 0.78);  band('body', 'body', r[0], r[1], Y(0.30), sb.y + sb.h, X(0.54), Y(0.72), 1);
+        r = xr(0.30, 0.82);  band('wing', 'wing', r[0], r[1], sb.y, Y(0.52) + ovy, X(0.56), Y(0.50), 2);
+        r = xr(0.72, 1.0);   band('head', 'head', r[0], r[1], sb.y, sb.y + sb.h, X(0.72), Y(0.45), 3);
+        S.rig.rootPivot = { x: X(0.5), y: Y(0.62) };
+        summary = '頭/胴/翼/尾';
+      } else {
+        // 縦長＝人型。首＝上部で最も細い行、腰≈58%
+        const widths = new Int32Array(sb.h);
+        for (let y = 0; y < sb.h; y++) { let c = 0; const row = (sb.y + y) * S.w + sb.x; for (let x = 0; x < sb.w; x++) if (sil[row + x]) c++; widths[y] = c; }
+        const nz0 = Math.floor(sb.h * 0.08), nz1 = Math.max(nz0 + 1, Math.floor(sb.h * 0.42));
+        let neckRel = nz0, minW = Infinity; for (let y = nz0; y < nz1; y++) if (widths[y] < minW) { minW = widths[y]; neckRel = y; }
+        const neck = sb.y + neckRel, hip = sb.y + Math.floor(sb.h * 0.58);
+        band('legs', 'limb', sb.x, sb.x + sb.w, hip - ovy, sb.y + sb.h, sb.x + sb.w / 2, hip, 0);
+        band('body', 'body', sb.x, sb.x + sb.w, neck - ovy, hip + ovy, sb.x + sb.w / 2, hip, 1);
+        band('head', 'head', sb.x, sb.x + sb.w, sb.y, neck + ovy, sb.x + sb.w / 2, neck, 2);
+        S.rig.rootPivot = { x: Math.round(sb.x + sb.w / 2), y: hip };
+        summary = '頭/胴/脚';
+      }
       S.selected = null;
       S.mask = L2_SEG.newMask(S.w, S.h); S.hist = new L2_SEG.History(24); S.hist.snapshot(S.mask);
       renderParts(); drawOverlay();
-      status('✨ 自動リグ完了：頭/胴/脚の3パーツを生成。▶アイドル再生で確認、右パネルで role/motion を微調整できます。');
+      status('✨ 自動リグ完了：' + summary + ' を生成。▶アイドル再生で確認、右パネルで role/motion を微調整できます。');
     }
     function guessRole(b) {
       const cx = b.x + b.w / 2, cy = b.y + b.h / 2;

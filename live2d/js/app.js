@@ -56,12 +56,18 @@
     U.fileToDataURL(file).then(durl => editor.loadFromSrc(durl, (file.name || 'dragon').replace(/\.[^.]+$/, '')));
   }
   function loadDemo() {
-    const rig = L2_DEMO.build();
-    // load the demo source as a flat reference image is unnecessary — feed the
-    // pre-rigged parts straight into the editor and show a live preview.
-    editor.loadRig(L2_RIG.deserialize(JSON.parse(L2_RIG.serialize(rig, { embed: true }))));
-    editor.startPreview(U.$('ed-preview'));
-    U.$('ed-status').textContent = 'デモドラゴンを読み込みました。右で各パーツの motion を触る / 「アイドル再生」で動きを確認。実PNGは「画像を開く」かドラッグ&ドロップで。';
+    // デモドラゴン＝サンプル画像(images/dragon/sample.png)を読み込み、ワンクリック自動リグ→プレビュー。
+    // 取得に失敗した場合のみ従来の手続きデモにフォールバック。
+    editor.loadFromSrc('../images/dragon/sample.png', 'dragon').then(() => {
+      editor.autoRig();
+      editor.startPreview(U.$('ed-preview'));
+      U.$('ed-status').textContent = 'サンプル竜を自動リグしました。右で各パーツの role/motion を調整 / 「アイドル再生」で動きを確認。実PNGは「画像を開く」かドラッグ&ドロップで。';
+    }).catch(() => {
+      const rig = L2_DEMO.build();
+      editor.loadRig(L2_RIG.deserialize(JSON.parse(L2_RIG.serialize(rig, { embed: true }))));
+      editor.startPreview(U.$('ed-preview'));
+      U.$('ed-status').textContent = 'デモドラゴン（手続き生成）を読み込みました。実PNGは「画像を開く」かドラッグ&ドロップで。';
+    });
   }
 
   function loadRigJSON(text) {
