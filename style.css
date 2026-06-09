@@ -2891,10 +2891,9 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 /* ホームの立ち絵：ミミ（着用衣装を反映・タップでモール）＋竜マスコットを横並び */
 .hr2-cast { display: flex; align-items: flex-end; justify-content: center; gap: 6px; width: 100%; }
 .hr2-cast .hr2-dragon { width: 180px; max-width: 48vw; margin: 0; }
-.hr2-mimi { position: relative; flex: 0 0 auto; width: 120px; max-width: 32vw; aspect-ratio: 256 / 384; cursor: pointer;
-  border-radius: 14px; overflow: hidden; border: 1.5px solid var(--gold-line); background: #f3ecdf;
-  box-shadow: 0 9px 20px -9px rgba(0,0,0,0.65); will-change: transform; }
-.hr2-mimi img { width: 100%; height: 100%; object-fit: cover; object-position: top center;
+.hr2-mimi { position: relative; flex: 0 0 auto; width: 140px; max-width: 36vw; aspect-ratio: 256 / 384; cursor: pointer;
+  filter: drop-shadow(0 10px 16px rgba(0,0,0,0.5)); will-change: transform; }
+.hr2-mimi img { width: 100%; height: 100%; object-fit: contain; object-position: bottom center;
   transform-origin: 50% 62%; will-change: transform; }
 .hr2-mimi-fallback { font-size: 52px; }
 .hr2-mimi::after { content: "🛍️"; position: absolute; right: 0; bottom: 10px; font-size: 13px; line-height: 1;
