@@ -54,13 +54,17 @@ const L2_ED = (function () {
       if (S.img) ctx.drawImage(S.img, 0, 0);
       drawOverlay();
     }
+    let _checkerPat = null;
     function drawChecker() {
-      const t = 16; ctx.save();
-      for (let y = 0; y < S.h; y += t) for (let x = 0; x < S.w; x += t) {
-        ctx.fillStyle = ((x / t + y / t) & 1) ? '#2a2b33' : '#1f2027';
-        ctx.fillRect(x, y, t, t);
+      // 高速化：市松模様は一度だけ CanvasPattern にして fillRect 1回で塗る（旧：毎回数千回の fillRect）
+      if (!_checkerPat) {
+        const t = 16, oc = document.createElement('canvas'); oc.width = t * 2; oc.height = t * 2;
+        const og = oc.getContext('2d');
+        og.fillStyle = '#1f2027'; og.fillRect(0, 0, t * 2, t * 2);
+        og.fillStyle = '#2a2b33'; og.fillRect(t, 0, t, t); og.fillRect(0, t, t, t);
+        _checkerPat = ctx.createPattern(oc, 'repeat');
       }
-      ctx.restore();
+      ctx.save(); ctx.fillStyle = _checkerPat; ctx.fillRect(0, 0, S.w, S.h); ctx.restore();
     }
     function drawOverlay() {
       octx.clearRect(0, 0, S.w, S.h);
@@ -291,7 +295,8 @@ const L2_ED = (function () {
     function renderToolbar() {
       const tb = refs.toolbar; U.clear(tb);
       const tools = [['wand', '🪄 ワンド'], ['brush', '🖌 ブラシ'], ['erase', '🧽 消し'], ['lasso', '➰ なげなわ'], ['rect', '▭ 矩形']];
-      tools.forEach(([k, label]) => { const b = U.el('button', 'l2-tool' + (S.tool === k ? ' on' : ''), label); b.onclick = () => { S.tool = k; renderToolbar(); }; tb.appendChild(b); });
+      const tHot = { wand: 'W', brush: 'B', erase: 'E', lasso: 'L', rect: 'R' };
+      tools.forEach(([k, label]) => { const b = U.el('button', 'l2-tool' + (S.tool === k ? ' on' : ''), label); b.title = label + ' [' + tHot[k] + ']'; b.onclick = () => { S.tool = k; renderToolbar(); }; tb.appendChild(b); });
       // mode
       const modes = [['add', '＋追加'], ['subtract', '－削除']];
       modes.forEach(([k, label]) => { const b = U.el('button', 'l2-mode' + (S.mode === k ? ' on' : ''), label); b.onclick = () => { S.mode = k; renderToolbar(); }; tb.appendChild(b); });
@@ -303,7 +308,7 @@ const L2_ED = (function () {
         .forEach(([op, label]) => { const b = U.el('button', 'l2-ref', label); b.onclick = () => refine(op); tb.appendChild(b); });
       const undoB = U.el('button', 'l2-ref', '↶ Undo'); undoB.onclick = undo; tb.appendChild(undoB);
       const redoB = U.el('button', 'l2-ref', '↷ Redo'); redoB.onclick = redo; tb.appendChild(redoB);
-      const mk = U.el('button', 'l2-make', '✓ パーツ化'); mk.onclick = makePart; tb.appendChild(mk);
+      const mk = U.el('button', 'l2-make', '✓ パーツ化'); mk.title = 'パーツ化 [Enter]'; mk.onclick = makePart; tb.appendChild(mk);
       const cov = U.el('button', 'l2-ref', '⚠ 取りこぼし確認'); cov.onclick = coverageReport; tb.appendChild(cov);
     }
     function slider(label, min, max, val, on) {
@@ -380,8 +385,16 @@ const L2_ED = (function () {
     window.addEventListener('mousemove', onMoveCanvas);
     window.addEventListener('mouseup', onUp);
     window.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
-      if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); redo(); }
+      if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); return; }
+      if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); redo(); return; }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = e.target && e.target.tagName; if (tag && /INPUT|TEXTAREA|SELECT/.test(tag)) return;  // フォーム入力中は無効
+      const tmap = { w: 'wand', b: 'brush', e: 'erase', l: 'lasso', r: 'rect' };
+      if (tmap[e.key]) { S.tool = tmap[e.key]; renderToolbar(); e.preventDefault(); }
+      else if (e.key === 'x') { S.mode = (S.mode === 'add') ? 'subtract' : 'add'; renderToolbar(); e.preventDefault(); }
+      else if (e.key === 'Enter') { makePart(); e.preventDefault(); }
+      else if (e.key === '[') { S.brush = Math.max(2, S.brush - 4); renderToolbar(); e.preventDefault(); }
+      else if (e.key === ']') { S.brush = Math.min(120, S.brush + 4); renderToolbar(); e.preventDefault(); }
     });
 
     renderToolbar();

@@ -23,7 +23,7 @@ const L2_PLY = (function () {
       bg: opts.bg || null, showPivots: false
     };
 
-    function setRig(rig) { S.rig = rig; layout(); resetBlink(); }
+    function setRig(rig) { S.rig = rig; S.partsZ = rig ? L2_RIG.sortedByZ(rig) : []; layout(); resetBlink(); }
     function resetBlink() { S.blink = { next: 1.2 + Math.random() * 3, closing: 0, t: 0, val: 1 }; }
 
     // Fit the rig's canvas-space into the display canvas (contain).
@@ -161,7 +161,7 @@ const L2_PLY = (function () {
       ctx.translate(S.ox + driftX, S.oy + driftY);
       ctx.scale(S.fit, S.fit);
 
-      const parts = L2_RIG.sortedByZ(S.rig);
+      const parts = S.partsZ || (S.partsZ = L2_RIG.sortedByZ(S.rig));   // 高速化：毎フレームのsort/確保を回避
       for (const p of parts) {
         if (!p._img) continue;
         drawPart(p);
