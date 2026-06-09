@@ -32,7 +32,9 @@ const L2_ED = (function () {
       S.hist = new L2_SEG.History(24); S.hist.snapshot(S.mask);
       S.rig = L2_RIG.create(S.w, S.h, name || 'dragon');
       S.selected = null;
-      fitView(); redraw(); renderParts(); status('画像を読み込みました (' + S.w + '×' + S.h + ')。背景透過 → ワンドで部位を選択 → 「パーツ化」。');
+      try { refine('bg'); } catch (e) {}   // Phase2/B: 読み込み時に背景を自動除去（透過はα、白背景は四隅フラッド）
+      fitView(); redraw(); renderParts();
+      status('画像を読み込み、背景を自動除去しました (' + S.w + '×' + S.h + ')。部位をワンド/ブラシで選び「パーツ化」。調整は「背景除去」や各ツールで。');
     }
     function loadFromSrc(src, name) { return U.loadImage(src).then(img => loadFromImage(img, name)); }
 

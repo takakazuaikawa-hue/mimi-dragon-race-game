@@ -202,22 +202,51 @@ const L2_SEG = (function () {
   function maskArea(mask) { let n = 0; for (let i = 0; i < mask.length; i++) if (mask[i]) n++; return n; }
 
   // Crop the source image through `mask` within `bbox` → a canvas (alpha = mask).
+  // Quality pass (Phase 2/B): decontaminate the 1px edge (replace fringe colours with
+  // interior FG colours → kills the background-tint halo) and soft-feather the silhouette
+  // alpha (anti-alias) so part edges read clean instead of hard/jagged.
+  // Pass feather===false for the legacy crisp hard cut.
   function cropMaskedToCanvas(srcImg, mask, w, h, bbox, feather) {
+    const bw = bbox.w, bh = bbox.h;
     const c = document.createElement('canvas');
-    c.width = bbox.w; c.height = bbox.h;
+    c.width = bw; c.height = bh;
     const g = c.getContext('2d');
-    g.drawImage(srcImg, bbox.x, bbox.y, bbox.w, bbox.h, 0, 0, bbox.w, bbox.h);
-    const out = g.getImageData(0, 0, bbox.w, bbox.h);
+    g.drawImage(srcImg, bbox.x, bbox.y, bw, bh, 0, 0, bw, bh);
+    const out = g.getImageData(0, 0, bw, bh);
     const od = out.data;
-    for (let yy = 0; yy < bbox.h; yy++) {
-      for (let xx = 0; xx < bbox.w; xx++) {
-        const mi = (bbox.y + yy) * w + (bbox.x + xx);
-        const oi = (yy * bbox.w + xx) * 4 + 3;
-        if (!mask[mi]) od[oi] = 0;
+    // local 0/1 mask for the bbox
+    const lm = new Uint8Array(bw * bh);
+    for (let yy = 0; yy < bh; yy++) for (let xx = 0; xx < bw; xx++) lm[yy * bw + xx] = mask[(bbox.y + yy) * w + (bbox.x + xx)] ? 1 : 0;
+    if (feather === false) {
+      for (let i = 0; i < lm.length; i++) if (!lm[i]) od[i * 4 + 3] = 0;
+      g.putImageData(out, 0, 0); return c;
+    }
+    // 1) decontaminate edge FG: replace its RGB with the mean of FG neighbours (push interior colour outward)
+    const rgb = od.slice();
+    for (let yy = 0; yy < bh; yy++) for (let xx = 0; xx < bw; xx++) {
+      const li = yy * bw + xx; if (!lm[li]) continue;
+      const edge = (xx > 0 && !lm[li - 1]) || (xx < bw - 1 && !lm[li + 1]) || (yy > 0 && !lm[li - bw]) || (yy < bh - 1 && !lm[li + bw]);
+      if (!edge) continue;
+      let r = 0, gg = 0, b = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = xx + dx, ny = yy + dy; if (nx < 0 || ny < 0 || nx >= bw || ny >= bh) continue;
+        const ni = ny * bw + nx; if (!lm[ni]) continue;
+        const p = ni * 4; r += rgb[p]; gg += rgb[p + 1]; b += rgb[p + 2]; n++;
       }
+      if (n) { const p = li * 4; od[p] = r / n; od[p + 1] = gg / n; od[p + 2] = b / n; }
+    }
+    // 2) alpha from mask with a soft 1px feather (anti-aliased silhouette): interior=255, edge dips by exposure
+    for (let yy = 0; yy < bh; yy++) for (let xx = 0; xx < bw; xx++) {
+      const li = yy * bw + xx, oi = li * 4 + 3;
+      if (!lm[li]) { od[oi] = 0; continue; }
+      let open = 0, tot = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const nx = xx + dx, ny = yy + dy; if (nx < 0 || ny < 0 || nx >= bw || ny >= bh) continue;
+        tot++; if (!lm[ny * bw + nx]) open++;
+      }
+      od[oi] = open ? Math.round(255 * (1 - 0.5 * open / tot)) : 255;
     }
     g.putImageData(out, 0, 0);
-    if (feather) { /* optional: a light blur pass could go here; kept crisp by default */ }
     return c;
   }
 
