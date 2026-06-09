@@ -352,6 +352,22 @@ const L2_ED = (function () {
       renderParts(); drawOverlay(); refreshPreview();
       status('🫧 胸パーツを追加しました。呼吸に少し遅れて左右に立体的に揺れます。位置/形は「✎再編集」、揺れ量は詳細の「ぷる量/ぷる速/位相」で調整できます。');
     }
+    // AI背景除去（ブラウザ内ML・キー不要）：RMBG-1.4で高品質に透過→読み直して背景をαで除去。
+    async function aiRemoveBg() {
+      if (!S.img) { status('先に画像を開いてください。'); return; }
+      if (typeof L2_AI === 'undefined' || !L2_AI.removeBackground) { status('AIモジュール(js/ai.js)が読み込まれていません。'); return; }
+      const name = (S.rig && S.rig.name) || 'image';
+      const btn = document.getElementById('btn-ai-bg'); const label = btn && btn.textContent;
+      if (btn) { btn.disabled = true; btn.textContent = '🤖 処理中…'; }
+      try {
+        status('🤖 AIライブラリ読込中…（初回はモデルDLで数十秒かかります。しばらくお待ちください）');
+        const res = await L2_AI.removeBackground(S.img, function (msg) { status('🤖 ' + msg); });
+        await loadFromSrc(res.canvas.toDataURL('image/png'), name);
+        status('🤖 AI背景除去 完了（髪などの細部も透過）。②✨自動リグでそのままリグ化できます。');
+      } catch (e) {
+        status('AI背景除去に失敗: ' + ((e && e.message) || e) + ' ／ オンライン＋対応ブラウザが必要です。従来の「背景除去」（⚙詳細）も使えます。');
+      } finally { if (btn) { btn.disabled = false; if (label) btn.textContent = label; } }
+    }
     function guessRole(b) {
       const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       if (b.w > S.w * 0.45 && b.h > S.h * 0.3) return 'body';
@@ -646,7 +662,7 @@ const L2_ED = (function () {
     renderToolbar();
     renderSteps();
     return {
-      loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode, autoRig,
+      loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode, autoRig, aiRemoveBg,
       // 大プレビュー（app.js所有）が現在のリグを取得する用：startPreview と同じ embed 済みオブジェクトを返す
       serializeForPreview() { return S.rig ? JSON.parse(L2_RIG.serialize(S.rig, { embed: true })) : null; },
       hasRig() { return !!(S.rig && S.rig.parts && S.rig.parts.length); },
