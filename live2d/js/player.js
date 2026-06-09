@@ -260,6 +260,8 @@ const L2_PLY = (function () {
       setRig, start, stop, layout,
       setShowPivots(v) { S.showPivots = !!v; },
       setBg(c) { S.bg = c; },
+      setZoom(z) { opts.zoom = z; layout(); },   // ズーム変更（コントローラ再構築せず fit を再計算）
+      redraw() { draw(); },                       // 一時停止中の単発再描画（ピボット切替など）
       get state() { return S; }
     };
   }

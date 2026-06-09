@@ -11,7 +11,8 @@
   <h1>🐲 Mimi Live2D ツール</h1>
   <nav class="l2-tabs">
     <button id="tab-editor" class="l2-tab on">① エディタ（分解・リグ）</button>
-    <button id="tab-player" class="l2-tab">② プレイヤー（再生）</button>
+    <button id="tab-preview" class="l2-tab">② プレビュー（大）</button>
+    <button id="tab-player" class="l2-tab">③ 再生（rig.json）</button>
   </nav>
 </header>
 
@@ -40,7 +41,7 @@
     </div>
     <aside class="l2-side">
       <div class="l2-preview-box">
-        <h3>▶ プレビュー <span class="l2-hint">(調整が即反映)</span></h3>
+        <h3>▶ プレビュー <span class="l2-hint">(調整が即反映)</span><button id="btn-enlarge" class="l2-mini-btn l2-enlarge" title="大きく表示（プレビュータブへ）">⛶ 拡大</button></h3>
         <canvas id="ed-preview" width="340" height="260" class="l2-preview"></canvas>
       </div>
       <div class="l2-parts-box">
@@ -50,6 +51,31 @@
     </aside>
   </div>
   <div id="ed-status" class="l2-status">画像を開くか「デモドラゴン生成」で開始。</div>
+</section>
+
+<!-- ===================== PREVIEW (large, current rig) ===================== -->
+<section id="pane-preview" class="l2-pane" style="display:none">
+  <div class="l2-prev-bar">
+    <button id="pv-play" class="l2-primary" title="再生 / 一時停止">⏸ 一時停止</button>
+    <span class="l2-sep"></span>
+    <label class="l2-slider"><span>ズーム</span><input id="pv-zoom" type="range" min="0.3" max="2" step="0.05" value="0.92"><span id="pv-zoom-val" class="l2-val">0.92</span></label>
+    <span class="l2-sep"></span>
+    <span class="l2-prev-lbl">背景</span>
+    <span class="l2-seg" id="pv-bg">
+      <button data-bg="transparent" class="on">透過</button>
+      <button data-bg="dark">暗</button>
+      <button data-bg="light">明</button>
+      <button data-bg="checker">市松</button>
+    </span>
+    <span class="l2-sep"></span>
+    <label class="l2-check"><input id="pv-pivots" type="checkbox"><span>ピボット表示</span></label>
+    <span class="l2-spacer"></span>
+    <button id="pv-to-editor" class="l2-ref" title="編集タブへ戻る">← 編集へ戻る</button>
+  </div>
+  <div class="l2-prev-stage" id="pv-stage">
+    <canvas id="pv-canvas"></canvas>
+  </div>
+  <div id="pv-status" class="l2-status">現在のリグを大きく表示します。①でリグを作成してください。</div>
 </section>
 
 <!-- ===================== PLAYER ===================== -->

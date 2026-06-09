@@ -19,7 +19,9 @@ const L2_ED = (function () {
       lasso: [], drawing: false,
       selected: null,                 // part id when placing pivot / editing
       placingPivot: false,
-      previewCtrl: null
+      previewCtrl: null,
+      advancedOpen: false,            // ツールバー「⚙詳細(手動マスク編集)」の開閉
+      cardOpen: new Set()             // パーツカードで「詳細」を開いているidの集合（再描画後も保持）
     };
 
     // ---------- image load ----------
@@ -41,8 +43,11 @@ const L2_ED = (function () {
     function fitView() {
       // どんなサイズのPNGも収まるよう「コンテナ幅 × ビューポート高60%」の枠に縦横比維持でフィット。
       // 旧実装は canvas 直親(=l2-stage, canvas自身のサイズ)を測っていて大きい画像が収まらなかった。
+      if (!S.img) return;
       const wrap = (refs.canvas.parentElement && refs.canvas.parentElement.parentElement) || refs.canvas.parentElement;
-      const bw = ((wrap && wrap.clientWidth) || 600) - 24;
+      const cw = wrap ? wrap.clientWidth : 0;
+      if (!cw) return;   // エディタ非表示時(幅0)は再フィットしない（誤った縮小率＝はみ出しを防ぐ）
+      const bw = cw - 24;
       const bh = Math.max(240, Math.round((window.innerHeight || 800) * 0.6));
       const fit = Math.min(bw / S.w, bh / S.h);
       S.fit = (fit > 0 && isFinite(fit)) ? fit : 1;
@@ -401,26 +406,43 @@ const L2_ED = (function () {
       });
     }
 
+    function selectTool(k) { S.tool = k; S.advancedOpen = true; renderToolbar(); }   // ツール選択（ホットキー時も詳細を自動展開）
     function renderToolbar() {
       const tb = refs.toolbar; U.clear(tb);
+      const mkBtn = (cls, label, title, on) => { const b = U.el('button', cls, label); if (title) b.title = title; b.onclick = on; return b; };
+      // --- 常時表示：本流アクション ---
+      const main = U.el('div', 'l2-tb-group');
+      main.appendChild(mkBtn('l2-make', '✨ 自動リグ', '画像を部位に自動分解してリグ生成', () => autoRig()));
+      main.appendChild(mkBtn('l2-ref', '🔁 頭⇄尾', '自動リグの頭と尾が逆のとき押して反転', swapHeadTail));
+      main.appendChild(mkBtn('l2-make', '✓ パーツ化', '選択中のマスクをパーツ化 [Enter]', makePart));
+      main.appendChild(U.el('span', 'l2-tb-divider'));
+      main.appendChild(mkBtn('l2-ref', '↶ Undo', '取り消し [Ctrl+Z]', undo));
+      main.appendChild(mkBtn('l2-ref', '↷ Redo', 'やり直し [Ctrl+Y]', redo));
+      tb.appendChild(main);
+      // --- 詳細トグル（手動マスク編集：副次的なので既定は閉） ---
+      const tg = U.el('button', 'l2-tb-toggle' + (S.advancedOpen ? ' on' : ''), '<span class="l2-caret">▸</span> ⚙ 詳細（手動マスク編集）');
+      tg.title = '手動でマスクを塗って部位を作る／微修正する道具';
+      tg.onclick = () => { S.advancedOpen = !S.advancedOpen; renderToolbar(); };
+      tb.appendChild(tg);
+      if (!S.advancedOpen) return;
+      // --- 詳細セクション（小見出し付きグループ） ---
+      const adv = U.el('div', 'l2-tb-advanced');
+      const row = (labelText) => { const r = U.el('div', 'l2-tb-row'); if (labelText) r.appendChild(U.el('span', 'l2-tb-label', labelText)); adv.appendChild(r); return r; };
+      const rTool = row('ツール');
       const tools = [['wand', '🪄 ワンド'], ['brush', '🖌 ブラシ'], ['erase', '🧽 消し'], ['lasso', '➰ なげなわ'], ['rect', '▭ 矩形']];
       const tHot = { wand: 'W', brush: 'B', erase: 'E', lasso: 'L', rect: 'R' };
-      tools.forEach(([k, label]) => { const b = U.el('button', 'l2-tool' + (S.tool === k ? ' on' : ''), label); b.title = label + ' [' + tHot[k] + ']'; b.onclick = () => { S.tool = k; renderToolbar(); }; tb.appendChild(b); });
-      // mode
-      const modes = [['add', '＋追加'], ['subtract', '－削除']];
-      modes.forEach(([k, label]) => { const b = U.el('button', 'l2-mode' + (S.mode === k ? ' on' : ''), label); b.onclick = () => { S.mode = k; renderToolbar(); }; tb.appendChild(b); });
-      // tolerance + brush sliders
-      tb.appendChild(slider('tol 許容', 1, 120, S.tol, v => S.tol = v));
-      tb.appendChild(slider('brush 太さ', 2, 120, S.brush, v => S.brush = v));
-      // refine + undo
+      tools.forEach(([k, label]) => rTool.appendChild(mkBtn('l2-tool' + (S.tool === k ? ' on' : ''), label, label + ' [' + tHot[k] + ']', () => selectTool(k))));
+      const rMode = row('モード');
+      [['add', '＋追加'], ['subtract', '－削除']].forEach(([k, label]) => rMode.appendChild(mkBtn('l2-mode' + (S.mode === k ? ' on' : ''), label, label + ' [Xで切替]', () => { S.mode = k; renderToolbar(); })));
+      const rAdj = row('調整');
+      rAdj.appendChild(slider('tol 許容', 1, 120, S.tol, v => S.tol = v));
+      rAdj.appendChild(slider('brush 太さ', 2, 120, S.brush, v => S.brush = v));
+      const rRef = row('マスク整形');
       [['bg', '背景除去'], ['grow', '拡張'], ['shrink', '収縮'], ['fill', '穴埋め'], ['despeckle', 'ゴミ取'], ['largest', '最大のみ'], ['clear', 'クリア']]
-        .forEach(([op, label]) => { const b = U.el('button', 'l2-ref', label); b.onclick = () => refine(op); tb.appendChild(b); });
-      const undoB = U.el('button', 'l2-ref', '↶ Undo'); undoB.onclick = undo; tb.appendChild(undoB);
-      const redoB = U.el('button', 'l2-ref', '↷ Redo'); redoB.onclick = redo; tb.appendChild(redoB);
-      const ar = U.el('button', 'l2-make', '✨ 自動リグ'); ar.title = '画像を 頭/胴/脚 に自動分解してリグ生成'; ar.onclick = () => autoRig(); tb.appendChild(ar);
-      const sw = U.el('button', 'l2-ref', '🔁 頭⇄尾'); sw.title = '自動リグの頭と尾が逆のとき押して反転'; sw.onclick = swapHeadTail; tb.appendChild(sw);
-      const mk = U.el('button', 'l2-make', '✓ パーツ化'); mk.title = 'パーツ化 [Enter]'; mk.onclick = makePart; tb.appendChild(mk);
-      const cov = U.el('button', 'l2-ref', '⚠ 取りこぼし確認'); cov.onclick = coverageReport; tb.appendChild(cov);
+        .forEach(([op, label]) => rRef.appendChild(mkBtn('l2-ref', label, null, () => refine(op))));
+      const rChk = row('確認');
+      rChk.appendChild(mkBtn('l2-ref', '⚠ 取りこぼし確認', 'シルエットの未割当領域をハイライト', coverageReport));
+      tb.appendChild(adv);
     }
     function slider(label, min, max, val, on) {
       const wrap = U.el('label', 'l2-slider'); wrap.appendChild(U.el('span', null, label));
@@ -443,6 +465,7 @@ const L2_ED = (function () {
       }
       sorted.forEach(p => {
         const card = U.el('div', 'l2-part' + (S.selected === p.id ? ' sel' : ''));
+        // --- 見出し：id ＋ role ---
         const head = U.el('div', 'l2-part-head');
         head.appendChild(U.el('strong', null, p.id));
         const roleSel = U.el('select', 'l2-role');
@@ -450,32 +473,42 @@ const L2_ED = (function () {
         roleSel.onchange = () => setRole(p.id, roleSel.value);
         head.appendChild(roleSel);
         card.appendChild(head);
-        // controls row
+        // --- 基本（常時）：並び順 / ピボット / 反転 / 削除 ＋ 静的トランスフォーム ---
         const row = U.el('div', 'l2-row');
         row.appendChild(btn('▲z', () => moveZ(p.id, 1)));
         row.appendChild(btn('▼z', () => moveZ(p.id, -1)));
         row.appendChild(btn('◎ピボット', () => { S.selected = p.id; S.placingPivot = true; renderParts(); drawOverlay(); status('キャンバスをクリックして「' + p.id + '」のピボットを置く'); }));
         row.appendChild(btn('⇋反転', () => flipPart(p.id, 'h')));
-        row.appendChild(btn('⧉複製', () => duplicatePart(p.id)));
-        row.appendChild(btn('✎再編集', () => reEditPart(p.id)));
-        row.appendChild(btn('↻再パーツ化', () => recommitPart(p.id)));
         row.appendChild(btn('🗑', () => deletePart(p.id)));
         card.appendChild(row);
-        // static transform + motion sliders
-        const m = p.motion;
         card.appendChild(mini('opacity', 0, 1, 0.05, p.opacity, v => { p.opacity = v; refreshPreview(); }));
         card.appendChild(mini('scale', 0.3, 2, 0.05, p.scale.x, v => { p.scale.x = v; p.scale.y = v; refreshPreview(); }));
         card.appendChild(mini('rot', -1, 1, 0.02, p.rot, v => { p.rot = v; refreshPreview(); }));
-        card.appendChild(mini('呼吸', 0, 1, 0.05, m.breathing, v => setNum(p.id, 'motion.breathing', v)));
-        card.appendChild(mini('揺れamp', 0, 0.4, 0.01, m.sway.amp, v => setNum(p.id, 'motion.sway.amp', v)));
-        card.appendChild(mini('揺れfreq', 0.1, 2, 0.05, m.sway.freq, v => setNum(p.id, 'motion.sway.freq', v)));
-        const blink = U.el('label', 'l2-check'); const cb = U.el('input'); cb.type = 'checkbox'; cb.checked = !!m.blinkable; cb.onchange = () => { m.blinkable = cb.checked; refreshPreview(); }; blink.appendChild(cb); blink.appendChild(U.el('span', null, 'まばたき')); card.appendChild(blink);
-        // chest-only: ぷるぷる(jiggle) amplitude / speed / phase sliders. phase 0.00=同位相(同時) 0.50=逆位相(交互)
-        if (p.role === 'chest') {
-          if (!m.jiggle) m.jiggle = L2_RIG.defaultMotionForRole('chest').jiggle;
-          card.appendChild(mini('ぷる量', 0, 1.5, 0.05, m.jiggle.amp, v => setNum(p.id, 'motion.jiggle.amp', v)));
-          card.appendChild(mini('ぷる速', 0.5, 3, 0.05, m.jiggle.freq, v => setNum(p.id, 'motion.jiggle.freq', v)));
-          card.appendChild(mini('位相', 0, 1, 0.05, (m.jiggle.phase || 0) / (Math.PI * 2), v => setNum(p.id, 'motion.jiggle.phase', v * Math.PI * 2), '0=同時 / 0.5=交互'));
+        // --- 詳細トグル（編集・動き。既定は閉。展開状態は S.cardOpen で保持） ---
+        const open = S.cardOpen.has(p.id);
+        const dtg = U.el('button', 'l2-detail-toggle' + (open ? ' on' : ''), '<span class="l2-caret">▸</span> 詳細（編集・動き）');
+        dtg.onclick = (e) => { e.stopPropagation(); if (S.cardOpen.has(p.id)) S.cardOpen.delete(p.id); else S.cardOpen.add(p.id); renderParts(); };
+        card.appendChild(dtg);
+        if (open) {
+          const det = U.el('div', 'l2-part-detail');
+          const erow = U.el('div', 'l2-row');
+          erow.appendChild(btn('✎再編集', () => reEditPart(p.id)));
+          erow.appendChild(btn('↻再パーツ化', () => recommitPart(p.id)));
+          erow.appendChild(btn('⧉複製', () => duplicatePart(p.id)));
+          det.appendChild(erow);
+          const m = p.motion;
+          det.appendChild(mini('呼吸', 0, 1, 0.05, m.breathing, v => setNum(p.id, 'motion.breathing', v)));
+          det.appendChild(mini('揺れamp', 0, 0.4, 0.01, m.sway.amp, v => setNum(p.id, 'motion.sway.amp', v)));
+          det.appendChild(mini('揺れfreq', 0.1, 2, 0.05, m.sway.freq, v => setNum(p.id, 'motion.sway.freq', v)));
+          const blink = U.el('label', 'l2-check'); const cb = U.el('input'); cb.type = 'checkbox'; cb.checked = !!m.blinkable; cb.onchange = () => { m.blinkable = cb.checked; refreshPreview(); }; blink.appendChild(cb); blink.appendChild(U.el('span', null, 'まばたき')); det.appendChild(blink);
+          // chest-only: ぷるぷる(jiggle) amplitude / speed / phase. phase 0.00=同位相(同時) 0.50=逆位相(交互)
+          if (p.role === 'chest') {
+            if (!m.jiggle) m.jiggle = L2_RIG.defaultMotionForRole('chest').jiggle;
+            det.appendChild(mini('ぷる量', 0, 1.5, 0.05, m.jiggle.amp, v => setNum(p.id, 'motion.jiggle.amp', v)));
+            det.appendChild(mini('ぷる速', 0.5, 3, 0.05, m.jiggle.freq, v => setNum(p.id, 'motion.jiggle.freq', v)));
+            det.appendChild(mini('位相', 0, 1, 0.05, (m.jiggle.phase || 0) / (Math.PI * 2), v => setNum(p.id, 'motion.jiggle.phase', v * Math.PI * 2), '0=同時 / 0.5=交互'));
+          }
+          card.appendChild(det);
         }
         card.onclick = (e) => { if (e.target === card || e.target.tagName === 'STRONG') { S.selected = p.id; renderParts(); } };
         panel.appendChild(card);
@@ -496,16 +529,18 @@ const L2_ED = (function () {
     window.addEventListener('mousemove', onMoveCanvas);
     window.addEventListener('mouseup', onUp);
     window.addEventListener('keydown', (e) => {
+      const edPane = document.getElementById('pane-editor');
+      if (edPane && edPane.style.display === 'none') return;   // 編集タブ以外ではホットキー無効（②③での誤作動防止）
       if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); return; }
       if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); redo(); return; }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const tag = e.target && e.target.tagName; if (tag && /INPUT|TEXTAREA|SELECT/.test(tag)) return;  // フォーム入力中は無効
       const tmap = { w: 'wand', b: 'brush', e: 'erase', l: 'lasso', r: 'rect' };
-      if (tmap[e.key]) { S.tool = tmap[e.key]; renderToolbar(); e.preventDefault(); }
-      else if (e.key === 'x') { S.mode = (S.mode === 'add') ? 'subtract' : 'add'; renderToolbar(); e.preventDefault(); }
+      if (tmap[e.key]) { selectTool(tmap[e.key]); e.preventDefault(); }
+      else if (e.key === 'x') { S.mode = (S.mode === 'add') ? 'subtract' : 'add'; S.advancedOpen = true; renderToolbar(); e.preventDefault(); }
       else if (e.key === 'Enter') { makePart(); e.preventDefault(); }
-      else if (e.key === '[') { S.brush = Math.max(2, S.brush - 4); renderToolbar(); e.preventDefault(); }
-      else if (e.key === ']') { S.brush = Math.min(120, S.brush + 4); renderToolbar(); e.preventDefault(); }
+      else if (e.key === '[') { S.brush = Math.max(2, S.brush - 4); S.advancedOpen = true; renderToolbar(); e.preventDefault(); }
+      else if (e.key === ']') { S.brush = Math.min(120, S.brush + 4); S.advancedOpen = true; renderToolbar(); e.preventDefault(); }
     });
 
     window.addEventListener('resize', () => { if (S.img) { fitView(); redraw(); } });   // 画面サイズ変更でも収まるよう再フィット
@@ -513,6 +548,9 @@ const L2_ED = (function () {
     renderSteps();
     return {
       loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode, autoRig,
+      // 大プレビュー（app.js所有）が現在のリグを取得する用：startPreview と同じ embed 済みオブジェクトを返す
+      serializeForPreview() { return S.rig ? JSON.parse(L2_RIG.serialize(S.rig, { embed: true })) : null; },
+      hasRig() { return !!(S.rig && S.rig.parts && S.rig.parts.length); },
       get rig() { return S.rig; }, set rig(r) { S.rig = r; renderParts(); },
       loadRig(rig) { S.rig = rig; S.w = rig.canvas.w; S.h = rig.canvas.h; renderParts(); }
     };
