@@ -183,7 +183,14 @@ const L2_ED = (function () {
     }
 
     // 任意マスクから1パーツ生成（自動リグ / AIリグ 共用）。空マスクはスキップ。
+    // 継ぎ目（体の割れ）対策：マスクを少し膨張→シルエット内にクリップして隣接パーツと重ねる
+    // （前面パーツが境界を覆い、アニメで動いても隙間が出にくい）。S.mask=現在のシルエット。
     function partFromMask(id, role, m, pvx, pvy, z, tweak) {
+      const gw = Math.min(16, Math.max(2, Math.round(Math.min(S.w, S.h) * 0.012)));
+      const mm = m.slice(0);
+      L2_SEG.grow(mm, S.w, S.h, gw);
+      if (S.mask) for (let i = 0; i < mm.length; i++) if (mm[i] && !S.mask[i]) mm[i] = 0;   // 背景へは広げない
+      m = mm;
       const bb = L2_SEG.boundingBox(m, S.w, S.h); if (!bb) return false;
       const cropped = L2_SEG.cropMaskedToCanvas(S.img, m, S.w, S.h, bb);
       const p = L2_RIG.makePart(uniqueId(id), role, bb, { x: Math.round(pvx), y: Math.round(pvy) });
