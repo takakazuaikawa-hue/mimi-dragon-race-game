@@ -28,7 +28,11 @@ const L2_PLY = (function () {
       // 立体感用：z の最小/最大を取り、各パーツの奥行き(0=遠..1=近)を正規化できるように
       if (rig && rig.parts.length) {
         const zs = rig.parts.map(p => p.z || 0); S.zmin = Math.min.apply(null, zs); S.zmax = Math.max.apply(null, zs);
-      } else { S.zmin = 0; S.zmax = 1; }
+        const rp = rig.rootPivot || { x: rig.canvas.w / 2, y: rig.canvas.h * 0.6 };  // 二次運動の起点
+        S._root = rp; let mx = 1;
+        for (const p of rig.parts) { const dx = p.pivot.x - rp.x, dy = p.pivot.y - rp.y; const d = Math.sqrt(dx * dx + dy * dy); if (d > mx) mx = d; }
+        S._reach = mx;   // root から最遠パーツまでの距離（伝播の正規化用）
+      } else { S.zmin = 0; S.zmax = 1; S._reach = 1; S._root = { x: 0, y: 0 }; }
       layout(); resetBlink();
     }
     function resetBlink() { S.blink = { next: 1.2 + Math.random() * 3, closing: 0, t: 0, val: 1 }; }
@@ -156,6 +160,15 @@ const L2_PLY = (function () {
       const rel = depth - 0.5;
       tx += S.gaze.tx * rel * 14 + Math.sin(2 * Math.PI * 0.08 * t + ph * 0.3) * rel * 3;
       ty += S.gaze.ty * rel * 8;
+      // 二次運動（フォロースルー）：体幹(root)を起点に外側へ伝播する微揺れ。root付近は静止、
+      // 末端(手足/尾/翼/髪)ほど位相が遅れて揺れる→部位が連動して“生きている”印象に。
+      if (S._reach > 1) {
+        const dxr = p.pivot.x - S._root.x, dyr = p.pivot.y - S._root.y;
+        const reach = Math.min(1, Math.sqrt(dxr * dxr + dyr * dyr) / S._reach);   // 0=体幹 .. 1=末端
+        const prop = 2 * Math.PI * 0.12 * t - reach * 1.4;                         // 末端ほど位相を遅延
+        ty += Math.sin(prop) * reach * 1.8;
+        rot += Math.cos(prop) * reach * 0.025;
+      }
       return { rot, sx, sy, tx, ty };
     }
 

@@ -304,6 +304,29 @@ const L2_ED = (function () {
       autoRig({ forceHeadRight: !S._headRight });
       status('🔁 頭と尾を入れ替えました（頭＝' + (S._headRight ? '右' : '左') + '）。プレビューで確認してください。');
     }
+    // 演出プリセット：全パーツの motion を役割の既定にリセット→プリセット倍率を適用（ワンタップ調整）
+    function applyMotionPreset(name) {
+      if (!S.rig || !S.rig.parts.length) { status('先にリグを作成してください（②✨自動リグ）。'); return; }
+      const K = {
+        calm:     { br: 0.6, sway: 0.5, freq: 0.9,  fl: 0.5, bend: 0.6, jig: 0.6 },
+        lively:   { br: 1.3, sway: 1.8, freq: 1.25, fl: 1.6, bend: 1.4, jig: 1.3 },
+        creature: { br: 1.0, sway: 1.2, freq: 1.0,  fl: 1.4, bend: 1.3, jig: 1.0 },
+        person:   { br: 1.0, sway: 0.9, freq: 1.0,  fl: 0.6, bend: 0.7, jig: 1.0 }
+      }[name] || { br: 1, sway: 1, freq: 1, fl: 1, bend: 1, jig: 1 };
+      S.rig.parts.forEach(p => {
+        const m = p.motion = JSON.parse(JSON.stringify(L2_RIG.defaultMotionForRole(p.role)));
+        if (m.breathing != null) m.breathing = Math.min(1.5, m.breathing * K.br);
+        if (m.sway) { m.sway.amp *= K.sway; m.sway.freq *= K.freq; }
+        if (typeof m.flutter === 'number') m.flutter *= K.fl;
+        if (m.bend) m.bend.amp *= K.bend;
+        if (m.jiggle) m.jiggle.amp *= K.jig;
+        if (name === 'person' && p.role === 'head') m.blinkable = true;             // 人物：まばたきON
+        if (name === 'creature' && p.role === 'limb') m.sway.amp = Math.max(m.sway.amp, 0.08);
+      });
+      renderParts(); refreshPreview();
+      const label = { calm: 'おとなしい', lively: '活発', creature: '生き物', person: '人物' }[name] || name;
+      status('演出プリセット「' + label + '」を全パーツに適用しました（プレビュー即反映）。');
+    }
     function guessRole(b) {
       const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       if (b.w > S.w * 0.45 && b.h > S.h * 0.3) return 'body';
@@ -464,6 +487,11 @@ const L2_ED = (function () {
       main.appendChild(mkBtn('l2-ref', '↶ Undo', '取り消し [Ctrl+Z]', undo));
       main.appendChild(mkBtn('l2-ref', '↷ Redo', 'やり直し [Ctrl+Y]', redo));
       tb.appendChild(main);
+      // --- 演出プリセット（常時表示・全パーツの動きを一括設定） ---
+      const pre = U.el('div', 'l2-tb-group');
+      pre.appendChild(U.el('span', 'l2-tb-label', '演出'));
+      [['calm', 'おとなしい'], ['lively', '活発'], ['creature', '生き物'], ['person', '人物']].forEach(([k, l]) => pre.appendChild(mkBtn('l2-ref', l, '動きプリセット「' + l + '」を全パーツに適用', () => applyMotionPreset(k))));
+      tb.appendChild(pre);
       // --- 詳細トグル（手動マスク編集：副次的なので既定は閉） ---
       const tg = U.el('button', 'l2-tb-toggle' + (S.advancedOpen ? ' on' : ''), '<span class="l2-caret">▸</span> ⚙ 詳細（手動マスク編集）');
       tg.title = '手動でマスクを塗って部位を作る／微修正する道具';
