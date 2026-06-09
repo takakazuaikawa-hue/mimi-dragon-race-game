@@ -208,6 +208,16 @@ const L2_ED = (function () {
         if (tweak) tweak(p);
         S.rig.parts.push(p);
       };
+      // 任意マスクから1パーツ生成（v3の腕/脚分離用）。空マスクはスキップ。
+      const partFromMask = (id, role, m, pvx, pvy, z, tweak) => {
+        const bb = L2_SEG.boundingBox(m, S.w, S.h); if (!bb) return false;
+        const cropped = L2_SEG.cropMaskedToCanvas(S.img, m, S.w, S.h, bb);
+        const p = L2_RIG.makePart(uniqueId(id), role, bb, { x: Math.round(pvx), y: Math.round(pvy) });
+        p.z = z; p.src = cropped.toDataURL('image/png');
+        p._editState = { mask: Array.from(maskRunLength(m)) };
+        if (tweak) tweak(p);
+        S.rig.parts.push(p); return true;
+      };
       let summary;
       if (sb.w / sb.h > 1.15) {
         // 横長＝側面クリーチャー（竜）。頭/尾の向きは複数手がかりの多数決で判定。
@@ -234,17 +244,52 @@ const L2_ED = (function () {
         summary = '頭/胴/翼/尾';
       } else {
         S._isCreature = false;
-        // 縦長＝人型。首＝上部で最も細い行、腰≈58%
+        // 縦長＝人型。v3：首/腰に加え腕(左右)・脚(左右)を分離し、肩/腰のピボットを推定。
+        // 対称軸＝胴重心x。肩幅が腰幅より十分広ければ腕あり、腰下に明確な谷があれば脚を左右に割る。
+        // 曖昧なら頭/胴/脚（v2相当）へ自動フォールバック。腕未採用ぶんの画素は胴へ統合（取りこぼし防止）。
+        const W = S.w, x0 = sb.x, x1 = sb.x + sb.w, y0 = sb.y, y1 = sb.y + sb.h;
         const widths = new Int32Array(sb.h);
-        for (let y = 0; y < sb.h; y++) { let c = 0; const row = (sb.y + y) * S.w + sb.x; for (let x = 0; x < sb.w; x++) if (sil[row + x]) c++; widths[y] = c; }
+        for (let ry = 0; ry < sb.h; ry++) { let c = 0; const row = (y0 + ry) * W; for (let x = x0; x < x1; x++) if (sil[row + x]) c++; widths[ry] = c; }
         const nz0 = Math.floor(sb.h * 0.08), nz1 = Math.max(nz0 + 1, Math.floor(sb.h * 0.42));
-        let neckRel = nz0, minW = Infinity; for (let y = nz0; y < nz1; y++) if (widths[y] < minW) { minW = widths[y]; neckRel = y; }
-        const neck = sb.y + neckRel, hip = sb.y + Math.floor(sb.h * 0.58);
-        band('legs', 'limb', sb.x, sb.x + sb.w, hip - ovy, sb.y + sb.h, sb.x + sb.w / 2, hip, 0);
-        band('body', 'body', sb.x, sb.x + sb.w, neck - ovy, hip + ovy, sb.x + sb.w / 2, hip, 1);
-        band('head', 'head', sb.x, sb.x + sb.w, sb.y, neck + ovy, sb.x + sb.w / 2, neck, 2);
-        S.rig.rootPivot = { x: Math.round(sb.x + sb.w / 2), y: hip };
-        summary = '頭/胴/脚';
+        let neckRel = nz0, minW = Infinity; for (let ry = nz0; ry < nz1; ry++) if (widths[ry] < minW) { minW = widths[ry]; neckRel = ry; }
+        const neck = y0 + neckRel, hip = y0 + Math.floor(sb.h * 0.58);
+        let cmx = 0, cmn = 0; for (let yy = neck; yy < hip; yy++) { const row = yy * W; for (let x = x0; x < x1; x++) if (sil[row + x]) { cmx += x; cmn++; } }
+        const axis = cmn ? Math.round(cmx / cmn) : Math.round(x0 + sb.w / 2);   // 左右対称軸
+        const low = []; for (let ry = Math.floor(sb.h * 0.45); ry < Math.floor(sb.h * 0.58); ry++) low.push(widths[ry]);
+        low.sort((a, b) => a - b); const coreW = low.length ? low[low.length >> 1] : Math.floor(sb.w * 0.5);
+        let shoulderW = 0; for (let ry = neckRel; ry < Math.floor(sb.h * 0.45); ry++) if (widths[ry] > shoulderW) shoulderW = widths[ry];
+        const hasArms = shoulderW > coreW * 1.30;                               // 肩が腰より広い→腕あり
+        const coreHalf = Math.max(8, Math.floor(coreW * 0.5));
+        const armX0 = axis - coreHalf, armX1 = axis + coreHalf;
+        let splitX = axis, splitMin = Infinity, legAvg = 0, legN = 0;           // 脚の割れ目＝腰下・中央寄りの最小密度x
+        const sLo = axis - Math.floor(coreHalf * 0.6), sHi = axis + Math.floor(coreHalf * 0.6);
+        for (let x = sLo; x <= sHi; x++) { if (x < 0 || x >= W) continue; let c = 0; for (let yy = hip; yy < y1; yy++) if (sil[yy * W + x]) c++; legAvg += c; legN++; if (c < splitMin) { splitMin = c; splitX = x; } }
+        legAvg = legN ? legAvg / legN : 0;
+        const mk = () => L2_SEG.newMask(W, S.h);
+        const mHead = mk(), mBody = mk(), mArmL = mk(), mArmR = mk(), mLegL = mk(), mLegR = mk();
+        let armLn = 0, armRn = 0, legLn = 0, legRn = 0;
+        for (let yy = y0; yy < y1; yy++) { const row = yy * W;
+          for (let x = x0; x < x1; x++) { if (!sil[row + x]) continue;
+            if (yy < neck) mHead[row + x] = 255;
+            else if (yy < hip) { if (hasArms && x < armX0) { mArmL[row + x] = 255; armLn++; } else if (hasArms && x > armX1) { mArmR[row + x] = 255; armRn++; } else mBody[row + x] = 255; }
+            else { if (x >= splitX) { mLegR[row + x] = 255; legRn++; } else { mLegL[row + x] = 255; legLn++; } }
+          }
+        }
+        const legMin = sb.w * sb.h * 0.008;
+        const legsSplit = (splitMin < legAvg * 0.5) && legLn > legMin && legRn > legMin;   // 谷あり＋両脚に十分な面積のときだけ左右割り
+        const armMin = sb.w * sb.h * 0.004;
+        const armLok = hasArms && armLn > armMin, armRok = hasArms && armRn > armMin;
+        if (!armLok) for (let i = 0; i < mArmL.length; i++) if (mArmL[i]) mBody[i] = 255;   // 未採用の腕画素は胴へ
+        if (!armRok) for (let i = 0; i < mArmR.length; i++) if (mArmR[i]) mBody[i] = 255;
+        partFromMask('body', 'body', mBody, axis, (neck + hip) / 2, 1);
+        if (legsSplit) { partFromMask('leg_l', 'limb', mLegL, (x0 + splitX) / 2, hip, 0); partFromMask('leg_r', 'limb', mLegR, (splitX + x1) / 2, hip, 0); }
+        else { for (let i = 0; i < mLegR.length; i++) if (mLegR[i]) mLegL[i] = 255; partFromMask('legs', 'limb', mLegL, axis, hip, 0); }
+        let arms = 0;
+        if (armLok) { partFromMask('arm_l', 'limb', mArmL, armX0, neck + (hip - neck) * 0.12, 2); arms++; }
+        if (armRok) { partFromMask('arm_r', 'limb', mArmR, armX1, neck + (hip - neck) * 0.12, 2); arms++; }
+        partFromMask('head', 'head', mHead, axis, neck, 3);
+        S.rig.rootPivot = { x: axis, y: hip };
+        summary = '頭/胴/' + (arms ? '腕×' + arms + '/' : '') + (legsSplit ? '脚×2' : '脚');
       }
       S.selected = null;
       S.mask = L2_SEG.newMask(S.w, S.h); S.hist = new L2_SEG.History(24); S.hist.snapshot(S.mask);
