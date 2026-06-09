@@ -2892,11 +2892,9 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hr2-cast .hr2-dragon { width: 180px; max-width: 48vw; margin: 0; }
 .hr2-mimi { position: relative; flex: 0 0 auto; width: 120px; max-width: 32vw; aspect-ratio: 256 / 384; cursor: pointer;
   border-radius: 14px; overflow: hidden; border: 1.5px solid var(--gold-line); background: #f3ecdf;
-  box-shadow: 0 9px 20px -9px rgba(0,0,0,0.65); transition: transform .3s ease-out; will-change: transform; }
+  box-shadow: 0 9px 20px -9px rgba(0,0,0,0.65); will-change: transform; }
 .hr2-mimi img { width: 100%; height: 100%; object-fit: cover; object-position: top center;
-  transform-origin: 50% 62%; animation: mimiBreathe 4.6s ease-in-out infinite; }
-@keyframes mimiBreathe { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.02) translateY(-0.6%); } }
-@media (prefers-reduced-motion: reduce) { .hr2-mimi img { animation: none; } }
+  transform-origin: 50% 62%; will-change: transform; }
 .hr2-mimi-fallback { font-size: 52px; }
 .hr2-mimi::after { content: "🛍️"; position: absolute; right: 0; bottom: 10px; font-size: 13px; line-height: 1;
   background: rgba(18,22,28,.82); border: 1px solid var(--gold-line); border-radius: 999px; padding: 3px 5px; }
