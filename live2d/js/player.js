@@ -17,7 +17,7 @@ const L2_PLY = (function () {
     const ctx = canvas.getContext('2d');
     const S = {
       rig: null, t: 0, last: 0, raf: 0, active: false, loopId: null,
-      gaze: { x: 0, y: 0, tx: 0, ty: 0 },   // tx/ty = eased target in -1..1
+      gaze: { x: 0, y: 0, tx: 0, ty: 0, vx: 0, vy: 0 },   // tx/ty = spring-eased target in -1..1 (vx/vy = velocity)
       blink: { next: 1.2, closing: 0, t: 0 },
       fit: 1, ox: 0, oy: 0,
       bg: opts.bg || null, showPivots: false
@@ -69,9 +69,12 @@ const L2_PLY = (function () {
     }
 
     function update(dt) {
-      // ease gaze toward target
-      S.gaze.tx += (S.gaze.x - S.gaze.tx) * Math.min(1, dt * 6);
-      S.gaze.ty += (S.gaze.y - S.gaze.ty) * Math.min(1, dt * 6);
+      // gaze: spring toward target (stiffness/damping) → slight overshoot then settle, instead of a flat lerp
+      const gk = 120, gd = 16;
+      S.gaze.vx += ((S.gaze.x - S.gaze.tx) * gk - S.gaze.vx * gd) * dt;
+      S.gaze.vy += ((S.gaze.y - S.gaze.ty) * gk - S.gaze.vy * gd) * dt;
+      S.gaze.tx += S.gaze.vx * dt;
+      S.gaze.ty += S.gaze.vy * dt;
       // blink scheduler: closed→open envelope (~120ms)
       const b = S.blink;
       b.t += dt;
@@ -100,14 +103,16 @@ const L2_PLY = (function () {
 
       // breathing — body-weighted gentle squash/stretch + lift
       if (m.breathing) {
-        const br = Math.sin(2 * Math.PI * 0.22 * t);
+        // 非整数比の2サイン合成で“非反復”の有機的な呼吸に（単一サインの機械的反復を回避）
+        const br = Math.sin(2 * Math.PI * 0.22 * t) * 0.7 + Math.sin(2 * Math.PI * 0.167 * t + 1.3) * 0.3;
         sy += 0.022 * m.breathing * br;
         sx += 0.012 * m.breathing * br;
         ty += -1.5 * m.breathing * (br * 0.5 + 0.5);
       }
       // sway — rotation (or translation) about the pivot
       if (m.sway && m.sway.amp) {
-        const s = Math.sin(2 * Math.PI * (m.sway.freq || 0.6) * t + ph + (m.sway.phase || 0));
+        const ampMod = 1 + 0.15 * Math.sin(2 * Math.PI * 0.043 * t + ph);   // ±15% のゆっくりした揺らぎで非機械的に
+        const s = Math.sin(2 * Math.PI * (m.sway.freq || 0.6) * t + ph + (m.sway.phase || 0)) * ampMod;
         if (m.sway.axis === 'tx') tx += s * m.sway.amp * 30;
         else if (m.sway.axis === 'ty') ty += s * m.sway.amp * 30;
         else rot += s * m.sway.amp;
@@ -209,7 +214,9 @@ const L2_PLY = (function () {
         let u = (i + 0.5) / n;
         if (rootRight) u = 1 - u;
         const k = u * u;
-        const wob = Math.sin(2 * Math.PI * freq * S.t + ph + u * 1.6) * amp * k * along * 0.6;
+        // 基本波＋1/4の2倍音＋ゆっくりした振幅ノイズ → 風になびくような有機的なうねり
+        const ampMod = 1 + 0.15 * Math.sin(2 * Math.PI * 0.05 * S.t + ph);
+        const wob = (Math.sin(2 * Math.PI * freq * S.t + ph + u * 1.6) + 0.25 * Math.sin(2 * Math.PI * 2 * freq * S.t + ph)) * amp * k * along * 0.55 * ampMod;
 
         ctx.save();
         if (bend.axis === 'y') {
