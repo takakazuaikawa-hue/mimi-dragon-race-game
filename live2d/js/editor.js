@@ -172,6 +172,46 @@ const L2_ED = (function () {
       renderParts(); drawOverlay();
       status('パーツ作成: ' + id + ' (role=' + role + ')。右パネルで role/z/pivot/motion を調整。');
     }
+
+    // ---------- one-click auto-rig (Phase 4 / A) ----------
+    // ヒューリスティック自動リグ：シルエットを 頭/胴/脚 の帯に分割（首＝上部で最も細い行、
+    // 腰≈高さ58%）。帯は少し重ねて継ぎ目を隠し、role/モーション/ピボット/z を自動付与。
+    // 「画像を開く→ワンクリックで動くリグ」。完璧な解剖ではないが土台として有用、後で微調整可。
+    function autoRig() {
+      if (!S.img) { status('先に画像を開いてください。'); return; }
+      refine('bg');                                  // S.mask = シルエット（透過はα、白背景は四隅フラッド）
+      const sil = S.mask;
+      const sb = L2_SEG.boundingBox(sil, S.w, S.h);
+      if (!sb || sb.h < 8) { status('シルエットが検出できませんでした。背景除去/ワンドで調整してください。'); return; }
+      // 行ごとの幅プロファイル → 首（上部で最も細い行）を推定
+      const widths = new Int32Array(sb.h);
+      for (let y = 0; y < sb.h; y++) { let c = 0; const row = (sb.y + y) * S.w + sb.x; for (let x = 0; x < sb.w; x++) if (sil[row + x]) c++; widths[y] = c; }
+      const nz0 = Math.floor(sb.h * 0.08), nz1 = Math.max(nz0 + 1, Math.floor(sb.h * 0.42));
+      let neckRel = nz0, minW = Infinity;
+      for (let y = nz0; y < nz1; y++) if (widths[y] < minW) { minW = widths[y]; neckRel = y; }
+      const neck = sb.y + neckRel, hip = sb.y + Math.floor(sb.h * 0.58);
+      const ov = Math.max(6, Math.floor(sb.h * 0.02));   // 継ぎ目を隠す重なり
+      S.rig = L2_RIG.create(S.w, S.h, (S.rig && S.rig.name) || 'mimi');
+      S.rig.rootPivot = { x: Math.round(sb.x + sb.w / 2), y: hip };
+      const band = (id, role, top, bot, pivotY, z) => {
+        const m = L2_SEG.newMask(S.w, S.h);
+        const y0 = Math.max(sb.y, top | 0), y1 = Math.min(sb.y + sb.h, bot | 0);
+        for (let y = y0; y < y1; y++) { const row = y * S.w; for (let x = 0; x < sb.w; x++) { const i = row + sb.x + x; if (sil[i]) m[i] = 255; } }
+        const bb = L2_SEG.boundingBox(m, S.w, S.h); if (!bb) return;
+        const cropped = L2_SEG.cropMaskedToCanvas(S.img, m, S.w, S.h, bb);
+        const p = L2_RIG.makePart(uniqueId(id), role, bb, { x: Math.round(bb.x + bb.w / 2), y: pivotY });
+        p.z = z; p.src = cropped.toDataURL('image/png');
+        p._editState = { mask: Array.from(maskRunLength(m)) };
+        S.rig.parts.push(p);
+      };
+      band('legs', 'limb', hip - ov, sb.y + sb.h, hip, 0);     // 脚（背面・腰軸でわずかに揺れ）
+      band('body', 'body', neck - ov, hip + ov, hip, 1);       // 胴（呼吸・腰軸）
+      band('head', 'head', sb.y, neck + ov, neck, 2);          // 頭（首軸で揺れ・視線追従）
+      S.selected = null;
+      S.mask = L2_SEG.newMask(S.w, S.h); S.hist = new L2_SEG.History(24); S.hist.snapshot(S.mask);
+      renderParts(); drawOverlay();
+      status('✨ 自動リグ完了：頭/胴/脚の3パーツを生成。▶アイドル再生で確認、右パネルで role/motion を微調整できます。');
+    }
     function guessRole(b) {
       const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       if (b.w > S.w * 0.45 && b.h > S.h * 0.3) return 'body';
@@ -308,6 +348,7 @@ const L2_ED = (function () {
         .forEach(([op, label]) => { const b = U.el('button', 'l2-ref', label); b.onclick = () => refine(op); tb.appendChild(b); });
       const undoB = U.el('button', 'l2-ref', '↶ Undo'); undoB.onclick = undo; tb.appendChild(undoB);
       const redoB = U.el('button', 'l2-ref', '↷ Redo'); redoB.onclick = redo; tb.appendChild(redoB);
+      const ar = U.el('button', 'l2-make', '✨ 自動リグ'); ar.title = '画像を 頭/胴/脚 に自動分解してリグ生成'; ar.onclick = autoRig; tb.appendChild(ar);
       const mk = U.el('button', 'l2-make', '✓ パーツ化'); mk.title = 'パーツ化 [Enter]'; mk.onclick = makePart; tb.appendChild(mk);
       const cov = U.el('button', 'l2-ref', '⚠ 取りこぼし確認'); cov.onclick = coverageReport; tb.appendChild(cov);
     }
@@ -399,7 +440,7 @@ const L2_ED = (function () {
 
     renderToolbar();
     return {
-      loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode,
+      loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode, autoRig,
       get rig() { return S.rig; }, set rig(r) { S.rig = r; renderParts(); },
       loadRig(rig) { S.rig = rig; S.w = rig.canvas.w; S.h = rig.canvas.h; renderParts(); }
     };
