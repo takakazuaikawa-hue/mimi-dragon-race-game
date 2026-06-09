@@ -190,6 +190,36 @@ function showNavConfirm(icon, title, desc, onGo) {
   box.querySelector(".navpop-go").onclick = () => { close(); onGo(); };
 }
 
+// ホームのミミのアイドル演出（研究反映：Inochi2D/Live2D系の手法を参考）。
+// 多重サイン呼吸（非整数比で非反復）＋体重移動の揺れ＋位相ずらし＋バネ式視線追従。
+// 単一rAFループで全軸を合成。ホームを離れる/要素が消えると自動停止（リーク無し）。表示演出のみ。
+let _mimiGaze = { tx: 0, ty: 0, cx: 0, cy: 0, vx: 0, vy: 0 };
+let _mimiIdleRAF = null;
+function startMimiIdle(frame, img) {
+  if (_mimiIdleRAF) { cancelAnimationFrame(_mimiIdleRAF); _mimiIdleRAF = null; }
+  const amp = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) ? 0 : 1;
+  const TAU = Math.PI * 2;
+  function loop(t) {
+    if (!document.contains(frame) || state.ui.screen !== "home") { _mimiIdleRAF = null; return; }
+    const s = t / 1000;
+    // 呼吸：周期4.5sと5.3sの非整数比サインを合成 → 機械的な反復に聞こえない有機的な揺らぎ
+    const breath = Math.sin(s * TAU / 4.5) * 0.6 + Math.sin(s * TAU / 5.3) * 0.4;   // -1..1
+    const sway = Math.sin(s * TAU / 7.0 + 0.6);                                      // 体重移動（横・位相ずらし）
+    const rot = Math.sin(s * TAU / 9.0 + 1.2);                                       // 体のゆっくりした傾き
+    // 視線：バネ（剛性k・減衰dmp）でカーソルへ寄り、離すと少しオーバーシュートして戻る
+    const k = 0.08, dmp = 0.82;
+    _mimiGaze.vx += (_mimiGaze.tx - _mimiGaze.cx) * k; _mimiGaze.vx *= dmp; _mimiGaze.cx += _mimiGaze.vx;
+    _mimiGaze.vy += (_mimiGaze.ty - _mimiGaze.cy) * k; _mimiGaze.vy *= dmp; _mimiGaze.cy += _mimiGaze.vy;
+    const tx = (sway * 2.2 + _mimiGaze.cx * 6) * amp;
+    const ty = (-breath * 1.1 + _mimiGaze.cy * 4) * amp;
+    const rz = (rot * 0.6 + _mimiGaze.cx * 1.6) * amp;
+    frame.style.transform = "translate(" + tx.toFixed(2) + "px," + ty.toFixed(2) + "px) rotate(" + rz.toFixed(2) + "deg)";
+    if (img) { const sc = 1 + (breath * 0.5 + 0.5) * 0.02 * amp; img.style.transform = "scaleY(" + sc.toFixed(4) + ")"; }
+    _mimiIdleRAF = requestAnimationFrame(loop);
+  }
+  _mimiIdleRAF = requestAnimationFrame(loop);
+}
+
 function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
@@ -239,14 +269,15 @@ function renderHome() {
   cast.appendChild(mimi);
   cast.appendChild(dragonImg);
   stage.appendChild(cast);
-  // アイドル演出：ミミがカーソルの方へそっと寄る（表示のみ・モバイルは無効でも呼吸は継続）
+  // アイドル演出（研究反映：多重サイン呼吸＋体重移動＋バネ式視線追従）。pointerはgaze目標だけ更新。
+  const _mimiImg = mimi.querySelector("img");
   stage.addEventListener("pointermove", function (e) {
     const r = mimi.getBoundingClientRect(); if (!r.width) return;
-    const dx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2)));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2)));
-    mimi.style.transform = "translate(" + (dx * 5).toFixed(1) + "px," + (dy * 3).toFixed(1) + "px) rotate(" + (dx * 1.4).toFixed(2) + "deg)";
+    _mimiGaze.tx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2)));
+    _mimiGaze.ty = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2)));
   });
-  stage.addEventListener("pointerleave", function () { mimi.style.transform = ""; });
+  stage.addEventListener("pointerleave", function () { _mimiGaze.tx = 0; _mimiGaze.ty = 0; });
+  startMimiIdle(mimi, _mimiImg);
 
   let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
     : (stageLabel ? "暮らし：" + stageLabel : "");
