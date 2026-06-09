@@ -239,6 +239,14 @@ function renderHome() {
   cast.appendChild(mimi);
   cast.appendChild(dragonImg);
   stage.appendChild(cast);
+  // アイドル演出：ミミがカーソルの方へそっと寄る（表示のみ・モバイルは無効でも呼吸は継続）
+  stage.addEventListener("pointermove", function (e) {
+    const r = mimi.getBoundingClientRect(); if (!r.width) return;
+    const dx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2)));
+    const dy = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2)));
+    mimi.style.transform = "translate(" + (dx * 5).toFixed(1) + "px," + (dy * 3).toFixed(1) + "px) rotate(" + (dx * 1.4).toFixed(2) + "deg)";
+  });
+  stage.addEventListener("pointerleave", function () { mimi.style.transform = ""; });
 
   let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
     : (stageLabel ? "暮らし：" + stageLabel : "");
