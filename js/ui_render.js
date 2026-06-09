@@ -220,6 +220,32 @@ function startMimiIdle(frame, img) {
   _mimiIdleRAF = requestAnimationFrame(loop);
 }
 
+// ソフトボディ・ワープ（研究反映：Live2Dの bend ＝帯分割＋累進オフセットの考え方）。
+// 透過PNGをcanvasに縦帯で分割し、端（羽/尾）ほど大きく上下に波打たせる＋ゆるい呼吸スケール。
+// ドラゴン(ref.pngは透過)に適用。単一rAF・ホーム離脱で自動停止・prefers-reduced-motion配慮。表示のみ。
+let _dragonWarpRAF = null;
+function startDragonWarp(canvas, img) {
+  if (_dragonWarpRAF) { cancelAnimationFrame(_dragonWarpRAF); _dragonWarpRAF = null; }
+  const reduce = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const TAU = Math.PI * 2, STRIPS = 30, ctx = canvas.getContext("2d");
+  function draw(t) {
+    if (!document.contains(canvas) || state.ui.screen !== "home") { _dragonWarpRAF = null; return; }
+    const W = canvas.width, H = canvas.height, iw = img.naturalWidth || W, ih = img.naturalHeight || H, s = t / 1000;
+    ctx.clearRect(0, 0, W, H);
+    const breath = reduce ? 0 : (Math.sin(s * TAU / 4.0) * 0.5 + Math.sin(s * TAU / 5.1) * 0.5);
+    const dh = H * (1 + breath * 0.012), dtop = (H - dh) * 0.85;   // ほぼ下端アンカー＋呼吸
+    const isw = iw / STRIPS, dsw = W / STRIPS;
+    for (let i = 0; i < STRIPS; i++) {
+      const u = i / (STRIPS - 1), edge = Math.abs(u - 0.5) * 2;     // 端ほど大きく揺れる
+      const amp = reduce ? 0 : (1.2 + 5.0 * edge);
+      const dy = amp * Math.sin(s * 0.9 * TAU / 3 + u * 1.5 * TAU);
+      ctx.drawImage(img, i * isw, 0, isw, ih, i * dsw, dtop + dy, dsw + 0.7, dh);
+    }
+    _dragonWarpRAF = requestAnimationFrame(draw);
+  }
+  _dragonWarpRAF = requestAnimationFrame(draw);
+}
+
 function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
@@ -265,7 +291,13 @@ function renderHome() {
   mimi.title = "ショッピングモール（きせかえ）へ";
   mimi.onclick = () => renderMall();
   const dragonImg = el("div", "hr2-dragon");
-  dragonImg.innerHTML = (typeof photoOr === "function" ? photoOr("images/dragon_ref/ref.png", "<span class='hr2-dragon-fallback'>🐉</span>") : "🐉");
+  const dragonCv = document.createElement("canvas");
+  dragonCv.className = "hr2-dragon-cv"; dragonCv.width = 384; dragonCv.height = 256;
+  dragonImg.appendChild(dragonCv);
+  const _dImg = new Image();
+  _dImg.onload = function () { startDragonWarp(dragonCv, _dImg); };
+  _dImg.onerror = function () { dragonImg.innerHTML = "<span class='hr2-dragon-fallback'>🐉</span>"; };
+  _dImg.src = "images/dragon_ref/ref.png";
   cast.appendChild(mimi);
   cast.appendChild(dragonImg);
   stage.appendChild(cast);
