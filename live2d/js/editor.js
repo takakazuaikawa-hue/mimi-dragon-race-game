@@ -182,6 +182,16 @@ const L2_ED = (function () {
       status('パーツ作成: ' + id + ' (role=' + role + ')。右パネルで role/z/pivot/motion を調整。③で動きを確認できます。');
     }
 
+    // 任意マスクから1パーツ生成（自動リグ / AIリグ 共用）。空マスクはスキップ。
+    function partFromMask(id, role, m, pvx, pvy, z, tweak) {
+      const bb = L2_SEG.boundingBox(m, S.w, S.h); if (!bb) return false;
+      const cropped = L2_SEG.cropMaskedToCanvas(S.img, m, S.w, S.h, bb);
+      const p = L2_RIG.makePart(uniqueId(id), role, bb, { x: Math.round(pvx), y: Math.round(pvy) });
+      p.z = z; p.src = cropped.toDataURL('image/png');
+      p._editState = { mask: Array.from(maskRunLength(m)) };
+      if (tweak) tweak(p);
+      S.rig.parts.push(p); return true;
+    }
     // ---------- one-click auto-rig (Phase 4 + v2 / A) ----------
     // 最大連結成分でノイズ(速度線/砂埃)を除去し、縦横比で「人型(縦長)＝頭/胴/脚」か
     // 「側面クリーチャー(横長)＝頭/胴/翼/尾」を自動判別。帯は少し重ねて継ぎ目を隠し、
@@ -207,16 +217,6 @@ const L2_ED = (function () {
         p._editState = { mask: Array.from(maskRunLength(m)) };
         if (tweak) tweak(p);
         S.rig.parts.push(p);
-      };
-      // 任意マスクから1パーツ生成（v3の腕/脚分離用）。空マスクはスキップ。
-      const partFromMask = (id, role, m, pvx, pvy, z, tweak) => {
-        const bb = L2_SEG.boundingBox(m, S.w, S.h); if (!bb) return false;
-        const cropped = L2_SEG.cropMaskedToCanvas(S.img, m, S.w, S.h, bb);
-        const p = L2_RIG.makePart(uniqueId(id), role, bb, { x: Math.round(pvx), y: Math.round(pvy) });
-        p.z = z; p.src = cropped.toDataURL('image/png');
-        p._editState = { mask: Array.from(maskRunLength(m)) };
-        if (tweak) tweak(p);
-        S.rig.parts.push(p); return true;
       };
       let summary;
       if (sb.w / sb.h > 1.15) {
@@ -366,6 +366,57 @@ const L2_ED = (function () {
         status('🤖 AI背景除去 完了（髪などの細部も透過）。②✨自動リグでそのままリグ化できます。');
       } catch (e) {
         status('AI背景除去に失敗: ' + ((e && e.message) || e) + ' ／ オンライン＋対応ブラウザが必要です。従来の「背景除去」（⚙詳細）も使えます。');
+      } finally { if (btn) { btn.disabled = false; if (label) btn.textContent = label; } }
+    }
+    // 点→線分/折れ線の距離（姿勢の骨に最も近い部位へ画素を割り当てる用）
+    function _distSeg(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay; const L2 = dx * dx + dy * dy || 1; let t = ((px - ax) * dx + (py - ay) * dy) / L2; t = t < 0 ? 0 : t > 1 ? 1 : t; const cx = ax + t * dx, cy = ay + t * dy; return Math.hypot(px - cx, py - cy); }
+    function _distPoly(px, py, poly) { let d = Infinity; for (let i = 0; i < poly.length - 1; i++) { const dd = _distSeg(px, py, poly[i].x, poly[i].y, poly[i + 1].x, poly[i + 1].y); if (dd < d) d = dd; } return d; }
+    function _mid(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+    // AIリグ（姿勢）：MediaPipeの関節で頭/胴/腕/脚を「最近傍ボーン」分割し、関節にピボットを置く。
+    // 検出不可（アニメ等で失敗）時は幾何ベースの autoRig() に自動フォールバック。脚は接地。
+    async function aiPoseRig() {
+      if (!S.img) { status('先に画像を開いてください。'); return; }
+      if (typeof L2_AI === 'undefined' || !L2_AI.detectPose) { status('AIモジュール(js/ai.js)が読み込まれていません。'); return; }
+      const btn = document.getElementById('btn-ai-rig'); const label = btn && btn.textContent;
+      if (btn) { btn.disabled = true; btn.textContent = '🤖 処理中…'; }
+      try {
+        status('🤖 姿勢AI読込中…（初回はモデルDLで数十秒）');
+        let lp = null;
+        try { lp = await L2_AI.detectPose(S.img, function (m) { status('🤖 ' + m); }); } catch (e) { lp = null; }
+        if (!lp) { status('姿勢を検出できませんでした（アニメ等では外れがち）。幾何ベースで自動リグします。'); autoRig(); return; }
+        refine('bg'); L2_SEG.keepLargestComponent(S.mask, S.w, S.h);
+        const sil = S.mask, sb = L2_SEG.boundingBox(sil, S.w, S.h);
+        if (!sb) { status('シルエットが検出できませんでした。'); return; }
+        S.rig = L2_RIG.create(S.w, S.h, (S.rig && S.rig.name) || 'character'); S._isCreature = false;
+        const ms = _mid(lp.Lsh, lp.Rsh), mh = _mid(lp.Lhip, lp.Rhip);
+        const bones = { torso: [ms, mh], armA: [lp.Lsh, lp.Lel, lp.Lwr], armB: [lp.Rsh, lp.Rel, lp.Rwr], legA: [lp.Lhip, lp.Lkn, lp.Lank], legB: [lp.Rhip, lp.Rkn, lp.Rank] };
+        const headCut = ms.y - (mh.y - ms.y) * 0.06;   // 肩よりわずかに上＝頭/髪
+        const mk = () => L2_SEG.newMask(S.w, S.h);
+        const M = { head: mk(), body: mk(), armA: mk(), armB: mk(), legA: mk(), legB: mk() };
+        const cnt = { head: 0, body: 0, armA: 0, armB: 0, legA: 0, legB: 0 };
+        for (let y = sb.y; y < sb.y + sb.h; y++) { const row = y * S.w; for (let x = sb.x; x < sb.x + sb.w; x++) {
+          if (!sil[row + x]) continue;
+          if (y < headCut) { M.head[row + x] = 255; cnt.head++; continue; }
+          let best = 'body', bd = _distPoly(x, y, bones.torso) * 0.82;   // 胴は中心なので少し優遇
+          const cand = [['armA', bones.armA], ['armB', bones.armB], ['legA', bones.legA], ['legB', bones.legB]];
+          for (let c = 0; c < cand.length; c++) { const d = _distPoly(x, y, cand[c][1]); if (d < bd) { bd = d; best = cand[c][0]; } }
+          M[best][row + x] = 255; cnt[best]++;
+        } }
+        const plant = p => { p.motion = { breathing: 0, blinkable: false, sway: { amp: 0, freq: 0.6, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 0, ty: 0 }, flutter: 0 }; };
+        const A = sb.w * sb.h;
+        partFromMask('body', 'body', M.body, mh.x, (ms.y + mh.y) / 2, 1);
+        if (cnt.legA > A * 0.004) partFromMask('leg_l', 'limb', M.legA, lp.Lhip.x, lp.Lhip.y, 0, plant);
+        if (cnt.legB > A * 0.004) partFromMask('leg_r', 'limb', M.legB, lp.Rhip.x, lp.Rhip.y, 0, plant);
+        let arms = 0;
+        if (cnt.armA > A * 0.002) { partFromMask('arm_l', 'limb', M.armA, lp.Lsh.x, lp.Lsh.y, 2); arms++; }
+        if (cnt.armB > A * 0.002) { partFromMask('arm_r', 'limb', M.armB, lp.Rsh.x, lp.Rsh.y, 2); arms++; }
+        partFromMask('head', 'head', M.head, ms.x, ms.y, 3);
+        S.rig.rootPivot = { x: Math.round(mh.x), y: Math.round(mh.y) };
+        S.selected = null; S.mask = L2_SEG.newMask(S.w, S.h); S.hist = new L2_SEG.History(24); S.hist.snapshot(S.mask);
+        renderParts(); drawOverlay(); try { startPreview(refs.previewCanvas); } catch (e) {} renderSteps();
+        status('🤖 AIリグ（姿勢）完了：頭/胴/腕×' + arms + '/脚 を関節位置で生成。右上プレビューで確認→④書き出し。範囲は✎再編集で微調整可。');
+      } catch (e) {
+        status('AIリグに失敗: ' + ((e && e.message) || e) + ' ／ 幾何ベースの「✨自動リグ」をお使いください。');
       } finally { if (btn) { btn.disabled = false; if (label) btn.textContent = label; } }
     }
     function guessRole(b) {
@@ -662,7 +713,7 @@ const L2_ED = (function () {
     renderToolbar();
     renderSteps();
     return {
-      loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode, autoRig, aiRemoveBg,
+      loadFromImage, loadFromSrc, startPreview, stopPreview, exportRig, fitView, setChestJiggleMode, autoRig, aiRemoveBg, aiPoseRig,
       // 大プレビュー（app.js所有）が現在のリグを取得する用：startPreview と同じ embed 済みオブジェクトを返す
       serializeForPreview() { return S.rig ? JSON.parse(L2_RIG.serialize(S.rig, { embed: true })) : null; },
       hasRig() { return !!(S.rig && S.rig.parts && S.rig.parts.length); },

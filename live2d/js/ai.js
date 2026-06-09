@@ -57,5 +57,36 @@ const L2_AI = (function () {
     return { canvas: cnv, width: w, height: h };
   }
 
-  return { removeBackground, _tflib };
+  // ---- MediaPipe 姿勢推定（人物の関節検出・キー不要・CDN） ----
+  let _pose = null;
+  const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18';
+  async function _ensurePose(onStatus) {
+    if (_pose) return _pose;
+    onStatus && onStatus('姿勢AIライブラリ読込中…');
+    const vision = await import(MP);
+    const fileset = await vision.FilesetResolver.forVisionTasks(MP + '/wasm');
+    onStatus && onStatus('姿勢モデル読込中…');
+    _pose = await vision.PoseLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task' },
+      runningMode: 'IMAGE', numPoses: 1
+    });
+    return _pose;
+  }
+  // 画像→主要関節をピクセル座標で返す。検出失敗 or 両肩/両腰が低信頼なら null（呼び出し側で幾何リグへ）。
+  async function detectPose(img, onStatus) {
+    const pose = await _ensurePose(onStatus);
+    onStatus && onStatus('姿勢を解析中…');
+    const res = pose.detect(img);
+    const lm = res && res.landmarks && res.landmarks[0];
+    if (!lm) return null;
+    const need = [11, 12, 23, 24];   // 両肩・両腰は必須
+    for (let n = 0; n < need.length; n++) { const k = need[n]; if (!lm[k] || (lm[k].visibility != null && lm[k].visibility < 0.5)) return null; }
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    const P = (i) => ({ x: lm[i].x * w, y: lm[i].y * h, v: lm[i].visibility == null ? 1 : lm[i].visibility });
+    return { w: w, h: h, nose: P(0), eyeL: P(2), eyeR: P(5),
+      Lsh: P(11), Rsh: P(12), Lel: P(13), Rel: P(14), Lwr: P(15), Rwr: P(16),
+      Lhip: P(23), Rhip: P(24), Lkn: P(25), Rkn: P(26), Lank: P(27), Rank: P(28) };
+  }
+
+  return { removeBackground, detectPose, _tflib };
 })();
