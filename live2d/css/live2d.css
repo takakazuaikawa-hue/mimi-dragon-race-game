@@ -46,7 +46,7 @@ button.on, .l2-tab.on { background: var(--sel); border-color: var(--jade); color
 .l2-slider input { width: 90px; }
 .l2-val { min-width: 28px; text-align: right; color: var(--ink); }
 
-.l2-workspace { display: flex; gap: 12px; align-items: stretch; }
+.l2-workspace { display: flex; gap: 12px; align-items: flex-start; }
 .l2-canvas-wrap { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line);
   border-radius: 10px; padding: 10px; display: flex; align-items: center; justify-content: center;
   min-height: 320px; max-height: 64vh; overflow: hidden; }
@@ -54,8 +54,10 @@ button.on, .l2-tab.on { background: var(--sel); border-color: var(--jade); color
 .l2-stage canvas { display: block; image-rendering: auto; border-radius: 6px; }
 .l2-overlay { position: absolute; left: 0; top: 0; cursor: crosshair; }
 
-.l2-side { width: 320px; flex: none; background: var(--panel); border: 1px solid var(--line);
-  border-radius: 10px; padding: 10px; max-height: 78vh; overflow: auto; }
+.l2-side { width: 340px; flex: none; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px; max-height: 82vh; display: flex; flex-direction: column; gap: 8px; }
+.l2-preview-box { flex: none; }                                  /* プレビューは常に上部に固定表示（調整しながら見られる） */
+.l2-parts-box { flex: 1 1 auto; min-height: 80px; overflow: auto; }  /* パーツ一覧だけが内側でスクロール */
 .l2-side h3 { margin: 6px 0; font-size: 14px; color: var(--gold); }
 .l2-hint { color: var(--mist); font-weight: 400; font-size: 11px; }
 .l2-parts { display: flex; flex-direction: column; gap: 8px; }

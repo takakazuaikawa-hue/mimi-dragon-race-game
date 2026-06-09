@@ -25,6 +25,7 @@
       toolbar: U.$('ed-toolbar'), panel: U.$('ed-parts'),
       status: U.$('ed-status'), previewCanvas: U.$('ed-preview'), steps: U.$('ed-steps')
     });
+    window.L2_EDITOR = editor;   // デバッグ/自動テスト用ハンドル（読み取り専用に利用）
 
     // editor buttons
     U.$('btn-load-test').onclick = () => editor.loadFromSrc('../images/cast/mimi/loading9.png', 'mimi').then(() => { editor.autoRig(); editor.startPreview(U.$('ed-preview')); }).catch(err => alert('テスト画像の読み込みに失敗: ' + err.message + '\nローカルサーバ経由で開いてください。'));

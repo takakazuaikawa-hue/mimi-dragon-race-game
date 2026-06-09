@@ -173,7 +173,7 @@ const L2_ED = (function () {
       S.rig.parts.push(p);
       S.selected = id;
       S.mask = L2_SEG.newMask(S.w, S.h); S.hist = new L2_SEG.History(24); S.hist.snapshot(S.mask);
-      renderParts(); drawOverlay(); renderSteps();
+      renderParts(); drawOverlay(); renderSteps(); refreshPreview();
       status('パーツ作成: ' + id + ' (role=' + role + ')。右パネルで role/z/pivot/motion を調整。③で動きを確認できます。');
     }
 
@@ -181,7 +181,7 @@ const L2_ED = (function () {
     // 最大連結成分でノイズ(速度線/砂埃)を除去し、縦横比で「人型(縦長)＝頭/胴/脚」か
     // 「側面クリーチャー(横長)＝頭/胴/翼/尾」を自動判別。帯は少し重ねて継ぎ目を隠し、
     // role/既定モーション(竜向けに調整済み)/ピボット/z を自動付与。後で右パネルで微調整可。
-    function autoRig() {
+    function autoRig(opts) {
       if (!S.img) { status('先に画像を開いてください。'); return; }
       refine('bg');
       L2_SEG.keepLargestComponent(S.mask, S.w, S.h);   // 速度線/砂埃などの小blobを除去（竜本体だけ残す）
@@ -205,9 +205,18 @@ const L2_ED = (function () {
       };
       let summary;
       if (sb.w / sb.h > 1.15) {
-        // 横長＝側面クリーチャー（竜）。端の高い側＝頭 と判定
-        const colH = (xa, xb) => { let t = sb.y + sb.h, b = sb.y; const xl = Math.max(sb.x, xa), xri = Math.min(sb.x + sb.w, xb); for (let x = xl; x < xri; x++) for (let y = sb.y; y < sb.y + sb.h; y++) if (sil[y * S.w + x]) { if (y < t) t = y; if (y > b) b = y; } return b - t; };
-        const headRight = colH(sb.x + Math.floor(sb.w * 0.74), sb.x + sb.w) >= colH(sb.x, sb.x + Math.floor(sb.w * 0.26));
+        // 横長＝側面クリーチャー（竜）。頭/尾の向きは複数手がかりの多数決で判定。
+        // （単純な「端の高さ」だけだと翼や背びれで尾側が高くなり誤判定するため）
+        const massIn = (xa, xb) => { let m = 0; const x0 = Math.max(sb.x, xa | 0), x1 = Math.min(sb.x + sb.w, xb | 0); for (let x = x0; x < x1; x++) for (let y = sb.y; y < sb.y + sb.h; y++) if (sil[y * S.w + x]) m++; return m; };
+        const avgColH = (xa, xb) => { let s = 0, k = 0; const x0 = Math.max(sb.x, xa | 0), x1 = Math.min(sb.x + sb.w, xb | 0); for (let x = x0; x < x1; x++) { let t = -1, b = -1; for (let y = sb.y; y < sb.y + sb.h; y++) if (sil[y * S.w + x]) { if (t < 0) t = y; b = y; } if (t >= 0) { s += b - t; k++; } } return k ? s / k : 0; };
+        let cmx = 0, cn = 0; for (let x = sb.x; x < sb.x + sb.w; x++) for (let y = sb.y; y < sb.y + sb.h; y++) if (sil[y * S.w + x]) { cmx += x; cn++; }
+        cmx = cn ? cmx / cn : sb.x + sb.w / 2;
+        const vMass = massIn(sb.x + sb.w * 0.70, sb.x + sb.w) >= massIn(sb.x, sb.x + sb.w * 0.30);       // 頭側＝胴/脚で質量が大
+        const vCentroid = cmx > sb.x + sb.w / 2;                                                          // 重心が頭側に寄る
+        const vTaper = avgColH(sb.x + sb.w * 0.88, sb.x + sb.w) >= avgColH(sb.x, sb.x + sb.w * 0.12);     // 尾は先細り＝端が低い
+        let headRight = ((vMass ? 1 : 0) + (vCentroid ? 1 : 0) + (vTaper ? 1 : 0)) >= 2;
+        if (opts && typeof opts.forceHeadRight === 'boolean') headRight = opts.forceHeadRight;            // 「🔁頭⇄尾」での手動反転
+        S._headRight = headRight; S._isCreature = true;
         const X = (f) => Math.round(headRight ? sb.x + f * sb.w : sb.x + (1 - f) * sb.w);
         const xr = (a, b) => headRight ? [X(a), X(b)] : [X(b), X(a)];
         const Y = (f) => sb.y + Math.floor(sb.h * f);
@@ -219,6 +228,7 @@ const L2_ED = (function () {
         S.rig.rootPivot = { x: X(0.5), y: Y(0.62) };
         summary = '頭/胴/翼/尾';
       } else {
+        S._isCreature = false;
         // 縦長＝人型。首＝上部で最も細い行、腰≈58%
         const widths = new Int32Array(sb.h);
         for (let y = 0; y < sb.h; y++) { let c = 0; const row = (sb.y + y) * S.w + sb.x; for (let x = 0; x < sb.w; x++) if (sil[row + x]) c++; widths[y] = c; }
@@ -236,7 +246,13 @@ const L2_ED = (function () {
       renderParts(); drawOverlay();
       try { startPreview(refs.previewCanvas); } catch (e) {}   // 保存前に結果をすぐプレビュー
       renderSteps();
-      status('✨ 自動リグ完了：' + summary + ' を生成。下のプレビューで動きを確認 → よければ ④⬇書き出し。右で微調整も可。');
+      status('✨ 自動リグ完了：' + summary + ' を生成。右上のプレビューで動き確認 → ④⬇書き出し。' + (S._isCreature ? '頭と尾が逆なら「🔁頭⇄尾」、' : '') + '範囲は各パーツの「✎再編集」→「↻再パーツ化」で直せます（プレビュー即反映）。');
+    }
+    function swapHeadTail() {   // 自動リグの頭/尾判定が逆のときワンクリックで反転（向きを固定して再リグ）
+      if (!S.img) { status('先に画像を開いてください。'); return; }
+      if (!S._isCreature) { status('頭⇄尾の入れ替えは横長（側面クリーチャー）の自動リグでのみ有効です。'); return; }
+      autoRig({ forceHeadRight: !S._headRight });
+      status('🔁 頭と尾を入れ替えました（頭＝' + (S._headRight ? '右' : '左') + '）。プレビューで確認してください。');
     }
     function guessRole(b) {
       const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
@@ -277,7 +293,7 @@ const L2_ED = (function () {
       const cropped = L2_SEG.cropMaskedToCanvas(S.img, S.mask, S.w, S.h, bbox);
       p.rect = bbox; p.src = cropped.toDataURL('image/png');
       p._editState = { mask: Array.from(maskRunLength(S.mask)) };
-      renderParts(); status('「' + id + '」を更新しました。');
+      renderParts(); refreshPreview(); status('「' + id + '」を範囲ごと更新しました（プレビュー即反映）。');
     }
     function duplicatePart(id) {
       const p = L2_RIG.byId(S.rig, id); if (!p) return;
@@ -401,7 +417,8 @@ const L2_ED = (function () {
         .forEach(([op, label]) => { const b = U.el('button', 'l2-ref', label); b.onclick = () => refine(op); tb.appendChild(b); });
       const undoB = U.el('button', 'l2-ref', '↶ Undo'); undoB.onclick = undo; tb.appendChild(undoB);
       const redoB = U.el('button', 'l2-ref', '↷ Redo'); redoB.onclick = redo; tb.appendChild(redoB);
-      const ar = U.el('button', 'l2-make', '✨ 自動リグ'); ar.title = '画像を 頭/胴/脚 に自動分解してリグ生成'; ar.onclick = autoRig; tb.appendChild(ar);
+      const ar = U.el('button', 'l2-make', '✨ 自動リグ'); ar.title = '画像を 頭/胴/脚 に自動分解してリグ生成'; ar.onclick = () => autoRig(); tb.appendChild(ar);
+      const sw = U.el('button', 'l2-ref', '🔁 頭⇄尾'); sw.title = '自動リグの頭と尾が逆のとき押して反転'; sw.onclick = swapHeadTail; tb.appendChild(sw);
       const mk = U.el('button', 'l2-make', '✓ パーツ化'); mk.title = 'パーツ化 [Enter]'; mk.onclick = makePart; tb.appendChild(mk);
       const cov = U.el('button', 'l2-ref', '⚠ 取りこぼし確認'); cov.onclick = coverageReport; tb.appendChild(cov);
     }
