@@ -25,7 +25,7 @@ const L2_RIG = (function () {
       case 'horn': return { breathing: 0.2, blinkable: false, sway: { amp: 0.03, freq: 0.6, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 2, ty: 1 }, flutter: 0 };
       case 'limb': return { breathing: 0.2, blinkable: false, sway: { amp: 0.06, freq: 0.8, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 0, ty: 0 }, flutter: 0 };
       // chest / bust — soft "ぷるぷる" jelly bounce (pivot at the top so the lower edge swings most)
-      case 'chest': return { breathing: 0.4, blinkable: false, sway: { amp: 0.0, freq: 0.25, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 1, ty: 1 }, flutter: 0, jiggle: { amp: 0.8, freq: 1.5, phase: 0 } };
+      case 'chest': return { breathing: 0.4, blinkable: false, sway: { amp: 0.0, freq: 0.25, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 1, ty: 1 }, flutter: 0, jiggle: { amp: 1.0, freq: 1.4, phase: 0 } };
       default: return { breathing: 0.2, blinkable: false, sway: { amp: 0.04, freq: 0.6, phase: 0, axis: 'rot' }, bend: null, gaze: { tx: 1, ty: 1 }, flutter: 0 };
     }
   }

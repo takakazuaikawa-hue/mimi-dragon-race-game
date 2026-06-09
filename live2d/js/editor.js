@@ -327,6 +327,29 @@ const L2_ED = (function () {
       const label = { calm: 'おとなしい', lively: '活発', creature: '生き物', person: '人物' }[name] || name;
       status('演出プリセット「' + label + '」を全パーツに適用しました（プレビュー即反映）。');
     }
+    // 胸パーツをワンクリック追加（人物の立ち絵用）：胴の上部中央から胸領域を切り出し role=chest に。
+    function addChest() {
+      if (!S.rig || !S.rig.parts.length) { status('先にリグを作成してください（②✨自動リグ）。'); return; }
+      const body = S.rig.parts.find(p => p.role === 'body') || S.rig.parts.find(p => p.role !== 'head') || S.rig.parts[0];
+      const bm = body._editState && body._editState.mask ? maskFromRLE(body._editState.mask, S.w * S.h) : null;
+      if (!bm) { status('胴のマスク情報が無いため胸を作れません。胴を「✎再編集」してからお試しください。'); return; }
+      const bb = body.rect;
+      const cx0 = Math.round(bb.x + bb.w * 0.12), cx1 = Math.round(bb.x + bb.w * 0.88);
+      const cy0 = Math.round(bb.y + bb.h * 0.04), cy1 = Math.round(bb.y + bb.h * 0.46);   // 胴の上部40%・中央76%
+      const m = L2_SEG.newMask(S.w, S.h);
+      for (let y = cy0; y < cy1; y++) { const row = y * S.w; for (let x = cx0; x < cx1; x++) if (bm[row + x]) m[row + x] = 255; }
+      const bb2 = L2_SEG.boundingBox(m, S.w, S.h);
+      if (!bb2) { status('胸の領域が空でした。胴を選び直すか「✎再編集」で作成してください。'); return; }
+      const cropped = L2_SEG.cropMaskedToCanvas(S.img, m, S.w, S.h, bb2);
+      const p = L2_RIG.makePart(uniqueId('chest'), 'chest', bb2, { x: Math.round(bb2.x + bb2.w / 2), y: bb2.y });  // ピボット＝上端（下が大きく揺れる）
+      let zmax = 0; S.rig.parts.forEach(q => { if ((q.z || 0) > zmax) zmax = q.z || 0; });
+      p.z = zmax + 1;   // 前面に
+      p.src = cropped.toDataURL('image/png');
+      p._editState = { mask: Array.from(maskRunLength(m)) };
+      S.rig.parts.push(p); S.selected = p.id; S.cardOpen.add(p.id);
+      renderParts(); drawOverlay(); refreshPreview();
+      status('🫧 胸パーツを追加しました。呼吸に少し遅れて左右に立体的に揺れます。位置/形は「✎再編集」、揺れ量は詳細の「ぷる量/ぷる速/位相」で調整できます。');
+    }
     function guessRole(b) {
       const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       if (b.w > S.w * 0.45 && b.h > S.h * 0.3) return 'body';
@@ -483,6 +506,7 @@ const L2_ED = (function () {
       main.appendChild(mkBtn('l2-make', '✨ 自動リグ', '画像を部位に自動分解してリグ生成', () => autoRig()));
       main.appendChild(mkBtn('l2-ref', '🔁 頭⇄尾', '自動リグの頭と尾が逆のとき押して反転', swapHeadTail));
       main.appendChild(mkBtn('l2-make', '✓ パーツ化', '選択中のマスクをパーツ化 [Enter]', makePart));
+      main.appendChild(mkBtn('l2-ref', '🫧 胸を追加', '胴の上部中央から胸パーツを作成（呼吸に連動した立体的な左右揺れ）', addChest));
       main.appendChild(U.el('span', 'l2-tb-divider'));
       main.appendChild(mkBtn('l2-ref', '↶ Undo', '取り消し [Ctrl+Z]', undo));
       main.appendChild(mkBtn('l2-ref', '↷ Redo', 'やり直し [Ctrl+Y]', redo));

@@ -139,11 +139,21 @@ const L2_PLY = (function () {
       // sides can be driven fully in-sync (同時, same phase) or alternating (交互, phase±π).
       if (m.jiggle && m.jiggle.amp) {
         const f = m.jiggle.freq || 1.5, jp = (m.jiggle.phase || 0), a = m.jiggle.amp;
-        const wob = Math.sin(2 * Math.PI * f * t + jp) + 0.35 * Math.sin(2 * Math.PI * 2 * f * t + jp);
-        sy += 0.06 * a * wob;
-        sx -= 0.04 * a * wob;
-        ty += 4.0 * a * wob;
-        rot += 0.02 * a * Math.sin(2 * Math.PI * f * t + jp + 0.5);
+        // 「呼吸 → 少し遅れて胸」。呼吸の主周期(0.22Hz)に連動した主揺れ＋速いぷる(2倍音)。
+        const breath = 2 * Math.PI * 0.22 * t;
+        const lag = 0.6 + jp;                                   // 呼吸からの遅れ（位相）。左右の胸は jp=±π で逆位相に
+        const drive = Math.sin(breath - lag);
+        const wob = drive + 0.4 * Math.sin(2 * Math.PI * f * t + jp);
+        // 縦のぷる（重み感）
+        sy += 0.08 * a * wob;
+        ty += 6.0 * a * wob;
+        // 左右にしっかり大きく揺れる（横）＝呼吸よりさらに少し遅れる
+        const swayPh = breath - lag - 0.5;
+        tx += 16 * a * Math.sin(swayPh);
+        rot += 0.06 * a * Math.sin(swayPh);                     // 上ピボット基準の振り子＝立体的な左右スイング
+        // 擬似3D：手前へ振れた側ほど横幅が増し、奥へ振れた側は縮む（体積回転の錯覚）
+        sx *= 1 + 0.09 * a * Math.cos(swayPh);
+        sy *= 1 - 0.04 * a * Math.cos(swayPh);
       }
       // head bob/tilt — handled via sway for rotation; add a slow vertical bob
       if (p.role === 'head' || p.role === 'body') {
