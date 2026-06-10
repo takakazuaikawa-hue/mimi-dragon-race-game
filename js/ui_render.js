@@ -2516,7 +2516,7 @@ function renderRaceRun() {
     if (_rcStage && getComputedStyle(_rcStage).position === "static") _rcStage.style.position = "relative";
     const _rcMas = document.createElement("canvas");
     _rcMas.width = 192; _rcMas.height = 128;
-    _rcMas.style.cssText = "position:absolute;right:6px;bottom:6px;width:96px;height:64px;z-index:6;pointer-events:none;opacity:.9";
+    _rcMas.style.cssText = "position:absolute;right:8px;bottom:8px;width:112px;height:74px;z-index:6;pointer-events:none;opacity:.92;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45))";
     _rcStage.appendChild(_rcMas);
     const _rcDrg = new Image();
     _rcDrg.onload = function () { startDragonWarp(_rcMas, _rcDrg, "race_run"); };

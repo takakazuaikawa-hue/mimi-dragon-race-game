@@ -105,7 +105,10 @@ const OUTFITS = [
   { id: "newspaper", name: "予想新聞ドレス",   flavor: "競竜新聞をまとった、予想家ミミの正装。",         acquire: { assets: 50000 } },
   { id: "dara",      name: "きれいめコーデ",   flavor: "ジャケットを羽織って、ちょっとおでかけ気分。",   acquire: { price: 5000 } },
   { id: "jungle",    name: "ジャングルバニー", flavor: "葉っぱと馬券で武装した、探検スタイル。",         acquire: { price: 15000 } },
-  { id: "tarzan",    name: "野生児ターザン",   flavor: "ヒョウ柄をまとった、聖龍島サバイバル仕様。",     acquire: { price: 40000 } }
+  { id: "tarzan",    name: "野生児ターザン",   flavor: "ヒョウ柄をまとった、聖龍島サバイバル仕様。",     acquire: { price: 40000 } },
+  { id: "gymhigh",    name: "トレーニングギア", flavor: "絞れた体で、レース前の追い込みも気分から。",       acquire: { price: 10000 } },
+  { id: "drago",      name: "ブランドバニー",   flavor: "黒で統一した、ちょっと背伸びしたバニースタイル。", acquire: { price: 25000 } },
+  { id: "dragonrobe", name: "竜帝の戴冠衣",     flavor: "聖龍の翼と宝玉をまとう、最上位の正装。",           acquire: { price: 80000 } }
 ];
 const DEFAULT_OUTFIT = "buniqro";
 
