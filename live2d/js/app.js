@@ -97,7 +97,8 @@
   }
 
   function loadFile(file) {
-    U.fileToDataURL(file).then(durl => editor.loadFromSrc(durl, (file.name || 'dragon').replace(/\.[^.]+$/, '')));
+    U.fileToDataURL(file).then(durl => editor.loadFromSrc(durl, (file.name || 'dragon').replace(/\.[^.]+$/, '')))
+      .catch(err => alert('画像の読み込みに失敗しました: ' + ((err && err.message) || err)));
   }
   function loadDemo() {
     // デモドラゴン＝サンプル画像(images/dragon/sample.png)を読み込み、ワンクリック自動リグ→プレビュー。

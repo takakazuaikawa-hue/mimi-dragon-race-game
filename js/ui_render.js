@@ -223,16 +223,16 @@ function startMimiIdle(frame, img) {
 // ソフトボディ・ワープ（研究反映：Live2Dの bend ＝帯分割＋累進オフセットの考え方）。
 // 透過PNGをcanvasに縦帯で分割し、端（羽/尾）ほど大きく上下に波打たせる＋ゆるい呼吸スケール。
 // ドラゴン(ref.pngは透過)に適用。単一rAF・ホーム離脱で自動停止・prefers-reduced-motion配慮。表示のみ。
-let _dragonWarpRAF = null;
-function startDragonWarp(canvas, img) {
-  if (_dragonWarpRAF) { cancelAnimationFrame(_dragonWarpRAF); _dragonWarpRAF = null; }
+function startDragonWarp(canvas, img, screen) {
+  if (canvas._warpRAF) cancelAnimationFrame(canvas._warpRAF);   // per-canvas RAF＝複数の竜(ホーム/レース)が互いに干渉しない
+  const SCR = screen || "home";   // どの画面で動かすか（home / race_run など）。画面離脱で自動停止
   const reduce = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const TAU = Math.PI * 2, STRIPS = 30, ctx = canvas.getContext("2d");
   // ref.png のドラゴンは顔が右側。顔は剛体（無歪み）のまま、ワープは顔から遠いほど（尾・羽の先）
   // u² で増やす（顔=root）。全体は僅かな回転＋上下＋呼吸の“剛体”モーションで生命感を出す＝顔は歪まない。
   const FACE_AT = 1;   // 0=左 / 1=右（このドラゴンは右が顔）
   function draw(t) {
-    if (!document.contains(canvas) || state.ui.screen !== "home") { _dragonWarpRAF = null; return; }
+    if (!document.contains(canvas) || state.ui.screen !== SCR) { canvas._warpRAF = null; return; }
     const W = canvas.width, H = canvas.height, iw = img.naturalWidth || W, ih = img.naturalHeight || H, s = t / 1000;
     ctx.clearRect(0, 0, W, H);
     const breath = reduce ? 0 : (Math.sin(s * TAU / 4.0) * 0.5 + Math.sin(s * TAU / 5.1) * 0.5);
@@ -251,9 +251,9 @@ function startDragonWarp(canvas, img) {
       ctx.drawImage(img, i * isw, 0, isw, ih, i * dsw, dy, dsw + 0.7, H);
     }
     ctx.restore();
-    _dragonWarpRAF = requestAnimationFrame(draw);
+    canvas._warpRAF = requestAnimationFrame(draw);
   }
-  _dragonWarpRAF = requestAnimationFrame(draw);
+  canvas._warpRAF = requestAnimationFrame(draw);
 }
 
 function renderHome() {
@@ -830,7 +830,7 @@ function advisorVoiceEl(context) {
 // 404 so only the placeholder shows. See images/README.md for the convention.
 function photoOr(src, fallbackHTML) {
   return fallbackHTML +
-    `<img class="photo-fill" alt="" src="${src}" onload="this.classList.add('loaded')" onerror="this.remove()">`;
+    `<img class="photo-fill" alt="" loading="lazy" decoding="async" src="${src}" onload="this.classList.add('loaded')" onerror="this.remove()">`;
 }
 
 // =========================================================================
@@ -2509,6 +2509,20 @@ function renderRaceRun() {
     betResult: c.betResult,
     timeline: c.timeline, commentary: c.commentary, broadcast: c.broadcast
   });
+  // 表示専用：レース画面の隅にLive2D風の竜（ref.webp をソフトボディ・ワープ）。
+  // 着順/オッズ/配当には一切非干渉（レースは runRace で確定済み・キャンバスは再生のみ）。画面離脱で自動停止。
+  try {
+    const _rcStage = host.querySelector(".rc-stage") || host;
+    if (_rcStage && getComputedStyle(_rcStage).position === "static") _rcStage.style.position = "relative";
+    const _rcMas = document.createElement("canvas");
+    _rcMas.width = 192; _rcMas.height = 128;
+    _rcMas.style.cssText = "position:absolute;right:6px;bottom:6px;width:96px;height:64px;z-index:6;pointer-events:none;opacity:.9";
+    _rcStage.appendChild(_rcMas);
+    const _rcDrg = new Image();
+    _rcDrg.onload = function () { startDragonWarp(_rcMas, _rcDrg, "race_run"); };
+    _rcDrg.onerror = function () { _rcDrg.onerror = function () { _rcMas.remove(); }; _rcDrg.src = "images/dragon_ref/ref.png"; };
+    _rcDrg.src = "images/dragon_ref/ref.webp";
+  } catch (e) {}
 }
 
 function stopAutoTimer() {
