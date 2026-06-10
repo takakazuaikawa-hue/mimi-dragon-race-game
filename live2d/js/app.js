@@ -38,7 +38,7 @@
     window.L2_EDITOR = editor;   // デバッグ/自動テスト用ハンドル（読み取り専用に利用）
 
     // editor buttons
-    U.$('btn-load-test').onclick = () => editor.loadFromSrc('../images/cast/mimi/loading9.png', 'mimi').then(() => { editor.autoRig(); editor.startPreview(U.$('ed-preview')); }).catch(err => alert('テスト画像の読み込みに失敗: ' + err.message + '\nローカルサーバ経由で開いてください。'));
+    U.$('btn-load-test').onclick = () => editor.loadFromSrc('../images/cast/mimi/loading9.webp', 'mimi').then(() => { editor.autoRig(); editor.startPreview(U.$('ed-preview')); }).catch(err => alert('テスト画像の読み込みに失敗: ' + err.message + '\nローカルサーバ経由で開いてください。'));
     U.$('btn-demo').onclick = () => loadDemo();
     U.$('btn-ai-bg').onclick = () => editor.aiRemoveBg();
     U.$('btn-ai-rig').onclick = () => editor.aiPoseRig();
@@ -102,7 +102,7 @@
   function loadDemo() {
     // デモドラゴン＝サンプル画像(images/dragon/sample.png)を読み込み、ワンクリック自動リグ→プレビュー。
     // 取得に失敗した場合のみ従来の手続きデモにフォールバック。
-    return editor.loadFromSrc('../images/dragon/sample.png', 'dragon').then(() => {
+    return editor.loadFromSrc('../images/dragon/sample.webp', 'dragon').then(() => {
       editor.autoRig();
       editor.startPreview(U.$('ed-preview'));
       U.$('ed-status').textContent = 'サンプル竜を自動リグしました。右で各パーツの role/motion を調整 / 「アイドル再生」で動きを確認。実PNGは「画像を開く」かドラッグ&ドロップで。';

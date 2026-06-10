@@ -399,8 +399,8 @@ function _rcLoadTracedDragon() {
     for (const k in _rcFrameCache) delete _rcFrameCache[k];   // any colours cached from a stale grid
     RC_DRAGON_FRAMES = _rcBuildFlapFrames(grid, GW, GH);
   } catch (e) { _rcFallbackDragon(); } };
-  img.onerror = function () { _rcFallbackDragon(); };
-  img.src = 'images/dragon_ref/ref.png';
+  img.onerror = function () { img.onerror = function () { _rcFallbackDragon(); }; img.src = 'images/dragon_ref/ref.png'; };   // webp→png→手続きfallback（レース数値は不変・表示のみ）
+  img.src = 'images/dragon_ref/ref.webp';
 }
 // minimal silhouette fallback so dragons still render if the trace can't run
 function _rcFallbackDragon() {

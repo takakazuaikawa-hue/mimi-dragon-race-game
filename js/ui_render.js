@@ -128,7 +128,7 @@ function renderTitle() {
     <div class="title-bg"></div>
     <div class="title-stars"></div>
     <div class="title-moon"></div>
-    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.jpg", "") : ""}</div>
+    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp", "") : ""}</div>
     <div class="title-inner">
       <div class="title-kicker">── 競竜 予想ドラマ ──</div>
       <h1 class="title-logo"><span class="tl-main">聖龍爆走録</span> <span class="tl-mimi">ミミ</span></h1>
@@ -309,8 +309,8 @@ function renderHome() {
   dragonImg.appendChild(dragonCv);
   const _dImg = new Image();
   _dImg.onload = function () { startDragonWarp(dragonCv, _dImg); };
-  _dImg.onerror = function () { dragonImg.innerHTML = "<span class='hr2-dragon-fallback'>🐉</span>"; };
-  _dImg.src = "images/dragon_ref/ref.png";
+  _dImg.onerror = function () { _dImg.onerror = function () { dragonImg.innerHTML = "<span class='hr2-dragon-fallback'>🐉</span>"; }; _dImg.src = "images/dragon_ref/ref.png"; };   // webp→png→絵文字
+  _dImg.src = "images/dragon_ref/ref.webp";
   cast.appendChild(mimi);
   cast.appendChild(dragonImg);
   stage.appendChild(cast);
@@ -1483,7 +1483,7 @@ function renderRaceSelect() {
   state.ui.screen = "race_select";
   runEventHooks("beforeRaceSelect");
   const app = beginScreen();
-  app.appendChild(screenHeader("レース選択", "images/race_header.jpg"));
+  app.appendChild(screenHeader("レース選択", "images/race_header.webp"));
 
   // 本日の注目レース — a prominent, daily-rotating spotlight
   try {

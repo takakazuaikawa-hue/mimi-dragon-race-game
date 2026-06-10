@@ -111,7 +111,7 @@ const DEFAULT_OUTFIT = "buniqro";
 
 function outfitById(id) { return OUTFITS.find(o => o.id === id) || OUTFITS.find(o => o.id === DEFAULT_OUTFIT); }
 function currentOutfitId() { return (state.player && state.player.outfit) || DEFAULT_OUTFIT; }
-function outfitImg(id, expr) { return "images/cast/mimi/mimi_" + id + "_" + (expr || "default") + ".png"; }
+function outfitImg(id, expr) { return "images/cast/mimi/mimi_" + id + "_" + (expr || "default") + ".webp"; }   // 軽量WebP（PNG原本も保持）
 function outfitOwned(o) {
   if (!o) return false;
   if (o.acquire.free) return true;
