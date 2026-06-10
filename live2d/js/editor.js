@@ -475,7 +475,7 @@ const L2_ED = (function () {
       S.rig.parts.push(copy); S.selected = copy.id; renderParts();
       status('複製: ' + copy.id + '（反転で左右対称パーツに）');
     }
-    function flipPart(id, axis) { const p = L2_RIG.byId(S.rig, id); if (!p) return; if (axis === 'h') p.flip.h = !p.flip.h; else p.flip.v = !p.flip.v; renderParts(); refreshPreview(); }
+    function flipPart(id, axis) { liveSet(id, p => { if (axis === 'h') p.flip.h = !p.flip.h; else p.flip.v = !p.flip.v; }); renderParts(); }
     function deletePart(id) { S.rig.parts = S.rig.parts.filter(p => p.id !== id); if (S.selected === id) S.selected = null; renderParts(); refreshPreview(); }
     function setRole(id, role) { const p = L2_RIG.byId(S.rig, id); if (!p) return; p.role = role; p.motion = L2_RIG.defaultMotionForRole(role); renderParts(); refreshPreview(); }
     // chest "ぷるぷる" group mode: 'sync' = every chest part shares phase 0 (同時に揺れる),
@@ -495,11 +495,19 @@ const L2_ED = (function () {
       const a = sorted[i], b = sorted[j]; const tz = a.z; a.z = b.z; b.z = tz;
       if (a.z === b.z) b.z += dir; renderParts(); refreshPreview();
     }
+    // 最適化：プレビューを止めず、編集中パーツ＋プレビュー側クローンの両方へ即時反映する
+    // （スライダー操作のたびに全パーツPNGを再シリアライズ/再hydrateしていた負荷を解消）。
+    function liveSet(id, fn) {
+      const ep = L2_RIG.byId(S.rig, id); if (ep) fn(ep);
+      const pv = S.previewCtrl && S.previewCtrl.state && S.previewCtrl.state.rig;
+      if (pv) { const pp = pv.parts.find(q => q.id === id); if (pp) fn(pp); }
+    }
     function setNum(id, path, val) {
-      const p = L2_RIG.byId(S.rig, id); if (!p) return;
-      const segs = path.split('.'); let o = p;
-      for (let i = 0; i < segs.length - 1; i++) o = o[segs[i]] = o[segs[i]] || {};
-      o[segs[segs.length - 1]] = val; refreshPreview();
+      liveSet(id, function (p) {
+        const segs = path.split('.'); let o = p;
+        for (let i = 0; i < segs.length - 1; i++) o = o[segs[i]] = o[segs[i]] || {};
+        o[segs[segs.length - 1]] = val;
+      });
     }
 
     // ---------- coverage report ----------
@@ -654,9 +662,9 @@ const L2_ED = (function () {
         row.appendChild(btn('⇋反転', () => flipPart(p.id, 'h')));
         row.appendChild(btn('🗑', () => deletePart(p.id)));
         card.appendChild(row);
-        card.appendChild(mini('opacity', 0, 1, 0.05, p.opacity, v => { p.opacity = v; refreshPreview(); }));
-        card.appendChild(mini('scale', 0.3, 2, 0.05, p.scale.x, v => { p.scale.x = v; p.scale.y = v; refreshPreview(); }));
-        card.appendChild(mini('rot', -1, 1, 0.02, p.rot, v => { p.rot = v; refreshPreview(); }));
+        card.appendChild(mini('opacity', 0, 1, 0.05, p.opacity, v => liveSet(p.id, q => { q.opacity = v; })));
+        card.appendChild(mini('scale', 0.3, 2, 0.05, p.scale.x, v => liveSet(p.id, q => { q.scale.x = v; q.scale.y = v; })));
+        card.appendChild(mini('rot', -1, 1, 0.02, p.rot, v => liveSet(p.id, q => { q.rot = v; })));
         // --- 詳細トグル（編集・動き。既定は閉。展開状態は S.cardOpen で保持） ---
         const open = S.cardOpen.has(p.id);
         const dtg = U.el('button', 'l2-detail-toggle' + (open ? ' on' : ''), '<span class="l2-caret">▸</span> 詳細（編集・動き）');
@@ -673,7 +681,7 @@ const L2_ED = (function () {
           det.appendChild(mini('呼吸', 0, 1, 0.05, m.breathing, v => setNum(p.id, 'motion.breathing', v)));
           det.appendChild(mini('揺れamp', 0, 0.4, 0.01, m.sway.amp, v => setNum(p.id, 'motion.sway.amp', v)));
           det.appendChild(mini('揺れfreq', 0.1, 2, 0.05, m.sway.freq, v => setNum(p.id, 'motion.sway.freq', v)));
-          const blink = U.el('label', 'l2-check'); const cb = U.el('input'); cb.type = 'checkbox'; cb.checked = !!m.blinkable; cb.onchange = () => { m.blinkable = cb.checked; refreshPreview(); }; blink.appendChild(cb); blink.appendChild(U.el('span', null, 'まばたき')); det.appendChild(blink);
+          const blink = U.el('label', 'l2-check'); const cb = U.el('input'); cb.type = 'checkbox'; cb.checked = !!m.blinkable; cb.onchange = () => liveSet(p.id, q => { q.motion.blinkable = cb.checked; }); blink.appendChild(cb); blink.appendChild(U.el('span', null, 'まばたき')); det.appendChild(blink);
           // chest-only: ぷるぷる(jiggle) amplitude / speed / phase. phase 0.00=同位相(同時) 0.50=逆位相(交互)
           if (p.role === 'chest') {
             if (!m.jiggle) m.jiggle = L2_RIG.defaultMotionForRole('chest').jiggle;
