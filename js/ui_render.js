@@ -1649,7 +1649,7 @@ function renderMall() {
   app.appendChild(mbg);
   app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
   app.appendChild(el("div", "mall-top",
-    `<span class="as-hint">試着は自由・着替えは無料。レース結果には影響しません。</span>` +
+    `<span class="as-hint">未購入の服はシルエット。買うと姿が見られます（着替えは無料・レース結果に影響なし）。</span>` +
     `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`));
   // ミニゲーム「モールお買い物ダンジョン」への入口（ローグライク・衣装やかけらが手に入る・表示メタ）
   if (typeof renderMallDungeon === "function") {
@@ -1671,12 +1671,14 @@ function renderMall() {
   // ── 試着室：大プレビュー（表情切替）＋情報＋CTA。未所持でも試着できる（表示のみ）。
   const fit = el("div", "card mall-fit");
   const stage = el("div", "mall-fit-stage");
-  const img = el("div", "mall-fit-img");
+  // 未購入はシルエット表示（買うと姿が見られる）。所持/着用中はフルカラー。
+  const img = el("div", "mall-fit-img" + (owned ? "" : " silhouette"));
   const _src = outfitImg(sel.id, state.ui.mallExpr);
   const _fb = outfitImg(sel.id, "smile");
   img.innerHTML =
     `<img alt="${sel.name}" src="${_src}" onerror="this.onerror=null;this.src='${_fb}'">` +
-    (isWorn ? `<span class="mall-badge worn">✓ 着用中</span>` : (owned ? "" : `<span class="mall-badge tryon">試着中</span>`));
+    (isWorn ? `<span class="mall-badge worn">✓ 着用中</span>` : (owned ? `<span class="mall-badge owned2">所持</span>` : `<span class="mall-badge lock">🔒 ？</span>`)) +
+    (owned ? "" : `<span class="mall-silq">？</span>`);
   stage.appendChild(img);
   const seg = el("div", "mall-expr");
   [["default", "🙂 通常"], ["smile", "😊 にこ"], ["happy", "🌟 よろこび"], ["panic", "💦 あせり"]].forEach(([k, lb]) => {

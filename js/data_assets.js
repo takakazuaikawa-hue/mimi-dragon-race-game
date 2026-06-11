@@ -136,6 +136,7 @@ const OUTFITS = [
   { id: "swimsuitMID",   name: "リゾート水着",       flavor: "シアー羽織りとトロピカルカクテルで南国気分。",           acquire: { price: 12000 } },
   { id: "taipei",        name: "台北チャイナドレス", flavor: "深紅のチャイナにタッセル。夜市の主役。",               acquire: { price: 18000 } },
   { id: "swimsuitHIGH",  name: "VIP水着",            flavor: "金糸あしらいのラグジュアリー水着とシャンパン。",         acquire: { price: 45000 } },
+  { id: "kigurumi",      name: "着ぐるみパジャマ",   flavor: "セイリュランドのうさぎ着ぐるみ。ねむくなる可愛さ。",     acquire: { price: 6000 } },
   { id: "secret_sukanpin", name: "素寒貧・夜",       flavor: "あの日のボロ布を、なぜか色っぽく着崩して。総資産1億の隠し。", acquire: { assets: 100000000 } }
 ];
 const DEFAULT_OUTFIT = "sukanpin";   // ゲーム開始当初は素寒貧（無料・新規プレイヤーの既定。既存セーブは保存済みoutfitを維持）

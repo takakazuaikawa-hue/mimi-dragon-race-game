@@ -3527,7 +3527,18 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .mall-card.worn { border-color: var(--gold-bright); box-shadow: inset 0 0 0 1px var(--gold-bright); }
 .mall-card-img { position: relative; width: 100%; aspect-ratio: 3 / 4; border-radius: 9px; overflow: hidden; background: #f3ecdf; }   /* relative必須：photo-fill(absolute)の基準。無いと画像がページ全体に展開しタップを塞ぐ */
 .mall-card-img img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.mall-card.locked .mall-card-img img { filter: none; }   /* 未所持もフルカラー表示（ロックはチップで伝える。灰色の大量表示は不気味だった） */
+/* 未購入はシルエット表示（買うと姿が見られる）。透過PNGに brightness(0) でシルエット化 */
+.mall-card.locked .mall-card-img { background: linear-gradient(180deg, #2b2740, #1b1830); }
+.mall-card.locked .mall-card-img img { filter: brightness(0) opacity(.82); }
+.mall-card.locked .mall-card-img::after { content: "？"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 900; color: rgba(200,180,255,.45); pointer-events: none; }
+/* 試着室の大プレビューもシルエット */
+.mall-fit-img.silhouette { background: radial-gradient(80% 58% at 50% 22%, rgba(120,90,200,.22), rgba(0,0,0,0) 62%), radial-gradient(120% 90% at 50% 8%, #2b2740 0%, #1a1728 60%, #12101c 100%); }
+.mall-fit-img.silhouette img { filter: brightness(0) opacity(.84); }
+.mall-silq { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-size: 48px; font-weight: 900;
+  color: rgba(200,180,255,.4); pointer-events: none; }
+.mall-badge.lock { color: #e8d8ff; background: rgba(40,30,60,.8); border: 1px solid rgba(168,120,255,.5); }
+.mall-badge.owned2 { color: var(--mist); background: rgba(8,11,16,.7); border: 1px solid var(--glass-border); }
 .mall-card-nm { font-size: 12px; font-weight: 800; color: var(--mist); margin-top: 7px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .mall-btn { margin-top: 8px; width: 100%; padding: 8px; border: none; border-radius: 9px; cursor: pointer; font-weight: 800; font-size: 12.5px; }
