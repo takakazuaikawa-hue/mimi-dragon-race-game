@@ -25,6 +25,18 @@
  * Sections below correspond to spec phases. Append within the matching block.
  */
 
+// =========================================================================
+// ★ キャラクターの役割と声（追加・編集時も厳守）
+//   ミミ(mimi)        … 来訪者(転生者)。世界の競竜/市場/生活の“常識を説明する側”では
+//                       ない。反応・驚き・質問・学びを担う（「〜です/ます」「〜っ！」）。
+//                       コース/分析/生活の断定・講釈はさせない。
+//   サケ・ウダダ(sake_udada) … コースの説明＝馬場/地域/距離/脚質/竜の見方＋賭けのルール
+//                       （「〜だ」「〜しろ」。息・気配・現場）。
+//   ミズ(mizu)        … 分析情報＝オッズ/人気/期待値/価値/市場の歪み（「〜わ」「あはん」）。
+//   スミカ(sumika)    … 生活情報＝住居/食事/施設/総資産/村の立て直し（「ミミ様」「〜です/ください」）。
+//   マクラ(makura)=観客/実況/熱狂、セレスティア(celestia)=価値/淘汰/世界の天井。
+// =========================================================================
+
 // ===== V1 sample events (§14 §25 + §10 §11 "V1") =====
 
 registerEvent({
@@ -33,8 +45,12 @@ registerEvent({
   condition: { once: true },
   priority: 10,
   actions: [
-    { type: "tutorial_message", speaker: "mimi",
-      text: "ようこそ！ レースを選んだら、出走表とオッズをしっかり見て、市場が見落としてる竜を探してね。単竜は1着的中、複竜は3着以内、ワイド竜は2頭3着以内よ！" }
+    { type: "tutorial_message", speaker: "mimi", expr: "panic",
+      text: "競竜なんて、わたし来たばかりで右も左も……どこを見たらいいんでしょう？" },
+    { type: "tutorial_message", speaker: "sake_udada",
+      text: "落ち着け。まずは出走表とコースを見ろ。脚質と気配だ。賭け方は——単竜＝1着、複竜＝3着以内、ワイド竜＝2頭が3着以内。それだけ覚えりゃいい。" },
+    { type: "tutorial_message", speaker: "mizu",
+      text: "そしてオッズは勝率ではないわ、あはん。人気と価値を、分けて見ることね。" }
   ]
 });
 
@@ -75,8 +91,10 @@ registerEvent({
   hook: "afterRaceSelect",
   condition: { once: true, weather: "strong_wind" },
   actions: [
-    { type: "dialogue", speaker: "mimi",
-      text: "強風ですね……耳が横に持っていかれます！ 翼の強い子だけじゃなくて、落ち着いて飛べる子も見たいです。" }
+    { type: "dialogue", speaker: "mimi", expr: "panic",
+      text: "強風です……耳が横に持っていかれますっ！" },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "こういう日は翼の強さだけじゃない。風に煽られても、気性で立て直せる竜を見ろ。" }
   ]
 });
 
@@ -135,8 +153,8 @@ registerEvent({
   hook: "onMilestone",
   condition: { once: true, test: ctx => ctx && ctx.kind === "coins_10000" },
   actions: [
-    { type: "dialogue", speaker: "mimi",
-      text: "1万コイン到達おめでとう！ ここからが本当の予想家ね。もう少しランクの高いレースに挑めるかも。" }
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "1万コイン……！ わたし、ここまで来られたんだ。よーし、もっと上を目指すぞっ！" }
   ]
 });
 registerEvent({
@@ -172,8 +190,8 @@ registerEvent({
   id: "first_visit_lumina",
   hook: "afterRaceSelect",
   condition: { once: true, region: "ルミナ地域" },
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: "ルミナ地域だ……空が広い！ 風が強いから、翼の安定感が大事ね。" }]
+  actions: [{ type: "dialogue", speaker: "sake_udada",
+    text: "ルミナだ。空が広く、風が強い。翼の安定した竜でないと、ここでは流される。" }]
 });
 registerEvent({
   id: "first_visit_ring_rosso",
@@ -186,8 +204,8 @@ registerEvent({
   id: "first_visit_caldera",
   hook: "afterRaceSelect",
   condition: { once: true, region: "カルデラ地域" },
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: "カルデラ……熱気がすごい！ 火力人気の竜が買われやすいけど、スタミナが残るかをよく見ましょう。" }]
+  actions: [{ type: "dialogue", speaker: "sake_udada",
+    text: "カルデラだ。熱気で火力自慢が人気を集めるが、最後までスタミナが保つかを見極めろ。" }]
 });
 registerEvent({
   id: "first_visit_mistlake",
@@ -200,22 +218,22 @@ registerEvent({
   id: "first_visit_vento",
   hook: "afterRaceSelect",
   condition: { once: true, region: "ヴェント峡谷地域" },
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: "ヴェント峡谷……崖から風が吹き上がってる！ ここは翼性能の本場ね。" }]
+  actions: [{ type: "dialogue", speaker: "sake_udada",
+    text: "ヴェント峡谷だ。崖から風が吹き上がる。翼性能が、そのまま順位に出る。" }]
 });
 registerEvent({
   id: "first_visit_notte",
   hook: "afterRaceSelect",
   condition: { once: true, region: "ノッテムーンライト地域" },
-  actions: [{ type: "dialogue", speaker: "sake_udada",
-    text: "ノッテムーンライト。夜のレースは観衆の興奮で人気が偏りやすい。市場を冷静に読め。" }]
+  actions: [{ type: "dialogue", speaker: "mizu",
+    text: "ノッテムーンライト。夜は観客が興奮し、人気が偏るわ、あはん。市場の熱を冷ましてから、値を読みなさい。" }]
 });
 registerEvent({
   id: "first_visit_lapan",
   hook: "afterRaceSelect",
   condition: { once: true, region: "ラパン祭典地域" },
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: "ラパン祭典地域……！ ここは祭典級のレースが行われる聖地よ。観衆の熱気がオッズを狂わせるわ。チャンスね。" }]
+  actions: [{ type: "dialogue", speaker: "mizu",
+    text: "ラパン祭典地域。祭りの熱気がオッズを大きく歪めるわ、あはん。歪みこそ、価値の在り処よ。" }]
 });
 
 // Bet type tutorials (win/place; wide already in V1 block).
@@ -230,8 +248,8 @@ registerEvent({
   id: "first_place_bet_tutorial",
   hook: "beforeBet",
   condition: { once: true, betType: "place" },
-  actions: [{ type: "tutorial_message", speaker: "mimi",
-    text: "複竜は3着以内なら的中だよ！ オッズは低めだけど、安定して当てたい時に便利。" }]
+  actions: [{ type: "tutorial_message", speaker: "sake_udada",
+    text: "複竜は、選んだ竜が3着以内に入れば的中だ。配当は低いが、堅実に拾いたい時に効く。" }]
 });
 
 // Race result reactions (upset / favorite-holds).
@@ -240,16 +258,16 @@ registerEvent({
   hook: "afterRaceResult",
   condition: { test: ctx => ctx && ctx.popularityRank >= 5 },
   priority: 5,
-  actions: [{ type: "dialogue", speaker: "sake_udada",
-    text: "波乱だな。市場の見落としだ。こういうレースを拾えるのが、いい予想家の証だ。" }]
+  actions: [{ type: "dialogue", speaker: "mizu",
+    text: "波乱ね、あはん。市場が見落とした価値が、いま顕れたのよ。こういう一戦を拾える者が、勝ち残るの。" }]
 });
 registerEvent({
   id: "sake_favorite_holds",
   hook: "afterRaceResult",
   condition: { test: ctx => ctx && ctx.popularityRank === 1 && ctx.hit },
   priority: 5,
-  actions: [{ type: "dialogue", speaker: "sake_udada",
-    text: "順当だ。人気馬を素直に買うのも、立派な予想だ。" }]
+  actions: [{ type: "dialogue", speaker: "mizu",
+    text: "順当な決着ね。人気を素直に買うのも、立派な投資よ。あはん。" }]
 });
 
 // ===== §10 Phase 3: Crybaby dragon (Poro) story + Village reactions =====
@@ -261,8 +279,8 @@ registerEvent({
     once: true,
     test: ctx => ctx && ctx.race && getRaceDragonIds(ctx.race).includes("poro")
   },
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: "あ……泣き虫竜ポロちゃん！ 泣いてて市場は弱そうに見ているけど、足音は意外と落ち着いてる。市場の見落としかも。" }]
+  actions: [{ type: "dialogue", speaker: "mimi", expr: "default",
+    text: "あ……泣き虫竜ポロちゃん。泣いてるのに……足音は、落ち着いてる気がする。気のせい、かなあ。" }]
 });
 
 registerEvent({
@@ -275,8 +293,8 @@ registerEvent({
   actions: [
     { type: "dialogue", speaker: "sake_udada",
       text: "ポロを3戦見たな。泣いているように見えるが、気性は安定している。複勝・ワイドで穴を拾うなら、覚えておけ。" },
-    { type: "tutorial_message", speaker: "mimi",
-      text: "見た目が弱そうでも、足音と試走をちゃんと見れば本当の実力が分かる──竜レースの大事な教えね。" }
+    { type: "tutorial_message", speaker: "mimi", expr: "default",
+      text: "……そっか。見た目じゃなくて、足音と試走を見るんですね。ひとつ、おぼえました。" }
   ]
 });
 
@@ -298,15 +316,15 @@ registerEvent({
   hook: "onVillageUpdate",
   condition: { once: true },
   priority: 5,
-  actions: [{ type: "dialogue", speaker: "sake_udada",
-    text: "村が育ってきたな。応援も増え、予備コインの貯えも厚くなった。これからのレースが楽しみだ。" }]
+  actions: [{ type: "dialogue", speaker: "sumika",
+    text: "ミミ様、村が育ってきました。応援が増え、予備コインの蓄えも厚くなっています。生活の土台が、着実に。" }]
 });
 registerEvent({
   id: "village_levelup_generic",
   hook: "onVillageUpdate",
   condition: { once: false },
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: ctx => `村レベルが ${ctx && ctx.newLevel ? ctx.newLevel : "?"} に上がったよ！ 賭金倍率と救済コインが上がるわ。` }]
+  actions: [{ type: "dialogue", speaker: "sumika",
+    text: ctx => `ミミ様、村レベルが ${ctx && ctx.newLevel ? ctx.newLevel : "?"} に上がりました。賭金倍率と救済コインの基準が上がります。` }]
 });
 
 // ===== §10 Phase 4: Rank intros + Major rival intros =====
@@ -324,8 +342,8 @@ registerEvent({
   hook: "afterRaceSelect",
   condition: { once: true, rankAtLeast: 5, test: ctx => ctx && ctx.race && ctx.race.rank === 5 },
   priority: 8,
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: "竜王杯……ここまで来たね。賞金の桁が変わるけど、ブランドや前走勝利が市場を支配するから、妙味も大きいわ。" }]
+  actions: [{ type: "dialogue", speaker: "mizu",
+    text: "竜王杯。賞金の桁が変わると、ブランドや前走勝利が市場を支配するわ、あはん。過剰人気の裏に、妙味が眠るのよ。" }]
 });
 registerEvent({
   id: "rank6_first_intro_festival",
@@ -341,10 +359,12 @@ registerEvent({
   condition: { once: true, raceId: "race_lapan_shinto_grand" },
   priority: 10,
   actions: [
-    { type: "dialogue", speaker: "mimi",
-      text: "神兎大レース……竜レース界の頂点。長距離マラソン、最高峰の竜たち、そして観衆の熱狂。すべての予想技術が問われるわ。" },
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "神兎大レース……竜レース界の、頂点。こんな場所に、わたしが立てるなんて……！" },
     { type: "dialogue", speaker: "sake_udada",
-      text: "ここでの妙味は、巨額の配当だ。市場のハイプを冷静に剥がせる者だけが、真の予想家として残る。" }
+      text: "長距離マラソン、最高峰の竜たち、観衆の熱狂だ。ここまで来たなら、胸を張れ。" },
+    { type: "dialogue", speaker: "mizu",
+      text: "妙味は巨額の配当よ、あはん。市場のハイプを冷静に剥がせる者だけが、残るの。" }
   ]
 });
 
@@ -353,8 +373,12 @@ registerEvent({
   hook: "afterEntryList",
   condition: { once: true, test: ctx => ctx && ctx.race && getRaceDragonIds(ctx.race).includes("phenix") },
   priority: 7,
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: "鳳凰竜フェニックス……！ 黄金の翼の伝説的な竜。観衆が大歓声を上げるわ。市場は本命視するけど、これだけ買われると本当に+EVなのか？" }]
+  actions: [
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "鳳凰竜フェニックス……！ 黄金の翼の、伝説の竜さん。わぁ、観客が大歓声ですっ！" },
+    { type: "dialogue", speaker: "mizu",
+      text: "ただし市場は本命視しすぎるわ、あはん。これだけ買われて、まだ値ごろ……？ 期待値を疑いなさい。" }
+  ]
 });
 registerEvent({
   id: "rival_intro_raika",
@@ -369,8 +393,8 @@ registerEvent({
   hook: "afterEntryList",
   condition: { once: true, test: ctx => ctx && ctx.race && getRaceDragonIds(ctx.race).includes("stella") },
   priority: 6,
-  actions: [{ type: "dialogue", speaker: "mimi",
-    text: "星光竜ステラ……差し脚で翼も気性も安定してる。夜や霧でも強い、隠れた本格派ね。" }]
+  actions: [{ type: "dialogue", speaker: "sake_udada",
+    text: "星光竜ステラ。差し脚で、翼も気性も安定しとる。夜や霧でも崩れん、隠れた本格派だ。" }]
 });
 registerEvent({
   id: "rival_intro_glaze",
