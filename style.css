@@ -3201,9 +3201,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ホームのヘッダー＝“ちゃんとしたバー”として全幅デザイン（#appのpadding分だけ外へ広げる） */
 .hl-top { display: flex; align-items: center; gap: 7px; position: relative; z-index: 3; flex-wrap: wrap;
   margin: -12px -12px 0;
-  /* iOS standalone(black-translucent)では時計/電池がページに重なる → safe-areaぶん下げて
-     バーの暗色グラデだけをステータスバーの背面に敷く（旧グローバルヘッダーと同じ手法） */
-  padding: max(10px, env(safe-area-inset-top, 0px)) 12px 9px;
+  /* 全画面没入：ヘッダーは画面最上端から（iOSの時計はバーの暗色グラデの上に重なる＝TikTok流）。
+     safe-area余白を取るとゲームが下がって“全画面でない”見た目になるため取らない（ユーザー確認済み） */
+  padding: 10px 12px 9px;
   background: linear-gradient(180deg, rgba(8,11,17,.92) 0%, rgba(8,11,17,.55) 72%, rgba(8,11,17,0) 100%); }
 .hl-top::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px; height: 1px;
   background: linear-gradient(90deg, transparent, rgba(230,178,74,.55) 18%, rgba(230,178,74,.55) 82%, transparent); }
@@ -3376,7 +3376,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .hl-prof-tx b { font-size: 11.5px; }
   .hl-prof-rl { display: none; }   /* スマホは杯名を省略しヘッダー1行を死守（ランク数字は表示） */
   /* ヘッダーは nowrap＋ellipsis で「絶対に1行」（収まらない分はプロフ名側を省略） */
-  .hl-top { gap: 4px; padding: max(8px, env(safe-area-inset-top, 0px)) 8px 8px; flex-wrap: nowrap; }
+  .hl-top { gap: 4px; padding: 8px 8px 8px; flex-wrap: nowrap; }
   .hl-prof { padding: 3px 8px 3px 4px; gap: 5px; flex: 1 1 auto; min-width: 0; }
   .hl-prof-tx { min-width: 0; overflow: hidden; }
   .hl-prof-tx b { font-size: 11px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

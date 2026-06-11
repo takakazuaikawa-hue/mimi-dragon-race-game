@@ -599,18 +599,42 @@ function _rcTintPixels(c, deg) {
   }
   x.putImageData(im, 0, 0);
 }
+function _rcFindOpaque(cv) {                  // 不透明ピクセルを1点探す（中心→四分点の順）
+  const x = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const pts = [[W >> 1, H >> 1], [W >> 2, H >> 1], [(3 * W) >> 2, H >> 1], [W >> 1, H >> 2], [W >> 1, (3 * H) >> 2]];
+  for (let i = 0; i < pts.length; i++) {
+    const d = x.getImageData(pts[i][0], pts[i][1], 1, 1).data;
+    if (d[3] > 200) return [pts[i][0], pts[i][1], d];
+  }
+  return null;
+}
 const _rcRigTint = Object.create(null);       // (色×パーツ)→色相シフト済みcanvas を一度だけ生成（毎フレームfilter回避）
 function _rcRigPartImg(color, p) {
   const key = (color || '#888') + '|' + p.id; let c = _rcRigTint[key];
   if (!c) {
+    const deg = _rcHueDelta(color);
     c = document.createElement('canvas'); c.width = p._img.width; c.height = p._img.height;
     const x = c.getContext('2d');
     if (_rcFilterOK) {
-      x.filter = 'hue-rotate(' + _rcHueDelta(color) + 'deg) saturate(1.1)';
+      x.filter = 'hue-rotate(' + deg + 'deg) saturate(1.1)';
       x.drawImage(p._img, 0, 0);
+      // 実証チェック：filter“対応”を申告しつつ描画では無視する端末（iOS系WebKitの一部）を見破る。
+      // 元画像と着色結果を1ピクセル比較し、変化していなければピクセル処理で確実に着色する。
+      if (Math.abs(deg) > 8) {
+        if (!p._srcCv) {
+          p._srcCv = document.createElement('canvas'); p._srcCv.width = c.width; p._srcCv.height = c.height;
+          p._srcCv.getContext('2d').drawImage(p._img, 0, 0);
+        }
+        const s = _rcFindOpaque(p._srcCv);
+        if (s) {
+          const t = x.getImageData(s[0], s[1], 1, 1).data;
+          const diff = Math.abs(t[0] - s[2][0]) + Math.abs(t[1] - s[2][1]) + Math.abs(t[2] - s[2][2]);
+          if (diff < 10) { _rcTintPixels(c, deg); window._rcTintFallback = (window._rcTintFallback || 0) + 1; }
+        }
+      }
     } else {
       x.drawImage(p._img, 0, 0);
-      _rcTintPixels(c, _rcHueDelta(color));
+      _rcTintPixels(c, deg);
     }
     _rcRigTint[key] = c;
   }
