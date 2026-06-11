@@ -1608,8 +1608,8 @@ function renderMall() {
   if (typeof renderMallDungeon === "function") {
     const dg = el("button", "mall-dgbtn");
     const _md = (state.player.dungeon || {});
-    dg.innerHTML = `<span class="mall-dgbtn-ic">🗼</span><span class="mall-dgbtn-tx"><b>モールお買い物ダンジョン</b>` +
-      `<small>閉店後のモールを探索 — 衣装・かけらを持ち帰ろう${_md.bestF ? `　最深 B${_md.bestF}F` : ""}</small></span><span class="mall-dgbtn-go">潜る ▶</span>`;
+    dg.innerHTML = `<span class="mall-dgbtn-ic">🏝️</span><span class="mall-dgbtn-tx"><b>リゾートモール探検</b>` +
+      `<small>昼の巨大モールをめぐって衣装GET — 放送・セール・スタンプラリー${_md.bestF ? `　🎫最多${_md.bestF}個` : ""}</small></span><span class="mall-dgbtn-go">出発 ▶</span>`;
     dg.onclick = () => renderMallDungeon();
     app.appendChild(dg);
   }

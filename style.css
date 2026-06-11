@@ -1586,8 +1586,8 @@ table.entry-table {
 /* ===== 🗼 モールお買い物ダンジョン（ミニゲーム・表示メタ） ===== */
 .mall-dgbtn { position: relative; z-index: 1; width: 100%; display: flex; align-items: center; gap: 12px; margin: 0 0 12px;
   padding: 12px 14px; border-radius: 14px; cursor: pointer; text-align: left;
-  background: linear-gradient(115deg, rgba(64,38,92,.85), rgba(28,23,44,.9) 55%), repeating-linear-gradient(45deg, rgba(230,178,74,.07) 0 10px, transparent 10px 20px);
-  border: 1px solid rgba(168,120,255,.5); box-shadow: 0 10px 26px -14px rgba(0,0,0,.8); color: var(--mist); }
+  background: linear-gradient(115deg, rgba(38,84,112,.88), rgba(24,46,66,.92) 55%), repeating-linear-gradient(45deg, rgba(255,214,120,.08) 0 10px, transparent 10px 20px);
+  border: 1px solid rgba(120,200,255,.45); box-shadow: 0 10px 26px -14px rgba(0,0,0,.8); color: var(--mist); }
 .mall-dgbtn:active { transform: translateY(1px); }
 .mall-dgbtn-ic { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
 .mall-dgbtn-tx { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1637,17 +1637,41 @@ table.entry-table {
 .md-gauge b { font-variant-numeric: tabular-nums; color: var(--mist); }
 .md-ask { font-size: 13.5px; font-weight: 800; color: var(--mist); margin: 0 0 9px; }
 .md-ask.boss { color: #ffd877; }
+/* フロアタブ（館内図） */
+.md-tabs { display: flex; gap: 6px; margin: 0 0 9px; }
+.md-tab { flex: 1; padding: 8px 4px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 900;
+  color: var(--mist-soft); background: rgba(255,255,255,.06); border: 1px solid var(--glass-border); }
+.md-tab.on { color: #2a1d06; background: linear-gradient(180deg, #ffe9a8, #f0b840); border-color: transparent; }
+/* お店カード＝昼のリゾートモール（明るい紙色・ポップ） */
 .md-doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-.md-door { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 6px 11px; cursor: pointer;
-  border-radius: 13px; background: linear-gradient(180deg, rgba(56,44,72,.9), rgba(30,25,40,.92));
-  border: 1px solid rgba(168,120,255,.4); color: var(--mist); box-shadow: 0 8px 18px -10px rgba(0,0,0,.7);
-  transition: transform .12s ease, border-color .12s ease; }
-.md-door:hover { transform: translateY(-2px); border-color: rgba(255,211,77,.6); }
+.md-door { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 6px 11px; cursor: pointer;
+  border-radius: 13px; background: linear-gradient(180deg, #fff8e9, #f6e7c6);
+  border: 1px solid #d9b97c; color: #4a3818; box-shadow: 0 8px 18px -10px rgba(0,0,0,.55);
+  transition: transform .12s ease, box-shadow .12s ease; }
+.md-door:hover { transform: translateY(-2px); box-shadow: 0 12px 22px -10px rgba(0,0,0,.6); }
 .md-door:active { transform: translateY(1px); }
 .md-door .ic { font-size: 28px; line-height: 1; }
-.md-door b { font-size: 12.5px; }
-.md-door small { font-size: 9.5px; color: var(--mist-soft); }
-.md-door.key { border-color: var(--gold-line); background: linear-gradient(180deg, rgba(72,58,30,.92), rgba(38,30,18,.94)); }
+.md-door b { font-size: 12px; }
+.md-door small { font-size: 9px; color: #8a7146; }
+.md-door.key { background: linear-gradient(180deg, #ffe9a8, #f5c862); border-color: var(--gold); }
+.md-badge { position: absolute; top: -8px; right: -4px; font-size: 9px; font-weight: 900; color: #fff;
+  padding: 3px 8px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.md-badge.fever { background: linear-gradient(180deg, #ff5e6c, #e02d4f); animation: hlPulse 1.2s ease-in-out infinite; }
+.md-badge.sale { background: linear-gradient(180deg, #f0a838, #d08018); }
+.md-badge.queue { background: #7d8694; }
+.md-badge.rumor { background: linear-gradient(180deg, #a07ae0, #7a50c0); }
+/* 店内の選択肢（縦リスト） */
+.md-choices { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.md-choice { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 11px 13px; cursor: pointer;
+  border-radius: 12px; background: linear-gradient(180deg, #fff8e9, #f4e4c0); border: 1px solid #d9b97c; color: #4a3818; }
+.md-choice:active { transform: translateY(1px); }
+.md-choice b { font-size: 13px; }
+.md-choice small { font-size: 10px; color: #8a7146; }
+.md-choice.back { background: rgba(255,255,255,.07); border-color: var(--glass-border); color: var(--mist-soft); }
+.md-choice.back small { color: var(--mist-soft); }
+.md-maphint { font-size: 10.5px; color: var(--mist-soft); margin: -6px 0 10px; }
+.md-logline.fever { color: #ffb9c2; font-weight: 700; }
+.md-chip small { font-size: 9px; color: var(--mist-soft); margin-left: 3px; font-weight: 400; }
 .md-next { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .md-go { padding: 13px; border: none; border-radius: 12px; cursor: pointer; font-size: 14.5px; font-weight: 900; color: #2a1d06;
   background: linear-gradient(180deg, #ffd966, #f0a838); }
