@@ -218,6 +218,32 @@ function showTitleSwitcher() {
   document.body.appendChild(ov);
 }
 
+// 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。
+function showInfoPopup(title, html) {
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop infopop");
+  box.innerHTML = `<div class="navpop-t">${title}</div><div class="infopop-body">${html}</div>`;
+  const btns = el("div", "navpop-btns");
+  const ok = el("button", "navpop-go", "わかった！"); ok.onclick = () => ov.remove();
+  btns.appendChild(ok); box.appendChild(btns);
+  ov.appendChild(box);
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+
+// 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
+// 設計：1通貨1役割／コイン→総資産→解放（物語・ランク・暮らしP）の一方向の流れを見せる。
+function showMoneyMap() {
+  showInfoPopup("💰 お金のしくみ", `
+    <div class="mm-flow">🪙 勝つ → 🏦 育つ → 🔓 解放される</div>
+    <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・ログボで増え、賭け・お買い物で減る。<u>減っても物語は戻らない</u>。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🏦</span><div><b>総資産</b><small>人生の最高到達点（下がらない）。コインの最高記録＋生活資産＋名声。<u>物語・衣装・ランクを解放するカギ</u>。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🌱</span><div><b>暮らしP</b><small>総資産が伸びると貯まる。くらしツリーの解放に使う。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🏅</span><div><b>ランク</b><small>出走と勝利で昇格。新しいレースが解放される。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🎫</span><div><b>メダル・かけら</b><small>モール探検専用。常連特典と衣装交換に。コインとは別のお財布。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">💗</span><div><b>視聴者・いいね</b><small>配信のにぎわい（飾り）。勝負には影響しない。</small></div></div>`);
+}
+
 // Minimal-text nav: tapping a menu button opens a small description popup with
 // 進む（proceed）/ キャンセル, so the home stays uncluttered but every button explains itself.
 function showNavConfirm(icon, title, desc, onGo) {
@@ -414,6 +440,9 @@ function renderHome() {
   const sysWrap = el("div", "hl-syswrap");
   const sysBtn = el("button", "hl-sys", "⋯");
   const sysDd = el("div", "hl-dd hidden");
+  const ddMoney = el("button", null, "💰 お金のしくみ");
+  ddMoney.onclick = () => { sysDd.classList.add("hidden"); showMoneyMap(); };
+  sysDd.appendChild(ddMoney);
   const ddTitle = el("button", null, "🏠 タイトルへ"); ddTitle.onclick = () => renderTitle();
   // ⛶ 全画面（Android Chrome等＝ステータスバーごと隠せる。iOS Safariは非対応のため非表示）
   if (document.documentElement.requestFullscreen) {
@@ -917,7 +946,9 @@ function renderAssets() {
   const level = Math.max(0, Math.min(a.unlockedLifeStages || 0, 5));
   const st = lifeTreeStats();
   const app = beginScreen();
-  app.appendChild(el("h2", null, "暮らしと資産"));
+  const _h2 = el("h2", null, `暮らしと資産 <button class="info-q" title="お金のしくみ">？</button>`);
+  _h2.querySelector(".info-q").onclick = () => showMoneyMap();
+  app.appendChild(_h2);
 
   // 状態（コンパクト）：総資産 ＋ 暮らしP
   const hero = el("div", "card lt-hero");
@@ -1648,9 +1679,16 @@ function renderMall() {
   mbg.innerHTML = `<img alt="" decoding="async" src="images/mall_bg.webp" onerror="this.remove()"><div class="mall-bg-scrim"></div>`;
   app.appendChild(mbg);
   app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
-  app.appendChild(el("div", "mall-top",
-    `<span class="as-hint">未購入の服はシルエット。買うと姿が見られます（着替えは無料・レース結果に影響なし）。</span>` +
-    `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`));
+  // 説明はふだん短く、詳しくは？で（冗長表現を常時出さないオンボーディング方針）
+  const _mtop = el("div", "mall-top",
+    `<span class="as-hint">未購入はシルエット <button class="info-q" title="モールの遊び方">？</button></span>` +
+    `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`);
+  _mtop.querySelector(".info-q").onclick = () => showInfoPopup("🛍️ モールの遊び方",
+    `<div class="mm-row"><span class="mm-ic">👤</span><div><b>未購入はシルエット</b><small>買うと姿が見られる。集める楽しみ！</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">👗</span><div><b>着替えは無料</b><small>所持している服はいつでも切替OK。レース結果には影響しない。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🏝️</span><div><b>モール探検</b><small>ミニゲームで衣装やかけらが手に入る。コインは使わない。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>解放条件つきの服</b><small>総資産で解放される特別な服もある。</small></div></div>`);
+  app.appendChild(_mtop);
   // ミニゲーム「モールお買い物ダンジョン」への入口（ローグライク・衣装やかけらが手に入る・表示メタ）
   if (typeof renderMallDungeon === "function") {
     const dg = el("button", "mall-dgbtn");
@@ -1762,61 +1800,81 @@ function renderHelp() {
   const app = beginScreen();
   app.appendChild(el("h2", null, "予想入門"));
 
-  const section = (title, body) => {
-    const c = el("div", "analysis-section");
-    c.appendChild(el("span", "label", title));
-    body.forEach(line => c.appendChild(el("div", null, line)));
-    return c;
+  // オンボーディング方針：説明は既定で閉じる（読みたい時だけ開く）。🆕/✓で初見かどうか一目で分かり、
+  // 開いた項目は既読として保存される。
+  if (!state.player.tutSeen) state.player.tutSeen = {};
+  const seen = state.player.tutSeen;
+  app.appendChild(el("div", "as-hint2", `気になる項目だけ開いて読めます　<span class="as-hint">🆕＝未読 ／ ✓＝読了</span>`));
+  const section = (key, title, body) => {
+    const d = document.createElement("details");
+    d.className = "help-sec" + (seen[key] ? " seen" : "");
+    d.innerHTML =
+      `<summary><span class="hs-badge">${seen[key] ? "✓" : "🆕"}</span>${title}</summary>` +
+      `<div class="hs-body">${body.map(l => `<div>${l}</div>`).join("")}</div>`;
+    d.addEventListener("toggle", () => {
+      if (d.open && !seen[key]) {
+        seen[key] = true;
+        if (typeof saveGame === "function") saveGame();
+        d.classList.add("seen");
+        const b = d.querySelector(".hs-badge"); if (b) b.textContent = "✓";
+      }
+    });
+    return d;
   };
 
-  app.appendChild(section("このゲームの心臓", [
+  // 💰 お金のしくみ（共通モーダル）＝数値の関係はいつでもここから
+  const mm = el("button", "help-money", "💰 お金のしくみ — コイン・総資産・暮らしPの関係");
+  mm.onclick = () => showMoneyMap();
+  app.appendChild(mm);
+
+  app.appendChild(section("heart", "このゲームの心臓", [
     "<b>市場のオッズと真の実力のズレを読み、賭けで利益を出す</b>予想カジノです。",
     "1番人気が強いとは限りません。コース・脚質・スタミナ・ペースを読むほど、勝率は上がります。"
   ]));
 
-  app.appendChild(section("賭式は3種類", [
+  app.appendChild(section("types", "賭式は3種類", [
     "<b>単竜</b>：1頭を選び、1着のみ的中。最も高いリターン、最も難しい。",
     "<b>複竜</b>：1頭を選び、3着以内で的中。安全寄り、堅実なリターン。",
     "<b>ワイド竜</b>：2頭を選び、両方が3着以内で的中。本命＋穴の組合せで妙味の塊。"
   ]));
 
-  app.appendChild(section("オッズの読み方", [
+  app.appendChild(section("odds", "オッズの読み方", [
     "オッズは「市場の人気投票」から計算され、真の勝率とは <b>ズレます</b>。",
     "前走勝利・新聞印・派手な見た目・ファン人気で人気が集まり、オッズは下がります。",
     "そのズレ＝<b>妙味</b>。市場が見落としている適性を見つけるのが予想家の仕事です。"
   ]));
 
-  app.appendChild(section("コース3区間", [
+  app.appendChild(section("course", "コース3区間", [
     "レースは<b>序盤・中盤・終盤</b>の3セクション。各々で必要な能力が違います。",
     "例：終盤=長い直線 → 速度+翼+スタミナ重視。終盤=最終大旋回 → 回転+気性重視。",
     "出走表で各セクションを確認し、適性を持つ竜を探しましょう。"
   ]));
 
-  app.appendChild(section("脚質とペース", [
+  app.appendChild(section("pace", "脚質とペース", [
     "<b>逃げ</b>＝早く前へ。<b>先行</b>＝前位安定。<b>差し</b>＝中盤伸び。<b>追込</b>＝最終後方一気。",
     "逃げ・先行が多い＝ペースが上がり、スタミナ薄い前残り型は終盤で <b>崩壊</b> します。",
     "逆にスローペースなら差し・追込が届かず、逃げ・先行が残ります。"
   ]));
 
-  app.appendChild(section("スタミナ", [
+  app.appendChild(section("stamina", "スタミナ", [
     "各竜は「スタミナプール」を持ち、レース中にセクションごとに消費。",
     "ハイペース・苦手な区間・距離の長さで消費が増えます。",
     "終盤に残り20%以下＝崩壊判定、ペナルティで大きく失速します。"
   ]));
 
-  app.appendChild(section("妙味の探し方", [
+  app.appendChild(section("value", "妙味の探し方", [
     "1. 1番人気の<b>弱点</b>を探す（今日のコースに合わないステータス）",
     "2. 中位人気で<b>適性が刺さっている</b>竜を探す（オッズ10倍以上で勝率10%なら+EV）",
     "3. <b>ワイド竜</b>で本命＋妙味馬を組む（1着を当てなくても勝てる）",
     "4. 詳細モード以上では「妙味の手がかり」セクションがヒントを出します"
   ]));
 
-  app.appendChild(section("情報量レベル", [
+  app.appendChild(section("infolv", "情報量レベル", [
     "ヘッダの「情報量」セレクタで表示量を調整できます。",
     "<b>簡易</b>=入門。<b>標準</b>=デフォルト。<b>詳細</b>=妙味手がかり＋分析項目追加。<b>エキスパート</b>=コンポーネント内訳まで。"
   ]));
 
-  app.appendChild(section("救済システム", [
+  app.appendChild(section("rescue", "救済システム", [
     "コインが0になっても安心。サケ・ウダダが村の予備コイン300枚を渡してくれます（村Lv1）。",
     "借金ではありません。小さく賭けて立て直しましょう。"
   ]));
@@ -2955,12 +3013,14 @@ function settleRace() {
   catch (e) { c.collectionAwards = []; }
   gainVillageExp(c.race, betResult && betResult.hit, raceResult._newDragonsThisRace || 0);
   checkEconomyMilestones(betResult);
+  const _rank0 = state.player.rank;
   checkRankProgression();
   // §30 — update total-asset progression from the payout (after coins/village/
   // rank/collection have settled). maxCoinsReached + 総資産 only ever rise.
   bumpMaxCoins();
   const prevStage = state.assets.unlockedLifeStages || 0;
   const prevTotal = state.player.totalAssets || 0;
+  const _lifeP0 = (typeof lifeTreeStats === "function") ? lifeTreeStats().earned : 0;
   const ra = recomputeAssets(state);
   const newTotal = state.player.totalAssets || 0;
   // (a) story: any chapter whose 総資産 threshold was crossed THIS race pops up.
@@ -2968,6 +3028,23 @@ function settleRace() {
   if (ra.level > prevStage || justUnlocked.length) {
     runEventHooks("onStoryUnlock", { stage: ra.level, chapter: ra.unlockedStory, chapters: justUnlocked });
   }
+  // 📦 獲得台帳（このレースで増えたもの一覧＝結果画面の「今回の獲得」。表示専用・数値はここまでで確定済み）
+  try {
+    const _lifeP1 = (typeof lifeTreeStats === "function") ? lifeTreeStats().earned : _lifeP0;
+    let _mission = false;
+    if (state.player.dailyM && (state.player.completedRaces - state.player.dailyM.races0) === 1) _mission = true;   // この1走でデイリー「出走」を達成
+    c.gainLedger = {
+      hit: !!betResult.hit, payout: betResult.payout, wager: betResult.wager,
+      streakBonus, featuredBonus: c.featuredBonus || 0,
+      collectionCoins: (c.collectionAwards || []).reduce((a, x) => a + (x.reward || 0), 0),
+      collectionLabels: (c.collectionAwards || []).map(x => x.label),
+      assetsDelta: Math.max(0, newTotal - prevTotal),
+      lifePDelta: Math.max(0, _lifeP1 - _lifeP0),
+      rankUp: state.player.rank > _rank0 ? state.player.rank : 0,
+      storyUnlocked: justUnlocked.map(ch => ch.title),
+      mission: _mission
+    };
+  } catch (e) { c.gainLedger = null; }
   saveGame();
   updateHeader();
   if (justUnlocked.length) showStoryUnlock(justUnlocked);   // popup over the result screen
@@ -3543,10 +3620,30 @@ function drawRecapScreen() {
   if (ps) {
     app.appendChild(buildResultHero(ps, resultTierOf(ps), c));
   }
-  // meta-reward banners: 注目レース達成 + 図鑑マイルストーン (spec #37)
+  // 📦 今回の獲得（リワード台帳）：配当以外も含め「このレースで何が増えたか」を1枚に明示。
+  // ボーナス系バナーもここに統合（桜井流「ごほうびは分かりやすく・まとめて見せる」）。
   try {
-    if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));
-    (c.collectionAwards || []).forEach(a => app.appendChild(el("div", "rs-bonus rs-bonus-dex", `📖 ${a.label} 達成！　<b>＋${fmtCoins(a.reward)}</b>`)));
+    const g = c.gainLedger;
+    if (g) {
+      const rows = [];
+      const R = (ic, label, val, cls) => rows.push(`<div class="rs-lg-row ${cls || ""}"><span class="ic">${ic}</span><span class="lb">${label}</span><b>${val}</b></div>`);
+      if (g.hit) R("💰", "配当", "＋" + fmtCoins(g.payout), "gain");
+      else R("💸", "賭金", "−" + fmtCoins(g.wager), "loss");
+      if (g.streakBonus > 0) R("🔥", "連勝ボーナス", "＋" + fmtCoins(g.streakBonus), "gain");
+      if (g.featuredBonus > 0) R("★", "注目レース達成", "＋" + fmtCoins(g.featuredBonus), "gain");
+      g.collectionLabels.forEach((lb, i) => R("📖", lb, "＋" + fmtCoins(c.collectionAwards[i].reward), "gain"));
+      if (g.assetsDelta > 0) R("🏦", "総資産（最高記録更新）", "＋" + fmtCoins(g.assetsDelta), "asset");
+      if (g.lifePDelta > 0) R("🌱", "暮らしP（くらしツリーで使える）", "＋" + g.lifePDelta, "asset");
+      if (g.rankUp) R("🏅", "ランク昇格！", "ランク" + g.rankUp, "rankup");
+      g.storyUnlocked.forEach(t => R("📜", "物語が解放", t, "rankup"));
+      if (g.mission) R("📋", "デイリーミッション「出走」", "達成！", "asset");
+      const box = el("div", "rs-ledger");
+      box.innerHTML = `<div class="rs-lg-t">📦 今回の獲得</div>` + rows.join("");
+      app.appendChild(box);
+    } else {
+      if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));
+      (c.collectionAwards || []).forEach(a => app.appendChild(el("div", "rs-bonus rs-bonus-dex", `📖 ${a.label} 達成！　<b>＋${fmtCoins(a.reward)}</b>`)));
+    }
   } catch (e) {}
   // living advisor reaction — a character speaks to what just happened (spec #37)
   try {

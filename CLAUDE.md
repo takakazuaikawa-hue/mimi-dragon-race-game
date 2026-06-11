@@ -9,6 +9,9 @@
 3. **CSS/JSを変更したら index.html の `?v=YYYYMMDDx` を全箇所一括更新**してから同時にコミット（スマホキャッシュ対策。例: `?v=20260612a` → `?v=20260613a` に置換）。
 4. classicスクリプト構成：トップレベル `const/function` はファイル間で参照可（windowには載らない）。`<script>` の追加は index.html に列挙。
 
+## 数値・報酬・オンボーディングの憲法
+**`docs/GAME_DESIGN_NUMBERS.md` を必ず読む**（1通貨1役割／📦今回の獲得への集約／？ボタン・🆕既読の3点セット／PC=470px固定フレーム）。新しい数値や報酬を足すときはそのチェックリストに従う。
+
 ## ファイル構成（要点）
 - `index.html` / `style.css`（全画面共通・約3700行）
 - `js/ui_render.js` … 全画面のUI描画（最大ファイル）。ホーム=TikTokライブ風（`renderHome`・接頭辞 `hl-`）
