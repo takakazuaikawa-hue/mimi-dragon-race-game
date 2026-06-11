@@ -581,23 +581,49 @@ const _rcFilterOK = (function () {
   if (window.RC_FORCE_NOFILTER) return false;   // 検証用フック
   try { const x = document.createElement('canvas').getContext('2d'); x.filter = 'hue-rotate(90deg)'; return x.filter !== 'none' && x.filter !== ''; } catch (e) { return false; }
 })();
-function _rcTintPixels(c, deg) {
+function _rcTintPixels(c, deg, satMul, briMul) {
   const x = c.getContext('2d'), im = x.getImageData(0, 0, c.width, c.height), d = im.data;
   const a = deg * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
   const m = [   // hue-rotate 行列（filter仕様と同一）
     0.213 + cs * 0.787 - sn * 0.213, 0.715 - cs * 0.715 - sn * 0.715, 0.072 - cs * 0.072 + sn * 0.928,
     0.213 - cs * 0.213 + sn * 0.143, 0.715 + cs * 0.285 + sn * 0.140, 0.072 - cs * 0.072 - sn * 0.283,
     0.213 - cs * 0.213 - sn * 0.787, 0.715 - cs * 0.715 + sn * 0.715, 0.072 + cs * 0.928 + sn * 0.072];
-  const S = 1.1, sr = 0.213 * (1 - S), sg = 0.715 * (1 - S), sb = 0.072 * (1 - S);
+  const S = 1.1 * (satMul || 1), B = (briMul || 1);
+  const sr = 0.213 * (1 - S), sg = 0.715 * (1 - S), sb = 0.072 * (1 - S);
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2];
     const nr = m[0] * r + m[1] * g + m[2] * b, ng = m[3] * r + m[4] * g + m[5] * b, nb = m[6] * r + m[7] * g + m[8] * b;
-    let r2 = (sr + S) * nr + sg * ng + sb * nb, g2 = sr * nr + (sg + S) * ng + sb * nb, b2 = sr * nr + sg * ng + (sb + S) * nb;
+    let r2 = ((sr + S) * nr + sg * ng + sb * nb) * B, g2 = (sr * nr + (sg + S) * ng + sb * nb) * B, b2 = (sr * nr + sg * ng + (sb + S) * nb) * B;
     d[i] = r2 < 0 ? 0 : r2 > 255 ? 255 : r2;
     d[i + 1] = g2 < 0 ? 0 : g2 > 255 ? 255 : g2;
     d[i + 2] = b2 < 0 ? 0 : b2 > 255 ? 255 : b2;
   }
   x.putImageData(im, 0, 0);
+}
+// ── 同レース内の“同系色”対策：色相が近い竜に明暗/彩度のバリエーションを自動で割り当てて描き分ける。
+// 表示専用（図鑑/データの色は不変）。色相±の微調整も併用し、同系3頭でも 標準/濃い/淡い で判別できる。
+function _rcHexHue(hex) {
+  let c = hex || '#caa44a'; if (c[0] === '#') c = c.slice(1);
+  if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+  const r = parseInt(c.slice(0, 2), 16) / 255, g = parseInt(c.slice(2, 4), 16) / 255, b = parseInt(c.slice(4, 6), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0;
+  if (d) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+  return h;
+}
+const RC_TINT_VARS = [null,
+  { hue: 14,  sat: 1.3,  bri: 0.78 },   // 2頭目：濃い
+  { hue: -14, sat: 0.8,  bri: 1.24 },   // 3頭目：淡い
+  { hue: 28,  sat: 1.4,  bri: 0.6 },    // 4頭目：さらに濃い
+  { hue: -28, sat: 0.7,  bri: 1.4 },    // 5頭目：さらに淡い
+  { hue: 42,  sat: 1.15, bri: 0.92 }];
+function rcDistinctColors(list) {
+  const hs = list.map(d => ({ id: d.id, h: _rcHexHue(d.color) })).sort((a, b) => a.h - b.h);
+  const map = {}; let gi = 0;
+  for (let i = 0; i < hs.length; i++) {
+    gi = (i > 0 && hs[i].h - hs[i - 1].h <= 22) ? gi + 1 : 0;   // 色相22°以内＝同系グループ（360°跨ぎは稀なので簡略）
+    if (gi > 0) map[hs[i].id] = RC_TINT_VARS[Math.min(gi, RC_TINT_VARS.length - 1)];
+  }
+  return map;
 }
 function _rcFindOpaque(cv) {                  // 不透明ピクセルを1点探す（中心→四分点の順）
   const x = cv.getContext('2d'), W = cv.width, H = cv.height;
@@ -608,19 +634,21 @@ function _rcFindOpaque(cv) {                  // 不透明ピクセルを1点探
   }
   return null;
 }
-const _rcRigTint = Object.create(null);       // (色×パーツ)→色相シフト済みcanvas を一度だけ生成（毎フレームfilter回避）
-function _rcRigPartImg(color, p) {
-  const key = (color || '#888') + '|' + p.id; let c = _rcRigTint[key];
+const _rcRigTint = Object.create(null);       // (色×パーツ×変種)→着色済みcanvas を一度だけ生成（毎フレームfilter回避）
+function _rcRigPartImg(color, p, tv) {        // tv＝同系色の描き分けバリエーション（rcDistinctColors）
+  const key = (color || '#888') + '|' + p.id + (tv ? '|' + tv.hue + '/' + tv.sat + '/' + tv.bri : '');
+  let c = _rcRigTint[key];
   if (!c) {
-    const deg = _rcHueDelta(color);
+    const deg = _rcHueDelta(color) + (tv ? tv.hue : 0);
+    const sat = 1.1 * (tv ? tv.sat : 1), bri = tv ? tv.bri : 1;
     c = document.createElement('canvas'); c.width = p._img.width; c.height = p._img.height;
     const x = c.getContext('2d');
     if (_rcFilterOK) {
-      x.filter = 'hue-rotate(' + deg + 'deg) saturate(1.1)';
+      x.filter = 'hue-rotate(' + deg + 'deg) saturate(' + sat.toFixed(3) + ') brightness(' + bri + ')';
       x.drawImage(p._img, 0, 0);
       // 実証チェック：filter“対応”を申告しつつ描画では無視する端末（iOS系WebKitの一部）を見破る。
       // 元画像と着色結果を1ピクセル比較し、変化していなければピクセル処理で確実に着色する。
-      if (Math.abs(deg) > 8) {
+      if (Math.abs(deg) > 8 || tv) {
         if (!p._srcCv) {
           p._srcCv = document.createElement('canvas'); p._srcCv.width = c.width; p._srcCv.height = c.height;
           p._srcCv.getContext('2d').drawImage(p._img, 0, 0);
@@ -629,12 +657,12 @@ function _rcRigPartImg(color, p) {
         if (s) {
           const t = x.getImageData(s[0], s[1], 1, 1).data;
           const diff = Math.abs(t[0] - s[2][0]) + Math.abs(t[1] - s[2][1]) + Math.abs(t[2] - s[2][2]);
-          if (diff < 10) { _rcTintPixels(c, deg); window._rcTintFallback = (window._rcTintFallback || 0) + 1; }
+          if (diff < 10) { _rcTintPixels(c, deg, tv && tv.sat, tv && tv.bri); window._rcTintFallback = (window._rcTintFallback || 0) + 1; }
         }
       }
     } else {
       x.drawImage(p._img, 0, 0);
-      _rcTintPixels(c, deg);
+      _rcTintPixels(c, deg, tv && tv.sat, tv && tv.bri);
     }
     _rcRigTint[key] = c;
   }
@@ -652,7 +680,7 @@ function _rcBendStrips(ctx, img, bx, by, phase, amp, rootEdge) {
   }
 }
 function _rcDrawRigPart(ctx, p, color, o) {
-  const img = _rcRigPartImg(color, p), g = o.gait || 0;
+  const img = _rcRigPartImg(color, p, o.tint), g = o.gait || 0;
   const bx = p.rect.x - p.pivot.x, by = p.rect.y - p.pivot.y;        // 局所ピボット基準のオフセット
   const bend = p.motion && p.motion.bend;
   ctx.save();
@@ -2276,6 +2304,7 @@ function startRaceCanvas(container, ctx) {
       rcDrawDragon(cctx, {
         x: dcx, y: spriteY, scale: sprScale,
         color: dr.color, style: dr.style, design: dragonDesign(dr.id),
+        tint: (S._cmap || (S._cmap = (typeof rcDistinctColors === 'function' ? rcDistinctColors(dragons) : {})))[dr.id],
         gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6, mood: _mood,
         lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
         bank: bank, spread: spread, spin: beh.spin, squash: beh.squash, grounded: S.entryT > 0
