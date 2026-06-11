@@ -300,6 +300,23 @@ function startDragonWarp(canvas, img, screen) {
   canvas._warpRAF = requestAnimationFrame(draw);
 }
 
+// ③ デイリーミッション（ライブ告知風・表示のみ＝報酬なし・レース数値に非干渉）。
+// 日付が変わったらその時点の戦績を基準にリセット。コメント送信は _youSay が记録。
+function _dailyMissionText() {
+  const p = state.player;
+  let today = ""; try { today = new Date().toISOString().slice(0, 10); } catch (e) {}
+  if (!p.dailyM || p.dailyM.date !== today) {
+    p.dailyM = { date: today, races0: p.completedRaces || 0, wins0: p.wins || 0, cmt: 0 };
+    if (typeof saveGame === "function") saveGame();
+  }
+  const m = p.dailyM;
+  const r = Math.min(1, (p.completedRaces || 0) - m.races0);
+  const w = Math.min(1, (p.wins || 0) - m.wins0);
+  const c = Math.min(1, m.cmt || 0);
+  const mk = (v, label) => (v ? "✓" : "") + label + ` ${v}/1`;
+  return `きょうのミッション　${mk(r, "出走")}・${mk(w, "単勝")}・${mk(c, "💬")}` + (r + w + c >= 3 ? "　🎉コンプ！" : "");
+}
+
 function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
@@ -366,7 +383,8 @@ function renderHome() {
   const prof = el("button", "hl-prof");
   prof.innerHTML =
     `<span class="hl-prof-av">🐰</span>` +
-    `<span class="hl-prof-tx"><b>予想家ミミ</b><i class="hl-prof-title">🏅${eqTitle || "称号"}<span class="hl-prof-caret">▾</span></i></span>`;
+    `<span class="hl-prof-tx"><b>予想家ミミ<i class="hl-prof-title">🏅${eqTitle || "称号"}<span class="hl-prof-caret">▾</span></i></b>` +
+    `<small>ランク${p.rank}<span class="hl-prof-rl">${rankLabel ? " " + rankLabel : ""}</span>${p.streak >= 2 ? `・🔥${p.streak}連勝` : ""}</small></span>`;
   prof.title = "取得済みの称号を切り替える";
   prof.onclick = () => showTitleSwitcher();
   top.appendChild(prof);
@@ -430,9 +448,13 @@ function renderHome() {
   // 新規プレイヤーのゼロ統計はノイズなので非表示。🎯目標は📌ピン留めコメントへ移設。
   const floatBox = el("div", "hl-float");
   const viewersEl = el("div", "hl-viewers", "👁 <b></b>");
+  // ④ フォロワー数＝名声・戦績と連動（表示専用）
+  const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
+  const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
+  // ランクは左上プロフィールへ（顔の右上を覆わない）。フロートは LIVE＋フォロワー（＋PCのみ戦績）
   floatBox.innerHTML =
     `<div class="hl-float-live"><span class="hl-live">LIVE</span></div>` +
-    `<div class="hl-float-rank">🏅 ランク${p.rank}${rankLabel ? " " + rankLabel : ""}${p.streak >= 2 ? ` ・ 🔥${p.streak}連勝` : ""}</div>` +
+    `<div class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b> フォロワー</div>` +
     (p.completedRaces > 0 ? `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` : "");
   floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
   stage.appendChild(floatBox);
@@ -442,9 +464,10 @@ function renderHome() {
   emb.innerHTML = "<span></span><span></span><span></span><span></span><span></span><span></span><span></span>";
   stage.appendChild(emb);
 
-  // 左下カラム：📌ピン留め（次の目標＝配信のお知らせ風）＋流れるコメント
+  // 左下カラム：📌ピン留め（次の目標）＋📋デイリーミッション（ライブ告知風・表示のみ）＋流れるコメント
   const left = el("div", "hl-left");
   if (goalLine) left.appendChild(el("div", "hl-pin", "📌 " + goalLine));
+  left.appendChild(el("div", "hl-pin hl-missions", "📋 " + _dailyMissionText()));
   const cms = el("div", "hl-comments");
   left.appendChild(cms);
   stage.appendChild(left);
@@ -455,6 +478,7 @@ function renderHome() {
   let _speechT = 0;
   function mimiSay(text, ms) {
     if (!text) return;
+    try { if (window.Sfx) Sfx.play("paho"); } catch (e) {}   // ① ぱほぱほ♪の合いの手SE（ミュート設定に従う）
     clearTimeout(_speechT);
     speech.textContent = text;
     speech.classList.remove("hidden", "out");
@@ -629,6 +653,12 @@ function renderHome() {
         }, d))(i * 90);
       }
     }
+    if (rare && !_reduce) {   // ② レアギフトは全画面フラッシュ＋広がるリング
+      const fx = document.createElement("div");
+      fx.className = "hl-flashfx";
+      stage.appendChild(fx);
+      fx.addEventListener("animationend", () => fx.remove());
+    }
     if (rare || Math.random() < 0.35) {
       mimiSay(_GIFT_THX[Math.floor(Math.random() * _GIFT_THX.length)]);
       try { _flipTo("happy"); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 2300); } catch (e) {}
@@ -687,6 +717,14 @@ function renderHome() {
   function _youSay(t) {
     _addCm("✨あなた", "#ffd34d", " " + t, "you");
     qr.classList.add("hidden");
+    try {   // ③ ミッション「コメント1回」を達成記録し、ピン表示を即時更新
+      if (state.player.dailyM && !state.player.dailyM.cmt) {
+        state.player.dailyM.cmt = 1;
+        if (typeof saveGame === "function") saveGame();
+        const mp = document.querySelector(".hl-missions");
+        if (mp) mp.textContent = "📋 " + _dailyMissionText();
+      }
+    } catch (e) {}
     if (Math.random() < 0.55) {
       mimiSay(_YOU_THX[Math.floor(Math.random() * _YOU_THX.length)]);
       try { _flipTo(Math.random() < 0.5 ? "smile" : "happy"); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 2300); } catch (e) {}

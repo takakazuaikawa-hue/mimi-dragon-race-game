@@ -151,6 +151,11 @@ var Sfx = (function () {
         case "click": // soft UI tap
           tone(330, t, 0.03, "sine", 0.12);
           break;
+        case "paho": // ミミの「ぱほぱほ♪」風 — 軽いふた跳ねのかわいい合いの手
+          tone(740, t, 0.07, "triangle", 0.20, 980);
+          tone(620, t + 0.09, 0.10, "triangle", 0.18, 830);
+          noise(t + 0.02, 0.04, 0.035, 5200);
+          break;
         case "nav": // soft navigation swoosh (screen change)
           tone(520, t, 0.08, "sine", 0.10, 820);
           break;

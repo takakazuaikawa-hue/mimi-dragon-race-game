@@ -19,10 +19,14 @@ const RACE_BGM_DIR = "bgm/racebgm/";
 // 元の日本語名 → 改名後:
 //   the・ファンファーレ.mp3            → the-fanfare.mp3
 //   ある日森の中ドラゴンに出会った.mp3 → dragon-in-the-forest.mp3
+// 追加改名: 空の英雄→sky-hero / 負けられない戦い→unlosable-battle / 霧裂く旗→fog-cutting-flag
+// （dragon-in-the-forest はローカルで削除されたためローテーションから除外）
 const RACE_BGM_TRACKS = [
   "crown-of-thunder.mp3",
   "the-fanfare.mp3",
-  "dragon-in-the-forest.mp3"
+  "sky-hero.mp3",
+  "unlosable-battle.mp3",
+  "fog-cutting-flag.mp3"
 ];
 
 var RaceBgm = (function () {

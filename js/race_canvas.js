@@ -574,14 +574,44 @@ function _rcHueDelta(color) {                 // hex色 → 金(約42°)から�
   if (d) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
   return Math.round(((h - 42) + 540) % 360 - 180);
 }
+// モバイルSafari/一部WebViewは ctx.filter 未対応（設定しても 'none' のまま）→ hue-rotate が無効化され
+// 全竜が同じ金色になる。検出して未対応なら、同じ行列（CSS hue-rotate＋saturate(1.1) 相当・W3C定義）を
+// 画素単位で一度だけ適用する（キャッシュは共通＝毎フレームコストなし）。
+const _rcFilterOK = (function () {
+  if (window.RC_FORCE_NOFILTER) return false;   // 検証用フック
+  try { const x = document.createElement('canvas').getContext('2d'); x.filter = 'hue-rotate(90deg)'; return x.filter !== 'none' && x.filter !== ''; } catch (e) { return false; }
+})();
+function _rcTintPixels(c, deg) {
+  const x = c.getContext('2d'), im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+  const a = deg * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
+  const m = [   // hue-rotate 行列（filter仕様と同一）
+    0.213 + cs * 0.787 - sn * 0.213, 0.715 - cs * 0.715 - sn * 0.715, 0.072 - cs * 0.072 + sn * 0.928,
+    0.213 - cs * 0.213 + sn * 0.143, 0.715 + cs * 0.285 + sn * 0.140, 0.072 - cs * 0.072 - sn * 0.283,
+    0.213 - cs * 0.213 - sn * 0.787, 0.715 - cs * 0.715 + sn * 0.715, 0.072 + cs * 0.928 + sn * 0.072];
+  const S = 1.1, sr = 0.213 * (1 - S), sg = 0.715 * (1 - S), sb = 0.072 * (1 - S);
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const nr = m[0] * r + m[1] * g + m[2] * b, ng = m[3] * r + m[4] * g + m[5] * b, nb = m[6] * r + m[7] * g + m[8] * b;
+    let r2 = (sr + S) * nr + sg * ng + sb * nb, g2 = sr * nr + (sg + S) * ng + sb * nb, b2 = sr * nr + sg * ng + (sb + S) * nb;
+    d[i] = r2 < 0 ? 0 : r2 > 255 ? 255 : r2;
+    d[i + 1] = g2 < 0 ? 0 : g2 > 255 ? 255 : g2;
+    d[i + 2] = b2 < 0 ? 0 : b2 > 255 ? 255 : b2;
+  }
+  x.putImageData(im, 0, 0);
+}
 const _rcRigTint = Object.create(null);       // (色×パーツ)→色相シフト済みcanvas を一度だけ生成（毎フレームfilter回避）
 function _rcRigPartImg(color, p) {
   const key = (color || '#888') + '|' + p.id; let c = _rcRigTint[key];
   if (!c) {
     c = document.createElement('canvas'); c.width = p._img.width; c.height = p._img.height;
     const x = c.getContext('2d');
-    x.filter = 'hue-rotate(' + _rcHueDelta(color) + 'deg) saturate(1.1)';
-    x.drawImage(p._img, 0, 0);
+    if (_rcFilterOK) {
+      x.filter = 'hue-rotate(' + _rcHueDelta(color) + 'deg) saturate(1.1)';
+      x.drawImage(p._img, 0, 0);
+    } else {
+      x.drawImage(p._img, 0, 0);
+      _rcTintPixels(c, _rcHueDelta(color));
+    }
     _rcRigTint[key] = c;
   }
   return c;

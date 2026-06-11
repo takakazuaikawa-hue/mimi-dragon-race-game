@@ -1702,6 +1702,23 @@ table.entry-table {
   .md-door .ic { font-size: 24px; }
 }
 
+/* ② 💎レアギフトの全画面フラッシュ（stage内・操作透過・reduced-motion時はJS側で出さない） */
+.hl-flashfx { position: absolute; inset: 0; z-index: 7; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(60% 50% at 50% 42%, rgba(255,238,180,.95), rgba(255,200,90,.45) 45%, transparent 72%);
+  animation: hlFlash .9s ease-out forwards; }
+.hl-flashfx::after { content: ""; position: absolute; left: 50%; top: 42%; width: 10px; height: 10px; border-radius: 50%;
+  border: 3px solid rgba(255,228,150,.95); transform: translate(-50%, -50%); animation: hlFlashRing .9s ease-out forwards; }
+@keyframes hlFlash { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hlFlashRing { to { width: 140vmin; height: 140vmin; opacity: 0; } }
+/* ③ デイリーミッションのピン（告知風・青系で📌目標と区別） */
+.hl-pin.hl-missions { color: #d6e6ff; background: rgba(18,30,48,.62); border-color: rgba(120,170,255,.42); }
+
+/* ⑤ 賭けの操作（賭ける/賭金/出走）を画面下に吸着＝竜を選んだあとスクロール不要で押せる */
+.bet-step1, .bet-step2 { position: sticky; bottom: 8px; z-index: 6;
+  background: linear-gradient(180deg, rgba(21,25,32,.97), rgba(13,16,22,.98));
+  border: 1px solid var(--gold-line); border-radius: 14px; padding: 10px;
+  margin-top: 10px; box-shadow: 0 -10px 28px -12px rgba(0,0,0,.9); backdrop-filter: blur(6px); }
+
 /* 設定内デバッグツール（実機でも使える） */
 .set-debug { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 4px; }
 .set-dbg-b { padding: 11px 6px; font-size: 12.5px; border-radius: 10px; cursor: pointer;
@@ -3247,7 +3264,8 @@ body.home-mode #app { padding: 12px 12px 16px; }
 .hl-dragon-fallback { font-size: 22px; }
 /* 出走情報・ランク情報・目標を背景に“浮かせる”（配信オーバーレイ風・右上・半透明・操作透過） */
 .hl-float { position: absolute; top: 4px; right: 2px; z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
-  pointer-events: none; max-width: 66%; }
+  pointer-events: none; max-width: 52%; }   /* 顔（中央）にかからない幅に制限 */
+.hl-float-fol b { color: #ff9ab8; font-variant-numeric: tabular-nums; }
 .hl-float > div { background: rgba(8,11,16,.46); border: 1px solid var(--glass-border); border-radius: 999px; padding: 4px 11px;
   font-size: 10.5px; color: var(--mist); backdrop-filter: blur(3px); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
   box-shadow: 0 4px 12px -6px rgba(0,0,0,.6); }
@@ -3287,14 +3305,16 @@ body.home-mode #app { padding: 12px 12px 16px; }
 .hl-cm.gift { background: linear-gradient(90deg, rgba(255,150,40,.38), rgba(8,11,16,.55) 78%); border: 1px solid rgba(255,196,90,.45); }
 .hl-cm.you  { background: linear-gradient(90deg, rgba(230,178,74,.30), rgba(8,11,16,.6) 78%); border: 1px solid rgba(255,211,77,.5); }
 @keyframes hlCmIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.hl-speech { position: absolute; left: 50%; top: 7%; transform: translateX(-46%); z-index: 6; pointer-events: none;
-  max-width: 72%; background: #fff; color: #18202a; font-size: 13px; font-weight: 700; line-height: 1.45;
-  padding: 8px 14px; border-radius: 16px; box-shadow: 0 8px 20px -8px rgba(0,0,0,.55); animation: hlSpeechIn .3s ease both; }
-.hl-speech::after { content: ""; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%);
-  border: 7px solid transparent; border-top-color: #fff; border-bottom: 0; }
+/* 吹き出しは左・顔より下（口元の横）＝ミミの顔（上部1/3）を絶対に隠さない。しっぽは右上→顔の方を指す */
+.hl-speech { position: absolute; left: 8px; top: 36%; z-index: 6; pointer-events: none;
+  max-width: 48%; background: #fff; color: #18202a; font-size: 12px; font-weight: 700; line-height: 1.45;
+  padding: 8px 12px; border-radius: 15px; border-top-right-radius: 4px;
+  box-shadow: 0 8px 20px -8px rgba(0,0,0,.55); animation: hlSpeechIn .3s ease both; }
+.hl-speech::after { content: ""; position: absolute; right: 12px; top: -7px;
+  border: 7px solid transparent; border-bottom-color: #fff; border-top: 0; }
 .hl-speech.out { animation: hlSpeechOut .45s ease forwards; }
-@keyframes hlSpeechIn { from { opacity: 0; transform: translateX(-46%) translateY(8px) scale(.92); } to { opacity: 1; transform: translateX(-46%) translateY(0) scale(1); } }
-@keyframes hlSpeechOut { to { opacity: 0; transform: translateX(-46%) translateY(-8px); } }
+@keyframes hlSpeechIn { from { opacity: 0; transform: translateY(8px) scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes hlSpeechOut { to { opacity: 0; transform: translateY(-8px); } }
 .hl-heart { position: absolute; z-index: 5; pointer-events: none; opacity: 0; will-change: transform, opacity;
   animation: hlHeart 2.6s ease-out forwards; }
 @keyframes hlHeart {
@@ -3317,8 +3337,8 @@ body.home-mode #app { padding: 12px 12px 16px; }
   border: 1px solid rgba(255,120,140,.45); border-radius: 999px; padding: 7px 13px; }
 .hl-likebtn b { font-size: 11.5px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
 .hl-likebtn:active { transform: scale(.94); }
-.hl-qr { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 8;
-  display: flex; flex-wrap: wrap; gap: 6px; animation: hlCmIn .2s ease both; }
+/* 定型コメントはドック内のフロー配置（重なりゼロ＝確実に押せる。開くとドックが上に伸びる） */
+.hl-qr { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; animation: hlCmIn .2s ease both; }
 .hl-qr.hidden { display: none; }
 .hl-qr-b { font-size: 12px; color: var(--mist); cursor: pointer; backdrop-filter: blur(4px);
   background: rgba(13,17,23,.92); border: 1px solid var(--gold-line); border-radius: 999px; padding: 8px 13px; }
@@ -3346,10 +3366,26 @@ body.home-mode #app { padding: 12px 12px 16px; }
   .hl-mimi { width: min(99vw, 420px); height: min(73vh, 615px); }
   .hl-left { width: 58vw; }
   .hl-prof-tx b { font-size: 11.5px; }
-  .hl-money { min-width: 108px; }
+  .hl-prof-rl { display: none; }   /* スマホは杯名を省略しヘッダー1行を死守（ランク数字は表示） */
+  /* ヘッダーは nowrap＋ellipsis で「絶対に1行」（収まらない分はプロフ名側を省略） */
+  .hl-top { gap: 4px; padding: 8px 8px 8px; flex-wrap: nowrap; }
+  .hl-prof { padding: 3px 8px 3px 4px; gap: 5px; flex: 1 1 auto; min-width: 0; }
+  .hl-prof-tx { min-width: 0; overflow: hidden; }
+  .hl-prof-tx b { font-size: 11px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hl-prof-tx small { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hl-prof-av { width: 26px; height: 26px; font-size: 14px; }
+  .hl-prof-title { font-size: 8.5px; }
+  .hl-money { min-width: 0; padding: 6px 9px; flex: none; }
+  .hl-money-coin b { font-size: 13.5px; }
+  .hl-buddy-btn { width: 42px; height: 38px; flex: none; }
+  /* フロートは横1列＝顔ゾーンより上の細い帯に収める */
+  .hl-float { flex-direction: row; align-items: center; gap: 5px; max-width: 96%; }
+  .hl-money-as { display: none; }   /* スマホはコインのみ（総資産はタップ先の暮らしで） */
+  .hl-float-fol { font-size: 9.5px; }
   .hl-brand b { display: none; }   /* スマホは紋章のみ（1行死守） */
-  .hl-float { max-width: 70%; }
+  .hl-float { max-width: 56%; }
   .hl-float > div { font-size: 10px; padding: 3px 9px; }
+  .hl-float-rec { display: none; }   /* スマホは3行まで＝顔ゾーンに届かせない（戦績は暮らし画面にある） */
 }
 @media (prefers-reduced-motion: reduce) {
   .hl-bg-img, .hl-live { animation: none; }
