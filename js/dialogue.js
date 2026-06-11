@@ -253,6 +253,9 @@
 
   function run(lines, options) {
     return new Promise(function (resolve) {
+      // レース放送中(race_run)はVNの立ち絵を被せない＝レースは画面内テロップで実況する。
+      // 直前(出走時)に保留されたセリフがレース開始後に出てしまうのを防ぐ。{force:true}で例外可。
+      if (typeof state !== "undefined" && state && state.ui && state.ui.screen === "race_run" && !(options && options.force)) { resolve(); return; }
       queue = lines; idx = 0; opts = options; resolveFn = resolve;
       var d = ensureDom();
       // 立ち絵スロット初期化

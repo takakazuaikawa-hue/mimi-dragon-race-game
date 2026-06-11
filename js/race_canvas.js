@@ -2731,7 +2731,12 @@ function startRaceCanvas(container, ctx) {
   }
   function renderFinishStrip() {
     finishStripEl.style.display = "";
-    let html = `<div class="rc-fs-title">着順</div>`;
+    const cr0 = timeline.crossings[0];                       // 勝者を大きく掲示（DOMのみ・数値は不変）
+    const winHit = cr0 && betSet.has(cr0.id);
+    let html = cr0
+      ? `<div class="rc-fs-winner ${winHit ? "t" : ""}"><span class="rc-fs-tro">🏆</span><span class="rc-fs-wlbl">1着</span><b>${commentaryName(cr0.id)}</b>${winHit ? '<span class="rc-fs-hit">🎯的中</span>' : ""}</div>`
+      : "";
+    html += `<div class="rc-fs-title">着順</div>`;
     timeline.crossings.forEach(cr => {
       const isT = betSet.has(cr.id);
       html += `<div class="rc-fs-row ${isT ? "t" : ""}"><b>${cr.place}</b> ${commentaryName(cr.id)}${isT ? " 🎯" : ""}</div>`;

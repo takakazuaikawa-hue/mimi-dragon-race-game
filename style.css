@@ -1078,6 +1078,16 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   padding: 8px 10px; margin-top: 8px; font-size: 13px;
   display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center;
 }
+.rc-finishstrip .rc-fs-winner { width: 100%; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  padding: 8px 12px; border-radius: 10px; color: #2a1d06; font-weight: 900;
+  background: linear-gradient(180deg, #ffe27e, #f0a838); box-shadow: 0 4px 14px -6px rgba(240,168,56,0.7);
+  animation: rcWinIn .45s cubic-bezier(.2,1.4,.4,1) both; }
+.rc-finishstrip .rc-fs-winner .rc-fs-tro { font-size: 20px; }
+.rc-finishstrip .rc-fs-winner .rc-fs-wlbl { font-size: 12px; opacity: .85; }
+.rc-finishstrip .rc-fs-winner b { font-size: 17px; }
+.rc-finishstrip .rc-fs-winner .rc-fs-hit { margin-left: auto; font-size: 12px; color: #1c5a34;
+  background: rgba(255,255,255,0.55); border-radius: 999px; padding: 2px 9px; }
+@keyframes rcWinIn { from { opacity: 0; transform: translateY(-8px) scale(.94); } to { opacity: 1; transform: none; } }
 .rc-finishstrip .rc-fs-title { color: #ffd870; font-weight: 700; width: 100%; margin-bottom: 2px; }
 .rc-finishstrip .rc-fs-row { color: #e8d0a0; white-space: nowrap; }
 .rc-finishstrip .rc-fs-row b { color: #fff; display: inline-block; min-width: 16px; }
@@ -1944,7 +1954,12 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 /* the painted key-visual already shows Mimi + dragons → hide the pixel mascot when it's present */
 .title-screen:has(.title-photo .photo-fill) .title-dragon { display: none; }
 .title-inner { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 26px 22px 40px; text-align: center; }
-.title-kicker { font-size: 12px; letter-spacing: 0.46em; text-indent: 0.46em; color: #ffd34d; font-weight: 700; opacity: 0.9; margin-bottom: 12px; }
+/* 文章コラムの背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない） */
+.title-screen:has(.title-photo .photo-fill) .title-inner::before {
+  content: ""; position: absolute; inset: -6% -4% 0; z-index: -1; border-radius: 26px;
+  background: radial-gradient(78% 66% at 50% 48%, rgba(8,9,14,0.66), rgba(8,9,14,0.30) 58%, transparent 82%);
+}
+.title-kicker { font-size: 12px; letter-spacing: 0.46em; text-indent: 0.46em; color: #ffd34d; font-weight: 700; opacity: 0.9; margin-bottom: 12px; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
 .title-logo { margin: 0; line-height: 1.0; font-weight: 900; font-size: clamp(30px, 11vw, 54px); letter-spacing: 0.02em; white-space: nowrap; }
 .title-logo .tl-mimi { margin-left: 0.12em; }
 .title-logo .tl-main {
@@ -1957,9 +1972,9 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 2px 0 rgba(110,20,58,0.55));
 }
-.title-novel { font-size: 10.5px; color: #b6b0d6; margin: 11px auto 2px; max-width: 350px; line-height: 1.55; }
+.title-novel { font-size: 10.5px; color: #d9d3f0; margin: 11px auto 2px; max-width: 350px; line-height: 1.55; text-shadow: 0 1px 3px rgba(0,0,0,0.75); }
 .title-dragon { display: block; margin: 4px auto 0; }
-.title-tagline { font-size: 15px; color: #f0eefb; margin: 4px 0 22px; line-height: 1.75; }
+.title-tagline { font-size: 15px; color: #f4f2fb; margin: 4px 0 22px; line-height: 1.75; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
 .title-tagline b { color: #ffd34d; }
 .title-cta {
   display: inline-block; min-width: 244px; padding: 16px 30px; font-size: 19px; font-weight: 800; color: #3a2200;
