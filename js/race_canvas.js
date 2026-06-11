@@ -564,6 +564,18 @@ function _rcDrawRigPart(ctx, p, color, o) {
     ctx.rotate(Math.sin(g * 0.5) * 0.03); ctx.drawImage(img, bx, by);                         // 首をごく僅かに
   } else if (p.role === 'body') {
     ctx.scale(1, 1 + Math.sin(g * 0.5) * 0.012); ctx.drawImage(img, bx, by);                  // 呼吸（僅かな伸縮）
+  } else if (p.role === 'eye') {
+    // 目を mood 別に変形（縦スケール＝まばたき/喜び/見開き、横ずれ＝泳ぐ目）。ピボット中心で変形。
+    const m = o.mood; let syE = 1, dx = 0;
+    if (m === 'joy' || m === 'relaxed') syE = 0.22;        // 笑い目 ‿
+    else if (m === 'tired' || m === 'yawn') syE = 0.42;    // 半目
+    else if (m === 'surprised') syE = 1.3;                 // 見開き
+    else if (m === 'panic') { syE = 1.12; dx = Math.sin(g * 5) * 3; }  // 泳ぐ目
+    else if (m === 'effort' || m === 'serious') syE = 0.86; // 細め（集中）
+    // 自然なまばたきを時々（gait位相で全頭ばらける）
+    const blink = Math.sin(g * 0.9 + (p.pivot.x % 7));
+    if (blink > 0.97) syE *= 0.15;
+    ctx.translate(dx, 0); ctx.scale(1, syE); ctx.drawImage(img, bx, by);
   } else {
     ctx.drawImage(img, bx, by);
   }
@@ -657,6 +669,8 @@ function rcMoodGlyph(ctx, x, y, ch, col, d) {
 }
 function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
   if (!mood) return;
+  // リグ竜では目は“目パーツ”が担う（mood別に変形）。素朴な白目overlayは描かず、漫符/効果だけ重ねる。
+  const rigEye = (typeof RC_RIG !== 'undefined' && RC_RIG && (typeof window === 'undefined' || window.RC_USE_RIG !== false));
   const d = Math.max(0.9, dep), t = now / 600;
   const _b = _rcBuildFor(col);                                 // match the sprite's per-dragon build
   const _k = RC_DRG.px * _RC_INRACE;                           // grid-cell → on-screen (in-race scale = _RC_INRACE·dep)
@@ -669,6 +683,7 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
   // super-simple old-manga eye: a big white oval + a plain dark pupil + one tiny highlight + a thin
   // delicate outline. No iris, no eyebrow, no eyelash — light and minimal.
   function openEye(pxo, pyo, scl) {
+    if (rigEye) return;                                                  // リグの目パーツが担当
     const s = scl || 1, rx = ER, ry = ER * 1.16, pupR = ER * 0.27 * s;   // small pupil
     const px = ex + (pxo == null ? 0.18 : pxo) * d, py = ey + (pyo == null ? 0.3 : pyo) * d;
     ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, 6.2832); ctx.fill();
@@ -676,7 +691,7 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
     ctx.strokeStyle = INK; ctx.lineWidth = 0.8 * d; ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, 6.2832); ctx.stroke();
   }
   // a smooth, thin closed/squint eye arc (the eye itself — no lashes)
-  function lid(yoff, curve, w) { ctx.strokeStyle = INK; ctx.lineWidth = (w || 1.2) * d; ctx.beginPath(); ctx.moveTo(ex - ER, ey + yoff * d); ctx.quadraticCurveTo(ex, ey + (yoff + curve) * d, ex + ER, ey + yoff * d); ctx.stroke(); }
+  function lid(yoff, curve, w) { if (rigEye) return; ctx.strokeStyle = INK; ctx.lineWidth = (w || 1.2) * d; ctx.beginPath(); ctx.moveTo(ex - ER, ey + yoff * d); ctx.quadraticCurveTo(ex, ey + (yoff + curve) * d, ex + ER, ey + yoff * d); ctx.stroke(); }
   if (mood === "joy") {
     lid(0.4, -3.6, 1.2);                                                                  // ‿ happy closed eye (thin)
     rcSparkle(ctx, sx, sy, 4.8 * d, "#fff0a0"); rcSparkle(ctx, sx + 5.5 * d, sy + 5 * d, 2.6 * d, "#fff7cf");
@@ -2081,15 +2096,8 @@ function startRaceCanvas(container, ctx) {
       const tkey = themeKeyAtP(P);
       const bank = tkey === "turn" ? clamp(0.42 + intensity * 0.45, 0, 1.05) : 0;
       const spread = tkey === "wind" ? clamp(0.45 + intensity * 0.4, 0, 1) : 0;
-      rcDrawDragon(cctx, {
-        x: dcx, y: spriteY, scale: sprScale,
-        color: dr.color, style: dr.style, design: dragonDesign(dr.id),
-        gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6,
-        lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
-        bank: bank, spread: spread, spin: beh.spin, squash: beh.squash, grounded: S.entryT > 0
-      });
-
       // facial expression — reflects state, course fitness, AND personality (真剣/焦り/余裕…)
+      // ※ rcDrawDragon の前に確定させ、リグの目パーツへ mood を渡して変形させる。
       const _fit = dragonFitnessAtP(dr.id, P);
       const _pd = persoOf(dr.id);
       const _nerve = (_pd.stats && _pd.stats.nerve) || 60;
@@ -2114,6 +2122,14 @@ function startRaceCanvas(container, ctx) {
         if (_mood !== st.m && (urgent || _now - st.t >= 1.1)) { st.m = _mood; st.t = _now; }
         _mood = st.m;
       }
+      rcDrawDragon(cctx, {
+        x: dcx, y: spriteY, scale: sprScale,
+        color: dr.color, style: dr.style, design: dragonDesign(dr.id),
+        gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6, mood: _mood,
+        lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
+        bank: bank, spread: spread, spin: beh.spin, squash: beh.squash, grounded: S.entryT > 0
+      });
+
       rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);
       // bet reticle (player's pick)
       if (betSet.has(dr.id)) {
