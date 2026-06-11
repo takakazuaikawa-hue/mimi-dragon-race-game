@@ -521,7 +521,6 @@ function _rcPrepRig(rig) {
   const _eye = rig.parts.find(function (p) { return p.role === 'eye'; });
   if (_eye) {
     rig._eyeC = { x: _eye.rect.x + _eye.rect.w / 2, y: _eye.rect.y + _eye.rect.h / 2 };
-    rig._mouthC = { x: rig._eyeC.x + 0.055 * rig._bbox.w, y: rig._eyeC.y + 0.05 * rig._bbox.h };  // 前(右)＋下＝口（要調整）
   }
   return rig;
 }
@@ -680,18 +679,16 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
   const d = Math.max(0.9, dep), t = now / 600;
   const _b = _rcBuildFor(col);                                 // match the sprite's per-dragon build
   const _k = RC_DRG.px * _RC_INRACE;                           // grid-cell → on-screen (in-race scale = _RC_INRACE·dep)
-  let ex, ey, mouthX, mouthY;
+  let ex, ey;
   if (rigEye && RC_RIG && RC_RIG._eyeC) {
-    // リグ竜：目/口は rcDrawDragonRig と同じ変換で“実際の目パーツ位置”から算出（grid式は約85pxずれる）
+    // リグ竜：目/漫符は rcDrawDragonRig と同じ変換で“実際の目パーツ位置”から算出（grid式は約85pxずれる）
     const bb = RC_RIG._bbox, wsc = _k * d * _b.sz * _b.sx, hsc = _k * d * _b.sz * _b.sy;
     const rsx = (RC_DRG.GW * wsc) / bb.w, rsy = (RC_DRG.GH * hsc) / bb.h;
     const ax = bb.x + (RC_DRG.anchorX / RC_DRG.GW) * bb.w, ay = bb.y + (RC_DRG.anchorY / RC_DRG.GH) * bb.h;
     ex = cx + (RC_RIG._eyeC.x - ax) * rsx; ey = cy + (RC_RIG._eyeC.y - ay) * rsy;
-    mouthX = cx + (RC_RIG._mouthC.x - ax) * rsx; mouthY = cy + (RC_RIG._mouthC.y - ay) * rsy;
   } else {
     ex = cx + (RC_DRG.eyeX - RC_DRG.anchorX) * _k * _b.sz * _b.sx * d;
     ey = cy + (RC_DRG.eyeY - RC_DRG.anchorY) * _k * _b.sz * _b.sy * d;
-    mouthX = ex + 9 * d; mouthY = ey + 3 * d;
   }
   const sx = ex + 1 * d, sy = ey - 13 * d + Math.sin(t) * 1.4;  // floating mood symbol above the head
   const INK = "#2a2030", ER = 3.85 * d;                        // soft thin ink; ER = white radius (a little smaller again)
@@ -746,23 +743,6 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
     ctx.fillText("z", sx, sy + 1 * d); ctx.fillText("z", sx + 4 * d, sy - 4.5 * d);
   } else {
     openEye();   // neutral — a clean, bright open eye so the dragon never looks blank in-race
-  }
-  // 口（リグ竜のみ）：mood で開閉する“口パク”。位置はスナウト（目の前下方・要調整値）。
-  if (rigEye) {
-    const mw = ER * 1.25, mx = mouthX, my = mouthY;
-    const open = ({ effort: 0.7, yawn: 1.0, joy: 0.5, panic: 0.62, surprised: 0.78, serious: 0.12, confused: 0.22, spin: 0.32, tired: 0.16, relaxed: 0.0, neutral: 0.0 })[mood] || 0;
-    ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
-    if (open <= 0.06) {                                            // 閉じ口：前下がりの短い線
-      ctx.strokeStyle = INK; ctx.lineWidth = 1.3 * d;
-      ctx.beginPath(); ctx.moveTo(mx - mw, my); ctx.quadraticCurveTo(mx, my + 2.2 * d, mx + mw, my + 1 * d); ctx.stroke();
-    } else {                                                       // 開き口：口内（暗）＋舌＋上顎縁
-      const oh = open * ER * 1.5;
-      ctx.fillStyle = "#3a181c";
-      ctx.beginPath(); ctx.moveTo(mx - mw, my); ctx.lineTo(mx + mw, my + 1 * d); ctx.quadraticCurveTo(mx + mw * 0.1, my + oh * 1.05, mx - mw, my); ctx.closePath(); ctx.fill();
-      if (open > 0.42) { ctx.fillStyle = "rgba(214,86,86,0.92)"; ctx.beginPath(); ctx.ellipse(mx - mw * 0.15, my + oh * 0.55, mw * 0.52, oh * 0.32, 0, 0, 6.2832); ctx.fill(); }
-      ctx.strokeStyle = INK; ctx.lineWidth = 1.3 * d; ctx.beginPath(); ctx.moveTo(mx - mw, my); ctx.lineTo(mx + mw, my + 1 * d); ctx.stroke();
-    }
-    ctx.restore();
   }
   ctx.restore();
 }
