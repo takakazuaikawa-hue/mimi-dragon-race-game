@@ -1298,6 +1298,44 @@ function renderSettings() {
   bReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
   data.appendChild(bTitle); data.appendChild(bReset);
   app.appendChild(data);
+
+  // 🛠 デバッグ（実機=スマホでも使えるよう設定内に常設。ヘッダのチェックと同期）
+  // ここでの操作は所持コイン/所持品/ランク等のメタ操作のみ＝レースの着順・オッズ・配当計算には一切触れない。
+  app.appendChild(el("div", "as-sec", "デバッグ"));
+  const dbgRow = el("div", "set-row",
+    `<span class="set-ic">🛠</span><span class="set-tx"><span class="set-nm">デバッグモード</span><span class="set-sub">開発用ツール（コイン付与など）を表示</span></span>`);
+  const dBtn = el("button", "set-toggle" + (state.ui.debug ? " on" : ""), state.ui.debug ? "ON" : "OFF");
+  dBtn.onclick = () => {
+    state.ui.debug = !state.ui.debug;
+    const cb = document.getElementById("debug-toggle"); if (cb) cb.checked = state.ui.debug;
+    if (typeof saveGame === "function") saveGame();
+    renderSettings();
+  };
+  dbgRow.appendChild(dBtn);
+  app.appendChild(dbgRow);
+  if (state.ui.debug) {
+    const grid = el("div", "set-debug");
+    const act = (label, fn) => {
+      const b = el("button", "set-dbg-b", label);
+      b.onclick = () => {
+        fn();
+        if (typeof bumpMaxCoins === "function") bumpMaxCoins();
+        if (typeof recomputeAssets === "function") recomputeAssets(state);
+        if (typeof saveGame === "function") saveGame();
+        updateHeader(); renderSettings();
+      };
+      return b;
+    };
+    grid.appendChild(act("💰 +1万", () => { state.player.coins += 10000; }));
+    grid.appendChild(act("💰 +100万", () => { state.player.coins += 1000000; }));
+    grid.appendChild(act("💰 +1億", () => { state.player.coins += 100000000; }));
+    grid.appendChild(act("🪙 コインを0に", () => { state.player.coins = 0; }));
+    grid.appendChild(act("🏅 ランク+1", () => { state.player.rank = Math.min(7, (state.player.rank || 1) + 1); }));
+    grid.appendChild(act("👗 全衣装を所持", () => { state.player.outfitsBought = OUTFITS.filter(o => o.acquire && o.acquire.price != null).map(o => o.id); }));
+    app.appendChild(grid);
+    app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク）。レースの着順・オッズ・配当の計算には触れません。"));
+  }
+
   app.appendChild(el("div", "set-ver", "聖龍爆走録ミミ"));
 
   const actions = el("div", "actions");

@@ -1539,6 +1539,12 @@ table.entry-table {
 #bet-confirm-actions { display: flex; gap: 10px; margin-top: 14px; }
 #bet-confirm-actions button { flex: 1; padding: 12px; }
 #bet-confirm-actions .bcf-go { flex: 1.6; background: linear-gradient(180deg, #ffd966, #f0a838); font-weight: 900; }
+/* 設定内デバッグツール（実機でも使える） */
+.set-debug { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 4px; }
+.set-dbg-b { padding: 11px 6px; font-size: 12.5px; border-radius: 10px; cursor: pointer;
+  background: rgba(255,216,119,.10); border: 1px solid var(--gold-line); color: var(--gold-bright); font-weight: 800; }
+.set-dbg-b:active { transform: translateY(1px); }
+@media (max-width: 420px) { .set-debug { grid-template-columns: repeat(2, 1fr); } }
 
 #event-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
