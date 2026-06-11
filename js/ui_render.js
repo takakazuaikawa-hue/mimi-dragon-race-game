@@ -136,7 +136,7 @@ function renderTitle() {
       <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
       <div class="title-tagline">市場のオッズと、真の実力。<br>その<b>ズレ</b>を読み切れ。</div>
       <div class="title-actions"></div>
-      <div class="title-foot">v0.1 ・ ぱほぱほスタジオ</div>
+      <div class="title-foot">v1.0 ・ ぱほぱほスタジオ</div>
     </div>`;
   app.appendChild(wrap);
 
@@ -281,53 +281,10 @@ function renderHome() {
   let nearest = null;
   try { const goals = (typeof nextGoals === "function") ? nextGoals(state) : []; nearest = goals[0] || null; } catch (e) {}
 
-  // full-screen decorative backdrop (drop images/home_bg.jpg to layer a painting on the gradient)
-  const bg = el("div", "hr2-bg");
-  bg.innerHTML = (typeof photoOr === "function" ? photoOr("images/home_bg.jpg", "") : "");
-  app.appendChild(bg);
-
-  const wrap = el("div", "hr2");
-
-  // top: small system buttons (with margin), kept out of the way
-  const top = el("div", "hr2-top");
-  const bTitle = el("button", "hr2-topbtn", "🏠 タイトル"); bTitle.onclick = () => renderTitle();
-  const bReset = el("button", "hr2-topbtn", "🔄 リセット");
-  bReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
-  top.appendChild(bTitle); top.appendChild(bReset);
-  wrap.appendChild(top);
-
-  // center stage: 竜マスコット＋ミミの立ち絵（着用中の衣装を反映）＋コンパクトなステータス
-  const stage = el("div", "hr2-stage");
-  const cast = el("div", "hr2-cast");
-  const oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "buniqro";
-  const mimi = el("div", "hr2-mimi");
-  // 透過立ち絵：切り抜き版(_cut)を優先、無ければ元画像(smileは buniqro/dara が既に透過)へフォールバック
-  const _cutSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile_cut") : "";
-  const _origSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile") : "";
-  mimi.innerHTML = "<img alt='ミミ' src='" + _cutSrc + "' onerror=\"this.onerror=null;this.src='" + _origSrc + "'\">";
-  mimi.title = "ショッピングモール（きせかえ）へ";
-  mimi.onclick = () => renderMall();
-  const dragonImg = el("div", "hr2-dragon");
-  const dragonCv = document.createElement("canvas");
-  dragonCv.className = "hr2-dragon-cv"; dragonCv.width = 384; dragonCv.height = 256;
-  dragonImg.appendChild(dragonCv);
-  const _dImg = new Image();
-  _dImg.onload = function () { startDragonWarp(dragonCv, _dImg); };
-  _dImg.onerror = function () { _dImg.onerror = function () { dragonImg.innerHTML = "<span class='hr2-dragon-fallback'>🐉</span>"; }; _dImg.src = "images/dragon_ref/ref.png"; };   // webp→png→絵文字
-  _dImg.src = "images/dragon_ref/ref.webp";
-  cast.appendChild(mimi);
-  cast.appendChild(dragonImg);
-  stage.appendChild(cast);
-  // アイドル演出（研究反映：多重サイン呼吸＋体重移動＋バネ式視線追従）。pointerはgaze目標だけ更新。
-  const _mimiImg = mimi.querySelector("img");
-  stage.addEventListener("pointermove", function (e) {
-    const r = mimi.getBoundingClientRect(); if (!r.width) return;
-    _mimiGaze.tx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2)));
-    _mimiGaze.ty = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2)));
-  });
-  stage.addEventListener("pointerleave", function () { _mimiGaze.tx = 0; _mimiGaze.ty = 0; });
-  startMimiIdle(mimi, _mimiImg);
-
+  // ===== TikTokライブ風ホーム =====================================
+  // コンセプト：ミミの“配信”を見ている画面。背景ぶち抜き（全画面）＋大立ち絵＋
+  // ライブ演出（LIVEバッジ/視聴者数/流れるコメント/ハート）。すべて表示専用 ——
+  // レース数値・進行・経済には一切干渉しない。ホーム離脱でタイマー/演出は自動停止。
   let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
     : (stageLabel ? "暮らし：" + stageLabel : "");
   if (nextT) goalLine += (goalLine ? "　" : "") + "（次まで " + fmtCoins(Math.max(0, nextT - total)) + "）";
@@ -339,52 +296,187 @@ function renderHome() {
       if (_sk && p.activeSkills && (p.activeSkills[_sk.id] || 0) >= _sk.levels.length) eqTitle = _sk.title;
     }
   } catch (e) {}
-  const status = el("div", "hr2-status");
-  status.innerHTML =
-    `<div class="hr2-greet">ようこそ、聖龍都市へ</div>` +
-    `<div class="hr2-name">予想家 ミミ${eqTitle ? ` <span class="hr2-title">🏅「${eqTitle}」</span>` : ""}</div>` +
-    `<div class="hr2-rankrow">ランク <b>${p.rank}</b>${rankLabel ? " " + rankLabel : ""}` +
-      `${p.streak >= 2 ? ` <span class="hr2-streak">🔥${p.streak}連勝</span>` : ""}</div>` +
-    `<div class="hr2-coins"><span>所持コイン </span><b>${fmtCoins(p.coins)}</b></div>` +
-    `<div class="hr2-assets"><div class="hr2-arow"><span>総資産（再起度）</span><b>${fmtCoins(total)}</b></div>` +
-      `<div class="hr2-bar"><div class="hr2-fill" style="width:${fillPct}%"></div></div>` +
-      `<div class="hr2-goal">${goalLine}</div></div>` +
-    `<div class="hr2-rec"><div><span>出走</span><b>${p.completedRaces}</b></div><div><span>単勝</span><b>${p.wins}</b></div>` +
-      `<div><span>勝率</span><b>${winRate}%</b></div><div><span>最高配当</span><b>${fmtCoins(p.biggestPayout || 0)}</b></div></div>`;
-  const fa = status.querySelector(".hr2-assets"); if (fa) fa.onclick = () => renderAssets();
-  stage.appendChild(status);
+
+  // 背景ぶち抜き：home_bg.jpg（任意ドロップイン）→ racebg/fire.webp（火山の夜景）
+  const bg = el("div", "hl-bg");
+  bg.innerHTML =
+    `<img class="hl-bg-img" alt="" decoding="async" src="images/home_bg.jpg"` +
+    ` onerror="this.onerror=null;this.src='images/racebg/fire.webp'">` +
+    `<div class="hl-bg-scrim"></div>`;
+  app.appendChild(bg);
+
+  const wrap = el("div", "hl");
+
+  // ── 上段：配信者チップ（タップ＝暮らし）＋ LIVE ＋ 視聴者数 ＋ ⋯システム
+  const top = el("div", "hl-top");
+  const prof = el("button", "hl-prof");
+  prof.innerHTML =
+    `<span class="hl-prof-av">🐰</span>` +
+    `<span class="hl-prof-tx"><b>予想家ミミ${eqTitle ? `<i class="hl-prof-title">🏅${eqTitle}</i>` : ""}</b>` +
+    `<small>ランク${p.rank}${rankLabel ? " " + rankLabel : ""}${p.streak >= 2 ? `・🔥${p.streak}連勝` : ""}</small></span>` +
+    `<span class="hl-live">LIVE</span>`;
+  prof.onclick = () => renderAssets();
+  top.appendChild(prof);
+  const viewersEl = el("div", "hl-viewers", "👁 <b></b>");
+  top.appendChild(viewersEl);
+  const sysWrap = el("div", "hl-syswrap");
+  const sysBtn = el("button", "hl-sys", "⋯");
+  const sysDd = el("div", "hl-dd hidden");
+  const ddTitle = el("button", null, "🏠 タイトルへ"); ddTitle.onclick = () => renderTitle();
+  const ddReset = el("button", null, "🔄 データをリセット");
+  ddReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
+  sysDd.appendChild(ddTitle); sysDd.appendChild(ddReset);
+  sysBtn.onclick = (e) => { e.stopPropagation(); sysDd.classList.toggle("hidden"); };
+  sysWrap.appendChild(sysBtn); sysWrap.appendChild(sysDd);
+  top.appendChild(sysWrap);
+  wrap.appendChild(top);
+
+  // ── ステージ：ミミの大立ち絵（中央やや右・タップ＝モール）＋竜マスコット＋コメント＋ハート
+  const stage = el("div", "hl-stage");
+  const oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "buniqro";
+  // 外側=配置（left/translateX）・内側=アイドル演出のtransform先 — 競合させない
+  const mimi = el("div", "hl-mimi");
+  const mimiIn = el("div", "hl-mimi-in");
+  const _cutSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile_cut") : "";
+  const _origSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile") : "";
+  mimiIn.innerHTML =
+    "<img alt='ミミ' src='" + _cutSrc + "' onerror=\"this.onerror=null;this.src='" + _origSrc + "'\">" +
+    "<span class='hl-mimi-tag'>🛍️ きせかえ</span>";
+  mimi.appendChild(mimiIn);
+  mimi.title = "ショッピングモール（きせかえ）へ";
+  mimi.onclick = () => renderMall();
+  stage.appendChild(mimi);
+
+  const dragonImg = el("div", "hl-dragon");
+  const dragonCv = document.createElement("canvas");
+  dragonCv.width = 384; dragonCv.height = 256;
+  dragonImg.appendChild(dragonCv);
+  const _dImg = new Image();
+  _dImg.onload = function () { startDragonWarp(dragonCv, _dImg); };
+  _dImg.onerror = function () { _dImg.onerror = function () { dragonImg.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = "images/dragon_ref/ref.png"; };   // webp→png→絵文字
+  _dImg.src = "images/dragon_ref/ref.webp";
+  stage.appendChild(dragonImg);
+
+  const cms = el("div", "hl-comments");
+  stage.appendChild(cms);
+  wrap.appendChild(stage);
+
+  // アイドル演出（多重サイン呼吸＋体重移動＋バネ式視線追従）。pointerはgaze目標だけ更新。
+  const _mimiImg = mimiIn.querySelector("img");
+  stage.addEventListener("pointermove", function (e) {
+    const r = mimi.getBoundingClientRect(); if (!r.width) return;
+    _mimiGaze.tx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2)));
+    _mimiGaze.ty = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2)));
+  });
+  stage.addEventListener("pointerleave", function () { _mimiGaze.tx = 0; _mimiGaze.ty = 0; });
+  startMimiIdle(mimiIn, _mimiImg);
+
+  // ── ライブ演出（表示専用）：視聴者数・コメント・ハート。離脱でタイマー停止。
+  if (window._hlTimers) window._hlTimers.forEach(clearInterval);
+  window._hlTimers = [];
+  const _reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const _fame = (state.assets && state.assets.fameValue) || 0;
+  let _viewers = 380 + p.rank * 260 + ((p.villageLevel || 1) * 180) + Math.min(4000, p.completedRaces * 6) + Math.floor(_fame / 50);
+  const _fmtV = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
+  const _vB = viewersEl.querySelector("b");
+  _vB.textContent = _fmtV(_viewers);
+  window._hlTimers.push(setInterval(() => {
+    if (state.ui.screen !== "home") { window._hlTimers.forEach(clearInterval); return; }
+    _viewers = Math.max(120, Math.round(_viewers * (1 + (Math.random() - 0.48) * 0.05)));
+    _vB.textContent = _fmtV(_viewers);
+  }, 2600));
+
+  const _CMN = ["竜見の村人", "観客アヤ", "常連のジジ", "旅の予想屋", "バニー推し", "島っ子", "屋台のおやじ", "夜勤あけ", "遠征組", "はじめて見た"];
+  const _CMC = ["#57b1dd", "#6ac06a", "#e0a0c0", "#caa44a", "#9a6ad0", "#ff9a5c"];
+  const _CMT = ["ミミちゃん今日も推す！", "初見です！よろしく！", "🐲🐲🐲", "ぱほぱほ〜！", "今日こそ波乱こい", "本命党です", "穴党ですが何か", "耳ぴょこぴょこかわいい", "その衣装どこで買ったの？", "レースまだかな", "🔥🔥🔥", "💖💖", "ポロちゃん推し", "オッズ見てから来た", "村から応援してます", "🥕どうぞ", "昨日の波乱すごかった", "おやつ持ってきた", "今日の本命教えて", "かわいいの域を超えてる"];
+  function _addCm(name, color, text) {
+    const d = el("div", "hl-cm", `<b style="color:${color}">${name}</b>${text}`);
+    cms.appendChild(d);
+    while (cms.children.length > 6) cms.removeChild(cms.firstChild);
+  }
+  function _randCm() {
+    // 出会い済みの顧問がたまに登場（雰囲気のみ・表示専用）
+    try {
+      const met = Object.keys(STORY_CAST).filter(k => (p.totalAssets || 0) >= castUnlockAt(k));
+      if (met.length && Math.random() < 0.16) {
+        const c = STORY_CAST[met[Math.floor(Math.random() * met.length)]];
+        let t = (STORY_RACE_VOICE && STORY_RACE_VOICE[c.key]) || c.gives;
+        if (t.length > 34) t = t.slice(0, 33) + "…";
+        _addCm(c.symbol + c.name.split("・")[0], c.color, t);
+        return;
+      }
+    } catch (e) {}
+    _addCm(_CMN[Math.floor(Math.random() * _CMN.length)], _CMC[Math.floor(Math.random() * _CMC.length)], _CMT[Math.floor(Math.random() * _CMT.length)]);
+  }
+  _randCm(); setTimeout(_randCm, 900);
+  window._hlTimers.push(setInterval(() => {
+    if (state.ui.screen !== "home") return;
+    if (Math.random() < 0.7) _randCm();
+  }, 3300));
+
+  function _heart(x, y) {
+    const h = document.createElement("span");
+    h.className = "hl-heart";
+    h.textContent = ["💖", "💛", "🧡", "💚", "💙", "🤍", "✨"][Math.floor(Math.random() * 7)];
+    h.style.left = x + "px"; h.style.top = y + "px";
+    h.style.setProperty("--dx", (Math.random() * 48 - 24).toFixed(0) + "px");
+    h.style.setProperty("--rz", (Math.random() * 40 - 20).toFixed(0) + "deg");
+    h.style.fontSize = (15 + Math.random() * 14).toFixed(0) + "px";
+    stage.appendChild(h);
+    h.addEventListener("animationend", () => h.remove());
+  }
+  stage.addEventListener("pointerdown", (e) => {
+    if (_reduce) return;
+    const r = stage.getBoundingClientRect();
+    const n = 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < n; i++) _heart(e.clientX - r.left + (Math.random() * 18 - 9), e.clientY - r.top);
+  });
+  if (!_reduce) window._hlTimers.push(setInterval(() => {
+    if (state.ui.screen !== "home") return;
+    const r = stage.getBoundingClientRect();
+    if (r.width) _heart(r.width * (0.84 + Math.random() * 0.1), r.height * (0.55 + Math.random() * 0.3));
+  }, 3800));
+
+  // ── 下段ドック：チップ（コイン/総資産/戦績）→ 無心 → レースCTA → ナビ
+  const dock = el("div", "hl-dock");
+  const chips = el("div", "hl-chips");
+  chips.innerHTML =
+    `<div class="hl-chip hl-chip-coin">🪙 <b>${fmtCoins(p.coins)}</b></div>` +
+    `<button class="hl-chip hl-chip-assets"><span class="t">総資産 <b>${fmtCoins(total)}</b></span>` +
+      `<span class="bar"><span style="width:${fillPct}%"></span></span></button>` +
+    `<div class="hl-chip hl-chip-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>`;
+  chips.querySelector(".hl-chip-assets").onclick = () => renderAssets();
+  dock.appendChild(chips);
+  if (goalLine) dock.appendChild(el("div", "hl-goal", "🎯 " + goalLine));
 
   // §38 — 破産時：最優先で「無心」導線
   if (p.coins <= 0) {
     const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
-    const broke = el("button", "hr2-broke", `🙏 無心する　基準額 ${fmtCoins(begAmt)} 相当`);
+    const broke = el("button", "hl-broke", `🙏 無心する　基準額 ${fmtCoins(begAmt)} 相当`);
     broke.onclick = () => showMushinOverlay();
-    stage.appendChild(broke);
+    dock.appendChild(broke);
   }
-  wrap.appendChild(stage);
 
-  // bottom: important buttons as a menu (minimal text; tap → description + 進む/キャンセル)
-  const menu = el("div", "hr2-menu");
-  const raceBtn = el("button", "hr2-race", "🐉 レースへ進む");
+  const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
   raceBtn.onclick = () => renderRaceSelect();
-  menu.appendChild(raceBtn);
+  dock.appendChild(raceBtn);
 
-  const grid = el("div", "hr2-grid");
+  const rail = el("div", "hl-rail");
   const navItem = (icon, label, desc, go) => {
-    const b = el("button", "hr2-item", `<span class="ic">${icon}</span><span class="lb">${label}</span>`);
+    const b = el("button", "hl-item", `<span class="ic">${icon}</span><span class="lb">${label}</span>`);
     b.onclick = () => showNavConfirm(icon, label, desc, go);
     return b;
   };
-  grid.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
-  grid.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
-  grid.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  grid.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
-  grid.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
-  grid.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
-  grid.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
-  grid.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
-  menu.appendChild(grid);
-  wrap.appendChild(menu);
+  rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
+  rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
+  rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
+  rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
+  rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
+  rail.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
+  rail.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
+  rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
+  dock.appendChild(rail);
+  wrap.appendChild(dock);
 
   app.appendChild(wrap);
 }
@@ -1196,41 +1288,83 @@ function renderMall() {
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   const app = beginScreen();   // 上部に「← ホーム」
   app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
-  app.appendChild(el("div", "as-hint2", `ミミのきせかえ　<span class="as-hint">着替えは無料。所持衣装はいつでも切替OK。レース結果には影響しません。</span>`));
+  app.appendChild(el("div", "as-hint2", `ミミのきせかえ　<span class="as-hint">試着は自由・着替えは無料。レース結果には影響しません。</span>`));
 
   const worn = currentOutfitId();
-  const wo = outfitById(worn);
-  app.appendChild(el("div", "mall-preview",
-    `<div class="mall-prev-img">${photoOr(outfitImg(worn, "smile"), "<span class='mall-fallback'>🐰</span>")}</div>` +
-    `<div class="mall-prev-tx"><div class="mall-prev-lbl">いま着ているのは</div>` +
-      `<div class="mall-prev-nm">${wo.name}</div><div class="mall-prev-fl">${wo.flavor}</div></div>`));
+  if (!state.ui.mallSel || !OUTFITS.some(o => o.id === state.ui.mallSel)) state.ui.mallSel = worn;
+  if (!state.ui.mallExpr) state.ui.mallExpr = "smile";
+  const sel = outfitById(state.ui.mallSel);
+  const owned = outfitOwned(sel);
+  const isWorn = sel.id === worn;
 
-  const grid = el("div", "mall-grid");
-  OUTFITS.forEach(o => {
-    const owned = outfitOwned(o);
-    const isWorn = o.id === worn;
-    const card = el("div", "mall-card" + (isWorn ? " worn" : "") + (owned ? "" : " locked"));
-    let foot;
-    if (isWorn) foot = `<div class="mall-foot is-worn">✓ 着用中</div>`;
-    else if (owned) foot = `<button class="mall-btn wear">着替える</button>`;
-    else if (o.acquire.price != null) {
-      const poor = (state.player.coins || 0) < o.acquire.price;
-      foot = `<button class="mall-btn buy${poor ? " poor" : ""}">🛒 ${fmtCoins(o.acquire.price)}</button>`;
-    } else if (o.acquire.assets != null) {
-      foot = `<div class="mall-foot lock">総資産 ${fmtCoins(o.acquire.assets)} で解放</div>`;
-    } else foot = "";
-    card.innerHTML =
-      `<div class="mall-card-img">${photoOr(outfitImg(o.id, "default"), "<span class='mall-fallback'>🐰</span>")}</div>` +
-      `<div class="mall-card-nm">${o.name}</div>` +
-      `<div class="mall-card-fl">${o.flavor}</div>` + foot;
-    const wb = card.querySelector(".wear");
-    if (wb) wb.onclick = () => { wearOutfit(o.id); if (window.Sfx) Sfx.play("click"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(o)); renderMall(); };
-    const bb = card.querySelector(".buy");
-    if (bb) bb.onclick = () => {
-      const r = buyOutfit(o.id);
-      if (r.ok) { wearOutfit(o.id); if (window.Sfx) Sfx.play("coin"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(o)); renderMall(); }
+  // ── 試着室：大プレビュー（表情切替）＋情報＋CTA。未所持でも試着できる（表示のみ）。
+  const fit = el("div", "card mall-fit");
+  const stage = el("div", "mall-fit-stage");
+  const img = el("div", "mall-fit-img");
+  const _src = outfitImg(sel.id, state.ui.mallExpr);
+  const _fb = outfitImg(sel.id, "smile");
+  img.innerHTML =
+    `<img alt="${sel.name}" src="${_src}" onerror="this.onerror=null;this.src='${_fb}'">` +
+    (isWorn ? `<span class="mall-badge worn">✓ 着用中</span>` : (owned ? "" : `<span class="mall-badge tryon">試着中</span>`));
+  stage.appendChild(img);
+  const seg = el("div", "mall-expr");
+  [["smile", "😊 にこ"], ["happy", "🌟 よろこび"], ["panic", "💦 あせり"], ["default", "😐 すまし"]].forEach(([k, lb]) => {
+    const b = el("button", "mall-expr-b" + (state.ui.mallExpr === k ? " on" : ""), lb);
+    b.onclick = () => { state.ui.mallExpr = k; renderMall(); };
+    seg.appendChild(b);
+  });
+  stage.appendChild(seg);
+  fit.appendChild(stage);
+
+  const info = el("div", "mall-fit-info");
+  let acq;
+  if (sel.acquire.free) acq = "いつでも着られる基本衣装";
+  else if (sel.acquire.price != null) acq = owned ? "購入済み" : `価格 <b>${fmtCoins(sel.acquire.price)}</b>（所持 ${fmtCoins(state.player.coins || 0)}）`;
+  else if (sel.acquire.assets != null) acq = owned ? "解放済み" : `総資産 <b>${fmtCoins(sel.acquire.assets)}</b> で解放（現在 ${fmtCoins(state.player.totalAssets || 0)}）`;
+  else acq = "";
+  info.innerHTML =
+    `<div class="mall-fit-nm">${sel.name}</div>` +
+    `<div class="mall-fit-fl">${sel.flavor}</div>` +
+    `<div class="mall-fit-acq">${acq}</div>`;
+  const cta = el("div", "mall-fit-cta");
+  if (isWorn) {
+    cta.appendChild(el("div", "mall-foot is-worn", "✓ いま着ています"));
+  } else if (owned) {
+    const wb = el("button", "mall-btn wear", "この服に着替える");
+    wb.onclick = () => { wearOutfit(sel.id); if (window.Sfx) Sfx.play("click"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); };
+    cta.appendChild(wb);
+  } else if (sel.acquire.price != null) {
+    const poor = (state.player.coins || 0) < sel.acquire.price;
+    const bb = el("button", "mall-btn buy" + (poor ? " poor" : ""), `🛒 ${fmtCoins(sel.acquire.price)} で購入して着替える`);
+    bb.onclick = () => {
+      const r = buyOutfit(sel.id);
+      if (r.ok) { wearOutfit(sel.id); if (window.Sfx) Sfx.play("coin"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); }
       else if (r.reason === "poor") alert("コインが足りません。");
     };
+    cta.appendChild(bb);
+  } else if (sel.acquire.assets != null) {
+    cta.appendChild(el("div", "mall-foot lock", `🔒 総資産 ${fmtCoins(sel.acquire.assets)} で解放`));
+  }
+  info.appendChild(cta);
+  fit.appendChild(info);
+  app.appendChild(fit);
+
+  // ── 衣装一覧（タップで試着室へ反映）
+  const grid = el("div", "mall-grid");
+  OUTFITS.forEach(o => {
+    const oOwned = outfitOwned(o);
+    const oWorn = o.id === worn;
+    const card = el("button", "mall-card" + (oWorn ? " worn" : "") + (oOwned ? "" : " locked") + (o.id === sel.id ? " sel" : ""));
+    let chip;
+    if (oWorn) chip = `<span class="mall-chip worn">着用中</span>`;
+    else if (oOwned) chip = `<span class="mall-chip owned">所持</span>`;
+    else if (o.acquire.price != null) chip = `<span class="mall-chip price">${fmtCoins(o.acquire.price)}</span>`;
+    else if (o.acquire.assets != null) chip = `<span class="mall-chip lock">🔒</span>`;
+    else chip = "";
+    card.innerHTML =
+      `<div class="mall-card-img">${photoOr(outfitImg(o.id, "default"), "<span class='mall-fallback'>🐰</span>")}</div>` +
+      `<div class="mall-card-nm">${o.name}</div>` + chip;
+    card.onclick = () => { state.ui.mallSel = o.id; if (window.Sfx) Sfx.play("click"); renderMall(); };
     grid.appendChild(card);
   });
   app.appendChild(grid);
@@ -2306,12 +2440,15 @@ function updateExpected() {
 
   const box = $("expected-payout");
   const confirmBtn = $("bet-confirm");
+  const wagerEl = $("wager");
   box.style.color = "";                             // clear any prior inline error tint
   box.classList.remove("empty", "valid", "invalid");
+  if (wagerEl) wagerEl.classList.remove("invalid");
   const setHint = (cls, msg) => {
     box.classList.add(cls);
     box.innerHTML = `<div class="po-hint">${msg}</div>`;
     if (confirmBtn) confirmBtn.disabled = true;
+    if (wagerEl && cls === "invalid") wagerEl.classList.add("invalid");   // 入力欄にも赤枠で即時フィードバック
   };
 
   // 1) incomplete selection → friendly prompt, confirm stays disabled
@@ -2465,22 +2602,24 @@ function showBetConfirm() {
   const overlay = document.getElementById("event-overlay");
   document.getElementById("event-speaker").textContent = "賭けの確認";
   document.getElementById("event-text").innerHTML =
-    `<b>${typeLabel}</b> ／ ${sel}<br>賭金: <b>${fmtCoins(c.bet.wager)}</b>コイン<br>` +
-    `オッズ: <b>${odds.toFixed(1)}</b>倍<br>的中時払戻: <b>${fmtCoins(payout)}</b>コイン<br><br>` +
-    `この賭けで出走しますか？`;
-  // Swap close button for two buttons
+    `<div class="bcf-row"><span class="k">賭式</span><b>${typeLabel}</b></div>` +
+    `<div class="bcf-row"><span class="k">選択</span><b>${sel}</b></div>` +
+    `<div class="bcf-row"><span class="k">賭金</span><b>${fmtCoins(c.bet.wager)} コイン</b></div>` +
+    `<div class="bcf-row"><span class="k">オッズ</span><b>${odds.toFixed(1)} 倍</b></div>` +
+    `<div class="bcf-pay">的中時払戻 <b>${fmtCoins(payout)}</b> コイン</div>` +
+    `<div class="bcf-q">この賭けで出走しますか？</div>`;
+  // Swap close button for two buttons（出走＝主ボタン／やめる＝副）
   const closeBtn = document.getElementById("event-close");
   closeBtn.style.display = "none";
   let existing = document.getElementById("bet-confirm-actions");
   if (existing) existing.remove();
   const actions = document.createElement("div");
   actions.id = "bet-confirm-actions";
-  actions.style.display = "flex"; actions.style.gap = "10px"; actions.style.marginTop = "12px";
-  const yes = document.createElement("button"); yes.textContent = "出走する";
-  yes.onclick = () => { closeBetConfirm(); onConfirmBet(true); };
   const no = document.createElement("button"); no.textContent = "やめる"; no.className = "secondary";
   no.onclick = () => { closeBetConfirm(); };
-  actions.appendChild(yes); actions.appendChild(no);
+  const yes = document.createElement("button"); yes.textContent = "🐉 出走する"; yes.className = "bcf-go";
+  yes.onclick = () => { closeBetConfirm(); onConfirmBet(true); };
+  actions.appendChild(no); actions.appendChild(yes);
   closeBtn.parentNode.appendChild(actions);
   overlay.classList.remove("hidden");
 }
@@ -3361,7 +3500,7 @@ function countUp(node, to, dur) {
     const p = Math.min(1, (now - start) / dur);
     const eased = 1 - Math.pow(1 - p, 3);
     node.textContent = fmtCoins(Math.round(to * eased));
-    if (window.Sfx && p < 1 && now - lastTick > 70) { lastTick = now; Sfx.play("tick"); }
+    if (window.Sfx && p < 1 && now - lastTick > 110) { lastTick = now; Sfx.play("tick"); }   // 高額時の連打音を抑制
     if (p < 1) requestAnimationFrame(frame);
     else node.textContent = fmtCoins(to);
   })(start);
@@ -3376,7 +3515,7 @@ function spawnConfetti(container, n, tier) {
     const p = document.createElement("i");
     p.className = "rs-confetto";
     const left = Math.random() * 100;
-    const dur = 1.1 + Math.random() * 1.1;
+    const dur = 1.0 + tier * 0.28 + Math.random() * 1.0;   // 大当たりほど長く舞う
     const delay = Math.random() * 0.5;
     const size = 5 + Math.random() * (tier >= 3 ? 8 : 5);
     const rot = (Math.random() * 720 - 360) | 0;
