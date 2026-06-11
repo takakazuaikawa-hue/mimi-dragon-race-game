@@ -352,10 +352,9 @@ function renderHome() {
   const dragonCv = document.createElement("canvas");
   dragonCv.width = 384; dragonCv.height = 256;
   dragonImg.appendChild(dragonCv);
-  const _dImg = new Image();
-  _dImg.onload = function () { startDragonWarp(dragonCv, _dImg); };
-  _dImg.onerror = function () { _dImg.onerror = function () { dragonImg.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = "images/dragon_ref/ref.png"; };   // webp→png→絵文字
-  _dImg.src = "images/dragon_ref/ref.webp";
+  // Live2Dリグ竜（頭/胴/翼/尾＋羽ばたき）。ランタイム/リグ無ければ従来warpへ自動フォールバック。
+  if (window.DragonL2) DragonL2.mountOrWarp(dragonCv, "images/dragon_ref/ref.webp", "home");
+  else { const _dImg = new Image(); _dImg.onload = function () { startDragonWarp(dragonCv, _dImg); }; _dImg.onerror = function () { dragonImg.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = "images/dragon_ref/ref.webp"; }
   stage.appendChild(dragonImg);
 
   const cms = el("div", "hl-comments");
@@ -2705,10 +2704,9 @@ function renderRaceRun() {
     _rcMas.width = 192; _rcMas.height = 128;
     _rcMas.style.cssText = "position:absolute;right:8px;bottom:8px;width:112px;height:74px;z-index:6;pointer-events:none;opacity:.92;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45))";
     _rcStage.appendChild(_rcMas);
-    const _rcDrg = new Image();
-    _rcDrg.onload = function () { startDragonWarp(_rcMas, _rcDrg, "race_run"); };
-    _rcDrg.onerror = function () { _rcDrg.onerror = function () { _rcMas.remove(); }; _rcDrg.src = "images/dragon_ref/ref.png"; };
-    _rcDrg.src = "images/dragon_ref/ref.webp";
+    // Live2Dリグ竜（表示専用）。ランタイム/リグ無ければ従来warpへ自動フォールバック。
+    if (window.DragonL2) DragonL2.mountOrWarp(_rcMas, "images/dragon_ref/ref.webp", "race_run");
+    else { const _rcDrg = new Image(); _rcDrg.onload = function () { startDragonWarp(_rcMas, _rcDrg, "race_run"); }; _rcDrg.onerror = function () { _rcMas.remove(); }; _rcDrg.src = "images/dragon_ref/ref.webp"; }
   } catch (e) {}
 }
 
