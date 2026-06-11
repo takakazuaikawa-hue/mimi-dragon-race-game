@@ -487,7 +487,7 @@ function renderHome() {
   let _speechT = 0;
   function mimiSay(text, ms) {
     if (!text) return;
-    try { if (window.Sfx) Sfx.play("paho"); } catch (e) {}   // ① ぱほぱほ♪の合いの手SE（ミュート設定に従う）
+    // （ホームのSEは撤去：mimiSayは自動バンター/ギフト/反応で頻発し「うるさい」ため鳴らさない）
     clearTimeout(_speechT);
     speech.textContent = text;
     speech.classList.remove("hidden", "out");
