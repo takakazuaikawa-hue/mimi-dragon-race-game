@@ -1806,10 +1806,24 @@ function startRaceCanvas(container, ctx) {
       cctx.beginPath(); cctx.arc(tx + 13, g.top - 50, 7, 0, Math.PI * 2); cctx.fill();
       cctx.fillStyle = "#181d33";
       cctx.fillRect(0, g.top - 6, cw, 10);
+      // 観客帯：2列・色とりどり・そわそわ揺れ。ゴールが近づくほど沸く（S._finishFadeで増幅）。
+      const tNow = performance.now() / 1000;
+      const surge = 0.8 + (S._finishFade || 0) * 2.4;
       const crowdScroll = (S.camL * 560) % 14;
-      for (let x = -crowdScroll; x < cw; x += 14) {
-        cctx.fillStyle = ["#3a4474", "#46406e", "#523b5e", "#3e4a6b"][(Math.floor(x) % 4 + 4) % 4];
-        cctx.beginPath(); cctx.arc(x, g.top - 2, 3, 0, Math.PI * 2); cctx.fill();
+      let ci = 0;
+      for (let x = -crowdScroll; x < cw; x += 7, ci++) {
+        const row = ci % 2, cy0 = g.top - 2 - row * 4;
+        const jig = Math.sin(tNow * (2.2 + row) + x * 0.61) * surge - (row ? 0.6 : 0);
+        cctx.fillStyle = ["#3a4474", "#5a4a86", "#6e4a5e", "#3e5a7b", "#4a6a52", "#7a5a40"][((ci * 7 + row * 3) % 6 + 6) % 6];
+        cctx.beginPath(); cctx.arc(x, cy0 + jig, row ? 2.4 : 3, 0, Math.PI * 2); cctx.fill();
+      }
+      // ゴールの沸き：小さな腕が上がる（終盤のみ・表示専用）
+      if ((S._finishFade || 0) > 0.5) {
+        cctx.strokeStyle = "rgba(255,230,170,0.5)"; cctx.lineWidth = 1;
+        for (let x = -crowdScroll + 3; x < cw; x += 21) {
+          const a = Math.sin(tNow * 6 + x) * 2;
+          cctx.beginPath(); cctx.moveTo(x, g.top - 5); cctx.lineTo(x + a, g.top - 10 - Math.abs(a)); cctx.stroke();
+        }
       }
     }
 
@@ -1833,6 +1847,12 @@ function startRaceCanvas(container, ctx) {
         cctx.fill();
       }
       cctx.globalAlpha = 1;
+      // 柵ポスト：旗と同レートで流れる白い支柱（地面と同平面の速度手掛かり）
+      cctx.strokeStyle = "rgba(235,240,255,0.34)"; cctx.lineWidth = 2;
+      for (let k = 0; k * 60 <= cw + 60; k++) {
+        const wi2 = Math.floor(pScroll / 60) + k, x2 = wi2 * 60 - pScroll;
+        cctx.beginPath(); cctx.moveTo(x2, railY); cctx.lineTo(x2, g.top + 2); cctx.stroke();
+      }
     }
 
     // ============ WORLD GROUP (dynamic camera: zoom + pan + shake) ============
@@ -1864,6 +1884,19 @@ function startRaceCanvas(container, ctx) {
     for (let i = 0; i < 8; i++) {
       cctx.fillStyle = (i % 2 === 0) ? "rgba(255,255,255,0.030)" : "rgba(0,26,12,0.06)";
       cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH + 0.5);
+    }
+    // 路面フレック（小石/土）：世界座標に固定→カメラと一緒に流れる＝地面の速度感。
+    // 世界indexの決定的ハッシュで配置（フレーム間でちらつかない）。
+    {
+      const stepP = 0.004, k0 = Math.floor((S.camL - 0.06) / stepP);
+      const nK = Math.ceil((WINW + 0.12) / stepP);
+      for (let k = 0; k <= nK; k++) {
+        const wi = k0 + k, P = wi * stepP;
+        const hx = (((wi * 2654435761) >>> 0) % 10000) / 10000;
+        const px = screenX(P, WINW), py = g.top + 2 + hx * (g.bottom - g.top - 4) + trackBendY(P);
+        cctx.fillStyle = hx > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,20,10,0.08)";
+        cctx.fillRect(px, py, hx > 0.75 ? 2 : 1.3, 1.2);
+      }
     }
     {
       const ts = cctx.createLinearGradient(0, g.top, 0, g.bottom);
