@@ -87,4 +87,12 @@
   };
 
   global.DLG = DLG;
+
+  // 顧問のフル立ち絵（images/cast/stand/<key>.webp）をVNセリフに登録 —— 顔アイコンでなく
+  // 全身立ち絵で表示される（404時は従来どおり絵文字シンボルへ自動フォールバック）。
+  if (global.Dialogue && global.Dialogue.registerCast) {
+    ["sake", "mizu", "sumika", "makura", "celestia"].forEach(function (k) {
+      global.Dialogue.registerCast(k, { img: "images/cast/stand/" + k + ".webp" });
+    });
+  }
 })(window);

@@ -61,21 +61,21 @@ function rcRidgeY(px,W,baseY,amp,seed){var u=px/W;return baseY-amp*(0.5*Math.sin
 // 読込完了時 onReady → buildSkyBase 再焼き。表示のみ・レース数値不変。=====
 var RC_BG_SLUG = { "カルデラ地域": "fire" };
 var _rcBgCache = {};
-function rcBgFor(race, onReady) {
-  var slug = RC_BG_SLUG[race && race.region] || "fire";
+function rcBgForSlug(slug, fbSlug, onReady) {
   var e = _rcBgCache[slug];
   if (!e) {
     e = _rcBgCache[slug] = { img: new Image(), ok: false, cbs: [] };
     e.img.onload = function () { e.ok = true; e.cbs.splice(0).forEach(function (f) { try { f(); } catch (_) {} }); };
     e.img.onerror = function () {
-      if (slug !== "fire") { e.img.onerror = null; e.img.src = "images/racebg/fire.webp"; }   // 地域絵が無い→共通絵
-      else e.cbs.length = 0;                                                                   // 共通絵も無い→プロシージャル維持
+      if (fbSlug && slug !== fbSlug) { e.img.onerror = null; e.img.src = "images/racebg/" + fbSlug + ".webp"; }   // 代替絵へ
+      else e.cbs.length = 0;                                                                                      // 無ければプロシージャル維持
     };
     e.img.src = "images/racebg/" + slug + ".webp";
   }
   if (!e.ok && onReady) e.cbs.push(onReady);
   return e.ok ? e.img : null;
 }
+function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.region] || "fire", "fire", onReady); }
 function rcRenderSkyBase(x, W, H, time, bgImg) {
   var c = RC_SKY_CONF[time] || RC_SKY_CONF.night;
   var hor = H * RC_SKY_HOR, sc = W / 1536;
@@ -93,7 +93,8 @@ function rcRenderSkyBase(x, W, H, time, bgImg) {
     x.drawImage(bgImg, dx, dy, dw, dh);
     x.save();
     x.globalCompositeOperation = "soft-light"; x.globalAlpha = 0.6; x.fillStyle = g; x.fillRect(0, 0, W, H);   // 時間帯の色相へ
-    var lift = time === "day" ? 0.32 : time === "morning" ? 0.24 : time === "sunset" ? 0.14 : time === "dusk" ? 0.07 : 0;
+    // 朝/昼は昼の絵を使うため明度持ち上げは僅かに（夜絵を無理に明るくしない）
+    var lift = time === "day" ? 0.05 : time === "morning" ? 0.09 : time === "sunset" ? 0.14 : time === "dusk" ? 0.07 : 0;
     if (lift > 0) { x.globalCompositeOperation = "screen"; x.globalAlpha = 1; x.fillStyle = rcRgba(c.haze, lift); x.fillRect(0, 0, W, H); }
     x.restore();
   }
@@ -1062,11 +1063,13 @@ function startRaceCanvas(container, ctx) {
     try {
       const oc = document.createElement("canvas");
       oc.width = Math.round(cw); oc.height = Math.round(ch);
-      // 背景画（地域別ドロップイン・fire.webpへFB）。夜の絵のため夕/黄昏/夜レース（第三〜五）のみ。
-      // 朝/昼はプロシージャル空（太陽と月の同居を避ける）。未読込→読込完了で再焼き。
+      // 背景画：夕/黄昏/夜＝夜の絵(地域別→fire)、朝/昼＝昼の絵(day・聖龍島の昼景)。
+      // 絵が無ければプロシージャル空。未読込→読込完了で再焼き。
       const t = rcRaceTime(race);
+      const rebake = function () { if (document.contains(canvas)) buildSkyBase(); };
       const bgPaint = (t === "sunset" || t === "dusk" || t === "night")
-        ? rcBgFor(race, function () { if (document.contains(canvas)) buildSkyBase(); }) : null;
+        ? rcBgFor(race, rebake)
+        : rcBgForSlug("day", null, rebake);
       rcRenderSkyBase(oc.getContext("2d"), oc.width, oc.height, t, bgPaint);
       skyBase = oc;
     } catch (e) { skyBase = null; }
