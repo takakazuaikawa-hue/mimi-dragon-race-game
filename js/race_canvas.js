@@ -539,15 +539,34 @@ function _rcRigPartImg(color, p) {
   }
   return c;
 }
+// 付け根(rootEdge)固定・先端ほど大きく波打つ“しなり”。剛体回転より生物的な羽ばたき/尾揺れ。
+function _rcBendStrips(ctx, img, bx, by, phase, amp, rootEdge) {
+  const W = img.width, H = img.height, n = 10, step = W / n, rootRight = (rootEdge === 'right');
+  for (let i = 0; i < n; i++) {
+    let u = (i + 0.5) / n; if (rootRight) u = 1 - u;                 // 0=付け根 .. 1=先端
+    const k = u * u;                                                  // 先端ほど大きく（付け根は静止）
+    const off = (Math.sin(phase + u * 1.6) + 0.25 * Math.sin(2 * phase + u * 1.6)) * amp * k * H;
+    const sx0 = i * step, sw = Math.min(step + 1, W - sx0);
+    ctx.drawImage(img, sx0, 0, sw, H, bx + sx0, by + off, sw, H);
+  }
+}
 function _rcDrawRigPart(ctx, p, color, o) {
-  const img = _rcRigPartImg(color, p), g = o.gait || 0; let rot = 0;
-  if (p.role === 'wing') rot = Math.sin(g) * 0.5 - 0.06;             // 羽ばたき
-  else if (p.role === 'tail') rot = Math.sin(g * 0.8 + 1.0) * 0.16;  // 尾の揺れ
-  else if (p.role === 'head') rot = Math.sin(g * 0.5) * 0.05;        // 首の上下
+  const img = _rcRigPartImg(color, p), g = o.gait || 0;
+  const bx = p.rect.x - p.pivot.x, by = p.rect.y - p.pivot.y;        // 局所ピボット基準のオフセット
+  const bend = p.motion && p.motion.bend;
   ctx.save();
   ctx.translate(p.pivot.x, p.pivot.y);
-  if (rot) ctx.rotate(rot);
-  ctx.drawImage(img, p.rect.x - p.pivot.x, p.rect.y - p.pivot.y);    // 局所ピボット基準
+  if (p.role === 'wing') {
+    _rcBendStrips(ctx, img, bx, by, g, 0.20, (bend && bend.rootEdge) || 'right');           // 羽ばたき（先端しなり）
+  } else if (p.role === 'tail') {
+    _rcBendStrips(ctx, img, bx, by, g * 0.7 + 0.8, 0.11, (bend && bend.rootEdge) || 'right'); // 尾のしなり
+  } else if (p.role === 'head') {
+    ctx.rotate(Math.sin(g * 0.5) * 0.03); ctx.drawImage(img, bx, by);                         // 首をごく僅かに
+  } else if (p.role === 'body') {
+    ctx.scale(1, 1 + Math.sin(g * 0.5) * 0.012); ctx.drawImage(img, bx, by);                  // 呼吸（僅かな伸縮）
+  } else {
+    ctx.drawImage(img, bx, by);
+  }
   ctx.restore();
 }
 function rcDrawDragonRig(ctx, o) {
