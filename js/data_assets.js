@@ -125,7 +125,18 @@ const OUTFITS = [
   { id: "fashioncenter", name: "ファッションセンター", flavor: "両手にプチプラの大きな袋。賢くおしゃれ、が合言葉。",     acquire: { price: 1500 } },
   { id: "DU",            name: "DUプチプラMIX",      flavor: "ロゴトートにデニムショートパンツ。今どきの古着MIX。",   acquire: { price: 2000 } },
   { id: "amekaji",       name: "アメカジ",           flavor: "デニムシャツを腰に巻いた、こなれアメリカンカジュアル。", acquire: { price: 4000 } },
-  { id: "departgirl",    name: "デパートガール",     flavor: "クリーム色のセットアップ。一流デパートの制服みたいな品。", acquire: { price: 30000 } }
+  { id: "departgirl",    name: "デパートガール",     flavor: "クリーム色のセットアップ。一流デパートの制服みたいな品。", acquire: { price: 30000 } },
+  // ── 透過修正バッチ（全表情の透過確認済み） ──
+  { id: "denim",         name: "デニムスタイル",     flavor: "白Tにハイウエストデニム。清潔感のど真ん中。",           acquire: { price: 3000 } },
+  { id: "swimsuitCHEAP", name: "お手頃水着",         flavor: "シンプルなビキニにビーサン。海開きの定番。",           acquire: { price: 3000 } },
+  { id: "street",        name: "ストリート古着",     flavor: "ビッグカーデにロックT、チェック巻きスカート。",         acquire: { price: 3500 } },
+  { id: "suit",          name: "就活スーツ",         flavor: "社員証をぶら下げた、きっちりリクルートスタイル。",       acquire: { price: 5000 } },
+  { id: "darapike",      name: "もこもこルームウェア", flavor: "ふわふわパイル地で、おうち時間がとろける。",            acquire: { price: 7000 } },
+  { id: "bangya",        name: "バンギャ",           flavor: "病みかわパンクに網タイツ。今夜はライブ参戦。",           acquire: { price: 9000 } },
+  { id: "swimsuitMID",   name: "リゾート水着",       flavor: "シアー羽織りとトロピカルカクテルで南国気分。",           acquire: { price: 12000 } },
+  { id: "taipei",        name: "台北チャイナドレス", flavor: "深紅のチャイナにタッセル。夜市の主役。",               acquire: { price: 18000 } },
+  { id: "swimsuitHIGH",  name: "VIP水着",            flavor: "金糸あしらいのラグジュアリー水着とシャンパン。",         acquire: { price: 45000 } },
+  { id: "secret_sukanpin", name: "素寒貧・夜",       flavor: "あの日のボロ布を、なぜか色っぽく着崩して。総資産1億の隠し。", acquire: { assets: 100000000 } }
 ];
 const DEFAULT_OUTFIT = "sukanpin";   // ゲーム開始当初は素寒貧（無料・新規プレイヤーの既定。既存セーブは保存済みoutfitを維持）
 
