@@ -1550,24 +1550,15 @@ table.entry-table {
 .mall-coins { flex: none; font-size: 12px; color: var(--mist); background: rgba(10,13,18,.6);
   border: 1px solid var(--gold-line); border-radius: 999px; padding: 5px 12px; }
 .mall-coins b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
-/* 試着室＝ステージ（看板・スポットライト・台座の光） */
-.mall-fit { position: relative; z-index: 1; border-radius: 18px; overflow: visible;
-  background: linear-gradient(180deg, rgba(46,38,54,.92), rgba(28,23,34,.95));
-  border: 1px solid rgba(230,178,74,.42);
-  box-shadow: 0 18px 50px -22px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.06); }
-.mall-fit::before { content: "FITTING ROOM"; position: absolute; top: -1px; left: 16px;
+/* 試着室＝ステージ（看板＋台座の光のみ。サイズ/背景/配置は下の統合ブロックで一元管理） */
+.mall-fit::before { content: "FITTING ROOM"; position: absolute; top: -1px; left: 16px; z-index: 2;
   font-size: 9.5px; letter-spacing: .22em; font-weight: 900; color: #2a1d06;
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
   padding: 4px 12px; border-radius: 0 0 8px 8px; box-shadow: 0 3px 8px -3px rgba(0,0,0,.5); }
-.mall-fit-img { border: 1px solid rgba(230,178,74,.5); box-shadow: inset 0 0 26px rgba(0,0,0,.38);
-  background:
-    radial-gradient(80% 58% at 50% 16%, rgba(255,224,170,.16), rgba(0,0,0,0) 62%),
-    radial-gradient(120% 90% at 50% 8%, #3a3144 0%, #251e2e 58%, #181320 100%); }
-.mall-fit-img::after { content: ""; position: absolute; left: 9%; right: 9%; bottom: 4px; height: 15px; border-radius: 50%;
-  background: radial-gradient(50% 100% at 50% 50%, rgba(255,216,150,.30), rgba(0,0,0,0) 72%); }
+.mall-fit-img::after { content: ""; position: absolute; left: 9%; right: 9%; bottom: 4px; height: 14px; border-radius: 50%;
+  background: radial-gradient(50% 100% at 50% 50%, rgba(255,216,150,.26), rgba(0,0,0,0) 72%); pointer-events: none; }
 .mall-fit-img img { animation: mallFitIn .26s ease; }
 @keyframes mallFitIn { from { opacity: .25; transform: scale(.96); } to { opacity: 1; transform: none; } }
-.mall-fit-nm { font-size: 19px; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
 /* カード＝商品（ホバーで浮く・着用中はコーナーリボン） */
 .mall-grid { position: relative; z-index: 1; }
 .mall-card { position: relative; overflow: hidden;
@@ -3490,35 +3481,44 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border: 1px solid var(--gold-line); border-radius: 10px; padding: 8px 12px; margin: 2px 0 10px; }
 
 /* ===== ショッピングモール（ミミのきせかえ） ===== */
-/* 試着室：大プレビュー（表情切替）＋情報/CTA */
-.mall-fit { display: flex; gap: 14px; align-items: stretch; }
-.mall-fit-stage { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.mall-fit-img { position: relative; width: min(40vw, 168px); aspect-ratio: 256 / 384; border-radius: 12px; overflow: hidden;
-  border: 1px solid var(--gold-line);
-  background: radial-gradient(120% 90% at 50% 8%, #2c3a44 0%, #1b252c 58%, #131a20 100%); }
+/* 試着室：大プレビュー（表情切替）＋情報/CTA ＝ 一元管理（旧boutique/元版の二重定義を統合） */
+.mall-fit { position: relative; z-index: 1; display: flex; gap: 16px; align-items: center;
+  padding: 16px 14px 14px; border-radius: 18px; overflow: visible;
+  background: linear-gradient(180deg, rgba(46,38,54,.94), rgba(28,23,34,.96));
+  border: 1px solid rgba(230,178,74,.42);
+  box-shadow: 0 18px 50px -22px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.06); }
+.mall-fit-stage { flex: 0 0 auto; display: flex; flex-direction: column; gap: 9px; align-items: center; }
+.mall-fit-img { position: relative; width: min(46vw, 190px); aspect-ratio: 256 / 384; border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(230,178,74,.5); box-shadow: inset 0 0 26px rgba(0,0,0,.4);
+  background: radial-gradient(80% 58% at 50% 14%, rgba(255,224,170,.14), rgba(0,0,0,0) 60%), radial-gradient(120% 90% at 50% 8%, #3a3144 0%, #251e2e 58%, #181320 100%); }
 .mall-fit-img img { width: 100%; height: 100%; object-fit: contain; object-position: bottom center;
   filter: drop-shadow(0 8px 12px rgba(0,0,0,.45)); }
-.mall-badge { position: absolute; top: 7px; left: 7px; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 3px 8px; }
+.mall-badge { position: absolute; top: 7px; left: 7px; z-index: 2; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 3px 8px; }
 .mall-badge.worn { color: #2a1d06; background: linear-gradient(180deg, var(--gold-bright), var(--gold)); }
 .mall-badge.tryon { color: var(--mist); background: rgba(8,11,16,.7); border: 1px solid var(--glass-border); }
-.mall-expr { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.mall-expr { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; max-width: min(46vw, 190px); }
 .mall-expr-b { font-size: 10.5px; padding: 5px 8px; border-radius: 999px; cursor: pointer;
   background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); color: var(--mist-soft); }
 .mall-expr-b.on { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; border-color: transparent; font-weight: 800; }
-.mall-fit-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.mall-fit-nm { font-size: 18px; font-weight: 900; color: var(--gold-bright); }
+.mall-fit-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.mall-fit-nm { font-size: 18px; font-weight: 900; color: var(--gold-bright); text-shadow: 0 1px 2px rgba(0,0,0,.45); }
 .mall-fit-fl { font-size: 12px; color: var(--mist-soft); line-height: 1.6; margin-top: 4px; }
 .mall-fit-acq { font-size: 11.5px; color: var(--astone-2); margin-top: 8px; }
 .mall-fit-acq b { color: var(--gold-bright); }
-.mall-fit-cta { margin-top: auto; padding-top: 10px; }
+.mall-fit-cta { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .mall-chip { margin-top: 6px; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 2px 8px; align-self: center; }
 .mall-chip.worn { color: #2a1d06; background: linear-gradient(180deg, var(--gold-bright), var(--gold)); }
 .mall-chip.owned { color: var(--jade-bright); background: rgba(73,200,156,.12); border: 1px solid rgba(73,200,156,.4); }
 .mall-chip.price { color: var(--gold-bright); background: rgba(255,216,119,.1); border: 1px solid var(--gold-line); }
 .mall-chip.lock { color: var(--astone-2); background: var(--glass-2); border: 1px solid var(--glass-border); }
 .mall-card.sel { border-color: var(--jade-bright); box-shadow: 0 0 0 1px var(--jade-bright); }
-@media (max-width: 520px) { .mall-fit { flex-direction: column; align-items: center; text-align: center; }
-  .mall-fit-info { align-items: center; } }
+@media (max-width: 520px) {
+  .mall-fit { flex-direction: column; align-items: center; text-align: center; padding: 18px 14px 16px; }
+  .mall-fit-img { width: min(60vw, 224px); }
+  .mall-expr { max-width: min(72vw, 280px); }
+  .mall-fit-info { align-items: center; width: 100%; }
+  .mall-fit-cta { width: 100%; max-width: 320px; }
+}
 
 .mall-fallback { font-size: 40px; }
 .mall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; margin-bottom: 12px; }
@@ -3546,6 +3546,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .mall-btn.buy { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #2a1d06; }
 .mall-btn.buy.poor { background: var(--glass-2); color: var(--astone-2); border: 1px solid var(--glass-border); cursor: not-allowed; }
 .mall-btn:active { transform: translateY(1px); }
+.mall-btn.home { background: linear-gradient(180deg, #5bd0a0, #36a37a); color: #06241a; }
+.mall-fit-cta > * { margin-top: 0; }   /* ctaはgapで間隔をとる（mall-btnのmargin-topと二重にしない） */
 .mall-foot { margin-top: 8px; text-align: center; font-size: 11.5px; font-weight: 800; padding: 7px; border-radius: 9px; }
 .mall-foot.is-worn { color: var(--gold-bright); background: rgba(255,216,119,.12); }
 .mall-foot.lock { color: var(--astone-2); background: var(--glass-2); }

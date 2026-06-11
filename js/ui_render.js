@@ -1702,6 +1702,9 @@ function renderMall() {
   const cta = el("div", "mall-fit-cta");
   if (isWorn) {
     cta.appendChild(el("div", "mall-foot is-worn", "✓ いま着ています"));
+    const hb = el("button", "mall-btn home", "🏠 ホームで見る");   // 購入直後（=着用中）にすぐ確認しに行ける
+    hb.onclick = () => renderHome();
+    cta.appendChild(hb);
   } else if (owned) {
     const wb = el("button", "mall-btn wear", "この服に着替える");
     wb.onclick = () => { wearOutfit(sel.id); if (window.Sfx) Sfx.play("click"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); };
