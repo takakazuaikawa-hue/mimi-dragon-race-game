@@ -3019,6 +3019,14 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   width: fit-content; max-width: 100%; animation: hlCmIn .28s ease both; text-align: left; backdrop-filter: blur(2px); }
 .hl-cm b { font-weight: 800; margin-right: 5px; font-size: 10.5px; }
 @keyframes hlCmIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.hl-speech { position: absolute; left: 50%; top: 7%; transform: translateX(-46%); z-index: 6; pointer-events: none;
+  max-width: 72%; background: #fff; color: #18202a; font-size: 13px; font-weight: 700; line-height: 1.45;
+  padding: 8px 14px; border-radius: 16px; box-shadow: 0 8px 20px -8px rgba(0,0,0,.55); animation: hlSpeechIn .3s ease both; }
+.hl-speech::after { content: ""; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: #fff; border-bottom: 0; }
+.hl-speech.out { animation: hlSpeechOut .45s ease forwards; }
+@keyframes hlSpeechIn { from { opacity: 0; transform: translateX(-46%) translateY(8px) scale(.92); } to { opacity: 1; transform: translateX(-46%) translateY(0) scale(1); } }
+@keyframes hlSpeechOut { to { opacity: 0; transform: translateX(-46%) translateY(-8px); } }
 .hl-heart { position: absolute; z-index: 5; pointer-events: none; opacity: 0; will-change: transform, opacity;
   animation: hlHeart 2.6s ease-out forwards; }
 @keyframes hlHeart {

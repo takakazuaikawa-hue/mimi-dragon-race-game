@@ -263,12 +263,13 @@ function renderHome() {
   const p = state.player;
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   // daily login reward — checked once per session, shown just after home paints
+  let _doGreet = false;   // 挨拶はVNではなく“配信の吹き出し”で（大立ち絵と二重にしない）
   if (!window._mimiLoginChecked) {
     window._mimiLoginChecked = true;
     try {
       const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
       if (_lb) setTimeout(() => showLoginBonus(_lb), 420);
-      else if (window.Dialogue && window.DLG && DLG.login) setTimeout(() => Dialogue.play(DLG.login(state.player)), 360);
+      else _doGreet = true;
     } catch (e) {}
   }
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
@@ -359,6 +360,25 @@ function renderHome() {
 
   const cms = el("div", "hl-comments");
   stage.appendChild(cms);
+
+  // ミミの吹き出し（配信トーク）。挨拶＋タップ反応＋ときどき小ネタ。VN立ち絵は出さない。
+  const speech = el("div", "hl-speech hidden");
+  stage.appendChild(speech);
+  let _speechT = 0;
+  function mimiSay(text, ms) {
+    if (!text) return;
+    clearTimeout(_speechT);
+    speech.textContent = text;
+    speech.classList.remove("hidden", "out");
+    void speech.offsetWidth;
+    _speechT = setTimeout(() => { speech.classList.add("out"); }, ms || 4200);
+  }
+  if (_doGreet && window.DLG && DLG.login) {
+    try { setTimeout(() => mimiSay((DLG.login(state.player)[0] || {}).t || "ようこそ！", 5200), 500); } catch (e) {}
+  }
+  const _BANTER = ["今日はどの竜を推す〜？", "コメントありがとっ！", "いっしょに当てようね！", "耳、さわっていいよ？ うそうそ。", "オッズ、よーく見てね。", "ぱほぱほ〜♪", "推し竜、見つかった？", "差し入れ、うれしいな♪"];
+  const _banter = () => mimiSay(_BANTER[Math.floor(Math.random() * _BANTER.length)]);
+
   wrap.appendChild(stage);
 
   // アイドル演出（多重サイン呼吸＋体重移動＋バネ式視線追従）。pointerはgaze目標だけ更新。
@@ -426,11 +446,17 @@ function renderHome() {
     h.addEventListener("animationend", () => h.remove());
   }
   stage.addEventListener("pointerdown", (e) => {
+    if (Math.random() < 0.5) _banter();
     if (_reduce) return;
     const r = stage.getBoundingClientRect();
     const n = 1 + Math.floor(Math.random() * 2);
     for (let i = 0; i < n; i++) _heart(e.clientX - r.left + (Math.random() * 18 - 9), e.clientY - r.top);
   });
+  window._hlTimers.push(setInterval(() => {
+    if (state.ui.screen !== "home") return;
+    if (!speech.classList.contains("hidden") && !speech.classList.contains("out")) return;  // まだ喋っている間は重ねない
+    if (Math.random() < 0.5) _banter();
+  }, 13000));
   if (!_reduce) window._hlTimers.push(setInterval(() => {
     if (state.ui.screen !== "home") return;
     const r = stage.getBoundingClientRect();
