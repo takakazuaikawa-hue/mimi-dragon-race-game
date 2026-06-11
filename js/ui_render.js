@@ -2687,6 +2687,7 @@ function renderRaceRun() {
   if (!c.timeline) {
     c.timeline = buildRaceTimeline(c.race, c.raceResult, c.oddsResult, c.bet);
   }
+  if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();   // 出走直前に保留中の立ち絵セリフを閉じる（レース上に被せない）
   const app = beginScreen();
   const host = el("div"); host.id = "race-canvas-host";
   app.appendChild(host);

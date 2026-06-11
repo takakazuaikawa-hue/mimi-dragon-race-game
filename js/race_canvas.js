@@ -493,8 +493,93 @@ function rcDrawDragonPixel(ctx, o) {
   ctx.restore();
 }
 
+// ===== Live2Dリグ竜（表示専用・色替え）====================================
+// 各レース竜を、ツール出力の dragon_rig.json（頭/胴/翼/尾）で描画する。色は竜ごとに
+// 色相シフト（金42°基準）。羽ばたき/尾揺れは o.gait 駆動。footprint はグリッド竜に一致。
+// window.RC_USE_RIG===false で旧グリッド竜に即切替（比較用）。リグ未ロード中はグリッド竜で繋ぐ。
+// レースの着順/オッズ/配当には一切非干渉（描画のみ）。
+let RC_RIG = null, _rcRigLoading = false;
+function _rcEnsureRig() {
+  if (RC_RIG || _rcRigLoading) return;
+  _rcRigLoading = true;
+  try {
+    if (typeof window !== 'undefined' && window.DragonL2 && DragonL2.loadRig) {
+      DragonL2.loadRig().then(function (r) { RC_RIG = _rcPrepRig(r); }).catch(function () { _rcRigLoading = false; });
+    } else if (typeof L2_RIG !== 'undefined') {
+      fetch('images/dragon_ref/dragon_rig.json').then(function (r) { return r.text(); })
+        .then(function (t) { return L2_RIG.hydrate(L2_RIG.deserialize(t)); })
+        .then(function (r) { RC_RIG = _rcPrepRig(r); }).catch(function () { _rcRigLoading = false; });
+    } else { _rcRigLoading = false; }
+  } catch (e) { _rcRigLoading = false; }
+}
+function _rcPrepRig(rig) {
+  rig._zsorted = L2_RIG.sortedByZ(rig);
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  rig.parts.forEach(function (p) { x0 = Math.min(x0, p.rect.x); y0 = Math.min(y0, p.rect.y); x1 = Math.max(x1, p.rect.x + p.rect.w); y1 = Math.max(y1, p.rect.y + p.rect.h); });
+  rig._bbox = { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };   // 竜の外接矩形（footprint合わせ用）
+  return rig;
+}
+function _rcHueDelta(color) {                 // hex色 → 金(約42°)からの最短色相デルタ(deg)
+  let c = color || '#caa44a'; if (c[0] === '#') c = c.slice(1);
+  if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+  const r = parseInt(c.slice(0, 2), 16) / 255, g = parseInt(c.slice(2, 4), 16) / 255, b = parseInt(c.slice(4, 6), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0;
+  if (d) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+  return Math.round(((h - 42) + 540) % 360 - 180);
+}
+const _rcRigTint = Object.create(null);       // (色×パーツ)→色相シフト済みcanvas を一度だけ生成（毎フレームfilter回避）
+function _rcRigPartImg(color, p) {
+  const key = (color || '#888') + '|' + p.id; let c = _rcRigTint[key];
+  if (!c) {
+    c = document.createElement('canvas'); c.width = p._img.width; c.height = p._img.height;
+    const x = c.getContext('2d');
+    x.filter = 'hue-rotate(' + _rcHueDelta(color) + 'deg) saturate(1.1)';
+    x.drawImage(p._img, 0, 0);
+    _rcRigTint[key] = c;
+  }
+  return c;
+}
+function _rcDrawRigPart(ctx, p, color, o) {
+  const img = _rcRigPartImg(color, p), g = o.gait || 0; let rot = 0;
+  if (p.role === 'wing') rot = Math.sin(g) * 0.5 - 0.06;             // 羽ばたき
+  else if (p.role === 'tail') rot = Math.sin(g * 0.8 + 1.0) * 0.16;  // 尾の揺れ
+  else if (p.role === 'head') rot = Math.sin(g * 0.5) * 0.05;        // 首の上下
+  ctx.save();
+  ctx.translate(p.pivot.x, p.pivot.y);
+  if (rot) ctx.rotate(rot);
+  ctx.drawImage(img, p.rect.x - p.pivot.x, p.rect.y - p.pivot.y);    // 局所ピボット基準
+  ctx.restore();
+}
+function rcDrawDragonRig(ctx, o) {
+  if (!RC_RIG) { _rcEnsureRig(); return rcDrawDragonPixel(ctx, o); }
+  const rig = RC_RIG, bb = rig._bbox;
+  const px = (o.scale || 1) * RC_DRG.px;
+  const b = o.noBuild ? _RC_NOBUILD : _rcBuildFor(o.color);
+  const wsc = px * b.sz * b.sx, hsc = px * b.sz * b.sy;
+  const sx = (RC_DRG.GW * wsc) / bb.w, sy = (RC_DRG.GH * hsc) / bb.h;          // グリッド竜の footprint に一致
+  const ax = bb.x + (RC_DRG.anchorX / RC_DRG.GW) * bb.w, ay = bb.y + (RC_DRG.anchorY / RC_DRG.GH) * bb.h;   // (o.x,o.y)へ来る基準点
+  const bob = o.grounded ? Math.abs(Math.sin(o.gait || 0)) * 0.5 : Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);
+  ctx.save();
+  ctx.translate(o.x, o.y);
+  if (o.spin) ctx.rotate(o.spin);
+  if (o.tumble) ctx.rotate(o.tumble);
+  ctx.rotate(-(o.lean || 0) * 0.06 + (o.bank || 0) * 0.10);
+  if (o.squash && o.squash !== 1) { const sq = Math.max(0.7, Math.min(1.3, o.squash)); ctx.scale(2 - sq, sq); }
+  ctx.translate(0, -bob * px * 0.9);
+  { ctx.save(); ctx.globalAlpha = 0.22; const gc = rcShade(o.color || '#888', 46), rr = 14 * px;   // グリッド竜と同じ“映え”ハロー
+    const ng = ctx.createRadialGradient(0, -px, 2, 0, -px, rr); ng.addColorStop(0, rcRgba(gc, 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.15)); ng.addColorStop(1, rcRgba(gc, 0));
+    ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -px, rr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  ctx.scale(sx, sy);
+  ctx.translate(-ax, -ay);
+  const parts = rig._zsorted;
+  for (let i = 0; i < parts.length; i++) { const p = parts[i]; if (p._img) _rcDrawRigPart(ctx, p, o.color, o); }
+  ctx.restore();
+}
 function rcDrawDragon(ctx, o) {
-  return rcDrawDragonPixel(ctx, o);
+  if (typeof window !== 'undefined' && window.RC_USE_RIG === false) return rcDrawDragonPixel(ctx, o);
+  if (RC_RIG) return rcDrawDragonRig(ctx, o);
+  _rcEnsureRig();
+  return rcDrawDragonPixel(ctx, o);   // ロード完了までグリッド竜で繋ぐ
 }
 
 // =========================================================================

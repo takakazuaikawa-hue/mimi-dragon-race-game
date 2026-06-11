@@ -391,6 +391,7 @@
     EXPRS: EXPRS,                     // 利用可能な表情リスト
     inferExpr: inferExpr,             // 文面→表情の推定（②表情差分）
     isOpen: function () { return !!(dom && !dom.overlay.classList.contains("hidden")); },
+    dismiss: function () { try { finish(); } catch (e) {} },   // 開いているセリフを閉じる（レース開始時など）
     demo: function () { return play("demo"); }
   };
   global.Dialogue = Dialogue;
