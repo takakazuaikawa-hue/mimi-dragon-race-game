@@ -1962,7 +1962,7 @@ body.title-mode #header { display: none; }
 body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .title-screen {
   position: relative; min-height: 100vh; min-height: 100dvh;
-  overflow: hidden; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; display: flex; align-items: stretch; justify-content: center;
 }
 .title-bg {
   position: absolute; inset: 0;
@@ -2003,13 +2003,15 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 }
 /* the painted key-visual already shows Mimi + dragons → hide the pixel mascot when it's present */
 .title-screen:has(.title-photo .photo-fill) .title-dragon { display: none; }
-.title-inner { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 26px 22px 40px; text-align: center; }
-/* 文章コラムの背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない） */
-.title-screen:has(.title-photo .photo-fill) .title-inner::before {
-  content: ""; position: absolute; inset: -6% -4% 0; z-index: -1; border-radius: 26px;
-  background: radial-gradient(78% 66% at 50% 48%, rgba(8,9,14,0.66), rgba(8,9,14,0.30) 58%, transparent 82%);
+.title-inner { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 0 22px;
+  display: flex; flex-direction: column; align-items: center; text-align: center; }
+/* タイトル＋サブタイトルを画面の上から約2/6に配置（残りは下のCTAへ） */
+.title-head { position: relative; margin-top: clamp(92px, 24dvh, 250px); width: 100%; }
+/* タイトル背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない） */
+.title-screen:has(.title-photo .photo-fill) .title-head::before {
+  content: ""; position: absolute; inset: -22% -10%; z-index: -1; border-radius: 28px;
+  background: radial-gradient(76% 82% at 50% 50%, rgba(8,9,14,0.64), rgba(8,9,14,0.28) 56%, transparent 80%);
 }
-.title-kicker { font-size: 12px; letter-spacing: 0.46em; text-indent: 0.46em; color: #ffd34d; font-weight: 700; opacity: 0.9; margin-bottom: 12px; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
 .title-logo { margin: 0; line-height: 1.0; font-weight: 900; font-size: clamp(30px, 11vw, 54px); letter-spacing: 0.02em; white-space: nowrap; }
 .title-logo .tl-mimi { margin-left: 0.12em; }
 .title-logo .tl-main {
@@ -2022,25 +2024,38 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 2px 0 rgba(110,20,58,0.55));
 }
-.title-novel { font-size: 10.5px; color: #d9d3f0; margin: 11px auto 2px; max-width: 350px; line-height: 1.55; text-shadow: 0 1px 3px rgba(0,0,0,0.75); }
-.title-dragon { display: block; margin: 4px auto 0; }
-.title-tagline { font-size: 15px; color: #f4f2fb; margin: 4px 0 22px; line-height: 1.75; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
-.title-tagline b { color: #ffd34d; }
-.title-cta {
-  display: inline-block; min-width: 244px; padding: 16px 30px; font-size: 19px; font-weight: 800; color: #3a2200;
-  background: linear-gradient(180deg, #ffe27e, #f3b22c); border: none; border-radius: 14px; cursor: pointer;
-  box-shadow: 0 6px 0 #b9801c, 0 12px 26px rgba(0,0,0,0.42); animation: title-cta-pulse 1.9s ease-in-out infinite;
-}
-.title-cta:active { transform: translateY(4px); box-shadow: 0 2px 0 #b9801c, 0 6px 16px rgba(0,0,0,0.42); }
-@keyframes title-cta-pulse { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-.title-hint { font-size: 12px; color: #cfc9ea; margin-top: 15px; }
-.title-foot { font-size: 10px; color: #6f6aa0; margin-top: 26px; letter-spacing: 0.12em; }
+.title-novel { font-size: 12px; color: #e4dff1; margin: 13px auto 2px; max-width: 360px; line-height: 1.6; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+.title-dragon { display: block; margin: 6px auto 0; }
 
-/* §40 — 一枚絵「全景」モード（テキストを任意に隠す） */
-.title-artbtn { display: inline-block; margin-top: 12px; padding: 9px 16px; min-height: 40px;
-  background: rgba(0,0,0,0.34); border: 1px solid rgba(255,216,119,0.45); border-radius: 10px;
-  color: #ffe6a8; font-size: 13px; font-weight: 700; cursor: pointer; }
-.title-artbtn:hover { background: rgba(0,0,0,0.5); border-color: #ffd34d; }
+/* 下段：開始ボタンを最下部にマージンを取って配置 */
+.title-actions { margin-top: auto; margin-bottom: clamp(30px, 7dvh, 72px); width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.title-cta {
+  position: relative; overflow: hidden; display: inline-block; min-width: 264px; padding: 18px 40px;
+  font-size: 20px; font-weight: 900; letter-spacing: 0.05em; color: #3a2200;
+  background: linear-gradient(180deg, #fff1b4 0%, #ffd24a 46%, #eea514 100%);
+  border: none; border-radius: 16px; cursor: pointer;
+  box-shadow: 0 7px 0 #aa7414, 0 16px 32px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.65);
+  animation: title-cta-pulse 2.2s ease-in-out infinite;
+}
+.title-cta::before {   /* 内側の金リングで“ボタンらしい”立体感 */
+  content: ""; position: absolute; inset: 3px; border-radius: 13px;
+  border: 1px solid rgba(255,255,255,0.55); pointer-events: none;
+}
+.title-cta::after {    /* シャイン（光沢）が時々スッと走る */
+  content: ""; position: absolute; top: 0; left: -65%; width: 42%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.7), transparent);
+  transform: skewX(-18deg); animation: title-cta-shine 4s ease-in-out infinite;
+}
+@keyframes title-cta-shine { 0% { left: -65%; } 24%, 100% { left: 135%; } }
+.title-cta:active { transform: translateY(4px); box-shadow: 0 2px 0 #aa7414, 0 8px 18px rgba(0,0,0,0.45); }
+@keyframes title-cta-pulse { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+/* §40 — 一枚絵「全景」モード（テキストを任意に隠す）※開始ボタン下の控えめなピル */
+.title-artbtn { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 8px 15px; min-height: 36px;
+  background: rgba(0,0,0,0.30); border: 1px solid rgba(255,216,119,0.32); border-radius: 999px;
+  color: rgba(255,230,168,0.92); font-size: 12px; font-weight: 700; cursor: pointer; backdrop-filter: blur(2px); }
+.title-artbtn:hover { background: rgba(0,0,0,0.5); border-color: #ffd34d; color: #ffe6a8; }
 .title-inner { transition: opacity 0.3s ease; }
 .title-screen.art-only { background: #06060c; cursor: pointer; }
 .title-screen.art-only .title-inner { opacity: 0; pointer-events: none; }

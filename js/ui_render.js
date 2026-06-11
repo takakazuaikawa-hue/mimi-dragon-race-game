@@ -130,13 +130,12 @@ function renderTitle() {
     <div class="title-moon"></div>
     <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp", "") : ""}</div>
     <div class="title-inner">
-      <div class="title-kicker">── 競竜 予想ドラマ ──</div>
-      <h1 class="title-logo"><span class="tl-main">聖龍爆走録</span> <span class="tl-mimi">ミミ</span></h1>
-      <div class="title-novel">転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件</div>
-      <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
-      <div class="title-tagline">市場のオッズと、真の実力。<br>その<b>ズレ</b>を読み切れ。</div>
+      <div class="title-head">
+        <h1 class="title-logo"><span class="tl-main">聖龍爆走録</span> <span class="tl-mimi">ミミ</span></h1>
+        <div class="title-novel">転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件</div>
+        <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
+      </div>
       <div class="title-actions"></div>
-      <div class="title-foot">v1.0 ・ ぱほぱほスタジオ</div>
     </div>`;
   app.appendChild(wrap);
 
@@ -144,9 +143,6 @@ function renderTitle() {
   const start = el("button", "title-cta", "▶ はじめる");
   start.onclick = () => renderHome();
   acts.appendChild(start);
-  const p = state.player;
-  acts.appendChild(el("div", "title-hint",
-    p.completedRaces > 0 ? `おかえりなさい — ${p.completedRaces}戦 ・ ${fmtCoins(p.coins)}` : "ようこそ、予想家の世界へ"));
 
   // §40 — 一枚絵を“全景”で鑑賞するモード：テキスト/UIを任意に隠して全画面表示。
   // タップでテキストに戻る。表示専用（状態は変えない）。
