@@ -1388,7 +1388,7 @@ function renderMall() {
   const app = beginScreen();   // 上部に「← ホーム」
   // ブティック内装の背景（images/mall_bg.jpg をドロップインで差し替え可・無ければグラデ）
   const mbg = el("div", "mall-bg");
-  mbg.innerHTML = `<img alt="" decoding="async" src="images/mall_bg.jpg" onerror="this.remove()"><div class="mall-bg-scrim"></div>`;
+  mbg.innerHTML = `<img alt="" decoding="async" src="images/mall_bg.webp" onerror="this.remove()"><div class="mall-bg-scrim"></div>`;
   app.appendChild(mbg);
   app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
   app.appendChild(el("div", "mall-top",
