@@ -1374,8 +1374,14 @@ function renderMall() {
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();   // 取り残されたセリフオーバーレイがタップを塞がないように
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   const app = beginScreen();   // 上部に「← ホーム」
+  // ブティック内装の背景（images/mall_bg.jpg をドロップインで差し替え可・無ければグラデ）
+  const mbg = el("div", "mall-bg");
+  mbg.innerHTML = `<img alt="" decoding="async" src="images/mall_bg.jpg" onerror="this.remove()"><div class="mall-bg-scrim"></div>`;
+  app.appendChild(mbg);
   app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
-  app.appendChild(el("div", "as-hint2", `ミミのきせかえ　<span class="as-hint">試着は自由・着替えは無料。レース結果には影響しません。</span>`));
+  app.appendChild(el("div", "mall-top",
+    `<span class="as-hint">試着は自由・着替えは無料。レース結果には影響しません。</span>` +
+    `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`));
 
   const worn = currentOutfitId();
   if (!state.ui.mallSel || !OUTFITS.some(o => o.id === state.ui.mallSel)) state.ui.mallSel = worn;
@@ -1443,7 +1449,7 @@ function renderMall() {
     const oWorn = o.id === worn;
     const card = el("button", "mall-card" + (oWorn ? " worn" : "") + (oOwned ? "" : " locked") + (o.id === sel.id ? " sel" : ""));
     let chip;
-    if (oWorn) chip = `<span class="mall-chip worn">着用中</span>`;
+    if (oWorn) chip = "";                                            // 着用中はコーナーリボンで表現
     else if (oOwned) chip = `<span class="mall-chip owned">所持</span>`;
     else if (o.acquire.price != null) chip = `<span class="mall-chip price">${fmtCoins(o.acquire.price)}</span>`;
     else if (o.acquire.assets != null) chip = `<span class="mall-chip lock">🔒</span>`;

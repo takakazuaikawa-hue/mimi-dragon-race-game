@@ -1539,6 +1539,50 @@ table.entry-table {
 #bet-confirm-actions { display: flex; gap: 10px; margin-top: 14px; }
 #bet-confirm-actions button { flex: 1; padding: 12px; }
 #bet-confirm-actions .bcf-go { flex: 1.6; background: linear-gradient(180deg, #ffd966, #f0a838); font-weight: 900; }
+/* ===== モール＝ブティック刷新（背景・試着ステージ・商品タグ・リボン） ===== */
+.mall-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: linear-gradient(180deg, #2c2333 0%, #1c1724 55%, #141019 100%); }
+.mall-bg img { width: 100%; height: 100%; object-fit: cover; opacity: .5; filter: blur(2px) saturate(1.05); }
+.mall-bg-scrim { position: absolute; inset: 0; background:
+  radial-gradient(120% 80% at 50% 0%, rgba(255,214,150,.10), transparent 55%),
+  linear-gradient(180deg, rgba(16,12,20,.38), rgba(12,9,15,.80)); }
+.mall-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 10px; }
+.mall-coins { flex: none; font-size: 12px; color: var(--mist); background: rgba(10,13,18,.6);
+  border: 1px solid var(--gold-line); border-radius: 999px; padding: 5px 12px; }
+.mall-coins b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+/* 試着室＝ステージ（看板・スポットライト・台座の光） */
+.mall-fit { position: relative; z-index: 1; border-radius: 18px; overflow: visible;
+  background: linear-gradient(180deg, rgba(46,38,54,.92), rgba(28,23,34,.95));
+  border: 1px solid rgba(230,178,74,.42);
+  box-shadow: 0 18px 50px -22px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.06); }
+.mall-fit::before { content: "FITTING ROOM"; position: absolute; top: -1px; left: 16px;
+  font-size: 9.5px; letter-spacing: .22em; font-weight: 900; color: #2a1d06;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  padding: 4px 12px; border-radius: 0 0 8px 8px; box-shadow: 0 3px 8px -3px rgba(0,0,0,.5); }
+.mall-fit-img { border: 1px solid rgba(230,178,74,.5); box-shadow: inset 0 0 26px rgba(0,0,0,.38);
+  background:
+    radial-gradient(80% 58% at 50% 16%, rgba(255,224,170,.16), rgba(0,0,0,0) 62%),
+    radial-gradient(120% 90% at 50% 8%, #3a3144 0%, #251e2e 58%, #181320 100%); }
+.mall-fit-img::after { content: ""; position: absolute; left: 9%; right: 9%; bottom: 4px; height: 15px; border-radius: 50%;
+  background: radial-gradient(50% 100% at 50% 50%, rgba(255,216,150,.30), rgba(0,0,0,0) 72%); }
+.mall-fit-img img { animation: mallFitIn .26s ease; }
+@keyframes mallFitIn { from { opacity: .25; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.mall-fit-nm { font-size: 19px; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+/* カード＝商品（ホバーで浮く・着用中はコーナーリボン） */
+.mall-grid { position: relative; z-index: 1; }
+.mall-card { position: relative; overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+  border: 1px solid rgba(230,178,74,.22); box-shadow: 0 8px 20px -12px rgba(0,0,0,.7);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.mall-card:hover { transform: translateY(-3px); border-color: rgba(255,216,119,.55);
+  box-shadow: 0 14px 28px -12px rgba(0,0,0,.85); }
+.mall-card.worn::after { content: "着用中"; position: absolute; top: 9px; right: -27px; transform: rotate(38deg);
+  background: linear-gradient(180deg, #ffd877, #e0a838); color: #2a1d06;
+  font-size: 9.5px; font-weight: 900; padding: 3px 30px; box-shadow: 0 2px 6px rgba(0,0,0,.45); }
+.mall-chip.price { background: #f6efdc; color: #5a4520; border: 1px solid #cdb98a;
+  box-shadow: 0 1px 0 rgba(0,0,0,.25); }   /* 値札タグ風 */
+.actions { position: relative; z-index: 1; }
+
 /* 設定内デバッグツール（実機でも使える） */
 .set-debug { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 4px; }
 .set-dbg-b { padding: 11px 6px; font-size: 12.5px; border-radius: 10px; cursor: pointer;
