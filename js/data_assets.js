@@ -132,6 +132,8 @@ function buddyDragonSrc() { return (state.player && state.player.buddyDragon) ||
 function outfitOwned(o) {
   if (!o) return false;
   if (o.acquire.free) return true;
+  const won = (state.player && state.player.outfitsWon) || [];   // モールお買い物ダンジョンの戦利品（表示メタ）
+  if (won.indexOf(o.id) >= 0) return true;
   if (o.acquire.assets != null) return ((state.player && state.player.totalAssets) || 0) >= o.acquire.assets;
   const bought = (state.player && state.player.outfitsBought) || [];
   return bought.indexOf(o.id) >= 0;

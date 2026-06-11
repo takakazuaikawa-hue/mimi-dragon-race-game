@@ -360,8 +360,9 @@ function renderHome() {
   window._hlResize = _fitHl;
   window.addEventListener("resize", _fitHl);
 
-  // ── ヘッダー（すっきり1行・浮遊）：プロフィール(称号切替)｜資産情報｜相棒ボタン｜⋯
+  // ── ヘッダー（バー型・ブランド入り）：🐲ブランド｜プロフィール(称号切替)｜資産情報｜相棒ボタン｜⋯
   const top = el("div", "hl-top");
+  top.appendChild(el("div", "hl-brand", `<span class="hl-brand-crest">🐲</span><b>聖龍爆走録<i>ミミ</i></b>`));
   const prof = el("button", "hl-prof");
   prof.innerHTML =
     `<span class="hl-prof-av">🐰</span>` +
@@ -1603,6 +1604,15 @@ function renderMall() {
   app.appendChild(el("div", "mall-top",
     `<span class="as-hint">試着は自由・着替えは無料。レース結果には影響しません。</span>` +
     `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`));
+  // ミニゲーム「モールお買い物ダンジョン」への入口（ローグライク・衣装やかけらが手に入る・表示メタ）
+  if (typeof renderMallDungeon === "function") {
+    const dg = el("button", "mall-dgbtn");
+    const _md = (state.player.dungeon || {});
+    dg.innerHTML = `<span class="mall-dgbtn-ic">🗼</span><span class="mall-dgbtn-tx"><b>モールお買い物ダンジョン</b>` +
+      `<small>閉店後のモールを探索 — 衣装・かけらを持ち帰ろう${_md.bestF ? `　最深 B${_md.bestF}F` : ""}</small></span><span class="mall-dgbtn-go">潜る ▶</span>`;
+    dg.onclick = () => renderMallDungeon();
+    app.appendChild(dg);
+  }
 
   const worn = currentOutfitId();
   if (!state.ui.mallSel || !OUTFITS.some(o => o.id === state.ui.mallSel)) state.ui.mallSel = worn;
