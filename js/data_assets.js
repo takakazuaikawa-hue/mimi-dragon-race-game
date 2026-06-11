@@ -112,7 +112,14 @@ const OUTFITS = [
   { id: "maumau",    name: "ナチュラルカジュアル", flavor: "肩の力を抜いた、休日のゆるカジ。",               acquire: { price: 6000 } },
   { id: "gymlow",    name: "スポーティMIX",     flavor: "シャツを腰に巻いた、動きやすい運動着。",           acquire: { price: 8000 } },
   { id: "gymmiddle", name: "アクティブフィット", flavor: "絞った体に映える、ベージュのジムスタイル。",       acquire: { price: 9000 } },
-  { id: "leonmall",  name: "もこもこニット",     flavor: "ふわふわカーデで、モールへおでかけ気分。",         acquire: { price: 12000 } }
+  { id: "leonmall",  name: "もこもこニット",     flavor: "ふわふわカーデで、モールへおでかけ気分。",         acquire: { price: 12000 } },
+  { id: "darugi",    name: "ゆるだぼルーム着",   flavor: "おうちでだらける日の、ゆるゆる部屋着。",           acquire: { price: 7000 } },
+  { id: "mannel",    name: "フランネルシャツ",   flavor: "あったか素材の、気どらない普段着。",               acquire: { price: 9500 } },
+  { id: "merine",    name: "メリノニットワンピ", flavor: "やわらか上質ニットで、しっとり大人っぽく。",       acquire: { price: 14000 } },
+  { id: "draspo",    name: "ドラゴスポーティ",   flavor: "竜モチーフのスポーツミックス。",                   acquire: { price: 16000 } },
+  { id: "doraqi",    name: "ドラキィスーツ",     flavor: "ちょっと小悪魔な、いたずらコーデ。",               acquire: { price: 18000 } },
+  { id: "drajela",   name: "ドラジェラドレス",   flavor: "ひらりと揺れる、竜飾りのドレス。",                 acquire: { price: 22000 } },
+  { id: "mermes",    name: "メルメス・バニー",   flavor: "最高級メゾンの黒バニー。一生モノの輝き。",         acquire: { price: 120000 } }
 ];
 const DEFAULT_OUTFIT = "buniqro";
 
