@@ -415,6 +415,15 @@ function renderHome() {
   const sysBtn = el("button", "hl-sys", "⋯");
   const sysDd = el("div", "hl-dd hidden");
   const ddTitle = el("button", null, "🏠 タイトルへ"); ddTitle.onclick = () => renderTitle();
+  // ⛶ 全画面（Android Chrome等＝ステータスバーごと隠せる。iOS Safariは非対応のため非表示）
+  if (document.documentElement.requestFullscreen) {
+    const ddFs = el("button", null, "⛶ 全画面 切り替え");
+    ddFs.onclick = () => {
+      try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {}
+      sysDd.classList.add("hidden");
+    };
+    sysDd.appendChild(ddFs);
+  }
   const ddReset = el("button", null, "🔄 データをリセット");
   ddReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
   sysDd.appendChild(ddTitle); sysDd.appendChild(ddReset);
