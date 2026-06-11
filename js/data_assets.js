@@ -119,9 +119,15 @@ const OUTFITS = [
   { id: "draspo",    name: "ドラゴスポーティ",   flavor: "竜モチーフのスポーツミックス。",                   acquire: { price: 16000 } },
   { id: "doraqi",    name: "ドラキィスーツ",     flavor: "ちょっと小悪魔な、いたずらコーデ。",               acquire: { price: 18000 } },
   { id: "drajela",   name: "ドラジェラドレス",   flavor: "ひらりと揺れる、竜飾りのドレス。",                 acquire: { price: 22000 } },
-  { id: "mermes",    name: "メルメス・バニー",   flavor: "最高級メゾンの黒バニー。一生モノの輝き。",         acquire: { price: 120000 } }
+  { id: "mermes",    name: "メルメス・バニー",   flavor: "最高級メゾンの黒バニー。一生モノの輝き。",         acquire: { price: 120000 } },
+  // ── 追加バッチ：素寒貧スタート＋ファッション/ショッピング系（全表情の透過確認済みのみ登録） ──
+  { id: "sukanpin",      name: "素寒貧ミミ",         flavor: "借金と空腹だけを抱えて流れ着いた、ボロ布一枚の出発点。", acquire: { free: true } },
+  { id: "fashioncenter", name: "ファッションセンター", flavor: "両手にプチプラの大きな袋。賢くおしゃれ、が合言葉。",     acquire: { price: 1500 } },
+  { id: "DU",            name: "DUプチプラMIX",      flavor: "ロゴトートにデニムショートパンツ。今どきの古着MIX。",   acquire: { price: 2000 } },
+  { id: "amekaji",       name: "アメカジ",           flavor: "デニムシャツを腰に巻いた、こなれアメリカンカジュアル。", acquire: { price: 4000 } },
+  { id: "departgirl",    name: "デパートガール",     flavor: "クリーム色のセットアップ。一流デパートの制服みたいな品。", acquire: { price: 30000 } }
 ];
-const DEFAULT_OUTFIT = "buniqro";
+const DEFAULT_OUTFIT = "sukanpin";   // ゲーム開始当初は素寒貧（無料・新規プレイヤーの既定。既存セーブは保存済みoutfitを維持）
 
 function outfitById(id) { return OUTFITS.find(o => o.id === id) || OUTFITS.find(o => o.id === DEFAULT_OUTFIT); }
 function currentOutfitId() { return (state.player && state.player.outfit) || DEFAULT_OUTFIT; }
