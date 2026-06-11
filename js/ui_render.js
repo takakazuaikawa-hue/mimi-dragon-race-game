@@ -2703,7 +2703,7 @@ function renderRaceRun() {
     if (_rcStage && getComputedStyle(_rcStage).position === "static") _rcStage.style.position = "relative";
     const _rcMas = document.createElement("canvas");
     _rcMas.width = 192; _rcMas.height = 128;
-    _rcMas.style.cssText = "position:absolute;right:8px;bottom:8px;width:112px;height:74px;z-index:6;pointer-events:none;opacity:.92;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45))";
+    _rcMas.style.cssText = "position:absolute;right:8px;bottom:8px;width:112px;height:74px;z-index:6;pointer-events:none;opacity:.92;background:transparent;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45))";   // background:transparent＝.rc-stage canvas の紺背景を打ち消す（紺箱バグ修正）
     _rcStage.appendChild(_rcMas);
     // Live2Dリグ竜（表示専用）。ランタイム/リグ無ければ従来warpへ自動フォールバック。
     if (window.DragonL2) DragonL2.mountOrWarp(_rcMas, "images/dragon_ref/ref.webp", "race_run");

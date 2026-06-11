@@ -56,26 +56,67 @@ function rcHx2(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(function
 function rcMix2(a,b,t){var A=rcHx2(a),B=rcHx2(b);return'rgb('+Math.round(A[0]+(B[0]-A[0])*t)+','+Math.round(A[1]+(B[1]-A[1])*t)+','+Math.round(A[2]+(B[2]-A[2])*t)+')';}
 function rcRgba(h,a){var c=rcHx2(h);return'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')';}
 function rcRidgeY(px,W,baseY,amp,seed){var u=px/W;return baseY-amp*(0.5*Math.sin(u*5.2+seed)+0.26*Math.sin(u*11.4+seed*1.7)+0.14*Math.sin(u*22.3+seed*2.3)+0.08*Math.sin(u*41+seed*3.1));}
-function rcRenderSkyBase(x, W, H, time) {
+// ===== レース背景画（Ember Nocturne）。images/racebg/<slug>.webp を地域別ドロップインで
+// 差し替え可（RC_BG_SLUG に地域→slug を追記・無ければ fire.webp へ自動フォールバック）。
+// 読込完了時 onReady → buildSkyBase 再焼き。表示のみ・レース数値不変。=====
+var RC_BG_SLUG = { "カルデラ地域": "fire" };
+var _rcBgCache = {};
+function rcBgFor(race, onReady) {
+  var slug = RC_BG_SLUG[race && race.region] || "fire";
+  var e = _rcBgCache[slug];
+  if (!e) {
+    e = _rcBgCache[slug] = { img: new Image(), ok: false, cbs: [] };
+    e.img.onload = function () { e.ok = true; e.cbs.splice(0).forEach(function (f) { try { f(); } catch (_) {} }); };
+    e.img.onerror = function () {
+      if (slug !== "fire") { e.img.onerror = null; e.img.src = "images/racebg/fire.webp"; }   // 地域絵が無い→共通絵
+      else e.cbs.length = 0;                                                                   // 共通絵も無い→プロシージャル維持
+    };
+    e.img.src = "images/racebg/" + slug + ".webp";
+  }
+  if (!e.ok && onReady) e.cbs.push(onReady);
+  return e.ok ? e.img : null;
+}
+function rcRenderSkyBase(x, W, H, time, bgImg) {
   var c = RC_SKY_CONF[time] || RC_SKY_CONF.night;
   var hor = H * RC_SKY_HOR, sc = W / 1536;
   var cel = c.cel, sx = cel.x * W, sy = cel.y * hor, isMoon = !!cel.moon;
   var g = x.createLinearGradient(0, 0, 0, hor + H * 0.04); c.sky.forEach(function (s) { g.addColorStop(s[0], s[1]); }); x.fillStyle = g; x.fillRect(0, 0, W, H);
-  if (c.milky) { x.save(); x.translate(W * 0.5, hor * 0.42); x.rotate(-0.5);
+  // 背景画があれば：cover配置（絵の地平線≈62%を hor に合わせる）→時間帯トーンで馴染ませる。
+  // 絵が描く稜線/火山/都市を使うため、プロシージャルの雲/星/稜線/聖龍門はスキップ。
+  var hasBg = !!(bgImg && bgImg.naturalWidth);
+  if (hasBg) {
+    var iw = bgImg.naturalWidth, ih = bgImg.naturalHeight, IH_HOR = 0.62;
+    var s2 = Math.max(W / iw, (hor / IH_HOR) / ih, H / ih);
+    var dw = iw * s2, dh = ih * s2;
+    var dx = (W - dw) / 2, dy = hor - dh * IH_HOR;
+    if (dy > 0) dy = 0; if (dy + dh < H) dy = H - dh;
+    x.drawImage(bgImg, dx, dy, dw, dh);
+    x.save();
+    x.globalCompositeOperation = "soft-light"; x.globalAlpha = 0.6; x.fillStyle = g; x.fillRect(0, 0, W, H);   // 時間帯の色相へ
+    var lift = time === "day" ? 0.32 : time === "morning" ? 0.24 : time === "sunset" ? 0.14 : time === "dusk" ? 0.07 : 0;
+    if (lift > 0) { x.globalCompositeOperation = "screen"; x.globalAlpha = 1; x.fillStyle = rcRgba(c.haze, lift); x.fillRect(0, 0, W, H); }
+    x.restore();
+  }
+  if (!hasBg && c.milky) { x.save(); x.translate(W * 0.5, hor * 0.42); x.rotate(-0.5);
     var mw = x.createLinearGradient(0, -H * 0.16, 0, H * 0.16); mw.addColorStop(0, 'rgba(120,140,210,0)'); mw.addColorStop(0.5, rcRgba('#7c8fd6', 0.10 * c.milky)); mw.addColorStop(1, 'rgba(120,140,210,0)'); x.fillStyle = mw; x.fillRect(-W, -H * 0.16, W * 2, H * 0.32);
     x.filter = 'blur(22px)'; for (var mi = 0; mi < 5; mi++) { x.fillStyle = rcRgba(mi % 2 ? '#6a5aa8' : '#4a6ab0', 0.06 * c.milky); x.beginPath(); x.ellipse(-W * 0.4 + mi * W * 0.22, (mi % 2 ? -1 : 1) * H * 0.03, W * 0.16, H * 0.05, 0, 0, 7); x.fill(); } x.filter = 'none'; x.restore(); }
-  if (c.stars) { for (var i = 0; i < c.stars; i++) { var rx = ((i * 73.13) % 1), ry = ((i * 131.7) % 1), px = rx * W, py = ry * hor * 0.96, br = 0.25 + ((i * 37) % 100) / 100 * 0.75, big = (i % 17 === 0), r = big ? 1.7 * sc : 0.8 * sc; x.fillStyle = 'rgba(255,255,255,' + (br * (big ? 1 : 0.8)) + ')'; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); if (big) { x.strokeStyle = 'rgba(255,255,255,' + (br * 0.5) + ')'; x.lineWidth = 0.6 * sc; x.beginPath(); x.moveTo(px - 3 * sc, py); x.lineTo(px + 3 * sc, py); x.moveTo(px, py - 3 * sc); x.lineTo(px, py + 3 * sc); x.stroke(); } } }
-  var cor = x.createRadialGradient(sx, sy, 0, sx, sy, (cel.r * sc) * 7.5); cor.addColorStop(0, rcRgba(cel.glow, isMoon ? 0.5 : 0.7)); cor.addColorStop(0.3, rcRgba(cel.glow, isMoon ? 0.18 : 0.3)); cor.addColorStop(1, rcRgba(cel.glow, 0)); x.fillStyle = cor; x.fillRect(0, 0, W, H);
-  if (cel.rays > 0) { x.save(); x.translate(sx, sy); x.globalCompositeOperation = 'lighter'; for (var ri = 0; ri < 14; ri++) { var a = ri / 14 * Math.PI * 2 + 0.3, len = (cel.r * sc) * (7 + (ri % 3) * 3); var gr = x.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len); gr.addColorStop(0, rcRgba(cel.glow, 0.10 * cel.rays)); gr.addColorStop(1, rcRgba(cel.glow, 0)); x.fillStyle = gr; x.beginPath(); x.moveTo(0, 0); x.lineTo(Math.cos(a - 0.05) * len, Math.sin(a - 0.05) * len); x.lineTo(Math.cos(a + 0.05) * len, Math.sin(a + 0.05) * len); x.closePath(); x.fill(); } x.restore(); }
-  var disc = x.createRadialGradient(sx - cel.r * sc * 0.3, sy - cel.r * sc * 0.3, cel.r * sc * 0.2, sx, sy, cel.r * sc); disc.addColorStop(0, cel.core); disc.addColorStop(0.7, cel.core); disc.addColorStop(1, rcMix2(cel.core, cel.glow, 0.5)); x.fillStyle = disc; x.beginPath(); x.arc(sx, sy, cel.r * sc, 0, 7); x.fill();
-  if (isMoon) { x.fillStyle = rcRgba('#b8c4e0', 0.35); [[0.3, -0.2, 0.22], [-0.25, 0.15, 0.16], [0.1, 0.35, 0.13], [-0.35, -0.3, 0.1]].forEach(function (cr) { x.beginPath(); x.arc(sx + cr[0] * cel.r * sc, sy + cr[1] * cel.r * sc, cr[2] * cel.r * sc, 0, 7); x.fill(); }); }
+  if (!hasBg && c.stars) { for (var i = 0; i < c.stars; i++) { var rx = ((i * 73.13) % 1), ry = ((i * 131.7) % 1), px = rx * W, py = ry * hor * 0.96, br = 0.25 + ((i * 37) % 100) / 100 * 0.75, big = (i % 17 === 0), r = big ? 1.7 * sc : 0.8 * sc; x.fillStyle = 'rgba(255,255,255,' + (br * (big ? 1 : 0.8)) + ')'; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); if (big) { x.strokeStyle = 'rgba(255,255,255,' + (br * 0.5) + ')'; x.lineWidth = 0.6 * sc; x.beginPath(); x.moveTo(px - 3 * sc, py); x.lineTo(px + 3 * sc, py); x.moveTo(px, py - 3 * sc); x.lineTo(px, py + 3 * sc); x.stroke(); } } }
+  if (hasBg) { cel = null; }   // 絵に光源（熔岩/月）が描かれている＝太陽/月の二重表示を防ぐ
+  var cor; if (cel) { cor = x.createRadialGradient(sx, sy, 0, sx, sy, (cel.r * sc) * 7.5); cor.addColorStop(0, rcRgba(cel.glow, isMoon ? 0.5 : 0.7)); cor.addColorStop(0.3, rcRgba(cel.glow, isMoon ? 0.18 : 0.3)); cor.addColorStop(1, rcRgba(cel.glow, 0)); x.fillStyle = cor; x.fillRect(0, 0, W, H); }
+  if (cel && cel.rays > 0) { x.save(); x.translate(sx, sy); x.globalCompositeOperation = 'lighter'; for (var ri = 0; ri < 14; ri++) { var a = ri / 14 * Math.PI * 2 + 0.3, len = (cel.r * sc) * (7 + (ri % 3) * 3); var gr = x.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len); gr.addColorStop(0, rcRgba(cel.glow, 0.10 * cel.rays)); gr.addColorStop(1, rcRgba(cel.glow, 0)); x.fillStyle = gr; x.beginPath(); x.moveTo(0, 0); x.lineTo(Math.cos(a - 0.05) * len, Math.sin(a - 0.05) * len); x.lineTo(Math.cos(a + 0.05) * len, Math.sin(a + 0.05) * len); x.closePath(); x.fill(); } x.restore(); }
+  if (cel) {
+    var disc = x.createRadialGradient(sx - cel.r * sc * 0.3, sy - cel.r * sc * 0.3, cel.r * sc * 0.2, sx, sy, cel.r * sc); disc.addColorStop(0, cel.core); disc.addColorStop(0.7, cel.core); disc.addColorStop(1, rcMix2(cel.core, cel.glow, 0.5)); x.fillStyle = disc; x.beginPath(); x.arc(sx, sy, cel.r * sc, 0, 7); x.fill();
+    if (isMoon) { x.fillStyle = rcRgba('#b8c4e0', 0.35); [[0.3, -0.2, 0.22], [-0.25, 0.15, 0.16], [0.1, 0.35, 0.13], [-0.35, -0.3, 0.1]].forEach(function (cr) { x.beginPath(); x.arc(sx + cr[0] * cel.r * sc, sy + cr[1] * cel.r * sc, cr[2] * cel.r * sc, 0, 7); x.fill(); }); }
+  }
   function cloud(cx, cy, s, seed) { var rnd = seed || 1, rand = function () { rnd = (rnd * 9301 + 49297) % 233280; return rnd / 233280; }; x.save(); x.filter = 'blur(9px)'; var n = 12 + Math.floor(rand() * 6); for (var i = 0; i < n; i++) { var fx = cx + (rand() - 0.5) * s * 2.4, fy = cy + rand() * s * 0.36, rr = s * (0.24 + rand() * 0.52); x.fillStyle = rcRgba(c.cloud.sh, 0.15); x.beginPath(); x.arc(fx, fy, rr, 0, 7); x.fill(); } for (var j = 0; j < n; j++) { var fx2 = cx + (rand() - 0.5) * s * 2.0, fy2 = cy - rand() * s * 0.52, rr2 = s * (0.2 + rand() * 0.46); x.fillStyle = rcRgba(c.cloud.lit, 0.18); x.beginPath(); x.arc(fx2, fy2, rr2, 0, 7); x.fill(); } x.restore(); }
-  if (c.cloud.cover > 0) { var cv2 = c.cloud.cover; cloud(W * 0.17, c.cloud.y * hor, 122 * sc * cv2, 131); cloud(W * 0.50, (c.cloud.y - 0.06) * hor, 94 * sc * cv2, 937); cloud(W * 0.82, (c.cloud.y + 0.03) * hor, 138 * sc * cv2, 613); if (time === 'day' || time === 'morning') { cloud(W * 0.37, (c.cloud.y + 0.12) * hor, 80 * sc, 271); cloud(W * 0.66, (c.cloud.y + 0.02) * hor, 66 * sc, 455); } }
+  if (!hasBg && c.cloud.cover > 0) { var cv2 = c.cloud.cover; cloud(W * 0.17, c.cloud.y * hor, 122 * sc * cv2, 131); cloud(W * 0.50, (c.cloud.y - 0.06) * hor, 94 * sc * cv2, 937); cloud(W * 0.82, (c.cloud.y + 0.03) * hor, 138 * sc * cv2, 613); if (time === 'day' || time === 'morning') { cloud(W * 0.37, (c.cloud.y + 0.12) * hor, 80 * sc, 271); cloud(W * 0.66, (c.cloud.y + 0.02) * hor, 66 * sc, 455); } }
   function range(baseY, amp, seed, col, rimA, snowA) { x.beginPath(); x.moveTo(0, H); var pts = []; for (var px = 0; px <= W; px += 3) { var y = rcRidgeY(px, W, baseY, amp, seed); pts.push([px, y]); x.lineTo(px, y); } x.lineTo(W, H); x.closePath(); x.fillStyle = col; x.fill(); if (rimA > 0) { x.save(); x.lineWidth = 1.6 * sc; x.strokeStyle = rcRgba(c.rim, rimA); x.beginPath(); for (var i = 0; i < pts.length; i++) { if (i === 0) x.moveTo(pts[i][0], pts[i][1]); else x.lineTo(pts[i][0], pts[i][1]); } x.stroke(); x.restore(); } if (snowA > 0) { x.fillStyle = rcRgba('#ffffff', snowA); for (var k = 2; k < pts.length - 2; k++) { var p = pts[k]; if (p[1] < pts[k - 2][1] && p[1] < pts[k + 2][1] && p[1] < baseY - amp * 0.55) { x.beginPath(); x.moveTo(p[0], p[1]); x.lineTo(p[0] - 4 * sc, p[1] + 7 * sc); x.lineTo(p[0] + 4 * sc, p[1] + 7 * sc); x.closePath(); x.fill(); } } } }
-  range(hor - 30 * sc, 44 * sc, 1.3, rcMix2(c.mtnFar, c.haze, 0.55), 0.22, 0);
-  range(hor - 12 * sc, 60 * sc, 2.6, rcMix2(c.mtnFar, c.mtnNear, 0.4), 0.34, 0);
-  range(hor + 12 * sc, 84 * sc, 3.7, c.mtnNear, 0.55, c.snow);
-  (function () { var gx = W * 0.6, gy = hor - 2 * sc, col = rcMix2(c.mtnNear, '#000000', 0.3); x.fillStyle = rcRgba(col, 0.95); x.fillRect(gx - 46 * sc, gy - 58 * sc, 9 * sc, 58 * sc); x.fillRect(gx + 37 * sc, gy - 58 * sc, 9 * sc, 58 * sc); x.fillRect(gx - 60 * sc, gy - 66 * sc, 120 * sc, 9 * sc); x.fillRect(gx - 50 * sc, gy - 52 * sc, 100 * sc, 6 * sc); x.beginPath(); x.moveTo(gx - 150 * sc, gy); x.quadraticCurveTo(gx - 188 * sc, gy - 30 * sc, gx - 228 * sc, gy); x.closePath(); x.fill(); x.beginPath(); x.ellipse(gx + 150 * sc, gy, 60 * sc, 24 * sc, 0, Math.PI, 0); x.fill(); x.strokeStyle = rcRgba(c.rim, 0.5); x.lineWidth = 1.2 * sc; x.strokeRect(gx - 60 * sc, gy - 66 * sc, 120 * sc, 2 * sc); })();
+  if (!hasBg) {
+    range(hor - 30 * sc, 44 * sc, 1.3, rcMix2(c.mtnFar, c.haze, 0.55), 0.22, 0);
+    range(hor - 12 * sc, 60 * sc, 2.6, rcMix2(c.mtnFar, c.mtnNear, 0.4), 0.34, 0);
+    range(hor + 12 * sc, 84 * sc, 3.7, c.mtnNear, 0.55, c.snow);
+    (function () { var gx = W * 0.6, gy = hor - 2 * sc, col = rcMix2(c.mtnNear, '#000000', 0.3); x.fillStyle = rcRgba(col, 0.95); x.fillRect(gx - 46 * sc, gy - 58 * sc, 9 * sc, 58 * sc); x.fillRect(gx + 37 * sc, gy - 58 * sc, 9 * sc, 58 * sc); x.fillRect(gx - 60 * sc, gy - 66 * sc, 120 * sc, 9 * sc); x.fillRect(gx - 50 * sc, gy - 52 * sc, 100 * sc, 6 * sc); x.beginPath(); x.moveTo(gx - 150 * sc, gy); x.quadraticCurveTo(gx - 188 * sc, gy - 30 * sc, gx - 228 * sc, gy); x.closePath(); x.fill(); x.beginPath(); x.ellipse(gx + 150 * sc, gy, 60 * sc, 24 * sc, 0, Math.PI, 0); x.fill(); x.strokeStyle = rcRgba(c.rim, 0.5); x.lineWidth = 1.2 * sc; x.strokeRect(gx - 60 * sc, gy - 66 * sc, 120 * sc, 2 * sc); })();
+  }
   var hb = x.createLinearGradient(0, hor - 90 * sc, 0, hor + 24 * sc); hb.addColorStop(0, rcRgba(c.haze, 0)); hb.addColorStop(0.75, rcRgba(c.haze, 0.32)); hb.addColorStop(1, rcRgba(c.haze, 0.62)); x.save(); x.fillStyle = hb; x.fillRect(0, hor - 90 * sc, W, 114 * sc); x.restore();
   x.save(); x.globalCompositeOperation = 'soft-light'; x.fillStyle = rcRgba(c.grade[0], c.grade[1]); x.fillRect(0, 0, W, H); x.restore();
   var vg = x.createRadialGradient(W / 2, hor * 0.6, H * 0.3, W / 2, hor * 0.6, W * 0.72); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(4,6,14,0.34)'); x.fillStyle = vg; x.fillRect(0, 0, W, H);
@@ -1021,7 +1062,12 @@ function startRaceCanvas(container, ctx) {
     try {
       const oc = document.createElement("canvas");
       oc.width = Math.round(cw); oc.height = Math.round(ch);
-      rcRenderSkyBase(oc.getContext("2d"), oc.width, oc.height, rcRaceTime(race));
+      // 背景画（地域別ドロップイン・fire.webpへFB）。夜の絵のため夕/黄昏/夜レース（第三〜五）のみ。
+      // 朝/昼はプロシージャル空（太陽と月の同居を避ける）。未読込→読込完了で再焼き。
+      const t = rcRaceTime(race);
+      const bgPaint = (t === "sunset" || t === "dusk" || t === "night")
+        ? rcBgFor(race, function () { if (document.contains(canvas)) buildSkyBase(); }) : null;
+      rcRenderSkyBase(oc.getContext("2d"), oc.width, oc.height, t, bgPaint);
       skyBase = oc;
     } catch (e) { skyBase = null; }
   }
