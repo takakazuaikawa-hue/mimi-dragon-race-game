@@ -464,22 +464,34 @@ function renderHome() {
   }, 3800));
 
   // ミミの表情カードフリップ：基本は default、時々クルッと回転して別表情→また回転して戻る。
-  // 回転は .hl-mimi-flip（アイドル演出のtransformとは別レイヤ）で行い、直角の瞬間に画像を差し替える。
+  // 回転は .hl-mimi-flip（アイドル演出のtransformとは別レイヤ）で行い、直角(90°)の瞬間に画像を差し替える。
+  // 「急に切り替わる」対策：対象表情を事前プリロードし、ロード済みのものだけ回す＝無回転ポップを防止。
   const _flipEl = mimiIn.querySelector(".hl-mimi-flip");
   const _flipImg = _flipEl ? _flipEl.querySelector("img") : null;
+  const _ALT_EX = ["smile", "happy", "panic"];
+  const _exReady = { default: true };
+  _ALT_EX.forEach(ex => { const im = new Image(); im.onload = () => { _exReady[ex] = true; }; im.src = outfitImg(oid, ex); });
+  const FLIP_MS = 230;            // CSS .hl-mimi-flip の transition と一致（真横で差し替え）
   let _exprNow = "default";
+  let _flipping = false;          // 回転中の再入ガード（タイマー競合で二重トグルしない）
   function _flipTo(ex) {
-    if (!_flipEl || !_flipImg || ex === _exprNow) return;
-    _exprNow = ex;
+    if (!_flipEl || !_flipImg || _flipping || ex === _exprNow) return;
+    if (!_exReady[ex]) return;    // 未ロードなら今回は見送り（次の機会に・ポップ回避）
+    _flipping = true;
     const src = outfitImg(oid, ex);
-    if (_reduce) { _flipImg.src = src; return; }
-    _flipEl.classList.add("flipping");
-    setTimeout(() => { _flipImg.src = src; _flipEl.classList.remove("flipping"); }, 190);
+    if (_reduce) { _flipImg.src = src; _exprNow = ex; _flipping = false; return; }
+    _flipEl.classList.add("flipping");                         // 0→90°（エッジオンへ）
+    setTimeout(() => {
+      if (!document.contains(_flipEl)) { _flipping = false; return; }
+      _flipImg.src = src; _exprNow = ex;                       // 真横の瞬間に差し替え（プリロード済み＝即時）
+      _flipEl.classList.remove("flipping");                    // 90→0°（新しい面が回って出てくる）
+      setTimeout(() => { _flipping = false; }, FLIP_MS);
+    }, FLIP_MS);
   }
   window._hlTimers.push(setInterval(() => {
-    if (state.ui.screen !== "home") return;
+    if (state.ui.screen !== "home" || _flipping) return;
     if (_exprNow === "default") {
-      if (Math.random() < 0.65) _flipTo(["smile", "happy", "panic"][Math.floor(Math.random() * 3)]);
+      if (Math.random() < 0.6) _flipTo(_ALT_EX[Math.floor(Math.random() * _ALT_EX.length)]);
     } else {
       _flipTo("default");   // 数秒見せたらデフォルトへ戻る
     }
