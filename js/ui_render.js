@@ -970,6 +970,10 @@ function renderStory() {
   const consultBtn = el("button", "secondary", "💬 相談する"); consultBtn.onclick = () => renderConsult();
   const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(consultBtn);
+  if (state.ui && state.ui.debug && typeof Dialogue !== "undefined") {
+    const demoBtn = el("button", "secondary", "▶ 立ち絵セリフ デモ"); demoBtn.onclick = () => Dialogue.demo();
+    actions.appendChild(demoBtn);
+  }
   actions.appendChild(back);
   app.appendChild(actions);
 }
@@ -1629,8 +1633,12 @@ function renderRaceDetail(race) {
   const offer = maybeOfferEntryEncouragement(race);
   if (offer) {
     state.current._encouragementOverride = offer;
-    // queue the story dialogue
-    offer.offer.dialogue.forEach(([speaker, text]) => showEvent(speakerLabel(speaker), text));
+    // queue the story dialogue — 立ち絵つきのセリフ演出で（未ロード時は従来モーダルへ）
+    if (typeof Dialogue !== "undefined" && Dialogue.play) {
+      Dialogue.play(offer.offer.dialogue.map(([speaker, text]) => ({ s: speaker, t: text })));
+    } else {
+      offer.offer.dialogue.forEach(([speaker, text]) => showEvent(speakerLabel(speaker), text));
+    }
   } else {
     state.current._encouragementOverride = null;
   }

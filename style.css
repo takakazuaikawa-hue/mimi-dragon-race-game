@@ -1520,6 +1520,84 @@ table.entry-table {
 .event-speaker { color: #ffd870; font-weight: bold; margin-bottom: 8px; }
 .event-text { line-height: 1.7; margin-bottom: 14px; }
 
+/* ===== 立ち絵つきセリフ（dialogue.js / ビジュアルノベル風） ===== */
+.dlg-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  user-select: none; -webkit-user-select: none;
+}
+.dlg-scrim {
+  position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(120% 90% at 50% 12%, rgba(10,22,26,0.30), rgba(6,12,14,0.74) 78%);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.dlg-stage { position: relative; z-index: 1; flex: 1; min-height: 0; overflow: hidden; }
+.dlg-standee {
+  position: absolute; bottom: 0; display: flex; align-items: flex-end;
+  height: min(62vh, 540px); pointer-events: none; opacity: 0;
+  transition: opacity .28s ease, filter .28s ease, transform .28s ease;
+}
+.dlg-standee.left  { left: max(0px, calc(50% - 50vw + 1%)); }
+.dlg-standee.right { right: max(0px, calc(50% - 50vw + 1%)); }
+.dlg-standee img {
+  height: 100%; width: auto; max-width: 46vw; object-fit: contain; object-position: bottom;
+  filter: drop-shadow(0 10px 16px rgba(0,0,0,0.45));
+}
+.dlg-standee .dlg-standee-sym {
+  display: none; font-size: clamp(64px, 16vw, 148px); line-height: 1;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,0.4));
+}
+.dlg-standee.has    { opacity: 1; }
+.dlg-standee.active { opacity: 1; filter: none; z-index: 2; }
+.dlg-standee.dim    { opacity: .52; filter: brightness(.6) saturate(.82); z-index: 1; }
+.dlg-standee.active img { animation: dlg-breathe 3.6s ease-in-out infinite; }
+.dlg-standee.in { animation: dlg-rise .34s cubic-bezier(.2,.8,.25,1) both; }
+
+.dlg-box {
+  position: relative; z-index: 3; width: min(720px, 94%);
+  margin: 0 auto max(14px, env(safe-area-inset-bottom, 0px));
+  background: var(--plate); border: 1px solid var(--plate-border); border-radius: 14px;
+  padding: 18px 18px 20px; cursor: pointer;
+  box-shadow: 0 12px 34px -10px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.06);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  border-top: 2px solid var(--cg, var(--gold-line));
+}
+.dlg-name {
+  position: relative; top: -28px; margin-bottom: -20px; display: inline-block;
+  padding: 4px 16px; border-radius: 999px; font-weight: bold; font-size: 14px;
+  color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  background: linear-gradient(180deg, rgba(255,255,255,0.20), rgba(0,0,0,0.14)), var(--cg, #caa24a);
+  border: 1px solid rgba(255,255,255,0.32); box-shadow: 0 3px 10px -4px rgba(0,0,0,0.55);
+}
+.dlg-text {
+  color: #f3ecdd; font-size: 15px; line-height: 1.85; min-height: 3.5em;
+  white-space: pre-wrap; word-break: break-word;
+}
+.dlg-next {
+  position: absolute; right: 16px; bottom: 9px; color: var(--gold-bright);
+  font-size: 13px; animation: dlg-bounce 1.05s ease-in-out infinite;
+}
+.dlg-skip {
+  position: absolute; z-index: 4; top: max(10px, env(safe-area-inset-top, 0px)); right: 12px;
+  font-size: 12px; padding: 5px 11px; border-radius: 999px;
+  background: rgba(0,0,0,0.42); border: 1px solid var(--glass-border); color: #e7f2ec;
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); cursor: pointer;
+}
+.dlg-skip:hover { background: rgba(0,0,0,0.6); }
+
+@keyframes dlg-rise { from { transform: translateY(26px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes dlg-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+@keyframes dlg-breathe { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+@media (max-width: 560px) {
+  .dlg-standee { height: min(48vh, 430px); }
+  .dlg-standee img { max-width: 62vw; }
+  .dlg-text { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dlg-standee, .dlg-standee.in, .dlg-standee.active img, .dlg-next { animation: none !important; transition: opacity .2s ease !important; }
+}
+
 .actions { display: flex; gap: 10px; margin-top: 16px; }
 
 /* ===== home screen (product-grade menu) ===== */
