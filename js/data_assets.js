@@ -126,6 +126,9 @@ const DEFAULT_OUTFIT = "buniqro";
 function outfitById(id) { return OUTFITS.find(o => o.id === id) || OUTFITS.find(o => o.id === DEFAULT_OUTFIT); }
 function currentOutfitId() { return (state.player && state.player.outfit) || DEFAULT_OUTFIT; }
 function outfitImg(id, expr) { return "images/cast/mimi/mimi_" + id + "_" + (expr || "default") + ".webp"; }   // 軽量WebP（PNG原本も保持）
+// 相棒ドラゴンの画像ソース（拡張ポイント）。将来 state.player.buddyDragon に画像パス／IDを持たせて
+// ホームの相棒を切り替え可能にする。今は既定の ref.webp を返すだけ＝表示専用・レース数値には無関係。
+function buddyDragonSrc() { return (state.player && state.player.buddyDragon) || "images/dragon_ref/ref.webp"; }
 function outfitOwned(o) {
   if (!o) return false;
   if (o.acquire.free) return true;

@@ -170,6 +170,53 @@ function renderTitle() {
   }
 }
 
+// 称号スイッチャー（ホーム左上のプロフィールから）：取得済み（習い事を極めた）称号を
+// ホーム表示用に切り替える。表示専用＝着順/オッズ/配当・経済には一切干渉しない。
+function showTitleSwitcher() {
+  const p = state.player;
+  const as = p.activeSkills || {};
+  const earned = (typeof ACTIVE_SKILLS !== "undefined" ? ACTIVE_SKILLS : []).filter(s => (as[s.id] || 0) >= s.levels.length);
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop titlepop");
+  const close = () => ov.remove();
+  if (!earned.length) {
+    box.innerHTML =
+      `<div class="navpop-ic">🏅</div><div class="navpop-t">称号をえらぶ</div>` +
+      `<div class="navpop-d">まだ称号がありません。<br>「習い事」を極めると獲得できます。</div>`;
+    const btns = el("div", "navpop-btns");
+    const cancel = el("button", "navpop-cancel", "閉じる"); cancel.onclick = close;
+    const go = el("button", "navpop-go", "習い事へ ▶"); go.onclick = () => { close(); renderActiveSkills(); };
+    btns.appendChild(cancel); btns.appendChild(go); box.appendChild(btns);
+  } else {
+    box.innerHTML =
+      `<div class="navpop-ic">🏅</div><div class="navpop-t">称号をえらぶ</div>` +
+      `<div class="navpop-d">ホームに飾る称号を切り替えます。</div>`;
+    const list = el("div", "titlepop-list");
+    const cur = p.equippedTitle || null;
+    const mkRow = (id, label) => {
+      const on = (cur === id);
+      const b = el("button", "titlepop-row" + (on ? " on" : ""), `<span>${label}</span>${on ? `<span class="titlepop-chk">✓</span>` : ""}`);
+      b.onclick = () => {
+        p.equippedTitle = id;
+        if (typeof saveGame === "function") saveGame();
+        close();
+        if (typeof updateHeader === "function") updateHeader();
+        renderHome();
+      };
+      return b;
+    };
+    list.appendChild(mkRow(null, "🚫 称号なし"));
+    earned.forEach(s => list.appendChild(mkRow(s.id, `${s.icon} ${s.title}`)));
+    box.appendChild(list);
+    const btns = el("div", "navpop-btns");
+    const cancel = el("button", "navpop-cancel", "閉じる"); cancel.onclick = close;
+    btns.appendChild(cancel); box.appendChild(btns);
+  }
+  ov.appendChild(box);
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  document.body.appendChild(ov);
+}
+
 // Minimal-text nav: tapping a menu button opens a small description popup with
 // 進む（proceed）/ キャンセル, so the home stays uncluttered but every button explains itself.
 function showNavConfirm(icon, title, desc, onGo) {
@@ -309,10 +356,11 @@ function renderHome() {
   const prof = el("button", "hl-prof");
   prof.innerHTML =
     `<span class="hl-prof-av">🐰</span>` +
-    `<span class="hl-prof-tx"><b>予想家ミミ${eqTitle ? `<i class="hl-prof-title">🏅${eqTitle}</i>` : ""}</b>` +
+    `<span class="hl-prof-tx"><b>予想家ミミ<i class="hl-prof-title">🏅${eqTitle || "称号"}<span class="hl-prof-caret">▾</span></i></b>` +
     `<small>ランク${p.rank}${rankLabel ? " " + rankLabel : ""}${p.streak >= 2 ? `・🔥${p.streak}連勝` : ""}</small></span>` +
     `<span class="hl-live">LIVE</span>`;
-  prof.onclick = () => renderAssets();
+  prof.title = "取得済みの称号を切り替える";
+  prof.onclick = () => showTitleSwitcher();
   top.appendChild(prof);
   const viewersEl = el("div", "hl-viewers", "👁 <b></b>");
   top.appendChild(viewersEl);
@@ -338,21 +386,26 @@ function renderHome() {
   const _defSrc = (typeof outfitImg === "function") ? outfitImg(oid, "default") : "";
   const _smileSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile") : "";
   mimiIn.innerHTML =
-    "<div class='hl-mimi-flip'><img alt='ミミ' src='" + _defSrc + "' onerror=\"this.onerror=null;this.src='" + _smileSrc + "'\"></div>" +
-    "<span class='hl-mimi-tag'>🛍️ きせかえ</span>";
+    "<div class='hl-mimi-flip'><img alt='ミミ' src='" + _defSrc + "' onerror=\"this.onerror=null;this.src='" + _smileSrc + "'\"></div>";
   mimi.appendChild(mimiIn);
-  mimi.title = "ショッピングモール（きせかえ）へ";
-  mimi.onclick = () => renderMall();
+  // 本体タップ＝ミミが一言（着せ替えへは行かない）。きせかえは右下の小ボタンに分離。
+  mimi.title = "タップでミミが一言しゃべる";
+  mimi.onclick = () => _mimiTalk();
+  const kbtn = el("button", "hl-mimi-tag", "🛍️ きせかえ");
+  kbtn.title = "ショッピングモール（きせかえ）へ";
+  kbtn.onclick = (e) => { e.stopPropagation(); renderMall(); };
+  mimi.appendChild(kbtn);
   stage.appendChild(mimi);
 
-  const dragonImg = el("div", "hl-dragon");
-  const dragonCv = document.createElement("canvas");
-  dragonCv.width = 384; dragonCv.height = 256;
-  dragonImg.appendChild(dragonCv);
-  // Live2Dリグ竜（頭/胴/翼/尾＋羽ばたき）。ランタイム/リグ無ければ従来warpへ自動フォールバック。
-  if (window.DragonL2) DragonL2.mountOrWarp(dragonCv, "images/dragon_ref/ref.webp", "home");
-  else { const _dImg = new Image(); _dImg.onload = function () { startDragonWarp(dragonCv, _dImg); }; _dImg.onerror = function () { dragonImg.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = "images/dragon_ref/ref.webp"; }
-  stage.appendChild(dragonImg);
+  // 相棒ドラゴン（バディ）：ステージ隅ではなく所持金の下に小さくかわいく置く（下のドックで配置）。
+  // 将来 buddyDragonSrc()（state.player.buddyDragon）で相棒を差し替え可能。Live2Dリグ→無ければwarpへ自動FB。
+  const buddySrc = (typeof buddyDragonSrc === "function") ? buddyDragonSrc() : "images/dragon_ref/ref.webp";
+  const buddy = el("div", "hl-buddy");
+  const buddyCv = document.createElement("canvas");
+  buddyCv.width = 384; buddyCv.height = 256;
+  buddy.appendChild(buddyCv);
+  if (window.DragonL2) DragonL2.mountOrWarp(buddyCv, buddySrc, "home");
+  else { const _dImg = new Image(); _dImg.onload = function () { startDragonWarp(buddyCv, _dImg); }; _dImg.onerror = function () { buddy.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = buddySrc; }
 
   const cms = el("div", "hl-comments");
   stage.appendChild(cms);
@@ -374,6 +427,20 @@ function renderHome() {
   }
   const _BANTER = ["今日はどの竜を推す〜？", "コメントありがとっ！", "いっしょに当てようね！", "耳、さわっていいよ？ うそうそ。", "オッズ、よーく見てね。", "ぱほぱほ〜♪", "推し竜、見つかった？", "差し入れ、うれしいな♪"];
   const _banter = () => mimiSay(_BANTER[Math.floor(Math.random() * _BANTER.length)]);
+  // ミミ本体タップ＝状況に合わせて一言（来訪者ミミの口調・表情リアクション付き）。表示専用＝レース数値不変。
+  const _MIMI_SAY = ["わっ、見てくれてるの…？ えへへ。", "今日もいっしょにドキドキしよ？", "コメント、ぜんぶ読んでるよ！", "ぱほぱほ〜♪", "耳、さわっちゃだめ……ちょっとだけならいいかも？", "この世界、まだ慣れないけど…がんばるっ！", "次はどの子に賭けようかな…", "応援、すっごく力になるんだ！", "わたし、予想家ミミです。よろしくねっ", "ふぁ…ちょっとねむい、かも？"];
+  function _mimiTalk() {
+    if (state.ui.screen !== "home") return;
+    let line, mood = "smile";
+    if (p.streak >= 3) { line = `${p.streak}連勝だって…！ すごくない？`; mood = "happy"; }
+    else if (p.coins <= 0) { line = "うぅ、コインがピンチかも…！"; mood = "panic"; }
+    else if (p.coins >= 100000000) { line = "コイン、こんなに……！ どうしよ〜！"; mood = "happy"; }
+    else if (Math.random() < 0.55) { line = _MIMI_SAY[Math.floor(Math.random() * _MIMI_SAY.length)]; mood = /[！]/.test(line) ? "happy" : "smile"; }
+    else { line = _BANTER[Math.floor(Math.random() * _BANTER.length)]; }
+    mimiSay(line);
+    try { _flipTo(mood); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 2300); } catch (e) {}
+    try { if (!_reduce) { const r = stage.getBoundingClientRect(); if (r.width) { _heart(r.width * 0.5, r.height * 0.42); _heart(r.width * 0.5 + 22, r.height * 0.47); } } } catch (e) {}
+  }
 
   wrap.appendChild(stage);
 
@@ -402,13 +469,37 @@ function renderHome() {
     _vB.textContent = _fmtV(_viewers);
   }, 2600));
 
-  const _CMN = ["竜見の村人", "観客アヤ", "常連のジジ", "旅の予想屋", "バニー推し", "島っ子", "屋台のおやじ", "夜勤あけ", "遠征組", "はじめて見た"];
+  const _CMN = ["竜見の村人", "観客アヤ", "常連のジジ", "旅の予想屋", "バニー推し", "島っ子", "屋台のおやじ", "夜勤あけ", "遠征組", "はじめて見た",
+    "竜舎の常連", "村の子ども", "予想ノート勢", "観光客さん", "ベテラン勢", "屋台の常連", "通りすがり", "町外れの占い師"];
   const _CMC = ["#57b1dd", "#6ac06a", "#e0a0c0", "#caa44a", "#9a6ad0", "#ff9a5c"];
-  const _CMT = ["ミミちゃん今日も推す！", "初見です！よろしく！", "🐲🐲🐲", "ぱほぱほ〜！", "今日こそ波乱こい", "本命党です", "穴党ですが何か", "耳ぴょこぴょこかわいい", "その衣装どこで買ったの？", "レースまだかな", "🔥🔥🔥", "💖💖", "ポロちゃん推し", "オッズ見てから来た", "村から応援してます", "🥕どうぞ", "昨日の波乱すごかった", "おやつ持ってきた", "今日の本命教えて", "かわいいの域を超えてる"];
+  const _CMT = ["ミミちゃん今日も推す！", "初見です！よろしく！", "🐲🐲🐲", "ぱほぱほ〜！", "今日こそ波乱こい", "本命党です", "穴党ですが何か", "耳ぴょこぴょこかわいい", "その衣装どこで買ったの？", "レースまだかな", "🔥🔥🔥", "💖💖", "ポロちゃん推し", "オッズ見てから来た", "村から応援してます", "🥕どうぞ", "昨日の波乱すごかった", "おやつ持ってきた", "今日の本命教えて", "かわいいの域を超えてる",
+    "今日も配信おつかれ！", "ミミちゃんの予想たより", "次のレースわくわく", "本命か穴か悩む〜", "耳ぴょこんかわいすぎ", "今日の調子どう？", "いっしょにドキドキしたい", "竜たちかっこいい！", "また来ちゃった！", "投げ銭しちゃう🪙", "実況たのしみ", "推し竜に全ツッパ", "コメント読んでくれる？", "ぱほぱほ言って〜", "癒やされる〜", "がんばれミミちゃん！", "今日のラッキー竜は？", "村の誇りだよ"];
   function _addCm(name, color, text) {
     const d = el("div", "hl-cm", `<b style="color:${color}">${name}</b>${text}`);
     cms.appendChild(d);
     while (cms.children.length > 6) cms.removeChild(cms.firstChild);
+  }
+  // 状況連動コメント：今のプレイ状況（連勝/コイン/ランク/勝率/時間帯/衣装…）に合う台詞を集める（表示専用）
+  function _ctxCm() {
+    const out = [];
+    const wr = p.completedRaces > 0 ? Math.round(p.wins / p.completedRaces * 100) : 0;
+    let hour = 12; try { hour = new Date().getHours(); } catch (e) {}
+    if (p.streak >= 5) out.push("連勝とまらないっ！", "もう伝説の域では？", "この流れ乗るしかない");
+    else if (p.streak >= 3) out.push(`${p.streak}連勝とかすごっ`, "波に乗ってるね〜", "ミミちゃん絶好調！");
+    else if (p.streak >= 2) out.push("お、連勝きてる？", "いい流れ〜");
+    if (p.coins <= 0) out.push("ミミちゃんドンマイ！", "次があるさ……！", "村のみんなで支える🥕", "ここからの巻き返し見たい");
+    else if (p.coins < 300) out.push("コインピンチ…がんばれ！", "ここは慎重にいこ？");
+    if (p.coins >= 100000000) out.push("億超えてて草", "金銭感覚バグってる笑", "ミミ様とお呼びしたい");
+    else if (p.coins >= 10000000) out.push("コイン持ちすぎでは…！", "羽振りよすぎる〜");
+    if (p.rank >= 6) out.push("さすが上級者の風格", "格が違うわ…", "予想家の鑑");
+    else if (p.rank <= 1) out.push("これからこれから！", "応援してるよ〜！");
+    if (p.completedRaces >= 10 && wr >= 50) out.push(`的中率${wr}%えぐい`, "予想の鬼や…");
+    if (p.completedRaces >= 50) out.push("歴戦のミミちゃん", "ベテランの貫禄だ");
+    if ((p.biggestPayout || 0) >= 100000) out.push("あの大穴当てた人だ！", "伝説の配当みたわ");
+    if (hour >= 5 && hour < 11) out.push("おはよ〜ミミちゃん", "朝から配信えらい！");
+    else if (hour >= 22 || hour < 4) out.push("夜更かし配信？", "夜のミミもいいね", "ねむくないの〜？");
+    try { const o = outfitById(oid); if (o && o.name) out.push(`その「${o.name}」似合ってる！`, "今日の衣装かわいい〜"); } catch (e) {}
+    return out;
   }
   function _randCm() {
     // 出会い済みの顧問がたまに登場（雰囲気のみ・表示専用）
@@ -419,6 +510,14 @@ function renderHome() {
         let t = (STORY_RACE_VOICE && STORY_RACE_VOICE[c.key]) || c.gives;
         if (t.length > 34) t = t.slice(0, 33) + "…";
         _addCm(c.symbol + c.name.split("・")[0], c.color, t);
+        return;
+      }
+    } catch (e) {}
+    // 状況連動を優先（約35%）→ 残りは汎用プールから
+    try {
+      const ctx = _ctxCm();
+      if (ctx.length && Math.random() < 0.35) {
+        _addCm(_CMN[Math.floor(Math.random() * _CMN.length)], _CMC[Math.floor(Math.random() * _CMC.length)], ctx[Math.floor(Math.random() * ctx.length)]);
         return;
       }
     } catch (e) {}
@@ -442,7 +541,7 @@ function renderHome() {
     h.addEventListener("animationend", () => h.remove());
   }
   stage.addEventListener("pointerdown", (e) => {
-    if (Math.random() < 0.5) _banter();
+    // ステージ余白タップ＝ハートのみ（ミミ本体タップは _mimiTalk が一言を担当・二重発火しない）
     if (_reduce) return;
     const r = stage.getBoundingClientRect();
     const n = 1 + Math.floor(Math.random() * 2);
@@ -503,6 +602,11 @@ function renderHome() {
     `<div class="hl-chip hl-chip-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>`;
   chips.querySelector(".hl-chip-assets").onclick = () => renderAssets();
   dock.appendChild(chips);
+  // 相棒ドラゴンを所持金（コイン）の下あたりに小さく。将来「相棒を変更」できるよう余地を残す。
+  const buddyRow = el("div", "hl-buddyrow");
+  buddyRow.appendChild(buddy);
+  buddyRow.appendChild(el("span", "hl-buddy-label", "相棒ドラゴン"));
+  dock.appendChild(buddyRow);
   if (goalLine) dock.appendChild(el("div", "hl-goal", "🎯 " + goalLine));
 
   // §38 — 破産時：最優先で「無心」導線

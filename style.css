@@ -3055,7 +3055,7 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 @keyframes hlKen { from { transform: translate(0,0) scale(1); } to { transform: translate(-1.6%,1.2%) scale(1.06); } }
 
 .hl { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - 96px); }
-.hl-top { display: flex; align-items: center; gap: 8px; }
+.hl-top { display: flex; align-items: center; gap: 8px; position: relative; z-index: 3; }
 .hl-prof { display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 6px; border-radius: 999px; cursor: pointer;
   background: rgba(10,13,18,.62); border: 1px solid var(--glass-border); backdrop-filter: blur(5px); color: var(--mist); text-align: left; }
 .hl-prof:active { transform: translateY(1px); }
@@ -3080,9 +3080,12 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hl-dd button { font-size: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.05);
   border: 1px solid var(--glass-border); color: var(--mist); cursor: pointer; text-align: left; }
 
-.hl-stage { position: relative; flex: 1 1 auto; min-height: 44vh; }
-.hl-mimi { position: absolute; left: 50%; bottom: 0; transform: translateX(-36%); width: min(76vw, 330px); height: min(58vh, 470px);
-  cursor: pointer; will-change: transform; filter: drop-shadow(0 14px 22px rgba(0,0,0,.55)); }
+.hl-stage { position: relative; flex: 1 1 auto; min-height: 48vh; z-index: 1; }
+/* ミミは中央・周囲とのバランスを取りつつ最大化（PCはコンテナ相対、スマホは画面幅相対）。
+   背が高い時は上段バー(z-index:3)の背後に収まるので情報を隠さない。 */
+.hl-mimi { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: min(94vw, 92%, 470px); height: min(66vh, 600px);
+  cursor: pointer; will-change: transform; filter: drop-shadow(0 16px 26px rgba(0,0,0,.58)); }
 .hl-mimi-in { width: 100%; height: 100%; will-change: transform; perspective: 700px; }
 .hl-mimi-flip { width: 100%; height: 100%; transition: transform .23s cubic-bezier(.45,0,.55,1); transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
 .hl-mimi-flip.flipping { transform: perspective(820px) rotateY(90deg); }   /* perspectiveを関数側に＝親のtransform/コンテナに影響されず確実に立体回転 */
@@ -3090,10 +3093,14 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   transform-origin: 50% 62%; will-change: transform; }
 .hl-mimi-tag { position: absolute; right: -2px; bottom: 14px; font-size: 11px; color: var(--mist);
   background: rgba(18,22,28,.85); border: 1px solid var(--gold-line); border-radius: 999px; padding: 4px 9px; }
-.hl-dragon { position: absolute; right: -6px; bottom: -4px; width: 150px; max-width: 38vw; aspect-ratio: 1536 / 1024;
-  pointer-events: none; opacity: .96; filter: drop-shadow(0 8px 14px rgba(0,0,0,.5)); }
-.hl-dragon canvas { width: 100%; height: 100%; display: block; }
-.hl-dragon-fallback { font-size: 56px; }
+/* 相棒ドラゴン（バディ）＝所持金の下に小さくかわいく。将来は相棒を差し替え可能。 */
+.hl-buddyrow { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+.hl-buddy { width: 84px; aspect-ratio: 1536 / 1024; flex: none;
+  pointer-events: none; opacity: .97; filter: drop-shadow(0 5px 9px rgba(0,0,0,.5)); }
+.hl-buddy canvas { width: 100%; height: 100%; display: block; }
+.hl-buddy-label { font-size: 10px; color: var(--mist-soft); letter-spacing: .04em;
+  background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); border-radius: 999px; padding: 3px 9px; }
+.hl-dragon-fallback { font-size: 40px; }
 .hl-comments { position: absolute; left: 0; bottom: 6px; width: min(56vw, 250px); display: flex; flex-direction: column; gap: 5px;
   pointer-events: none; mask-image: linear-gradient(180deg, transparent 0, #000 28%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 28%); }
@@ -3148,8 +3155,8 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hl-item .lb { font-size: 9.5px; color: var(--mist-soft); }
 @media (max-width: 560px) {
   .hl-rail { grid-template-columns: repeat(4, 1fr); }
-  .hl-mimi { transform: translateX(-42%); }
-  .hl-comments { width: 62vw; }
+  .hl-mimi { width: min(96vw, 360px); height: min(62vh, 540px); }
+  .hl-comments { width: 60vw; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hl-bg-img, .hl-live { animation: none; }
