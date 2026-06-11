@@ -2099,6 +2099,10 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 /* ホームは独自ヘッダー(.hl-top)＋ステージ上フロートに資産/ランク/出走情報を集約＝グローバル#headerは隠す */
 body.home-mode #header { display: none; }
 body.home-mode #app { padding: 12px 12px 16px; }
+/* ホーム/タイトルはスクロール不要の全画面＝bodyごと固定して「引っ張り」も実スクロールも根絶
+   （内容が数px超えてもページが動かない。離脱時はクラスが外れて通常スクロールに戻る） */
+body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height: 100%;
+  overflow: hidden; overscroll-behavior: none; }
 .title-screen {
   position: relative; min-height: 100vh; min-height: 100dvh;
   overflow: hidden; display: flex; align-items: stretch; justify-content: center;
@@ -3367,6 +3371,7 @@ body.home-mode #app { padding: 12px 12px 16px; }
   .hl-item .lb { font-size: 8.5px; letter-spacing: -.02em; white-space: nowrap; }
   .hl-dock { padding: 8px 8px 10px; gap: 7px; }
   .hl-mimi { width: min(99vw, 420px); height: min(73vh, 615px); }
+  .hl-stage { min-height: 34vh; }   /* 小型機でもドック込みで1画面に収める（はみ出し→スクロール化を防ぐ） */
   .hl-left { width: 58vw; }
   .hl-prof-tx b { font-size: 11.5px; }
   .hl-prof-rl { display: none; }   /* スマホは杯名を省略しヘッダー1行を死守（ランク数字は表示） */
