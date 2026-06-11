@@ -123,6 +123,26 @@
     return ["images/cast/" + id + ".png"];
   }
 
+  /* ---- 表情の自動選択（②表情差分） ----------------------------------
+     優先順位： 行の e（明示） > opts.mood（場面の気分） > 文面からの推定（ミミ） > 'smile'。
+     文面推定は“気分で自動的に表情が変わる”ための簡易ヒューリスティック。
+     誤爆時は行に e を明示する／play(台本,{auto:false}) で推定オフ。
+     EXTENSION POINT: 表情を増やすなら EXPRS と inferExpr のルールを更新。 */
+  var EXPRS = ["default", "smile", "happy", "panic"];
+  function inferExpr(t) {
+    if (!t) return "smile";
+    if (/[!！][?？]|[?？][!！]|[?？]{2}|えっ|ええ[ぇっ]|うわ|ひ[っぃ]|やば|まずい|こわ|怖|ピンチ|どうしよ|だめ|ダメ|無理|きゃ/.test(t)) return "panic";
+    if (/[!！]|やった|うれし|嬉し|わ[ーぁ]|よっし|最高|だいすき|大好き|ありがと|わくわく|たのし|楽し/.test(t)) return "happy";
+    if (/……|‥|ごめん|すみません|ううん|そっか|なるほど|ふぅ|はぁ/.test(t)) return "default";
+    return "smile";
+  }
+  function chooseExpr(line, c) {
+    if (line.e) return line.e;                                   // ① 明示が最優先
+    if (opts && opts.mood) return opts.mood;                     // ② 場面の気分（既定表情）
+    if (c && c.mimi && !(opts && opts.auto === false)) return inferExpr(line.t); // ③ ミミは文面推定
+    return undefined;                                            // ④ 他キャラ等は未指定（imgChainで'smile'扱い）
+  }
+
   /* =====================================================================
      2) 台本レジストリ（名前つき台本）＋サンプル
      EXTENSION POINT: 各場面の台本をここに足す（または Dialogue.register）。
@@ -258,7 +278,7 @@
       d.name.style.display = "none";
       d.name.textContent = "";
     } else {
-      setSlot(side, line.s, line.e, c);
+      setSlot(side, line.s, chooseExpr(line, c), c);
       activate(side);
       d.name.style.display = c.name ? "" : "none";
       d.name.textContent = c.name || "";
@@ -359,12 +379,14 @@
      5) 公開API
      ===================================================================== */
   var Dialogue = {
-    play: play,                       // play(台本 or 台本ID, {instant,speed}) → Promise
+    play: play,                       // play(台本 or 台本ID, {instant,speed,mood,auto}) → Promise
     register: function (id, script) { SCRIPTS[id] = script; return this; },
     registerCast: function (id, def) { id = resolveId(id); RUNTIME_CAST[id] = assign(RUNTIME_CAST[id] || {}, def); return this; },
     alias: function (from, to) { ALIAS[from] = to; return this; },
     castOf: castOf,
     scripts: SCRIPTS,
+    EXPRS: EXPRS,                     // 利用可能な表情リスト
+    inferExpr: inferExpr,             // 文面→表情の推定（②表情差分）
     isOpen: function () { return !!(dom && !dom.overlay.classList.contains("hidden")); },
     demo: function () { return play("demo"); }
   };
