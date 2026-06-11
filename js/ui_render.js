@@ -338,10 +338,11 @@ function renderHome() {
   // 外側=配置（left/translateX）・内側=アイドル演出のtransform先 — 競合させない
   const mimi = el("div", "hl-mimi");
   const mimiIn = el("div", "hl-mimi-in");
-  const _cutSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile_cut") : "";
-  const _origSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile") : "";
+  // 基本はデフォルト表情。flipラッパー＝カード回転演出用（アイドルtransformとは分離）
+  const _defSrc = (typeof outfitImg === "function") ? outfitImg(oid, "default") : "";
+  const _smileSrc = (typeof outfitImg === "function") ? outfitImg(oid, "smile") : "";
   mimiIn.innerHTML =
-    "<img alt='ミミ' src='" + _cutSrc + "' onerror=\"this.onerror=null;this.src='" + _origSrc + "'\">" +
+    "<div class='hl-mimi-flip'><img alt='ミミ' src='" + _defSrc + "' onerror=\"this.onerror=null;this.src='" + _smileSrc + "'\"></div>" +
     "<span class='hl-mimi-tag'>🛍️ きせかえ</span>";
   mimi.appendChild(mimiIn);
   mimi.title = "ショッピングモール（きせかえ）へ";
@@ -461,6 +462,28 @@ function renderHome() {
     const r = stage.getBoundingClientRect();
     if (r.width) _heart(r.width * (0.84 + Math.random() * 0.1), r.height * (0.55 + Math.random() * 0.3));
   }, 3800));
+
+  // ミミの表情カードフリップ：基本は default、時々クルッと回転して別表情→また回転して戻る。
+  // 回転は .hl-mimi-flip（アイドル演出のtransformとは別レイヤ）で行い、直角の瞬間に画像を差し替える。
+  const _flipEl = mimiIn.querySelector(".hl-mimi-flip");
+  const _flipImg = _flipEl ? _flipEl.querySelector("img") : null;
+  let _exprNow = "default";
+  function _flipTo(ex) {
+    if (!_flipEl || !_flipImg || ex === _exprNow) return;
+    _exprNow = ex;
+    const src = outfitImg(oid, ex);
+    if (_reduce) { _flipImg.src = src; return; }
+    _flipEl.classList.add("flipping");
+    setTimeout(() => { _flipImg.src = src; _flipEl.classList.remove("flipping"); }, 190);
+  }
+  window._hlTimers.push(setInterval(() => {
+    if (state.ui.screen !== "home") return;
+    if (_exprNow === "default") {
+      if (Math.random() < 0.65) _flipTo(["smile", "happy", "panic"][Math.floor(Math.random() * 3)]);
+    } else {
+      _flipTo("default");   // 数秒見せたらデフォルトへ戻る
+    }
+  }, 5200));
 
   // ── 下段ドック：チップ（コイン/総資産/戦績）→ 無心 → レースCTA → ナビ
   const dock = el("div", "hl-dock");
@@ -1372,7 +1395,7 @@ function renderMall() {
     (isWorn ? `<span class="mall-badge worn">✓ 着用中</span>` : (owned ? "" : `<span class="mall-badge tryon">試着中</span>`));
   stage.appendChild(img);
   const seg = el("div", "mall-expr");
-  [["smile", "😊 にこ"], ["happy", "🌟 よろこび"], ["panic", "💦 あせり"], ["default", "😐 すまし"]].forEach(([k, lb]) => {
+  [["default", "🙂 通常"], ["smile", "😊 にこ"], ["happy", "🌟 よろこび"], ["panic", "💦 あせり"]].forEach(([k, lb]) => {
     const b = el("button", "mall-expr-b" + (state.ui.mallExpr === k ? " on" : ""), lb);
     b.onclick = () => { state.ui.mallExpr = k; renderMall(); };
     seg.appendChild(b);

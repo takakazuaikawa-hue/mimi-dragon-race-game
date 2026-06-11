@@ -3024,7 +3024,9 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hl-stage { position: relative; flex: 1 1 auto; min-height: 44vh; }
 .hl-mimi { position: absolute; left: 50%; bottom: 0; transform: translateX(-36%); width: min(76vw, 330px); height: min(58vh, 470px);
   cursor: pointer; will-change: transform; filter: drop-shadow(0 14px 22px rgba(0,0,0,.55)); }
-.hl-mimi-in { width: 100%; height: 100%; will-change: transform; }
+.hl-mimi-in { width: 100%; height: 100%; will-change: transform; perspective: 700px; }
+.hl-mimi-flip { width: 100%; height: 100%; transition: transform .19s ease-in; transform-style: preserve-3d; will-change: transform; }
+.hl-mimi-flip.flipping { transform: rotateY(90deg); transition-timing-function: ease-out; }
 .hl-mimi img { width: 100%; height: 100%; object-fit: contain; object-position: bottom center;
   transform-origin: 50% 62%; will-change: transform; }
 .hl-mimi-tag { position: absolute; right: -2px; bottom: 14px; font-size: 11px; color: var(--mist);
