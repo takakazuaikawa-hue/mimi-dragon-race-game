@@ -94,7 +94,7 @@ registerEvent({
   hook: "afterRaceResult",
   condition: { test: ctx => ctx && ctx.hit },
   actions: [
-    { type: "dialogue", speaker: "mimi",
+    { type: "dialogue", speaker: "mimi", expr: "happy",
       text: "や、やりました！ 当たってます！ しっぽが勝手に跳ねちゃいます！" }
   ]
 });
@@ -103,7 +103,7 @@ registerEvent({
   hook: "afterRaceResult",
   condition: { test: ctx => ctx && !ctx.hit },
   actions: [
-    { type: "dialogue", speaker: "mimi",
+    { type: "dialogue", speaker: "mimi", expr: "default",
       text: "外れちゃいました……でも、分析画面を見れば、次のヒントが見えてきます！" }
   ]
 });

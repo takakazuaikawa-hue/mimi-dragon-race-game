@@ -265,7 +265,11 @@ function renderHome() {
   // daily login reward — checked once per session, shown just after home paints
   if (!window._mimiLoginChecked) {
     window._mimiLoginChecked = true;
-    try { const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin(); if (_lb) setTimeout(() => showLoginBonus(_lb), 420); } catch (e) {}
+    try {
+      const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
+      if (_lb) setTimeout(() => showLoginBonus(_lb), 420);
+      else if (window.Dialogue && window.DLG && DLG.login) setTimeout(() => Dialogue.play(DLG.login(state.player)), 360);
+    } catch (e) {}
   }
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
   const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : 0;
@@ -985,6 +989,11 @@ function renderStoryChapter(chId) {
   if (!ch || state.player.totalAssets < storyUnlockAt(ch.id)) { renderStory(); return; }
   state.ui.screen = "story_read";
   const cast = STORY_CAST[ch.cast];
+  // 各話の導入セリフ（立ち絵）— 章ごとに1回だけ。本文はそのまま下に表示。
+  if (window.Dialogue && window.DLG && typeof getStoryFlag === "function" && !getStoryFlag("_chapter_intro_" + ch.id)) {
+    Dialogue.play(DLG.chapterIntro(ch, cast));
+    if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
+  }
   const app = beginScreen();   // 上部に「← 物語」
   app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
   if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
@@ -1215,11 +1224,11 @@ function renderMall() {
       `<div class="mall-card-nm">${o.name}</div>` +
       `<div class="mall-card-fl">${o.flavor}</div>` + foot;
     const wb = card.querySelector(".wear");
-    if (wb) wb.onclick = () => { wearOutfit(o.id); if (window.Sfx) Sfx.play("click"); renderMall(); };
+    if (wb) wb.onclick = () => { wearOutfit(o.id); if (window.Sfx) Sfx.play("click"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(o)); renderMall(); };
     const bb = card.querySelector(".buy");
     if (bb) bb.onclick = () => {
       const r = buyOutfit(o.id);
-      if (r.ok) { wearOutfit(o.id); if (window.Sfx) Sfx.play("coin"); renderMall(); }
+      if (r.ok) { wearOutfit(o.id); if (window.Sfx) Sfx.play("coin"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(o)); renderMall(); }
       else if (r.reason === "poor") alert("コインが足りません。");
     };
     grid.appendChild(card);
@@ -2369,7 +2378,12 @@ function onConfirmBet(skipDialog) {
   // is still credited on next load — state.current itself is not persisted.
   state.player.pendingPayout = (c.betResult && c.betResult.payout) || 0;
   saveGame();
-  renderRaceRun();
+  // レース直前の煽り（立ち絵）→ 閉じてからレース映像へ。結果は既に runRace で確定済み・不変。
+  if (window.DLG && DLG.PRE_RACE_HYPE && window.Dialogue && Dialogue.play) {
+    Dialogue.play(DLG.preRace(c.race, c.bet)).then(renderRaceRun);
+  } else {
+    renderRaceRun();
+  }
 }
 
 // §settlement (477a0b7) — apply the race outcome to the wallet + progression

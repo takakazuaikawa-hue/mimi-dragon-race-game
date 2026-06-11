@@ -71,16 +71,19 @@ function eventConditionMet(ev, context) {
 // §10 §5 action handlers (V1 subset). action.text may be a string or a
 // function(context) → string for dynamic messages.
 function runEventActions(ev, context) {
+  const _speech = [];   // この event のセリフを集約 → 立ち絵プレイヤーへ一括
   for (const a of (ev.actions || [])) {
     const text = (typeof a.text === "function") ? a.text(context) : a.text;
     switch (a.type) {
       case "dialogue":
       case "tutorial_message":
       case "panyu_message":
-        showEvent(speakerLabel(a.speaker), text);
+        // 立ち絵つきセリフへ（speaker は ID のまま渡す＝standee/表情解決）。
+        // 任意で a.expr を指定すると表情を固定（無ければミミは文面から自動推定）。
+        _speech.push({ s: a.speaker, t: text, e: a.expr });
         break;
       case "system_message":
-        showEvent("システム", text);
+        _speech.push({ s: "system", t: text, e: a.expr });
         break;
       case "coin_rescue": {
         // §30 §10/§13.4 — rescue scales with the life Mimi has rebuilt
@@ -113,6 +116,7 @@ function runEventActions(ev, context) {
   if (ev.condition && ev.condition.once) {
     setStoryFlag("_event_fired_" + ev.id, true);
   }
+  return _speech;
 }
 
 // §10 §14 speaker labels.
@@ -130,10 +134,24 @@ function runEventHooks(hookName, context) {
   const list = eventHooks[hookName];
   if (!list || list.length === 0) return;
   const sorted = [...list].sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  let speech = [];
   for (const ev of sorted) {
     if (eventConditionMet(ev, context)) {
-      runEventActions(ev, context);
+      const s = runEventActions(ev, context);
+      if (s && s.length) speech = speech.concat(s);
     }
+  }
+  if (speech.length) emitSpeech(speech);
+}
+
+// 既存イベントのセリフ群を“立ち絵つき”で再生する一点経路（dialogue.js）。
+// 1フック内の全セリフを1つの会話として連続再生。未ロード時は従来モーダルへ。
+// → event_registry.js のデータはそのまま、表示だけが立ち絵化される。
+function emitSpeech(lines) {
+  if (typeof Dialogue !== "undefined" && Dialogue && Dialogue.play) {
+    Dialogue.play(lines);
+  } else {
+    for (let i = 0; i < lines.length; i++) showEvent(speakerLabel(lines[i].s), lines[i].t);
   }
 }
 
