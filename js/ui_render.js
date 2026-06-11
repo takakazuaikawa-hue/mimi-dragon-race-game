@@ -1310,6 +1310,7 @@ function renderSettings() {
 // 立ち絵を実際に差し替える表示専用コスメ。着順・オッズ・配当には非干渉。
 function renderMall() {
   state.ui.screen = "mall";
+  if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();   // 取り残されたセリフオーバーレイがタップを塞がないように
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   const app = beginScreen();   // 上部に「← ホーム」
   app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
@@ -1389,7 +1390,12 @@ function renderMall() {
     card.innerHTML =
       `<div class="mall-card-img">${photoOr(outfitImg(o.id, "default"), "<span class='mall-fallback'>🐰</span>")}</div>` +
       `<div class="mall-card-nm">${o.name}</div>` + chip;
-    card.onclick = () => { state.ui.mallSel = o.id; if (window.Sfx) Sfx.play("click"); renderMall(); };
+    card.onclick = () => {
+      state.ui.mallSel = o.id; if (window.Sfx) Sfx.play("click");
+      renderMall();
+      // タップの結果（試着室の切替）が見えるように、ページ上部の試着室へスクロール
+      const f = document.querySelector(".mall-fit"); if (f) f.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
     grid.appendChild(card);
   });
   app.appendChild(grid);
