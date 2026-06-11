@@ -352,6 +352,13 @@ function renderHome() {
   app.appendChild(bg);
 
   const wrap = el("div", "hl");
+  // 1画面フィット：dvh/vhは環境差が大きい（WebViewで実視界より小さく解決される例あり）ので
+  // 実測 innerHeight で .hl の高さを確定（リサイズ追従・ホーム再描画で旧リスナは差し替え）。
+  function _fitHl() { wrap.style.minHeight = Math.max(420, window.innerHeight - 30) + "px"; }
+  _fitHl();
+  if (window._hlResize) window.removeEventListener("resize", window._hlResize);
+  window._hlResize = _fitHl;
+  window.addEventListener("resize", _fitHl);
 
   // ── ヘッダー（すっきり1行・浮遊）：プロフィール(称号切替)｜資産情報｜相棒ボタン｜⋯
   const top = el("div", "hl-top");
@@ -419,18 +426,27 @@ function renderHome() {
   stage.appendChild(mimi);
 
   // 出走情報・ランク情報を背景に“浮かせる”フロート（配信オーバーレイ風・半透明・右上）。
+  // 新規プレイヤーのゼロ統計はノイズなので非表示。🎯目標は📌ピン留めコメントへ移設。
   const floatBox = el("div", "hl-float");
   const viewersEl = el("div", "hl-viewers", "👁 <b></b>");
   floatBox.innerHTML =
     `<div class="hl-float-live"><span class="hl-live">LIVE</span></div>` +
     `<div class="hl-float-rank">🏅 ランク${p.rank}${rankLabel ? " " + rankLabel : ""}${p.streak >= 2 ? ` ・ 🔥${p.streak}連勝` : ""}</div>` +
-    `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` +
-    (goalLine ? `<div class="hl-float-goal">🎯 ${goalLine}</div>` : "");
+    (p.completedRaces > 0 ? `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` : "");
   floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
   stage.appendChild(floatBox);
 
+  // 背景の火の粉（CSSのみで常時ゆらめく・reduced-motionでは非表示）＝画面が止まって見えない
+  const emb = el("div", "hl-embers");
+  emb.innerHTML = "<span></span><span></span><span></span><span></span><span></span><span></span><span></span>";
+  stage.appendChild(emb);
+
+  // 左下カラム：📌ピン留め（次の目標＝配信のお知らせ風）＋流れるコメント
+  const left = el("div", "hl-left");
+  if (goalLine) left.appendChild(el("div", "hl-pin", "📌 " + goalLine));
   const cms = el("div", "hl-comments");
-  stage.appendChild(cms);
+  left.appendChild(cms);
+  stage.appendChild(left);
 
   // ミミの吹き出し（配信トーク）。挨拶＋タップ反応＋ときどき小ネタ。VN立ち絵は出さない。
   const speech = el("div", "hl-speech hidden");
@@ -496,8 +512,8 @@ function renderHome() {
   const _CMC = ["#57b1dd", "#6ac06a", "#e0a0c0", "#caa44a", "#9a6ad0", "#ff9a5c"];
   const _CMT = ["ミミちゃん今日も推す！", "初見です！よろしく！", "🐲🐲🐲", "ぱほぱほ〜！", "今日こそ波乱こい", "本命党です", "穴党ですが何か", "耳ぴょこぴょこかわいい", "その衣装どこで買ったの？", "レースまだかな", "🔥🔥🔥", "💖💖", "ポロちゃん推し", "オッズ見てから来た", "村から応援してます", "🥕どうぞ", "昨日の波乱すごかった", "おやつ持ってきた", "今日の本命教えて", "かわいいの域を超えてる",
     "今日も配信おつかれ！", "ミミちゃんの予想たより", "次のレースわくわく", "本命か穴か悩む〜", "耳ぴょこんかわいすぎ", "今日の調子どう？", "いっしょにドキドキしたい", "竜たちかっこいい！", "また来ちゃった！", "投げ銭しちゃう🪙", "実況たのしみ", "推し竜に全ツッパ", "コメント読んでくれる？", "ぱほぱほ言って〜", "癒やされる〜", "がんばれミミちゃん！", "今日のラッキー竜は？", "村の誇りだよ"];
-  function _addCm(name, color, text) {
-    const d = el("div", "hl-cm", `<b style="color:${color}">${name}</b>${text}`);
+  function _addCm(name, color, text, cls) {
+    const d = el("div", "hl-cm" + (cls ? " " + cls : ""), `<b style="color:${color}">${name}</b>${text}`);
     cms.appendChild(d);
     while (cms.children.length > 6) cms.removeChild(cms.firstChild);
   }
@@ -551,10 +567,10 @@ function renderHome() {
     if (Math.random() < 0.7) _randCm();
   }, 3300));
 
-  function _heart(x, y) {
+  function _heart(x, y, ch) {
     const h = document.createElement("span");
     h.className = "hl-heart";
-    h.textContent = ["💖", "💛", "🧡", "💚", "💙", "🤍", "✨"][Math.floor(Math.random() * 7)];
+    h.textContent = ch || ["💖", "💛", "🧡", "💚", "💙", "🤍", "✨"][Math.floor(Math.random() * 7)];
     h.style.left = x + "px"; h.style.top = y + "px";
     h.style.setProperty("--dx", (Math.random() * 48 - 24).toFixed(0) + "px");
     h.style.setProperty("--rz", (Math.random() * 40 - 20).toFixed(0) + "deg");
@@ -579,6 +595,49 @@ function renderHome() {
     const r = stage.getBoundingClientRect();
     if (r.width) _heart(r.width * (0.84 + Math.random() * 0.1), r.height * (0.55 + Math.random() * 0.3));
   }, 3800));
+
+  // 入場通知（TikTokの "joined" 風・表示専用）：ときどき誰かが遊びに来る
+  function _joinCm() {
+    const nm = _CMN[Math.floor(Math.random() * _CMN.length)];
+    _addCm("🌟" + nm, "#b9a0ff", " が遊びにきた！", "join");
+  }
+  window._hlTimers.push(setInterval(() => {
+    if (state.ui.screen !== "home") return;
+    if (Math.random() < 0.4) _joinCm();
+  }, 9500));
+
+  // ギフト演出（投げ銭ごっこ・完全に表示専用＝コインは1枚も動かない）：
+  // コメント＋絵文字が舞い上がる。レアギフト(💎)は大きく舞ってミミが必ずお礼。
+  const _GIFTS = [
+    { e: "🥕", n: "ニンジン", w: 5 }, { e: "🍖", n: "ドラゴンミート", w: 3 },
+    { e: "🌸", n: "花束", w: 3 }, { e: "🍩", n: "ドーナツ", w: 2 }, { e: "💎", n: "竜の宝石", w: 1 }];
+  const _GIFT_THX = ["わ〜！ありがとうっ！", "だいじにするねっ！", "ぱほぱほ〜！感謝です！", "えへへ、うれしい〜！"];
+  function _giftCm() {
+    const pool = []; _GIFTS.forEach(g => { for (let i = 0; i < g.w; i++) pool.push(g); });
+    const g = pool[Math.floor(Math.random() * pool.length)];
+    const nm = _CMN[Math.floor(Math.random() * _CMN.length)];
+    const rare = g.e === "💎";
+    _addCm("🎁" + nm, "#ffcf6e", ` が ${g.n}${g.e} を投げた！`, "gift");
+    if (!_reduce) {
+      const r = stage.getBoundingClientRect();
+      const n = rare ? 12 : 5 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < n; i++) {
+        ((d) => setTimeout(() => {
+          if (state.ui.screen !== "home" || !r.width) return;
+          _heart(r.width * (0.25 + Math.random() * 0.5), r.height * (0.4 + Math.random() * 0.35), g.e);
+        }, d))(i * 90);
+      }
+    }
+    if (rare || Math.random() < 0.35) {
+      mimiSay(_GIFT_THX[Math.floor(Math.random() * _GIFT_THX.length)]);
+      try { _flipTo("happy"); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 2300); } catch (e) {}
+    }
+  }
+  window._hlTimers.push(setInterval(() => {
+    if (state.ui.screen !== "home") return;
+    if (Math.random() < 0.55) _giftCm();
+  }, 21000));
+  window._hlFx = { join: _joinCm, gift: _giftCm };   // 動作確認用フック（表示専用）
 
   // ミミの表情カードフリップ：基本は default、時々クルッと回転して別表情→また回転して戻る。
   // 回転は .hl-mimi-flip（アイドル演出のtransformとは別レイヤ）で行い、直角(90°)の瞬間に画像を差し替える。
@@ -614,9 +673,50 @@ function renderHome() {
     }
   }, 5200));
 
-  // ── 下段ドック（すっきり）：(破産時)無心 → レースCTA → ナビ。
+  // ── 下段ドック（すっきり）：コメントバー → (破産時)無心 → レースCTA → ナビ。
   // 資産情報はヘッダー、出走/ランク/目標はステージ上のフロートへ移動済み＝ミミの領域を最大化。
   const dock = el("div", "hl-dock");
+
+  // コメントバー（TikTok風の参加UI・完全に表示専用）：定型コメントを「あなた」として流す＋❤️いいね
+  const cmwrap = el("div", "hl-cmbar-wrap");
+  const qr = el("div", "hl-qr hidden");
+  const QRS = ["がんばれー！", "ミミちゃんかわいい", "本命きめた？", "🐲🐲🐲", "ぱほぱほ〜！"];
+  const _YOU_THX = ["コメントありがとっ！", "わっ、うれしい！", "読んだよ〜！ありがとう♪", "えへへ、がんばるねっ"];
+  let _qrT = 0;
+  function _youSay(t) {
+    _addCm("✨あなた", "#ffd34d", " " + t, "you");
+    qr.classList.add("hidden");
+    if (Math.random() < 0.55) {
+      mimiSay(_YOU_THX[Math.floor(Math.random() * _YOU_THX.length)]);
+      try { _flipTo(Math.random() < 0.5 ? "smile" : "happy"); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 2300); } catch (e) {}
+    }
+  }
+  QRS.forEach(t => { const b = el("button", "hl-qr-b", t); b.onclick = () => _youSay(t); qr.appendChild(b); });
+  const cmbar = el("div", "hl-cmbar");
+  const cmInput = el("button", "hl-cminput", "💬 コメントする…");
+  cmInput.onclick = () => {
+    qr.classList.toggle("hidden");
+    clearTimeout(_qrT);
+    if (!qr.classList.contains("hidden")) _qrT = setTimeout(() => qr.classList.add("hidden"), 7000);
+  };
+  cmbar.appendChild(cmInput);
+  // ❤️いいね：タップでカウント＋ハート噴出。自動でもじわじわ増える（ライブ感・表示専用）
+  let _likes = 1200 + Math.floor(_viewers * 6) + p.completedRaces * 15;
+  const _fmtL = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
+  const likeBtn = el("button", "hl-likebtn", `❤️<b>${_fmtL(_likes)}</b>`);
+  const _setLike = () => { const b = likeBtn.querySelector("b"); if (b) b.textContent = _fmtL(_likes); };
+  likeBtn.onclick = () => {
+    _likes += 1; _setLike();
+    if (!_reduce) { const r = stage.getBoundingClientRect(); if (r.width) for (let i = 0; i < 2; i++) _heart(r.width * (0.78 + Math.random() * 0.16), r.height * (0.55 + Math.random() * 0.3)); }
+    if (Math.random() < 0.07) mimiSay("いいね、ありがとっ！");
+  };
+  window._hlTimers.push(setInterval(() => {
+    if (state.ui.screen !== "home") return;
+    if (Math.random() < 0.7) { _likes += 1 + Math.floor(Math.random() * 3); _setLike(); }
+  }, 2600));
+  cmbar.appendChild(likeBtn);
+  cmwrap.appendChild(qr); cmwrap.appendChild(cmbar);
+  dock.appendChild(cmwrap);
 
   // §38 — 破産時：最優先で「無心」導線
   if (p.coins <= 0) {
