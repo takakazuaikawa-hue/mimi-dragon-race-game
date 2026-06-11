@@ -1960,6 +1960,9 @@ table.entry-table {
 /* ===================== Title screen (commercial first impression) ===================== */
 body.title-mode #header { display: none; }
 body.title-mode #app { max-width: none; padding: 0; margin: 0; }
+/* ホームは独自ヘッダー(.hl-top)＋ステージ上フロートに資産/ランク/出走情報を集約＝グローバル#headerは隠す */
+body.home-mode #header { display: none; }
+body.home-mode #app { padding: 12px 12px 16px; }
 .title-screen {
   position: relative; min-height: 100vh; min-height: 100dvh;
   overflow: hidden; display: flex; align-items: stretch; justify-content: center;
@@ -3055,23 +3058,39 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 @keyframes hlKen { from { transform: translate(0,0) scale(1); } to { transform: translate(-1.6%,1.2%) scale(1.06); } }
 
 .hl { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - 96px); }
-.hl-top { display: flex; align-items: center; gap: 8px; position: relative; z-index: 3; }
-.hl-prof { display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 6px; border-radius: 999px; cursor: pointer;
+.hl-top { display: flex; align-items: center; gap: 7px; position: relative; z-index: 3; flex-wrap: wrap; }
+.hl-prof { display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 999px; cursor: pointer;
   background: rgba(10,13,18,.62); border: 1px solid var(--glass-border); backdrop-filter: blur(5px); color: var(--mist); text-align: left; }
 .hl-prof:active { transform: translateY(1px); }
 .hl-prof-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px;
-  background: radial-gradient(circle at 35% 30%, #ffd877, #b9802a); border: 1px solid rgba(255,255,255,.5); }
-.hl-prof-tx { display: flex; flex-direction: column; line-height: 1.25; }
+  background: radial-gradient(circle at 35% 30%, #ffd877, #b9802a); border: 1px solid rgba(255,255,255,.5); flex: none; }
+.hl-prof-tx { display: flex; flex-direction: column; line-height: 1.2; }
 .hl-prof-tx b { font-size: 12.5px; font-weight: 900; }
-.hl-prof-title { font-style: normal; color: var(--gold-bright); font-weight: 700; margin-left: 4px; font-size: 10.5px; }
-.hl-prof-tx small { font-size: 10px; color: var(--mist-soft); }
+.hl-prof-title { font-style: normal; color: var(--gold-bright); font-weight: 700; font-size: 10px; }
+.hl-prof-caret { margin-left: 2px; opacity: .8; }
+/* 資産情報（ヘッダー）：コイン大＋総資産バー・タップで暮らし */
+.hl-money { display: flex; flex-direction: column; gap: 3px; padding: 5px 12px; border-radius: 12px; cursor: pointer;
+  background: rgba(10,13,18,.62); border: 1px solid var(--gold-line); backdrop-filter: blur(5px); color: var(--mist); text-align: left; min-width: 122px; }
+.hl-money:active { transform: translateY(1px); }
+.hl-money-coin { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.hl-money-coin b { color: var(--gold-bright); font-size: 15px; font-variant-numeric: tabular-nums; }
+.hl-money-as { display: flex; flex-direction: column; gap: 2px; font-size: 9.5px; color: var(--mist-soft); }
+.hl-money-as .t b { color: var(--mist); font-variant-numeric: tabular-nums; }
+.hl-money-as .bar { display: block; height: 4px; border-radius: 99px; background: rgba(0,0,0,.45); overflow: hidden; }
+.hl-money-as .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); }
+/* 相棒ドラゴン＝ヘッダーの小さなボタン（中で竜が動く） */
+.hl-buddy-btn { width: 48px; height: 42px; padding: 0; border-radius: 12px; cursor: pointer; overflow: hidden; flex: none;
+  background: rgba(10,13,18,.55); border: 1px solid var(--gold-line); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; }
+.hl-buddy-btn:active { transform: translateY(1px); }
+.hl-buddy-btn canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
 .hl-live { font-size: 9.5px; font-weight: 900; letter-spacing: .08em; color: #fff; border-radius: 6px; padding: 3px 7px;
   background: linear-gradient(180deg, #ff5e6c, #e02d4f); animation: hlPulse 1.6s ease-in-out infinite; }
 @keyframes hlPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
-.hl-viewers { margin-left: auto; font-size: 11.5px; color: var(--mist); background: rgba(10,13,18,.55);
-  border: 1px solid var(--glass-border); border-radius: 999px; padding: 5px 10px; backdrop-filter: blur(4px); }
+.hl-viewers { font-size: 11px; color: var(--mist); background: rgba(8,11,16,.5);
+  border: 1px solid var(--glass-border); border-radius: 999px; padding: 3px 9px; }
 .hl-viewers b { color: #fff; font-variant-numeric: tabular-nums; }
-.hl-syswrap { position: relative; }
+.hl-syswrap { position: relative; margin-left: auto; }
 .hl-sys { width: 30px; height: 30px; border-radius: 50%; background: rgba(10,13,18,.55); border: 1px solid var(--glass-border);
   color: var(--mist); font-weight: 900; cursor: pointer; }
 .hl-dd { position: absolute; right: 0; top: 36px; z-index: 30; display: flex; flex-direction: column; gap: 6px; padding: 8px;
@@ -3084,7 +3103,7 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 /* ミミは中央・周囲とのバランスを取りつつ最大化（PCはコンテナ相対、スマホは画面幅相対）。
    背が高い時は上段バー(z-index:3)の背後に収まるので情報を隠さない。 */
 .hl-mimi { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
-  width: min(94vw, 92%, 470px); height: min(66vh, 600px);
+  width: min(96vw, 96%, 500px); height: min(74vh, 700px);
   cursor: pointer; will-change: transform; filter: drop-shadow(0 16px 26px rgba(0,0,0,.58)); }
 .hl-mimi-in { width: 100%; height: 100%; will-change: transform; perspective: 700px; }
 .hl-mimi-flip { width: 100%; height: 100%; transition: transform .23s cubic-bezier(.45,0,.55,1); transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
@@ -3093,14 +3112,17 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
   transform-origin: 50% 62%; will-change: transform; }
 .hl-mimi-tag { position: absolute; right: -2px; bottom: 14px; font-size: 11px; color: var(--mist);
   background: rgba(18,22,28,.85); border: 1px solid var(--gold-line); border-radius: 999px; padding: 4px 9px; }
-/* 相棒ドラゴン（バディ）＝所持金の下に小さくかわいく。将来は相棒を差し替え可能。 */
-.hl-buddyrow { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
-.hl-buddy { width: 84px; aspect-ratio: 1536 / 1024; flex: none;
-  pointer-events: none; opacity: .97; filter: drop-shadow(0 5px 9px rgba(0,0,0,.5)); }
-.hl-buddy canvas { width: 100%; height: 100%; display: block; }
-.hl-buddy-label { font-size: 10px; color: var(--mist-soft); letter-spacing: .04em;
-  background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); border-radius: 999px; padding: 3px 9px; }
-.hl-dragon-fallback { font-size: 40px; }
+.hl-dragon-fallback { font-size: 22px; }
+/* 出走情報・ランク情報・目標を背景に“浮かせる”（配信オーバーレイ風・右上・半透明・操作透過） */
+.hl-float { position: absolute; top: 4px; right: 2px; z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
+  pointer-events: none; max-width: 66%; }
+.hl-float > div { background: rgba(8,11,16,.46); border: 1px solid var(--glass-border); border-radius: 999px; padding: 4px 11px;
+  font-size: 10.5px; color: var(--mist); backdrop-filter: blur(3px); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 4px 12px -6px rgba(0,0,0,.6); }
+.hl-float-live { display: flex; align-items: center; gap: 7px; background: transparent !important; border: 0 !important; padding: 0 !important; box-shadow: none !important; }
+.hl-float-rank { color: var(--gold-bright); font-weight: 700; }
+.hl-float-rec { font-variant-numeric: tabular-nums; }
+.hl-float-goal { font-size: 10px; color: var(--mist-soft); }
 .hl-comments { position: absolute; left: 0; bottom: 6px; width: min(56vw, 250px); display: flex; flex-direction: column; gap: 5px;
   pointer-events: none; mask-image: linear-gradient(180deg, transparent 0, #000 28%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 28%); }
@@ -3127,19 +3149,7 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hl-dock { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 10px 12px;
   background: rgba(13,17,23,.82); border: 1px solid var(--gold-line); border-radius: 18px;
   backdrop-filter: blur(7px); box-shadow: 0 -10px 32px -18px rgba(0,0,0,.9); }
-.hl-chips { display: flex; gap: 6px; align-items: stretch; flex-wrap: wrap; }
-.hl-chip { font-size: 11px; color: var(--mist-soft); background: rgba(255,255,255,.05);
-  border: 1px solid var(--glass-border); border-radius: 10px; padding: 6px 9px; }
-.hl-chip b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
-.hl-chip-coin { display: flex; align-items: center; gap: 4px; font-size: 12px; }
-.hl-chip-coin b { font-size: 16px; }
-.hl-chip-assets { flex: 1; min-width: 120px; cursor: pointer; text-align: left;
-  display: flex; flex-direction: column; gap: 4px; justify-content: center; }
-.hl-chip-assets .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hl-chip-assets .bar { display: block; height: 5px; border-radius: 99px; background: rgba(0,0,0,.45); overflow: hidden; }
-.hl-chip-assets .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); }
-.hl-chip-rec { display: flex; align-items: center; font-size: 10px; white-space: nowrap; }
-.hl-goal { font-size: 10.5px; color: var(--mist-soft); padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* （旧 .hl-chips/.hl-chip*/.hl-goal はヘッダー資産情報＋ステージ上フロートへ移行：撤去） */
 .hl-broke { width: 100%; padding: 11px; border: none; border-radius: 12px; cursor: pointer;
   background: linear-gradient(180deg, #e0607a, #b53a52); color: #fff; font-weight: 800; font-size: 14px;
   box-shadow: 0 6px 16px -6px rgba(181,58,82,0.6); }
@@ -3155,8 +3165,12 @@ body.title-mode #app { max-width: none; padding: 0; margin: 0; }
 .hl-item .lb { font-size: 9.5px; color: var(--mist-soft); }
 @media (max-width: 560px) {
   .hl-rail { grid-template-columns: repeat(4, 1fr); }
-  .hl-mimi { width: min(96vw, 360px); height: min(62vh, 540px); }
-  .hl-comments { width: 60vw; }
+  .hl-mimi { width: min(98vw, 380px); height: min(64vh, 540px); }
+  .hl-comments { width: 56vw; }
+  .hl-prof-tx b { font-size: 11.5px; }
+  .hl-money { min-width: 108px; }
+  .hl-float { max-width: 70%; }
+  .hl-float > div { font-size: 10px; padding: 3px 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hl-bg-img, .hl-live { animation: none; }

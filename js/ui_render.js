@@ -47,6 +47,7 @@ function beginScreen() {
   const screen = state.ui.screen;
   const prev = _prevScreen;
   app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart");
+  if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
   if (prev !== screen) window.scrollTo(0, 0);   // start every new screen at the top
 
   // Hero "expand from the tapped card" (race card → detail) takes priority.
@@ -303,6 +304,7 @@ function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
   const app = beginScreen();
+  document.body.classList.add("home-mode");   // グローバル#headerを隠す（資産/ランクはホーム独自ヘッダー＋フロートへ集約）
   const p = state.player;
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   // daily login reward — checked once per session, shown just after home paints
@@ -351,19 +353,38 @@ function renderHome() {
 
   const wrap = el("div", "hl");
 
-  // ── 上段：配信者チップ（タップ＝暮らし）＋ LIVE ＋ 視聴者数 ＋ ⋯システム
+  // ── ヘッダー（すっきり1行・浮遊）：プロフィール(称号切替)｜資産情報｜相棒ボタン｜⋯
   const top = el("div", "hl-top");
   const prof = el("button", "hl-prof");
   prof.innerHTML =
     `<span class="hl-prof-av">🐰</span>` +
-    `<span class="hl-prof-tx"><b>予想家ミミ<i class="hl-prof-title">🏅${eqTitle || "称号"}<span class="hl-prof-caret">▾</span></i></b>` +
-    `<small>ランク${p.rank}${rankLabel ? " " + rankLabel : ""}${p.streak >= 2 ? `・🔥${p.streak}連勝` : ""}</small></span>` +
-    `<span class="hl-live">LIVE</span>`;
+    `<span class="hl-prof-tx"><b>予想家ミミ</b><i class="hl-prof-title">🏅${eqTitle || "称号"}<span class="hl-prof-caret">▾</span></i></span>`;
   prof.title = "取得済みの称号を切り替える";
   prof.onclick = () => showTitleSwitcher();
   top.appendChild(prof);
-  const viewersEl = el("div", "hl-viewers", "👁 <b></b>");
-  top.appendChild(viewersEl);
+
+  // 資産情報をヘッダーへ（コイン＋総資産バー・タップで暮らし）
+  const money = el("button", "hl-money");
+  money.innerHTML =
+    `<span class="hl-money-coin">🪙 <b>${fmtCoins(p.coins)}</b></span>` +
+    `<span class="hl-money-as"><span class="t">総資産 <b>${fmtCoins(total)}</b></span>` +
+      `<span class="bar"><span style="width:${fillPct}%"></span></span></span>`;
+  money.title = "暮らし（総資産）へ";
+  money.onclick = () => renderAssets();
+  top.appendChild(money);
+
+  // 相棒ドラゴンをヘッダーに小さくボタン化（将来は相棒変更の入口・今はタップで一言）
+  const buddySrc = (typeof buddyDragonSrc === "function") ? buddyDragonSrc() : "images/dragon_ref/ref.webp";
+  const buddyBtn = el("button", "hl-buddy-btn");
+  buddyBtn.title = "相棒ドラゴン";
+  const buddyCv = document.createElement("canvas");
+  buddyCv.width = 384; buddyCv.height = 256;
+  buddyBtn.appendChild(buddyCv);
+  if (window.DragonL2) DragonL2.mountOrWarp(buddyCv, buddySrc, "home");
+  else { const _dImg = new Image(); _dImg.onload = function () { startDragonWarp(buddyCv, _dImg); }; _dImg.onerror = function () { buddyBtn.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = buddySrc; }
+  buddyBtn.onclick = () => { try { mimiSay("この子はわたしの相棒なんだ！"); } catch (e) {} };
+  top.appendChild(buddyBtn);
+
   const sysWrap = el("div", "hl-syswrap");
   const sysBtn = el("button", "hl-sys", "⋯");
   const sysDd = el("div", "hl-dd hidden");
@@ -397,15 +418,16 @@ function renderHome() {
   mimi.appendChild(kbtn);
   stage.appendChild(mimi);
 
-  // 相棒ドラゴン（バディ）：ステージ隅ではなく所持金の下に小さくかわいく置く（下のドックで配置）。
-  // 将来 buddyDragonSrc()（state.player.buddyDragon）で相棒を差し替え可能。Live2Dリグ→無ければwarpへ自動FB。
-  const buddySrc = (typeof buddyDragonSrc === "function") ? buddyDragonSrc() : "images/dragon_ref/ref.webp";
-  const buddy = el("div", "hl-buddy");
-  const buddyCv = document.createElement("canvas");
-  buddyCv.width = 384; buddyCv.height = 256;
-  buddy.appendChild(buddyCv);
-  if (window.DragonL2) DragonL2.mountOrWarp(buddyCv, buddySrc, "home");
-  else { const _dImg = new Image(); _dImg.onload = function () { startDragonWarp(buddyCv, _dImg); }; _dImg.onerror = function () { buddy.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = buddySrc; }
+  // 出走情報・ランク情報を背景に“浮かせる”フロート（配信オーバーレイ風・半透明・右上）。
+  const floatBox = el("div", "hl-float");
+  const viewersEl = el("div", "hl-viewers", "👁 <b></b>");
+  floatBox.innerHTML =
+    `<div class="hl-float-live"><span class="hl-live">LIVE</span></div>` +
+    `<div class="hl-float-rank">🏅 ランク${p.rank}${rankLabel ? " " + rankLabel : ""}${p.streak >= 2 ? ` ・ 🔥${p.streak}連勝` : ""}</div>` +
+    `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` +
+    (goalLine ? `<div class="hl-float-goal">🎯 ${goalLine}</div>` : "");
+  floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
+  stage.appendChild(floatBox);
 
   const cms = el("div", "hl-comments");
   stage.appendChild(cms);
@@ -592,22 +614,9 @@ function renderHome() {
     }
   }, 5200));
 
-  // ── 下段ドック：チップ（コイン/総資産/戦績）→ 無心 → レースCTA → ナビ
+  // ── 下段ドック（すっきり）：(破産時)無心 → レースCTA → ナビ。
+  // 資産情報はヘッダー、出走/ランク/目標はステージ上のフロートへ移動済み＝ミミの領域を最大化。
   const dock = el("div", "hl-dock");
-  const chips = el("div", "hl-chips");
-  chips.innerHTML =
-    `<div class="hl-chip hl-chip-coin">🪙 <b>${fmtCoins(p.coins)}</b></div>` +
-    `<button class="hl-chip hl-chip-assets"><span class="t">総資産 <b>${fmtCoins(total)}</b></span>` +
-      `<span class="bar"><span style="width:${fillPct}%"></span></span></button>` +
-    `<div class="hl-chip hl-chip-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>`;
-  chips.querySelector(".hl-chip-assets").onclick = () => renderAssets();
-  dock.appendChild(chips);
-  // 相棒ドラゴンを所持金（コイン）の下あたりに小さく。将来「相棒を変更」できるよう余地を残す。
-  const buddyRow = el("div", "hl-buddyrow");
-  buddyRow.appendChild(buddy);
-  buddyRow.appendChild(el("span", "hl-buddy-label", "相棒ドラゴン"));
-  dock.appendChild(buddyRow);
-  if (goalLine) dock.appendChild(el("div", "hl-goal", "🎯 " + goalLine));
 
   // §38 — 破産時：最優先で「無心」導線
   if (p.coins <= 0) {
