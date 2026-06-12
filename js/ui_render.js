@@ -395,19 +395,45 @@ function renderHome() {
     }
   } catch (e) {}
 
-  // 背景ぶち抜き（時間帯ドロップイン対応）：昼(6-17時)は home_bg_day.jpg を優先し、
-  // 無ければ home_bg.jpg → racebg/fire.webp（火山の夜景）へ自動フォールバック。
-  // 画像を images/ に置くだけで反映される（コード変更不要）。
+  // ── ホーム背景：複数ロケーションの日替わりローテーション＋昼夜切替＋接地キャリブレーション ──
+  // 追加方法：images/homebg/<id>_day.webp / <id>_night.webp を置き、HOME_BGS に1行追加するだけ。
+  // floor = 画像内の「床の接地ライン」位置（上端からの比率）。ミミの足元がこのラインに合うよう
+  // 背景の縦位置を自動調整する（±4%の遊びの範囲・cover縦余白を利用。仕様は docs/HOME_BG_SPEC.md）。
+  const HOME_BGS = [
+    { id: "balcony", day: "images/home_bg_day.webp", night: "images/home_bg.webp", floor: 0.60 },
+  ];
   const bg = el("div", "hl-bg");
   bg.innerHTML = `<img class="hl-bg-img" alt="" decoding="async"><div class="hl-bg-scrim"></div>`;
   (function () {
-    let hour = 20; try { hour = new Date().getHours(); } catch (e) {}
-    const chain = (hour >= 6 && hour < 18)
-      ? ["images/home_bg_day.webp", "images/home_bg_day.jpg", "images/home_bg.webp", "images/home_bg.jpg", "images/racebg/fire.webp"]
-      : ["images/home_bg.webp", "images/home_bg.jpg", "images/racebg/fire.webp"];
+    let hour = 20, dayIdx = 0;
+    try { const now = new Date(); hour = now.getHours(); dayIdx = Math.floor(now.getTime() / 86400000); } catch (e) {}
+    const night = !(hour >= 6 && hour < 18);
+    const set = HOME_BGS[dayIdx % HOME_BGS.length];
+    const chain = night
+      ? [set.night, "images/home_bg.webp", "images/racebg/fire.webp"]
+      : [set.day, set.night, "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
     const im = bg.querySelector(".hl-bg-img");
     let i = 0;
     im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
+    // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±4vh内でだけ動かす）
+    function calibrate() {
+      try {
+        const vh = window.innerHeight, vw = window.innerWidth;
+        const boxH = vh * 1.08, boxW = vw * 1.08;
+        if (!im.naturalWidth) return;
+        if ((boxW / boxH) >= (im.naturalWidth / im.naturalHeight)) { im.style.top = ""; return; }   // 横長クロップ時は既定のまま
+        const mimiEl = document.querySelector(".hl-mimi");
+        if (!mimiEl) return;
+        const feet = mimiEl.getBoundingClientRect().bottom;
+        let top = feet - set.floor * boxH;                    // 床ライン(floor)が足元に来るtop(px)
+        top = Math.max(-0.08 * vh, Math.min(0, top));         // 画像が画面から剥がれない範囲にクランプ
+        im.style.top = top + "px";
+      } catch (e) {}
+    }
+    im.onload = () => { requestAnimationFrame(calibrate); setTimeout(calibrate, 450); };
+    if (window._hlBgCal) window.removeEventListener("resize", window._hlBgCal);
+    window._hlBgCal = calibrate;
+    window.addEventListener("resize", calibrate);
     im.src = chain[0];
   })();
   app.appendChild(bg);
