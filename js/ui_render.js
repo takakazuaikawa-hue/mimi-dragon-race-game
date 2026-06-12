@@ -394,8 +394,8 @@ function renderHome() {
   (function () {
     let hour = 20; try { hour = new Date().getHours(); } catch (e) {}
     const chain = (hour >= 6 && hour < 18)
-      ? ["images/home_bg_day.jpg", "images/home_bg.jpg", "images/racebg/fire.webp"]
-      : ["images/home_bg.jpg", "images/racebg/fire.webp"];
+      ? ["images/home_bg_day.webp", "images/home_bg_day.jpg", "images/home_bg.webp", "images/home_bg.jpg", "images/racebg/fire.webp"]
+      : ["images/home_bg.webp", "images/home_bg.jpg", "images/racebg/fire.webp"];
     const im = bg.querySelector(".hl-bg-img");
     let i = 0;
     im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
