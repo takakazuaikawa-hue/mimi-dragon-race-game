@@ -400,7 +400,8 @@ function renderHome() {
   // floor = 画像内の「床の接地ライン」位置（上端からの比率）。ミミの足元がこのラインに合うよう
   // 背景の縦位置を自動調整する（±4%の遊びの範囲・cover縦余白を利用。仕様は docs/HOME_BG_SPEC.md）。
   const HOME_BGS = [
-    { id: "balcony", day: "images/home_bg_day.webp", night: "images/home_bg.webp", floor: 0.60 },
+    // floorDay/floorNight＝床の接地ライン（上端からの比率・実測）。無ければ floor を使う。
+    { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.73, floorNight: 0.70 },
   ];
   const bg = el("div", "hl-bg");
   bg.innerHTML = `<img class="hl-bg-img" alt="" decoding="async"><div class="hl-bg-scrim"></div>`;
@@ -409,24 +410,25 @@ function renderHome() {
     try { const now = new Date(); hour = now.getHours(); dayIdx = Math.floor(now.getTime() / 86400000); } catch (e) {}
     const night = !(hour >= 6 && hour < 18);
     const set = HOME_BGS[dayIdx % HOME_BGS.length];
+    const floorUsed = (night ? set.floorNight : set.floorDay) || set.floor || 0.74;
     const chain = night
       ? [set.night, "images/home_bg.webp", "images/racebg/fire.webp"]
       : [set.day, set.night, "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
     const im = bg.querySelector(".hl-bg-img");
     let i = 0;
     im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
-    // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±4vh内でだけ動かす）
+    // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±6vh内でだけ動かす）
     function calibrate() {
       try {
         const vh = window.innerHeight, vw = window.innerWidth;
-        const boxH = vh * 1.08, boxW = vw * 1.08;
+        const boxH = vh * 1.12, boxW = vw * 1.12;
         if (!im.naturalWidth) return;
         if ((boxW / boxH) >= (im.naturalWidth / im.naturalHeight)) { im.style.top = ""; return; }   // 横長クロップ時は既定のまま
         const mimiEl = document.querySelector(".hl-mimi");
         if (!mimiEl) return;
         const feet = mimiEl.getBoundingClientRect().bottom;
-        let top = feet - set.floor * boxH;                    // 床ライン(floor)が足元に来るtop(px)
-        top = Math.max(-0.08 * vh, Math.min(0, top));         // 画像が画面から剥がれない範囲にクランプ
+        let top = feet - floorUsed * boxH;                    // 床ライン(floorUsed)が足元に来るtop(px)
+        top = Math.max(-0.12 * vh, Math.min(0, top));         // 画像が画面から剥がれない範囲にクランプ
         im.style.top = top + "px";
       } catch (e) {}
     }

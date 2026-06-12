@@ -3259,7 +3259,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ===== TikTokライブ風ホーム（背景ぶち抜き＋ミミ大立ち絵＋ライブ演出） ===== */
 .hl-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: var(--bg-world); }
-.hl-bg-img { position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; opacity: .82;
+.hl-bg-img { position: absolute; inset: -6%; width: 112%; height: 112%; object-fit: cover; opacity: .82;   /* 余白±6%＝接地キャリブレーションの可動域 */
   animation: hlKen 38s ease-in-out infinite alternate; }
 .hl-bg-scrim { position: absolute; inset: 0; background:
   linear-gradient(180deg, rgba(8,12,16,.66) 0%, rgba(8,12,16,.20) 24%, rgba(8,12,16,.06) 52%, rgba(8,10,14,.80) 100%); }
