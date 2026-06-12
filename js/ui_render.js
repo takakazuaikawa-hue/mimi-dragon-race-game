@@ -1628,6 +1628,18 @@ function renderSettings() {
     app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク）。レースの着順・オッズ・配当の計算には触れません。"));
   }
 
+  // おまけ：エンディング＆スタッフロール（表示専用。進行に関係なくいつでも観られる）。
+  app.appendChild(el("div", "as-sec", "おまけ"));
+  const edRow = el("div", "set-row",
+    `<span class="set-ic">🎬</span><span class="set-tx"><span class="set-nm">エンディングを観る</span><span class="set-sub">送り出し＋スタッフロール</span></span>`);
+  const edBtn = el("button", "set-toggle on", "▶ 再生");
+  edBtn.onclick = () => {
+    if (window.Sfx && Sfx.play) Sfx.play("click");
+    if (window.Ending && Ending.play) Ending.play();
+  };
+  edRow.appendChild(edBtn);
+  app.appendChild(edRow);
+
   app.appendChild(el("div", "set-ver", "聖龍爆走録ミミ"));
 
   const actions = el("div", "actions");
