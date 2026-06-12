@@ -1773,6 +1773,20 @@ table.entry-table {
 .hs-body { padding: 2px 13px 12px; font-size: 12.5px; color: var(--mist-soft); line-height: 1.7; }
 .hs-body b { color: var(--mist); }
 
+/* ===== 賭け画面UX：選択サマリー＋ハズレ時表示 ===== */
+.bet-sel-sum { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; padding: 8px 11px;
+  border-radius: 11px; background: rgba(255,216,119,.08); border: 1px solid var(--gold-line); }
+.bet-sel-sum:empty { display: none; }
+.bss-k { flex: none; font-size: 10px; font-weight: 900; color: #2a1d06; background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border-radius: 999px; padding: 3px 8px; }
+.bss-nm { flex: 1; min-width: 0; font-size: 13.5px; color: var(--mist); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bss-odds { flex: none; font-size: 11px; color: var(--gold-bright); font-weight: 800; font-variant-numeric: tabular-nums; }
+.bss-edit { flex: none; font-size: 11px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,.07); border: 1px solid var(--glass-border); color: var(--mist-soft); }
+.bss-edit:active { transform: translateY(1px); }
+.po-line.po-loss .pl-v { color: #ff9d9d; }
+.bet-start-btn b { font-weight: 900; }
+
 /* 設定内デバッグツール（実機でも使える） */
 .set-debug { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 4px; }
 .set-dbg-b { padding: 11px 6px; font-size: 12.5px; border-radius: 10px; cursor: pointer;

@@ -386,12 +386,21 @@ function renderHome() {
     }
   } catch (e) {}
 
-  // 背景ぶち抜き：home_bg.jpg（任意ドロップイン）→ racebg/fire.webp（火山の夜景）
+  // 背景ぶち抜き（時間帯ドロップイン対応）：昼(6-17時)は home_bg_day.jpg を優先し、
+  // 無ければ home_bg.jpg → racebg/fire.webp（火山の夜景）へ自動フォールバック。
+  // 画像を images/ に置くだけで反映される（コード変更不要）。
   const bg = el("div", "hl-bg");
-  bg.innerHTML =
-    `<img class="hl-bg-img" alt="" decoding="async" src="images/home_bg.jpg"` +
-    ` onerror="this.onerror=null;this.src='images/racebg/fire.webp'">` +
-    `<div class="hl-bg-scrim"></div>`;
+  bg.innerHTML = `<img class="hl-bg-img" alt="" decoding="async"><div class="hl-bg-scrim"></div>`;
+  (function () {
+    let hour = 20; try { hour = new Date().getHours(); } catch (e) {}
+    const chain = (hour >= 6 && hour < 18)
+      ? ["images/home_bg_day.jpg", "images/home_bg.jpg", "images/racebg/fire.webp"]
+      : ["images/home_bg.jpg", "images/racebg/fire.webp"];
+    const im = bg.querySelector(".hl-bg-img");
+    let i = 0;
+    im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
+    im.src = chain[0];
+  })();
   app.appendChild(bg);
 
   const wrap = el("div", "hl");
@@ -2472,6 +2481,7 @@ function renderRaceDetail(race) {
       <button id="back-race-select" class="secondary">戻る</button>
     </div>
     <div class="bet-step2" id="bet-step2" style="display:none">
+      <div class="bet-sel-sum" id="bet-sel-sum"></div>
       <div class="wager-box">
         <div class="wager-head">
           <span class="wager-label">賭金</span>
@@ -2526,7 +2536,22 @@ function renderRaceDetail(race) {
     $("pick-count").textContent = `${sel.length} / ${max}`;
     const complete = sel.length === max;
     const startBtn = $("bet-start");
-    if (startBtn) startBtn.disabled = !complete;
+    if (startBtn) {
+      startBtn.disabled = !complete;
+      // CTAに選択内容を反映＝「誰に賭けるか」を押す瞬間まで見失わせない
+      if (complete) {
+        const nm = id => { const d = DRAGONS.find(x => x.id === id); return d ? d.name : ""; };
+        if (type === "wide") {
+          startBtn.innerHTML = `🐉 <b>${nm(sel[0])}</b> ＋ <b>${nm(sel[1])}</b> で賭ける ▶`;
+        } else {
+          const o = sorted.find(x => x.dragonId === sel[0]);
+          const oddsTx = o ? (type === "place" ? `複${o.placeOdds.toFixed(1)}倍` : `単${o.winOdds.toFixed(1)}倍`) : "";
+          startBtn.innerHTML = `🐉 <b>${nm(sel[0])}</b> に賭ける${oddsTx ? `（${oddsTx}）` : ""} ▶`;
+        }
+      } else {
+        startBtn.textContent = "🐉 この本命で賭ける";
+      }
+    }
     if (!complete) showBetStep(1);   // pick broke → fold the wager step back away
   }
 
@@ -2888,6 +2913,7 @@ function updateExpected() {
     box.innerHTML = `<div class="po-hint">${msg}</div>`;
     if (confirmBtn) confirmBtn.disabled = true;
     if (wagerEl && cls === "invalid") wagerEl.classList.add("invalid");   // 入力欄にも赤枠で即時フィードバック
+    const _ss = $("bet-sel-sum"); if (_ss) _ss.innerHTML = "";
   };
 
   // 1) incomplete selection → friendly prompt, confirm stays disabled
@@ -2905,10 +2931,27 @@ function updateExpected() {
     payout = Math.floor(c.bet.wager * odds);
   } catch (e) { setHint("invalid", "オッズ計算エラー"); return; }
   box.classList.add("valid");
+  // ステップ2でも「誰に・どの賭式で」を常時表示（賭金をいじっている間に本命を見失わない）
+  const ss = $("bet-sel-sum");
+  if (ss) {
+    const tL = { win: "単竜", place: "複竜", wide: "ワイド竜" }[type] || type;
+    const nm = id => { const d = DRAGONS.find(x => x.id === id); return d ? d.name : ""; };
+    ss.innerHTML =
+      `<span class="bss-k">本命</span><b class="bss-nm">${nm(a)}${type === "wide" ? " ＋ " + nm(b) : ""}</b>` +
+      `<span class="bss-odds">${tL} ${odds.toFixed(1)}倍</span>` +
+      `<button type="button" class="bss-edit" id="bet-edit">変更</button>`;
+    const be = ss.querySelector("#bet-edit");
+    if (be) be.onclick = () => {
+      const s1 = $("bet-step1"), s2 = $("bet-step2");
+      if (s1) s1.style.display = ""; if (s2) s2.style.display = "none";
+    };
+  }
+  // リスクとリターンを常に対で見せる（ハズレ時の損失も明示）
   box.innerHTML =
     `<div class="po-line"><span class="pl-k">オッズ</span><span class="pl-v">${odds.toFixed(1)} 倍</span></div>` +
     `<div class="po-line"><span class="pl-k">的中時払戻</span><span class="pl-v">${fmtCoins(payout)} コイン</span></div>` +
-    `<div class="po-line po-profit"><span class="pl-k">利益（上乗せ）</span><span class="pl-v">+${fmtCoins(payout - c.bet.wager)}</span></div>`;
+    `<div class="po-line po-profit"><span class="pl-k">利益（上乗せ）</span><span class="pl-v">+${fmtCoins(payout - c.bet.wager)}</span></div>` +
+    `<div class="po-line po-loss"><span class="pl-k">ハズレ時</span><span class="pl-v">−${fmtCoins(c.bet.wager)}</span></div>`;
   if (confirmBtn) confirmBtn.disabled = false;
 }
 
