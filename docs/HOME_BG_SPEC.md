@@ -59,6 +59,21 @@ crater glowing faint orange, city/stadium lights twinkling in the distance` に�
 - stable: 「dragon stable front yard, wooden fences at the edges, hay piles」/ packed earth / volcano behind rolling hills
 - mallplaza: 「plaza in front of a glass resort shopping mall (lights inside), fountain at the right edge」/ polished stone / volcano reflected in the glass
 
+## 自宅（myroom）＝進行度で引っ越し
+総資産レベル（0..5）に応じて部屋がアップグレード。**`images/homebg/myroom_t<lvl>_{day,night}.webp`**
+を置くだけで反映（未生成の段は下の段へ自動フォールバック→最後はbalcony）。床は届き次第
+`MYROOM_FLOORS`（ui_render.js）を実測更新。屋内では「床↔奥の壁の境界線＝上端から74%」と読み替え、
+火山は**右1/3の窓越し**に見せる。中央±22%は家具禁止（机・棚は左右端のみ）。
+
+| 段 | コンセプト |
+|---|---|
+| t0 | 素寒貧の納屋（藁の寝床・ひび割れた板壁・ガラス無しの窓穴） |
+| t1 | 小さな借り部屋（畳んだ布団・小さな机・紙提灯） |
+| t2 | 木のコテージ配信部屋（フェアリーライト・観葉植物・リングライト） |
+| t3 | 上等な家（磨かれた木・ガラス窓・本棚と真鍮ランプ） |
+| t4 | 豪邸スイート（大理石×ダークウッド・金の装飾・床まで届く大窓） |
+| t5 | 天空ヴィラ（眼下に夜の島・一面のガラス壁・金の竜像） |
+
 ## 検収チェック（受け取ったら）
 1. 74%位置に水平線を引いて床エッジが乗るか（±2%）
 2. 縦9:19.5に中央クロップして床/火山が成立するか

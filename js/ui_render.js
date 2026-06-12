@@ -402,7 +402,11 @@ function renderHome() {
   const HOME_BGS = [
     // floorDay/floorNight＝床の接地ライン（上端からの比率・実測）。無ければ floor を使う。
     { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.73, floorNight: 0.70 },
+    // 自宅＝進行度（総資産レベル0..5）で豪華な部屋へ引っ越し。images/homebg/myroom_t<lvl>_{day,night}.webp を
+    // 置くだけで反映（未生成の段は下の段へフォールバック）。床は届き次第 MYROOM_FLOORS を実測更新。
+    { id: "myroom", myroom: true },
   ];
+  const MYROOM_FLOORS = [0.74, 0.74, 0.74, 0.74, 0.74, 0.74];   // t0..t5
   const bg = el("div", "hl-bg");
   bg.innerHTML = `<img class="hl-bg-img" alt="" decoding="async"><div class="hl-bg-scrim"></div>`;
   (function () {
@@ -410,10 +414,21 @@ function renderHome() {
     try { const now = new Date(); hour = now.getHours(); dayIdx = Math.floor(now.getTime() / 86400000); } catch (e) {}
     const night = !(hour >= 6 && hour < 18);
     const set = HOME_BGS[dayIdx % HOME_BGS.length];
-    const floorUsed = (night ? set.floorNight : set.floorDay) || set.floor || 0.74;
-    const chain = night
-      ? [set.night, "images/home_bg.webp", "images/racebg/fire.webp"]
-      : [set.day, set.night, "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
+    let floorUsed, chain;
+    if (set.myroom) {
+      // 自宅：現在の総資産レベルの部屋→無ければ下の段→最後はバルコニー/旧背景へ
+      const lvl = Math.min(5, (typeof assetLevelOf === "function") ? assetLevelOf(state.player.totalAssets || 0) : 0);
+      const tiers = k => { const a = []; for (let t = lvl; t >= 0; t--) a.push(`images/homebg/myroom_t${t}_${k}.webp`); return a; };
+      floorUsed = MYROOM_FLOORS[lvl] || 0.74;
+      chain = night
+        ? [...tiers("night"), "images/homebg/balcony_night.webp", "images/home_bg.webp", "images/racebg/fire.webp"]
+        : [...tiers("day"), "images/homebg/balcony_day.webp", "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
+    } else {
+      floorUsed = (night ? set.floorNight : set.floorDay) || set.floor || 0.74;
+      chain = night
+        ? [set.night, "images/home_bg.webp", "images/racebg/fire.webp"]
+        : [set.day, set.night, "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
+    }
     const im = bg.querySelector(".hl-bg-img");
     let i = 0;
     im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
