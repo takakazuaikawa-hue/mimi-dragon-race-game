@@ -3431,6 +3431,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-item:active { transform: translateY(1px); background: rgba(255,255,255,.10); }
 .hl-item .ic { font-size: 19px; line-height: 1; }
 .hl-item .lb { font-size: 9.5px; color: var(--mist-soft); }
+.hl-item.locked { opacity: .55; }
+.hl-item.locked .ic { filter: grayscale(1); }
 @media (max-width: 560px) {
   /* ナビを1行8列に圧縮（ドックを薄く＝ミミの領域を確保） */
   .hl-rail { grid-template-columns: repeat(8, 1fr); gap: 4px; }

@@ -218,6 +218,15 @@ function showTitleSwitcher() {
   document.body.appendChild(ov);
 }
 
+// 🛍️ モール解放判定：レースで初めて的中すると解放（flags.everHit）。既存セーブ救済として
+// 単勝勝利歴・衣装の購入/入手歴・着替え歴があれば解放済み扱い（巻き戻さない）。表示専用。
+function mallUnlocked() {
+  const p = state.player || {}; const f = p.flags || {};
+  return !!(f.everHit || f.mallIntroSeen || (p.wins || 0) >= 1 ||
+    (p.outfitsBought && p.outfitsBought.length) || (p.outfitsWon && p.outfitsWon.length) ||
+    (p.outfit && typeof DEFAULT_OUTFIT !== "undefined" && p.outfit !== DEFAULT_OUTFIT));
+}
+
 // 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。
 function showInfoPopup(title, html) {
   const ov = el("div", "navpop-ov");
@@ -485,10 +494,12 @@ function renderHome() {
   // 本体タップ＝ミミが一言（着せ替えへは行かない）。きせかえは右下の小ボタンに分離。
   mimi.title = "タップでミミが一言しゃべる";
   mimi.onclick = () => _mimiTalk();
-  const kbtn = el("button", "hl-mimi-tag", "🛍️ きせかえ");
-  kbtn.title = "ショッピングモール（きせかえ）へ";
-  kbtn.onclick = (e) => { e.stopPropagation(); renderMall(); };
-  mimi.appendChild(kbtn);
+  if (mallUnlocked()) {   // モール解放前はきせかえ導線も出さない（初的中で解放）
+    const kbtn = el("button", "hl-mimi-tag", "🛍️ きせかえ");
+    kbtn.title = "ショッピングモール（きせかえ）へ";
+    kbtn.onclick = (e) => { e.stopPropagation(); renderMall(); };
+    mimi.appendChild(kbtn);
+  }
   stage.appendChild(mimi);
 
   // 出走情報・ランク情報を背景に“浮かせる”フロート（配信オーバーレイ風・半透明・右上）。
@@ -823,7 +834,15 @@ function renderHome() {
     return b;
   };
   rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
-  rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
+  if (mallUnlocked()) {
+    rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
+  } else {
+    // 初的中で解放（解放時はサケの解説＋プレゼントつき）
+    const lockedMall = el("button", "hl-item locked", `<span class="ic">🔒</span><span class="lb">モール</span>`);
+    lockedMall.onclick = () => showInfoPopup("🛍️ ショッピングモール",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。勝てば、いいことがあるかも？</small></div></div>`);
+    rail.appendChild(lockedMall);
+  }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
   rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
@@ -1679,6 +1698,12 @@ function renderSettings() {
 // 専用画面：ショッピングモール（ミミのきせかえ）。コイン購入＋条件解放、着替えは無料。
 // 立ち絵を実際に差し替える表示専用コスメ。着順・オッズ・配当には非干渉。
 function renderMall() {
+  if (!mallUnlocked()) {   // 解放前の直行ガード（ナビは🔒だが保険）
+    renderHome();
+    showInfoPopup("🛍️ ショッピングモール",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "mall";
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();   // 取り残されたセリフオーバーレイがタップを塞がないように
   if (typeof recomputeAssets === "function") recomputeAssets(state);
@@ -3028,6 +3053,10 @@ function settleRace() {
   // tracks the bet size / rank). The base payout formula is unchanged.
   const prevStreak = state.player.streak || 0;
   let streakBonus = 0, streakMilestone = 0;
+  // 🛍️ モール解放トリガー（初的中）。フラグは即保存系（settle内）、イベント本体は結果画面で再生。
+  if (!state.player.flags) state.player.flags = {};
+  c.firstHitEver = !!betResult.hit && !state.player.flags.everHit;
+  if (betResult.hit) state.player.flags.everHit = true;
   if (betResult.hit) {
     state.player.streak = prevStreak + 1;
     if (state.player.streak > (state.player.bestStreak || 0)) state.player.bestStreak = state.player.streak;
@@ -3642,6 +3671,31 @@ function renderResult() {
     runEventHooks("afterRaceResult", { race: c.race, hit: r.hit, popularityRank: winnerOd.popularityRank, bigLoss: !r.hit && r.wager >= 500 });
     if (state.player.coins <= 0) runEventHooks("onBankruptcy", { race: c.race });
     c.resultHooksRan = true;
+  }
+
+  // 🛍️ モール解放イベント（初的中・一度きり）：サケが使い方を解説→『ジャングルバニー』を贈与→
+  // ミミがその場で着替えて happy 立ち絵で登場（2段構成）。表示メタのみ・コイン非消費。
+  if (c.firstHitEver && !(state.player.flags || {}).mallIntroSeen && !c._mallIntroPlayed && window.Dialogue) {
+    c._mallIntroPlayed = true;
+    setTimeout(() => {
+      Dialogue.play([
+        ["sake", "初勝利、見事だったぞ。……ところでミミ、いつまでそのボロを着てるつもりだ？"],
+        ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
+        ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ホームに🛍️モールを開けておいた。稼いだコインで好きに選べ。試着は自由、着替えは無料だ。"],
+        ["sake", "それと、初勝利の祝いだ。『ジャングルバニー』──葉っぱと馬券で武装した、お前の勝負服第一号だ。受け取れ。", "happy"]
+      ]).then(() => {
+        try {
+          state.player.flags.mallIntroSeen = true;
+          if (!state.player.outfitsWon) state.player.outfitsWon = [];
+          if (state.player.outfitsWon.indexOf("jungle") < 0 && !outfitOwned(outfitById("jungle"))) state.player.outfitsWon.push("jungle");
+          if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
+          if (typeof saveGame === "function") saveGame();
+          try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+          // 着替え後の立ち絵（現在衣装=jungle）で登場
+          Dialogue.play([["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"]]);
+        } catch (e) {}
+      });
+    }, 600);
   }
 
   drawRecapScreen();
