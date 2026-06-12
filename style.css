@@ -3655,6 +3655,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .set-danger { background: rgba(214,69,47,.14); color: #ff9a8c; border: 1px solid rgba(214,69,47,.4); border-radius: 10px; font-weight: 800; cursor: pointer; }
 .set-danger:hover { background: rgba(214,69,47,.22); }
 .set-ver { text-align: center; font-size: 10.5px; color: var(--astone); margin: 10px 0 2px; }
+/* スマホ連動（引き継ぎコード）のポップアップ */
+.set-hand-note { font-size: 12.5px; color: var(--mist-soft); line-height: 1.55; margin-bottom: 8px; }
+.set-hand-note b { color: var(--gold-bright); }
+.set-hand-code { width: 100%; box-sizing: border-box; resize: vertical; background: #1a1530; color: #f0e8d0;
+  border: 1px solid #604040; border-radius: 8px; padding: 8px; font-size: 12px; line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; }
+.set-hand-code:focus { outline: none; border-color: var(--gold-bright); }
 
 /* 物語：コンパクトな話一覧（タップで読む画面へ） */
 .story-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }

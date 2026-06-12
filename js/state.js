@@ -200,6 +200,43 @@ function resetGame() {
   if (typeof updateHeader === "function") updateHeader();
 }
 
+// スマホ連動（引き継ぎコード）— このゲームのセーブは端末内（localStorage）にしか
+// 残らないため、PC↔スマホでデータを移すにはセーブJSONをテキスト化して手渡しする。
+// ここで扱うのは「セーブデータの移送」だけ＝レースの着順・オッズ・配当の計算には一切触れない。
+const HANDOFF_PREFIX = "MIMI1.";   // コード先頭の識別子（読み込み時の取り違え防止）
+
+// 現在のセーブを引き継ぎコード（Unicode安全なBase64文字列）にして返す。失敗時は null。
+function exportSaveCode() {
+  try {
+    saveGame();   // 直近の状態を確実に書き出してからコード化する
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    return HANDOFF_PREFIX + btoa(unescape(encodeURIComponent(raw)));
+  } catch (e) {
+    console.warn("export save failed", e);
+    return null;
+  }
+}
+
+// 引き継ぎコードを読み込み、現在のセーブを上書きしてからメモリへ反映する。成功で true。
+// 不正なコード（プレフィックス無し・壊れたBase64・player欠落）は false を返して何もしない。
+function importSaveCode(code) {
+  try {
+    if (!code) return false;
+    let s = String(code).trim().replace(/\s+/g, "");
+    if (s.startsWith(HANDOFF_PREFIX)) s = s.slice(HANDOFF_PREFIX.length);
+    if (!s) return false;
+    const json = decodeURIComponent(escape(atob(s)));
+    const data = JSON.parse(json);
+    if (!data || !data.player) return false;   // セーブの体裁を満たさないコードは拒否
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    return loadGame();   // 既存の移行・救済ロジックを通してメモリへ反映
+  } catch (e) {
+    console.warn("import save failed", e);
+    return false;
+  }
+}
+
 // §09 §9 collection record helpers
 function ensureCollectionEntry(dragonId) {
   if (!state.player.collection[dragonId]) {

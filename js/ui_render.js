@@ -269,6 +269,82 @@ function showNavConfirm(icon, title, desc, onGo) {
   box.querySelector(".navpop-go").onclick = () => { close(); onGo(); };
 }
 
+// 📤 引き継ぎコードの発行：現在のセーブをコード化して表示し、コピーできるようにする。
+// セーブデータの移送のみ＝レースの着順・オッズ・配当の計算には触れない。
+function showHandoffExport() {
+  const code = (typeof exportSaveCode === "function") ? exportSaveCode() : null;
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop infopop");
+  if (!code) {
+    box.innerHTML = `<div class="navpop-t">📤 引き継ぎコード</div>` +
+      `<div class="infopop-body"><div class="mm-row"><span class="mm-ic">⚠️</span><div><b>コードを作れませんでした</b><small>セーブデータが見つかりません。少し遊んでから試してください。</small></div></div></div>`;
+    const btns = el("div", "navpop-btns");
+    const ok = el("button", "navpop-go", "とじる"); ok.onclick = () => ov.remove();
+    btns.appendChild(ok); box.appendChild(btns);
+    ov.appendChild(box); ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+    document.body.appendChild(ov);
+    return;
+  }
+  box.innerHTML = `<div class="navpop-t">📤 引き継ぎコード</div>` +
+    `<div class="infopop-body">` +
+    `<div class="set-hand-note">この端末のデータです。コピーして、移したい端末の「📥 コードで読み込む」に貼り付けてください。</div>` +
+    `<textarea class="set-hand-code" readonly rows="4">${code.replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))}</textarea>` +
+    `</div>`;
+  const ta = box.querySelector(".set-hand-code");
+  const btns = el("div", "navpop-btns");
+  const copy = el("button", "navpop-go", "📋 コピー");
+  copy.onclick = async () => {
+    ta.focus(); ta.select();
+    let ok = false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try { await navigator.clipboard.writeText(code); ok = true; } catch (e) { /* fall through */ }
+    }
+    if (!ok) { try { ok = document.execCommand("copy"); } catch (e) { /* ignore */ } }
+    if (typeof flashShareToast === "function") flashShareToast(ok ? "コードをコピーしました" : "手動でコピーしてください");
+  };
+  const close = el("button", "navpop-cancel", "とじる"); close.onclick = () => ov.remove();
+  btns.appendChild(close); btns.appendChild(copy); box.appendChild(btns);
+  ov.appendChild(box); ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+  ta.focus(); ta.select();
+}
+
+// 📥 コードで読み込む：別端末で発行した引き継ぎコードを貼り付けてセーブを上書きする。
+// 上書きは取り消せないため確認を挟む。成功したらホームへ戻して反映する。
+function showHandoffImport() {
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop infopop");
+  box.innerHTML = `<div class="navpop-t">📥 コードで読み込む</div>` +
+    `<div class="infopop-body">` +
+    `<div class="set-hand-note">別の端末で発行した引き継ぎコードを貼り付けてください。<b>今のデータは上書きされます。</b></div>` +
+    `<textarea class="set-hand-code" rows="4" placeholder="MIMI1. で始まるコードを貼り付け"></textarea>` +
+    `</div>`;
+  const ta = box.querySelector(".set-hand-code");
+  const btns = el("div", "navpop-btns");
+  const cancel = el("button", "navpop-cancel", "キャンセル"); cancel.onclick = () => ov.remove();
+  const go = el("button", "navpop-go", "読み込む");
+  go.onclick = () => {
+    const code = (ta.value || "").trim();
+    if (!code) { ta.focus(); return; }
+    if (!confirm("今のデータを、貼り付けたコードのデータで上書きします。よろしいですか？")) return;
+    const ok = (typeof importSaveCode === "function") && importSaveCode(code);
+    if (ok) {
+      ov.remove();
+      if (typeof recomputeAssets === "function") recomputeAssets(state);
+      if (typeof updateHeader === "function") updateHeader();
+      if (typeof flashShareToast === "function") flashShareToast("データを読み込みました");
+      renderHome();
+    } else {
+      if (typeof flashShareToast === "function") flashShareToast("コードが正しくありません");
+      ta.focus(); ta.select();
+    }
+  };
+  btns.appendChild(cancel); btns.appendChild(go); box.appendChild(btns);
+  ov.appendChild(box); ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+  ta.focus();
+}
+
 // ホームのミミのアイドル演出（研究反映：Inochi2D/Live2D系の手法を参考）。
 // 多重サイン呼吸（非整数比で非反復）＋体重移動の揺れ＋位相ずらし＋バネ式視線追従。
 // 単一rAFループで全軸を合成。ホームを離れる/要素が消えると自動停止（リーク無し）。表示演出のみ。
@@ -1692,6 +1768,19 @@ function renderSettings() {
   bReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
   data.appendChild(bTitle); data.appendChild(bReset);
   app.appendChild(data);
+
+  // スマホ連動（引き継ぎコード）：セーブは端末内に保存されるため、PC↔スマホでデータを
+  // 移すには引き継ぎコードを使う。コードの発行/読み込みのみ＝表示・移送専用（数値は不変）。
+  app.appendChild(el("div", "as-sec", "スマホ連動（引き継ぎ）"));
+  const sync = el("div", "set-data");
+  const bExport = el("button", "secondary", "📤 引き継ぎコードを発行");
+  bExport.onclick = () => showHandoffExport();
+  const bImport = el("button", "secondary", "📥 コードで読み込む");
+  bImport.onclick = () => showHandoffImport();
+  sync.appendChild(bExport); sync.appendChild(bImport);
+  app.appendChild(sync);
+  app.appendChild(el("div", "as-hint2",
+    "※この端末のデータを別の端末へ移すための機能です。コードを発行→コピーし、移したい端末で「コードで読み込む」に貼り付けます。読み込むと今のデータは上書きされます。"));
 
   // 🛠 デバッグ（実機=スマホでも使えるよう設定内に常設。ヘッダのチェックと同期）
   // ここでの操作は所持コイン/所持品/ランク等のメタ操作のみ＝レースの着順・オッズ・配当計算には一切触れない。
