@@ -10,23 +10,28 @@
 | 論点 | 決定 |
 |---|---|
 | アート方向 | **ハイブリッド**（イラスト背景＋ピクセル/リグのチビキャラ） |
-| モール刷新の幅 | **canvasでフル再構築**（歩いて回れるモール） |
+| モール刷新の幅 | **ゼロから全面作り直し**（体験ごと再設計。canvasで歩いて回れるモール） |
 | 土台 | **共通シーン基盤に統一**（モール＋終章3機能で共有） |
-| アセット入手 | **自前生成のみ**（画像=ChatGPT／音楽=Suno／SE=sfx.js合成） |
+| アセット入手 | **自前生成＋CC0併用**（主: 画像ChatGPT/音楽Suno/SE合成、量産はCC0で補完） |
 
 ---
 
 ## 0. 絶対ルール順守（最重要）
 
-- ① レース数値（着順・オッズ・配当・賭け）に**一切触れない**。モールは**元々コイン非干渉**
-  （店の「🪙n」は**プレイヤーのコインではなく内部“モールメダル” `MD.gain.medals`**）。
-- **経済・報酬・セーブキーは温存**：`state.player.dungeon`（medals/shards/passives/bestF/runs/wins）
-  と `state.player.outfitsWon` は**そのまま**。刷新するのは**表示と手触りだけ**。
+- ① レース数値（着順・オッズ・配当・賭け）に**一切触れない**。モールは**コイン非干渉を維持**
+  （旧版の店「🪙n」は**プレイヤーのコインではなく内部“モールメダル”**だった＝この性質は新版でも厳守）。
 - ③ CSS/JS追加のたび index.html の `?v=` 一括更新。④ classicスクリプト構成を踏襲。
 
-**刷新の鉄則**：`mall_dungeon.js` の「ロジック（MD_SHOPS / MD_ITEMS / 報酬計算 / 抽選）」は
-原則そのまま再利用し、**`renderMallDungeon()`（プレゼン層）だけをシーン基盤へ移植**する。
-→ ルール順守・セーブ互換・バランス不変を同時に満たす。
+**ゼロから全面作り直しでの不可侵ライン**（ここだけは死守し、中身は自由に再設計してよい）：
+1. **レース数値に絶対接続しない**（モールの通貨・報酬・進行は race/odds/betting に一切繋がない）。
+2. **コイン非干渉**：プレイヤーの所持コイン・総資産・配当に触れない（モール内通貨は独立）。
+3. **コスメ所持の互換**：獲得済み衣装 `state.player.outfitsWon` は**消さない**
+   （`outfitOwned` が参照。きせかえ資産はプレイヤーの既得権）。
+
+**自由に再設計してよい部分**：モール内通貨/報酬テーブル/フロア構成/インタラクション/抽選など
+（すべて表示メタ）。旧 `state.player.dungeon` から作り直す場合は **`load` にマイグレーション**を入れ、
+旧メダル/かけら→新通貨へ可能な範囲で引き継ぐ（最低限 `outfitsWon` は温存）。
+旧 `mall_dungeon.js` は**設計参照として残し**、新実装は `scene_mall.js` に置く。
 
 ---
 
@@ -97,17 +102,16 @@ const MALL_MANIFEST = {
 - **閉店前抽選**＝ルーレット/ガチャ演出（既存 `mdEnd`/抽選ロジックに化粧）。
 - スタンプ帳・メダル・かけらはHUDに常時表示（既存値をそのまま描画）。
 
-### ロジック温存マッピング
-| 既存（温存） | 刷新後の見せ方 |
+### 全面作り直しの指針（何を守り、何を作り直すか）
+| 区分 | 方針 |
 |---|---|
-| `MD_SHOPS` / `MD_FLOORS` | フロアのホットスポット配置データに流用 |
-| `mdVisit/mdChoices/mdChoice` | 店ウィンドウのコマンド（中身そのまま） |
-| `MD.gain.medals/shards` | HUDのアイコン＋数値（コイン非干渉のまま） |
-| `mdEnd`＋抽選→`outfitsWon` | 閉店抽選演出（報酬は不変） |
-| `state.player.dungeon` | セーブ互換のまま（キー追加のみ可、削除しない） |
+| 不可侵 | レース数値非接続／コイン非干渉／`outfitsWon` 温存（§0の3点） |
+| 参照のみ | 旧 `MD_SHOPS`/`MD_ITEMS`/`mdChoices`/抽選 は**良い叩き台**として読む（流用は任意） |
+| 自由に再設計 | フロア構成・店・モール内通貨/報酬・インタラクション・抽選・HUD |
+| セーブ | 新 `state.player.dungeon`（or 新キー）を設計。`load` に旧→新マイグレーション |
 
-> つまり**`mall_dungeon.js` はロジック専用に縮め**、描画は `scene_engine` 上の
-> `js/scene_mall.js`（新）に移す。バランス・確率・報酬は1行も変えない。
+> 旧 `mall_dungeon.js` は消さず**設計参照として残置**。新実装は `scene_engine` 上の
+> `js/scene_mall.js` に置く。バランスは新規に作るので、**体感テストで詰める**前提。
 
 ---
 
@@ -126,12 +130,19 @@ const MALL_MANIFEST = {
 - `mall-day.mp3`（明るいお買い物テーマ）／`mall-fever.mp3`（フィーバー時の高揚版）／
   任意 `mall-closing.mp3`（閉店前の落ち着き）。`bgm/` に置き、シーン別トラックとして列挙。
 
-### 効果音（`sfx.js` 合成）
+### 効果音（`sfx.js` 合成 ＋ CC0補完）
 - スタンプGET／かけらGET／フィーバー放送／ルーレット回転・停止／当たり／歩行音。
-- 合成で大半まかなえる＝**権利完全クリーン**（公開Pages向き）。
+- 合成で大半まかなえる。質感が欲しい所は **CC0のSE素材で補完**（後述の権利ルール厳守）。
 
-### 権利
-- すべて自前生成＝**著作権クリーン**。生成物の利用規約だけ最終確認（ChatGPT/Suno）。
+### CC0素材の併用（量産の“埋め”）
+- 什器・小物・汎用UI・一部SEは **CC0素材（例: Kenney.nl, OpenGameArt のCC0, itch.ioのCC0）** で補完。
+- **画風統一**：CC0をそのまま貼らず、パレット/解像度/線をハイブリッド基準に合わせて加工。
+- **取り込みフロー**：出所URL・ライセンス（CC0/Public Domain/商用可）を `images/scene/CREDITS.md`
+  に記録 → webp化 → atlasへ。改変可否も確認。
+
+### 権利（公開Pages前提でクリーンを死守）
+- 自前生成（ChatGPT/Suno）＋CC0のみ。**ライセンス不明・NC（非商用限定）・要クレジット不可のものは使わない**。
+- 生成物は各サービスの利用規約を最終確認。CC0採用分は `CREDITS.md` に台帳化。
 
 ---
 
@@ -139,7 +150,8 @@ const MALL_MANIFEST = {
 
 1. **基盤の骨**：`scene_engine.js`（canvas/loop/layers/input/loader/audio橋渡し/フォールバック）。
    ダミー矩形で動作確認（アセット待ちでも進む）。
-2. **モール移植**：`scene_mall.js` で既存ロジックを呼びつつ、まずプレースホルダ画で歩行＋店UI。
+2. **モール新規実装**：`scene_mall.js` を新設計で起こす。まずプレースホルダ画で歩行＋店UIを通し、
+   旧 `mall_dungeon.js` は叩き台として参照（不可侵3点と `outfitsWon` 温存だけ厳守）。
 3. **化粧**：ChatGPT背景／atlas／Suno BGM／合成SEを差し込み、SNES級に引き上げ。
 4. **終章3機能**：同じ基盤に `scene_scout.js` / `scene_ranch.js` / `scene_gourmet.js` を追加。
 
@@ -171,11 +183,12 @@ docs/
 ## 7. 実装チェックリスト
 
 - [ ] `js/scene_engine.js`：基盤（loop/layers/actor/input/loader/audio/fallback）
-- [ ] `js/scene_mall.js`：既存ロジック流用の歩けるモール（`mall_dungeon.js`はロジック専用に整理）
-- [ ] `images/scene/mall/`：背景5フロア＋props atlas＋UI（ChatGPT→webp）
+- [ ] `js/scene_mall.js`：ゼロから作る歩けるモール（旧 `mall_dungeon.js` は参照として残置）
+- [ ] `images/scene/mall/`：背景5フロア＋props atlas＋UI（ChatGPT生成→webp、CC0補完分も）
+- [ ] `images/scene/CREDITS.md`：CC0素材の出所・ライセンス台帳
 - [ ] `bgm/`：`mall-day` / `mall-fever`（Suno）＋ `RACE_BGM_TRACKS` 方式でシーン別に列挙
-- [ ] `js/sfx.js`：モール用SEを追加（合成）
+- [ ] `js/sfx.js`：モール用SEを追加（合成＋必要ならCC0）
 - [ ] `index.html`：新`<script>`＋`?v=` 一括更新
 - [ ] `style.css`：canvasコンテナ／HUD（名前空間 `.sc-` `.mall-`）
-- [ ] セーブ互換確認（既存 `state.player.dungeon` / `outfitsWon` 不変）
-- [ ] バランス不変確認（報酬確率・メダル収支・抽選テーブルに変更なし）
+- [ ] **不可侵チェック**：レース数値非接続／コイン非干渉／`outfitsWon` 温存
+- [ ] **セーブ移行**：旧 `state.player.dungeon` → 新構造の `load` マイグレーション
