@@ -28,7 +28,8 @@ window.addEventListener("DOMContentLoaded", () => {
       race_detail: () => renderRaceDetail(state.current.race),
       race_run: renderRaceRun, result: renderResult, analysis: renderAnalysis,
       assets: renderAssets, village: renderVillage, collection: renderCollection, help: renderHelp,
-      story: renderStory, consult: renderConsult, settings: renderSettings, mall: renderMall
+      story: renderStory, consult: renderConsult, settings: renderSettings, mall: renderMall,
+      mall_rpg: renderMallRpg
     };
     if (map[state.ui.screen]) map[state.ui.screen]();
   };
