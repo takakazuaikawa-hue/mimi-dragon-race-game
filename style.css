@@ -4066,3 +4066,19 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   background:linear-gradient(135deg,#ffe07a,#ff9a4a,#ffd24a); box-shadow:0 0 22px rgba(255,180,80,.6); animation:rpgpulse 1.1s ease-in-out infinite; }
 .rpg-ultbtn small { display:block; color:#5a3a00; font-weight:600; font-size:11px; }
 .rpg-ultbtn:active { transform:scale(.98); }
+
+/* 敵の行動予告（インテント＝読み合い） */
+.rpg-intent { position:absolute; top:-20px; left:50%; transform:translateX(-50%); white-space:nowrap;
+  font-size:12px; font-weight:800; padding:2px 9px; border-radius:999px; color:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.45); animation:rpgintent 1.2s ease-in-out infinite; z-index:3; pointer-events:none; }
+.rpg-intent.atk { background:linear-gradient(135deg,#c0392b,#e35); }
+.rpg-intent.sp { background:linear-gradient(135deg,#7a3f9e,#a85fce); }
+@keyframes rpgintent { 0%,100%{ transform:translateX(-50%) translateY(0); } 50%{ transform:translateX(-50%) translateY(-3px); } }
+
+/* 敵を背景に馴染ませる（HD-2D風の落ち影＋リムライト＋登場演出） */
+.rpg-enemy { position:relative; animation:rpgfoein .42s cubic-bezier(.2,1.3,.4,1) backwards; }
+.rpg-enemy .rpg-spr.enemy { filter:drop-shadow(0 6px 6px rgba(0,0,0,.5)) drop-shadow(0 0 7px rgba(255,255,255,.18)); }
+.rpg-enemy .rpg-enemy-shadow { width:56px; height:13px; margin-top:-8px;
+  background:radial-gradient(ellipse, rgba(0,0,0,.55), rgba(0,0,0,0) 72%); }
+.rpg-enemy.sel { filter:drop-shadow(0 0 12px rgba(255,95,162,.65)); }
+@keyframes rpgfoein { 0%{ opacity:0; transform:translateY(-10px) scale(.88); } 100%{ opacity:1; transform:translateY(0) scale(1); } }

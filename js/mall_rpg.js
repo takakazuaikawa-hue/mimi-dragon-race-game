@@ -322,6 +322,7 @@ function rpgEncounter(boss) {
   RPG.battle = { enemies, target: 0, extra: false, acts: 1, combo: 0, gauge: 0, guard: false, log: [], boss: !!boss, phase: "cmd", sub: null,
     pstatus: { stun: 0, defdown: 0, dazzle: 0, seal: 0 } };
   RPG.mode = "battle"; RPG.busy = false;
+  rpgComputeIntents();               // 敵の行動予告（読み合い）
   rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`);
   rpgSfx("alert");
   rpgFx.cover("enc", 520);            // エンカウント・フラッシュ
@@ -458,6 +459,16 @@ function rpgAfterAct(weakHit) {
   if (b.acts > 0) { b.phase = "cmd"; RPG.busy = false; rpgSave(); renderMallRpg(); return; }
   rpgEnemyTurn();
 }
+// 敵の行動予告（インテント）：このあと攻撃か特技かを事前決定して見せる＝読み合い
+function rpgComputeIntents() {
+  const b = RPG.battle; if (!b) return;
+  b.enemies.forEach(e => {
+    if (!e.alive) { e.intent = null; return; }
+    const sp = e.ref.sp;
+    if (sp && Math.random() < sp.chance) e.intent = { sp: true, status: sp.status, name: sp.name, dmg: sp.dmg ? Math.round((e.atk || e.ref.atk) * 0.8) : 0 };
+    else e.intent = { sp: false, dmg: Math.round(e.atk || e.ref.atk) };
+  });
+}
 // 敵ターン＝1体ずつ順番に演出
 function rpgEnemyTurn() {
   if (!RPG || !RPG.battle) return;
@@ -475,17 +486,18 @@ function rpgEnemyStep(idx) {
   if (!e.alive) { rpgEnemyStep(idx + 1); return; }
   const gf = b.guard ? 0.5 : 1;                      // 🛡️ガード＝被ダメ半減
   const dmgMult = (b.pstatus.defdown > 0 ? 1.5 : 1) * gf;
-  const sp = e.ref.sp; let dealt = 0, applied = null;
-  if (sp && Math.random() < sp.chance) {
+  const sp = e.ref.sp, intent = e.intent || {}; let dealt = 0, applied = null;
+  if (intent.sp && sp) {                              // 予告どおり特技
     b.pstatus[sp.status] = Math.max(b.pstatus[sp.status] || 0, sp.dur); applied = sp.status;
     let line = `${e.ref.ic} ${sp.name}！ ${RPG_STATUS[sp.status].ic}${sp.msg}`;
     if (sp.dmg) { dealt = Math.max(1, Math.round((e.atk || e.ref.atk) * 0.8 * dmgMult * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6))); d.hp -= dealt; line += ` ${dealt}ダメージ。`; }
     rpgBLog(line, "bad");
-  } else {
+  } else {                                            // 予告どおり通常攻撃
     dealt = Math.max(1, Math.round((e.atk || e.ref.atk) * dmgMult * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6)));
     d.hp -= dealt;
     rpgBLog(`${e.ref.ic} ${e.ref.act || (e.ref.n + "の攻撃！")}${b.guard ? "（ガード）" : ""} ${dealt}ダメージ。`, "bad");
   }
+  e.intent = null;
   if (dealt > 0) { b.combo = 0; b.gauge = Math.min(100, (b.gauge || 0) + 15); rpgFx.at(rpgPlayerEl(), "-" + dealt, "pdmg"); rpgFx.shakeApp(); rpgFx.flash("hurt"); rpgSfx("tick"); }
   if (applied) rpgFx.banner(RPG_STATUS[applied].ic + " " + RPG_STATUS[applied].n + "！", "bad");
   if (d.hp <= 0) { d.hp = 0; setTimeout(() => rpgBattleLose(), 520); return; }
@@ -505,6 +517,7 @@ function rpgToPlayer() {
   }
   b.guard = false;                                   // ガードは1ターンで解除
   b.phase = "cmd"; b.acts = 1; RPG.busy = false;
+  rpgComputeIntents();                               // 次の敵の行動を予告
   rpgSave(); renderMallRpg();
 }
 // 🛡️ ガード（被ダメ半減＋ゲージ）
@@ -1036,7 +1049,13 @@ function rpgRenderBattle(app) {
   // HD-2D風の戦闘背景＝今いるフロアのリゾート風景
   if (RPG && RPG.map && RPG.map.length) {
     const bg = el("canvas", "rpg-battle-bg hd"); bg.width = 480; bg.height = 300; bg._noIcons = 1;
-    try { rpgDrawView(bg, (typeof performance !== "undefined" ? performance.now() : 0)); } catch (e) {}
+    try {
+      rpgDrawView(bg, (typeof performance !== "undefined" ? performance.now() : 0));
+      const bctx = bg.getContext("2d");
+      const sp = bctx.createRadialGradient(240, 198, 16, 240, 205, 190);   // 床のスポットライト
+      sp.addColorStop(0, "rgba(255,248,225,0.22)"); sp.addColorStop(1, "rgba(255,248,225,0)");
+      bctx.fillStyle = sp; bctx.fillRect(0, 0, 480, 300);
+    } catch (e) {}
     stage.appendChild(bg);
     stage.appendChild(el("div", "rpg-battle-scrim"));
   }
@@ -1048,6 +1067,14 @@ function rpgRenderBattle(app) {
     const seen = d.codex[e.id];
     const w = seen && seen.weak.length ? "弱点 " + seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "弱点？";
     const gone = e.ref.kind === "tourist" ? "満足して帰った" : "たおした";
+    if (e.alive && e.intent && b.phase === "cmd") {
+      const it = e.intent;
+      const ib = el("div", "rpg-intent " + (it.sp ? "sp" : "atk"), it.sp
+        ? ((RPG_STATUS[it.status] ? RPG_STATUS[it.status].ic : "✨") + (it.dmg ? " ~" + it.dmg : "！"))
+        : ("⚔️ ~" + it.dmg));
+      ib.title = it.sp ? "次は特技（状態異常）" : "次は通常攻撃";
+      card.appendChild(ib);
+    }
     if (b.target === i && e.alive) card.appendChild(el("div", "rpg-reticle", "▼"));
     card.appendChild(rpgMakeSprite(e.ref.ic, b.boss ? 96 : 60, "enemy"));
     card.appendChild(el("div", "rpg-enemy-shadow"));
