@@ -3734,9 +3734,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-codexrow { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(120,96,160,.15); font-size:13px; }
 
 /* 一人称ビュー */
-.rpg-view { display:block; width:100%; max-width:480px; margin:6px auto; border-radius:12px;
-  border:2px solid rgba(120,96,160,.4); background:#1a1426;
-  image-rendering:pixelated; image-rendering:crisp-edges; }
+.rpg-view { display:block; width:100%; max-width:520px; margin:6px auto; border-radius:14px;
+  border:2px solid rgba(120,96,160,.4); background:#1a1426; box-shadow:0 6px 26px rgba(0,0,0,.4); }
+.rpg-view.hd { image-rendering:auto; filter:contrast(1.05) saturate(1.12) brightness(1.02); }
 /* ドット絵風スプライト（絵文字を低解像→pixelated拡大） */
 .rpg-spr { image-rendering:pixelated; image-rendering:crisp-edges; display:block; }
 .rpg-spr.enemy { animation:rpgbob 1.4s ease-in-out infinite; }

@@ -651,9 +651,9 @@ function rpgRenderExplore(app) {
     `<span class="rpg-chip">🧭 ${RPG_DIRNAME[RPG.dir]}向き</span>`;
   app.appendChild(head);
 
-  // 一人称ビュー（低解像＝ドット感、CSSでpixelated拡大）＋アンビエント・アニメ
-  const cv = el("canvas", "rpg-view");
-  cv.width = 240; cv.height = 150;
+  // 一人称ビュー（HD-2D風・高解像＋ブルーム/被写界深度）＋アンビエント・アニメ
+  const cv = el("canvas", "rpg-view hd");
+  cv.width = 480; cv.height = 300;
   app.appendChild(cv);
   rpgDrawView(cv, (typeof performance !== "undefined" ? performance.now() : 0));
   rpgStartAmbient(cv);
@@ -683,105 +683,166 @@ function rpgRenderExplore(app) {
   app.appendChild(actions);
 }
 
-// グリッド一人称レンダラ（明るいモール風・店先/ガラス/天窓/つや床）
-function rpgMallPalette(fi) {
-  const fl = RPG_FLOORS[fi] || {}, A = fl.accent || [200, 120, 160], sky = fl.sky, WH = [255, 255, 255];
-  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-  return {
-    floor: [208, 202, 192], grout: [176, 168, 156],
-    ceil: sky ? [150, 198, 228] : [234, 236, 238], light: [253, 251, 244],
-    wall: [233, 231, 225], glass: mix(A, WH, 0.6), sign: A, kick: [160, 154, 146], trim: [120, 114, 106],
-  };
-}
-function rpgDrawView(cv, t) {
-  t = t || 0; const ph = t / 1000;
-  const ctx = cv.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2, maxD = 4, p = 0.58;
-  const P = rpgMallPalette(RPG.fi);
-  const sunset = !!(RPG_FLOORS[RPG.fi] && RPG_FLOORS[RPG.fi].sky);
-  const col = (rgb, k) => `rgb(${Math.round(Math.min(255, rgb[0] * k))},${Math.round(Math.min(255, rgb[1] * k))},${Math.round(Math.min(255, rgb[2] * k))})`;
-  const sh = d => Math.max(0.6, 1 - d * 0.085);
-  const rect = [];
-  for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W / 2) * s, t: cy - (H / 2) * s, r: cx + (W / 2) * s, b: cy + (H / 2) * s }; }
+// ★リッチHD-2D風 一人称シーン（tools/render_scene.js と同一ロジック）
+function rpgScene(ctx, env) {
+  const W = env.W, H = env.H, cx = W / 2, cy = H * 0.46, maxD = 4, p = 0.6, t = env.t || 0, ph = t / 1000;
+  const A = env.accent, sunset = env.sunset;
+  const rgb = (a, k) => `rgb(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0})`;
+  const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
+  const cell = env.cell, wall = (d, l) => cell(d, l) === "#";
+  // パレット（明るいリゾート基調）
+  const WALL = [236, 232, 224], FLOOR = [206, 198, 186], CEIL = [240, 242, 244], TRIM = [120, 112, 100], GLASS = [200, 224, 230];
+  const rect = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W * 0.5) * s, t: cy - (H * 0.5) * s, r: cx + (W * 0.5) * s, b: cy + (H * 0.5) * s }; }
   const yN = (r, f) => r.t + f * (r.b - r.t), xN = (r, f) => r.l + f * (r.r - r.l);
   const poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
-  const line = (x0, y0, x1, y1, c) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.stroke(); };
-  const rectXY = (x0, y0, x1, y1, c) => { ctx.fillStyle = c; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); };
-  // 明るい背景
-  ctx.fillStyle = col(P.ceil, 0.9); ctx.fillRect(0, 0, W, H / 2);
-  ctx.fillStyle = col(P.floor, 0.66); ctx.fillRect(0, H / 2, W, H / 2);
-  // 🌊 海の見える窓（波が動く）
+  const line = (x0, y0, x1, y1, c, w) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.strokeStyle = c; ctx.lineWidth = w || 1; ctx.stroke(); };
+  const sh = d => Math.max(0.55, 1 - d * 0.1);
+
+  // 空（天井）と床のベース・グラデ
+  let g = ctx.createLinearGradient(0, 0, 0, cy); g.addColorStop(0, rgb(CEIL, 0.82)); g.addColorStop(1, rgb(CEIL, 1.0)); ctx.fillStyle = g; ctx.fillRect(0, 0, W, cy + 1);
+  g = ctx.createLinearGradient(0, cy, 0, H); g.addColorStop(0, rgb(FLOOR, 1.02)); g.addColorStop(1, rgb(FLOOR, 0.62)); ctx.fillStyle = g; ctx.fillRect(0, cy, W, H - cy);
+
+  // 海の見える窓
   const oceanWindow = (x0, y0, x1, y1, k) => {
-    const midY = y0 + (y1 - y0) * 0.5;
-    ctx.fillStyle = col(sunset ? [255, 184, 122] : [150, 208, 236], k); ctx.fillRect(x0, y0, x1 - x0, midY - y0);
-    ctx.fillStyle = col(sunset ? [86, 120, 184] : [46, 152, 202], k); ctx.fillRect(x0, midY, x1 - x0, y1 - midY);
-    const scx = x0 + (x1 - x0) * 0.72, scy = y0 + (y1 - y0) * 0.22, sr = Math.max(2, (x1 - x0) * 0.11);
-    ctx.fillStyle = col(sunset ? [255, 156, 92] : [255, 246, 206], k); ctx.beginPath(); ctx.arc(scx, scy, sr, 0, 7); ctx.fill();
-    ctx.strokeStyle = col([255, 255, 255], k * 0.85); ctx.lineWidth = 1;
-    for (let i = 0; i < 3; i++) { const wy = midY + (y1 - midY) * (0.28 + i * 0.26); ctx.beginPath(); for (let xx = x0; xx <= x1; xx += 3) { const yy = wy + Math.sin(xx * 0.35 + ph * 2 + i) * 1.3; xx === x0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
+    const midY = y0 + (y1 - y0) * 0.52;
+    let sg = ctx.createLinearGradient(0, y0, 0, midY);
+    if (sunset) { sg.addColorStop(0, rgb([255, 150, 90], k)); sg.addColorStop(1, rgb([255, 210, 150], k)); }
+    else { sg.addColorStop(0, rgb([120, 190, 235], k)); sg.addColorStop(1, rgb([200, 235, 245], k)); }
+    ctx.fillStyle = sg; ctx.fillRect(x0, y0, x1 - x0, midY - y0);
+    let eg = ctx.createLinearGradient(0, midY, 0, y1);
+    if (sunset) { eg.addColorStop(0, rgb([120, 120, 170], k)); eg.addColorStop(1, rgb([60, 80, 140], k)); }
+    else { eg.addColorStop(0, rgb([70, 175, 215], k)); eg.addColorStop(1, rgb([30, 120, 175], k)); }
+    ctx.fillStyle = eg; ctx.fillRect(x0, midY, x1 - x0, y1 - midY);
+    // 太陽＋海面のきらめき
+    const scx = x0 + (x1 - x0) * (sunset ? 0.5 : 0.72), scy = y0 + (y1 - y0) * (sunset ? 0.4 : 0.24), sr = Math.max(2, (x1 - x0) * 0.1);
+    ctx.fillStyle = sunset ? rgba([255, 180, 110], k, 0.95) : rgba([255, 250, 215], k, 0.95); ctx.beginPath(); ctx.arc(scx, scy, sr, 0, 7); ctx.fill();
+    ctx.fillStyle = rgba([255, 245, 210], k, 0.5); ctx.beginPath(); ctx.arc(scx, scy, sr * 1.7, 0, 7); ctx.fill();
+    for (let i = 0; i < 4; i++) { const wy = midY + (y1 - midY) * (0.18 + i * 0.2); ctx.strokeStyle = rgba([255, 255, 255], k, 0.5 - i * 0.08); ctx.lineWidth = 1; ctx.beginPath(); for (let xx = x0; xx <= x1; xx += 2) { const yy = wy + Math.sin(xx * 0.4 + ph * 2 + i) * 1.4; xx === x0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
+    // サンの直下に反射の柱
+    ctx.fillStyle = rgba([255, 250, 220], k, 0.25); ctx.fillRect(scx - sr * 0.5, midY, sr, y1 - midY);
   };
-  // 店先（側壁）
-  const storefront = (near, far, left, k) => {
+  // ヤシの植栽
+  const palm = (bx, by, s, k) => {
+    ctx.fillStyle = rgb([90, 70, 54], k); ctx.fillRect(bx - s * 0.7, by - s * 0.5, s * 1.4, s * 0.5);          // プランター
+    ctx.fillStyle = rgb([70, 52, 40], k); ctx.fillRect(bx - s * 0.12, by - s * 2.4, s * 0.24, s * 1.9);         // 幹
+    ctx.fillStyle = rgb([46, 150, 90], k);
+    for (let a = 0; a < 6; a++) { const ang = -Math.PI / 2 + (a - 2.5) * 0.5; const ex = bx + Math.cos(ang) * s * 1.5, ey = by - s * 2.4 + Math.sin(ang) * s * 1.1; poly([[bx, by - s * 2.4], [ex - s * 0.15, ey], [ex + s * 0.15, ey + s * 0.1]], rgb([46, 150, 90], k * (0.8 + a * 0.04))); }
+    ctx.fillStyle = rgb([60, 170, 100], k); ctx.beginPath(); ctx.arc(bx, by - s * 2.4, s * 0.3, 0, 7); ctx.fill();
+  };
+
+  // 店先（側壁・グラデ＋日よけ＋ガラス映り込み＋柱＋幅木）
+  const storefront = (near, far, left, k, depth) => {
     const nx = left ? near.l : near.r, fx = left ? far.l : far.r;
-    const band = (f0, f1, c) => poly([[nx, yN(near, f0)], [fx, yN(far, f0)], [fx, yN(far, f1)], [nx, yN(near, f1)]], c);
-    band(0, 1, col(P.wall, k));
-    band(0.05, 0.24, col(P.sign, k));
-    band(0.30, 0.74, col(P.glass, k));
-    band(0.86, 1, col(P.kick, k));
-    line(nx, near.t, nx, near.b, col(P.trim, k));
-    line(fx, far.t, fx, far.b, col(P.trim, k));
+    const band = (f0, f1, fill) => poly([[nx, yN(near, f0)], [fx, yN(far, f0)], [fx, yN(far, f1)], [nx, yN(near, f1)]], fill);
+    // 壁（縦グラデ：上下AO）
+    let wg = ctx.createLinearGradient(0, near.t, 0, near.b); wg.addColorStop(0, rgb(WALL, k * 0.8)); wg.addColorStop(0.5, rgb(WALL, k)); wg.addColorStop(1, rgb(WALL, k * 0.78));
+    band(0, 1, wg);
+    // 日よけ（アクセント色・グラデ）
+    let ag = ctx.createLinearGradient(0, yN(near, 0.05), 0, yN(near, 0.26)); ag.addColorStop(0, rgb(A, k * 1.05)); ag.addColorStop(1, rgb(A, k * 0.8));
+    band(0.05, 0.26, ag);
+    line(nx, yN(near, 0.26), fx, yN(far, 0.26), rgba([0, 0, 0], 1, 0.18 * k), 1);
+    // ガラス（縦グラデ＋斜めハイライト＋店内シルエット）
+    let gg = ctx.createLinearGradient(0, yN(near, 0.30), 0, yN(near, 0.74)); gg.addColorStop(0, rgb(GLASS, k * 1.05)); gg.addColorStop(1, rgb(GLASS, k * 0.82));
+    band(0.30, 0.74, gg);
+    band(0.40, 0.62, rgba([40, 40, 50], k, 0.18));        // 店内の暗がり
+    // ガラスの斜めハイライト（店先の映り込み）
+    line(xN({ l: nx, r: fx, b: 0 }, 0.0) + (fx - nx) * 0.2, yN(near, 0.34), nx + (fx - nx) * 0.5, yN(near, 0.70), rgba([255, 255, 255], k, 0.25), 1);
+    // 幅木
+    band(0.86, 1, rgb([150, 142, 132], k));
+    // 柱（手前・奥）
+    let cg = ctx.createLinearGradient(nx - 1, 0, nx + 2, 0); cg.addColorStop(0, rgb(TRIM, k * 0.7)); cg.addColorStop(1, rgb([210, 204, 196], k));
+    ctx.fillStyle = cg; ctx.fillRect(nx - (left ? 0 : 2), near.t, 2, near.b - near.t);
+    line(fx, far.t, fx, far.b, rgba(TRIM, k, 0.8), 1);
   };
-  // 正面＝海の見える大きな窓（リゾート）
+
+  // 正面＝海の見える大きな窓
   const facade = (r, k) => {
-    poly([[r.l, r.t], [r.r, r.t], [r.r, r.b], [r.l, r.b]], col(P.wall, k));
-    rectXY(r.l, yN(r, 0.06), r.r, yN(r, 0.27), col(P.sign, k));
-    oceanWindow(r.l + 2, yN(r, 0.32), r.r - 2, yN(r, 0.84), k);
-    line(r.l, yN(r, 0.58), r.r, yN(r, 0.58), col(P.trim, k * 0.7));
-    for (let m = 1; m < 3; m++) { const x = xN(r, m / 3); line(x, yN(r, 0.32), x, yN(r, 0.84), col(P.trim, k)); }
-    rectXY(r.l, yN(r, 0.84), r.r, yN(r, 0.92), col(P.kick, k));
+    poly([[r.l, r.t], [r.r, r.t], [r.r, r.b], [r.l, r.b]], rgb(WALL, k));
+    let ag = ctx.createLinearGradient(0, yN(r, 0.05), 0, yN(r, 0.24)); ag.addColorStop(0, rgb(A, k * 1.05)); ag.addColorStop(1, rgb(A, k * 0.82));
+    ctx.fillStyle = ag; ctx.fillRect(r.l, yN(r, 0.05), r.r - r.l, yN(r, 0.24) - yN(r, 0.05));
+    oceanWindow(r.l + 3, yN(r, 0.30), r.r - 3, yN(r, 0.86), k);
+    line(r.l, yN(r, 0.58), r.r, yN(r, 0.58), rgba(TRIM, k, 0.7), 1);
+    for (let m = 1; m < 4; m++) { const x = xN(r, m / 4); line(x, yN(r, 0.30), x, yN(r, 0.86), rgba(TRIM, k, 0.8), 1); }
+    poly([[r.l, yN(r, 0.86)], [r.r, yN(r, 0.86)], [r.r, yN(r, 0.93)], [r.l, yN(r, 0.93)]], rgb([150, 142, 132], k));
   };
+
+  // 奥→手前
   for (let c = maxD; c >= 1; c--) {
     const near = rect[c - 1], far = rect[c], k = sh(c);
-    if (rpgIsWall(rpgAhead(c, 0))) {
-      facade(near, sh(c - 1));
-    } else {
-      poly([[near.l, near.b], [far.l, far.b], [far.r, far.b], [near.r, near.b]], col(P.floor, k));
-      line(far.l, far.b, far.r, far.b, col(P.grout, k));
-      [0.33, 0.66].forEach(fr => line(xN(near, fr), near.b, xN(far, fr), far.b, col(P.grout, k * 0.92)));
-      poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], col(P.ceil, k));
-      const shimmer = 1 + 0.06 * Math.sin(ph * 2.4 + c);   // 陽光のきらめき
-      poly([[xN(near, 0.42), near.t], [xN(far, 0.42), far.t], [xN(far, 0.58), far.t], [xN(near, 0.58), near.t]], col(P.light, k * shimmer));
-      line(far.l, far.t, far.r, far.t, col(P.light, shimmer));
-      if (rpgIsWall(rpgAhead(c, -1))) storefront(near, far, true, k);
-      if (rpgIsWall(rpgAhead(c, 1))) storefront(near, far, false, k);
+    if (wall(c, 0)) { facade(near, sh(c - 1)); }
+    else {
+      // 床（グラデ＋遠近タイル＋中央グロス＋店色の映り込み）
+      let fg = ctx.createLinearGradient(0, far.b, 0, near.b); fg.addColorStop(0, rgb(FLOOR, k * 0.85)); fg.addColorStop(1, rgb(FLOOR, k * 1.05));
+      poly([[near.l, near.b], [far.l, far.b], [far.r, far.b], [near.r, near.b]], fg);
+      line(far.l, far.b, far.r, far.b, rgba([120, 112, 100], k, 0.5), 1);
+      [0.25, 0.5, 0.75].forEach(fr => line(xN(near, fr), near.b, xN(far, fr), far.b, rgba([120, 112, 100], k, 0.35), 1));
+      // 反射（店アクセント色を床に薄く）
+      if (wall(c, -1)) { ctx.save(); ctx.globalAlpha = 0.12 * k; poly([[near.l, near.b], [far.l, far.b], [xN(far, 0.2), far.b], [xN(near, 0.2), near.b]], rgb(A, 1)); ctx.restore(); }
+      if (wall(c, 1)) { ctx.save(); ctx.globalAlpha = 0.12 * k; poly([[xN(near, 0.8), near.b], [xN(far, 0.8), far.b], [far.r, far.b], [near.r, near.b]], rgb(A, 1)); ctx.restore(); }
+      // 中央グロス
+      ctx.save(); ctx.globalAlpha = 0.10; poly([[xN(near, 0.42), near.b], [xN(far, 0.46), far.b], [xN(far, 0.54), far.b], [xN(near, 0.58), near.b]], "rgb(255,255,255)"); ctx.restore();
+      // 天井（グラデ＋天窓＋照明パネル＋梁）
+      let cg = ctx.createLinearGradient(0, near.t, 0, far.t); cg.addColorStop(0, rgb(CEIL, k)); cg.addColorStop(1, rgb(CEIL, k * 0.9));
+      poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], cg);
+      poly([[xN(near, 0.40), near.t], [xN(far, 0.42), far.t], [xN(far, 0.58), far.t], [xN(near, 0.60), near.t]], rgba([255, 252, 240], k, 0.9)); // 天窓
+      poly([[xN(near, 0.30), far.t], [xN(far, 0.34), far.t], [xN(far, 0.66), far.t], [xN(near, 0.70), far.t]], rgba([255, 255, 235], 1, 0.8)); // 照明
+      line(near.l, near.t, far.l, far.t, rgba([90, 86, 80], k, 0.4), 1);
+      line(near.r, near.t, far.r, far.t, rgba([90, 86, 80], k, 0.4), 1);
+      // 側壁
+      if (wall(c, -1)) storefront(near, far, true, k, c);
+      if (wall(c, 1)) storefront(near, far, false, k, c);
+      // 吊り照明（中央）
+      const lx = cx, ly = far.t + (near.t - far.t) * 0.25;
+      ctx.fillStyle = rgba([255, 244, 200], 1, 0.9); ctx.beginPath(); ctx.arc(lx, ly, Math.max(1.5, (near.t - far.t) * 0.04), 0, 7); ctx.fill();
+      // ヤシ（手前2段の通路脇）
+      if (c <= 2 && !wall(c, -1)) palm(xN(near, 0.12), near.b, (near.b - far.b) * 0.5 + 6, k);
+      if (c <= 2 && !wall(c, 1)) palm(xN(near, 0.88), near.b, (near.b - far.b) * 0.5 + 6, k);
     }
   }
-  // 前方アイコン（宝箱/階段/ボス）— ふわふわ上下
+
+  // 光のシャフト（天窓から床へ）
+  ctx.save(); ctx.globalAlpha = 0.10; let ls = ctx.createLinearGradient(0, rect[maxD].t, 0, H); ls.addColorStop(0, "rgb(255,250,225)"); ls.addColorStop(1, "rgba(255,250,225,0)"); ctx.fillStyle = ls; poly([[xN(rect[maxD], 0.42), rect[maxD].t], [xN(rect[maxD], 0.58), rect[maxD].t], [W * 0.72, H], [W * 0.28, H]], ls); ctx.restore();
+  // 遠景もや（空気遠近）
+  ctx.save(); ctx.globalAlpha = 0.5; let hz = ctx.createLinearGradient(0, cy - 18, 0, cy + 22); hz.addColorStop(0, "rgba(255,255,255,0)"); hz.addColorStop(0.5, sunset ? "rgba(255,220,190,0.5)" : "rgba(225,240,248,0.55)"); hz.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = hz; ctx.fillRect(0, cy - 22, W, 46); ctx.restore();
+}
+
+function rpgDrawView(cv, t) {
+  t = t || 0;
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  const fl = RPG_FLOORS[RPG.fi] || {};
+  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: fl.accent || [120, 160, 200], sunset: !!fl.sky, cell: (d, l) => rpgAhead(d, l) });
+  // 前方アイコン（宝箱/階段/ボス）＋ふわふわ
+  const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46, maxD = 4, pp = 0.6, ph = t / 1000;
+  const rt = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(pp, d); rt[d] = { t: cy - H * 0.5 * s, b: cy + H * 0.5 * s }; }
   for (let c = 1; c <= maxD; c++) {
     if (rpgIsWall(rpgAhead(c, 0))) break;
-    const ch = rpgAhead(c, 0);
-    const tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
-    const bob = Math.sin(ph * 2.2) * (rect[c].b - rect[c].t) * 0.03;
-    if (ch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) { rpgDrawIcon(ctx, "📦", rect[c], cx, cy + bob); break; }
-    if (ch === "U") { rpgDrawIcon(ctx, "🛗", rect[c], cx, cy + bob); break; }
-    if (ch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "🎡", rect[c], cx, cy + bob); break; }
+    const cch = rpgAhead(c, 0), tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
+    const bob = Math.sin(ph * 2.2) * (rt[c].b - rt[c].t) * 0.03;
+    if (cch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) { rpgDrawIcon(ctx, "📦", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
+    if (cch === "U") { rpgDrawIcon(ctx, "🛗", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
+    if (cch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "🎡", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
   }
-  // ✨ 漂う光の粒（リゾートのきらめき）
-  for (let i = 0; i < 12; i++) {
-    const sx = (i * 47 + ph * 12 * (1 + i % 3)) % W;
-    const sy = H - ((ph * 22 * (0.6 + (i % 4) * 0.25) + i * 53) % H);
-    const s = (i % 3) ? 1 : 2;
-    ctx.globalAlpha = 0.25 + 0.35 * Math.abs(Math.sin(ph + i));
-    ctx.fillStyle = "#fff"; ctx.fillRect(sx, sy, s, s);
+  rpgPostFx(cv, ctx);
+}
+// HD-2D風 後処理：ブルーム＋被写界深度(ティルトシフト)＋ビネット（GPUフィルタ・非対応端末は自動スキップ）
+function rpgPostFx(cv, ctx) {
+  const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46;
+  if ("filter" in ctx) {
+    try {
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.3; ctx.filter = "blur(5px) brightness(1.5)"; ctx.drawImage(cv, 0, 0); ctx.restore();
+      ctx.save(); ctx.globalAlpha = 0.7; ctx.filter = "blur(3px)";
+      ctx.drawImage(cv, 0, 0, W, H * 0.28, 0, 0, W, H * 0.28);
+      ctx.drawImage(cv, 0, H * 0.86, W, H * 0.14, 0, H * 0.86, W, H * 0.14);
+      ctx.restore();
+    } catch (e) {}
+    ctx.filter = "none"; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
   }
-  ctx.globalAlpha = 1;
-  // ごく軽いビネット
-  const g = ctx.createRadialGradient(cx, cy, H * 0.3, cx, cy, H * 0.85);
-  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.22)");
+  const g = ctx.createRadialGradient(cx, cy, H * 0.32, cx, cy, H * 0.92);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.42)");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
-// アンビエント・アニメ（探索中は毎フレーム一人称ビューを再描画＝海・きらめき・ふわふわ）
+
 let _rpgRaf = 0;
 function rpgStartAmbient(cv) {
   RPG._viewCv = cv;
