@@ -29,7 +29,9 @@ window.addEventListener("DOMContentLoaded", () => {
       race_run: renderRaceRun, result: renderResult, analysis: renderAnalysis,
       assets: renderAssets, village: renderVillage, collection: renderCollection, help: renderHelp,
       story: renderStory, consult: renderConsult, settings: renderSettings, mall: renderMall,
-      mall_rpg: renderMallRpg
+      mall_rpg: renderMallRpg,
+      stable: (typeof renderStable === "function" ? renderStable : renderHome),
+      scout: (typeof renderScout === "function" ? renderScout : renderHome)
     };
     if (map[state.ui.screen]) map[state.ui.screen]();
   };

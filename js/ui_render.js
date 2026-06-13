@@ -35,7 +35,7 @@ function updateHeader() {
 // =====================================================================
 const SCREEN_DEPTH = {
   title: 0, home: 1,
-  race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2,
+  race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2, stable: 2, scout: 2,
   story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3,
   story_read: 4, race_run: 4, result: 5, analysis: 6
 };
@@ -76,7 +76,7 @@ function beginScreen() {
   // quick back button pinned at the very top of sub-pages (sticky), so you don't have to
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
-    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home",
+    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home",
     life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
@@ -898,6 +898,13 @@ function renderHome() {
   }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
   rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
+  // 泣き虫竜ポロ発見で解放（第4章）。表示専用＝レース不変。js/poro.js
+  if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
+    rail.appendChild(navItem("🏠", "龍舎", "ポロと、出会った竜たちの拠点。なでて仲良くなれます。", () => renderStable()));
+  }
+  if (typeof poroScoutUnlocked === "function" && poroScoutUnlocked()) {
+    rail.appendChild(navItem("🔍", "スカウト", "野に眠る竜を探しにいきます（出会いは表示専用）。", () => renderScout()));
+  }
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
   rail.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
@@ -1515,6 +1522,9 @@ function renderStoryChapter(chId) {
     Dialogue.play(DLG.chapterIntro(ch, cast));
     if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
   }
+  // 第4章を初めて開いたら：泣き虫竜ポロの発見〜聖龍幼体説〜鑑定アーク（導入の後に続けて再生）。
+  // 完了で poroFound＋龍舎/スカウト解放（js/poro.js）。既存のレース出走ポロ・図鑑は不変＝表示専用。
+  if (typeof maybePlayPoroArc === "function") maybePlayPoroArc(ch.id);
   const app = beginScreen();   // 上部に「← 物語」
   app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
   if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
