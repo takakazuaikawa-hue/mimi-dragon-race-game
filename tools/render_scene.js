@@ -19,8 +19,14 @@ function Ctx(W, H) { this.W = W; this.H = H; this.buf = Buffer.alloc(W * H * 4);
 Ctx.prototype.save = function () { this._st.push([this.fillStyle, this.strokeStyle, this.lineWidth, this.globalAlpha]); };
 Ctx.prototype.restore = function () { const s = this._st.pop(); if (s) { this.fillStyle = s[0]; this.strokeStyle = s[1]; this.lineWidth = s[2]; this.globalAlpha = s[3]; } };
 Ctx.prototype.createLinearGradient = function (x0, y0, x1, y1) { const g = { _grad: 1, x0, y0, x1, y1, st: [], addColorStop(o, c) { this.st.push([o, pc(c)]); } }; return g; };
+Ctx.prototype.createRadialGradient = function (x0, y0, r0, x1, y1, r1) { const g = { _grad: 1, _radial: 1, cx: x1, cy: y1, r0: r0, r1: r1, st: [], addColorStop(o, c) { this.st.push([o, pc(c)]); } }; return g; };
 Ctx.prototype._sample = function (style, x, y) {
-  if (style && style._grad) { const g = style; const dx = g.x1 - g.x0, dy = g.y1 - g.y0, L = dx * dx + dy * dy || 1; let t = ((x - g.x0) * dx + (y - g.y0) * dy) / L; t = t < 0 ? 0 : t > 1 ? 1 : t; let a = g.st[0], b = g.st[g.st.length - 1]; for (let i = 0; i < g.st.length - 1; i++) { if (t >= g.st[i][0] && t <= g.st[i + 1][0]) { a = g.st[i]; b = g.st[i + 1]; break; } } const span = (b[0] - a[0]) || 1, f = (t - a[0]) / span; return { r: a[1].r + (b[1].r - a[1].r) * f, g: a[1].g + (b[1].g - a[1].g) * f, b: a[1].b + (b[1].b - a[1].b) * f, a: a[1].a + (b[1].a - a[1].a) * f }; }
+  if (style && style._grad) {
+    const g = style; let t;
+    if (g._radial) { const d = Math.hypot(x - g.cx, y - g.cy); t = (d - g.r0) / ((g.r1 - g.r0) || 1); }
+    else { const dx = g.x1 - g.x0, dy = g.y1 - g.y0, L = dx * dx + dy * dy || 1; t = ((x - g.x0) * dx + (y - g.y0) * dy) / L; }
+    t = t < 0 ? 0 : t > 1 ? 1 : t; let a = g.st[0], b = g.st[g.st.length - 1]; for (let i = 0; i < g.st.length - 1; i++) { if (t >= g.st[i][0] && t <= g.st[i + 1][0]) { a = g.st[i]; b = g.st[i + 1]; break; } } const span = (b[0] - a[0]) || 1, f = (t - a[0]) / span; return { r: a[1].r + (b[1].r - a[1].r) * f, g: a[1].g + (b[1].g - a[1].g) * f, b: a[1].b + (b[1].b - a[1].b) * f, a: a[1].a + (b[1].a - a[1].a) * f };
+  }
   return pc(style);
 };
 Ctx.prototype._px = function (x, y, c) { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= this.W || y >= this.H) return; let a = (c.a == null ? 1 : c.a) * this.globalAlpha; if (a <= 0) return; if (a > 1) a = 1; const i = (y * this.W + x) * 4, ia = 1 - a; this.buf[i] = c.r * a + this.buf[i] * ia; this.buf[i + 1] = c.g * a + this.buf[i + 1] * ia; this.buf[i + 2] = c.b * a + this.buf[i + 2] * ia; this.buf[i + 3] = 255; };
@@ -214,7 +220,68 @@ function hd2d(ctx) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const dx = (x - cx) / (W * 0.6), dy = (y - cy) / (H * 0.7), r2 = dx * dx + dy * dy; if (r2 > 0.5) { const a = Math.min(0.45, (r2 - 0.5) * 0.6), o = (y * W + x) * 4, k = 1 - a; buf[o] *= k; buf[o + 1] *= k; buf[o + 2] *= k; } }
 }
 
+// ===== アイソメトリック戦闘アリーナ（本体と同一ロジック） =====
+function rpgIsoLayout(W, H, n) {
+  const pcx = W * 0.5, pcy = H * 0.64, pw = W * 0.45, pdh = H * 0.16;
+  const top = [pcx, pcy - pdh], right = [pcx + pw, pcy], bot = [pcx, pcy + pdh], left = [pcx - pw, pcy];
+  const bn = Math.max(1, n), slots = [];
+  for (let i = 0; i < bn; i++) {
+    const f = bn === 1 ? 0.5 : (0.5 + (i - (bn - 1) / 2) * (0.62 / Math.max(1, bn - 1)));
+    slots.push({ x: pcx + (f - 0.5) * pw * 1.05, y: pcy - pdh * 0.34 + (i % 2) * 10, scale: 1 });
+  }
+  const mimi = { x: pcx - pw * 0.46, y: pcy + pdh * 0.55 };
+  return { pcx, pcy, pw, pdh, top, right, bot, left, slots, mimi };
+}
+function rpgIsoArena(ctx, env) {
+  const W = env.W, H = env.H, A = env.accent, sunset = env.sunset, t = env.t || 0, ph = t / 1000, n = env.n || 2;
+  const rgb = (a, k) => `rgb(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0})`;
+  const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
+  const L = rpgIsoLayout(W, H, n);
+  const poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+  const line = (a, b, c, w) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = c; ctx.lineWidth = w || 1; ctx.stroke(); };
+  const lerp = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  const ell = (p, rw, fill) => { ctx.beginPath(); for (let a = 0; a < 6.5; a += 0.25) { const x = p.x + Math.cos(a) * rw, y = p.y + Math.sin(a) * rw * 0.4; a === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+  // 空
+  let sg = ctx.createLinearGradient(0, 0, 0, H * 0.6);
+  if (sunset) { sg.addColorStop(0, "rgb(255,150,95)"); sg.addColorStop(1, "rgb(255,212,165)"); }
+  else { sg.addColorStop(0, "rgb(130,198,234)"); sg.addColorStop(1, "rgb(222,240,250)"); }
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.62);
+  // 太陽
+  ctx.fillStyle = sunset ? "rgba(255,200,140,.4)" : "rgba(255,250,225,.4)"; ctx.beginPath(); ctx.arc(W * 0.74, H * 0.24, 42, 0, 7); ctx.fill();
+  ctx.fillStyle = sunset ? "rgba(255,178,108,.96)" : "rgba(255,250,220,.96)"; ctx.beginPath(); ctx.arc(W * 0.74, H * 0.24, 24, 0, 7); ctx.fill();
+  // 海
+  let se = ctx.createLinearGradient(0, H * 0.42, 0, H * 0.64);
+  if (sunset) { se.addColorStop(0, "rgb(120,120,170)"); se.addColorStop(1, "rgb(70,84,128)"); }
+  else { se.addColorStop(0, "rgb(72,176,216)"); se.addColorStop(1, "rgb(40,135,185)"); }
+  ctx.fillStyle = se; ctx.fillRect(0, H * 0.42, W, H * 0.22);
+  for (let i = 0; i < 3; i++) { const wy = H * (0.46 + i * 0.045); ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1; ctx.beginPath(); for (let xx = 0; xx <= W; xx += 3) { const yy = wy + Math.sin(xx * 0.05 + ph * 2 + i) * 1.5; xx === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
+  // プラットフォーム側面（厚み）
+  const dp = 16;
+  poly([L.left, L.bot, [L.bot[0], L.bot[1] + dp], [L.left[0], L.left[1] + dp]], rgb(A, 0.45));
+  poly([L.bot, L.right, [L.right[0], L.right[1] + dp], [L.bot[0], L.bot[1] + dp]], rgb(A, 0.34));
+  // 天面
+  let pg = ctx.createLinearGradient(0, L.pcy - L.pdh, 0, L.pcy + L.pdh); pg.addColorStop(0, "rgb(196,206,218)"); pg.addColorStop(1, "rgb(238,242,247)");
+  poly([L.top, L.right, L.bot, L.left], pg);
+  // タイル目地
+  const N = 6, grout = "rgba(120,132,148,0.45)";
+  for (let i = 1; i < N; i++) { const f = i / N; line(lerp(L.top, L.left, f), lerp(L.right, L.bot, f), grout, 1); line(lerp(L.top, L.right, f), lerp(L.left, L.bot, f), grout, 1); }
+  // アクセント縁取り（奥のエッジを光らせる）
+  line(L.left, L.top, rgba(A, 1.2, 0.85), 2); line(L.top, L.right, rgba(A, 1.2, 0.85), 2);
+  // スポットライト
+  let spg = ctx.createRadialGradient(L.pcx, L.pcy, 8, L.pcx, L.pcy, L.pw * 0.95); spg.addColorStop(0, "rgba(255,250,225,0.3)"); spg.addColorStop(1, "rgba(255,250,225,0)");
+  poly([L.top, L.right, L.bot, L.left], spg);
+  // 接地影＋プレースホルダ戦闘者（本体ではDOMスプライト）
+  L.slots.forEach((s) => { ell(s, 28, "rgba(0,0,0,0.32)"); ctx.fillStyle = rgb([220, 150, 180], 1); ctx.beginPath(); ctx.arc(s.x, s.y - 28, 22, 0, 7); ctx.fill(); });
+  ell(L.mimi, 26, "rgba(0,0,0,0.32)"); ctx.fillStyle = "rgb(255,120,170)"; ctx.beginPath(); ctx.arc(L.mimi.x, L.mimi.y - 28, 22, 0, 7); ctx.fill();
+  hd2d(ctx);
+}
+
 const shots = [];
+[[0, 3], [4, 2]].forEach(([fi, n]) => {
+  const env = { W: 520, H: 320, accent: FLOORS[fi].accent, sunset: !!FLOORS[fi].sky, t: 1500, n };
+  const ctx = new Ctx(env.W, env.H); rpgIsoArena(ctx, env);
+  const fn = `/tmp/iso_floor${fi}.png`; fs.writeFileSync(fn, png(env.W, env.H, ctx.buf)); console.log("wrote", fn);
+});
 for (let fi = 0; fi < FLOORS.length; fi++) { const [sx, sy] = findS(fi); shots.push([fi, sx, sy, bestDir(fi, sx, sy), `/tmp/scene_floor${fi}.png`]); }
 shots.push([0, 5, 5, 1, "/tmp/scene_ocean0.png"]);
 shots.forEach(([fi, x, y, dir, fn]) => { const env = envFor(fi, x, y, dir); const ctx = new Ctx(env.W, env.H); rpgScene(ctx, env); hd2d(ctx); fs.writeFileSync(fn, png(env.W, env.H, ctx.buf)); console.log("wrote", fn); });

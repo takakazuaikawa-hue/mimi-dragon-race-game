@@ -213,6 +213,7 @@ function rpgAhead(depth, lat) {
 function rpgTurn(d) {
   if (!RPG || RPG.mode !== "explore" || RPG.busy) return;
   RPG.dir = (RPG.dir + d + 4) % 4;
+  RPG._stepFx = d < 0 ? "turnL" : "turnR";
   rpgSfx("tick");
   renderMallRpg();
 }
@@ -223,6 +224,7 @@ function rpgForward(sign) {
   if (rpgIsWall(rpgCell(nx, ny))) { rpgLog("🧱 壁だ。", ""); renderMallRpg(); return; }
   RPG.px = nx; RPG.py = ny; RPG.steps++;
   RPG.explored[nx + "," + ny] = 1;
+  RPG._stepFx = sign > 0 ? "fwd" : "back";
   rpgSfx("tick");
   const here = rpgCell(nx, ny);
   if (here === "T") { rpgTreasure(nx, ny); return; }
@@ -303,7 +305,7 @@ const rpgFx = {
   cover(cls, ms, cb) { const n = document.createElement("div"); n.className = "rpg-fxcover " + (cls || ""); this.layer().appendChild(n); if (cb) setTimeout(cb, ms * 0.45); setTimeout(() => n.remove(), ms); },
 };
 function rpgEnemyEl(i) { return document.getElementById("rpg-enemy-" + i); }
-function rpgPlayerEl() { return document.getElementById("rpg-bhud"); }
+function rpgPlayerEl() { return document.getElementById("rpg-mimichar") || document.getElementById("rpg-bhud"); }
 
 function rpgEncounter(boss) {
   let ids;
@@ -786,8 +788,9 @@ function rpgRenderExplore(app) {
     `<span class="rpg-chip">🧭 ${RPG_DIRNAME[RPG.dir]}向き</span>`;
   app.appendChild(head);
 
-  // 一人称ビュー（HD-2D風・高解像＋ブルーム/被写界深度）＋アンビエント・アニメ
-  const cv = el("canvas", "rpg-view hd");
+  // 一人称ビュー（HD-2D風・高解像＋ブルーム/被写界深度）＋移動の方向アニメ
+  const cv = el("canvas", "rpg-view hd" + (RPG._stepFx ? " rpg-step-" + RPG._stepFx : ""));
+  RPG._stepFx = null;
   cv.width = 480; cv.height = 300;
   app.appendChild(cv);
   rpgDrawView(cv, (typeof performance !== "undefined" ? performance.now() : 0));
@@ -981,6 +984,61 @@ function rpgPostFx(cv, ctx) {
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
 
+// ===== アイソメトリック戦闘アリーナ（斜め視点・tools/render_scene.js と同一の幾何） =====
+function rpgIsoLayout(W, H, n) {
+  const pcx = W * 0.5, pcy = H * 0.64, pw = W * 0.45, pdh = H * 0.16;
+  const top = [pcx, pcy - pdh], right = [pcx + pw, pcy], bot = [pcx, pcy + pdh], left = [pcx - pw, pcy];
+  const bn = Math.max(1, n), slots = [];
+  for (let i = 0; i < bn; i++) {
+    const f = bn === 1 ? 0.5 : (0.5 + (i - (bn - 1) / 2) * (0.62 / Math.max(1, bn - 1)));
+    slots.push({ x: pcx + (f - 0.5) * pw * 1.05, y: pcy - pdh * 0.34 + (i % 2) * 10 });
+  }
+  return { pcx, pcy, pw, pdh, top, right, bot, left, slots, mimi: { x: pcx - pw * 0.46, y: pcy + pdh * 0.55 } };
+}
+function rpgIsoArena(ctx, env) {
+  const W = env.W, H = env.H, A = env.accent, sunset = env.sunset, t = env.t || 0, ph = t / 1000, n = env.n || 2;
+  const rgb = (a, k) => `rgb(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0})`;
+  const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
+  const L = rpgIsoLayout(W, H, n);
+  const poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+  const line = (a, b, c, w) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = c; ctx.lineWidth = w || 1; ctx.stroke(); };
+  const lerp = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  const ell = (p, rw, fill) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse ? ctx.ellipse(p.x, p.y, rw, rw * 0.4, 0, 0, 7) : ctx.arc(p.x, p.y, rw, 0, 7); ctx.fill(); };
+  let sg = ctx.createLinearGradient(0, 0, 0, H * 0.6);
+  if (sunset) { sg.addColorStop(0, "rgb(255,150,95)"); sg.addColorStop(1, "rgb(255,212,165)"); }
+  else { sg.addColorStop(0, "rgb(130,198,234)"); sg.addColorStop(1, "rgb(222,240,250)"); }
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.62);
+  ctx.fillStyle = sunset ? "rgba(255,200,140,.4)" : "rgba(255,250,225,.4)"; ctx.beginPath(); ctx.arc(W * 0.74, H * 0.24, 42, 0, 7); ctx.fill();
+  ctx.fillStyle = sunset ? "rgba(255,178,108,.96)" : "rgba(255,250,220,.96)"; ctx.beginPath(); ctx.arc(W * 0.74, H * 0.24, 24, 0, 7); ctx.fill();
+  let se = ctx.createLinearGradient(0, H * 0.42, 0, H * 0.64);
+  if (sunset) { se.addColorStop(0, "rgb(120,120,170)"); se.addColorStop(1, "rgb(70,84,128)"); }
+  else { se.addColorStop(0, "rgb(72,176,216)"); se.addColorStop(1, "rgb(40,135,185)"); }
+  ctx.fillStyle = se; ctx.fillRect(0, H * 0.42, W, H * 0.22);
+  for (let i = 0; i < 3; i++) { const wy = H * (0.46 + i * 0.045); ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1; ctx.beginPath(); for (let xx = 0; xx <= W; xx += 3) { const yy = wy + Math.sin(xx * 0.05 + ph * 2 + i) * 1.5; xx === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
+  const dp = 16;
+  poly([L.left, L.bot, [L.bot[0], L.bot[1] + dp], [L.left[0], L.left[1] + dp]], rgb(A, 0.45));
+  poly([L.bot, L.right, [L.right[0], L.right[1] + dp], [L.bot[0], L.bot[1] + dp]], rgb(A, 0.34));
+  let pg = ctx.createLinearGradient(0, L.pcy - L.pdh, 0, L.pcy + L.pdh); pg.addColorStop(0, "rgb(196,206,218)"); pg.addColorStop(1, "rgb(238,242,247)");
+  poly([L.top, L.right, L.bot, L.left], pg);
+  const N = 6, grout = "rgba(120,132,148,0.45)";
+  for (let i = 1; i < N; i++) { const f = i / N; line(lerp(L.top, L.left, f), lerp(L.right, L.bot, f), grout, 1); line(lerp(L.top, L.right, f), lerp(L.left, L.bot, f), grout, 1); }
+  line(L.left, L.top, rgba(A, 1.2, 0.85), 2); line(L.top, L.right, rgba(A, 1.2, 0.85), 2);
+  let spg = ctx.createRadialGradient(L.pcx, L.pcy, 8, L.pcx, L.pcy, L.pw * 0.95); spg.addColorStop(0, "rgba(255,250,225,0.3)"); spg.addColorStop(1, "rgba(255,250,225,0)");
+  poly([L.top, L.right, L.bot, L.left], spg);
+  L.slots.forEach((s) => ell({ x: s.x, y: s.y }, 28, "rgba(0,0,0,0.30)"));
+  ell({ x: L.mimi.x, y: L.mimi.y }, 26, "rgba(0,0,0,0.30)");
+  rpgArenaPost(env.cv || null, ctx, W, H);
+}
+function rpgArenaPost(cv, ctx, W, H) {
+  if (cv && "filter" in ctx) {
+    try { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.22; ctx.filter = "blur(6px) brightness(1.4)"; ctx.drawImage(cv, 0, 0); ctx.restore(); } catch (e) {}
+    ctx.filter = "none"; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  }
+  const g = ctx.createRadialGradient(W / 2, H * 0.55, H * 0.3, W / 2, H * 0.55, H * 0.95);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.4)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+
 let _rpgRaf = 0;
 function rpgStartAmbient(cv) {
   RPG._viewCv = cv;
@@ -1051,82 +1109,66 @@ function rpgMiniMap() {
   return wrap;
 }
 
-// ── 戦闘画面
+// ── 戦闘画面（斜め視点アリーナ＋固定コマンドパネル）
 function rpgRenderBattle(app) {
-  const d = rpgData(), b = RPG.battle;
-  // 戦闘ステージ（敵＝モール内の対決）
-  const stage = el("div", "rpg-stage" + (b.boss ? " boss" : ""));
-  // HD-2D風の戦闘背景＝今いるフロアのリゾート風景
-  if (RPG && RPG.map && RPG.map.length) {
-    const bg = el("canvas", "rpg-battle-bg hd"); bg.width = 480; bg.height = 300; bg._noIcons = 1;
-    try {
-      rpgDrawView(bg, (typeof performance !== "undefined" ? performance.now() : 0));
-      const bctx = bg.getContext("2d");
-      const sp = bctx.createRadialGradient(240, 198, 16, 240, 205, 190);   // 床のスポットライト
-      sp.addColorStop(0, "rgba(255,248,225,0.22)"); sp.addColorStop(1, "rgba(255,248,225,0)");
-      bctx.fillStyle = sp; bctx.fillRect(0, 0, 480, 300);
-    } catch (e) {}
-    stage.appendChild(bg);
-    stage.appendChild(el("div", "rpg-battle-scrim"));
-  }
-  // 手番インジケータ（誰の番か常に分かるように）
-  const turn = el("div", "rpg-turnbar " + (b.phase === "cmd" ? "you" : "foe"),
-    b.phase === "cmd" ? "🎮 あなたの番" : (b.phase === "wait" ? "💫 …" : "⚔️ てきのターン"));
-  stage.appendChild(turn);
-  const ev = el("div", "rpg-enemies");
+  const d = rpgData(), b = RPG.battle, n = b.enemies.length;
+  const AW = 520, AH = 320, fl = rpgFloorMeta(RPG.fi) || {};
+
+  // ===== アリーナ（斜め視点・固定アスペクト） =====
+  const arena = el("div", "rpg-arena2" + (b.boss ? " boss" : ""));
+  const cv = el("canvas", "rpg-arena2-cv"); cv.width = AW; cv.height = AH;
+  try { rpgIsoArena(cv.getContext("2d"), { W: AW, H: AH, accent: fl.accent || [80, 160, 200], sunset: !!fl.sky, n: n, t: (typeof performance !== "undefined" ? performance.now() : 0), cv: cv }); } catch (e) {}
+  arena.appendChild(cv);
+  arena.appendChild(el("div", "rpg-turnbar " + (b.phase === "cmd" ? "you" : "foe"),
+    b.phase === "cmd" ? "🎮 あなたの番" : (b.phase === "wait" ? "💫 …" : "⚔️ てきのターン")));
+  const stk = Object.keys(RPG_STATUS).filter(k => b.pstatus[k] > 0);
+  if (stk.length) arena.appendChild(el("div", "rpg-status arena", stk.map(k => `<span class="rpg-stchip" title="${RPG_STATUS[k].d}">${RPG_STATUS[k].ic}</span>`).join("")));
+
+  const L = rpgIsoLayout(AW, AH, n);
   b.enemies.forEach((e, i) => {
-    const card = el("button", "rpg-enemy" + (e.alive ? "" : " dead") + (b.target === i ? " sel" : ""));
-    card.id = "rpg-enemy-" + i;
-    const hp = Math.max(0, e.hp), pct = Math.round(hp / e.maxhp * 100);
-    const seen = d.codex[e.id];
-    const w = seen && seen.weak.length ? "弱点 " + seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "弱点？";
-    const gone = e.ref.kind === "tourist" ? "満足して帰った" : "たおした";
+    const s = L.slots[i] || L.slots[L.slots.length - 1];
+    const foe = el("div", "rpg-foe" + (e.alive ? "" : " dead") + (b.target === i ? " sel" : ""));
+    foe.id = "rpg-enemy-" + i;
+    foe.style.left = (s.x / AW * 100) + "%";
+    foe.style.top = ((s.y - 30) / AH * 100) + "%";
     if (e.alive && e.intent && b.phase === "cmd") {
       const it = e.intent;
-      const ib = el("div", "rpg-intent " + (it.sp ? "sp" : "atk"), it.sp
-        ? ((RPG_STATUS[it.status] ? RPG_STATUS[it.status].ic : "✨") + (it.dmg ? " ~" + it.dmg : "！"))
-        : ("⚔️ ~" + it.dmg));
-      ib.title = it.sp ? "次は特技（状態異常）" : "次は通常攻撃";
-      card.appendChild(ib);
+      foe.appendChild(el("div", "rpg-intent " + (it.sp ? "sp" : "atk"),
+        it.sp ? ((RPG_STATUS[it.status] ? RPG_STATUS[it.status].ic : "✨") + (it.dmg ? " ~" + it.dmg : "！")) : ("⚔️ ~" + it.dmg)));
     }
-    if (b.target === i && e.alive) card.appendChild(el("div", "rpg-reticle", "▼"));
-    card.appendChild(rpgEnemyVisual(e.id, e.ref.ic, b.boss ? 96 : 60, "enemy"));
-    card.appendChild(el("div", "rpg-enemy-shadow"));
-    const info = el("div", "rpg-enemy-info");
-    info.innerHTML = `<b>${e.ref.n}</b>` +
-      `<span class="rpg-hpbar"><span style="width:${pct}%"></span></span>` +
-      `<small>${e.alive ? w : gone}</small>`;
-    card.appendChild(info);
-    if (e.alive) card.onclick = () => rpgSelectTarget(i);
-    ev.appendChild(card);
+    const pct = Math.round(Math.max(0, e.hp) / e.maxhp * 100);
+    const seen = d.codex[e.id];
+    const wk = seen && seen.weak.length ? seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "？";
+    foe.appendChild(el("div", "rpg-foe-info", e.alive
+      ? `<b>${e.ref.n}</b><span class="rpg-hpbar"><span style="width:${pct}%"></span></span><small>弱点 ${wk}</small>`
+      : `<small>${e.ref.kind === "tourist" ? "😌 帰った" : "💥 たおした"}</small>`));
+    foe.appendChild(rpgEnemyVisual(e.id, e.ref.ic, b.boss ? 108 : 70, "enemy"));
+    if (e.alive) foe.onclick = () => rpgSelectTarget(i);
+    arena.appendChild(foe);
   });
-  stage.appendChild(ev);
-  app.appendChild(stage);
+  const mimi = el("div", "rpg-mimi"); mimi.id = "rpg-mimichar";
+  mimi.style.left = (L.mimi.x / AW * 100) + "%";
+  mimi.style.top = ((L.mimi.y - 30) / AH * 100) + "%";
+  mimi.appendChild(rpgMakeSprite("🧝", 88, "mimichar"));
+  arena.appendChild(mimi);
+  app.appendChild(arena);
 
-  // ミミの状態異常
-  const stk = Object.keys(RPG_STATUS).filter(k => b.pstatus[k] > 0);
-  if (stk.length) {
-    const sr = el("div", "rpg-status");
-    sr.innerHTML = stk.map(k => `<span class="rpg-stchip" title="${RPG_STATUS[k].d}">${RPG_STATUS[k].ic} ${RPG_STATUS[k].n}</span>`).join("");
-    app.appendChild(sr);
-  }
-
-  // プレイヤーHUD（ミミのステータスパネル）
-  const hud = el("div", "rpg-bhud"); hud.id = "rpg-bhud";
+  // ===== 固定コマンドパネル（この下は常に同じ位置＝ボタンがズレない） =====
+  const panel = el("div", "rpg-panel");
+  const hud = el("div", "rpg-bhud");
   hud.innerHTML =
     `<div class="rpg-bhud-name">🧝 ミミ <b>Lv${d.lv}</b>` +
-    ((b.combo || 0) >= 2 ? `<span class="rpg-combo lvl${Math.min(5, Math.floor(b.combo / 3) + 1)}">🔥 COMBO ×${b.combo}</span>` : "") + `</div>` +
-    `<div class="rpg-bar-row"><span class="rpg-bar-lb">HP</span><span class="rpg-hpbar big"><span style="width:${Math.round(d.hp / d.maxhp * 100)}%"></span></span><span class="rpg-bar-v">${d.hp}/${d.maxhp}</span></div>` +
-    `<div class="rpg-bar-row"><span class="rpg-bar-lb">MP</span><span class="rpg-mpbar"><span style="width:${Math.round(d.mp / d.maxmp * 100)}%"></span></span><span class="rpg-bar-v">${d.mp}/${d.maxmp}</span></div>` +
-    `<div class="rpg-bar-row"><span class="rpg-bar-lb">SP</span><span class="rpg-gauge${(b.gauge || 0) >= 100 ? " full" : ""}"><span style="width:${Math.round(b.gauge || 0)}%"></span></span><span class="rpg-bar-v">${(b.gauge || 0) >= 100 ? "MAX!" : Math.round(b.gauge || 0) + "%"}</span></div>`;
-  app.appendChild(hud);
+    ((b.combo || 0) >= 2 ? `<span class="rpg-combo lvl${Math.min(5, Math.floor(b.combo / 3) + 1)}">🔥×${b.combo}</span>` : "") + `</div>` +
+    `<div class="rpg-bars3">` +
+    `<span class="rpg-b3"><i>HP</i><span class="rpg-hpbar big"><span style="width:${Math.round(d.hp / d.maxhp * 100)}%"></span></span><b>${d.hp}/${d.maxhp}</b></span>` +
+    `<span class="rpg-b3"><i>MP</i><span class="rpg-mpbar"><span style="width:${Math.round(d.mp / d.maxmp * 100)}%"></span></span><b>${d.mp}/${d.maxmp}</b></span>` +
+    `<span class="rpg-b3"><i>SP</i><span class="rpg-gauge${(b.gauge || 0) >= 100 ? " full" : ""}"><span style="width:${Math.round(b.gauge || 0)}%"></span></span><b>${(b.gauge || 0) >= 100 ? "MAX" : Math.round(b.gauge || 0)}</b></span>` +
+    `</div>`;
+  panel.appendChild(hud);
+  const lg = el("div", "rpg-blog fixed");
+  b.log.slice(0, 2).forEach((Lg, i) => { const ln = el("div", "rpg-logline " + Lg.cls, Lg.t); if (i === 0) ln.classList.add("fresh"); lg.appendChild(ln); });
+  panel.appendChild(lg);
 
-  // ログ
-  const lg = el("div", "rpg-blog");
-  b.log.forEach((L, i) => { const ln = el("div", "rpg-logline " + L.cls, L.t); if (i === 0) ln.classList.add("fresh"); lg.appendChild(ln); });
-  app.appendChild(lg);
-
-  // コマンド
   const cmd = el("div", "rpg-cmd");
   if (b.phase !== "cmd") {
     cmd.appendChild(el("div", "rpg-wait", "…"));
@@ -1142,9 +1184,9 @@ function rpgRenderBattle(app) {
     });
     cmd.appendChild(rpgBackBtn());
   } else if (b.sub === "items") {
-    [["potion", "🧪 回復薬", d.items.potion || 0], ["ether", "🔵 マナ水", d.items.ether || 0]].forEach(([k, n, q]) => {
+    [["potion", "🧪 回復薬", d.items.potion || 0], ["ether", "🔵 マナ水", d.items.ether || 0]].forEach(([k, nm, q]) => {
       const btn = el("button", "rpg-cmdbtn" + (q > 0 ? "" : " off"));
-      btn.innerHTML = `<b>${n}</b><small>×${q}</small>`;
+      btn.innerHTML = `<b>${nm}</b><small>×${q}</small>`;
       btn.disabled = q <= 0; btn.onclick = () => rpgUseItem(k);
       cmd.appendChild(btn);
     });
@@ -1161,7 +1203,8 @@ function rpgRenderBattle(app) {
     const flee = el("button", "rpg-cmdbtn", "<b>🏃 にげる</b><small>" + (b.boss ? "不可" : "離脱") + "</small>"); flee.onclick = () => rpgFlee();
     cmd.appendChild(fight); cmd.appendChild(guard); cmd.appendChild(item); cmd.appendChild(flee);
   }
-  app.appendChild(cmd);
+  panel.appendChild(cmd);
+  app.appendChild(panel);
 }
 function rpgBackBtn() { const b = el("button", "rpg-cmdbtn back", "<b>↩ もどる</b>"); b.onclick = () => rpgCmdBack(); return b; }
 
