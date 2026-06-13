@@ -25,7 +25,8 @@ function rpgData() {
   if (!d.skills) d.skills = ["atk"];
   if (!d.best) d.best = { lv: d.lv || 1 };
   if (d.tickets == null) d.tickets = 2;              // ガチャチケット
-  if (!d.records) d.records = { lv: d.lv || 1, floor: d.best.floor || 0, combo: 0, score: 0, pulls: 0 };
+  if (!d.records) d.records = { lv: d.lv || 1, floor: d.best.floor || 0, combo: 0, score: 0, pulls: 0, depth: 0 };
+  if (d.records.depth == null) d.records.depth = 0;
   if (d.daily == null) d.daily = "";                 // 最終ログボ受取日
   return d;
 }
@@ -106,8 +107,16 @@ function rpgTransform(base, kind) {
   else o = m.map(row => row.slice());
   return o.map(row => row.join(""));
 }
+// フロア情報（5層を超えたら🌟エンドレスタワーを手続き生成）
+const RPG_TWR_T = ["id", "mirrorH", "mirrorV", "rot180", "transpose"];
+const RPG_TWR_PAL = [[255, 120, 150], [120, 116, 214], [64, 176, 235], [255, 140, 90], [38, 196, 176]];
+function rpgFloorMeta(i) {
+  if (i < RPG_FLOORS.length) return RPG_FLOORS[i];
+  const k = i - RPG_FLOORS.length;
+  return { name: "🌟 タワー " + (k + 1) + "層", t: RPG_TWR_T[i % 5], far: "U", accent: RPG_TWR_PAL[i % 5], sky: (i % 5 === 0), tower: true };
+}
 function rpgBuildFloor(i) {
-  const meta = RPG_FLOORS[i];
+  const meta = rpgFloorMeta(i);
   return rpgTransform(RPG_BASE, meta.t).map(r => r.replace("F", meta.far));
 }
 const RPG_DV = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // N E S W
@@ -135,20 +144,56 @@ function rpgLoadFloor(i) {
   RPG.px = sx; RPG.py = sy; RPG.dir = 1;
   RPG.explored = {}; RPG.explored[sx + "," + sy] = 1;
   const d = rpgData();
-  if (d.best.floor == null || i > d.best.floor) { d.best.floor = i; rpgSave(); }
+  if (!RPG.tower && (d.best.floor == null || i > d.best.floor)) { d.best.floor = i; rpgSave(); }
 }
 // 上り階段（エレベーター演出）
 function rpgGoUp() {
+  if (RPG.tower) { rpgTowerAscendPrompt(); return; }     // タワーは「さらに上 or 降りる」選択
   if (RPG.fi + 1 >= RPG_FLOORS.length) { renderMallRpg(); return; }
   RPG.busy = true; rpgSfx("nav");
   rpgFx.cover("elev", 760, () => {
     rpgLoadFloor(RPG.fi + 1);
-    rpgLog(`🛗 ${RPG_FLOORS[RPG.fi].name} に上ってきた！`, "good");
+    rpgLog(`🛗 ${rpgFloorMeta(RPG.fi).name} に上ってきた！`, "good");
     RPG.busy = false;
     renderMallRpg();
   });
 }
 function rpgLog(t, cls) { if (!RPG) return; RPG.log.unshift({ t, cls: cls || "" }); RPG.log = RPG.log.slice(0, 5); }
+
+// ── 🌟 エンドレスタワー（屋上クリア後・どこまで上れるか＋プレスユアラック）
+function rpgStartTower() {
+  RPG = {
+    fi: RPG_FLOORS.length, map: [], w: 9, h: 9, px: 1, py: 1, dir: 1,
+    mode: "explore", steps: 0, grace: 1, explored: {}, collected: {},
+    log: [], battle: null, flash: null, tower: true, depth: 1, towerLuck: 0.2,
+  };
+  rpgLoadFloor(RPG_FLOORS.length);
+  rpgLog("🌟 エンドレスタワーに挑戦！ どこまで上れる？", "good");
+  renderMallRpg();
+}
+function rpgTowerAscendPrompt() { if (!RPG) return; RPG.mode = "ascend"; rpgSfx("nav"); renderMallRpg(); }
+function rpgTowerAscend() {
+  if (!RPG) return;
+  RPG.depth++; RPG.towerLuck += 0.18; RPG.busy = true; rpgSfx("nav");
+  const d = rpgData(); if (RPG.depth > (d.records.depth || 0)) { d.records.depth = RPG.depth; rpgBumpRecords(); }
+  rpgFx.cover("elev", 760, () => {
+    if (!RPG) return;
+    rpgLoadFloor(RPG.fi + 1); RPG.mode = "explore"; RPG.busy = false;
+    rpgLog(`🌟 ${RPG.depth}層へ！ レア度UP・敵も強化`, "good");
+    renderMallRpg();
+  });
+}
+function rpgTowerDescend() {
+  if (!RPG) return;
+  const d = rpgData();
+  if (RPG.depth > (d.records.depth || 0)) d.records.depth = RPG.depth;
+  rpgBumpRecords();
+  const n = Math.min(5, 1 + Math.floor(RPG.depth / 2)), luck = RPG.towerLuck;
+  const items = []; for (let i = 0; i < n; i++) items.push(rpgGrantReward(rpgRollRarity(luck)));
+  rpgSave();
+  RPG.tower = false;
+  rpgReveal(items, { title: `🏁 ${RPG.depth}層クリアのごほうび！`, onDone: () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); RPG = null; renderMallRpg(); } });
+}
 
 // ── マップ参照（範囲外は壁）
 function rpgCell(x, y) {
@@ -203,8 +248,36 @@ function rpgAutoStep() {
 }
 function rpgAutoLoop() {
   if (!RPG || !RPG.auto) { if (RPG) RPG._autoT = null; return; }
-  if (RPG.mode === "explore" && !RPG.busy && !RPG_REVEAL) rpgAutoStep();
-  RPG._autoT = setTimeout(rpgAutoLoop, 480);
+  if (!RPG.busy && !RPG_REVEAL) {
+    if (RPG.mode === "explore") rpgAutoStep();
+    else if (RPG.mode === "battle" && RPG.battle && RPG.battle.phase === "cmd") rpgAutoBattleStep();
+    else if (RPG.mode === "won") rpgAfterWin();           // 勝利→自動で続行
+    else if (RPG.mode === "lost") rpgAfterLose();         // 気絶→自動で入口へ（RPG=nullで停止）
+    // mode "ascend"（リスク選択）は自動では決めない＝プレイヤーに委ねる
+  }
+  if (RPG && RPG.auto) RPG._autoT = setTimeout(rpgAutoLoop, 480); else if (RPG) RPG._autoT = null;
+}
+// オート戦闘AI：低HPなら回復、弱点があれば突く、無ければ最善属性で最弱の敵を狙う
+function rpgAutoBattleStep() {
+  const b = RPG.battle, d = rpgData();
+  if (!b || b.phase !== "cmd" || RPG.busy) return;
+  if (d.hp < d.maxhp * 0.3) {
+    if (d.skills.indexOf("heal") >= 0 && d.mp >= RPG_SKILLS.heal.mp && b.pstatus.seal <= 0) { b.sub = null; return rpgUseSkill("heal"); }
+    if ((d.items.potion || 0) > 0) { b.sub = null; return rpgUseItem("potion"); }
+  }
+  let bestScore = -1e9, bestSid = "atk", bestTi = b.target;
+  b.enemies.forEach((e, i) => {
+    if (!e.alive) return;
+    d.skills.forEach(sid => {
+      const sk = RPG_SKILLS[sid]; if (sk.el === "heal") return;
+      if (sk.mp > 0 && (d.mp < sk.mp || b.pstatus.seal > 0)) return;
+      const m = rpgMult(e.ref, sk.el); if (m <= 0) return;
+      const score = m * 100 - e.hp * 0.4 - sk.mp;
+      if (score > bestScore) { bestScore = score; bestSid = sid; bestTi = i; }
+    });
+  });
+  b.target = bestTi; b.sub = null;
+  rpgUseSkill(bestSid);
 }
 function rpgTreasure(x, y) {
   const key = RPG.fi + ":" + x + "," + y;
@@ -550,6 +623,7 @@ function renderMallRpg(flash) {
   rpgBindKeys();
   const app = beginScreen();
   if (RPG_REVEAL) return rpgRenderReveal(app);          // ガチャ/宝箱の演出は最優先
+  if (RPG && RPG.mode === "ascend") return rpgRenderAscend(app);
   if (RPG && RPG.mode === "explore") return rpgRenderExplore(app);
   if (RPG && RPG.mode === "battle") return rpgRenderBattle(app);
   if (RPG && RPG.mode === "won") return rpgRenderWon(app);
@@ -604,6 +678,13 @@ function rpgRenderHub(app) {
   const go = el("button", "rpg-start", d.cleared ? "🏬 1Fから冒険する ▶（再挑戦）" : "🏬 1Fから冒険する ▶");
   go.onclick = () => rpgStartRun();
   app.appendChild(go);
+
+  // 🌟 エンドレスタワー（屋上クリア後に解放）
+  if (d.cleared) {
+    const tw = el("button", "rpg-start tower", `🌟 エンドレスタワーに挑む ▶${(d.records.depth || 0) ? `（最深 ${d.records.depth}層）` : ""}`);
+    tw.onclick = () => rpgStartTower();
+    app.appendChild(tw);
+  }
 
   // 🎰 ガチャ（射幸性）
   const gacha = el("div", "rpg-box gacha-box");
@@ -663,7 +744,7 @@ function rpgRenderExplore(app) {
   const d = rpgData();
   const head = el("div", "rpg-runhead");
   head.innerHTML =
-    `<span class="rpg-chip win">🏬 ${RPG_FLOORS[RPG.fi].name}</span>` +
+    `<span class="rpg-chip win">${RPG.tower ? "🌟" : "🏬"} ${rpgFloorMeta(RPG.fi).name}</span>` +
     `<span class="rpg-chip">Lv${d.lv}</span>` +
     `<span class="rpg-chip">❤️${d.hp}/${d.maxhp}</span>` +
     `<span class="rpg-chip">💧${d.mp}/${d.maxmp}</span>` +
@@ -833,7 +914,7 @@ function rpgDrawView(cv, t) {
   t = t || 0;
   const ctx = cv.getContext("2d");
   ctx.imageSmoothingEnabled = true;
-  const fl = RPG_FLOORS[RPG.fi] || {};
+  const fl = rpgFloorMeta(RPG.fi) || {};
   rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: fl.accent || [120, 160, 200], sunset: !!fl.sky, cell: (d, l) => rpgAhead(d, l) });
   // 前方アイコン（宝箱/階段/ボス）＋ふわふわ
   const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46, maxD = 4, pp = 0.6, ph = t / 1000;
@@ -1040,10 +1121,32 @@ function rpgRenderWon(app) {
 // ── 敗北
 function rpgRenderLost(app) {
   app.appendChild(el("h2", null, "💫 気絶…"));
-  app.appendChild(el("div", "rpg-resbox bad", `目が覚めたら迷宮の入口だった。<br>（持ち物・ゴールドは無事。HPは半分回復）`));
+  const txt = RPG && RPG.tower ? `タワーの宝は手に入らなかった…（Lv・ゴールドは無事）` : `目が覚めたら迷宮の入口だった。<br>（持ち物・ゴールドは無事。HPは半分回復）`;
+  app.appendChild(el("div", "rpg-resbox bad", txt));
   const cont = el("button", "rpg-start", "▶ 入口にもどる");
   cont.onclick = () => rpgAfterLose();
   app.appendChild(cont);
+}
+// ── 🌟 タワーの「さらに上 or 降りる」選択（プレスユアラック）
+function rpgRenderAscend(app) {
+  app.appendChild(el("h2", "rpg-won-h", "🌟 エンドレスタワー"));
+  const stars = "⭐".repeat(Math.min(5, 1 + Math.floor(RPG.towerLuck * 4)));
+  const pulls = Math.min(5, 1 + Math.floor(RPG.depth / 2));
+  const box = el("div", "rpg-resbox good");
+  box.innerHTML =
+    `<div class="rpg-res-row"><span>現在の高さ</span><b>${RPG.depth}層</b></div>` +
+    `<div class="rpg-res-row"><span>いま降りると</span><b>${pulls}回ガチャ</b></div>` +
+    `<div class="rpg-res-row combo"><span>ごほうびレア度</span><b>${stars}</b></div>`;
+  app.appendChild(box);
+  app.appendChild(el("div", "as-hint2", "さらに上はレア度UP・敵も強化。<b>倒れるとタワーの宝は無し</b>（ここまでのLv/ゴールドは残ります）"));
+  const up = el("button", "rpg-start", "🔼 さらに上へ（リスク覚悟）");
+  up.onclick = () => rpgTowerAscend();
+  app.appendChild(up);
+  const row = el("div", "rpg-hubrow");
+  const down = el("button", "rpg-hubbtn", "🏁 ここで降りて宝を開ける");
+  down.onclick = () => rpgTowerDescend();
+  row.appendChild(down);
+  app.appendChild(row);
 }
 // ── 出口
 function rpgRenderResult(app) {

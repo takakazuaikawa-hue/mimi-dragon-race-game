@@ -4022,3 +4022,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   background:radial-gradient(ellipse at 50% 38%, rgba(0,0,0,0) 30%, rgba(8,6,16,.55) 100%),
              linear-gradient(180deg, rgba(8,6,16,.25), rgba(8,6,16,.05) 40%, rgba(8,6,16,.5)); }
 .rpg-stage .rpg-enemies { position:relative; z-index:1; }
+
+/* エンドレスタワー入口 */
+.rpg-start.tower { background:linear-gradient(135deg,#b8860b,#ffd24a,#b8860b); color:#2a1a00;
+  box-shadow:0 0 18px rgba(255,200,80,.45); animation:rpgpulse 1.8s ease-in-out infinite; }
