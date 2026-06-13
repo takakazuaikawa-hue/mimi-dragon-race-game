@@ -3964,3 +3964,46 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-res-lv { margin-top:8px; padding:8px 12px; border-radius:10px; background:rgba(60,90,60,.4); color:#9cff9c; font-weight:700; }
 .rpg-res-outfit { margin-top:8px; padding:10px 12px; border-radius:10px; background:linear-gradient(135deg,rgba(120,80,30,.5),rgba(90,60,20,.5)); color:#ffd98a; font-weight:700; }
 .rpg-res-outfit small { color:#e8d0a0; font-weight:400; }
+
+/* =========================================================================
+   🏝️ 島のリゾート演出（動くハブ背景＋各所のアニメ）
+   ========================================================================= */
+.rpg-resort { position:relative; height:128px; margin:8px 0 4px; border-radius:16px; overflow:hidden;
+  background:linear-gradient(180deg,#7fd3ff 0%,#bfeaff 45%,#ffe9b0 60%,#ffd98a 100%); }
+.rpg-sun { position:absolute; top:14px; right:42px; width:38px; height:38px; border-radius:50%;
+  background:radial-gradient(circle,#fff7c0,#ffd54a 70%); box-shadow:0 0 22px rgba(255,210,80,.9); animation:rpgsun 5s ease-in-out infinite; }
+@keyframes rpgsun { 0%,100%{ transform:scale(1); filter:brightness(1); } 50%{ transform:scale(1.08); filter:brightness(1.15); } }
+.rpg-cloud { position:absolute; font-size:26px; top:12px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.1)); opacity:.95; }
+.rpg-cloud.c1 { top:16px; animation:rpgcloud 22s linear infinite; }
+.rpg-cloud.c2 { top:36px; font-size:20px; animation:rpgcloud 32s linear infinite; animation-delay:-8s; }
+.rpg-cloud.c3 { top:8px; font-size:18px; animation:rpgcloud 27s linear infinite; animation-delay:-18s; }
+@keyframes rpgcloud { 0%{ transform:translateX(-60px); } 100%{ transform:translateX(460px); } }
+.rpg-bird { position:absolute; font-size:14px; }
+.rpg-bird.b1 { top:30px; animation:rpgbird 14s linear infinite; }
+.rpg-bird.b2 { top:48px; font-size:11px; animation:rpgbird 18s linear infinite; animation-delay:-7s; }
+@keyframes rpgbird { 0%{ transform:translate(-30px,0); } 50%{ transform:translate(220px,-10px); } 100%{ transform:translate(460px,4px); } }
+.rpg-palm { position:absolute; bottom:18px; font-size:54px; transform-origin:bottom center; }
+.rpg-palm.pl { left:-6px; animation:rpgpalm 3.4s ease-in-out infinite; }
+.rpg-palm.pr { right:-6px; transform:scaleX(-1); animation:rpgpalm 3.8s ease-in-out infinite reverse; }
+@keyframes rpgpalm { 0%,100%{ transform:rotate(-3deg); } 50%{ transform:rotate(3deg); } }
+.rpg-palm.pr { animation-name:rpgpalmr; } @keyframes rpgpalmr { 0%,100%{ transform:scaleX(-1) rotate(-3deg); } 50%{ transform:scaleX(-1) rotate(3deg); } }
+.rpg-beach { position:absolute; left:0; right:0; bottom:18px; height:16px; background:linear-gradient(180deg,#ffe6a8,#f3d089); }
+.rpg-sea { position:absolute; left:0; right:0; bottom:0; height:22px; overflow:hidden;
+  background:linear-gradient(180deg,#3fb0e0,#2a86c8); }
+.rpg-sea::before { content:""; position:absolute; left:-20%; right:-20%; top:-6px; height:12px;
+  background:repeating-linear-gradient(90deg, transparent 0 14px, rgba(255,255,255,.5) 14px 18px);
+  animation:rpgwaves 3s linear infinite; }
+@keyframes rpgwaves { 0%{ transform:translateX(0); } 100%{ transform:translateX(32px); } }
+.rpg-resort-cap { position:absolute; left:0; right:0; bottom:24px; text-align:center; font-size:11px; font-weight:700;
+  color:#1a3a4a; text-shadow:0 1px 0 rgba(255,255,255,.5); }
+
+/* 各所の細かな動き */
+.rpg-start { animation:rpgbtnbob 2.4s ease-in-out infinite; }
+@keyframes rpgbtnbob { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-2px); } }
+.rpg-start:active { animation:none; transform:scale(.98); }
+.rpg-chip.gacha { animation:rpgpulse 1.8s ease-in-out infinite; }
+.rpg-view { box-shadow:0 4px 18px rgba(0,0,0,.35); }
+.rpg-padbtn { transition:transform .08s, background .12s; }
+.rpg-padbtn.fw { animation:rpgbtnbob 2s ease-in-out infinite; }
+.rpg-enemy .rpg-spr.enemy { animation:rpgbobwob 2.4s ease-in-out infinite; }
+@keyframes rpgbobwob { 0%,100%{ transform:translateY(0) rotate(-3deg); } 50%{ transform:translateY(-4px) rotate(3deg); } }

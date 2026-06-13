@@ -33,11 +33,11 @@ Canvas.prototype.line = function (x0, y0, x1, y1, c) { const dx = Math.abs(x1 - 
 // ---- 迷宮データ（mall_rpg.jsと同じ） ----
 const BASE = ["#########", "#S......#", "#.#####.#", "#.#.T.#.#", "#.#.#.#.#", "#.#.#...#", "#.#.###.#", "#...#..F#", "#########"];
 const FLOORS = [
-  { name: "1F ファッション通り", t: "id", far: "U", accent: [226, 120, 162] },
-  { name: "2F 雑貨＆ガジェット", t: "mirrorH", far: "U", accent: [64, 176, 188] },
-  { name: "3F フードコート", t: "mirrorV", far: "U", accent: [244, 152, 66] },
-  { name: "4F シネマ＆ゲーム", t: "rot180", far: "U", accent: [120, 116, 214] },
-  { name: "屋上ガーデン", t: "transpose", far: "E", accent: [86, 184, 110], sky: true },
+  { name: "1F ビーチサイド", t: "id", far: "U", accent: [38, 196, 176] },
+  { name: "2F プールデッキ", t: "mirrorH", far: "U", accent: [64, 176, 235] },
+  { name: "3F 南国グルメ横丁", t: "mirrorV", far: "U", accent: [255, 140, 90] },
+  { name: "4F マリンアドベンチャー", t: "rot180", far: "U", accent: [40, 130, 210] },
+  { name: "屋上サンセットテラス", t: "transpose", far: "E", accent: [255, 120, 150], sky: true },
 ];
 const DV = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 function tf(base, k) { let m = base.map(r => r.split("")), n = m.length, o; if (k === "mirrorH") o = m.map(r => r.slice().reverse()); else if (k === "mirrorV") o = m.slice().reverse(); else if (k === "rot180") o = m.slice().reverse().map(r => r.slice().reverse()); else if (k === "transpose") { o = []; for (let x = 0; x < n; x++) { o[x] = []; for (let y = 0; y < n; y++) o[x][y] = m[y][x]; } } else o = m.map(r => r.slice()); return o.map(r => r.join("")); }
@@ -77,14 +77,21 @@ function drawView(fi, px, py, dir) {
     cv.line(nx, near.t, nx, near.b, col(P.trim, k));
     cv.line(fx, far.t, fx, far.b, col(P.trim, k));
   }
-  // 正面の店（行き止まり）
+  const sunset = !!FLOORS[fi].sky, ph = 1.6;
+  // 正面＝海の見える窓（リゾート）
   function facade(r, k) {
     cv.poly([[r.l, r.t], [r.r, r.t], [r.r, r.b], [r.l, r.b]], col(P.wall, k));
     cv.fillRect(r.l, yN(r, 0.06), r.r, yN(r, 0.27), col(P.sign, k));
-    cv.fillRect(r.l, yN(r, 0.33), r.r, yN(r, 0.83), col(P.glass, k));
-    for (let m = 1; m < 4; m++) { const x = xN(r, m / 4); cv.line(x, yN(r, 0.33), x, yN(r, 0.83), col(P.trim, k)); }
-    cv.fillRect(r.l, yN(r, 0.83), r.r, yN(r, 0.92), col(P.kick, k));
+    const x0 = r.l + 2, x1 = r.r - 2, y0 = yN(r, 0.32), y1 = yN(r, 0.84), midY = (y0 + y1) / 2 | 0;
+    cv.fillRect(x0, y0, x1, midY, col(sunset ? [255, 184, 122] : [150, 208, 236], k));   // 空
+    cv.fillRect(x0, midY, x1, y1, col(sunset ? [86, 120, 184] : [46, 152, 202], k));      // 海
+    const scx = x0 + (x1 - x0) * 0.72 | 0, scy = y0 + (y1 - y0) * 0.22 | 0, sr = Math.max(2, (x1 - x0) * 0.11 | 0);
+    cv.fillRect(scx - sr, scy - sr, scx + sr, scy + sr, col(sunset ? [255, 156, 92] : [255, 246, 206], k)); // 太陽
+    for (let i = 0; i < 3; i++) { const wy = midY + (y1 - midY) * (0.28 + i * 0.26); for (let xx = x0; xx <= x1; xx += 3) { const yy = wy + Math.sin(xx * 0.35 + ph * 2 + i) * 1.3; cv.set(xx | 0, yy | 0, col2(255, 255, 255)); } }
+    for (let m = 1; m < 3; m++) { const x = xN(r, m / 3); cv.line(x, y0, x, y1, col(P.trim, k)); }
+    cv.fillRect(r.l, yN(r, 0.84), r.r, yN(r, 0.92), col(P.kick, k));
   }
+  function col2(a, b, c) { return [a, b, c]; }
   for (let c = maxD; c >= 1; c--) {
     const near = rect[c - 1], far = rect[c], k = sh(c);
     if (isWall(ahead(c, 0)[0], ahead(c, 0)[1])) {
@@ -124,4 +131,11 @@ for (let fi = 0; fi < FLOORS.length; fi++) {
   fs.writeFileSync(fn, encodePNG(cv.W, cv.H, cv.buf));
   files.push(fn); console.log("wrote", fn, FLOORS[fi].name);
 }
+// 海の見える窓ショット（壁に面した視点）：1F=(5,5)東向き / 屋上=(5,5)…適宜
+[[0, 5, 5, 1], [4, 5, 5, 1]].forEach(([fi, x, y, dir]) => {
+  const cv = upscale(drawView(fi, x, y, dir), 2);
+  const fn = `/tmp/rpg_ocean${fi}.png`;
+  fs.writeFileSync(fn, encodePNG(cv.W, cv.H, cv.buf));
+  console.log("wrote", fn, "(ocean window)");
+});
 console.log("DONE", files.join(" "));

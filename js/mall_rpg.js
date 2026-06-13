@@ -88,13 +88,13 @@ const RPG_BASE = [
   "#...#..F#",
   "#########",
 ];
-// 巨大ららぽーと風・1F→屋上。far: U=上り階段 / E=ボス(屋上)。accent=フロアのテーマ色
+// 島のリゾートモール・1F→屋上。far: U=上り階段 / E=ボス(屋上)。accent=フロアのテーマ色
 const RPG_FLOORS = [
-  { name: "1F ファッション通り",  t: "id",        far: "U", accent: [226, 120, 162] },
-  { name: "2F 雑貨＆ガジェット",  t: "mirrorH",   far: "U", accent: [64, 176, 188] },
-  { name: "3F フードコート",      t: "mirrorV",   far: "U", accent: [244, 152, 66] },
-  { name: "4F シネマ＆ゲーム",    t: "rot180",    far: "U", accent: [120, 116, 214] },
-  { name: "🌿 屋上ガーデン",      t: "transpose", far: "E", accent: [86, 184, 110], sky: true },
+  { name: "1F 🏖️ ビーチサイド",    t: "id",        far: "U", accent: [38, 196, 176] },
+  { name: "2F 🏊 プールデッキ",    t: "mirrorH",   far: "U", accent: [64, 176, 235] },
+  { name: "3F 🍹 南国グルメ横丁",  t: "mirrorV",   far: "U", accent: [255, 140, 90] },
+  { name: "4F 🐬 マリンアドベンチャー", t: "rot180", far: "U", accent: [40, 130, 210] },
+  { name: "🌅 屋上サンセットテラス", t: "transpose", far: "E", accent: [255, 120, 150], sky: true },
 ];
 function rpgTransform(base, kind) {
   const m = base.map(r => r.split("")), n = m.length;
@@ -541,8 +541,18 @@ function renderMallRpg(flash) {
 // ── ハブ
 function rpgRenderHub(app) {
   const d = rpgData();
-  app.appendChild(el("h2", null, "🏬 巨大モール大冒険"));
-  app.appendChild(el("div", "as-hint2", `1Fから🌿屋上まで、巨大モールを駆けのぼる一人称ダンジョン　<span class="as-hint">レース・コインには影響しません</span>`));
+  app.appendChild(el("h2", null, "🏝️ 島のリゾートモール大冒険"));
+  // 動くリゾート背景（空・太陽・雲・ヤシ・波）
+  const resort = el("div", "rpg-resort");
+  resort.innerHTML =
+    `<div class="rpg-sun"></div>` +
+    `<div class="rpg-cloud c1">☁️</div><div class="rpg-cloud c2">⛅</div><div class="rpg-cloud c3">☁️</div>` +
+    `<div class="rpg-bird b1">🕊️</div><div class="rpg-bird b2">🕊️</div>` +
+    `<div class="rpg-palm pl">🌴</div><div class="rpg-palm pr">🌴</div>` +
+    `<div class="rpg-beach"></div><div class="rpg-sea"></div>` +
+    `<div class="rpg-resort-cap">🌊 ビーチサイドから🌅サンセットテラスまで、潜って遊んでおたから集め！</div>`;
+  app.appendChild(resort);
+  app.appendChild(el("div", "as-hint2", `<span class="as-hint">レース・コインには影響しません（ダンジョン内だけの遊び）</span>`));
   const st = el("div", "rpg-stats");
   st.innerHTML =
     `<span class="rpg-chip">Lv <b>${d.lv}</b></span>` +
@@ -641,11 +651,12 @@ function rpgRenderExplore(app) {
     `<span class="rpg-chip">🧭 ${RPG_DIRNAME[RPG.dir]}向き</span>`;
   app.appendChild(head);
 
-  // 一人称ビュー（低解像＝ドット感、CSSでpixelated拡大）
+  // 一人称ビュー（低解像＝ドット感、CSSでpixelated拡大）＋アンビエント・アニメ
   const cv = el("canvas", "rpg-view");
   cv.width = 240; cv.height = 150;
   app.appendChild(cv);
-  rpgDrawView(cv);
+  rpgDrawView(cv, (typeof performance !== "undefined" ? performance.now() : 0));
+  rpgStartAmbient(cv);
 
   // ミニマップ
   app.appendChild(rpgMiniMap());
@@ -682,11 +693,13 @@ function rpgMallPalette(fi) {
     wall: [233, 231, 225], glass: mix(A, WH, 0.6), sign: A, kick: [160, 154, 146], trim: [120, 114, 106],
   };
 }
-function rpgDrawView(cv) {
+function rpgDrawView(cv, t) {
+  t = t || 0; const ph = t / 1000;
   const ctx = cv.getContext("2d");
   ctx.imageSmoothingEnabled = false;
   const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2, maxD = 4, p = 0.58;
   const P = rpgMallPalette(RPG.fi);
+  const sunset = !!(RPG_FLOORS[RPG.fi] && RPG_FLOORS[RPG.fi].sky);
   const col = (rgb, k) => `rgb(${Math.round(Math.min(255, rgb[0] * k))},${Math.round(Math.min(255, rgb[1] * k))},${Math.round(Math.min(255, rgb[2] * k))})`;
   const sh = d => Math.max(0.6, 1 - d * 0.085);
   const rect = [];
@@ -698,6 +711,16 @@ function rpgDrawView(cv) {
   // 明るい背景
   ctx.fillStyle = col(P.ceil, 0.9); ctx.fillRect(0, 0, W, H / 2);
   ctx.fillStyle = col(P.floor, 0.66); ctx.fillRect(0, H / 2, W, H / 2);
+  // 🌊 海の見える窓（波が動く）
+  const oceanWindow = (x0, y0, x1, y1, k) => {
+    const midY = y0 + (y1 - y0) * 0.5;
+    ctx.fillStyle = col(sunset ? [255, 184, 122] : [150, 208, 236], k); ctx.fillRect(x0, y0, x1 - x0, midY - y0);
+    ctx.fillStyle = col(sunset ? [86, 120, 184] : [46, 152, 202], k); ctx.fillRect(x0, midY, x1 - x0, y1 - midY);
+    const scx = x0 + (x1 - x0) * 0.72, scy = y0 + (y1 - y0) * 0.22, sr = Math.max(2, (x1 - x0) * 0.11);
+    ctx.fillStyle = col(sunset ? [255, 156, 92] : [255, 246, 206], k); ctx.beginPath(); ctx.arc(scx, scy, sr, 0, 7); ctx.fill();
+    ctx.strokeStyle = col([255, 255, 255], k * 0.85); ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) { const wy = midY + (y1 - midY) * (0.28 + i * 0.26); ctx.beginPath(); for (let xx = x0; xx <= x1; xx += 3) { const yy = wy + Math.sin(xx * 0.35 + ph * 2 + i) * 1.3; xx === x0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
+  };
   // 店先（側壁）
   const storefront = (near, far, left, k) => {
     const nx = left ? near.l : near.r, fx = left ? far.l : far.r;
@@ -709,13 +732,14 @@ function rpgDrawView(cv) {
     line(nx, near.t, nx, near.b, col(P.trim, k));
     line(fx, far.t, fx, far.b, col(P.trim, k));
   };
-  // 正面の店（行き止まり）
+  // 正面＝海の見える大きな窓（リゾート）
   const facade = (r, k) => {
     poly([[r.l, r.t], [r.r, r.t], [r.r, r.b], [r.l, r.b]], col(P.wall, k));
     rectXY(r.l, yN(r, 0.06), r.r, yN(r, 0.27), col(P.sign, k));
-    rectXY(r.l, yN(r, 0.33), r.r, yN(r, 0.83), col(P.glass, k));
-    for (let m = 1; m < 4; m++) { const x = xN(r, m / 4); line(x, yN(r, 0.33), x, yN(r, 0.83), col(P.trim, k)); }
-    rectXY(r.l, yN(r, 0.83), r.r, yN(r, 0.92), col(P.kick, k));
+    oceanWindow(r.l + 2, yN(r, 0.32), r.r - 2, yN(r, 0.84), k);
+    line(r.l, yN(r, 0.58), r.r, yN(r, 0.58), col(P.trim, k * 0.7));
+    for (let m = 1; m < 3; m++) { const x = xN(r, m / 3); line(x, yN(r, 0.32), x, yN(r, 0.84), col(P.trim, k)); }
+    rectXY(r.l, yN(r, 0.84), r.r, yN(r, 0.92), col(P.kick, k));
   };
   for (let c = maxD; c >= 1; c--) {
     const near = rect[c - 1], far = rect[c], k = sh(c);
@@ -726,25 +750,50 @@ function rpgDrawView(cv) {
       line(far.l, far.b, far.r, far.b, col(P.grout, k));
       [0.33, 0.66].forEach(fr => line(xN(near, fr), near.b, xN(far, fr), far.b, col(P.grout, k * 0.92)));
       poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], col(P.ceil, k));
-      poly([[xN(near, 0.42), near.t], [xN(far, 0.42), far.t], [xN(far, 0.58), far.t], [xN(near, 0.58), near.t]], col(P.light, k));
-      line(far.l, far.t, far.r, far.t, col(P.light, 1));
+      const shimmer = 1 + 0.06 * Math.sin(ph * 2.4 + c);   // 陽光のきらめき
+      poly([[xN(near, 0.42), near.t], [xN(far, 0.42), far.t], [xN(far, 0.58), far.t], [xN(near, 0.58), near.t]], col(P.light, k * shimmer));
+      line(far.l, far.t, far.r, far.t, col(P.light, shimmer));
       if (rpgIsWall(rpgAhead(c, -1))) storefront(near, far, true, k);
       if (rpgIsWall(rpgAhead(c, 1))) storefront(near, far, false, k);
     }
   }
-  // 前方アイコン（宝箱/階段/ボス）
+  // 前方アイコン（宝箱/階段/ボス）— ふわふわ上下
   for (let c = 1; c <= maxD; c++) {
     if (rpgIsWall(rpgAhead(c, 0))) break;
     const ch = rpgAhead(c, 0);
     const tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
-    if (ch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) { rpgDrawIcon(ctx, "📦", rect[c], cx, cy); break; }
-    if (ch === "U") { rpgDrawIcon(ctx, "🛗", rect[c], cx, cy); break; }
-    if (ch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "🎡", rect[c], cx, cy); break; }
+    const bob = Math.sin(ph * 2.2) * (rect[c].b - rect[c].t) * 0.03;
+    if (ch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) { rpgDrawIcon(ctx, "📦", rect[c], cx, cy + bob); break; }
+    if (ch === "U") { rpgDrawIcon(ctx, "🛗", rect[c], cx, cy + bob); break; }
+    if (ch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "🎡", rect[c], cx, cy + bob); break; }
   }
-  // ごく軽いビネット（モールは明るい）
+  // ✨ 漂う光の粒（リゾートのきらめき）
+  for (let i = 0; i < 12; i++) {
+    const sx = (i * 47 + ph * 12 * (1 + i % 3)) % W;
+    const sy = H - ((ph * 22 * (0.6 + (i % 4) * 0.25) + i * 53) % H);
+    const s = (i % 3) ? 1 : 2;
+    ctx.globalAlpha = 0.25 + 0.35 * Math.abs(Math.sin(ph + i));
+    ctx.fillStyle = "#fff"; ctx.fillRect(sx, sy, s, s);
+  }
+  ctx.globalAlpha = 1;
+  // ごく軽いビネット
   const g = ctx.createRadialGradient(cx, cy, H * 0.3, cx, cy, H * 0.85);
   g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.22)");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+// アンビエント・アニメ（探索中は毎フレーム一人称ビューを再描画＝海・きらめき・ふわふわ）
+let _rpgRaf = 0;
+function rpgStartAmbient(cv) {
+  RPG._viewCv = cv;
+  if (_rpgRaf) return;
+  const loop = (t) => {
+    _rpgRaf = 0;
+    if (RPG && RPG.mode === "explore" && state.ui.screen === "mall_rpg" && RPG._viewCv && RPG._viewCv.isConnected) {
+      try { rpgDrawView(RPG._viewCv, t); } catch (e) {}
+      _rpgRaf = requestAnimationFrame(loop);
+    }
+  };
+  _rpgRaf = requestAnimationFrame(loop);
 }
 function rpgDrawIcon(ctx, ic, r, cx, cy) {
   const size = Math.max(12, (r.b - r.t) * 0.42);
