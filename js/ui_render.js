@@ -542,15 +542,10 @@ function renderHome() {
   mimiIn.innerHTML =
     "<div class='hl-mimi-flip'><img alt='ミミ' src='" + _defSrc + "' onerror=\"this.onerror=null;this.src='" + _smileSrc + "'\"></div>";
   mimi.appendChild(mimiIn);
-  // 本体タップ＝ミミが一言（着せ替えへは行かない）。きせかえは右下の小ボタンに分離。
-  mimi.title = "タップでミミが一言しゃべる";
-  mimi.onclick = () => _mimiTalk();
-  if (mallUnlocked()) {   // モール解放前はきせかえ導線も出さない（初的中で解放）
-    const kbtn = el("button", "hl-mimi-tag", "🛍️ きせかえ");
-    kbtn.title = "ショッピングモール（きせかえ）へ";
-    kbtn.onclick = (e) => { e.stopPropagation(); renderMall(); };
-    mimi.appendChild(kbtn);
-  }
+  // 本体タップ＝鑑賞＆きせかえビューア（大きい立ち絵＋説明、スワイプ/◀▶で所持衣装めくり・無料着替え）。
+  // きせかえ専用ボタンは廃止（モールはナビ🛍️とビューア内「モールで買う」から）。
+  mimi.title = "タップで鑑賞＆きせかえ";
+  mimi.onclick = (e) => { e.stopPropagation(); showMimiViewer(); };
   stage.appendChild(mimi);
 
   // 出走情報・ランク情報を背景に“浮かせる”フロート（配信オーバーレイ風・半透明・右上）。
@@ -585,6 +580,13 @@ function renderHome() {
   const speech = el("div", "hl-speech hidden");
   stage.appendChild(speech);
   let _speechT = 0;
+  // 吹き出しが邪魔な時はタップで即消し（フェードアウト）。ミミ本体のタップ（鑑賞）とは独立。
+  speech.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearTimeout(_speechT);
+    speech.classList.add("out");
+    setTimeout(() => speech.classList.add("hidden"), 420);
+  });
   function mimiSay(text, ms) {
     if (!text) return;
     // （ホームのSEは撤去：mimiSayは自動バンター/ギフト/反応で頻発し「うるさい」ため鳴らさない）
@@ -1756,6 +1758,127 @@ function renderSettings() {
   const back = el("button", "secondary", "← ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(back);
   app.appendChild(actions);
+}
+
+// 専用ポップアップ：ミミの鑑賞＆きせかえビューア（ホームでミミ本体タップ→起動）。
+// 大きな立ち絵＋名前＋説明を見せ、◀▶／スワイプ／←→キー／ドットで「所持している衣装」をめくる。
+// めくった瞬間に無料で着替わり（wearOutfit）、閉じるとホームへ反映。表示専用＝レース数値不変。
+function showMimiViewer() {
+  if (document.getElementById("mimi-viewer")) return;
+  const owned = OUTFITS.filter(o => outfitOwned(o));
+  if (!owned.length) return;
+  let idx = Math.max(0, owned.findIndex(o => o.id === currentOutfitId()));
+  let expr = "default";
+  const EXPRS = [["default", "🙂"], ["smile", "😊"], ["happy", "🌟"], ["panic", "💦"]];
+
+  const ov = el("div", "mv-ov");
+  ov.id = "mimi-viewer";
+  ov.innerHTML =
+    '<div class="mv-card">' +
+      '<div class="mv-top"><span class="mv-mode">🪞 鑑賞モード</span><button class="mv-x" aria-label="とじる">✕</button></div>' +
+      '<div class="mv-stage">' +
+        '<button class="mv-nav mv-prev" aria-label="前の衣装">‹</button>' +
+        '<div class="mv-imgwrap"><img class="mv-img" alt="ミミ" decoding="async"></div>' +
+        '<button class="mv-nav mv-next" aria-label="次の衣装">›</button>' +
+        '<div class="mv-count"></div>' +
+      '</div>' +
+      '<div class="mv-exprs"></div>' +
+      '<div class="mv-info"><div class="mv-nm"></div><div class="mv-fl"></div></div>' +
+      '<div class="mv-dots"></div>' +
+      '<div class="mv-acts"></div>' +
+    '</div>';
+  document.body.appendChild(ov);
+
+  const img = ov.querySelector(".mv-img");
+  const imgwrap = ov.querySelector(".mv-imgwrap");
+  const nm = ov.querySelector(".mv-nm");
+  const fl = ov.querySelector(".mv-fl");
+  const cnt = ov.querySelector(".mv-count");
+  const dots = ov.querySelector(".mv-dots");
+  const exprRow = ov.querySelector(".mv-exprs");
+
+  // 表情トグル（鑑賞用・表示のみ）
+  EXPRS.forEach(([k, lb]) => {
+    const b = el("button", "mv-expr" + (k === expr ? " on" : ""), lb);
+    b.onclick = (e) => {
+      e.stopPropagation();
+      expr = k;
+      exprRow.querySelectorAll(".mv-expr").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+      paint(0);
+    };
+    exprRow.appendChild(b);
+  });
+
+  // 所持衣装ドット（タップでジャンプ）
+  owned.forEach((o, i) => {
+    const d = el("span", "mv-dot");
+    d.title = o.name;
+    d.onclick = (e) => { e.stopPropagation(); idx = i; paint(0); };
+    dots.appendChild(d);
+  });
+
+  function paint(dir) {
+    const o = owned[idx];
+    if (typeof wearOutfit === "function") wearOutfit(o.id); else state.player.outfit = o.id;   // 無料で即着替え（保存込み）
+    const src = outfitImg(o.id, expr), fbSmile = outfitImg(o.id, "smile"), fbDef = outfitImg(o.id, "default");
+    img.onerror = function () { this.onerror = function () { this.onerror = null; this.src = fbDef; }; this.src = fbSmile; };
+    img.src = src;
+    nm.textContent = o.name;
+    fl.textContent = o.flavor || "";
+    cnt.textContent = (idx + 1) + " / " + owned.length;
+    dots.querySelectorAll(".mv-dot").forEach((d, i) => d.classList.toggle("on", i === idx));
+    if (dir) {
+      imgwrap.classList.remove("mv-slide-l", "mv-slide-r");
+      void imgwrap.offsetWidth;
+      imgwrap.classList.add(dir > 0 ? "mv-slide-r" : "mv-slide-l");
+    }
+  }
+  function go(d) { idx = (idx + d + owned.length) % owned.length; paint(d); }
+
+  ov.querySelector(".mv-prev").onclick = (e) => { e.stopPropagation(); go(-1); };
+  ov.querySelector(".mv-next").onclick = (e) => { e.stopPropagation(); go(1); };
+  ov.querySelector(".mv-x").onclick = (e) => { e.stopPropagation(); close(); };
+
+  // アクション：モールで買う（解放後のみ）／この姿でホームへ
+  const acts = ov.querySelector(".mv-acts");
+  if (typeof mallUnlocked === "function" && mallUnlocked()) {
+    const shop = el("button", "mv-shop", "🛍️ モールで新しい服を買う");
+    shop.onclick = (e) => { e.stopPropagation(); close(); renderMall(); };
+    acts.appendChild(shop);
+  }
+  const done = el("button", "mv-done", "✓ この姿でホームへ");
+  done.onclick = (e) => { e.stopPropagation(); close(); };
+  acts.appendChild(done);
+
+  // スワイプ（左右で前後の衣装へ）
+  let sx = 0, sw = false;
+  imgwrap.addEventListener("pointerdown", (e) => { sx = e.clientX; sw = true; });
+  imgwrap.addEventListener("pointerup", (e) => {
+    if (!sw) return; sw = false;
+    const dx = e.clientX - sx;
+    if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+  });
+  imgwrap.addEventListener("pointercancel", () => { sw = false; });
+
+  // キーボード（←→で切替・Escで閉じる）
+  function onKey(e) {
+    if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+    else if (e.key === "Escape") close();
+  }
+  window.addEventListener("keydown", onKey);
+
+  // 背景（カード外）タップで閉じる
+  ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+
+  function close() {
+    window.removeEventListener("keydown", onKey);
+    if (ov.parentNode) ov.remove();
+    if (state.ui.screen === "home") renderHome();   // 着替えをホームへ反映
+  }
+
+  paint(0);
 }
 
 // 専用画面：ショッピングモール（ミミのきせかえ）。コイン購入＋条件解放、着替えは無料。
