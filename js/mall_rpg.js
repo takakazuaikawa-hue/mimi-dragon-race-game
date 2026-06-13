@@ -1209,6 +1209,21 @@ function rpgRenderBattle(app) {
     const wk = seen && seen.weak.length ? seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "？";
     panel.appendChild(el("div", "rpg-bt-target", `🎯 ${tg.ref.ic} <b>${tg.ref.n}</b><span class="rpg-bt-hp">HP ${Math.max(0, tg.hp)}/${tg.maxhp}</span><span class="rpg-bt-wk">弱点 ${wk}</span>`));
   }
+  // 敵の選択ボタン（確実に効く・敵が2体以上のとき）
+  const aliveN = rpgAliveEnemies().length;
+  if (aliveN >= 2) {
+    const sel = el("div", "rpg-foesel");
+    sel.appendChild(el("span", "rpg-foesel-lb", "ねらう:"));
+    b.enemies.forEach((e, i) => {
+      if (!e.alive) return;
+      const chip = el("button", "rpg-foechip" + (b.target === i ? " on" : ""));
+      const pct = Math.round(Math.max(0, e.hp) / e.maxhp * 100);
+      chip.innerHTML = `<span class="ic">${e.ref.ic}</span><span class="rpg-hpbar"><span style="width:${pct}%"></span></span>`;
+      chip.onclick = () => rpgSelectTarget(i);
+      sel.appendChild(chip);
+    });
+    panel.appendChild(sel);
+  }
   const hud = el("div", "rpg-bhud");
   hud.innerHTML =
     `<div class="rpg-bhud-name">🧝 ミミ <b>Lv${d.lv}</b>` +
