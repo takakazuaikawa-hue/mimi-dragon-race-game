@@ -1017,9 +1017,12 @@ function rpgMakeSprite(emoji, disp, cls) {
   ctx.fillText(emoji, R / 2, R / 2 + 4);
   return cv;
 }
-// ★アート組み込み口：images/rpg/enemies/<id>.webp があればそれを、無ければ絵文字に自動フォールバック。
-//   ＝あなたがアートを置くだけでコード変更なしに切り替わる。
+// ★アート組み込み口：アートを用意した id をここに足すだけで、絵文字→画像に切替。
+//   （未登録なら画像を読みに行かない＝404/コンソールエラーが出ない）
+//   例: const RPG_ART_ENEMIES = ["slime", "boss1"];  → images/rpg/enemies/slime.webp 等を表示
+const RPG_ART_ENEMIES = [];
 function rpgEnemyVisual(id, emoji, disp, cls) {
+  if (RPG_ART_ENEMIES.indexOf(id) < 0) return rpgMakeSprite(emoji, disp, cls);
   const img = document.createElement("img");
   img.className = "rpg-spr rpg-img" + (cls ? " " + cls : "");
   img.alt = ""; img.decoding = "async";

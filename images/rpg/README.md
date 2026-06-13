@@ -28,3 +28,10 @@
 
 ## 権利
 GitHub Pages公開のため、生成物の規約・ライセンスはクリーンに。CC0等を使う場合は出所を記録してください。
+
+## 反映の手順（コンソールエラーを出さないため）
+1. `images/rpg/enemies/<id>.webp` を置く
+2. `js/mall_rpg.js` の `const RPG_ART_ENEMIES = [];` に id を追加
+   例: `const RPG_ART_ENEMIES = ["slime", "boss1"];`
+3. `index.html` の `?v=` を更新（キャッシュ対策）
+→ 登録した敵だけ画像表示。未登録は絵文字のまま（404を出さない）。
