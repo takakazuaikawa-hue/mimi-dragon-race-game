@@ -3891,3 +3891,76 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-cmdbtn.el-heal { border-left:4px solid #7af0a0; }
 .rpg-wait { grid-column:1 / -1; text-align:center; color:#cbbce8; padding:14px; font-size:20px; letter-spacing:4px; animation:rpgwait 1s ease-in-out infinite; }
 @keyframes rpgwait { 0%,100%{ opacity:.4; } 50%{ opacity:1; } }
+
+/* =========================================================================
+   🎰 射幸性レイヤー：ガチャ / レアリティ演出 / 記録 / コンボ / リザルト
+   ========================================================================= */
+/* ハブ：記録パネル */
+.rpg-records { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0; }
+.rpg-rec { text-align:center; padding:8px 4px; border-radius:12px;
+  background:linear-gradient(180deg,rgba(50,40,72,.9),rgba(34,26,50,.9)); border:1px solid rgba(150,120,200,.3); }
+.rpg-rec small { display:block; font-size:10px; color:#b9a8d4; }
+.rpg-rec b { font-size:16px; color:#ffd98a; }
+.rpg-chip.gacha { background:rgba(120,60,140,.6); color:#ffd0f4; }
+/* デイリー */
+.rpg-daily { display:block; width:100%; margin:8px 0; padding:12px; font-weight:700; color:#1a1020;
+  background:linear-gradient(135deg,#ffe17a,#ffb84d); border:none; border-radius:14px; cursor:pointer;
+  box-shadow:0 0 18px rgba(255,200,80,.5); animation:rpgpulse 1.6s ease-in-out infinite; }
+@keyframes rpgpulse { 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.18); } }
+/* ガチャ */
+.rpg-box.gacha-box { background:linear-gradient(180deg,rgba(60,30,72,.85),rgba(34,20,46,.9)); border-color:rgba(200,120,220,.4); }
+.rpg-gacha-rates { font-size:10px; color:#cbb0e0; font-weight:400; margin-left:6px; }
+.rpg-gachagrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.rpg-gachabtn { padding:14px; border-radius:14px; color:#fff; cursor:pointer; border:1px solid rgba(220,160,240,.5);
+  background:linear-gradient(135deg,#7a3f9e,#a85fce); display:flex; flex-direction:column; gap:2px; align-items:center; }
+.rpg-gachabtn.gold10 { background:linear-gradient(135deg,#3f6f9e,#5fa8ce); }
+.rpg-gachabtn small { font-size:10px; color:#ecdcff; }
+.rpg-gachabtn.ready { box-shadow:0 0 14px rgba(220,140,255,.5); }
+.rpg-gachabtn.off { opacity:.4; }
+
+/* レアリティ・リール演出 */
+.rpg-reveal-h { text-align:center; }
+.rpg-reveal-grid { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:18px 0; }
+.rpg-reveal-grid.many { gap:8px; }
+.rpg-card { position:relative; width:120px; min-height:140px; border-radius:16px; padding:14px 8px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; overflow:hidden;
+  background:linear-gradient(180deg,#2a2238,#1c1626); border:2px solid var(--rc, #888);
+  box-shadow:0 0 0 rgba(0,0,0,0); }
+.rpg-reveal-grid.many .rpg-card { width:74px; min-height:92px; padding:8px 4px; }
+.rpg-card.done { animation:rpgcardin .5s cubic-bezier(.2,1.4,.4,1) backwards; box-shadow:0 0 18px var(--rc); }
+.rpg-card.spin .rpg-card-spin { font-size:40px; animation:rpgspin .25s linear infinite; }
+@keyframes rpgspin { 0%{ transform:translateY(-6px); opacity:.4; } 50%{ transform:translateY(0); opacity:1; } 100%{ transform:translateY(6px); opacity:.4; } }
+@keyframes rpgcardin { 0%{ transform:rotateY(90deg) scale(.7); opacity:0; } 100%{ transform:rotateY(0) scale(1); opacity:1; } }
+.rpg-card-ic { font-size:42px; }
+.rpg-reveal-grid.many .rpg-card-ic { font-size:28px; }
+.rpg-card-rar { font-size:11px; font-weight:800; color:var(--rc); letter-spacing:1px; }
+.rpg-card-lb { font-size:12px; color:#f0e8ff; text-align:center; }
+.rpg-reveal-grid.many .rpg-card-lb { font-size:9px; }
+.rpg-card.r-sr.done, .rpg-card.r-ssr.done, .rpg-card.r-ur.done { animation:rpgcardin .5s cubic-bezier(.2,1.4,.4,1) backwards, rpgglow 1.4s ease-in-out infinite .5s; }
+@keyframes rpgglow { 0%,100%{ box-shadow:0 0 14px var(--rc); } 50%{ box-shadow:0 0 30px var(--rc); } }
+.rpg-card.rainbow { border-image:linear-gradient(135deg,#ff5fa2,#ffd24a,#5ec8ff,#c08bff,#ff5fa2) 1; animation:rpgrainbow 2s linear infinite, rpgcardin .5s backwards !important; }
+@keyframes rpgrainbow { 0%{ filter:hue-rotate(0); } 100%{ filter:hue-rotate(360deg); } }
+.rpg-card-rays { position:absolute; inset:-40%; background:conic-gradient(from 0deg, transparent 0 18deg, rgba(255,255,255,.14) 18deg 22deg, transparent 22deg 40deg); animation:rpgrays 6s linear infinite; pointer-events:none; }
+@keyframes rpgrays { 0%{ transform:rotate(0); } 100%{ transform:rotate(360deg); } }
+.rpg-card.busted { filter:grayscale(.7) brightness(.7); }
+.rpg-reveal-hint { text-align:center; color:#cbb0e0; animation:rpgwait 1s ease-in-out infinite; }
+.rpg-reveal-acts { display:flex; flex-direction:column; gap:8px; max-width:420px; margin:0 auto; }
+
+/* コンボ表示 */
+.rpg-combo { margin-left:8px; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:800;
+  background:rgba(255,120,60,.25); color:#ffb070; animation:rpgpop .3s ease-out; }
+.rpg-combo.lvl2 { color:#ffd24a; } .rpg-combo.lvl3 { color:#ff9a4a; }
+.rpg-combo.lvl4 { color:#ff6a6a; background:rgba(255,80,80,.3); }
+.rpg-combo.lvl5 { color:#ff5fd0; background:rgba(255,80,200,.3); text-shadow:0 0 8px rgba(255,90,210,.8); }
+@keyframes rpgpop { 0%{ transform:scale(.4); } 70%{ transform:scale(1.2); } 100%{ transform:scale(1); } }
+
+/* モダン・リザルト */
+.rpg-won-h { text-align:center; letter-spacing:2px; animation:rpgpop .4s ease-out; }
+.rpg-res-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 4px; font-size:15px; border-bottom:1px solid rgba(255,255,255,.08); }
+.rpg-res-row b { color:#ffd98a; font-size:20px; font-variant-numeric:tabular-nums; }
+.rpg-res-row.combo b { color:#ff9a6a; }
+.rpg-cu-suf { color:#ffd98a; margin-left:-6px; }
+.rpg-res-lv.pop, .rpg-res-outfit.pop { animation:rpgpop .4s ease-out; }
+.rpg-res-lv { margin-top:8px; padding:8px 12px; border-radius:10px; background:rgba(60,90,60,.4); color:#9cff9c; font-weight:700; }
+.rpg-res-outfit { margin-top:8px; padding:10px 12px; border-radius:10px; background:linear-gradient(135deg,rgba(120,80,30,.5),rgba(90,60,20,.5)); color:#ffd98a; font-weight:700; }
+.rpg-res-outfit small { color:#e8d0a0; font-weight:400; }

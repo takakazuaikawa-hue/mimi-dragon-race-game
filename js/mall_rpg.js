@@ -24,8 +24,12 @@ function rpgData() {
   if (!d.codex) d.codex = {};
   if (!d.skills) d.skills = ["atk"];
   if (!d.best) d.best = { lv: d.lv || 1 };
+  if (d.tickets == null) d.tickets = 2;              // ガチャチケット
+  if (!d.records) d.records = { lv: d.lv || 1, floor: d.best.floor || 0, combo: 0, score: 0, pulls: 0 };
+  if (d.daily == null) d.daily = "";                 // 最終ログボ受取日
   return d;
 }
+function rpgToday() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return "x"; } }
 function rpgSave() { if (typeof saveGame === "function") saveGame(); }
 function rpgRnd(a, b) { return a + Math.random() * (b - a); }
 function rpgPick(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -186,14 +190,8 @@ function rpgTreasure(x, y) {
   const key = RPG.fi + ":" + x + "," + y;
   if (RPG.collected[key]) { rpgLog("📦 からっぽの宝箱だ。", ""); renderMallRpg(); return; }
   RPG.collected[key] = 1;
-  const d = rpgData();
-  const g = 20 + Math.floor(Math.random() * 30);
-  d.gold += g;
-  let extra = "";
-  if (Math.random() < 0.5) { d.items.potion = (d.items.potion || 0) + 1; extra = "・回復薬×1"; }
-  rpgLog(`📦 宝箱！ ゴールド+${g}${extra}`, "good");
-  rpgSfx("unlock"); rpgSave();
-  renderMallRpg();
+  rpgLog("📦 宝箱を見つけた！ なにが出るかな…", "good");
+  rpgChestPull(x, y, RPG.fi * 0.12);     // 上の階ほどレア度UP
 }
 function rpgReachExit() {
   const d = rpgData();
@@ -231,7 +229,7 @@ function rpgEncounter(boss) {
     return { id, ref: m, hp, maxhp: hp, alive: true,
       atk: boss ? m.atk : Math.round(m.atk * sc), exp: Math.round(m.exp * scR), gold: Math.round(m.gold * scR) };
   });
-  RPG.battle = { enemies, target: 0, extra: false, acts: 1, log: [], boss: !!boss, phase: "cmd", sub: null,
+  RPG.battle = { enemies, target: 0, extra: false, acts: 1, combo: 0, log: [], boss: !!boss, phase: "cmd", sub: null,
     pstatus: { stun: 0, defdown: 0, dazzle: 0, seal: 0 } };
   RPG.mode = "battle"; RPG.busy = false;
   rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`);
@@ -306,7 +304,7 @@ function rpgUseSkill(id) {
     const dmg = Math.max(1, Math.round((sk.pow + rpgPlayerPow() * 0.6) * mult * rpgRnd(0.9, 1.1)));
     tgt.hp -= dmg;
     let tag = "";
-    if (mult >= 1.9) { weakHit = true; tag = " 弱点!"; if (rpgCodexLearn(tgt.id, sk.el)) rpgBLog(`📖 ${tgt.ref.n}の弱点「${RPG_ELEM[sk.el]}」を見つけた！`, "good"); }
+    if (mult >= 1.9) { weakHit = true; tag = " 弱点!"; b.combo = (b.combo || 0) + 1; if (rpgCodexLearn(tgt.id, sk.el)) rpgBLog(`📖 ${tgt.ref.n}の弱点「${RPG_ELEM[sk.el]}」を見つけた！`, "good"); }
     else if (mult === 0.5) tag = " 耐性…";
     rpgBLog(`${RPG_ELEM_IC[sk.el]} ${sk.n}！ ${tgt.ref.n}に${dmg}ダメージ${tag}`, weakHit ? "good" : "");
     rpgSfx(weakHit ? "win" : "tick");
@@ -314,10 +312,11 @@ function rpgUseSkill(id) {
     rpgFx.hit(eel); rpgFx.at(eel, "-" + dmg, weakHit ? "weak" : (mult === 0.5 ? "resist" : "dmg"));
     if (weakHit) rpgFx.banner("WEAK!", "weak");
     if (tgt.hp <= 0) {
-      tgt.alive = false;
+      tgt.alive = false; b.combo = (b.combo || 0) + 1;
       const tourist = tgt.ref.kind === "tourist";
       rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good");
     }
+    if ((b.combo || 0) >= 3) rpgFx.banner("COMBO ×" + b.combo, "more");
   }
   RPG.busy = true; b.phase = "anim"; rpgSave();
   setTimeout(() => rpgAfterAct(weakHit), 540);
@@ -395,7 +394,7 @@ function rpgEnemyStep(idx) {
     d.hp -= dealt;
     rpgBLog(`${e.ref.ic} ${e.ref.act || (e.ref.n + "の攻撃！")} ${dealt}ダメージ。`, "bad");
   }
-  if (dealt > 0) { rpgFx.at(rpgPlayerEl(), "-" + dealt, "pdmg"); rpgFx.shakeApp(); rpgFx.flash("hurt"); rpgSfx("tick"); }
+  if (dealt > 0) { b.combo = 0; rpgFx.at(rpgPlayerEl(), "-" + dealt, "pdmg"); rpgFx.shakeApp(); rpgFx.flash("hurt"); rpgSfx("tick"); }
   if (applied) rpgFx.banner(RPG_STATUS[applied].ic + " " + RPG_STATUS[applied].n + "！", "bad");
   if (d.hp <= 0) { d.hp = 0; setTimeout(() => rpgBattleLose(), 520); return; }
   setTimeout(() => rpgEnemyStep(idx + 1), 540);
@@ -419,8 +418,11 @@ function rpgBattleWin() {
   const b = RPG.battle, d = rpgData();
   let exp = 0, gold = 0;
   b.enemies.forEach(e => { exp += (e.exp || e.ref.exp); gold += (e.gold || e.ref.gold); });
+  const combo = b.combo || 0, cmult = 1 + Math.min(combo, 25) * 0.06;
+  exp = Math.round(exp * cmult); gold = Math.round(gold * cmult);
   d.exp += exp; d.gold += gold;
-  rpgBLog(`🎉 勝利！ EXP+${exp}・ゴールド+${gold}`, "win");
+  if (combo > (d.records.combo || 0)) d.records.combo = combo;
+  rpgBLog(`🎉 勝利！ EXP+${exp}・ゴールド+${gold}` + (combo >= 2 ? `（COMBO×${combo}・報酬+${Math.round((cmult - 1) * 100)}%）` : ""), "win");
   // ボス：図鑑クリア＋衣装ドロップ
   let outfit = null;
   if (b.boss) {
@@ -434,10 +436,12 @@ function rpgBattleWin() {
   // レベルアップ判定
   const ups = rpgCheckLevel();
   RPG.mode = "won"; RPG.busy = false;
-  RPG.flash = { exp, gold, ups, outfit, boss: b.boss };
+  RPG.flash = { exp, gold, ups, outfit, boss: b.boss, combo };
+  rpgBumpRecords();
   rpgSfx("win"); rpgSave();
   rpgFx.banner(b.boss ? "👑 CLEAR!" : "VICTORY!", "victory");
-  if (ups.length) setTimeout(() => rpgFx.banner("LEVEL UP!", "levelup"), 520);
+  if (combo >= 5) setTimeout(() => rpgFx.banner("COMBO ×" + combo + "!", "more"), 360);
+  if (ups.length) setTimeout(() => rpgFx.banner("LEVEL UP!", "levelup"), 620);
   renderMallRpg();
 }
 function rpgBattleLose() {
@@ -525,6 +529,7 @@ function renderMallRpg(flash) {
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();
   rpgBindKeys();
   const app = beginScreen();
+  if (RPG_REVEAL) return rpgRenderReveal(app);          // ガチャ/宝箱の演出は最優先
   if (RPG && RPG.mode === "explore") return rpgRenderExplore(app);
   if (RPG && RPG.mode === "battle") return rpgRenderBattle(app);
   if (RPG && RPG.mode === "won") return rpgRenderWon(app);
@@ -543,16 +548,46 @@ function rpgRenderHub(app) {
     `<span class="rpg-chip">Lv <b>${d.lv}</b></span>` +
     `<span class="rpg-chip">❤️ ${d.hp}/${d.maxhp}</span>` +
     `<span class="rpg-chip">💧 ${d.mp}/${d.maxmp}</span>` +
-    `<span class="rpg-chip">EXP ${d.exp}/${rpgExpNext(d.lv)}</span>` +
     `<span class="rpg-chip">🪙 ${d.gold}G</span>` +
+    `<span class="rpg-chip gacha">🎟️ ${d.tickets || 0}</span>` +
     `<span class="rpg-chip">🧪${d.items.potion || 0} 🔵${d.items.ether || 0}</span>` +
-    (d.best.floor != null ? `<span class="rpg-chip">🏬 最高 ${RPG_FLOORS[Math.min(d.best.floor, RPG_FLOORS.length - 1)].name}</span>` : "") +
     (d.cleared ? `<span class="rpg-chip win">🌿 屋上制覇</span>` : "");
   app.appendChild(st);
+
+  // ベスト記録（中毒性＝自己ベスト更新）
+  const rec = d.records || {};
+  const rc = el("div", "rpg-records");
+  rc.innerHTML =
+    `<div class="rpg-rec"><small>ベストスコア</small><b>${rec.score || 0}</b></div>` +
+    `<div class="rpg-rec"><small>最高Lv</small><b>${rec.lv || d.lv}</b></div>` +
+    `<div class="rpg-rec"><small>最高到達</small><b>${rec.floor != null ? RPG_FLOORS[Math.min(rec.floor, RPG_FLOORS.length - 1)].name.replace(/ .*/, "") : "—"}</b></div>` +
+    `<div class="rpg-rec"><small>最大コンボ</small><b>×${rec.combo || 0}</b></div>`;
+  app.appendChild(rc);
+
+  // デイリー・ログインボーナス
+  if (d.daily !== rpgToday()) {
+    const dl = el("button", "rpg-daily", "🎁 本日のログインボーナスを受け取る（🎟️＋おまけ）");
+    dl.onclick = () => rpgClaimDaily();
+    app.appendChild(dl);
+  }
 
   const go = el("button", "rpg-start", d.cleared ? "🏬 1Fから冒険する ▶（再挑戦）" : "🏬 1Fから冒険する ▶");
   go.onclick = () => rpgStartRun();
   app.appendChild(go);
+
+  // 🎰 ガチャ（射幸性）
+  const gacha = el("div", "rpg-box gacha-box");
+  gacha.innerHTML = `<div class="rpg-box-t">🎰 おたからガチャ <span class="rpg-gacha-rates">伝説0.7% / 激レア2.8% / SR9.5%</span></div>`;
+  const gg = el("div", "rpg-gachagrid");
+  const g1 = el("button", "rpg-gachabtn" + ((d.tickets || 0) >= 1 ? " ready" : " off"));
+  g1.innerHTML = `<b>🎟️ 1回</b><small>チケット×1</small>`;
+  g1.disabled = (d.tickets || 0) < 1; g1.onclick = () => rpgGachaPull(1);
+  const g10 = el("button", "rpg-gachabtn gold10" + ((d.gold || 0) >= 280 ? " ready" : " off"));
+  g10.innerHTML = `<b>💎 10連</b><small>280G・SR以上確定</small>`;
+  g10.disabled = (d.gold || 0) < 280; g10.onclick = () => rpgGachaPull(10);
+  gg.appendChild(g1); gg.appendChild(g10);
+  gacha.appendChild(gg);
+  app.appendChild(gacha);
 
   const row = el("div", "rpg-hubrow");
   const rest = el("button", "rpg-hubbtn", "🛏️ 休む（HP/MP全回復）");
@@ -792,7 +827,8 @@ function rpgRenderBattle(app) {
   // プレイヤーHUD（ミミのステータスパネル）
   const hud = el("div", "rpg-bhud"); hud.id = "rpg-bhud";
   hud.innerHTML =
-    `<div class="rpg-bhud-name">🧝 ミミ <b>Lv${d.lv}</b></div>` +
+    `<div class="rpg-bhud-name">🧝 ミミ <b>Lv${d.lv}</b>` +
+    ((b.combo || 0) >= 2 ? `<span class="rpg-combo lvl${Math.min(5, Math.floor(b.combo / 3) + 1)}">🔥 COMBO ×${b.combo}</span>` : "") + `</div>` +
     `<div class="rpg-bar-row"><span class="rpg-bar-lb">HP</span><span class="rpg-hpbar big"><span style="width:${Math.round(d.hp / d.maxhp * 100)}%"></span></span><span class="rpg-bar-v">${d.hp}/${d.maxhp}</span></div>` +
     `<div class="rpg-bar-row"><span class="rpg-bar-lb">MP</span><span class="rpg-mpbar"><span style="width:${Math.round(d.mp / d.maxmp * 100)}%"></span></span><span class="rpg-bar-v">${d.mp}/${d.maxmp}</span></div>`;
   app.appendChild(hud);
@@ -835,21 +871,31 @@ function rpgRenderBattle(app) {
 }
 function rpgBackBtn() { const b = el("button", "rpg-cmdbtn back", "<b>↩ もどる</b>"); b.onclick = () => rpgCmdBack(); return b; }
 
-// ── 勝利
+// ── 勝利（モダンなリザルト：カウントアップ＋演出）
 function rpgRenderWon(app) {
   const f = RPG.flash || {};
-  app.appendChild(el("h2", null, f.boss ? "👑 ボス撃破！" : "🎉 勝利！"));
+  app.appendChild(el("h2", "rpg-won-h", f.boss ? "👑 ボス撃破！" : "🎉 VICTORY"));
   const box = el("div", "rpg-resbox good");
-  let html = `<div class="rpg-res-l">EXP +${f.exp}　🪙 +${f.gold}G</div>`;
-  if (f.ups && f.ups.length) {
-    f.ups.forEach(u => { html += `<div class="rpg-res-lv">⬆️ レベル${u.lv}！${u.learn && u.learn.length ? " 新スキル「" + u.learn.map(s => RPG_SKILLS[s].n).join("・") + "」を覚えた！" : ""}</div>`; });
-  }
-  if (f.outfit) html += `<div class="rpg-res-outfit">👑 衣装「${f.outfit.name}」を手に入れた！ モールで着られるよ</div>`;
-  box.innerHTML = html;
+  let rows = `<div class="rpg-res-row"><span>獲得EXP</span><b class="rpg-cu" data-to="${f.exp || 0}">0</b></div>` +
+    `<div class="rpg-res-row"><span>獲得ゴールド</span><b class="rpg-cu" data-to="${f.gold || 0}">0</b><span class="rpg-cu-suf">G</span></div>`;
+  if ((f.combo || 0) >= 2) rows += `<div class="rpg-res-row combo"><span>🔥 最大コンボ</span><b>×${f.combo}（報酬+${Math.round(Math.min(f.combo, 25) * 6)}%）</b></div>`;
+  box.innerHTML = rows;
   app.appendChild(box);
+  if (f.ups && f.ups.length) {
+    f.ups.forEach(u => app.appendChild(el("div", "rpg-res-lv pop", `⬆️ LEVEL ${u.lv}！${u.learn && u.learn.length ? " 新スキル「" + u.learn.map(s => RPG_SKILLS[s].n).join("・") + "」習得！" : ""}`)));
+  }
+  if (f.outfit) {
+    const o = el("div", "rpg-res-outfit pop"); o.innerHTML = `👑 衣装「${f.outfit.name}」GET！ <small>モールで着られるよ</small>`;
+    app.appendChild(o);
+  }
   const cont = el("button", "rpg-start", "▶ 探索を続ける");
   cont.onclick = () => rpgAfterWin();
   app.appendChild(cont);
+  // カウントアップ
+  app.querySelectorAll(".rpg-cu").forEach(elm => {
+    const to = parseInt(elm.getAttribute("data-to"), 10) || 0; let cur = 0; const step = Math.max(1, Math.round(to / 24));
+    const iv = setInterval(() => { cur += step; if (cur >= to) { cur = to; clearInterval(iv); } elm.textContent = cur; }, 28);
+  });
 }
 // ── 敗北
 function rpgRenderLost(app) {
@@ -866,4 +912,149 @@ function rpgRenderResult(app) {
   const cont = el("button", "rpg-start", "← 入口へ");
   cont.onclick = () => { RPG = null; renderMallRpg(); };
   app.appendChild(cont);
+}
+
+// =========================================================================
+// 🎰 射幸性レイヤー：レアリティ / ガチャ / ルート演出 / ダブルアップ / デイリー
+//   ※すべてダンジョン内の独立通貨（ゴールド/チケット）とコスメ(outfitsWon)で完結。
+//     プレイヤーのコイン・総資産・レース数式には一切触れない（[[race-math-immutable]]）。
+// =========================================================================
+const RPG_RARITY = [
+  { id: "c",   n: "ふつう",       w: 60,  col: "#b8b2c4" },
+  { id: "r",   n: "レア",         w: 27,  col: "#5ec8ff" },
+  { id: "sr",  n: "スーパーレア", w: 9.5, col: "#c08bff" },
+  { id: "ssr", n: "激レア",       w: 2.8, col: "#ffd24a" },
+  { id: "ur",  n: "伝説",         w: 0.7, col: "#ff7ad0", rainbow: true },
+];
+const RPG_RIDX = { c: 0, r: 1, sr: 2, ssr: 3, ur: 4 };
+function rpgRollRarity(luck) {
+  const ws = RPG_RARITY.map((R, i) => R.w * (i >= 2 ? (1 + (luck || 0) * 0.6) : 1));
+  let t = ws.reduce((a, b) => a + b, 0) * Math.random();
+  for (let i = 0; i < RPG_RARITY.length; i++) { t -= ws[i]; if (t <= 0) return RPG_RARITY[i]; }
+  return RPG_RARITY[0];
+}
+
+// レア度→具体ごほうび（即時付与し、演出用データを返す）
+function rpgGrantReward(R) {
+  const d = rpgData(), ri = RPG_RIDX[R.id];
+  // 高レアは衣装（あれば）
+  if (ri >= 2) {
+    const band = ri >= 3 ? "l" : "r";
+    const o = rpgGrantOutfit(band) || rpgGrantOutfit("r") || rpgGrantOutfit("c");
+    if (o) return { rarity: R, icon: "👗", label: "衣装「" + o.name + "」", big: true };
+  }
+  if (R.id === "r" && Math.random() < 0.4) { d.items.ether = (d.items.ether || 0) + 1; return { rarity: R, icon: "🔵", label: "マナ水 ×1" }; }
+  if (R.id === "c" && Math.random() < 0.5) { d.items.potion = (d.items.potion || 0) + 1; return { rarity: R, icon: "🧪", label: "回復薬 ×1" }; }
+  if (ri >= 2 && Math.random() < 0.3) { d.tickets = (d.tickets || 0) + 1; return { rarity: R, icon: "🎟️", label: "ガチャチケット ×1" }; }
+  const base = { c: 25, r: 70, sr: 180, ssr: 600, ur: 2500 }[R.id];
+  const g = Math.round(base * (0.8 + Math.random() * 0.6));
+  d.gold += g;
+  return { rarity: R, icon: "🪙", label: g + " ゴールド", gold: g };
+}
+
+// ── 演出（スピン→開封→レア度で光・パーティクル・JACKPOT、必要ならダブルアップ）
+let RPG_REVEAL = null;
+function rpgReveal(items, opts) {
+  RPG_REVEAL = { items, phase: "spin", opts: opts || {} };
+  rpgSfx("streak");
+  renderMallRpg();
+  setTimeout(() => { if (RPG_REVEAL) { RPG_REVEAL.phase = "done"; const top = items.reduce((m, x) => Math.max(m, RPG_RIDX[x.rarity.id]), 0); rpgSfx(top >= 2 ? "win" : "unlock"); if (top >= 3) rpgFx.banner("✨ JACKPOT ✨", "victory"); renderMallRpg(); } }, 1200);
+}
+function rpgRevealClose() {
+  const done = RPG_REVEAL && RPG_REVEAL.opts.onDone;
+  RPG_REVEAL = null;
+  if (done) done(); else renderMallRpg();
+}
+// ダブルアップ（50%で倍・失敗で没収、最大3段）
+function rpgDoubleUp() {
+  const rv = RPG_REVEAL; if (!rv || rv.phase !== "done") return;
+  const it = rv.items[0]; if (!it || !it.gold) return;
+  const d = rpgData();
+  rv.stage = (rv.stage || 1);
+  if (Math.random() < 0.5) {
+    d.gold += it.gold;                 // もう一段ぶん上乗せ
+    it.gold *= 2; it.label = it.gold + " ゴールド";
+    rv.stage++; rpgSfx("win"); rpgFx.banner("WIN! ×2", "more");
+    if (rv.stage > 3) { rv.maxed = true; }
+  } else {
+    d.gold -= it.gold; it.gold = 0; it.label = "0 ゴールド…"; it.busted = true;
+    rpgSfx("alert"); rpgFx.banner("BUST…", "down");
+  }
+  rpgSave(); renderMallRpg();
+}
+function rpgRenderReveal(app) {
+  const rv = RPG_REVEAL;
+  app.appendChild(el("h2", "rpg-reveal-h", rv.opts.title || "🎁 おたから！"));
+  const grid = el("div", "rpg-reveal-grid" + (rv.items.length > 4 ? " many" : ""));
+  rv.items.forEach((it, i) => {
+    const card = el("div", "rpg-card r-" + it.rarity.id + (it.rarity.rainbow ? " rainbow" : "") + " " + rv.phase + (it.busted ? " busted" : ""));
+    card.style.setProperty("--rc", it.rarity.col);
+    card.style.animationDelay = (i * 0.08) + "s";
+    if (rv.phase === "spin") card.innerHTML = `<div class="rpg-card-spin">🎰</div>`;
+    else card.innerHTML = `<div class="rpg-card-ic">${it.icon}</div><div class="rpg-card-rar">${it.rarity.n}</div><div class="rpg-card-lb">${it.label}</div>` + (RPG_RIDX[it.rarity.id] >= 3 ? `<div class="rpg-card-rays"></div>` : "");
+    grid.appendChild(card);
+  });
+  app.appendChild(grid);
+  if (rv.phase === "done") {
+    const acts = el("div", "rpg-reveal-acts");
+    const single = rv.items.length === 1 ? rv.items[0] : null;
+    if (single && single.gold && !single.busted && !rv.maxed && (rv.stage || 1) <= 3) {
+      const du = el("button", "rpg-cmdbtn main", `<b>🎲 ダブルアップ</b><small>50%で2倍 / 失敗で没収（現在 ${single.gold}G）</small>`);
+      du.onclick = () => rpgDoubleUp(); acts.appendChild(du);
+    }
+    const ok = el("button", "rpg-start", single && single.busted ? "とほほ…受け取る ▶" : "受け取る ▶");
+    ok.onclick = () => rpgRevealClose(); acts.appendChild(ok);
+    app.appendChild(acts);
+  } else {
+    app.appendChild(el("div", "rpg-reveal-hint", "✨ 開封中…"));
+  }
+}
+
+// ── 宝箱＝毎回ガチャ（レア度ロール＋ダブルアップ）
+function rpgChestPull(x, y, luck) {
+  const R = rpgRollRarity(luck || 0);
+  const it = rpgGrantReward(R);
+  rpgSave();
+  rpgReveal([it], { title: "📦 宝箱を開けた！", onDone: () => { RPG.mode = "explore"; renderMallRpg(); } });
+}
+
+// ── ハブのガチャ
+function rpgGachaPull(n) {
+  const d = rpgData();
+  if (n === 1) { if ((d.tickets || 0) < 1) return; d.tickets -= 1; }
+  else { const cost = 280; if ((d.gold || 0) < cost) return; d.gold -= cost; }
+  d.records.pulls = (d.records.pulls || 0) + n;
+  const luck = n >= 10 ? 0.6 : 0;          // 10連は気持ち高レア寄り
+  const items = [];
+  let guaranteed = n >= 10;                 // 10連はSR以上1枚確定
+  for (let i = 0; i < n; i++) {
+    let R = rpgRollRarity(luck);
+    if (guaranteed && i === n - 1 && RPG_RIDX[R.id] < 2) R = RPG_RARITY[2];
+    if (RPG_RIDX[R.id] >= 2) guaranteed = false;
+    items.push(rpgGrantReward(R));
+  }
+  rpgSave();
+  rpgReveal(items, { title: n >= 10 ? "🎟️ 10連ガチャ！" : "🎟️ ガチャ！", onDone: () => renderMallRpg() });
+}
+
+// ── デイリー・ログインボーナス
+function rpgClaimDaily() {
+  const d = rpgData();
+  if (d.daily === rpgToday()) return;
+  d.daily = rpgToday();
+  d.tickets = (d.tickets || 0) + 1;
+  const R = rpgRollRarity(0.3);
+  const it = rpgGrantReward(R);
+  rpgSave();
+  rpgReveal([{ rarity: RPG_RARITY[1], icon: "🎟️", label: "ログボ：チケット ×1" }, it], { title: "📅 ログインボーナス！", onDone: () => renderMallRpg() });
+}
+
+// ── スコア記録の更新（中毒性＝自己ベスト）
+function rpgBumpRecords() {
+  const d = rpgData(), r = d.records;
+  if (d.lv > r.lv) r.lv = d.lv;
+  if ((d.best.floor || 0) > (r.floor || 0)) r.floor = d.best.floor || 0;
+  const score = (d.lv * 120) + ((d.best.floor || 0) * 300) + (r.combo || 0) * 40 + Math.floor((d.gold || 0) / 10);
+  if (score > (r.score || 0)) r.score = score;
+  rpgSave();
 }
