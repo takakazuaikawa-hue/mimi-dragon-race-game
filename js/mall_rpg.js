@@ -39,12 +39,12 @@ function rpgSfx(id) { try { if (window.Sfx) Sfx.play(id); } catch (e) {} }
 const RPG_ELEM = { phys: "物理", fire: "火", ice: "氷", elec: "電", force: "力", heal: "回復" };
 const RPG_ELEM_IC = { phys: "⚔️", fire: "🔥", ice: "❄️", elec: "⚡", force: "🌀", heal: "💚" };
 const RPG_SKILLS = {
-  atk:   { n: "たたかう", el: "phys", mp: 0, pow: 9 },
-  fire:  { n: "アギ",     el: "fire", mp: 4, pow: 13 },
-  ice:   { n: "ブフ",     el: "ice",  mp: 4, pow: 13 },
-  elec:  { n: "ジオ",     el: "elec", mp: 4, pow: 13 },
-  force: { n: "ザン",     el: "force",mp: 5, pow: 14 },
-  heal:  { n: "ディア",   el: "heal", mp: 6, heal: 30 },
+  atk:   { n: "ぱほっ！",       el: "phys", mp: 0, pow: 9 },
+  fire:  { n: "サンバースト",   el: "fire", mp: 4, pow: 13 },
+  ice:   { n: "クールミスト",   el: "ice",  mp: 4, pow: 13 },
+  elec:  { n: "スパークラー",   el: "elec", mp: 4, pow: 13 },
+  force: { n: "うずしおウェーブ", el: "force", mp: 5, pow: 14 },
+  heal:  { n: "リフレッシュ",   el: "heal", mp: 6, heal: 30 },
 };
 // レベルで覚える
 const RPG_LEARN = { 3: ["ice"], 5: ["elec"], 7: ["force"] };
@@ -185,6 +185,26 @@ function rpgForward(sign) {
   if (RPG.grace > 0) RPG.grace--;
   else if (Math.random() < 0.22) { rpgEncounter(); return; }
   renderMallRpg();
+}
+// ── オート歩行（左手法で迷宮を自動探索。戦闘/演出中は自動停止し、終わると再開）
+function rpgToggleAuto() {
+  if (!RPG) return;
+  RPG.auto = !RPG.auto;
+  if (RPG.auto) rpgAutoLoop(); else if (RPG._autoT) { clearTimeout(RPG._autoT); RPG._autoT = null; }
+  renderMallRpg();
+}
+function rpgAutoStep() {
+  if (!RPG || RPG.mode !== "explore" || RPG.busy || RPG_REVEAL) return;
+  for (const turn of [-1, 0, 1, 2]) {              // 左→前→右→後ろの順（壁づたい）
+    const nd = (RPG.dir + turn + 4) % 4;
+    const nx = RPG.px + RPG_DV[nd][0], ny = RPG.py + RPG_DV[nd][1];
+    if (!rpgIsWall(rpgCell(nx, ny))) { RPG.dir = nd; rpgForward(1); return; }
+  }
+}
+function rpgAutoLoop() {
+  if (!RPG || !RPG.auto) { if (RPG) RPG._autoT = null; return; }
+  if (RPG.mode === "explore" && !RPG.busy && !RPG_REVEAL) rpgAutoStep();
+  RPG._autoT = setTimeout(rpgAutoLoop, 480);
 }
 function rpgTreasure(x, y) {
   const key = RPG.fi + ":" + x + "," + y;
@@ -678,7 +698,10 @@ function rpgRenderExplore(app) {
   app.appendChild(pad);
 
   const actions = el("div", "actions");
-  const leave = el("button", "secondary", "🏠 迷宮を出る"); leave.onclick = () => { RPG = null; renderMallRpg(); };
+  const auto = el("button", RPG.auto ? "rpg-auto on" : "rpg-auto", RPG.auto ? "⏸ オート停止" : "▶ オートで歩く");
+  auto.onclick = () => rpgToggleAuto();
+  actions.appendChild(auto);
+  const leave = el("button", "secondary", "🏠 迷宮を出る"); leave.onclick = () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); RPG = null; renderMallRpg(); };
   actions.appendChild(leave);
   app.appendChild(actions);
 }
@@ -815,7 +838,7 @@ function rpgDrawView(cv, t) {
   // 前方アイコン（宝箱/階段/ボス）＋ふわふわ
   const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46, maxD = 4, pp = 0.6, ph = t / 1000;
   const rt = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(pp, d); rt[d] = { t: cy - H * 0.5 * s, b: cy + H * 0.5 * s }; }
-  for (let c = 1; c <= maxD; c++) {
+  for (let c = 1; (!cv._noIcons) && c <= maxD; c++) {
     if (rpgIsWall(rpgAhead(c, 0))) break;
     const cch = rpgAhead(c, 0), tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
     const bob = Math.sin(ph * 2.2) * (rt[c].b - rt[c].t) * 0.03;
@@ -904,6 +927,13 @@ function rpgRenderBattle(app) {
   const d = rpgData(), b = RPG.battle;
   // 戦闘ステージ（敵＝モール内の対決）
   const stage = el("div", "rpg-stage" + (b.boss ? " boss" : ""));
+  // HD-2D風の戦闘背景＝今いるフロアのリゾート風景
+  if (RPG && RPG.map && RPG.map.length) {
+    const bg = el("canvas", "rpg-battle-bg hd"); bg.width = 480; bg.height = 300; bg._noIcons = 1;
+    try { rpgDrawView(bg, (typeof performance !== "undefined" ? performance.now() : 0)); } catch (e) {}
+    stage.appendChild(bg);
+    stage.appendChild(el("div", "rpg-battle-scrim"));
+  }
   const ev = el("div", "rpg-enemies");
   b.enemies.forEach((e, i) => {
     const card = el("button", "rpg-enemy" + (e.alive ? "" : " dead") + (b.target === i ? " sel" : ""));

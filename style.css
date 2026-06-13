@@ -4007,3 +4007,18 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-padbtn.fw { animation:rpgbtnbob 2s ease-in-out infinite; }
 .rpg-enemy .rpg-spr.enemy { animation:rpgbobwob 2.4s ease-in-out infinite; }
 @keyframes rpgbobwob { 0%,100%{ transform:translateY(0) rotate(-3deg); } 50%{ transform:translateY(-4px) rotate(3deg); } }
+
+/* オート歩行ボタン */
+.rpg-auto { padding:11px 16px; border-radius:12px; font-weight:700; color:#fff; cursor:pointer;
+  border:1px solid rgba(120,200,255,.5); background:linear-gradient(135deg,#2a7fb8,#3aa0d8); }
+.rpg-auto.on { background:linear-gradient(135deg,#b85a2a,#d8853a); border-color:rgba(255,180,120,.6); animation:rpgpulse 1.4s ease-in-out infinite; }
+.rpg-auto:active { transform:scale(.97); }
+
+/* HD-2D戦闘背景 */
+.rpg-stage { position:relative; }
+.rpg-battle-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;
+  image-rendering:auto; filter:contrast(1.05) saturate(1.12) brightness(0.92); }
+.rpg-battle-scrim { position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 38%, rgba(0,0,0,0) 30%, rgba(8,6,16,.55) 100%),
+             linear-gradient(180deg, rgba(8,6,16,.25), rgba(8,6,16,.05) 40%, rgba(8,6,16,.5)); }
+.rpg-stage .rpg-enemies { position:relative; z-index:1; }
