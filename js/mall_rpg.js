@@ -45,20 +45,28 @@ const RPG_SKILLS = {
 // レベルで覚える
 const RPG_LEARN = { 3: ["ice"], 5: ["elec"], 7: ["force"] };
 
+// ── 状態異常（ミミにかかる・戦闘中のみ。回復薬で全快）
+const RPG_STATUS = {
+  stun:    { ic: "💫", n: "めまい",   d: "1ターン動けない" },
+  defdown: { ic: "😵", n: "ぐったり", d: "受けるダメージ↑" },
+  dazzle:  { ic: "✨", n: "チカチカ", d: "たまに攻撃を外す" },
+  seal:    { ic: "🍙", n: "まんぷく", d: "MP技が出せない" },
+};
+
 // ── 敵キャラ（★浮かれた観光客が多数・モンスターは少数）
 const RPG_MONS = {
   // 🎫 浮かれた観光客（メイン）
-  baku:     { n: "爆買いツアー客", ic: "🛍️", kind: "tourist", hp: 18, atk: 6, exp: 7, gold: 12, weak: ["elec"], resist: [], nul: [], el: "phys", act: "両手いっぱいの紙袋がぶつかった！" },
-  selfie:   { n: "自撮り女子",     ic: "🤳", kind: "tourist", hp: 14, atk: 6, exp: 6, gold: 9,  weak: ["force"], resist: [], nul: [], el: "phys", act: "自撮り棒がビュンと飛んできた！" },
-  gourmet:  { n: "食べ歩き勢",     ic: "🍢", kind: "tourist", hp: 20, atk: 7, exp: 8, gold: 10, weak: ["ice"], resist: [], nul: [], el: "fire", act: "アツアツたこ焼きを口に押し込んできた！" },
+  baku:     { n: "爆買いツアー客", ic: "🛍️", kind: "tourist", hp: 18, atk: 6, exp: 7, gold: 12, weak: ["elec"], resist: [], nul: [], el: "phys", act: "両手いっぱいの紙袋がぶつかった！", sp: { name: "紙袋ラッシュ", status: "defdown", dur: 3, chance: 0.3, msg: "ぐったりして守りが下がった…" } },
+  selfie:   { n: "自撮り女子",     ic: "🤳", kind: "tourist", hp: 14, atk: 6, exp: 6, gold: 9,  weak: ["force"], resist: [], nul: [], el: "phys", act: "自撮り棒がビュンと飛んできた！", sp: { name: "フラッシュ撮影", status: "dazzle", dur: 2, chance: 0.35, msg: "目がチカチカする…！" } },
+  gourmet:  { n: "食べ歩き勢",     ic: "🍢", kind: "tourist", hp: 20, atk: 7, exp: 8, gold: 10, weak: ["ice"], resist: [], nul: [], el: "fire", act: "アツアツたこ焼きを口に押し込んできた！", sp: { name: "おすそわけ攻め", status: "seal", dur: 2, chance: 0.3, msg: "おなかいっぱいで技が出せない！" } },
   stroller: { n: "ベビーカー隊",   ic: "👶", kind: "tourist", hp: 24, atk: 7, exp: 9, gold: 11, weak: ["phys"], resist: ["force"], nul: [], el: "phys", act: "ベビーカーで猛突進！" },
-  oldies:   { n: "団体のおば様",   ic: "📷", kind: "tourist", hp: 22, atk: 6, exp: 9, gold: 14, weak: ["fire"], resist: [], nul: [], el: "phys", act: "おしゃべりの渦に巻き込んできた！" },
+  oldies:   { n: "団体のおば様",   ic: "📷", kind: "tourist", hp: 22, atk: 6, exp: 9, gold: 14, weak: ["fire"], resist: [], nul: [], el: "phys", act: "おしゃべりの渦に巻き込んできた！", sp: { name: "質問ぜめ", status: "stun", dur: 1, chance: 0.28, msg: "話につかまって動けない！" } },
   kid:      { n: "はぐれっ子",     ic: "🧒", kind: "tourist", hp: 10, atk: 5, exp: 5, gold: 6,  weak: ["fire", "ice", "elec", "force"], resist: [], nul: [], el: "phys", act: "泣きわめいて気をひいてきた！" },
   // 👾 モンスター（少数）
   slime:    { n: "マヨイスライム", ic: "🟢", kind: "monster", hp: 20, atk: 7, exp: 9, gold: 10, weak: ["fire"], resist: ["ice"], nul: [], el: "phys", act: "ベタベタ体当たり！" },
   mannequin:{ n: "うごくマネキン", ic: "🤖", kind: "monster", hp: 28, atk: 9, exp: 14, gold: 16, weak: ["elec"], resist: ["phys"], nul: [], el: "phys", act: "マネキンチョップ！" },
   // 🎡 ボス（屋上）
-  boss1:    { n: "観覧車ゴーレム", ic: "🎡", kind: "monster", hp: 110, atk: 13, exp: 80, gold: 200, weak: ["elec"], resist: ["fire", "ice"], nul: [], el: "phys", boss: true, act: "巨大ゴンドラが回転しながら突撃！" },
+  boss1:    { n: "観覧車ゴーレム", ic: "🎡", kind: "monster", hp: 110, atk: 13, exp: 80, gold: 200, weak: ["elec"], resist: ["fire", "ice"], nul: [], el: "phys", boss: true, act: "巨大ゴンドラが回転しながら突撃！", sp: { name: "大回転プレス", status: "defdown", dur: 3, chance: 0.4, msg: "おしつぶされて守りが下がった…", dmg: true } },
 };
 const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid"];
 const RPG_MONSTERS_MINOR = ["slime", "mannequin"];
@@ -77,12 +85,13 @@ const RPG_BASE = [
   "#########",
 ];
 // 巨大ららぽーと風・1F→屋上。far: U=上り階段 / E=ボス(屋上)
+// pal = フロア別の配色（front=正面壁/side=側壁/fl=床/c=天井）
 const RPG_FLOORS = [
-  { name: "1F ファッション通り",  t: "id",        far: "U" },
-  { name: "2F 雑貨＆ガジェット",  t: "mirrorH",   far: "U" },
-  { name: "3F フードコート",      t: "mirrorV",   far: "U" },
-  { name: "4F シネマ＆ゲーム",    t: "rot180",    far: "U" },
-  { name: "🌿 屋上ガーデン",      t: "transpose", far: "E" },
+  { name: "1F ファッション通り",  t: "id",        far: "U", pal: { f: [156, 92, 132], s: [112, 66, 98],  fl: [72, 48, 64], c: [46, 30, 42] } },
+  { name: "2F 雑貨＆ガジェット",  t: "mirrorH",   far: "U", pal: { f: [70, 124, 134], s: [50, 92, 100],  fl: [40, 66, 70], c: [24, 42, 46] } },
+  { name: "3F フードコート",      t: "mirrorV",   far: "U", pal: { f: [170, 112, 66], s: [124, 82, 50],  fl: [82, 56, 38], c: [52, 34, 24] } },
+  { name: "4F シネマ＆ゲーム",    t: "rot180",    far: "U", pal: { f: [86, 84, 158],  s: [60, 58, 114],  fl: [46, 44, 80], c: [28, 26, 52] } },
+  { name: "🌿 屋上ガーデン",      t: "transpose", far: "E", pal: { f: [94, 152, 92],  s: [68, 114, 68],  fl: [64, 104, 60], c: [120, 162, 204] } },
 ];
 function rpgTransform(base, kind) {
   const m = base.map(r => r.split("")), n = m.length;
@@ -207,7 +216,8 @@ function rpgEncounter(boss) {
     return { id, ref: m, hp, maxhp: hp, alive: true,
       atk: boss ? m.atk : Math.round(m.atk * sc), exp: Math.round(m.exp * scR), gold: Math.round(m.gold * scR) };
   });
-  RPG.battle = { enemies, target: 0, extra: false, log: [], boss: !!boss, phase: "cmd", sub: null };
+  RPG.battle = { enemies, target: 0, extra: false, log: [], boss: !!boss, phase: "cmd", sub: null,
+    pstatus: { stun: 0, defdown: 0, dazzle: 0, seal: 0 } };
   RPG.mode = "battle";
   rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`);
   rpgSfx("alert");
@@ -243,9 +253,16 @@ function rpgCmdBack() { if (RPG && RPG.battle) { RPG.battle.sub = null; renderMa
 function rpgUseSkill(id) {
   const b = RPG.battle, d = rpgData(), sk = RPG_SKILLS[id];
   if (!b || b.phase !== "cmd" || !sk) return;
+  if (sk.mp > 0 && b.pstatus.seal > 0) { rpgBLog("🍙 おなかいっぱいで技が出せない！", ""); renderMallRpg(); return; }
   if (d.mp < sk.mp) { rpgBLog("MPが足りない！", ""); renderMallRpg(); return; }
-  d.mp -= sk.mp;
   b.sub = null;
+  // ✨チカチカ：攻撃がたまに外れる（回復はミスしない・MPは消費しない）
+  if (sk.el !== "heal" && b.pstatus.dazzle > 0 && Math.random() < 0.3) {
+    rpgBLog("✨ 目がチカチカして攻撃を外した！", "");
+    rpgEndPlayerAction(false);
+    return;
+  }
+  d.mp -= sk.mp;
   if (sk.el === "heal") {
     const h = sk.heal + d.lv * 2;
     d.hp = Math.min(d.maxhp, d.hp + h);
@@ -288,7 +305,9 @@ function rpgUseItem(kind) {
   if (kind === "potion") {
     if ((d.items.potion || 0) <= 0) return;
     d.items.potion--; d.hp = Math.min(d.maxhp, d.hp + 40);
-    rpgBLog("🧪 回復薬！ HP+40。", "good");
+    const had = b.pstatus.stun || b.pstatus.defdown || b.pstatus.dazzle || b.pstatus.seal;
+    b.pstatus.stun = b.pstatus.defdown = b.pstatus.dazzle = b.pstatus.seal = 0;
+    rpgBLog("🧪 回復薬！ HP+40。" + (had ? "（状態もすっきり！）" : ""), "good");
   } else if (kind === "ether") {
     if ((d.items.ether || 0) <= 0) return;
     d.items.ether--; d.mp = Math.min(d.maxmp, d.mp + 20);
@@ -321,18 +340,44 @@ function rpgEndPlayerAction(weakHit) {
 function rpgEnemyTurn() {
   const b = RPG.battle, d = rpgData();
   b.phase = "enemy";
+  const dmgMult = b.pstatus.defdown > 0 ? 1.5 : 1;   // 😵ぐったり＝被ダメUP
   rpgAliveEnemies().forEach(e => {
     if (d.hp <= 0) return;
-    const raw = (e.atk || e.ref.atk) * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6);
-    const dmg = Math.max(1, Math.round(raw));
-    d.hp -= dmg;
-    rpgBLog(`${e.ref.ic} ${e.ref.act || (e.ref.n + "の攻撃！")} ${dmg}ダメージ。`, "bad");
+    const sp = e.ref.sp;
+    if (sp && Math.random() < sp.chance) {
+      // 特技：状態異常を付与（dmg:true ならダメージも）
+      b.pstatus[sp.status] = Math.max(b.pstatus[sp.status] || 0, sp.dur);
+      let line = `${e.ref.ic} ${sp.name}！ ${RPG_STATUS[sp.status].ic}${sp.msg}`;
+      if (sp.dmg) {
+        const dm = Math.max(1, Math.round((e.atk || e.ref.atk) * 0.8 * dmgMult * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6)));
+        d.hp -= dm; line += ` ${dm}ダメージ。`;
+      }
+      rpgBLog(line, "bad");
+    } else {
+      const raw = (e.atk || e.ref.atk) * dmgMult * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6);
+      const dmg = Math.max(1, Math.round(raw));
+      d.hp -= dmg;
+      rpgBLog(`${e.ref.ic} ${e.ref.act || (e.ref.n + "の攻撃！")} ${dmg}ダメージ。`, "bad");
+    }
   });
   rpgSfx("tick");
   if (d.hp <= 0) { d.hp = 0; rpgBattleLose(); return; }
-  b.phase = "cmd"; b.extra = false; b.sub = null;
-  rpgSave();
-  renderMallRpg();
+  rpgToPlayer();
+}
+// 敵ターン後→プレイヤーへ（状態の持続処理＋めまいで行動スキップ）
+function rpgToPlayer() {
+  const b = RPG.battle;
+  ["defdown", "dazzle", "seal"].forEach(k => { if (b.pstatus[k] > 0) b.pstatus[k]--; });
+  b.extra = false; b.sub = null;
+  if (b.pstatus.stun > 0) {
+    b.pstatus.stun--; b.phase = "wait";
+    rpgBLog("💫 目がまわって動けない！", "bad");
+    rpgSave(); renderMallRpg();
+    setTimeout(() => { if (RPG && RPG.battle && RPG.mode === "battle") rpgEnemyTurn(); }, 850);
+    return;
+  }
+  b.phase = "cmd";
+  rpgSave(); renderMallRpg();
 }
 function rpgBattleWin() {
   const b = RPG.battle, d = rpgData();
@@ -522,9 +567,9 @@ function rpgRenderExplore(app) {
     `<span class="rpg-chip">🧭 ${RPG_DIRNAME[RPG.dir]}向き</span>`;
   app.appendChild(head);
 
-  // 一人称ビュー
+  // 一人称ビュー（低解像＝ドット感、CSSでpixelated拡大）
   const cv = el("canvas", "rpg-view");
-  cv.width = 480; cv.height = 300;
+  cv.width = 240; cv.height = 150;
   app.appendChild(cv);
   rpgDrawView(cv);
 
@@ -553,59 +598,78 @@ function rpgRenderExplore(app) {
   app.appendChild(actions);
 }
 
-// グリッド一人称レンダラ（Wizardry風・far→near）
+// グリッド一人称レンダラ（Wizardry風・far→near・フロア別配色＋ドット風）
 function rpgDrawView(cv) {
   const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
   const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2;
   const maxD = 4, p = 0.58;
-  // 背景（天井/床）
-  ctx.fillStyle = "#1a1426"; ctx.fillRect(0, 0, W, H / 2);
-  ctx.fillStyle = "#241c30"; ctx.fillRect(0, H / 2, W, H / 2);
-  // 各深度の枠
+  const pal = (RPG_FLOORS[RPG.fi] && RPG_FLOORS[RPG.fi].pal) || { f: [120, 96, 150], s: [86, 70, 112], fl: [60, 50, 74], c: [40, 34, 54] };
+  const col = (rgb, k) => `rgb(${Math.round(rgb[0] * k)},${Math.round(rgb[1] * k)},${Math.round(rgb[2] * k)})`;
+  ctx.fillStyle = col(pal.c, 0.7); ctx.fillRect(0, 0, W, H / 2);
+  ctx.fillStyle = col(pal.fl, 0.6); ctx.fillRect(0, H / 2, W, H / 2);
   const rect = [];
-  for (let d = 0; d <= maxD; d++) {
-    const s = Math.pow(p, d);
-    rect[d] = { l: cx - (W / 2) * s, t: cy - (H / 2) * s, r: cx + (W / 2) * s, b: cy + (H / 2) * s };
-  }
+  for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W / 2) * s, t: cy - (H / 2) * s, r: cx + (W / 2) * s, b: cy + (H / 2) * s }; }
   const poly = (pts, fill) => {
     ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
     ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1; ctx.stroke();
   };
-  const shade = (depth, kind) => {
-    const k = Math.max(0, 1 - depth * 0.18);
-    if (kind === "front") return `rgb(${Math.round(120 * k)},${Math.round(96 * k)},${Math.round(150 * k)})`;
-    if (kind === "side") return `rgb(${Math.round(86 * k)},${Math.round(70 * k)},${Math.round(112 * k)})`;
-    if (kind === "floor") return `rgb(${Math.round(60 * k)},${Math.round(50 * k)},${Math.round(74 * k)})`;
-    return `rgb(${Math.round(40 * k)},${Math.round(34 * k)},${Math.round(54 * k)})`; // ceil
+  const sh = (depth) => Math.max(0.25, 1 - depth * 0.17);
+  // 正面壁にレンガ模様
+  const bricks = (r) => {
+    ctx.save(); ctx.beginPath(); ctx.rect(r.l, r.t, r.r - r.l, r.b - r.t); ctx.clip();
+    ctx.strokeStyle = "rgba(0,0,0,0.16)"; ctx.lineWidth = 1;
+    const rows = 5, rh = (r.b - r.t) / rows, cw = (r.r - r.l) / 4;
+    for (let i = 1; i < rows; i++) { const y = r.t + i * rh; ctx.beginPath(); ctx.moveTo(r.l, y); ctx.lineTo(r.r, y); ctx.stroke(); }
+    for (let i = 0; i < rows; i++) { const y = r.t + i * rh, off = (i % 2) * cw / 2; for (let xx = r.l + off; xx < r.r; xx += cw) { ctx.beginPath(); ctx.moveTo(xx, y); ctx.lineTo(xx, y + rh); ctx.stroke(); } }
+    ctx.restore();
   };
   for (let c = maxD; c >= 1; c--) {
     const near = rect[c - 1], far = rect[c];
     if (rpgIsWall(rpgAhead(c, 0))) {
-      // 正面の壁（near境界に面を描く）
-      poly([[near.l, near.t], [near.r, near.t], [near.r, near.b], [near.l, near.b]], shade(c - 1, "front"));
+      poly([[near.l, near.t], [near.r, near.t], [near.r, near.b], [near.l, near.b]], col(pal.f, sh(c - 1)));
+      bricks(near);
     } else {
-      // 床・天井
-      poly([[near.l, near.b], [far.l, far.b], [far.r, far.b], [near.r, near.b]], shade(c, "floor"));
-      poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], shade(c, "ceil"));
-      if (rpgIsWall(rpgAhead(c, -1))) poly([[near.l, near.t], [far.l, far.t], [far.l, far.b], [near.l, near.b]], shade(c, "side"));
-      if (rpgIsWall(rpgAhead(c, 1))) poly([[near.r, near.t], [far.r, far.t], [far.r, far.b], [near.r, near.b]], shade(c, "side"));
+      poly([[near.l, near.b], [far.l, far.b], [far.r, far.b], [near.r, near.b]], col(pal.fl, sh(c)));
+      poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], col(pal.c, sh(c) * 0.82));
+      if (rpgIsWall(rpgAhead(c, -1))) poly([[near.l, near.t], [far.l, far.t], [far.l, far.b], [near.l, near.b]], col(pal.s, sh(c)));
+      if (rpgIsWall(rpgAhead(c, 1))) poly([[near.r, near.t], [far.r, far.t], [far.r, far.b], [near.r, near.b]], col(pal.s, sh(c)));
     }
   }
-  // 前方の宝箱/出口アイコン
+  // 前方アイコン（宝箱/階段/ボス）
   for (let c = 1; c <= maxD; c++) {
     if (rpgIsWall(rpgAhead(c, 0))) break;
     const ch = rpgAhead(c, 0);
-    if (ch === "T" && !RPG.collected[(RPG.px + RPG_DV[RPG.dir][0] * c) + "," + (RPG.py + RPG_DV[RPG.dir][1] * c)]) { rpgDrawIcon(ctx, "📦", rect[c], cx, cy); break; }
-    if (ch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "👹", rect[c], cx, cy); break; }
+    const tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
+    if (ch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) { rpgDrawIcon(ctx, "📦", rect[c], cx, cy); break; }
+    if (ch === "U") { rpgDrawIcon(ctx, "🛗", rect[c], cx, cy); break; }
+    if (ch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "🎡", rect[c], cx, cy); break; }
   }
+  // 松明ビネット
+  const g = ctx.createRadialGradient(cx, cy, H * 0.18, cx, cy, H * 0.78);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
 function rpgDrawIcon(ctx, ic, r, cx, cy) {
-  const size = Math.max(14, (r.b - r.t) * 0.4);
+  const size = Math.max(12, (r.b - r.t) * 0.42);
   ctx.font = size + "px serif";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(ic, cx, (r.t + r.b) / 2);
+}
+// 絵文字を低解像canvasに描いてCSSでpixelated拡大＝ドット絵風スプライト
+function rpgMakeSprite(emoji, disp, cls) {
+  const cv = el("canvas", "rpg-spr" + (cls ? " " + cls : ""));
+  const R = 26;
+  cv.width = R; cv.height = R;
+  cv.style.width = (disp || 56) + "px"; cv.style.height = (disp || 56) + "px";
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.font = Math.round(R * 0.82) + "px serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(emoji, R / 2, R / 2 + 1);
+  return cv;
 }
 function rpgMiniMap() {
   const wrap = el("div", "rpg-mini");
@@ -642,13 +706,24 @@ function rpgRenderBattle(app) {
     const hp = Math.max(0, e.hp), pct = Math.round(hp / e.maxhp * 100);
     const seen = d.codex[e.id];
     const w = seen && seen.weak.length ? seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "弱点？";
-    card.innerHTML = `<span class="rpg-enemy-ic">${e.ref.ic}</span><b>${e.ref.n}</b>` +
+    const gone = e.ref.kind === "tourist" ? "帰った" : "たおした";
+    card.appendChild(rpgMakeSprite(e.ref.ic, b.boss ? 84 : 58, "enemy"));
+    const info = el("div", "rpg-enemy-info");
+    info.innerHTML = `<b>${e.ref.n}</b>` +
       `<span class="rpg-hpbar"><span style="width:${pct}%"></span></span>` +
-      `<small>${e.alive ? w : "たおした"}</small>`;
+      `<small>${e.alive ? w : gone}</small>`;
+    card.appendChild(info);
     if (e.alive) card.onclick = () => rpgSelectTarget(i);
     ev.appendChild(card);
   });
   app.appendChild(ev);
+  // ミミの状態異常
+  const stk = Object.keys(RPG_STATUS).filter(k => b.pstatus[k] > 0);
+  if (stk.length) {
+    const sr = el("div", "rpg-status");
+    sr.innerHTML = stk.map(k => `<span class="rpg-stchip" title="${RPG_STATUS[k].d}">${RPG_STATUS[k].ic} ${RPG_STATUS[k].n}</span>`).join("");
+    app.appendChild(sr);
+  }
 
   // プレイヤーHUD
   const hud = el("div", "rpg-bhud");
@@ -668,9 +743,10 @@ function rpgRenderBattle(app) {
   } else if (b.sub === "skills") {
     d.skills.forEach(id => {
       const sk = RPG_SKILLS[id];
-      const can = d.mp >= sk.mp;
+      const sealed = sk.mp > 0 && b.pstatus.seal > 0;
+      const can = d.mp >= sk.mp && !sealed;
       const btn = el("button", "rpg-cmdbtn" + (can ? "" : " off"));
-      btn.innerHTML = `<b>${RPG_ELEM_IC[sk.el]} ${sk.n}</b><small>${sk.el === "heal" ? "回復" : RPG_ELEM[sk.el]}${sk.mp ? " MP" + sk.mp : ""}</small>`;
+      btn.innerHTML = `<b>${RPG_ELEM_IC[sk.el]} ${sk.n}</b><small>${sealed ? "🍙封じ中" : (sk.el === "heal" ? "回復" : RPG_ELEM[sk.el]) + (sk.mp ? " MP" + sk.mp : "")}</small>`;
       btn.disabled = !can; btn.onclick = () => rpgUseSkill(id);
       cmd.appendChild(btn);
     });
