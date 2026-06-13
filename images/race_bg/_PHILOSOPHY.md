@@ -1,0 +1,13 @@
+# Liminal Horizons — 暁から宵へ
+
+**Philosophy.** A horizon is not a line but a threshold — the place where the world keeps its distance and the sky does its quiet, enormous work. This movement treats the far backdrop of a race not as scenery but as *weather of the soul*: a single, unbroken atmosphere that holds the whole field in its light. The drama belongs to the running; the sky only has to breathe. So the work withdraws. It offers depth without clutter, grandeur without noise, and a stillness meticulously tuned so that anything placed in front of it — dragons, dust, a roaring crowd — reads instantly and cleanly.
+
+**Space and form.** Everything recedes. Mountains are not drawn so much as *implied*, each ridge a softer echo of the one behind it, dissolving toward the sky until distance and air become the same substance. The horizon sits low, a calm shelf in the bottom third, leaving the upper frame to vast, patient gradient. Forms are simple and few — a gate, a grandstand, three folds of land — rendered as the master renders: by knowing exactly what to leave out.
+
+**Color and light.** A single time of day governs a single, cohesive palette, mixed with the patience of someone glazing oil in thin, repeated layers. Color is never flat; it is a gradient that climbs the sky and a glow that pools around the sun, warm bleeding into cool through a band of luminous haze at the horizon. The light source is soft, generous, and low — never a hard disc but a presence, felt before it is seen.
+
+**Scale, rhythm, atmosphere.** The composition is built on aerial perspective — the painter's oldest, most painstaking trick — where contrast and saturation fall away with depth so the eye reads miles of distance in a few centimetres of gradient. Soft cloud-banks drift with weightless asymmetry; a faint veil of mist softens every far edge. Nothing is sharp that should be distant. The result must feel like air you could walk into.
+
+**Craft.** This is meant to look labored over — the product of deep expertise, painstaking attention, master-level execution. Every gradient stop is placed with intention; every silhouette is hazed to exactly the right whisper of contrast; the palette is calibrated so it can sit behind motion and chaos and never fight it. It should look like it took countless hours, and like it was made by someone at the absolute top of their field who chose, above all, restraint.
+
+**The set.** Five dawns-to-darks share one horizon — morning, day, golden hour, dusk, night — so that climbing through the day becomes climbing through the light. The land never moves; only the sky grows up and grows old. Consistency of composition, infinite variety of atmosphere.

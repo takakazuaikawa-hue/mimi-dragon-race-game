@@ -1738,6 +1738,18 @@ function renderSettings() {
     app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク）。レースの着順・オッズ・配当の計算には触れません。"));
   }
 
+  // おまけ：エンディング＆スタッフロール（表示専用。進行に関係なくいつでも観られる）。
+  app.appendChild(el("div", "as-sec", "おまけ"));
+  const edRow = el("div", "set-row",
+    `<span class="set-ic">🎬</span><span class="set-tx"><span class="set-nm">エンディングを観る</span><span class="set-sub">送り出し＋スタッフロール</span></span>`);
+  const edBtn = el("button", "set-toggle on", "▶ 再生");
+  edBtn.onclick = () => {
+    if (window.Sfx && Sfx.play) Sfx.play("click");
+    if (window.Ending && Ending.play) Ending.play();
+  };
+  edRow.appendChild(edBtn);
+  app.appendChild(edRow);
+
   app.appendChild(el("div", "set-ver", "聖龍爆走録ミミ"));
 
   const actions = el("div", "actions");
@@ -1771,16 +1783,16 @@ function renderMall() {
   _mtop.querySelector(".info-q").onclick = () => showInfoPopup("🛍️ モールの遊び方",
     `<div class="mm-row"><span class="mm-ic">👤</span><div><b>未購入はシルエット</b><small>買うと姿が見られる。集める楽しみ！</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">👗</span><div><b>着替えは無料</b><small>所持している服はいつでも切替OK。レース結果には影響しない。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🏝️</span><div><b>モール探検</b><small>ミニゲームで衣装やかけらが手に入る。コインは使わない。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🏬</span><div><b>巨大モール大冒険</b><small>1Fから屋上まで冒険して衣装GET。コインは使わない。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>解放条件つきの服</b><small>総資産で解放される特別な服もある。</small></div></div>`);
   app.appendChild(_mtop);
-  // ミニゲーム「モールお買い物ダンジョン」への入口（ローグライク・衣装やかけらが手に入る・表示メタ）
-  if (typeof renderMallDungeon === "function") {
+  // ミニゲーム「巨大モール大冒険」への入口（一人称ダンジョンRPG・衣装が手に入る・表示メタ）
+  if (typeof renderMallRpg === "function") {
     const dg = el("button", "mall-dgbtn");
-    const _md = (state.player.dungeon || {});
-    dg.innerHTML = `<span class="mall-dgbtn-ic">🏝️</span><span class="mall-dgbtn-tx"><b>リゾートモール探検</b>` +
-      `<small>昼の巨大モールをめぐって衣装GET — 放送・セール・スタンプラリー${_md.bestF ? `　🎫最多${_md.bestF}個` : ""}</small></span><span class="mall-dgbtn-go">出発 ▶</span>`;
-    dg.onclick = () => renderMallDungeon();
+    const _rpg = (state.player.rpg || {});
+    dg.innerHTML = `<span class="mall-dgbtn-ic">🏬</span><span class="mall-dgbtn-tx"><b>巨大モール大冒険</b>` +
+      `<small>1Fから🌿屋上まで・観光客や魔物と戦い衣装GET${_rpg.lv ? `　🧝Lv${_rpg.lv}${_rpg.cleared ? "・🌿制覇" : ""}` : ""}</small></span><span class="mall-dgbtn-go">冒険 ▶</span>`;
+    dg.onclick = () => renderMallRpg();
     app.appendChild(dg);
   }
 
