@@ -1007,15 +1007,26 @@ function rpgDrawIcon(ctx, ic, r, cx, cy) {
 // 絵文字を低解像canvasに描いてCSSでpixelated拡大＝ドット絵風スプライト
 function rpgMakeSprite(emoji, disp, cls) {
   const cv = el("canvas", "rpg-spr" + (cls ? " " + cls : ""));
-  const R = 26;
+  const R = 128;                                  // 高解像＝なめらか（アート無し時のフォールバック品質UP）
   cv.width = R; cv.height = R;
   cv.style.width = (disp || 56) + "px"; cv.style.height = (disp || 56) + "px";
   const ctx = cv.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  ctx.font = Math.round(R * 0.82) + "px serif";
+  ctx.imageSmoothingEnabled = true;
+  ctx.font = Math.round(R * 0.8) + "px serif";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(emoji, R / 2, R / 2 + 1);
+  ctx.fillText(emoji, R / 2, R / 2 + 4);
   return cv;
+}
+// ★アート組み込み口：images/rpg/enemies/<id>.webp があればそれを、無ければ絵文字に自動フォールバック。
+//   ＝あなたがアートを置くだけでコード変更なしに切り替わる。
+function rpgEnemyVisual(id, emoji, disp, cls) {
+  const img = document.createElement("img");
+  img.className = "rpg-spr rpg-img" + (cls ? " " + cls : "");
+  img.alt = ""; img.decoding = "async";
+  img.style.width = (disp || 56) + "px"; img.style.height = (disp || 56) + "px";
+  img.src = "images/rpg/enemies/" + id + ".webp";
+  img.onerror = () => { const s = rpgMakeSprite(emoji, disp, cls); if (img.parentNode) img.parentNode.replaceChild(s, img); };
+  return img;
 }
 function rpgMiniMap() {
   const wrap = el("div", "rpg-mini");
@@ -1076,7 +1087,7 @@ function rpgRenderBattle(app) {
       card.appendChild(ib);
     }
     if (b.target === i && e.alive) card.appendChild(el("div", "rpg-reticle", "▼"));
-    card.appendChild(rpgMakeSprite(e.ref.ic, b.boss ? 96 : 60, "enemy"));
+    card.appendChild(rpgEnemyVisual(e.id, e.ref.ic, b.boss ? 96 : 60, "enemy"));
     card.appendChild(el("div", "rpg-enemy-shadow"));
     const info = el("div", "rpg-enemy-info");
     info.innerHTML = `<b>${e.ref.n}</b>` +

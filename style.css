@@ -3738,7 +3738,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border:2px solid rgba(120,96,160,.4); background:#1a1426; box-shadow:0 6px 26px rgba(0,0,0,.4); }
 .rpg-view.hd { image-rendering:auto; filter:contrast(1.05) saturate(1.12) brightness(1.02); }
 /* ドット絵風スプライト（絵文字を低解像→pixelated拡大） */
-.rpg-spr { image-rendering:pixelated; image-rendering:crisp-edges; display:block; }
+.rpg-spr { image-rendering:auto; display:block; }
 .rpg-spr.enemy { animation:rpgbob 1.4s ease-in-out infinite; }
 @keyframes rpgbob { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-4px); } }
 .rpg-enemy-info { display:flex; flex-direction:column; align-items:center; gap:4px; width:100%; }
@@ -4082,3 +4082,6 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   background:radial-gradient(ellipse, rgba(0,0,0,.55), rgba(0,0,0,0) 72%); }
 .rpg-enemy.sel { filter:drop-shadow(0 0 12px rgba(255,95,162,.65)); }
 @keyframes rpgfoein { 0%{ opacity:0; transform:translateY(-10px) scale(.88); } 100%{ opacity:1; transform:translateY(0) scale(1); } }
+
+/* アート差し込み口：画像があれば滑らかに表示（無ければ絵文字キャンバスにフォールバック） */
+.rpg-spr.rpg-img { object-fit:contain; image-rendering:auto; display:block; }
