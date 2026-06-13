@@ -277,6 +277,49 @@ function rpgIsoArena(ctx, env) {
 }
 
 const shots = [];
+// ★攻撃モーションのキーフレーム実証（予備動作/着弾）＝canvasで本当に表現できるかの検証
+function rpgAttackKF(ctx, env) {
+  const W = env.W, H = env.H, A = env.accent, n = env.n || 2;
+  const o = env.o || {}; // { mimiDx, mimiDy, tgt, tgtDx, tgtDy, flashA, burstCol, burstN, burstR, charge, num }
+  const rgb = (a, k) => `rgb(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0})`;
+  const poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+  const ell = (x, y, rw, rh, c) => { ctx.fillStyle = c; ctx.beginPath(); for (let a = 0; a < 6.5; a += 0.22) { const px = x + Math.cos(a) * rw, py = y + Math.sin(a) * rh; a === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); } ctx.fill(); };
+  const circ = (x, y, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+  const L = rpgIsoLayout(W, H, n);
+  // 背景（昼）
+  let sg = ctx.createLinearGradient(0, 0, 0, H * 0.62); sg.addColorStop(0, "rgb(130,198,234)"); sg.addColorStop(1, "rgb(222,240,250)"); ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.62);
+  let se = ctx.createLinearGradient(0, H * 0.42, 0, H * 0.64); se.addColorStop(0, "rgb(72,176,216)"); se.addColorStop(1, "rgb(40,135,185)"); ctx.fillStyle = se; ctx.fillRect(0, H * 0.42, W, H * 0.22);
+  const dp = 16; poly([L.left, L.bot, [L.bot[0], L.bot[1] + dp], [L.left[0], L.left[1] + dp]], rgb(A, 0.45)); poly([L.bot, L.right, [L.right[0], L.right[1] + dp], [L.bot[0], L.bot[1] + dp]], rgb(A, 0.34));
+  let pg = ctx.createLinearGradient(0, L.pcy - L.pdh, 0, L.pcy + L.pdh); pg.addColorStop(0, "rgb(196,206,218)"); pg.addColorStop(1, "rgb(238,242,247)"); poly([L.top, L.right, L.bot, L.left], pg);
+  // 敵
+  L.slots.forEach((s, i) => {
+    const isT = i === (o.tgt == null ? 0 : o.tgt);
+    const kx = isT ? (o.tgtDx || 0) : 0, ky = isT ? (o.tgtDy || 0) : 0;
+    ell(s.x, s.y, 26, 10, "rgba(0,0,0,0.30)");
+    let col = [220, 150, 180];
+    circ(s.x + kx, s.y - 28 + ky, 23, rgb(col, 1));
+    if (isT && o.flashA) circ(s.x + kx, s.y - 28 + ky, 23, `rgba(255,255,255,${o.flashA})`); // 被弾フラッシュ
+  });
+  // ミミ（オフセット＝予備動作で引く／踏み込みで寄る）
+  const mx = L.mimi.x + (o.mimiDx || 0), my = L.mimi.y + (o.mimiDy || 0);
+  ell(L.mimi.x, L.mimi.y, 27, 11, "rgba(0,0,0,0.30)");
+  if (o.charge) circ(mx, my - 30, 30, "rgba(120,200,255,0.35)"); // チャージ発光
+  circ(mx, my - 30, 26, "rgb(255,120,170)");
+  // 着弾バースト（放射パーティクル）
+  if (o.burstN) {
+    const t = o.tgt == null ? 0 : o.tgt, s = L.slots[t], bx = s.x + (o.tgtDx || 0), by = s.y - 28 + (o.tgtDy || 0);
+    for (let k = 0; k < o.burstN; k++) { const a = (k / o.burstN) * 6.28, r = (o.burstR || 30) * (0.5 + (k % 3) * 0.25); circ(bx + Math.cos(a) * r, by + Math.sin(a) * r * 0.9, 3 + (k % 2) * 2, o.burstCol || "rgba(255,255,255,0.9)"); }
+    circ(bx, by, (o.burstR || 30) * 0.5, "rgba(255,255,255,0.85)");
+  }
+  // ダメージ数字の位置（枠で示す）
+  if (o.num) { const t = o.tgt == null ? 0 : o.tgt, s = L.slots[t]; ctx.fillStyle = "rgb(255,228,94)"; ctx.fillRect(s.x - 20 + (o.tgtDx || 0), s.y - 90, 40, 18); }
+}
+[["anticipation", { charge: true, mimiDx: -14, mimiDy: 8 }], ["impact", { mimiDx: 30, mimiDy: -10, tgt: 0, tgtDx: 14, flashA: 0.85, burstN: 14, burstR: 34, burstCol: "rgba(255,255,255,0.95)", num: 1 }], ["fire", { mimiDx: 24, mimiDy: -6, tgt: 0, tgtDx: 10, flashA: 0.5, burstN: 16, burstR: 36, burstCol: "rgba(255,150,60,0.95)", num: 1 }]].forEach(([name, o]) => {
+  const env = { W: 520, H: 320, accent: FLOORS[0].accent, n: 3, o };
+  const ctx = new Ctx(env.W, env.H); rpgAttackKF(ctx, env);
+  const fn = `/tmp/kf_${name}.png`; fs.writeFileSync(fn, png(env.W, env.H, ctx.buf)); console.log("wrote", fn);
+});
+
 // 戦闘シーン全体の構図検証（ネームプレート/HP/予告/選択/手番）
 function rpgBattleMock(ctx, env) {
   const W = env.W, H = env.H, A = env.accent, sunset = env.sunset, n = env.n || 2, ph = (env.t || 0) / 1000;
