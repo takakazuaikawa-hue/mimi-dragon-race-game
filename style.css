@@ -3791,3 +3791,103 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-resbox.bad { background:rgba(60,40,46,.7); border:1px solid rgba(200,120,140,.4); color:#f5dfe4; }
 .rpg-res-lv { color:#ffd98a; font-weight:700; margin-top:6px; }
 .rpg-res-outfit { color:#ffd98a; font-weight:700; margin-top:8px; }
+
+/* =========================================================================
+   🗝️ 巨大モール大冒険 — 演出・モダン戦闘UI（表示専用）
+   ========================================================================= */
+/* FXレイヤー（body直下・再描画に影響されない） */
+#rpg-fx { position:fixed; inset:0; pointer-events:none; z-index:99999; overflow:hidden; }
+.rpg-fxnum { position:fixed; transform:translate(-50%,-50%); font-weight:900; font-size:26px;
+  color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.5),0 0 8px rgba(0,0,0,.4); animation:rpgnum .92s ease-out forwards; }
+.rpg-fxnum.weak { font-size:34px; color:#ffe45e; text-shadow:0 2px 0 #a06800,0 0 12px rgba(255,210,70,.8); }
+.rpg-fxnum.resist { color:#bcd; font-size:22px; }
+.rpg-fxnum.nullx { color:#9aa; font-size:22px; }
+.rpg-fxnum.pdmg { color:#ff6b86; }
+.rpg-fxnum.heal { color:#8cf0a8; }
+@keyframes rpgnum { 0%{ opacity:0; transform:translate(-50%,-20%) scale(.5); } 18%{ opacity:1; transform:translate(-50%,-65%) scale(1.15); } 100%{ opacity:0; transform:translate(-50%,-150%) scale(1); } }
+.rpg-fxbanner { position:fixed; left:50%; top:30%; transform:translateX(-50%); font-weight:900; font-size:40px;
+  letter-spacing:2px; color:#fff; text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 16px rgba(0,0,0,.4); animation:rpgban .9s ease-out forwards; white-space:nowrap; }
+.rpg-fxbanner.weak { color:#ffe45e; }
+.rpg-fxbanner.more { color:#7ff0ff; font-size:46px; }
+.rpg-fxbanner.miss { color:#cfd6e0; font-size:34px; }
+.rpg-fxbanner.victory { color:#ffd36e; font-size:48px; }
+.rpg-fxbanner.levelup { color:#9cff9c; font-size:44px; }
+.rpg-fxbanner.bad { color:#ff9ab0; font-size:32px; }
+.rpg-fxbanner.down { color:#ff7a92; font-size:44px; }
+@keyframes rpgban { 0%{ opacity:0; transform:translateX(-50%) scale(.4) rotate(-4deg); } 22%{ opacity:1; transform:translateX(-50%) scale(1.12) rotate(0); } 72%{ opacity:1; } 100%{ opacity:0; transform:translateX(-50%) scale(1); } }
+.rpg-fxflash { position:fixed; inset:0; pointer-events:none; }
+.rpg-fxflash.hurt { background:radial-gradient(ellipse at center, rgba(255,40,70,0) 40%, rgba(255,30,60,.5) 100%); animation:rpgflash .5s ease-out forwards; }
+.rpg-fxflash.heal { background:radial-gradient(ellipse at center, rgba(120,255,150,.25) 0%, rgba(120,255,150,0) 70%); animation:rpgflash .5s ease-out forwards; }
+@keyframes rpgflash { 0%{ opacity:0; } 25%{ opacity:1; } 100%{ opacity:0; } }
+/* トランジション（エンカウント白フラッシュ / エレベーター暗転） */
+.rpg-fxcover { position:fixed; inset:0; pointer-events:none; }
+.rpg-fxcover.enc { background:#fff; animation:rpgenc .52s ease-out forwards; }
+@keyframes rpgenc { 0%{ opacity:0; } 12%{ opacity:.9; } 100%{ opacity:0; } }
+.rpg-fxcover.elev { background:linear-gradient(180deg,#1a1f2e,#0b0e16); animation:rpgelev .76s ease-in-out forwards; }
+@keyframes rpgelev { 0%{ clip-path:inset(0 0 100% 0); } 45%{ clip-path:inset(0 0 0 0); } 55%{ clip-path:inset(0 0 0 0); } 100%{ clip-path:inset(100% 0 0 0); } }
+/* ヒット演出 */
+.rpg-hit { animation:rpghit .42s ease-out; }
+@keyframes rpghit { 0%,100%{ filter:none; transform:translateX(0); } 15%{ filter:brightness(3.2) saturate(.3); transform:translateX(-5px); } 35%{ transform:translateX(5px); } 55%{ transform:translateX(-3px); } 75%{ transform:translateX(2px); } }
+#app.rpg-shake { animation:rpgshake .4s; }
+@keyframes rpgshake { 0%,100%{ transform:translate(0,0); } 20%{ transform:translate(-5px,2px); } 40%{ transform:translate(5px,-2px); } 60%{ transform:translate(-3px,1px); } 80%{ transform:translate(3px,-1px); } }
+.rpg-view { animation:rpgstep .14s ease-out; }
+@keyframes rpgstep { 0%{ transform:scale(1.04); } 100%{ transform:scale(1); } }
+
+/* モダン戦闘ステージ */
+.rpg-stage { margin:8px 0; padding:18px 10px 10px; border-radius:16px;
+  background:radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.10), rgba(20,16,30,.0) 60%),
+             linear-gradient(180deg,#2a2438,#1a1626); border:1px solid rgba(150,120,200,.3);
+  box-shadow:inset 0 10px 40px rgba(0,0,0,.35); overflow:hidden; }
+.rpg-stage.boss { background:radial-gradient(ellipse at 50% 30%, rgba(255,120,140,.16), rgba(20,16,30,0) 60%), linear-gradient(180deg,#352234,#1c1320); }
+.rpg-enemies { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; align-items:flex-end; }
+.rpg-enemy { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; width:118px;
+  padding:8px 8px 10px; background:transparent; border:none; color:#eee; cursor:pointer; }
+.rpg-enemy .rpg-enemy-shadow { width:46px; height:10px; margin-top:-6px; border-radius:50%;
+  background:radial-gradient(ellipse, rgba(0,0,0,.5), rgba(0,0,0,0) 70%); }
+.rpg-enemy.sel .rpg-enemy-info b { color:#ff8fc0; }
+.rpg-enemy.dead { opacity:.3; filter:grayscale(1); }
+.rpg-enemy.dead .rpg-spr { animation:none; transform:rotate(8deg); }
+.rpg-reticle { position:absolute; top:-10px; color:#ff5fa2; font-size:14px; animation:rpgretic 1s ease-in-out infinite; }
+@keyframes rpgretic { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(4px); } }
+.rpg-enemy-info { display:flex; flex-direction:column; align-items:center; gap:3px; width:100%; }
+.rpg-enemy-info b { font-size:13px; }
+.rpg-enemy-info small { font-size:10px; color:#c8bce0; }
+
+/* HP/MPバー（なめらか） */
+.rpg-hpbar { display:block; width:100%; height:8px; background:rgba(0,0,0,.45); border-radius:5px; overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.5); }
+.rpg-hpbar > span { display:block; height:100%; background:linear-gradient(90deg,#e2384f,#ff8a6a); transition:width .35s ease; }
+.rpg-hpbar.big { height:13px; }
+.rpg-mpbar { display:block; width:100%; height:9px; background:rgba(0,0,0,.45); border-radius:5px; overflow:hidden; }
+.rpg-mpbar > span { display:block; height:100%; background:linear-gradient(90deg,#3a6cf0,#6fd0ff); transition:width .35s ease; }
+
+/* ミミのステータスパネル */
+.rpg-bhud { margin:8px 0; padding:10px 14px; border-radius:14px;
+  background:linear-gradient(180deg,rgba(44,36,64,.95),rgba(30,24,44,.95)); border:1px solid rgba(150,120,200,.35); }
+.rpg-bhud-name { font-weight:700; color:#f0e8ff; margin-bottom:6px; }
+.rpg-bhud-name b { color:#ffd98a; }
+.rpg-bar-row { display:flex; align-items:center; gap:8px; margin:4px 0; }
+.rpg-bar-lb { font-size:11px; color:#b9a8d4; width:22px; }
+.rpg-bar-v { font-size:12px; color:#e9e0f5; min-width:56px; text-align:right; }
+
+.rpg-blog { margin:8px 0; min-height:2.6em; padding:8px 12px; border-radius:12px; background:rgba(20,16,30,.5); }
+.rpg-logline.fresh { animation:rpgfresh .35s ease-out; }
+@keyframes rpgfresh { 0%{ opacity:0; transform:translateX(-6px); } 100%{ opacity:1; transform:translateX(0); } }
+
+/* コマンドドック */
+.rpg-cmd { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px; }
+.rpg-cmdbtn { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:13px 12px;
+  background:linear-gradient(180deg,rgba(52,42,72,.96),rgba(40,32,58,.96)); border:1px solid rgba(150,120,200,.4);
+  border-radius:13px; color:#fff; cursor:pointer; transition:transform .08s, filter .12s; box-shadow:0 2px 0 rgba(0,0,0,.3); }
+.rpg-cmdbtn:active { transform:translateY(2px); box-shadow:none; filter:brightness(1.15); }
+.rpg-cmdbtn small { color:#b9a8d4; font-size:11px; }
+.rpg-cmdbtn.main { background:linear-gradient(135deg,#6b48a0,#8a5fce); }
+.rpg-cmdbtn.off { opacity:.4; box-shadow:none; }
+.rpg-cmdbtn.back { grid-column:1 / -1; align-items:center; }
+.rpg-cmdbtn.el-fire { border-left:4px solid #ff7a4a; }
+.rpg-cmdbtn.el-ice { border-left:4px solid #6fd0ff; }
+.rpg-cmdbtn.el-elec { border-left:4px solid #ffd24a; }
+.rpg-cmdbtn.el-force { border-left:4px solid #b07aff; }
+.rpg-cmdbtn.el-phys { border-left:4px solid #d8d2c8; }
+.rpg-cmdbtn.el-heal { border-left:4px solid #7af0a0; }
+.rpg-wait { grid-column:1 / -1; text-align:center; color:#cbbce8; padding:14px; font-size:20px; letter-spacing:4px; animation:rpgwait 1s ease-in-out infinite; }
+@keyframes rpgwait { 0%,100%{ opacity:.4; } 50%{ opacity:1; } }
