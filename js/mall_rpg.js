@@ -84,14 +84,13 @@ const RPG_BASE = [
   "#...#..F#",
   "#########",
 ];
-// 巨大ららぽーと風・1F→屋上。far: U=上り階段 / E=ボス(屋上)
-// pal = フロア別の配色（front=正面壁/side=側壁/fl=床/c=天井）
+// 巨大ららぽーと風・1F→屋上。far: U=上り階段 / E=ボス(屋上)。accent=フロアのテーマ色
 const RPG_FLOORS = [
-  { name: "1F ファッション通り",  t: "id",        far: "U", pal: { f: [156, 92, 132], s: [112, 66, 98],  fl: [72, 48, 64], c: [46, 30, 42] } },
-  { name: "2F 雑貨＆ガジェット",  t: "mirrorH",   far: "U", pal: { f: [70, 124, 134], s: [50, 92, 100],  fl: [40, 66, 70], c: [24, 42, 46] } },
-  { name: "3F フードコート",      t: "mirrorV",   far: "U", pal: { f: [170, 112, 66], s: [124, 82, 50],  fl: [82, 56, 38], c: [52, 34, 24] } },
-  { name: "4F シネマ＆ゲーム",    t: "rot180",    far: "U", pal: { f: [86, 84, 158],  s: [60, 58, 114],  fl: [46, 44, 80], c: [28, 26, 52] } },
-  { name: "🌿 屋上ガーデン",      t: "transpose", far: "E", pal: { f: [94, 152, 92],  s: [68, 114, 68],  fl: [64, 104, 60], c: [120, 162, 204] } },
+  { name: "1F ファッション通り",  t: "id",        far: "U", accent: [226, 120, 162] },
+  { name: "2F 雑貨＆ガジェット",  t: "mirrorH",   far: "U", accent: [64, 176, 188] },
+  { name: "3F フードコート",      t: "mirrorV",   far: "U", accent: [244, 152, 66] },
+  { name: "4F シネマ＆ゲーム",    t: "rot180",    far: "U", accent: [120, 116, 214] },
+  { name: "🌿 屋上ガーデン",      t: "transpose", far: "E", accent: [86, 184, 110], sky: true },
 ];
 function rpgTransform(base, kind) {
   const m = base.map(r => r.split("")), n = m.length;
@@ -598,44 +597,64 @@ function rpgRenderExplore(app) {
   app.appendChild(actions);
 }
 
-// グリッド一人称レンダラ（Wizardry風・far→near・フロア別配色＋ドット風）
+// グリッド一人称レンダラ（明るいモール風・店先/ガラス/天窓/つや床）
+function rpgMallPalette(fi) {
+  const fl = RPG_FLOORS[fi] || {}, A = fl.accent || [200, 120, 160], sky = fl.sky, WH = [255, 255, 255];
+  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  return {
+    floor: [208, 202, 192], grout: [176, 168, 156],
+    ceil: sky ? [150, 198, 228] : [234, 236, 238], light: [253, 251, 244],
+    wall: [233, 231, 225], glass: mix(A, WH, 0.6), sign: A, kick: [160, 154, 146], trim: [120, 114, 106],
+  };
+}
 function rpgDrawView(cv) {
   const ctx = cv.getContext("2d");
   ctx.imageSmoothingEnabled = false;
-  const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2;
-  const maxD = 4, p = 0.58;
-  const pal = (RPG_FLOORS[RPG.fi] && RPG_FLOORS[RPG.fi].pal) || { f: [120, 96, 150], s: [86, 70, 112], fl: [60, 50, 74], c: [40, 34, 54] };
-  const col = (rgb, k) => `rgb(${Math.round(rgb[0] * k)},${Math.round(rgb[1] * k)},${Math.round(rgb[2] * k)})`;
-  ctx.fillStyle = col(pal.c, 0.7); ctx.fillRect(0, 0, W, H / 2);
-  ctx.fillStyle = col(pal.fl, 0.6); ctx.fillRect(0, H / 2, W, H / 2);
+  const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2, maxD = 4, p = 0.58;
+  const P = rpgMallPalette(RPG.fi);
+  const col = (rgb, k) => `rgb(${Math.round(Math.min(255, rgb[0] * k))},${Math.round(Math.min(255, rgb[1] * k))},${Math.round(Math.min(255, rgb[2] * k))})`;
+  const sh = d => Math.max(0.6, 1 - d * 0.085);
   const rect = [];
   for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W / 2) * s, t: cy - (H / 2) * s, r: cx + (W / 2) * s, b: cy + (H / 2) * s }; }
-  const poly = (pts, fill) => {
-    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1; ctx.stroke();
+  const yN = (r, f) => r.t + f * (r.b - r.t), xN = (r, f) => r.l + f * (r.r - r.l);
+  const poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+  const line = (x0, y0, x1, y1, c) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.stroke(); };
+  const rectXY = (x0, y0, x1, y1, c) => { ctx.fillStyle = c; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); };
+  // 明るい背景
+  ctx.fillStyle = col(P.ceil, 0.9); ctx.fillRect(0, 0, W, H / 2);
+  ctx.fillStyle = col(P.floor, 0.66); ctx.fillRect(0, H / 2, W, H / 2);
+  // 店先（側壁）
+  const storefront = (near, far, left, k) => {
+    const nx = left ? near.l : near.r, fx = left ? far.l : far.r;
+    const band = (f0, f1, c) => poly([[nx, yN(near, f0)], [fx, yN(far, f0)], [fx, yN(far, f1)], [nx, yN(near, f1)]], c);
+    band(0, 1, col(P.wall, k));
+    band(0.05, 0.24, col(P.sign, k));
+    band(0.30, 0.74, col(P.glass, k));
+    band(0.86, 1, col(P.kick, k));
+    line(nx, near.t, nx, near.b, col(P.trim, k));
+    line(fx, far.t, fx, far.b, col(P.trim, k));
   };
-  const sh = (depth) => Math.max(0.25, 1 - depth * 0.17);
-  // 正面壁にレンガ模様
-  const bricks = (r) => {
-    ctx.save(); ctx.beginPath(); ctx.rect(r.l, r.t, r.r - r.l, r.b - r.t); ctx.clip();
-    ctx.strokeStyle = "rgba(0,0,0,0.16)"; ctx.lineWidth = 1;
-    const rows = 5, rh = (r.b - r.t) / rows, cw = (r.r - r.l) / 4;
-    for (let i = 1; i < rows; i++) { const y = r.t + i * rh; ctx.beginPath(); ctx.moveTo(r.l, y); ctx.lineTo(r.r, y); ctx.stroke(); }
-    for (let i = 0; i < rows; i++) { const y = r.t + i * rh, off = (i % 2) * cw / 2; for (let xx = r.l + off; xx < r.r; xx += cw) { ctx.beginPath(); ctx.moveTo(xx, y); ctx.lineTo(xx, y + rh); ctx.stroke(); } }
-    ctx.restore();
+  // 正面の店（行き止まり）
+  const facade = (r, k) => {
+    poly([[r.l, r.t], [r.r, r.t], [r.r, r.b], [r.l, r.b]], col(P.wall, k));
+    rectXY(r.l, yN(r, 0.06), r.r, yN(r, 0.27), col(P.sign, k));
+    rectXY(r.l, yN(r, 0.33), r.r, yN(r, 0.83), col(P.glass, k));
+    for (let m = 1; m < 4; m++) { const x = xN(r, m / 4); line(x, yN(r, 0.33), x, yN(r, 0.83), col(P.trim, k)); }
+    rectXY(r.l, yN(r, 0.83), r.r, yN(r, 0.92), col(P.kick, k));
   };
   for (let c = maxD; c >= 1; c--) {
-    const near = rect[c - 1], far = rect[c];
+    const near = rect[c - 1], far = rect[c], k = sh(c);
     if (rpgIsWall(rpgAhead(c, 0))) {
-      poly([[near.l, near.t], [near.r, near.t], [near.r, near.b], [near.l, near.b]], col(pal.f, sh(c - 1)));
-      bricks(near);
+      facade(near, sh(c - 1));
     } else {
-      poly([[near.l, near.b], [far.l, far.b], [far.r, far.b], [near.r, near.b]], col(pal.fl, sh(c)));
-      poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], col(pal.c, sh(c) * 0.82));
-      if (rpgIsWall(rpgAhead(c, -1))) poly([[near.l, near.t], [far.l, far.t], [far.l, far.b], [near.l, near.b]], col(pal.s, sh(c)));
-      if (rpgIsWall(rpgAhead(c, 1))) poly([[near.r, near.t], [far.r, far.t], [far.r, far.b], [near.r, near.b]], col(pal.s, sh(c)));
+      poly([[near.l, near.b], [far.l, far.b], [far.r, far.b], [near.r, near.b]], col(P.floor, k));
+      line(far.l, far.b, far.r, far.b, col(P.grout, k));
+      [0.33, 0.66].forEach(fr => line(xN(near, fr), near.b, xN(far, fr), far.b, col(P.grout, k * 0.92)));
+      poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], col(P.ceil, k));
+      poly([[xN(near, 0.42), near.t], [xN(far, 0.42), far.t], [xN(far, 0.58), far.t], [xN(near, 0.58), near.t]], col(P.light, k));
+      line(far.l, far.t, far.r, far.t, col(P.light, 1));
+      if (rpgIsWall(rpgAhead(c, -1))) storefront(near, far, true, k);
+      if (rpgIsWall(rpgAhead(c, 1))) storefront(near, far, false, k);
     }
   }
   // 前方アイコン（宝箱/階段/ボス）
@@ -647,9 +666,9 @@ function rpgDrawView(cv) {
     if (ch === "U") { rpgDrawIcon(ctx, "🛗", rect[c], cx, cy); break; }
     if (ch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "🎡", rect[c], cx, cy); break; }
   }
-  // 松明ビネット
-  const g = ctx.createRadialGradient(cx, cy, H * 0.18, cx, cy, H * 0.78);
-  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)");
+  // ごく軽いビネット（モールは明るい）
+  const g = ctx.createRadialGradient(cx, cy, H * 0.3, cx, cy, H * 0.85);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.22)");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
 function rpgDrawIcon(ctx, ic, r, cx, cy) {

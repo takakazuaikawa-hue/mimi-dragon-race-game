@@ -33,47 +33,80 @@ Canvas.prototype.line = function (x0, y0, x1, y1, c) { const dx = Math.abs(x1 - 
 // ---- 迷宮データ（mall_rpg.jsと同じ） ----
 const BASE = ["#########", "#S......#", "#.#####.#", "#.#.T.#.#", "#.#.#.#.#", "#.#.#...#", "#.#.###.#", "#...#..F#", "#########"];
 const FLOORS = [
-  { name: "1F ファッション通り", t: "id", far: "U", pal: { f: [156, 92, 132], s: [112, 66, 98], fl: [72, 48, 64], c: [46, 30, 42] } },
-  { name: "2F 雑貨＆ガジェット", t: "mirrorH", far: "U", pal: { f: [70, 124, 134], s: [50, 92, 100], fl: [40, 66, 70], c: [24, 42, 46] } },
-  { name: "3F フードコート", t: "mirrorV", far: "U", pal: { f: [170, 112, 66], s: [124, 82, 50], fl: [82, 56, 38], c: [52, 34, 24] } },
-  { name: "4F シネマ＆ゲーム", t: "rot180", far: "U", pal: { f: [86, 84, 158], s: [60, 58, 114], fl: [46, 44, 80], c: [28, 26, 52] } },
-  { name: "屋上ガーデン", t: "transpose", far: "E", pal: { f: [94, 152, 92], s: [68, 114, 68], fl: [64, 104, 60], c: [120, 162, 204] } },
+  { name: "1F ファッション通り", t: "id", far: "U", accent: [226, 120, 162] },
+  { name: "2F 雑貨＆ガジェット", t: "mirrorH", far: "U", accent: [64, 176, 188] },
+  { name: "3F フードコート", t: "mirrorV", far: "U", accent: [244, 152, 66] },
+  { name: "4F シネマ＆ゲーム", t: "rot180", far: "U", accent: [120, 116, 214] },
+  { name: "屋上ガーデン", t: "transpose", far: "E", accent: [86, 184, 110], sky: true },
 ];
 const DV = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 function tf(base, k) { let m = base.map(r => r.split("")), n = m.length, o; if (k === "mirrorH") o = m.map(r => r.slice().reverse()); else if (k === "mirrorV") o = m.slice().reverse(); else if (k === "rot180") o = m.slice().reverse().map(r => r.slice().reverse()); else if (k === "transpose") { o = []; for (let x = 0; x < n; x++) { o[x] = []; for (let y = 0; y < n; y++) o[x][y] = m[y][x]; } } else o = m.map(r => r.slice()); return o.map(r => r.join("")); }
 function build(i) { return tf(BASE, FLOORS[i].t).map(r => r.replace("F", FLOORS[i].far)); }
 
 // ---- rpgDrawView を低解像で再現 ----
+function mallPalette(fi) {
+  const A = FLOORS[fi].accent, sky = FLOORS[fi].sky, WH = [255, 255, 255];
+  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  return {
+    floor: [208, 202, 192], grout: [176, 168, 156],
+    ceil: sky ? [150, 198, 228] : [234, 236, 238], light: [253, 251, 244],
+    wall: [233, 231, 225], glass: mix(A, WH, 0.6), sign: A, kick: [160, 154, 146], trim: [120, 114, 106], sky: sky,
+  };
+}
 function drawView(fi, px, py, dir) {
   const map = build(fi).map(r => r.split(""));
   const isWall = (x, y) => (y < 0 || y >= map.length || x < 0 || x >= map[0].length || map[y][x] === "#");
   const ahead = (depth, lat) => { const f = DV[dir], r = DV[(dir + 1) % 4]; return [px + f[0] * depth + r[0] * lat, py + f[1] * depth + r[1] * lat]; };
   const W = 240, H = 150, cx = W / 2, cy = H / 2, cv = new Canvas(W, H);
-  const pal = FLOORS[fi].pal, maxD = 4, p = 0.58;
-  const col = (rgb, k) => [Math.round(rgb[0] * k), Math.round(rgb[1] * k), Math.round(rgb[2] * k)];
-  cv.fillRect(0, 0, W, H / 2, col(pal.c, 0.7));
-  cv.fillRect(0, H / 2, W, H, col(pal.fl, 0.6));
+  const P = mallPalette(fi), maxD = 4, p = 0.58;
+  const col = (rgb, k) => [Math.round(Math.min(255, rgb[0] * k)), Math.round(Math.min(255, rgb[1] * k)), Math.round(Math.min(255, rgb[2] * k))];
+  const sh = d => Math.max(0.6, 1 - d * 0.085);
   const rect = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W / 2) * s, t: cy - (H / 2) * s, r: cx + (W / 2) * s, b: cy + (H / 2) * s }; }
-  const sh = d => Math.max(0.25, 1 - d * 0.17);
+  const yN = (r, f) => r.t + f * (r.b - r.t), xN = (r, f) => r.l + f * (r.r - r.l);
+  // 明るい背景（天井/床）
+  cv.fillRect(0, 0, W, H / 2, col(P.ceil, 0.9));
+  cv.fillRect(0, H / 2, W, H, col(P.floor, 0.66));
+  // 店先（側壁）
+  function storefront(near, far, left, k) {
+    const nx = left ? near.l : near.r, fx = left ? far.l : far.r;
+    const band = (f0, f1, c) => cv.poly([[nx, yN(near, f0)], [fx, yN(far, f0)], [fx, yN(far, f1)], [nx, yN(near, f1)]], c);
+    band(0, 1, col(P.wall, k));
+    band(0.05, 0.24, col(P.sign, k));    // 看板帯
+    band(0.30, 0.74, col(P.glass, k));   // ガラス
+    band(0.86, 1, col(P.kick, k));       // 幅木
+    cv.line(nx, near.t, nx, near.b, col(P.trim, k));
+    cv.line(fx, far.t, fx, far.b, col(P.trim, k));
+  }
+  // 正面の店（行き止まり）
+  function facade(r, k) {
+    cv.poly([[r.l, r.t], [r.r, r.t], [r.r, r.b], [r.l, r.b]], col(P.wall, k));
+    cv.fillRect(r.l, yN(r, 0.06), r.r, yN(r, 0.27), col(P.sign, k));
+    cv.fillRect(r.l, yN(r, 0.33), r.r, yN(r, 0.83), col(P.glass, k));
+    for (let m = 1; m < 4; m++) { const x = xN(r, m / 4); cv.line(x, yN(r, 0.33), x, yN(r, 0.83), col(P.trim, k)); }
+    cv.fillRect(r.l, yN(r, 0.83), r.r, yN(r, 0.92), col(P.kick, k));
+  }
   for (let c = maxD; c >= 1; c--) {
-    const near = rect[c - 1], far = rect[c];
+    const near = rect[c - 1], far = rect[c], k = sh(c);
     if (isWall(ahead(c, 0)[0], ahead(c, 0)[1])) {
-      cv.poly([[near.l, near.t], [near.r, near.t], [near.r, near.b], [near.l, near.b]], col(pal.f, sh(c - 1)));
-      // レンガ
-      const rows = 5, rh = (near.b - near.t) / rows, cw = (near.r - near.l) / 4, dark = col(pal.f, sh(c - 1) * 0.7);
-      for (let i = 1; i < rows; i++) cv.line(near.l, near.t + i * rh, near.r, near.t + i * rh, dark);
-      for (let i = 0; i < rows; i++) { const off = (i % 2) * cw / 2; for (let xx = near.l + off; xx < near.r; xx += cw) cv.line(xx, near.t + i * rh, xx, near.t + (i + 1) * rh, dark); }
+      facade(near, sh(c - 1));
     } else {
-      cv.poly([[near.l, near.b], [far.l, far.b], [far.r, far.b], [near.r, near.b]], col(pal.fl, sh(c)));
-      cv.poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], col(pal.c, sh(c) * 0.82));
-      if (isWall(ahead(c, -1)[0], ahead(c, -1)[1])) cv.poly([[near.l, near.t], [far.l, far.t], [far.l, far.b], [near.l, near.b]], col(pal.s, sh(c)));
-      if (isWall(ahead(c, 1)[0], ahead(c, 1)[1])) cv.poly([[near.r, near.t], [far.r, far.t], [far.r, far.b], [near.r, near.b]], col(pal.s, sh(c)));
+      // 床（つやタイル）＋目地
+      cv.poly([[near.l, near.b], [far.l, far.b], [far.r, far.b], [near.r, near.b]], col(P.floor, k));
+      cv.line(far.l, far.b, far.r, far.b, col(P.grout, k));
+      [0.33, 0.66].forEach(fr => cv.line(xN(near, fr), near.b, xN(far, fr), far.b, col(P.grout, k * 0.92)));
+      // 天井＋天窓ストリップ＋照明ライン
+      cv.poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], col(P.ceil, k));
+      cv.poly([[xN(near, 0.42), near.t], [xN(far, 0.42), far.t], [xN(far, 0.58), far.t], [xN(near, 0.58), near.t]], col(P.light, k));
+      cv.line(far.l, far.t, far.r, far.t, col(P.light, 1));
+      // 側壁＝店先
+      if (isWall(ahead(c, -1)[0], ahead(c, -1)[1])) storefront(near, far, true, k);
+      if (isWall(ahead(c, 1)[0], ahead(c, 1)[1])) storefront(near, far, false, k);
     }
   }
   // アイコン位置（絵文字は描けないので色マーカー）
-  for (let c = 1; c <= maxD; c++) { const a = ahead(c, 0); if (isWall(a[0], a[1])) break; const ch = map[a[1]][a[0]]; if (ch === "T" || ch === "U" || ch === "E") { const r = rect[c], mc = ch === "T" ? [240, 200, 70] : ch === "U" ? [120, 220, 230] : [235, 90, 90]; cv.fillRect((r.l + r.r) / 2 - 6, (r.t + r.b) / 2 - 6, (r.l + r.r) / 2 + 6, (r.t + r.b) / 2 + 6, mc); break; } }
-  // 松明ビネット
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x - cx, y - cy); const t = Math.max(0, Math.min(1, (d - H * 0.18) / (H * 0.6))); const k = 1 - t * 0.55; const i = (y * W + x) * 4; cv.buf[i] *= k; cv.buf[i + 1] *= k; cv.buf[i + 2] *= k; }
+  for (let c = 1; c <= maxD; c++) { const a = ahead(c, 0); if (isWall(a[0], a[1])) break; const ch = map[a[1]][a[0]]; if (ch === "T" || ch === "U" || ch === "E") { const r = rect[c], mc = ch === "T" ? [240, 200, 70] : ch === "U" ? [120, 220, 230] : [235, 90, 90]; cv.fillRect(xN(r, 0.5) - 6, yN(r, 0.5) - 6, xN(r, 0.5) + 6, yN(r, 0.5) + 6, mc); break; } }
+  // ごく軽いビネット（モールは明るい）
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x - cx, y - cy); const t = Math.max(0, Math.min(1, (d - H * 0.3) / (H * 0.6))); const k = 1 - t * 0.22; const i = (y * W + x) * 4; cv.buf[i] *= k; cv.buf[i + 1] *= k; cv.buf[i + 2] *= k; }
   return cv;
 }
 // 2倍nearestで拡大（pixelated表示を再現）
