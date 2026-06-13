@@ -400,20 +400,28 @@ function renderHome() {
   // floor = 画像内の「床の接地ライン」位置（上端からの比率）。ミミの足元がこのラインに合うよう
   // 背景の縦位置を自動調整する（±4%の遊びの範囲・cover縦余白を利用。仕様は docs/HOME_BG_SPEC.md）。
   const HOME_BGS = [
-    // floorDay/floorNight＝床の接地ライン（上端からの比率・実測）。無ければ floor を使う。
+    // floorDay/floorNight＝床の接地ライン（上端からの比率・実測）。無ければ floor。
+    // 屋外ロケ（日替わりローテーション）。images/homebg/<id>_{day,night}.webp。
     { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.73, floorNight: 0.70 },
-    // 自宅＝進行度（総資産レベル0..5）で豪華な部屋へ引っ越し。images/homebg/myroom_t<lvl>_{day,night}.webp を
-    // 置くだけで反映（未生成の段は下の段へフォールバック）。床は届き次第 MYROOM_FLOORS を実測更新。
+    { id: "beach",   day: "images/homebg/beach_day.webp",   night: "images/homebg/beach_night.webp",   floorDay: 0.64, floorNight: 0.64 },
+    { id: "market",  day: "images/homebg/market_day.webp",  night: "images/homebg/market_night.webp",  floorDay: 0.62, floorNight: 0.60 },
+    { id: "onsen",   day: "images/homebg/onsen_day.webp",   night: "images/homebg/onsen_night.webp",   floorDay: 0.73, floorNight: 0.72 },
+    { id: "stable",  day: "images/homebg/stable_day.webp",  night: "images/homebg/stable_night.webp",  floorDay: 0.60, floorNight: 0.60 },
+    { id: "mall",    day: "images/homebg/mall_day.webp",    night: "images/homebg/mall_night.webp",    floorDay: 0.64, floorNight: 0.63 },
+    // 自宅＝進行度（総資産レベル0..5）で豪華な部屋へ引っ越し。images/homebg/myroom_t<lvl>_{day,night}.webp。
     { id: "myroom", myroom: true },
   ];
-  const MYROOM_FLOORS = [0.74, 0.74, 0.74, 0.74, 0.74, 0.74];   // t0..t5
+  const MYROOM_FLOORS = [0.63, 0.63, 0.63, 0.66, 0.72, 0.64];   // t0..t5（実測）
   const bg = el("div", "hl-bg");
   bg.innerHTML = `<img class="hl-bg-img" alt="" decoding="async"><div class="hl-bg-scrim"></div>`;
   (function () {
     let hour = 20, dayIdx = 0;
     try { const now = new Date(); hour = now.getHours(); dayIdx = Math.floor(now.getTime() / 86400000); } catch (e) {}
     const night = !(hour >= 6 && hour < 18);
-    const set = HOME_BGS[dayIdx % HOME_BGS.length];
+    // 配分：偶数日＝自宅(myroom・ホームベース＝引っ越し進行を見せる)／奇数日＝屋外ロケを順番に。
+    const myroomEntry = HOME_BGS.find(b => b.myroom);
+    const outdoor = HOME_BGS.filter(b => !b.myroom);
+    const set = (dayIdx % 2 === 0 && myroomEntry) ? myroomEntry : outdoor[(dayIdx >> 1) % outdoor.length];
     let floorUsed, chain;
     if (set.myroom) {
       // 自宅：現在の総資産レベルの部屋→無ければ下の段→最後はバルコニー/旧背景へ
