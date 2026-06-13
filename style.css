@@ -4373,3 +4373,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-bt-target .rpg-bt-hp { color:#ffcfc0; }
 .rpg-bt-target .rpg-bt-wk { color:#ffe45e; margin-left:auto; }
 .rpg-blog.fixed1 { height:1.5em; overflow:hidden; margin:6px 0 8px; padding:5px 10px; }
+
+/* 敵選択チップ（確実に効くターゲット選択） */
+.rpg-foesel { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+.rpg-foesel-lb { font-size:11px; color:#b9a8d4; }
+.rpg-foechip { display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px 8px; border-radius:10px;
+  background:rgba(255,255,255,.07); border:2px solid transparent; cursor:pointer; min-width:46px; }
+.rpg-foechip.on { border-color:#ff5fa2; background:rgba(255,95,162,.18); box-shadow:0 0 10px rgba(255,95,162,.4); }
+.rpg-foechip .ic { font-size:22px; line-height:1; }
+.rpg-foechip .rpg-hpbar { width:36px; height:5px; }
+.rpg-foechip:active { transform:scale(.95); }
