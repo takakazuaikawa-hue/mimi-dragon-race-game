@@ -900,11 +900,12 @@ function renderHome() {
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。勝てば、いいことがあるかも？</small></div></div>`);
     rail.appendChild(lockedMall);
   }
-  // 図鑑と龍舎は統合（ユーザー要望「図鑑は竜舎でいい」）：龍舎が解放されるまでは📖図鑑をトップナビに、
-  // 解放後は🐲龍舎に集約（図鑑・竜スカウトは龍舎の中の導線から）。アイコンは🐲（🏠暮らしと重複回避）。
+  // 竜まわりナビ：龍舎(ポロ発見=2勝)が解放済みなら🐲龍舎（図鑑・竜スカウトは龍舎の中の導線に集約）。
+  // 図鑑は「第4話＝マクラと推し竜文化」に会ってから解放（ユーザー指定）。龍舎前にマクラに会った稀ケースの
+  // みここで図鑑を単独ナビに。アイコンは🐲（🏠暮らしと重複回避）。
   if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
-    rail.appendChild(navItem("🐲", "龍舎", "ポロと出会った竜たち＋図鑑＋竜スカウト。なでて仲良くなれます。", () => renderStable()));
-  } else {
+    rail.appendChild(navItem("🐲", "龍舎", "ポロと出会った竜たちの拠点。なでて仲良く＋竜スカウト＋（図鑑）。", () => renderStable()));
+  } else if (typeof dexUnlocked === "function" && dexUnlocked()) {
     rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
   }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
@@ -1527,6 +1528,8 @@ function renderStoryChapter(chId) {
   // フォールバック：2勝より先に第3/4章へ到達していた場合のみ、章を開いた時にポロ発見アークを再生。
   // 通常は結果画面の「2勝目」で出会う（js/poro.js）。既存のレース出走ポロ・図鑑は不変＝表示専用。
   if (typeof maybePlayPoroArcOnChapter === "function") maybePlayPoroArcOnChapter(ch.id);
+  // 第4話「マクラと推し竜文化」を開く＝図鑑（推し竜の記録）を解放（ユーザー指定：図鑑は枕に会ってから）。
+  if (ch.id === "4" && typeof setStoryFlag === "function" && !getStoryFlag("metMakura")) setStoryFlag("metMakura", true);
   const app = beginScreen();   // 上部に「← 物語」
   app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
   if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
