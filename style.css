@@ -4097,3 +4097,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-hero-stats b { color:#ffe17a; }
 .rpg-hero-stats .tk { color:#ffd9f6; }
 .rpg-hero-stats .cl { color:#a8ffa8; }
+
+/* 戦闘：手番インジケータ＋コマンドを操作パネル化 */
+.rpg-turnbar { position:absolute; top:8px; left:50%; transform:translateX(-50%); z-index:2;
+  font-size:12px; font-weight:800; padding:3px 14px; border-radius:999px; color:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.4); }
+.rpg-turnbar.you { background:linear-gradient(135deg,#3a8fce,#5fb0e0); }
+.rpg-turnbar.foe { background:linear-gradient(135deg,#9a3b3b,#c85a5a); animation:rpgpulse 1s ease-in-out infinite; }
+.rpg-cmd { background:linear-gradient(180deg, rgba(34,26,48,.55), rgba(18,14,28,.82)); border-radius:16px;
+  padding:10px; gap:10px; box-shadow:0 -3px 18px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05); }

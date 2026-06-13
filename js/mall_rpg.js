@@ -1069,6 +1069,10 @@ function rpgRenderBattle(app) {
     stage.appendChild(bg);
     stage.appendChild(el("div", "rpg-battle-scrim"));
   }
+  // 手番インジケータ（誰の番か常に分かるように）
+  const turn = el("div", "rpg-turnbar " + (b.phase === "cmd" ? "you" : "foe"),
+    b.phase === "cmd" ? "🎮 あなたの番" : (b.phase === "wait" ? "💫 …" : "⚔️ てきのターン"));
+  stage.appendChild(turn);
   const ev = el("div", "rpg-enemies");
   b.enemies.forEach((e, i) => {
     const card = el("button", "rpg-enemy" + (e.alive ? "" : " dead") + (b.target === i ? " sel" : ""));
