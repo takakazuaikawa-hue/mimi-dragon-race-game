@@ -900,11 +900,12 @@ function renderHome() {
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。勝てば、いいことがあるかも？</small></div></div>`);
     rail.appendChild(lockedMall);
   }
-  rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
-  // 泣き虫竜ポロ発見で解放（第4章）。アイコンは🐲（🏠暮らしと重複しないよう）。竜スカウトは
-  // 龍舎内の導線に集約＝トップナビの重複を整理。表示専用＝レース不変。js/poro.js
+  // 図鑑と龍舎は統合（ユーザー要望「図鑑は竜舎でいい」）：龍舎が解放されるまでは📖図鑑をトップナビに、
+  // 解放後は🐲龍舎に集約（図鑑・竜スカウトは龍舎の中の導線から）。アイコンは🐲（🏠暮らしと重複回避）。
   if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
-    rail.appendChild(navItem("🐲", "龍舎", "ポロと出会った竜たちの拠点。なでて仲良く＋竜スカウトもここから。", () => renderStable()));
+    rail.appendChild(navItem("🐲", "龍舎", "ポロと出会った竜たち＋図鑑＋竜スカウト。なでて仲良くなれます。", () => renderStable()));
+  } else {
+    rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
   }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
   rail.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));

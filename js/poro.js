@@ -225,12 +225,19 @@ function renderStable() {
   poroCard.querySelector(".stable-poro-info").appendChild(pet);
   app.appendChild(poroCard);
 
-  // ── スカウトへの導線 ──
+  // ── スカウト／図鑑への導線（トップナビから龍舎に集約） ──
+  const subnav = el("div", "stable-subnav");
   if (poroScoutUnlocked()) {
-    const scoutRow = el("button", "stable-scout-cta", "🔍 竜スカウトへ行く ▶");
+    const scoutRow = el("button", "stable-scout-cta", "🔍 竜スカウトへ行く");
     scoutRow.onclick = () => renderScout();
-    app.appendChild(scoutRow);
+    subnav.appendChild(scoutRow);
   }
+  if (typeof renderCollection === "function") {
+    const dexRow = el("button", "stable-scout-cta stable-dex-cta", "📖 図鑑（記録・ごほうび）");
+    dexRow.onclick = () => renderCollection();
+    subnav.appendChild(dexRow);
+  }
+  app.appendChild(subnav);
 
   // ── 出会った竜の一覧 ──
   const met = poroMetDragonIds().filter(id => id !== "poro");
