@@ -107,21 +107,40 @@ const OUTFITS = [
   { id: "jungle",    name: "ジャングルバニー", flavor: "葉っぱと馬券で武装した、探検スタイル。",         acquire: { price: 15000 } },
   { id: "tarzan",    name: "野生児ターザン",   flavor: "ヒョウ柄をまとった、聖龍島サバイバル仕様。",     acquire: { price: 40000 } },
   { id: "gymhigh",    name: "トレーニングギア", flavor: "絞れた体で、レース前の追い込みも気分から。",       acquire: { price: 10000 } },
-  { id: "drago",      name: "ブランドバニー",   flavor: "黒で統一した、ちょっと背伸びしたバニースタイル。", acquire: { price: 25000 } },
+  { id: "drago",      name: "DRADAを着た女",   flavor: "黒で固めたハイブランドDRADA。背伸びした女の貫禄。", acquire: { price: 25000 } },
   { id: "dragonrobe", name: "竜帝の戴冠衣",     flavor: "聖龍の翼と宝玉をまとう、最上位の正装。",           acquire: { price: 80000 } },
-  { id: "maumau",    name: "ナチュラルカジュアル", flavor: "肩の力を抜いた、休日のゆるカジ。",               acquire: { price: 6000 } },
+  { id: "maumau",    name: "プレッピーカジュアル", flavor: "きれいめトラッドな、お嬢様風プレッピー。",       acquire: { price: 6000 } },
   { id: "gymlow",    name: "スポーティMIX",     flavor: "シャツを腰に巻いた、動きやすい運動着。",           acquire: { price: 8000 } },
   { id: "gymmiddle", name: "アクティブフィット", flavor: "絞った体に映える、ベージュのジムスタイル。",       acquire: { price: 9000 } },
-  { id: "leonmall",  name: "もこもこニット",     flavor: "ふわふわカーデで、モールへおでかけ気分。",         acquire: { price: 12000 } },
+  { id: "leonmall",  name: "モールでお買い物",   flavor: "ふわふわカーデで、モールへおでかけ気分。",         acquire: { price: 12000 } },
   { id: "darugi",    name: "ゆるだぼルーム着",   flavor: "おうちでだらける日の、ゆるゆる部屋着。",           acquire: { price: 7000 } },
-  { id: "mannel",    name: "フランネルシャツ",   flavor: "あったか素材の、気どらない普段着。",               acquire: { price: 9500 } },
-  { id: "merine",    name: "メリノニットワンピ", flavor: "やわらか上質ニットで、しっとり大人っぽく。",       acquire: { price: 14000 } },
+  { id: "mannel",    name: "USANNEL",           flavor: "あったかフランネルが看板のブランド USANNEL。",     acquire: { price: 9500 } },
+  { id: "merine",    name: "フランスブランド",   flavor: "やわらか上質ニットの、フレンチメゾン仕立て。",     acquire: { price: 14000 } },
   { id: "draspo",    name: "ドラゴスポーティ",   flavor: "竜モチーフのスポーツミックス。",                   acquire: { price: 16000 } },
-  { id: "doraqi",    name: "ドラキィスーツ",     flavor: "ちょっと小悪魔な、いたずらコーデ。",               acquire: { price: 18000 } },
-  { id: "drajela",   name: "ドラジェラドレス",   flavor: "ひらりと揺れる、竜飾りのドレス。",                 acquire: { price: 22000 } },
-  { id: "mermes",    name: "メルメス・バニー",   flavor: "最高級メゾンの黒バニー。一生モノの輝き。",         acquire: { price: 120000 } }
+  { id: "doraqi",    name: "ドラキー・ホーテ",   flavor: "なんでも揃う殿堂のノリで、小悪魔いたずらMIX。",   acquire: { price: 18000 } },
+  { id: "drajela",   name: "メゾン・ドラジェラ", flavor: "ひらりと揺れる竜飾り、メゾンの一着。",             acquire: { price: 22000 } },
+  { id: "mermes",    name: "メルメス・バニー",   flavor: "最高級メゾンの黒バニー。一生モノの輝き。",         acquire: { price: 120000 } },
+  // ── 追加バッチ：素寒貧スタート＋ファッション/ショッピング系（全表情の透過確認済みのみ登録） ──
+  { id: "sukanpin",      name: "素寒貧ミミ",         flavor: "借金と空腹だけを抱えて流れ着いた、ボロ布一枚の出発点。", acquire: { free: true } },
+  { id: "fashioncenter", name: "ファッションセンター", flavor: "両手にプチプラの大きな袋。賢くおしゃれ、が合言葉。",     acquire: { price: 1500 } },
+  { id: "DU",            name: "DUプチプラMIX",      flavor: "ロゴトートにデニムショートパンツ。今どきの古着MIX。",   acquire: { price: 2000 } },
+  { id: "amekaji",       name: "アメカジ",           flavor: "デニムシャツを腰に巻いた、こなれアメリカンカジュアル。", acquire: { price: 4000 } },
+  { id: "departgirl",    name: "デパートガール",     flavor: "クリーム色のセットアップ。一流デパートの制服みたいな品。", acquire: { price: 30000 } },
+  // ── 透過修正バッチ（全表情の透過確認済み） ──
+  { id: "denim",         name: "デニムスタイル",     flavor: "白Tにハイウエストデニム。清潔感のど真ん中。",           acquire: { price: 3000 } },
+  { id: "swimsuitCHEAP", name: "お手頃水着",         flavor: "シンプルなビキニにビーサン。海開きの定番。",           acquire: { price: 3000 } },
+  { id: "street",        name: "ストリート古着",     flavor: "ビッグカーデにロックT、チェック巻きスカート。",         acquire: { price: 3500 } },
+  { id: "suit",          name: "就活スーツ",         flavor: "社員証をぶら下げた、きっちりリクルートスタイル。",       acquire: { price: 5000 } },
+  { id: "darapike",      name: "もこもこルームウェア", flavor: "ふわふわパイル地で、おうち時間がとろける。",            acquire: { price: 7000 } },
+  { id: "bangya",        name: "バンギャ",           flavor: "病みかわパンクに網タイツ。今夜はライブ参戦。",           acquire: { price: 9000 } },
+  { id: "swimsuitMID",   name: "リゾート水着",       flavor: "シアー羽織りとトロピカルカクテルで南国気分。",           acquire: { price: 12000 } },
+  { id: "taipei",        name: "台北チャイナドレス", flavor: "深紅のチャイナにタッセル。夜市の主役。",               acquire: { price: 18000 } },
+  { id: "swimsuitHIGH",  name: "VIP水着",            flavor: "金糸あしらいのラグジュアリー水着とシャンパン。",         acquire: { price: 45000 } },
+  { id: "kigurumi",      name: "遊園地",             flavor: "セイリュランドのうさぎ着ぐるみ。一日中アトラクション気分。", acquire: { price: 6000 } },
+  { id: "jirai",         name: "地雷系",             flavor: "病みかわピンク×黒に量産ベア。儚げで危うい夜の装い。",   acquire: { price: 9000 } },
+  { id: "secret_sukanpin", name: "素寒貧・夜",       flavor: "あの日のボロ布を、なぜか色っぽく着崩して。総資産1億の隠し。", acquire: { assets: 100000000 } }
 ];
-const DEFAULT_OUTFIT = "buniqro";
+const DEFAULT_OUTFIT = "sukanpin";   // ゲーム開始当初は素寒貧（無料・新規プレイヤーの既定。既存セーブは保存済みoutfitを維持）
 
 function outfitById(id) { return OUTFITS.find(o => o.id === id) || OUTFITS.find(o => o.id === DEFAULT_OUTFIT); }
 function currentOutfitId() { return (state.player && state.player.outfit) || DEFAULT_OUTFIT; }

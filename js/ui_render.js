@@ -35,7 +35,7 @@ function updateHeader() {
 // =====================================================================
 const SCREEN_DEPTH = {
   title: 0, home: 1,
-  race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2,
+  race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2, stable: 2, scout: 2,
   story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3,
   story_read: 4, race_run: 4, result: 5, analysis: 6
 };
@@ -76,7 +76,7 @@ function beginScreen() {
   // quick back button pinned at the very top of sub-pages (sticky), so you don't have to
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
-    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home",
+    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home",
     life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
@@ -216,6 +216,41 @@ function showTitleSwitcher() {
   ov.appendChild(box);
   ov.onclick = (e) => { if (e.target === ov) close(); };
   document.body.appendChild(ov);
+}
+
+// 🛍️ モール解放判定：レースで初めて的中すると解放（flags.everHit）。既存セーブ救済として
+// 単勝勝利歴・衣装の購入/入手歴・着替え歴があれば解放済み扱い（巻き戻さない）。表示専用。
+function mallUnlocked() {
+  const p = state.player || {}; const f = p.flags || {};
+  return !!(f.everHit || f.mallIntroSeen || (p.wins || 0) >= 1 ||
+    (p.outfitsBought && p.outfitsBought.length) || (p.outfitsWon && p.outfitsWon.length) ||
+    (p.outfit && typeof DEFAULT_OUTFIT !== "undefined" && p.outfit !== DEFAULT_OUTFIT));
+}
+
+// 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。
+function showInfoPopup(title, html) {
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop infopop");
+  box.innerHTML = `<div class="navpop-t">${title}</div><div class="infopop-body">${html}</div>`;
+  const btns = el("div", "navpop-btns");
+  const ok = el("button", "navpop-go", "わかった！"); ok.onclick = () => ov.remove();
+  btns.appendChild(ok); box.appendChild(btns);
+  ov.appendChild(box);
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+
+// 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
+// 設計：1通貨1役割／コイン→総資産→解放（物語・ランク・暮らしP）の一方向の流れを見せる。
+function showMoneyMap() {
+  showInfoPopup("💰 お金のしくみ", `
+    <div class="mm-flow">🪙 勝つ → 🏦 育つ → 🔓 解放される</div>
+    <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・ログボで増え、賭け・お買い物で減る。<u>減っても物語は戻らない</u>。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🏦</span><div><b>総資産</b><small>人生の最高到達点（下がらない）。コインの最高記録＋生活資産＋名声。<u>物語・衣装・ランクを解放するカギ</u>。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🌱</span><div><b>暮らしP</b><small>総資産が伸びると貯まる。くらしツリーの解放に使う。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🏅</span><div><b>ランク</b><small>出走と勝利で昇格。新しいレースが解放される。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🎫</span><div><b>メダル・かけら</b><small>モール探検専用。常連特典と衣装交換に。コインとは別のお財布。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">💗</span><div><b>視聴者・いいね</b><small>配信のにぎわい（飾り）。勝負には影響しない。</small></div></div>`);
 }
 
 // Minimal-text nav: tapping a menu button opens a small description popup with
@@ -360,12 +395,72 @@ function renderHome() {
     }
   } catch (e) {}
 
-  // 背景ぶち抜き：home_bg.jpg（任意ドロップイン）→ racebg/fire.webp（火山の夜景）
+  // ── ホーム背景：複数ロケーションの日替わりローテーション＋昼夜切替＋接地キャリブレーション ──
+  // 追加方法：images/homebg/<id>_day.webp / <id>_night.webp を置き、HOME_BGS に1行追加するだけ。
+  // floor = 画像内の「床の接地ライン」位置（上端からの比率）。ミミの足元がこのラインに合うよう
+  // 背景の縦位置を自動調整する（±4%の遊びの範囲・cover縦余白を利用。仕様は docs/HOME_BG_SPEC.md）。
+  const HOME_BGS = [
+    // floorDay/floorNight＝床の接地ライン（上端からの比率・実測）。無ければ floor。
+    // 屋外ロケ（日替わりローテーション）。images/homebg/<id>_{day,night}.webp。
+    { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.73, floorNight: 0.70 },
+    { id: "beach",   day: "images/homebg/beach_day.webp",   night: "images/homebg/beach_night.webp",   floorDay: 0.64, floorNight: 0.64 },
+    { id: "market",  day: "images/homebg/market_day.webp",  night: "images/homebg/market_night.webp",  floorDay: 0.62, floorNight: 0.60 },
+    { id: "onsen",   day: "images/homebg/onsen_day.webp",   night: "images/homebg/onsen_night.webp",   floorDay: 0.73, floorNight: 0.72 },
+    { id: "stable",  day: "images/homebg/stable_day.webp",  night: "images/homebg/stable_night.webp",  floorDay: 0.60, floorNight: 0.60 },
+    { id: "mall",    day: "images/homebg/mall_day.webp",    night: "images/homebg/mall_night.webp",    floorDay: 0.64, floorNight: 0.63 },
+    // 自宅＝進行度（総資産レベル0..5）で豪華な部屋へ引っ越し。images/homebg/myroom_t<lvl>_{day,night}.webp。
+    { id: "myroom", myroom: true },
+  ];
+  const MYROOM_FLOORS = [0.63, 0.63, 0.63, 0.66, 0.72, 0.64];   // t0..t5（実測）
   const bg = el("div", "hl-bg");
-  bg.innerHTML =
-    `<img class="hl-bg-img" alt="" decoding="async" src="images/home_bg.jpg"` +
-    ` onerror="this.onerror=null;this.src='images/racebg/fire.webp'">` +
-    `<div class="hl-bg-scrim"></div>`;
+  bg.innerHTML = `<img class="hl-bg-img" alt="" decoding="async"><div class="hl-bg-scrim"></div>`;
+  (function () {
+    let hour = 20, dayIdx = 0;
+    try { const now = new Date(); hour = now.getHours(); dayIdx = Math.floor(now.getTime() / 86400000); } catch (e) {}
+    const night = !(hour >= 6 && hour < 18);
+    // 配分：偶数日＝自宅(myroom・ホームベース＝引っ越し進行を見せる)／奇数日＝屋外ロケを順番に。
+    const myroomEntry = HOME_BGS.find(b => b.myroom);
+    const outdoor = HOME_BGS.filter(b => !b.myroom);
+    const set = (dayIdx % 2 === 0 && myroomEntry) ? myroomEntry : outdoor[(dayIdx >> 1) % outdoor.length];
+    let floorUsed, chain;
+    if (set.myroom) {
+      // 自宅：現在の総資産レベルの部屋→無ければ下の段→最後はバルコニー/旧背景へ
+      const lvl = Math.min(5, (typeof assetLevelOf === "function") ? assetLevelOf(state.player.totalAssets || 0) : 0);
+      const tiers = k => { const a = []; for (let t = lvl; t >= 0; t--) a.push(`images/homebg/myroom_t${t}_${k}.webp`); return a; };
+      floorUsed = MYROOM_FLOORS[lvl] || 0.74;
+      chain = night
+        ? [...tiers("night"), "images/homebg/balcony_night.webp", "images/home_bg.webp", "images/racebg/fire.webp"]
+        : [...tiers("day"), "images/homebg/balcony_day.webp", "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
+    } else {
+      floorUsed = (night ? set.floorNight : set.floorDay) || set.floor || 0.74;
+      chain = night
+        ? [set.night, "images/home_bg.webp", "images/racebg/fire.webp"]
+        : [set.day, set.night, "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
+    }
+    const im = bg.querySelector(".hl-bg-img");
+    let i = 0;
+    im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
+    // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±6vh内でだけ動かす）
+    function calibrate() {
+      try {
+        const vh = window.innerHeight, vw = window.innerWidth;
+        const boxH = vh * 1.12, boxW = vw * 1.12;
+        if (!im.naturalWidth) return;
+        if ((boxW / boxH) >= (im.naturalWidth / im.naturalHeight)) { im.style.top = ""; return; }   // 横長クロップ時は既定のまま
+        const mimiEl = document.querySelector(".hl-mimi");
+        if (!mimiEl) return;
+        const feet = mimiEl.getBoundingClientRect().bottom;
+        let top = feet - floorUsed * boxH;                    // 床ライン(floorUsed)が足元に来るtop(px)
+        top = Math.max(-0.12 * vh, Math.min(0, top));         // 画像が画面から剥がれない範囲にクランプ
+        im.style.top = top + "px";
+      } catch (e) {}
+    }
+    im.onload = () => { requestAnimationFrame(calibrate); setTimeout(calibrate, 450); };
+    if (window._hlBgCal) window.removeEventListener("resize", window._hlBgCal);
+    window._hlBgCal = calibrate;
+    window.addEventListener("resize", calibrate);
+    im.src = chain[0];
+  })();
   app.appendChild(bg);
 
   const wrap = el("div", "hl");
@@ -414,6 +509,9 @@ function renderHome() {
   const sysWrap = el("div", "hl-syswrap");
   const sysBtn = el("button", "hl-sys", "⋯");
   const sysDd = el("div", "hl-dd hidden");
+  const ddMoney = el("button", null, "💰 お金のしくみ");
+  ddMoney.onclick = () => { sysDd.classList.add("hidden"); showMoneyMap(); };
+  sysDd.appendChild(ddMoney);
   const ddTitle = el("button", null, "🏠 タイトルへ"); ddTitle.onclick = () => renderTitle();
   // ⛶ 全画面（Android Chrome等＝ステータスバーごと隠せる。iOS Safariは非対応のため非表示）
   if (document.documentElement.requestFullscreen) {
@@ -444,13 +542,10 @@ function renderHome() {
   mimiIn.innerHTML =
     "<div class='hl-mimi-flip'><img alt='ミミ' src='" + _defSrc + "' onerror=\"this.onerror=null;this.src='" + _smileSrc + "'\"></div>";
   mimi.appendChild(mimiIn);
-  // 本体タップ＝ミミが一言（着せ替えへは行かない）。きせかえは右下の小ボタンに分離。
-  mimi.title = "タップでミミが一言しゃべる";
-  mimi.onclick = () => _mimiTalk();
-  const kbtn = el("button", "hl-mimi-tag", "🛍️ きせかえ");
-  kbtn.title = "ショッピングモール（きせかえ）へ";
-  kbtn.onclick = (e) => { e.stopPropagation(); renderMall(); };
-  mimi.appendChild(kbtn);
+  // 本体タップ＝鑑賞＆きせかえビューア（大きい立ち絵＋説明、スワイプ/◀▶で所持衣装めくり・無料着替え）。
+  // きせかえ専用ボタンは廃止（モールはナビ🛍️とビューア内「モールで買う」から）。
+  mimi.title = "タップで鑑賞＆きせかえ";
+  mimi.onclick = (e) => { e.stopPropagation(); showMimiViewer(); };
   stage.appendChild(mimi);
 
   // 出走情報・ランク情報を背景に“浮かせる”フロート（配信オーバーレイ風・半透明・右上）。
@@ -485,9 +580,16 @@ function renderHome() {
   const speech = el("div", "hl-speech hidden");
   stage.appendChild(speech);
   let _speechT = 0;
+  // 吹き出しが邪魔な時はタップで即消し（フェードアウト）。ミミ本体のタップ（鑑賞）とは独立。
+  speech.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearTimeout(_speechT);
+    speech.classList.add("out");
+    setTimeout(() => speech.classList.add("hidden"), 420);
+  });
   function mimiSay(text, ms) {
     if (!text) return;
-    try { if (window.Sfx) Sfx.play("paho"); } catch (e) {}   // ① ぱほぱほ♪の合いの手SE（ミュート設定に従う）
+    // （ホームのSEは撤去：mimiSayは自動バンター/ギフト/反応で頻発し「うるさい」ため鳴らさない）
     clearTimeout(_speechT);
     speech.textContent = text;
     speech.classList.remove("hidden", "out");
@@ -785,9 +887,24 @@ function renderHome() {
     return b;
   };
   rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
-  rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
+  if (mallUnlocked()) {
+    rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
+  } else {
+    // 初的中で解放（解放時はサケの解説＋プレゼントつき）
+    const lockedMall = el("button", "hl-item locked", `<span class="ic">🔒</span><span class="lb">モール</span>`);
+    lockedMall.onclick = () => showInfoPopup("🛍️ ショッピングモール",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。勝てば、いいことがあるかも？</small></div></div>`);
+    rail.appendChild(lockedMall);
+  }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
   rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
+  // 泣き虫竜ポロ発見で解放（第4章）。表示専用＝レース不変。js/poro.js
+  if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
+    rail.appendChild(navItem("🏠", "龍舎", "ポロと、出会った竜たちの拠点。なでて仲良くなれます。", () => renderStable()));
+  }
+  if (typeof poroScoutUnlocked === "function" && poroScoutUnlocked()) {
+    rail.appendChild(navItem("🔍", "スカウト", "野に眠る竜を探しにいきます（出会いは表示専用）。", () => renderScout()));
+  }
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
   rail.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
@@ -917,7 +1034,9 @@ function renderAssets() {
   const level = Math.max(0, Math.min(a.unlockedLifeStages || 0, 5));
   const st = lifeTreeStats();
   const app = beginScreen();
-  app.appendChild(el("h2", null, "暮らしと資産"));
+  const _h2 = el("h2", null, `暮らしと資産 <button class="info-q" title="お金のしくみ">？</button>`);
+  _h2.querySelector(".info-q").onclick = () => showMoneyMap();
+  app.appendChild(_h2);
 
   // 状態（コンパクト）：総資産 ＋ 暮らしP
   const hero = el("div", "card lt-hero");
@@ -1403,6 +1522,9 @@ function renderStoryChapter(chId) {
     Dialogue.play(DLG.chapterIntro(ch, cast));
     if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
   }
+  // 第4章を初めて開いたら：泣き虫竜ポロの発見〜聖龍幼体説〜鑑定アーク（導入の後に続けて再生）。
+  // 完了で poroFound＋龍舎/スカウト解放（js/poro.js）。既存のレース出走ポロ・図鑑は不変＝表示専用。
+  if (typeof maybePlayPoroArc === "function") maybePlayPoroArc(ch.id);
   const app = beginScreen();   // 上部に「← 物語」
   app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
   if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
@@ -1648,9 +1770,190 @@ function renderSettings() {
   app.appendChild(actions);
 }
 
+// 専用ポップアップ：ミミの鑑賞＆きせかえビューア（ホームでミミ本体タップ→起動）。
+// 大きな立ち絵＋名前＋説明を見せ、◀▶／スワイプ／←→キー／ドットで「所持している衣装」をめくる。
+// めくった瞬間に無料で着替わり（wearOutfit）、閉じるとホームへ反映。表示専用＝レース数値不変。
+function showMimiViewer() {
+  if (document.getElementById("mimi-viewer")) return;
+  const owned = OUTFITS.filter(o => outfitOwned(o));
+  if (!owned.length) return;
+  let idx = Math.max(0, owned.findIndex(o => o.id === currentOutfitId()));
+  let expr = "default";
+  const EXPRS = [["default", "🙂"], ["smile", "😊"], ["happy", "🌟"], ["panic", "💦"]];
+
+  // 没入フルスクリーン構成：画像を主役（画面いっぱい）に、操作系は上下バーへ薄く重ねる。
+  // ★鑑賞モードはホームより大きく見せるのが目的（小さくしない）。
+  const ov = el("div", "mv-ov");
+  ov.id = "mimi-viewer";
+  ov.innerHTML =
+    '<div class="mv-top">' +
+      '<span class="mv-mode">🪞 鑑賞モード</span>' +
+      '<span class="mv-count"></span>' +
+      '<button class="mv-x" aria-label="とじる">✕</button>' +
+    '</div>' +
+    '<button class="mv-nav mv-prev" aria-label="前の衣装">‹</button>' +
+    '<div class="mv-imgwrap"><img class="mv-img" alt="ミミ" decoding="async"></div>' +
+    '<button class="mv-nav mv-next" aria-label="次の衣装">›</button>' +
+    '<div class="mv-bottom">' +
+      '<div class="mv-info"><div class="mv-nm"></div><div class="mv-fl"></div></div>' +
+      '<div class="mv-exprs"></div>' +
+      '<div class="mv-dots"></div>' +
+      '<div class="mv-acts"></div>' +
+    '</div>';
+  document.body.appendChild(ov);
+
+  const img = ov.querySelector(".mv-img");
+  const imgwrap = ov.querySelector(".mv-imgwrap");
+  const nm = ov.querySelector(".mv-nm");
+  const fl = ov.querySelector(".mv-fl");
+  const cnt = ov.querySelector(".mv-count");
+  const dots = ov.querySelector(".mv-dots");
+  const exprRow = ov.querySelector(".mv-exprs");
+
+  // 表情トグル（鑑賞用・表示のみ）
+  EXPRS.forEach(([k, lb]) => {
+    const b = el("button", "mv-expr" + (k === expr ? " on" : ""), lb);
+    b.onclick = (e) => {
+      e.stopPropagation();
+      expr = k;
+      exprRow.querySelectorAll(".mv-expr").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+      paint(0);
+    };
+    exprRow.appendChild(b);
+  });
+
+  // 所持衣装ドット（タップでジャンプ）
+  owned.forEach((o, i) => {
+    const d = el("span", "mv-dot");
+    d.title = o.name;
+    d.onclick = (e) => { e.stopPropagation(); idx = i; paint(0); };
+    dots.appendChild(d);
+  });
+
+  // ★立ち絵の透過バウンディングボックスを実測し、“キャラ本体”が画面いっぱいになるよう拡大。
+  // 素材は512×768で左右に透過余白あり→contain任せだとキャラが小さい。余白ぶん拡大＝ホームより大きく見せる。
+  // 余白は画面外へ（overflow:hidden）。同origin配信なのでgetImageDataは可（透過判定で実績あり）。
+  const RATIO = 768 / 512, bboxCache = {};
+  function applyFit(bb) {
+    const wrap = imgwrap.getBoundingClientRect();
+    if (!wrap.width || !wrap.height) return;
+    const padTop = 46;                                   // 頭が上バーに隠れない余白
+    const availW = wrap.width * 0.96;
+    const availH = window.innerHeight - padTop - 56;     // 足元は下パネルのグラデへ沈める前提でフル高近く使う
+    let imgW = Math.min(availW / bb.charW, (availH / bb.charH) / RATIO);
+    imgW = Math.min(imgW, 760);                          // 過度なアップスケール抑制
+    const imgH = imgW * RATIO;
+    img.style.maxWidth = "none"; img.style.maxHeight = "none";
+    img.style.width = Math.round(imgW) + "px";
+    img.style.height = Math.round(imgH) + "px";
+    img.style.position = "relative";
+    img.style.left = Math.round((0.5 - bb.cx) * imgW) + "px";   // キャラ本体を水平センターへ
+    img.style.opacity = "1";
+  }
+  function fitImage() {
+    const o = owned[idx];
+    if (bboxCache[o.id]) { applyFit(bboxCache[o.id]); return; }
+    const im = new Image();
+    im.onload = () => {
+      let bb = { cx: 0.5, charW: 0.62, charH: 0.98 };
+      try {
+        const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight;
+        const g = c.getContext("2d"); g.drawImage(im, 0, 0);
+        const d = g.getImageData(0, 0, c.width, c.height).data;
+        let minX = c.width, maxX = 0, minY = c.height, maxY = 0, any = false;
+        for (let y = 0; y < c.height; y += 3) for (let xx = 0; xx < c.width; xx += 3) {
+          if (d[(y * c.width + xx) * 4 + 3] > 18) { any = true; if (xx < minX) minX = xx; if (xx > maxX) maxX = xx; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+        }
+        if (any) bb = { cx: ((minX + maxX) / 2) / c.width, charW: Math.max(0.2, (maxX - minX) / c.width), charH: Math.max(0.5, (maxY - minY) / c.height) };
+      } catch (e) {}
+      bboxCache[o.id] = bb; applyFit(bb);
+    };
+    im.onerror = () => applyFit({ cx: 0.5, charW: 0.62, charH: 0.98 });
+    im.src = outfitImg(o.id, expr);
+  }
+  function paint(dir) {
+    const o = owned[idx];
+    if (typeof wearOutfit === "function") wearOutfit(o.id); else state.player.outfit = o.id;   // 無料で即着替え（保存込み）
+    const src = outfitImg(o.id, expr), fbSmile = outfitImg(o.id, "smile"), fbDef = outfitImg(o.id, "default");
+    img.style.opacity = "0";
+    img.onerror = function () { this.onerror = function () { this.onerror = null; this.src = fbDef; }; this.src = fbSmile; };
+    img.src = src;
+    fitImage();
+    nm.textContent = o.name;
+    fl.textContent = o.flavor || "";
+    cnt.textContent = (idx + 1) + " / " + owned.length;
+    dots.querySelectorAll(".mv-dot").forEach((d, i) => d.classList.toggle("on", i === idx));
+    if (dir) {
+      imgwrap.classList.remove("mv-slide-l", "mv-slide-r");
+      void imgwrap.offsetWidth;
+      imgwrap.classList.add(dir > 0 ? "mv-slide-r" : "mv-slide-l");
+    }
+  }
+  function go(d) { idx = (idx + d + owned.length) % owned.length; paint(d); }
+
+  ov.querySelector(".mv-prev").onclick = (e) => { e.stopPropagation(); go(-1); };
+  ov.querySelector(".mv-next").onclick = (e) => { e.stopPropagation(); go(1); };
+  ov.querySelector(".mv-x").onclick = (e) => { e.stopPropagation(); close(); };
+
+  // アクション：モールで買う（解放後のみ）／この姿でホームへ
+  const acts = ov.querySelector(".mv-acts");
+  if (typeof mallUnlocked === "function" && mallUnlocked()) {
+    const shop = el("button", "mv-shop", "🛍️ モールで新しい服を買う");
+    shop.onclick = (e) => { e.stopPropagation(); close(); renderMall(); };
+    acts.appendChild(shop);
+  }
+  const done = el("button", "mv-done", "✓ この姿でホームへ");
+  done.onclick = (e) => { e.stopPropagation(); close(); };
+  acts.appendChild(done);
+
+  // スワイプ（左右で前後の衣装へ）。スワイプ直後の click で閉じないよう suppressClick でガード。
+  let sx = 0, sw = false, suppressClick = false;
+  imgwrap.addEventListener("pointerdown", (e) => { sx = e.clientX; sw = true; });
+  imgwrap.addEventListener("pointerup", (e) => {
+    if (!sw) return; sw = false;
+    const dx = e.clientX - sx;
+    if (Math.abs(dx) > 40) { suppressClick = true; go(dx < 0 ? 1 : -1); }
+  });
+  imgwrap.addEventListener("pointercancel", () => { sw = false; });
+
+  // キーボード（←→で切替・Escで閉じる）
+  function onKey(e) {
+    if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+    else if (e.key === "Escape") close();
+  }
+  window.addEventListener("keydown", onKey);
+  const onResize = () => fitImage();
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", onResize);
+
+  // 背景（画像の外側＝余白）タップで閉じる。スワイプ直後は閉じない。
+  ov.addEventListener("click", (e) => {
+    if (suppressClick) { suppressClick = false; return; }
+    if (e.target === ov || (e.target.classList && e.target.classList.contains("mv-imgwrap"))) close();
+  });
+
+  function close() {
+    window.removeEventListener("keydown", onKey);
+    window.removeEventListener("resize", onResize);
+    window.removeEventListener("orientationchange", onResize);
+    if (ov.parentNode) ov.remove();
+    if (state.ui.screen === "home") renderHome();   // 着替えをホームへ反映
+  }
+
+  paint(0);
+}
+
 // 専用画面：ショッピングモール（ミミのきせかえ）。コイン購入＋条件解放、着替えは無料。
 // 立ち絵を実際に差し替える表示専用コスメ。着順・オッズ・配当には非干渉。
 function renderMall() {
+  if (!mallUnlocked()) {   // 解放前の直行ガード（ナビは🔒だが保険）
+    renderHome();
+    showInfoPopup("🛍️ ショッピングモール",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "mall";
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();   // 取り残されたセリフオーバーレイがタップを塞がないように
   if (typeof recomputeAssets === "function") recomputeAssets(state);
@@ -1660,9 +1963,16 @@ function renderMall() {
   mbg.innerHTML = `<img alt="" decoding="async" src="images/mall_bg.webp" onerror="this.remove()"><div class="mall-bg-scrim"></div>`;
   app.appendChild(mbg);
   app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
-  app.appendChild(el("div", "mall-top",
-    `<span class="as-hint">試着は自由・着替えは無料。レース結果には影響しません。</span>` +
-    `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`));
+  // 説明はふだん短く、詳しくは？で（冗長表現を常時出さないオンボーディング方針）
+  const _mtop = el("div", "mall-top",
+    `<span class="as-hint">未購入はシルエット <button class="info-q" title="モールの遊び方">？</button></span>` +
+    `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`);
+  _mtop.querySelector(".info-q").onclick = () => showInfoPopup("🛍️ モールの遊び方",
+    `<div class="mm-row"><span class="mm-ic">👤</span><div><b>未購入はシルエット</b><small>買うと姿が見られる。集める楽しみ！</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">👗</span><div><b>着替えは無料</b><small>所持している服はいつでも切替OK。レース結果には影響しない。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🏬</span><div><b>巨大モール大冒険</b><small>1Fから屋上まで冒険して衣装GET。コインは使わない。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>解放条件つきの服</b><small>総資産で解放される特別な服もある。</small></div></div>`);
+  app.appendChild(_mtop);
   // ミニゲーム「巨大モール大冒険」への入口（一人称ダンジョンRPG・衣装が手に入る・表示メタ）
   if (typeof renderMallRpg === "function") {
     const dg = el("button", "mall-dgbtn");
@@ -1683,12 +1993,14 @@ function renderMall() {
   // ── 試着室：大プレビュー（表情切替）＋情報＋CTA。未所持でも試着できる（表示のみ）。
   const fit = el("div", "card mall-fit");
   const stage = el("div", "mall-fit-stage");
-  const img = el("div", "mall-fit-img");
+  // 未購入はシルエット表示（買うと姿が見られる）。所持/着用中はフルカラー。
+  const img = el("div", "mall-fit-img" + (owned ? "" : " silhouette"));
   const _src = outfitImg(sel.id, state.ui.mallExpr);
   const _fb = outfitImg(sel.id, "smile");
   img.innerHTML =
     `<img alt="${sel.name}" src="${_src}" onerror="this.onerror=null;this.src='${_fb}'">` +
-    (isWorn ? `<span class="mall-badge worn">✓ 着用中</span>` : (owned ? "" : `<span class="mall-badge tryon">試着中</span>`));
+    (isWorn ? `<span class="mall-badge worn">✓ 着用中</span>` : (owned ? `<span class="mall-badge owned2">所持</span>` : `<span class="mall-badge lock">🔒 ？</span>`)) +
+    (owned ? "" : `<span class="mall-silq">？</span>`);
   stage.appendChild(img);
   const seg = el("div", "mall-expr");
   [["default", "🙂 通常"], ["smile", "😊 にこ"], ["happy", "🌟 よろこび"], ["panic", "💦 あせり"]].forEach(([k, lb]) => {
@@ -1712,6 +2024,9 @@ function renderMall() {
   const cta = el("div", "mall-fit-cta");
   if (isWorn) {
     cta.appendChild(el("div", "mall-foot is-worn", "✓ いま着ています"));
+    const hb = el("button", "mall-btn home", "🏠 ホームで見る");   // 購入直後（=着用中）にすぐ確認しに行ける
+    hb.onclick = () => renderHome();
+    cta.appendChild(hb);
   } else if (owned) {
     const wb = el("button", "mall-btn wear", "この服に着替える");
     wb.onclick = () => { wearOutfit(sel.id); if (window.Sfx) Sfx.play("click"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); };
@@ -1769,61 +2084,81 @@ function renderHelp() {
   const app = beginScreen();
   app.appendChild(el("h2", null, "予想入門"));
 
-  const section = (title, body) => {
-    const c = el("div", "analysis-section");
-    c.appendChild(el("span", "label", title));
-    body.forEach(line => c.appendChild(el("div", null, line)));
-    return c;
+  // オンボーディング方針：説明は既定で閉じる（読みたい時だけ開く）。🆕/✓で初見かどうか一目で分かり、
+  // 開いた項目は既読として保存される。
+  if (!state.player.tutSeen) state.player.tutSeen = {};
+  const seen = state.player.tutSeen;
+  app.appendChild(el("div", "as-hint2", `気になる項目だけ開いて読めます　<span class="as-hint">🆕＝未読 ／ ✓＝読了</span>`));
+  const section = (key, title, body) => {
+    const d = document.createElement("details");
+    d.className = "help-sec" + (seen[key] ? " seen" : "");
+    d.innerHTML =
+      `<summary><span class="hs-badge">${seen[key] ? "✓" : "🆕"}</span>${title}</summary>` +
+      `<div class="hs-body">${body.map(l => `<div>${l}</div>`).join("")}</div>`;
+    d.addEventListener("toggle", () => {
+      if (d.open && !seen[key]) {
+        seen[key] = true;
+        if (typeof saveGame === "function") saveGame();
+        d.classList.add("seen");
+        const b = d.querySelector(".hs-badge"); if (b) b.textContent = "✓";
+      }
+    });
+    return d;
   };
 
-  app.appendChild(section("このゲームの心臓", [
+  // 💰 お金のしくみ（共通モーダル）＝数値の関係はいつでもここから
+  const mm = el("button", "help-money", "💰 お金のしくみ — コイン・総資産・暮らしPの関係");
+  mm.onclick = () => showMoneyMap();
+  app.appendChild(mm);
+
+  app.appendChild(section("heart", "このゲームの心臓", [
     "<b>市場のオッズと真の実力のズレを読み、賭けで利益を出す</b>予想カジノです。",
     "1番人気が強いとは限りません。コース・脚質・スタミナ・ペースを読むほど、勝率は上がります。"
   ]));
 
-  app.appendChild(section("賭式は3種類", [
+  app.appendChild(section("types", "賭式は3種類", [
     "<b>単竜</b>：1頭を選び、1着のみ的中。最も高いリターン、最も難しい。",
     "<b>複竜</b>：1頭を選び、3着以内で的中。安全寄り、堅実なリターン。",
     "<b>ワイド竜</b>：2頭を選び、両方が3着以内で的中。本命＋穴の組合せで妙味の塊。"
   ]));
 
-  app.appendChild(section("オッズの読み方", [
+  app.appendChild(section("odds", "オッズの読み方", [
     "オッズは「市場の人気投票」から計算され、真の勝率とは <b>ズレます</b>。",
     "前走勝利・新聞印・派手な見た目・ファン人気で人気が集まり、オッズは下がります。",
     "そのズレ＝<b>妙味</b>。市場が見落としている適性を見つけるのが予想家の仕事です。"
   ]));
 
-  app.appendChild(section("コース3区間", [
+  app.appendChild(section("course", "コース3区間", [
     "レースは<b>序盤・中盤・終盤</b>の3セクション。各々で必要な能力が違います。",
     "例：終盤=長い直線 → 速度+翼+スタミナ重視。終盤=最終大旋回 → 回転+気性重視。",
     "出走表で各セクションを確認し、適性を持つ竜を探しましょう。"
   ]));
 
-  app.appendChild(section("脚質とペース", [
+  app.appendChild(section("pace", "脚質とペース", [
     "<b>逃げ</b>＝早く前へ。<b>先行</b>＝前位安定。<b>差し</b>＝中盤伸び。<b>追込</b>＝最終後方一気。",
     "逃げ・先行が多い＝ペースが上がり、スタミナ薄い前残り型は終盤で <b>崩壊</b> します。",
     "逆にスローペースなら差し・追込が届かず、逃げ・先行が残ります。"
   ]));
 
-  app.appendChild(section("スタミナ", [
+  app.appendChild(section("stamina", "スタミナ", [
     "各竜は「スタミナプール」を持ち、レース中にセクションごとに消費。",
     "ハイペース・苦手な区間・距離の長さで消費が増えます。",
     "終盤に残り20%以下＝崩壊判定、ペナルティで大きく失速します。"
   ]));
 
-  app.appendChild(section("妙味の探し方", [
+  app.appendChild(section("value", "妙味の探し方", [
     "1. 1番人気の<b>弱点</b>を探す（今日のコースに合わないステータス）",
     "2. 中位人気で<b>適性が刺さっている</b>竜を探す（オッズ10倍以上で勝率10%なら+EV）",
     "3. <b>ワイド竜</b>で本命＋妙味馬を組む（1着を当てなくても勝てる）",
     "4. 詳細モード以上では「妙味の手がかり」セクションがヒントを出します"
   ]));
 
-  app.appendChild(section("情報量レベル", [
+  app.appendChild(section("infolv", "情報量レベル", [
     "ヘッダの「情報量」セレクタで表示量を調整できます。",
     "<b>簡易</b>=入門。<b>標準</b>=デフォルト。<b>詳細</b>=妙味手がかり＋分析項目追加。<b>エキスパート</b>=コンポーネント内訳まで。"
   ]));
 
-  app.appendChild(section("救済システム", [
+  app.appendChild(section("rescue", "救済システム", [
     "コインが0になっても安心。サケ・ウダダが村の予備コイン300枚を渡してくれます（村Lv1）。",
     "借金ではありません。小さく賭けて立て直しましょう。"
   ]));
@@ -2076,64 +2411,63 @@ function renderRaceSelect() {
   const ranks = Object.keys(byRank).map(Number).sort((a, b) => a - b);
   const regions = Object.keys(byRegion);   // RACES定義順（おおむねランク昇順）
 
-  let mode = state.ui.raceMode || "region";   // 既定は「場所で選ぶ」
-  const modeRow = el("div", "rs-mode");
-  const mRegion = el("button", "", "📍 場所で選ぶ");
-  const mRank = el("button", "", "🏆 格で選ぶ");
-  modeRow.appendChild(mRegion); modeRow.appendChild(mRank);
-  app.appendChild(modeRow);
+  // ── 操作バー（sticky）：並べ替え（地域順/格順）＋表示フィルタ（今いける/すべて）。
+  //    旧「モード→タブ→カード」の往復をやめ、1スクロールのグループ表示で全体を一望できる。
+  let mode = state.ui.raceMode || "region";
+  if (state.ui.raceShowLocked == null) state.ui.raceShowLocked = false;
+  const ctrl = el("div", "rs-ctrl");
+  const sortSeg = el("div", "rs-seg");
+  const sRegion = el("button", "rs-seg-b", "📍 地域順");
+  const sRank = el("button", "rs-seg-b", "🏆 格順");
+  sortSeg.appendChild(sRegion); sortSeg.appendChild(sRank);
+  const lockToggle = el("button", "rs-lockbtn", "");
+  ctrl.appendChild(sortSeg); ctrl.appendChild(lockToggle);
+  app.appendChild(ctrl);
 
-  const tabs = el("div", "hr2-tabs");
-  const pane = el("div", "hr2-tabpane");
-  app.appendChild(tabs); app.appendChild(pane);
+  const listWrap = el("div", "rs-list");
+  app.appendChild(listWrap);
 
-  const renderRankPane = (rk) => {
-    pane.innerHTML = "";
-    const races = (byRank[rk] || []).slice().sort((a, b) => a.region.localeCompare(b.region) || a.number - b.number);
-    const lockedRank = rk > state.player.rank;
-    pane.appendChild(el("div", "rs-rank-head", `${gradeBadgeHTML(rk)}Rank ${rk}　${(RANKS[rk] && RANKS[rk].label) || ""}<span class="rs-rank-n">${races.length}レース</span>`));
-    if (lockedRank) pane.appendChild(el("div", "hr2-tabhint", `🔒 このランクは ランク${rk} で解放されます（プレビュー）`));
-    const body = el("div", "rs-rank-body");
-    races.forEach(r => body.appendChild(buildRaceCard(r, lockedRank)));
-    pane.appendChild(body);
-  };
-  const renderRegionPane = (reg) => {
-    pane.innerHTML = "";
-    const races = (byRegion[reg] || []).slice().sort((a, b) => a.number - b.number || a.rank - b.rank);
-    const minRank = races.reduce((m, r) => Math.min(m, r.rank), 99);
-    pane.appendChild(el("div", "rs-rank-head", `${reg}<span class="rs-rank-n">第一〜第五（朝→夜）</span>`));
-    if (races.every(r => r.rank > state.player.rank)) pane.appendChild(el("div", "hr2-tabhint", `🔒 この地域は ランク${minRank} で解放されます（プレビュー）`));
-    const body = el("div", "rs-rank-body");
-    races.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank, true)));
-    pane.appendChild(body);
-  };
-
-  const buildTabs = () => {
-    tabs.innerHTML = "";
+  function renderList() {
+    listWrap.innerHTML = "";
+    const showLocked = state.ui.raceShowLocked;
+    const groups = [];
     if (mode === "region") {
-      let activeReg = (state.ui.raceRegion && byRegion[state.ui.raceRegion]) ? state.ui.raceRegion : regions[0];
       regions.forEach(reg => {
-        const locked = (byRegion[reg] || []).every(r => r.rank > state.player.rank);
-        const tab = el("button", "hr2-tab" + (locked ? " locked" : "") + (reg === activeReg ? " on" : ""), `${locked ? "🔒 " : ""}${reg.replace(/地域$/, "")}`);
-        tab.onclick = () => { state.ui.raceRegion = reg; Array.from(tabs.children).forEach(t => t.classList.remove("on")); tab.classList.add("on"); renderRegionPane(reg); };
-        tabs.appendChild(tab);
+        const races = (byRegion[reg] || []).slice().sort((a, b) => a.number - b.number || a.rank - b.rank);
+        groups.push({ title: reg.replace(/地域$/, ""), sub: "第一〜第五（朝→夜）", races, hideRegion: true });
       });
-      renderRegionPane(activeReg);
     } else {
-      let activeRk = (state.ui.raceTab && ranks.indexOf(state.ui.raceTab) >= 0) ? state.ui.raceTab : (ranks.indexOf(state.player.rank) >= 0 ? state.player.rank : ranks[0]);
       ranks.forEach(rk => {
-        const locked = rk > state.player.rank;
-        const tab = el("button", "hr2-tab" + (locked ? " locked" : "") + (rk === activeRk ? " on" : ""), `${locked ? "🔒 " : ""}${RACE_GRADE[rk] || ("R" + rk)}`);
-        tab.onclick = () => { state.ui.raceTab = rk; Array.from(tabs.children).forEach(t => t.classList.remove("on")); tab.classList.add("on"); renderRankPane(rk); };
-        tabs.appendChild(tab);
+        const races = (byRank[rk] || []).slice().sort((a, b) => a.region.localeCompare(b.region) || a.number - b.number);
+        groups.push({ title: (RANKS[rk] && RANKS[rk].label) || ("ランク" + rk), sub: races.length + "レース", races, grade: rk });
       });
-      renderRankPane(activeRk);
     }
-  };
-  const setMode = (m) => { mode = m; state.ui.raceMode = m; mRegion.classList.toggle("on", m === "region"); mRank.classList.toggle("on", m === "rank"); buildTabs(); };
-  mRegion.onclick = () => setMode("region");
-  mRank.onclick = () => setMode("rank");
-  setMode(mode);
+    let shownAny = 0, hiddenLocked = 0;
+    groups.forEach(g => {
+      const vis = g.races.filter(r => showLocked || r.rank <= state.player.rank);
+      hiddenLocked += g.races.length - vis.length;
+      if (!vis.length) return;
+      shownAny += vis.length;
+      const head = el("div", "rs-grp-head",
+        `<b>${mode === "rank" ? gradeBadgeHTML(g.grade) : "📍 "}${g.title}</b><span>${g.sub}</span>`);
+      listWrap.appendChild(head);
+      const body = el("div", "rs-rank-body");
+      vis.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank, g.hideRegion)));
+      listWrap.appendChild(body);
+    });
+    if (!shownAny) listWrap.appendChild(el("div", "condition-line", "表示できるレースがありません。「すべて表示」で先のレースも見られます。"));
+    else if (!showLocked && hiddenLocked > 0) listWrap.appendChild(el("div", "rs-morehint", `🔒 ほか ${hiddenLocked} レースはランクを上げると解放（「すべて表示」でプレビュー）`));
+  }
+  function syncCtrl() {
+    sRegion.classList.toggle("on", mode === "region");
+    sRank.classList.toggle("on", mode === "rank");
+    lockToggle.classList.toggle("on", state.ui.raceShowLocked);
+    lockToggle.innerHTML = state.ui.raceShowLocked ? "🔓 すべて表示中" : "▶ 今いけるレース";
+  }
+  sRegion.onclick = () => { mode = "region"; state.ui.raceMode = "region"; syncCtrl(); renderList(); };
+  sRank.onclick = () => { mode = "rank"; state.ui.raceMode = "rank"; syncCtrl(); renderList(); };
+  lockToggle.onclick = () => { state.ui.raceShowLocked = !state.ui.raceShowLocked; syncCtrl(); renderList(); };
+  syncCtrl(); renderList();
 
   const back = el("button", "secondary", "ホームへ"); back.onclick = renderHome;
   app.appendChild(back);
@@ -2421,6 +2755,7 @@ function renderRaceDetail(race) {
       <button id="back-race-select" class="secondary">戻る</button>
     </div>
     <div class="bet-step2" id="bet-step2" style="display:none">
+      <div class="bet-sel-sum" id="bet-sel-sum"></div>
       <div class="wager-box">
         <div class="wager-head">
           <span class="wager-label">賭金</span>
@@ -2475,7 +2810,22 @@ function renderRaceDetail(race) {
     $("pick-count").textContent = `${sel.length} / ${max}`;
     const complete = sel.length === max;
     const startBtn = $("bet-start");
-    if (startBtn) startBtn.disabled = !complete;
+    if (startBtn) {
+      startBtn.disabled = !complete;
+      // CTAに選択内容を反映＝「誰に賭けるか」を押す瞬間まで見失わせない
+      if (complete) {
+        const nm = id => { const d = DRAGONS.find(x => x.id === id); return d ? d.name : ""; };
+        if (type === "wide") {
+          startBtn.innerHTML = `🐉 <b>${nm(sel[0])}</b> ＋ <b>${nm(sel[1])}</b> で賭ける ▶`;
+        } else {
+          const o = sorted.find(x => x.dragonId === sel[0]);
+          const oddsTx = o ? (type === "place" ? `複${o.placeOdds.toFixed(1)}倍` : `単${o.winOdds.toFixed(1)}倍`) : "";
+          startBtn.innerHTML = `🐉 <b>${nm(sel[0])}</b> に賭ける${oddsTx ? `（${oddsTx}）` : ""} ▶`;
+        }
+      } else {
+        startBtn.textContent = "🐉 この本命で賭ける";
+      }
+    }
     if (!complete) showBetStep(1);   // pick broke → fold the wager step back away
   }
 
@@ -2837,6 +3187,7 @@ function updateExpected() {
     box.innerHTML = `<div class="po-hint">${msg}</div>`;
     if (confirmBtn) confirmBtn.disabled = true;
     if (wagerEl && cls === "invalid") wagerEl.classList.add("invalid");   // 入力欄にも赤枠で即時フィードバック
+    const _ss = $("bet-sel-sum"); if (_ss) _ss.innerHTML = "";
   };
 
   // 1) incomplete selection → friendly prompt, confirm stays disabled
@@ -2854,10 +3205,27 @@ function updateExpected() {
     payout = Math.floor(c.bet.wager * odds);
   } catch (e) { setHint("invalid", "オッズ計算エラー"); return; }
   box.classList.add("valid");
+  // ステップ2でも「誰に・どの賭式で」を常時表示（賭金をいじっている間に本命を見失わない）
+  const ss = $("bet-sel-sum");
+  if (ss) {
+    const tL = { win: "単竜", place: "複竜", wide: "ワイド竜" }[type] || type;
+    const nm = id => { const d = DRAGONS.find(x => x.id === id); return d ? d.name : ""; };
+    ss.innerHTML =
+      `<span class="bss-k">本命</span><b class="bss-nm">${nm(a)}${type === "wide" ? " ＋ " + nm(b) : ""}</b>` +
+      `<span class="bss-odds">${tL} ${odds.toFixed(1)}倍</span>` +
+      `<button type="button" class="bss-edit" id="bet-edit">変更</button>`;
+    const be = ss.querySelector("#bet-edit");
+    if (be) be.onclick = () => {
+      const s1 = $("bet-step1"), s2 = $("bet-step2");
+      if (s1) s1.style.display = ""; if (s2) s2.style.display = "none";
+    };
+  }
+  // リスクとリターンを常に対で見せる（ハズレ時の損失も明示）
   box.innerHTML =
     `<div class="po-line"><span class="pl-k">オッズ</span><span class="pl-v">${odds.toFixed(1)} 倍</span></div>` +
     `<div class="po-line"><span class="pl-k">的中時払戻</span><span class="pl-v">${fmtCoins(payout)} コイン</span></div>` +
-    `<div class="po-line po-profit"><span class="pl-k">利益（上乗せ）</span><span class="pl-v">+${fmtCoins(payout - c.bet.wager)}</span></div>`;
+    `<div class="po-line po-profit"><span class="pl-k">利益（上乗せ）</span><span class="pl-v">+${fmtCoins(payout - c.bet.wager)}</span></div>` +
+    `<div class="po-line po-loss"><span class="pl-k">ハズレ時</span><span class="pl-v">−${fmtCoins(c.bet.wager)}</span></div>`;
   if (confirmBtn) confirmBtn.disabled = false;
 }
 
@@ -2934,6 +3302,10 @@ function settleRace() {
   // tracks the bet size / rank). The base payout formula is unchanged.
   const prevStreak = state.player.streak || 0;
   let streakBonus = 0, streakMilestone = 0;
+  // 🛍️ モール解放トリガー（初的中）。フラグは即保存系（settle内）、イベント本体は結果画面で再生。
+  if (!state.player.flags) state.player.flags = {};
+  c.firstHitEver = !!betResult.hit && !state.player.flags.everHit;
+  if (betResult.hit) state.player.flags.everHit = true;
   if (betResult.hit) {
     state.player.streak = prevStreak + 1;
     if (state.player.streak > (state.player.bestStreak || 0)) state.player.bestStreak = state.player.streak;
@@ -2962,12 +3334,14 @@ function settleRace() {
   catch (e) { c.collectionAwards = []; }
   gainVillageExp(c.race, betResult && betResult.hit, raceResult._newDragonsThisRace || 0);
   checkEconomyMilestones(betResult);
+  const _rank0 = state.player.rank;
   checkRankProgression();
   // §30 — update total-asset progression from the payout (after coins/village/
   // rank/collection have settled). maxCoinsReached + 総資産 only ever rise.
   bumpMaxCoins();
   const prevStage = state.assets.unlockedLifeStages || 0;
   const prevTotal = state.player.totalAssets || 0;
+  const _lifeP0 = (typeof lifeTreeStats === "function") ? lifeTreeStats().earned : 0;
   const ra = recomputeAssets(state);
   const newTotal = state.player.totalAssets || 0;
   // (a) story: any chapter whose 総資産 threshold was crossed THIS race pops up.
@@ -2975,6 +3349,23 @@ function settleRace() {
   if (ra.level > prevStage || justUnlocked.length) {
     runEventHooks("onStoryUnlock", { stage: ra.level, chapter: ra.unlockedStory, chapters: justUnlocked });
   }
+  // 📦 獲得台帳（このレースで増えたもの一覧＝結果画面の「今回の獲得」。表示専用・数値はここまでで確定済み）
+  try {
+    const _lifeP1 = (typeof lifeTreeStats === "function") ? lifeTreeStats().earned : _lifeP0;
+    let _mission = false;
+    if (state.player.dailyM && (state.player.completedRaces - state.player.dailyM.races0) === 1) _mission = true;   // この1走でデイリー「出走」を達成
+    c.gainLedger = {
+      hit: !!betResult.hit, payout: betResult.payout, wager: betResult.wager,
+      streakBonus, featuredBonus: c.featuredBonus || 0,
+      collectionCoins: (c.collectionAwards || []).reduce((a, x) => a + (x.reward || 0), 0),
+      collectionLabels: (c.collectionAwards || []).map(x => x.label),
+      assetsDelta: Math.max(0, newTotal - prevTotal),
+      lifePDelta: Math.max(0, _lifeP1 - _lifeP0),
+      rankUp: state.player.rank > _rank0 ? state.player.rank : 0,
+      storyUnlocked: justUnlocked.map(ch => ch.title),
+      mission: _mission
+    };
+  } catch (e) { c.gainLedger = null; }
   saveGame();
   updateHeader();
   if (justUnlocked.length) showStoryUnlock(justUnlocked);   // popup over the result screen
@@ -3531,6 +3922,31 @@ function renderResult() {
     c.resultHooksRan = true;
   }
 
+  // 🛍️ モール解放イベント（初的中・一度きり）：サケが使い方を解説→『ジャングルバニー』を贈与→
+  // ミミがその場で着替えて happy 立ち絵で登場（2段構成）。表示メタのみ・コイン非消費。
+  if (c.firstHitEver && !(state.player.flags || {}).mallIntroSeen && !c._mallIntroPlayed && window.Dialogue) {
+    c._mallIntroPlayed = true;
+    setTimeout(() => {
+      Dialogue.play([
+        ["sake", "初勝利、見事だったぞ。……ところでミミ、いつまでそのボロを着てるつもりだ？"],
+        ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
+        ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ホームに🛍️モールを開けておいた。稼いだコインで好きに選べ。試着は自由、着替えは無料だ。"],
+        ["sake", "それと、初勝利の祝いだ。『ジャングルバニー』──葉っぱと馬券で武装した、お前の勝負服第一号だ。受け取れ。", "happy"]
+      ]).then(() => {
+        try {
+          state.player.flags.mallIntroSeen = true;
+          if (!state.player.outfitsWon) state.player.outfitsWon = [];
+          if (state.player.outfitsWon.indexOf("jungle") < 0 && !outfitOwned(outfitById("jungle"))) state.player.outfitsWon.push("jungle");
+          if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
+          if (typeof saveGame === "function") saveGame();
+          try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+          // 着替え後の立ち絵（現在衣装=jungle）で登場
+          Dialogue.play([["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"]]);
+        } catch (e) {}
+      });
+    }, 600);
+  }
+
   drawRecapScreen();
 }
 
@@ -3550,10 +3966,30 @@ function drawRecapScreen() {
   if (ps) {
     app.appendChild(buildResultHero(ps, resultTierOf(ps), c));
   }
-  // meta-reward banners: 注目レース達成 + 図鑑マイルストーン (spec #37)
+  // 📦 今回の獲得（リワード台帳）：配当以外も含め「このレースで何が増えたか」を1枚に明示。
+  // ボーナス系バナーもここに統合（桜井流「ごほうびは分かりやすく・まとめて見せる」）。
   try {
-    if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));
-    (c.collectionAwards || []).forEach(a => app.appendChild(el("div", "rs-bonus rs-bonus-dex", `📖 ${a.label} 達成！　<b>＋${fmtCoins(a.reward)}</b>`)));
+    const g = c.gainLedger;
+    if (g) {
+      const rows = [];
+      const R = (ic, label, val, cls) => rows.push(`<div class="rs-lg-row ${cls || ""}"><span class="ic">${ic}</span><span class="lb">${label}</span><b>${val}</b></div>`);
+      if (g.hit) R("💰", "配当", "＋" + fmtCoins(g.payout), "gain");
+      else R("💸", "賭金", "−" + fmtCoins(g.wager), "loss");
+      if (g.streakBonus > 0) R("🔥", "連勝ボーナス", "＋" + fmtCoins(g.streakBonus), "gain");
+      if (g.featuredBonus > 0) R("★", "注目レース達成", "＋" + fmtCoins(g.featuredBonus), "gain");
+      g.collectionLabels.forEach((lb, i) => R("📖", lb, "＋" + fmtCoins(c.collectionAwards[i].reward), "gain"));
+      if (g.assetsDelta > 0) R("🏦", "総資産（最高記録更新）", "＋" + fmtCoins(g.assetsDelta), "asset");
+      if (g.lifePDelta > 0) R("🌱", "暮らしP（くらしツリーで使える）", "＋" + g.lifePDelta, "asset");
+      if (g.rankUp) R("🏅", "ランク昇格！", "ランク" + g.rankUp, "rankup");
+      g.storyUnlocked.forEach(t => R("📜", "物語が解放", t, "rankup"));
+      if (g.mission) R("📋", "デイリーミッション「出走」", "達成！", "asset");
+      const box = el("div", "rs-ledger");
+      box.innerHTML = `<div class="rs-lg-t">📦 今回の獲得</div>` + rows.join("");
+      app.appendChild(box);
+    } else {
+      if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));
+      (c.collectionAwards || []).forEach(a => app.appendChild(el("div", "rs-bonus rs-bonus-dex", `📖 ${a.label} 達成！　<b>＋${fmtCoins(a.reward)}</b>`)));
+    }
   } catch (e) {}
   // living advisor reaction — a character speaks to what just happened (spec #37)
   try {

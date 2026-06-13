@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#111}canvas{display:block}</style></head>
+<body>
+<canvas id="c" width="1536" height="640"></canvas>
+<script>
+// ===== Liminal Horizons — race far-backdrop renderer =====
+// One horizon, five atmospheres. Land geometry is deterministic (shared across
+// all times of day); only light/colour/sky change. Exposes window.__png.
+const W = 1536, H = 640;
+const cv = document.getElementById("c"), x = cv.getContext("2d");
+
+function hx(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255];}
+function mix(a,b,t){const A=hx(a),B=hx(b);return`rgb(${Math.round(A[0]+(B[0]-A[0])*t)},${Math.round(A[1]+(B[1]-A[1])*t)},${Math.round(A[2]+(B[2]-A[2])*t)})`;}
+
+const CONF = {
+  morning: {
+    sky:[[0,'#a9c3d4'],[0.40,'#cdd6d2'],[0.70,'#eedcc0'],[1,'#f7cda4']],
+    sun:{x:0.27,y:0.64,r:30,glow:300,c0:'rgba(255,248,228,0.95)',c1:'rgba(255,224,168,0.40)',disc:'rgba(255,250,232,0.95)'},
+    haze:'#f3dcc0', land:'#aab6ad', landDark:'#5f7269', cloud:'rgba(255,248,238,0.62)', cloudY:0.30, stars:0, glowH:'#f7d9b0'
+  },
+  day: {
+    sky:[[0,'#5d93c8'],[0.45,'#8fb6d8'],[0.78,'#cfe0e2'],[1,'#e7eee0']],
+    sun:{x:0.74,y:0.20,r:24,glow:230,c0:'rgba(255,255,245,0.95)',c1:'rgba(255,250,210,0.30)',disc:'rgba(255,255,250,0.96)'},
+    haze:'#dfe9df', land:'#9db9a4', landDark:'#4f7059', cloud:'rgba(255,255,255,0.7)', cloudY:0.26, stars:0, glowH:'#e9f1e2'
+  },
+  sunset: {
+    sky:[[0,'#3a4d80'],[0.38,'#8a5e93'],[0.66,'#e08a6a'],[1,'#f6c879']],
+    sun:{x:0.30,y:0.70,r:40,glow:360,c0:'rgba(255,238,196,0.98)',c1:'rgba(255,160,96,0.45)',disc:'rgba(255,236,196,0.97)'},
+    haze:'#f3b878', land:'#7a5e5e', landDark:'#3a2a36', cloud:'rgba(255,206,168,0.55)', cloudY:0.32, stars:0, glowH:'#f4a866'
+  },
+  dusk: {
+    sky:[[0,'#1c2247'],[0.40,'#3b3464'],[0.72,'#7c5170'],[1,'#c97a66']],
+    sun:{x:0.72,y:0.74,r:30,glow:280,c0:'rgba(255,224,188,0.80)',c1:'rgba(214,120,110,0.35)',disc:'rgba(255,228,196,0.85)'},
+    haze:'#b86a5e', land:'#494060', landDark:'#241d33', cloud:'rgba(150,120,150,0.40)', cloudY:0.30, stars:60, glowH:'#a85e5a'
+  },
+  night: {
+    sky:[[0,'#0a0e22'],[0.45,'#14193a'],[0.78,'#222a4c'],[1,'#34335a']],
+    sun:{x:0.78,y:0.18,r:22,glow:200,c0:'rgba(238,242,255,0.92)',c1:'rgba(150,170,220,0.22)',disc:'rgba(244,247,255,0.95)'},
+    haze:'#2e3358', land:'#1d2440', landDark:'#0c1020', cloud:'rgba(110,124,170,0.26)', cloudY:0.24, stars:150, glowH:'#3a3a64'
+  }
+};
+
+const HOR = H * 0.74;                         // horizon shelf
+// deterministic ridge: sum of sines → identical shape every render
+function ridgeY(px, baseY, amp, seed){
+  const u = px / W;
+  return baseY
+    - amp*(0.55*Math.sin(u*6.3 + seed) + 0.28*Math.sin(u*13.7 + seed*1.7) + 0.17*Math.sin(u*23.1 + seed*2.3));
+}
+function fillRidge(baseY, amp, seed, fill){
+  x.beginPath(); x.moveTo(0, H);
+  for(let px=0; px<=W; px+=4) x.lineTo(px, ridgeY(px, baseY, amp, seed));
+  x.lineTo(W, H); x.closePath(); x.fillStyle = fill; x.fill();
+}
+
+function softCloud(cx, cy, s, col){
+  x.save(); x.filter = 'blur(18px)'; x.fillStyle = col;
+  for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; x.beginPath();
+    x.ellipse(cx + Math.cos(a)*s*0.7, cy + Math.sin(a)*s*0.22, s*(0.5+0.18*((i*7)%3)), s*0.34, 0, 0, 7); x.fill(); }
+  x.beginPath(); x.ellipse(cx, cy, s*1.0, s*0.42, 0, 0, 7); x.fill(); x.restore();
+}
+
+function draw(time){
+  const c = CONF[time] || CONF.morning;
+  x.clearRect(0,0,W,H);
+  // sky
+  const g = x.createLinearGradient(0,0,0,H);
+  c.sky.forEach(s=>g.addColorStop(s[0],s[1])); x.fillStyle=g; x.fillRect(0,0,W,H);
+  // stars
+  if(c.stars){ for(let i=0;i<c.stars;i++){ const sx=((i*73)%W), sy=((i*131)%(HOR*0.92))|0, a=0.25+((i*37)%50)/100*0.7, r=((i%9)===0)?1.6:0.9;
+    x.fillStyle=`rgba(255,255,255,${a})`; x.beginPath(); x.arc(sx, sy, r, 0, 7); x.fill(); } }
+  // sun / moon glow
+  const s=c.sun, sx=s.x*W, sy=s.y*H;
+  const rg=x.createRadialGradient(sx,sy,0,sx,sy,s.glow);
+  rg.addColorStop(0,s.c0); rg.addColorStop(0.42,s.c1); rg.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=rg; x.fillRect(0,0,W,H);
+  x.beginPath(); x.arc(sx,sy,s.r,0,7); x.fillStyle=s.disc; x.fill();
+  // clouds
+  softCloud(W*0.20, H*c.cloudY, 120, c.cloud);
+  softCloud(W*0.58, H*(c.cloudY-0.06), 95, c.cloud);
+  softCloud(W*0.85, H*(c.cloudY+0.05), 140, c.cloud);
+  // distant land — three hazed ridges (far→near), atmospheric perspective
+  fillRidge(HOR-6,  46, 0.6, mix(c.haze, c.land, 0.30));
+  fillRidge(HOR+18, 64, 2.1, mix(c.haze, c.landDark, 0.52));
+  fillRidge(HOR+46, 86, 3.4, mix(c.land, c.landDark, 0.78));
+  // faint 聖龍門 gate + grandstand silhouette on the horizon (centre-right)
+  const gx=W*0.60, gy=HOR-4, gate=mix(c.land,c.landDark,0.85);
+  x.fillStyle=gate; x.globalAlpha=0.9;
+  x.fillRect(gx-46,gy-58,9,58); x.fillRect(gx+37,gy-58,9,58);            // pillars
+  x.fillRect(gx-58,gy-66,116,9); x.fillRect(gx-50,gy-52,100,6);          // torii beams
+  x.beginPath(); x.moveTo(gx-110,gy); x.quadraticCurveTo(gx-150,gy-34,gx-200,gy); x.closePath(); x.fill(); // grandstand dome
+  x.beginPath(); x.ellipse(gx+150, gy, 62, 26, 0, Math.PI, 0); x.fill(); // stand 2
+  x.globalAlpha=1;
+  // horizon luminous haze band (warm/cool by time) — softens every far edge
+  const hb=x.createLinearGradient(0,HOR-110,0,HOR+30);
+  hb.addColorStop(0,'rgba(0,0,0,0)'); hb.addColorStop(0.7,mix(c.glowH,'#ffffff',0.0)); hb.addColorStop(1,c.glowH);
+  x.save(); x.globalAlpha=0.5; x.fillStyle=hb; x.fillRect(0,HOR-110,W,150); x.restore();
+  // gentle vignette top corners for depth
+  const vg=x.createRadialGradient(W/2,H*0.1,H*0.2,W/2,H*0.1,W*0.7);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(8,10,20,0.18)');
+  x.fillStyle=vg; x.fillRect(0,0,W,H);
+}
+
+const TIME = (new URLSearchParams(location.search).get('t')) || 'morning';
+draw(TIME);
+// downscaled JPEG export (soft backdrop → upscales losslessly in-game; keeps the
+// extracted base64 small + reliable to pull through eval)
+(function(){
+  const SW = 800, SH = Math.round(SW * H / W);
+  const cs = document.createElement('canvas'); cs.width = SW; cs.height = SH;
+  const xs = cs.getContext('2d'); xs.imageSmoothingEnabled = true; xs.imageSmoothingQuality = 'high';
+  xs.drawImage(cv, 0, 0, SW, SH);
+  window.__small = cs.toDataURL('image/jpeg', 0.85);
+  window.__len = window.__small.length;
+})();
+document.title = "bg:" + TIME + ":" + window.__len;
+</script>
+</body></html>

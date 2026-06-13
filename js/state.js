@@ -39,7 +39,15 @@ const state = {
       reachedCoins_10000: false,
       reachedCoins_100000000: false,
       firstWideHit: false,
-      firstRankUp: false
+      firstRankUp: false,
+      // 泣き虫竜ポロ（相棒・表示専用メタ）。第4章で発見→鑑定→龍舎/スカウト解放（js/poro.js）。
+      poroFound: false,
+      poroAppraisalStarted: false,
+      poroAppraisalCompleted: false,
+      poroConfirmedNotSacredDragon: false,
+      dragonScoutUnlocked: false,
+      dragonStableUnlocked: false,
+      poroGourmetRaceUnlocked: false
     },
     // §09 §4 VillageState (V1 minimal — §26 forward compatibility)
     village: {
