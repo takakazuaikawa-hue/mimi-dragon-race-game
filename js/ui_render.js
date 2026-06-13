@@ -512,10 +512,6 @@ function renderHome() {
   const ddMoney = el("button", null, "💰 お金のしくみ");
   ddMoney.onclick = () => { sysDd.classList.add("hidden"); showMoneyMap(); };
   sysDd.appendChild(ddMoney);
-  // シェアはトップナビから⋯メニューへ格下げ（ナビの混雑を整理）。
-  const ddShare = el("button", null, "📣 このゲームをシェア");
-  ddShare.onclick = () => { sysDd.classList.add("hidden"); shareGameInfo(); };
-  sysDd.appendChild(ddShare);
   const ddTitle = el("button", null, "🏠 タイトルへ"); ddTitle.onclick = () => renderTitle();
   // ⛶ 全画面（Android Chrome等＝ステータスバーごと隠せる。iOS Safariは非対応のため非表示）
   if (document.documentElement.requestFullscreen) {
@@ -912,6 +908,9 @@ function renderHome() {
   rail.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
   rail.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
+  rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
+  // 列数を“実際の項目数”に追従させ、8列固定で右に空きセル（隙間）ができるのを防ぐ（最大8列・以降は折返し）。
+  rail.style.gridTemplateColumns = "repeat(" + Math.min(rail.children.length, 8) + ", 1fr)";
   dock.appendChild(rail);
   wrap.appendChild(dock);
 
