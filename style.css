@@ -4008,8 +4008,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @keyframes rpghit { 0%,100%{ filter:none; transform:translateX(0); } 15%{ filter:brightness(3.2) saturate(.3); transform:translateX(-5px); } 35%{ transform:translateX(5px); } 55%{ transform:translateX(-3px); } 75%{ transform:translateX(2px); } }
 #app.rpg-shake { animation:rpgshake .4s; }
 @keyframes rpgshake { 0%,100%{ transform:translate(0,0); } 20%{ transform:translate(-5px,2px); } 40%{ transform:translate(5px,-2px); } 60%{ transform:translate(-3px,1px); } 80%{ transform:translate(3px,-1px); } }
-.rpg-view { animation:rpgstep .14s ease-out; }
-@keyframes rpgstep { 0%{ transform:scale(1.04); } 100%{ transform:scale(1); } }
+/* 移動のなめらか化：前進＝寄り／後退／旋回＝スイング */
+.rpg-view { will-change:transform; }
+.rpg-step-fwd  { animation:rpgStepFwd  .34s cubic-bezier(.2,.7,.3,1); }
+.rpg-step-back { animation:rpgStepBack .34s cubic-bezier(.2,.7,.3,1); }
+.rpg-step-turnL{ animation:rpgTurnL .28s cubic-bezier(.2,.7,.3,1); }
+.rpg-step-turnR{ animation:rpgTurnR .28s cubic-bezier(.2,.7,.3,1); }
+@keyframes rpgStepFwd  { 0%{ transform:scale(.82); } 100%{ transform:scale(1); } }
+@keyframes rpgStepBack { 0%{ transform:scale(1.18); } 100%{ transform:scale(1); } }
+@keyframes rpgTurnL { 0%{ transform:perspective(460px) rotateY(22deg) scale(.96); } 100%{ transform:none; } }
+@keyframes rpgTurnR { 0%{ transform:perspective(460px) rotateY(-22deg) scale(.96); } 100%{ transform:none; } }
 
 /* モダン戦闘ステージ */
 .rpg-stage { margin:8px 0; padding:18px 10px 10px; border-radius:16px;
@@ -4275,6 +4283,42 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scout-take:disabled { background: rgba(120,200,140,.35); color: #dff5e4; }
 .scout-empty { font-size: 12.5px; color: #aebcc3; text-align: center; padding: 12px; line-height: 1.6; }
 
+/* =========================================================================
+   斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
+   ========================================================================= */
+.rpg-arena2 { position:relative; width:100%; max-width:540px; margin:6px auto 8px; aspect-ratio:520/320;
+  border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+.rpg-arena2-cv { position:absolute; inset:0; width:100%; height:100%; image-rendering:auto;
+  filter:contrast(1.04) saturate(1.1); }
+.rpg-arena2 .rpg-turnbar { top:8px; }
+.rpg-status.arena { position:absolute; top:8px; left:10px; z-index:3; display:flex; gap:4px; }
+.rpg-status.arena .rpg-stchip { padding:2px 7px; font-size:13px; }
+
+/* 戦闘者（アリーナ上に立ち位置で配置・下端を接地点に合わせる） */
+.rpg-foe { position:absolute; transform:translate(-50%,-100%); display:flex; flex-direction:column;
+  align-items:center; gap:2px; width:128px; cursor:pointer; z-index:2; }
+.rpg-foe .rpg-spr.enemy { filter:drop-shadow(0 5px 5px rgba(0,0,0,.55)) drop-shadow(0 0 5px rgba(255,255,255,.15)); }
+.rpg-foe.sel { filter:drop-shadow(0 0 11px rgba(255,95,162,.75)); }
+.rpg-foe.dead { opacity:.35; filter:grayscale(1); pointer-events:none; }
+.rpg-foe-info { display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.1;
+  color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.75); }
+.rpg-foe-info b { font-size:12px; font-weight:800; }
+.rpg-foe-info .rpg-hpbar { width:74px; height:7px; }
+.rpg-foe-info small { font-size:9px; color:#ffe45e; }
+.rpg-mimi { position:absolute; transform:translate(-50%,-100%); z-index:2; }
+.rpg-mimi .rpg-spr.mimichar { filter:drop-shadow(0 6px 6px rgba(0,0,0,.5)); animation:rpgbob 2.2s ease-in-out infinite; }
+
+/* 固定コマンドパネル */
+.rpg-panel { background:linear-gradient(180deg, rgba(28,22,42,.5), rgba(16,12,26,.85)); border-radius:16px;
+  padding:10px 12px 12px; box-shadow:0 -2px 16px rgba(0,0,0,.3); }
+.rpg-bhud { margin:0 0 6px; padding:6px 8px; background:rgba(0,0,0,.18); }
+.rpg-bhud-name { font-weight:700; color:#f0e8ff; margin-bottom:5px; font-size:13px; }
+.rpg-bars3 { display:flex; gap:10px; }
+.rpg-b3 { flex:1; display:flex; align-items:center; gap:5px; }
+.rpg-b3 i { font-style:normal; color:#b9a8d4; font-size:10px; width:16px; }
+.rpg-b3 b { color:#e9e0f5; font-size:10px; min-width:46px; text-align:right; font-variant-numeric:tabular-nums; }
+.rpg-b3 .rpg-hpbar, .rpg-b3 .rpg-mpbar, .rpg-b3 .rpg-gauge { flex:1; }
+.rpg-blog.fixed { height:2.7em; overflow:hidden; margin:6px 0 8px; background:rgba(0,0,0,.28); }
 /* ===== ポロのグルメレース（クリア後ミニゲーム・表示専用） ===== */
 .pg-best { font-size: 12.5px; color: #cfe0e6; padding: 8px 12px; border-radius: 10px; background: var(--glass-2); margin-bottom: 10px; }
 .pg-best b { color: #ffe6a8; }
@@ -4313,3 +4357,19 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .pg-res-score { font-size: 34px; font-weight: 800; color: #fff4e0; margin: 6px 0; } .pg-res-score small { font-size: 14px; color: #aebcc3; }
 .pg-res-stats { font-size: 12px; color: #b3c0c7; }
 .pg-res-rew { margin-top: 10px; font-size: 13px; color: #ffe6a8; background: rgba(230,205,134,.12); border-radius: 10px; padding: 8px; }
+
+/* =========================================================================
+   戦闘リビルド：シーン=1枚canvas／パネル=単純な縦積み（崩れない）
+   ========================================================================= */
+.rpg-bt-arena { width:100%; max-width:560px; margin:6px auto 0; border-radius:16px 16px 0 0;
+  overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.4); line-height:0; background:#10131c; }
+.rpg-bt-cv { display:block; width:100%; height:auto; cursor:pointer; }
+.rpg-bt-panel { max-width:560px; margin:0 auto 10px; padding:10px 12px 12px;
+  background:linear-gradient(180deg, rgba(30,24,46,.7), rgba(14,10,24,.94));
+  border-radius:0 0 16px 16px; box-shadow:0 10px 26px rgba(0,0,0,.35); }
+.rpg-bt-target { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 11px; margin-bottom:8px;
+  border-radius:11px; background:rgba(255,255,255,.07); font-size:13px; color:#f0e8ff; }
+.rpg-bt-target b { font-size:14px; }
+.rpg-bt-target .rpg-bt-hp { color:#ffcfc0; }
+.rpg-bt-target .rpg-bt-wk { color:#ffe45e; margin-left:auto; }
+.rpg-blog.fixed1 { height:1.5em; overflow:hidden; margin:6px 0 8px; padding:5px 10px; }
