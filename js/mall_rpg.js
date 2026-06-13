@@ -45,20 +45,27 @@ const RPG_SKILLS = {
 // レベルで覚える
 const RPG_LEARN = { 3: ["ice"], 5: ["elec"], 7: ["force"] };
 
-// ── 魔物（新規デザイン＝竜ロスターは使わない）
+// ── 敵キャラ（★浮かれた観光客が多数・モンスターは少数）
 const RPG_MONS = {
-  slime: { n: "マヨイスライム", ic: "🟢", hp: 16, atk: 6, exp: 6,  gold: 8,  weak: ["fire"], resist: ["ice"], nul: [], el: "phys" },
-  bat:   { n: "ホラアナバット", ic: "🦇", hp: 12, atk: 7, exp: 5,  gold: 6,  weak: ["force"], resist: [], nul: [], el: "phys" },
-  mush:  { n: "ドクキノコ",     ic: "🍄", hp: 20, atk: 6, exp: 8,  gold: 10, weak: ["fire"], resist: ["elec"], nul: [], el: "phys" },
-  doll:  { n: "さまようマネキン", ic: "🤖", hp: 26, atk: 8, exp: 12, gold: 14, weak: ["elec"], resist: ["phys"], nul: [], el: "phys" },
-  ghost: { n: "まよいの霊",     ic: "👻", hp: 18, atk: 7, exp: 10, gold: 12, weak: ["force"], resist: [], nul: ["phys"], el: "ice" },
-  wisp:  { n: "おにび",         ic: "🔥", hp: 16, atk: 8, exp: 9,  gold: 10, weak: ["ice"], resist: [], nul: ["fire"], el: "fire" },
-  boss1: { n: "ミミック大王",   ic: "🎁", hp: 90, atk: 12, exp: 60, gold: 120, weak: ["elec"], resist: ["fire", "ice"], nul: [], el: "phys", boss: true },
+  // 🎫 浮かれた観光客（メイン）
+  baku:     { n: "爆買いツアー客", ic: "🛍️", kind: "tourist", hp: 18, atk: 6, exp: 7, gold: 12, weak: ["elec"], resist: [], nul: [], el: "phys", act: "両手いっぱいの紙袋がぶつかった！" },
+  selfie:   { n: "自撮り女子",     ic: "🤳", kind: "tourist", hp: 14, atk: 6, exp: 6, gold: 9,  weak: ["force"], resist: [], nul: [], el: "phys", act: "自撮り棒がビュンと飛んできた！" },
+  gourmet:  { n: "食べ歩き勢",     ic: "🍢", kind: "tourist", hp: 20, atk: 7, exp: 8, gold: 10, weak: ["ice"], resist: [], nul: [], el: "fire", act: "アツアツたこ焼きを口に押し込んできた！" },
+  stroller: { n: "ベビーカー隊",   ic: "👶", kind: "tourist", hp: 24, atk: 7, exp: 9, gold: 11, weak: ["phys"], resist: ["force"], nul: [], el: "phys", act: "ベビーカーで猛突進！" },
+  oldies:   { n: "団体のおば様",   ic: "📷", kind: "tourist", hp: 22, atk: 6, exp: 9, gold: 14, weak: ["fire"], resist: [], nul: [], el: "phys", act: "おしゃべりの渦に巻き込んできた！" },
+  kid:      { n: "はぐれっ子",     ic: "🧒", kind: "tourist", hp: 10, atk: 5, exp: 5, gold: 6,  weak: ["fire", "ice", "elec", "force"], resist: [], nul: [], el: "phys", act: "泣きわめいて気をひいてきた！" },
+  // 👾 モンスター（少数）
+  slime:    { n: "マヨイスライム", ic: "🟢", kind: "monster", hp: 20, atk: 7, exp: 9, gold: 10, weak: ["fire"], resist: ["ice"], nul: [], el: "phys", act: "ベタベタ体当たり！" },
+  mannequin:{ n: "うごくマネキン", ic: "🤖", kind: "monster", hp: 28, atk: 9, exp: 14, gold: 16, weak: ["elec"], resist: ["phys"], nul: [], el: "phys", act: "マネキンチョップ！" },
+  // 🎡 ボス（屋上）
+  boss1:    { n: "観覧車ゴーレム", ic: "🎡", kind: "monster", hp: 110, atk: 13, exp: 80, gold: 200, weak: ["elec"], resist: ["fire", "ice"], nul: [], el: "phys", boss: true, act: "巨大ゴンドラが回転しながら突撃！" },
 };
-const RPG_ENC = ["slime", "bat", "mush", "doll", "ghost", "wisp"];
+const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid"];
+const RPG_MONSTERS_MINOR = ["slime", "mannequin"];
 
-// ── 迷宮マップ（# 壁 / . 床 / S 入口 / T 宝 / E 出口=ボス）。9x9・連結確認済み。
-const RPG_FLOOR1 = [
+// ── 迷宮マップ（# 壁 / . 床 / S 入口 / T 宝 / F=上り階段 or ボス出口）。
+// 連結確認済みの基本形を回転/反転して各フロアに展開（変形は連結性を保つ）。
+const RPG_BASE = [
   "#########",
   "#S......#",
   "#.#####.#",
@@ -66,26 +73,64 @@ const RPG_FLOOR1 = [
   "#.#.#.#.#",
   "#.#.#...#",
   "#.#.###.#",
-  "#...#..E#",
+  "#...#..F#",
   "#########",
 ];
+// 巨大ららぽーと風・1F→屋上。far: U=上り階段 / E=ボス(屋上)
+const RPG_FLOORS = [
+  { name: "1F ファッション通り",  t: "id",        far: "U" },
+  { name: "2F 雑貨＆ガジェット",  t: "mirrorH",   far: "U" },
+  { name: "3F フードコート",      t: "mirrorV",   far: "U" },
+  { name: "4F シネマ＆ゲーム",    t: "rot180",    far: "U" },
+  { name: "🌿 屋上ガーデン",      t: "transpose", far: "E" },
+];
+function rpgTransform(base, kind) {
+  const m = base.map(r => r.split("")), n = m.length;
+  let o;
+  if (kind === "mirrorH") o = m.map(row => row.slice().reverse());
+  else if (kind === "mirrorV") o = m.slice().reverse();
+  else if (kind === "rot180") o = m.slice().reverse().map(row => row.slice().reverse());
+  else if (kind === "transpose") { o = []; for (let x = 0; x < n; x++) { o[x] = []; for (let y = 0; y < n; y++) o[x][y] = m[y][x]; } }
+  else o = m.map(row => row.slice());
+  return o.map(row => row.join(""));
+}
+function rpgBuildFloor(i) {
+  const meta = RPG_FLOORS[i];
+  return rpgTransform(RPG_BASE, meta.t).map(r => r.replace("F", meta.far));
+}
 const RPG_DV = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // N E S W
 const RPG_DIRNAME = ["北", "東", "南", "西"];
 
 // ── 探索の開始
 function rpgStartRun() {
-  const map = RPG_FLOOR1.map(r => r.split(""));
-  let sx = 1, sy = 1;
-  for (let y = 0; y < map.length; y++) for (let x = 0; x < map[y].length; x++) if (map[y][x] === "S") { sx = x; sy = y; }
   RPG = {
-    map, w: map[0].length, h: map.length,
-    px: sx, py: sy, dir: 1,            // 入口で東向き
+    fi: 0, map: [], w: 9, h: 9, px: 1, py: 1, dir: 1,
     mode: "explore", steps: 0, grace: 1,
     explored: {}, collected: {},
     log: [], battle: null, flash: null,
   };
-  RPG.explored[sx + "," + sy] = 1;
-  rpgLog("🗝️ 地下大迷宮にもぐった。気をつけて…", "good");
+  rpgLoadFloor(0);
+  rpgLog("🛗 巨大モールの探検へ！ 屋上をめざそう！", "good");
+  renderMallRpg();
+}
+// フロア読み込み（fi=フロア番号）
+function rpgLoadFloor(i) {
+  RPG.fi = i;
+  RPG.map = rpgBuildFloor(i).map(r => r.split(""));
+  RPG.w = RPG.map[0].length; RPG.h = RPG.map.length;
+  let sx = 1, sy = 1;
+  for (let y = 0; y < RPG.h; y++) for (let x = 0; x < RPG.w; x++) if (RPG.map[y][x] === "S") { sx = x; sy = y; }
+  RPG.px = sx; RPG.py = sy; RPG.dir = 1;
+  RPG.explored = {}; RPG.explored[sx + "," + sy] = 1;
+  const d = rpgData();
+  if (d.best.floor == null || i > d.best.floor) { d.best.floor = i; rpgSave(); }
+}
+// 上り階段
+function rpgGoUp() {
+  if (RPG.fi + 1 >= RPG_FLOORS.length) { renderMallRpg(); return; }
+  rpgLoadFloor(RPG.fi + 1);
+  rpgLog(`🛗 ${RPG_FLOORS[RPG.fi].name} に上ってきた！`, "good");
+  rpgSfx("nav");
   renderMallRpg();
 }
 function rpgLog(t, cls) { if (!RPG) return; RPG.log.unshift({ t, cls: cls || "" }); RPG.log = RPG.log.slice(0, 5); }
@@ -119,6 +164,7 @@ function rpgForward(sign) {
   rpgSfx("tick");
   const here = rpgCell(nx, ny);
   if (here === "T") { rpgTreasure(nx, ny); return; }
+  if (here === "U") { rpgGoUp(); return; }
   if (here === "E") { rpgReachExit(); return; }
   // ランダムエンカウント
   if (RPG.grace > 0) RPG.grace--;
@@ -126,7 +172,7 @@ function rpgForward(sign) {
   renderMallRpg();
 }
 function rpgTreasure(x, y) {
-  const key = x + "," + y;
+  const key = RPG.fi + ":" + x + "," + y;
   if (RPG.collected[key]) { rpgLog("📦 からっぽの宝箱だ。", ""); renderMallRpg(); return; }
   RPG.collected[key] = 1;
   const d = rpgData();
@@ -148,19 +194,22 @@ function rpgReachExit() {
 // 戦闘
 // =========================================================================
 function rpgEncounter(boss) {
-  let list;
-  if (boss) list = [{ id: "boss1" }];
+  let ids;
+  if (boss) ids = ["boss1"];
   else {
     const n = Math.random() < 0.45 ? 2 : 1;
-    list = []; for (let i = 0; i < n; i++) list.push({ id: rpgPick(RPG_ENC) });
+    ids = []; for (let i = 0; i < n; i++) ids.push(Math.random() < 0.82 ? rpgPick(RPG_TOURISTS) : rpgPick(RPG_MONSTERS_MINOR));
   }
-  const enemies = list.map(e => {
-    const m = RPG_MONS[e.id];
-    return { id: e.id, ref: m, hp: m.hp, maxhp: m.hp, alive: true };
+  const sc = 1 + RPG.fi * 0.22, scR = 1 + RPG.fi * 0.3;   // 上の階ほど手応えUP
+  const enemies = ids.map(id => {
+    const m = RPG_MONS[id];
+    const hp = boss ? m.hp : Math.round(m.hp * sc);
+    return { id, ref: m, hp, maxhp: hp, alive: true,
+      atk: boss ? m.atk : Math.round(m.atk * sc), exp: Math.round(m.exp * scR), gold: Math.round(m.gold * scR) };
   });
   RPG.battle = { enemies, target: 0, extra: false, log: [], boss: !!boss, phase: "cmd", sub: null };
   RPG.mode = "battle";
-  rpgBLog(boss ? `👹 ${enemies[0].ref.n} が立ちはだかった！` : `⚔️ ${enemies.map(e => e.ref.n).join("・")} が現れた！`);
+  rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`);
   rpgSfx("alert");
   renderMallRpg();
 }
@@ -222,7 +271,11 @@ function rpgUseSkill(id) {
     else if (mult === 0.5) tag = " 耐性…";
     rpgBLog(`${RPG_ELEM_IC[sk.el]} ${sk.n}！ ${tgt.ref.n}に${dmg}ダメージ${tag}`, weakHit ? "good" : "");
     rpgSfx(weakHit ? "win" : "tick");
-    if (tgt.hp <= 0) { tgt.alive = false; rpgBLog(`💥 ${tgt.ref.n}を倒した！`, "good"); }
+    if (tgt.hp <= 0) {
+      tgt.alive = false;
+      const tourist = tgt.ref.kind === "tourist";
+      rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good");
+    }
   }
   if (rpgAliveEnemies().length === 0) { rpgBattleWin(); return; }
   // 弱点ヒットで「もう1回！」（1ターン1回まで）
@@ -270,10 +323,10 @@ function rpgEnemyTurn() {
   b.phase = "enemy";
   rpgAliveEnemies().forEach(e => {
     if (d.hp <= 0) return;
-    const raw = e.ref.atk * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6);
+    const raw = (e.atk || e.ref.atk) * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6);
     const dmg = Math.max(1, Math.round(raw));
     d.hp -= dmg;
-    rpgBLog(`${e.ref.ic} ${e.ref.n}の攻撃！ ${dmg}ダメージ。`, "bad");
+    rpgBLog(`${e.ref.ic} ${e.ref.act || (e.ref.n + "の攻撃！")} ${dmg}ダメージ。`, "bad");
   });
   rpgSfx("tick");
   if (d.hp <= 0) { d.hp = 0; rpgBattleLose(); return; }
@@ -284,15 +337,15 @@ function rpgEnemyTurn() {
 function rpgBattleWin() {
   const b = RPG.battle, d = rpgData();
   let exp = 0, gold = 0;
-  b.enemies.forEach(e => { exp += e.ref.exp; gold += e.ref.gold; });
+  b.enemies.forEach(e => { exp += (e.exp || e.ref.exp); gold += (e.gold || e.ref.gold); });
   d.exp += exp; d.gold += gold;
   rpgBLog(`🎉 勝利！ EXP+${exp}・ゴールド+${gold}`, "win");
   // ボス：図鑑クリア＋衣装ドロップ
   let outfit = null;
   if (b.boss) {
     d.cleared = true;
-    outfit = rpgGrantOutfit("c") || rpgGrantOutfit("r");
-    if (outfit) rpgBLog(`👑 ミミック大王の宝！ 衣装「${outfit.name}」を手に入れた！`, "win");
+    outfit = rpgGrantOutfit("r") || rpgGrantOutfit("c");
+    if (outfit) rpgBLog(`👑 屋上制覇！ ごほうびの衣装「${outfit.name}」を手に入れた！`, "win");
   } else if (Math.random() < 0.06) {
     outfit = rpgGrantOutfit("c");
     if (outfit) rpgBLog(`👑 魔物が衣装「${outfit.name}」を落とした！`, "win");
@@ -399,8 +452,8 @@ function renderMallRpg(flash) {
 // ── ハブ
 function rpgRenderHub(app) {
   const d = rpgData();
-  app.appendChild(el("h2", null, "🗝️ モール地下大迷宮"));
-  app.appendChild(el("div", "as-hint2", `モールの地下にひろがる迷宮を探索　<span class="as-hint">レース・コインには影響しません</span>`));
+  app.appendChild(el("h2", null, "🏬 巨大モール大冒険"));
+  app.appendChild(el("div", "as-hint2", `1Fから🌿屋上まで、巨大モールを駆けのぼる一人称ダンジョン　<span class="as-hint">レース・コインには影響しません</span>`));
   const st = el("div", "rpg-stats");
   st.innerHTML =
     `<span class="rpg-chip">Lv <b>${d.lv}</b></span>` +
@@ -409,10 +462,11 @@ function rpgRenderHub(app) {
     `<span class="rpg-chip">EXP ${d.exp}/${rpgExpNext(d.lv)}</span>` +
     `<span class="rpg-chip">🪙 ${d.gold}G</span>` +
     `<span class="rpg-chip">🧪${d.items.potion || 0} 🔵${d.items.ether || 0}</span>` +
-    (d.cleared ? `<span class="rpg-chip win">👑 ボス撃破済</span>` : "");
+    (d.best.floor != null ? `<span class="rpg-chip">🏬 最高 ${RPG_FLOORS[Math.min(d.best.floor, RPG_FLOORS.length - 1)].name}</span>` : "") +
+    (d.cleared ? `<span class="rpg-chip win">🌿 屋上制覇</span>` : "");
   app.appendChild(st);
 
-  const go = el("button", "rpg-start", RPG === null && d.cleared ? "🗝️ 迷宮へ もぐる ▶（再挑戦）" : "🗝️ 迷宮へ もぐる ▶");
+  const go = el("button", "rpg-start", d.cleared ? "🏬 1Fから冒険する ▶（再挑戦）" : "🏬 1Fから冒険する ▶");
   go.onclick = () => rpgStartRun();
   app.appendChild(go);
 
@@ -434,19 +488,19 @@ function rpgRenderHub(app) {
   shop.appendChild(sg);
   app.appendChild(shop);
 
-  // 魔物図鑑（判明した弱点）
+  // 図鑑（判明した弱点）
   const codex = el("details", "rpg-codex");
   let rows = "";
-  RPG_ENC.concat(["boss1"]).forEach(id => {
+  RPG_TOURISTS.concat(RPG_MONSTERS_MINOR, ["boss1"]).forEach(id => {
     const m = RPG_MONS[id], seen = d.codex[id];
     const w = seen && seen.weak.length ? seen.weak.map(e => RPG_ELEM_IC[e]).join("") : "？";
     rows += `<div class="rpg-codexrow"><span>${m.ic} ${seen ? m.n : "？？？"}</span><span>弱点 ${w}</span></div>`;
   });
-  codex.innerHTML = `<summary>📖 魔物図鑑</summary><div class="rpg-codexlist">${rows}</div>`;
+  codex.innerHTML = `<summary>📖 すれちがい図鑑</summary><div class="rpg-codexlist">${rows}</div>`;
   app.appendChild(codex);
 
   const how = el("details", "rpg-how");
-  how.innerHTML = `<summary>📖 遊び方</summary><div>矢印キー or 画面のパッドで迷宮を1歩ずつ進む。<b>魔物の弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)を突く</b>と「もう1回！」。奥のボスを倒すと衣装GET。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
+  how.innerHTML = `<summary>📖 遊び方</summary><div>矢印キー or 画面のパッドでモールを1歩ずつ進み、<b>🛗階段で上の階へ</b>。<b>浮かれた観光客</b>や時々まぎれる👾モンスターと戦い、<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)を突く</b>と「もう1回！」。<b>🌿屋上のボスを倒すと衣装GET</b>。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
   app.appendChild(how);
 
   const actions = el("div", "actions");
@@ -460,6 +514,7 @@ function rpgRenderExplore(app) {
   const d = rpgData();
   const head = el("div", "rpg-runhead");
   head.innerHTML =
+    `<span class="rpg-chip win">🏬 ${RPG_FLOORS[RPG.fi].name}</span>` +
     `<span class="rpg-chip">Lv${d.lv}</span>` +
     `<span class="rpg-chip">❤️${d.hp}/${d.maxhp}</span>` +
     `<span class="rpg-chip">💧${d.mp}/${d.maxmp}</span>` +

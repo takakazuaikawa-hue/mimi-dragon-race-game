@@ -1663,12 +1663,12 @@ function renderMall() {
   app.appendChild(el("div", "mall-top",
     `<span class="as-hint">試着は自由・着替えは無料。レース結果には影響しません。</span>` +
     `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`));
-  // ミニゲーム「モール地下大迷宮」への入口（一人称ダンジョンRPG・衣装が手に入る・表示メタ）
+  // ミニゲーム「巨大モール大冒険」への入口（一人称ダンジョンRPG・衣装が手に入る・表示メタ）
   if (typeof renderMallRpg === "function") {
     const dg = el("button", "mall-dgbtn");
     const _rpg = (state.player.rpg || {});
-    dg.innerHTML = `<span class="mall-dgbtn-ic">🗝️</span><span class="mall-dgbtn-tx"><b>モール地下大迷宮</b>` +
-      `<small>一人称ダンジョンを探索・弱点を突いて戦い衣装GET${_rpg.lv ? `　🧝Lv${_rpg.lv}${_rpg.cleared ? "・👑撃破" : ""}` : ""}</small></span><span class="mall-dgbtn-go">もぐる ▶</span>`;
+    dg.innerHTML = `<span class="mall-dgbtn-ic">🏬</span><span class="mall-dgbtn-tx"><b>巨大モール大冒険</b>` +
+      `<small>1Fから🌿屋上まで・観光客や魔物と戦い衣装GET${_rpg.lv ? `　🧝Lv${_rpg.lv}${_rpg.cleared ? "・🌿制覇" : ""}` : ""}</small></span><span class="mall-dgbtn-go">冒険 ▶</span>`;
     dg.onclick = () => renderMallRpg();
     app.appendChild(dg);
   }
