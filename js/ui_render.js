@@ -36,7 +36,7 @@ function updateHeader() {
 const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2, stable: 2, scout: 2,
-  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3,
+  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, poro_gourmet: 3,
   story_read: 4, race_run: 4, result: 5, analysis: 6
 };
 let _prevScreen = null;
@@ -1522,9 +1522,9 @@ function renderStoryChapter(chId) {
     Dialogue.play(DLG.chapterIntro(ch, cast));
     if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
   }
-  // 第4章を初めて開いたら：泣き虫竜ポロの発見〜聖龍幼体説〜鑑定アーク（導入の後に続けて再生）。
-  // 完了で poroFound＋龍舎/スカウト解放（js/poro.js）。既存のレース出走ポロ・図鑑は不変＝表示専用。
-  if (typeof maybePlayPoroArc === "function") maybePlayPoroArc(ch.id);
+  // フォールバック：2勝より先に第3/4章へ到達していた場合のみ、章を開いた時にポロ発見アークを再生。
+  // 通常は結果画面の「2勝目」で出会う（js/poro.js）。既存のレース出走ポロ・図鑑は不変＝表示専用。
+  if (typeof maybePlayPoroArcOnChapter === "function") maybePlayPoroArcOnChapter(ch.id);
   const app = beginScreen();   // 上部に「← 物語」
   app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
   if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
@@ -1757,10 +1757,35 @@ function renderSettings() {
   const edBtn = el("button", "set-toggle on", "▶ 再生");
   edBtn.onclick = () => {
     if (window.Sfx && Sfx.play) Sfx.play("click");
-    if (window.Ending && Ending.play) Ending.play();
+    if (window.Ending && Ending.play) {
+      Ending.play().then(() => {
+        // 本編クリア＝エンディング完走。ポロを見つけていれば「ポロのグルメレース」解放（仕様§7・表示専用）。
+        try {
+          if (typeof setStoryFlag === "function" && !getStoryFlag("gameCleared")) {
+            setStoryFlag("gameCleared", true);
+            if (typeof poroFound === "function" && poroFound()) {
+              setStoryFlag("poroGourmetRaceUnlocked", true);
+              if (typeof showInfoPopup === "function") showInfoPopup("🏃 ポロのグルメレース 解放！",
+                `<div class="mm-row"><span class="mm-ic">🥹</span><div><b>クリアおめでとう！</b><small>おまけに「ポロのグルメレース」が遊べるようになりました。設定のおまけ欄から、いつでもどうぞ。</small></div></div>`);
+            }
+          }
+          if (state.ui.screen === "settings") renderSettings();
+        } catch (e) {}
+      });
+    }
   };
   edRow.appendChild(edBtn);
   app.appendChild(edRow);
+
+  // ポロのグルメレース（クリア後解放・仕様§7）。表示専用ミニゲーム。
+  if (typeof poroGourmetUnlocked === "function" && poroGourmetUnlocked()) {
+    const pgRow = el("div", "set-row",
+      `<span class="set-ic">🏃</span><span class="set-tx"><span class="set-nm">ポロのグルメレース</span><span class="set-sub">食べ物を集めて走る・スコアアタック</span></span>`);
+    const pgBtn = el("button", "set-toggle on", "▶ 遊ぶ");
+    pgBtn.onclick = () => { if (window.Sfx && Sfx.play) Sfx.play("click"); renderPoroGourmet(); };
+    pgRow.appendChild(pgBtn);
+    app.appendChild(pgRow);
+  }
 
   app.appendChild(el("div", "set-ver", "聖龍爆走録ミミ"));
 
@@ -3945,6 +3970,14 @@ function renderResult() {
         } catch (e) {}
       });
     }, 600);
+  }
+
+  // 🐲 泣き虫竜ポロ 発見イベント：序盤の「2勝目（単勝）」で出会う（第4章開放=総資産100万より前。
+  // ポロは第3・4章の一枚絵に既に登場するため、それより前に加入させる）。完了で龍舎/スカウト解放。
+  // js/poro.js。既存のレース出走ポロ・オッズ・配当・図鑑は一切不変＝表示専用メタ。
+  if (!c._poroArcTried && typeof maybePlayPoroArcOnWin === "function" && typeof poroFound === "function" && !poroFound()) {
+    c._poroArcTried = true;
+    setTimeout(() => { try { maybePlayPoroArcOnWin(); } catch (e) {} }, 700);
   }
 
   drawRecapScreen();

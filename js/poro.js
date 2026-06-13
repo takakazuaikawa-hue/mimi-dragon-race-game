@@ -82,9 +82,8 @@ function poroDiscoveryScript() {
   ];
 }
 
-// 発見アークの再生（第4章を初めて開いた時に1回）。完了後にフラグ確定＋解放通知。
-function maybePlayPoroArc(chId) {
-  if (chId !== "4") return false;
+// 発見アークの再生（1回だけ）。完了後にフラグ確定＋解放通知。window._poroArcPlayingで二重起動ガード。
+function _playPoroArc() {
   if (poroFound()) return false;
   if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
   if (window._poroArcPlaying) return false;
@@ -94,6 +93,19 @@ function maybePlayPoroArc(chId) {
     completePoroDiscovery();
   });
   return true;
+}
+// ★出会い＝序盤の「2勝目」（ユーザー指定）。ポロは第3・4章の一枚絵に既に登場するため、章開放
+//   （総資産100万＝第4章）より前に加入させる。wins＝単勝的中数。結果画面(renderResult)から呼ぶ。
+function maybePlayPoroArcOnWin() {
+  if (poroFound()) return false;
+  if (((state.player && state.player.wins) || 0) < 2) return false;
+  return _playPoroArc();
+}
+// フォールバック：万一2勝より先に第3/4章へ到達していたら、章を開いた時に出会いを再生（取りこぼし防止）。
+function maybePlayPoroArcOnChapter(chId) {
+  if (chId !== "3" && chId !== "4") return false;
+  if (poroFound()) return false;
+  return _playPoroArc();
 }
 
 // 発見完了＝フラグ確定（poroFound＋鑑定＋スカウト/龍舎を同時解放）。仕様 §8・§12。

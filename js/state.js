@@ -47,6 +47,7 @@ const state = {
       poroConfirmedNotSacredDragon: false,
       dragonScoutUnlocked: false,
       dragonStableUnlocked: false,
+      gameCleared: false,
       poroGourmetRaceUnlocked: false
     },
     // §09 §4 VillageState (V1 minimal — §26 forward compatibility)
