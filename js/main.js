@@ -31,7 +31,8 @@ window.addEventListener("DOMContentLoaded", () => {
       story: renderStory, consult: renderConsult, settings: renderSettings, mall: renderMall,
       mall_rpg: renderMallRpg,
       stable: (typeof renderStable === "function" ? renderStable : renderHome),
-      scout: (typeof renderScout === "function" ? renderScout : renderHome)
+      scout: (typeof renderScout === "function" ? renderScout : renderHome),
+      poro_gourmet: (typeof renderPoroGourmet === "function" ? renderPoroGourmet : renderHome)
     };
     if (map[state.ui.screen]) map[state.ui.screen]();
   };
