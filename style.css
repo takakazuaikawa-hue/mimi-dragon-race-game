@@ -4085,3 +4085,15 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* アート差し込み口：画像があれば滑らかに表示（無ければ絵文字キャンバスにフォールバック） */
 .rpg-spr.rpg-img { object-fit:contain; image-rendering:auto; display:block; }
+
+/* ハブのヒーローヘッダー（タイトル＋動く背景＋ステータスを統合） */
+.rpg-hero { position:relative; border-radius:18px; overflow:hidden; margin:6px 0 12px; box-shadow:0 8px 26px rgba(0,0,0,.32); }
+.rpg-hero .rpg-resort { height:150px; margin:0; border-radius:0; }
+.rpg-hero-title { position:absolute; top:10px; left:0; right:0; text-align:center; font-size:19px; font-weight:900;
+  color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.5); z-index:3; letter-spacing:.5px; }
+.rpg-hero-stats { position:absolute; left:0; right:0; bottom:0; z-index:3; display:flex; flex-wrap:wrap; gap:12px;
+  justify-content:center; padding:10px; font-size:13px; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6);
+  background:linear-gradient(180deg, rgba(0,0,0,0), rgba(10,8,16,.55)); }
+.rpg-hero-stats b { color:#ffe17a; }
+.rpg-hero-stats .tk { color:#ffd9f6; }
+.rpg-hero-stats .cl { color:#a8ffa8; }

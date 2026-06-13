@@ -675,28 +675,24 @@ function renderMallRpg(flash) {
 // ── ハブ
 function rpgRenderHub(app) {
   const d = rpgData();
-  app.appendChild(el("h2", null, "🏝️ 島のリゾートモール大冒険"));
-  // 動くリゾート背景（空・太陽・雲・ヤシ・波）
+  // ヒーローヘッダー（動くリゾート背景＋タイトル＋ステータスを1つに統合＝箱を減らす）
+  const hero = el("div", "rpg-hero");
   const resort = el("div", "rpg-resort");
   resort.innerHTML =
     `<div class="rpg-sun"></div>` +
     `<div class="rpg-cloud c1">☁️</div><div class="rpg-cloud c2">⛅</div><div class="rpg-cloud c3">☁️</div>` +
     `<div class="rpg-bird b1">🕊️</div><div class="rpg-bird b2">🕊️</div>` +
     `<div class="rpg-palm pl">🌴</div><div class="rpg-palm pr">🌴</div>` +
-    `<div class="rpg-beach"></div><div class="rpg-sea"></div>` +
-    `<div class="rpg-resort-cap">🌊 ビーチサイドから🌅サンセットテラスまで、潜って遊んでおたから集め！</div>`;
-  app.appendChild(resort);
-  app.appendChild(el("div", "as-hint2", `<span class="as-hint">レース・コインには影響しません（ダンジョン内だけの遊び）</span>`));
-  const st = el("div", "rpg-stats");
-  st.innerHTML =
-    `<span class="rpg-chip">Lv <b>${d.lv}</b></span>` +
-    `<span class="rpg-chip">❤️ ${d.hp}/${d.maxhp}</span>` +
-    `<span class="rpg-chip">💧 ${d.mp}/${d.maxmp}</span>` +
-    `<span class="rpg-chip">🪙 ${d.gold}G</span>` +
-    `<span class="rpg-chip gacha">🎟️ ${d.tickets || 0}</span>` +
-    `<span class="rpg-chip">🧪${d.items.potion || 0} 🔵${d.items.ether || 0}</span>` +
-    (d.cleared ? `<span class="rpg-chip win">🌿 屋上制覇</span>` : "");
-  app.appendChild(st);
+    `<div class="rpg-beach"></div><div class="rpg-sea"></div>`;
+  hero.appendChild(resort);
+  hero.appendChild(el("div", "rpg-hero-title", "🏝️ 島のリゾートモール大冒険"));
+  const stat = el("div", "rpg-hero-stats");
+  stat.innerHTML =
+    `<span>Lv <b>${d.lv}</b></span><span>❤️ ${d.hp}/${d.maxhp}</span><span>💧 ${d.mp}/${d.maxmp}</span>` +
+    `<span>🪙 ${d.gold}G</span><span class="tk">🎟️ ${d.tickets || 0}</span>` +
+    (d.cleared ? `<span class="cl">🌿 制覇</span>` : "");
+  hero.appendChild(stat);
+  app.appendChild(hero);
 
   // ベスト記録（中毒性＝自己ベスト更新）
   const rec = d.records || {};
