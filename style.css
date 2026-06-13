@@ -4383,3 +4383,19 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-foechip .ic { font-size:22px; line-height:1; }
 .rpg-foechip .rpg-hpbar { width:36px; height:5px; }
 .rpg-foechip:active { transform:scale(.95); }
+
+/* ターン切替の一瞬演出（常時テキストを撤去し、切替時だけ） */
+.rpg-fxturn { position:fixed; top:21%; left:50%; transform:translateX(-50%); z-index:99999;
+  font-size:30px; font-weight:900; letter-spacing:3px; padding:6px 26px; border-radius:999px; color:#fff;
+  text-shadow:0 2px 8px rgba(0,0,0,.5); animation:rpgturn .85s ease-out forwards; white-space:nowrap; pointer-events:none; }
+.rpg-fxturn.you { background:linear-gradient(135deg,#2e86c8,#5fb0e0); }
+.rpg-fxturn.foe { background:linear-gradient(135deg,#a83b3b,#d85a5a); }
+@keyframes rpgturn { 0%{ opacity:0; transform:translateX(-50%) translateX(-46px) skewX(-12deg); } 18%{ opacity:1; transform:translateX(-50%) skewX(-12deg); } 70%{ opacity:1; } 100%{ opacity:0; transform:translateX(-50%) translateX(46px) skewX(-12deg); } }
+/* レアエンカウント・カバー */
+.rpg-fxcover.rare { background:radial-gradient(circle, rgba(255,230,150,0) 30%, rgba(255,210,90,.6) 100%); animation:rpgrare .7s ease-out forwards; }
+@keyframes rpgrare { 0%{ opacity:0; } 20%{ opacity:1; } 100%{ opacity:0; } }
+/* スキルの弱点“有利”マーク（判明後だけ） */
+.rpg-cmdbtn { position:relative; }
+.rpg-cmdbtn.adv { box-shadow:0 0 0 2px rgba(255,228,94,.85), 0 4px 14px rgba(0,0,0,.25); }
+.rpg-adv { position:absolute; top:-7px; right:-6px; font-size:10px; font-weight:800; color:#1a1400;
+  background:linear-gradient(135deg,#ffe45e,#ffc83a); padding:1px 6px; border-radius:999px; box-shadow:0 1px 4px rgba(0,0,0,.4); z-index:2; }

@@ -301,6 +301,7 @@ const rpgFx = {
   at(elm, text, cls) { if (!elm) return; const r = elm.getBoundingClientRect(); this.spot(r.left + r.width / 2, r.top + r.height * 0.4, text, cls); },
   spot(x, y, text, cls) { const n = document.createElement("div"); n.className = "rpg-fxnum " + (cls || ""); n.textContent = text; n.style.left = x + "px"; n.style.top = y + "px"; this.layer().appendChild(n); setTimeout(() => n.remove(), 950); },
   banner(text, cls) { const n = document.createElement("div"); n.className = "rpg-fxbanner " + (cls || ""); n.textContent = text; this.layer().appendChild(n); setTimeout(() => n.remove(), 950); },
+  turn(text, cls) { const n = document.createElement("div"); n.className = "rpg-fxturn " + (cls || ""); n.textContent = text; this.layer().appendChild(n); setTimeout(() => n.remove(), 850); },
   hit(elm) { if (!elm) return; elm.classList.remove("rpg-hit"); void elm.offsetWidth; elm.classList.add("rpg-hit"); },
   shakeApp() { const a = document.getElementById("app"); if (!a) return; a.classList.remove("rpg-shake"); void a.offsetWidth; a.classList.add("rpg-shake"); setTimeout(() => a.classList.remove("rpg-shake"), 420); },
   flash(cls) { const n = document.createElement("div"); n.className = "rpg-fxflash " + (cls || ""); this.layer().appendChild(n); setTimeout(() => n.remove(), 520); },
@@ -327,13 +328,15 @@ function rpgEncounter(boss) {
     return { id, ref: m, hp, maxhp: hp, alive: true,
       atk: boss ? m.atk : Math.round(m.atk * sc), exp: Math.round(m.exp * scR), gold: Math.round(m.gold * scR) };
   });
-  RPG.battle = { enemies, target: 0, extra: false, acts: 1, combo: 0, gauge: 0, guard: false, log: [], boss: !!boss, phase: "cmd", sub: null,
+  const rare = !boss && Math.random() < 0.1;   // ✨おたからチャンス（射幸性）
+  RPG.battle = { enemies, target: 0, extra: false, acts: 1, combo: 0, gauge: 0, guard: false, log: [], boss: !!boss, phase: "cmd", sub: null, rare: rare, introT0: (typeof performance !== "undefined" ? performance.now() : Date.now()),
     pstatus: { stun: 0, defdown: 0, dazzle: 0, seal: 0 } };
   RPG.mode = "battle"; RPG.busy = false;
   rpgComputeIntents();               // 敵の行動予告（読み合い）
-  rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`);
-  rpgSfx("alert");
-  rpgFx.cover("enc", 520);            // エンカウント・フラッシュ
+  rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : (rare ? `✨ おたからチャンス！ ${enemies.map(e => e.ref.n).join("・")}（ごほうび倍）` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`));
+  rpgSfx(rare ? "win" : "alert");
+  rpgFx.cover(rare ? "rare" : "enc", rare ? 700 : 520);     // エンカウント演出
+  rpgFx.banner(boss ? "👹 BOSS!" : (rare ? "✨ おたからチャンス！ ✨" : "⚔️ BATTLE!"), boss ? "down" : (rare ? "victory" : "more"));
   renderMallRpg();
 }
 function rpgBLog(t, cls) { if (RPG && RPG.battle) { RPG.battle.log.unshift({ t, cls: cls || "" }); RPG.battle.log = RPG.battle.log.slice(0, 6); } }
@@ -397,7 +400,7 @@ function rpgUseSkill(id) {
   const mult = rpgMult(tgt.ref, sk.el), weakHit = mult >= 1.9;
   const dmg = mult === 0 ? 0 : Math.max(1, Math.round((sk.pow + rpgPlayerPow() * 0.6) * mult * rpgRnd(0.9, 1.1)));
   const now0 = (typeof performance !== "undefined" ? performance.now() : Date.now());
-  const freeze = weakHit ? 120 : (dmg ? 70 : 40), total = 240 + freeze + 220;
+  const freeze = weakHit ? 120 : (dmg ? 70 : 40), total = 240 + freeze + (weakHit ? 90 : 220);   // 弱点は戻りを短縮＝もう1回へ素早く
   b.anim = { who: "mimi", tIdx: ti, t0: now0, contactAt: now0 + 240, freeze: freeze, knock: weakHit ? 18 : 12, shakeMag: weakHit ? 14 : 8, burst: { col: RPG_EL_BURST[sk.el] || "#fff", n: weakHit ? 16 : 12, r: 34 } };
   RPG.busy = true; b.phase = "anim"; rpgSfx("tick"); rpgSave();
   setTimeout(() => {   // ── 着弾
@@ -482,9 +485,10 @@ function rpgEnemyTurn() {
   if (!RPG || !RPG.battle) return;
   const b = RPG.battle;
   b.phase = "enemy"; RPG.busy = true; b.sub = null;
+  rpgFx.turn("ENEMY TURN", "foe");
   rpgSave(); renderMallRpg();                 // 敵HPを反映＆コマンドを隠す
   b._eq = rpgAliveEnemies().slice();
-  setTimeout(() => rpgEnemyStep(0), 360);
+  setTimeout(() => rpgEnemyStep(0), 460);
 }
 function rpgEnemyStep(idx) {
   if (!RPG || !RPG.battle || RPG.mode !== "battle") return;
@@ -532,6 +536,7 @@ function rpgToPlayer() {
   }
   b.guard = false;                                   // ガードは1ターンで解除
   b.phase = "cmd"; b.acts = 1; RPG.busy = false;
+  rpgFx.turn("YOUR TURN", "you");
   rpgComputeIntents();                               // 次の敵の行動を予告
   rpgSave(); renderMallRpg();
 }
@@ -568,9 +573,10 @@ function rpgBattleWin() {
   b.enemies.forEach(e => { exp += (e.exp || e.ref.exp); gold += (e.gold || e.ref.gold); });
   const combo = b.combo || 0, cmult = 1 + Math.min(combo, 25) * 0.06;
   exp = Math.round(exp * cmult); gold = Math.round(gold * cmult);
+  if (b.rare) { gold = Math.round(gold * 2.5); exp = Math.round(exp * 1.5); }   // ✨おたからチャンス
   d.exp += exp; d.gold += gold;
   if (combo > (d.records.combo || 0)) d.records.combo = combo;
-  rpgBLog(`🎉 勝利！ EXP+${exp}・ゴールド+${gold}` + (combo >= 2 ? `（COMBO×${combo}・報酬+${Math.round((cmult - 1) * 100)}%）` : ""), "win");
+  rpgBLog(`🎉 勝利！ EXP+${exp}・ゴールド+${gold}` + (b.rare ? `（✨おたからチャンス！）` : "") + (combo >= 2 ? `（COMBO×${combo}・報酬+${Math.round((cmult - 1) * 100)}%）` : ""), "win");
   // ボス：図鑑クリア＋衣装ドロップ
   let outfit = null;
   if (b.boss) {
@@ -1100,12 +1106,14 @@ function rpgDrawBattle(cv, t) {
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   b.enemies.forEach((e, i) => {
     const s = L.slots[i] || L.slots[L.slots.length - 1], alive = e.alive, off = enemyOff(i), ex = s.x + off[0];
-    ell(s.x, s.y, 25, "rgba(0,0,0,0.30)");
+    const intro = b.introT0 ? Math.min(1, Math.max(0, (now - b.introT0 - i * 70) / 340)) : 1;
+    ell(s.x, s.y, 25, "rgba(0,0,0," + (0.30 * intro) + ")");
     if (b.target === i && alive && b.phase === "cmd") { ell(s.x, s.y, 33, "rgba(255,95,162,0.20)"); const ay = s.y - 72 + Math.sin(ph * 4) * 3; poly([[s.x, ay], [s.x - 7, ay - 10], [s.x + 7, ay - 10]], "rgb(255,95,162)"); }
-    const bob = alive ? Math.sin(ph * 2 + i * 1.3) * 3 : 0, cy = s.y + off[1] - 30 + bob;
-    ctx.save(); if (!alive) ctx.globalAlpha = 0.3;
+    const bob = alive ? Math.sin(ph * 2 + i * 1.3) * 3 : 0, cy = s.y + off[1] - 30 + bob - 18 * (1 - intro);
+    ctx.save(); ctx.globalAlpha = alive ? intro : 0.3;
+    if (b.rare && alive) { const ga = ctx.createRadialGradient(ex, cy, 4, ex, cy, 42); ga.addColorStop(0, "rgba(255,220,120," + (0.55 * intro) + ")"); ga.addColorStop(1, "rgba(255,220,120,0)"); ctx.fillStyle = ga; ctx.beginPath(); ctx.arc(ex, cy, 42, 0, 7); ctx.fill(); }
     if (alive && e._flash && now - e._flash < 150) { ctx.shadowColor = "#fff"; ctx.shadowBlur = 22; }
-    ctx.font = (b.boss ? 70 : 48) + "px serif"; ctx.fillText(e.ref.ic, ex, cy);
+    ctx.font = ((b.boss ? 70 : 48) * (0.45 + 0.55 * intro)) + "px serif"; ctx.fillText(e.ref.ic, ex, cy);
     ctx.shadowBlur = 0; ctx.restore();
     if (alive) {
       const pct = Math.max(0, e.hp) / e.maxhp;
@@ -1133,13 +1141,11 @@ function rpgDrawBattle(cv, t) {
     ctx.restore();
   }
   ctx.restore(); // ステージ終了（シェイク解除）
-  // ── UI（固定）
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const yt = b.phase === "cmd", bw = 150, bx2 = W / 2 - bw / 2;
-  ctx.fillStyle = yt ? "rgba(58,143,206,0.95)" : "rgba(196,70,70,0.95)"; rpgRRect(ctx, bx2, 8, bw, 26, 13); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.font = "bold 15px sans-serif"; ctx.fillText(yt ? "🎮 あなたの番" : (b.phase === "wait" ? "💫 …" : "⚔️ てきのターン"), W / 2, 21);
+  // ── UI（固定・最小限：手番はターン切替の一瞬演出で示す）
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
   const stk = Object.keys(RPG_STATUS).filter(k => b.pstatus[k] > 0);
-  if (stk.length) { ctx.font = "18px serif"; ctx.textAlign = "left"; stk.forEach((k, i) => ctx.fillText(RPG_STATUS[k].ic, 10 + i * 24, 22)); ctx.textAlign = "center"; }
+  if (stk.length) { ctx.font = "18px serif"; stk.forEach((k, i) => ctx.fillText(RPG_STATUS[k].ic, 10 + i * 24, 18)); }
+  ctx.textAlign = "center";
   const vg = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.34, W / 2, H * 0.5, H * 0.95); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.34)"); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 }
 // タップで敵を選択
@@ -1297,12 +1303,16 @@ function rpgRenderBattle(app) {
   if (b.phase !== "cmd") {
     cmd.appendChild(el("div", "rpg-wait", "…"));
   } else if (b.sub === "skills") {
+    // 現在のターゲットの「判明済み弱点」だけ有利マークを出す
+    const tg = (b.enemies[b.target] && b.enemies[b.target].alive) ? b.enemies[b.target] : rpgAliveEnemies()[0];
+    const known = tg && d.codex[tg.id] && d.codex[tg.id].weak ? d.codex[tg.id].weak : [];
     d.skills.forEach(id => {
       const sk = RPG_SKILLS[id];
       const sealed = sk.mp > 0 && b.pstatus.seal > 0;
       const can = d.mp >= sk.mp && !sealed;
-      const btn = el("button", "rpg-cmdbtn el-" + sk.el + (can ? "" : " off"));
-      btn.innerHTML = `<b>${RPG_ELEM_IC[sk.el]} ${sk.n}</b><small>${sealed ? "🍙封じ中" : (sk.el === "heal" ? "回復" : RPG_ELEM[sk.el]) + (sk.mp ? " MP" + sk.mp : "")}</small>`;
+      const adv = sk.el !== "heal" && known.indexOf(sk.el) >= 0;
+      const btn = el("button", "rpg-cmdbtn el-" + sk.el + (can ? "" : " off") + (adv ? " adv" : ""));
+      btn.innerHTML = (adv ? `<span class="rpg-adv">弱点</span>` : "") + `<b>${RPG_ELEM_IC[sk.el]} ${sk.n}</b><small>${sealed ? "🍙封じ中" : (sk.el === "heal" ? "回復" : RPG_ELEM[sk.el]) + (sk.mp ? " MP" + sk.mp : "")}</small>`;
       btn.disabled = !can; btn.onclick = () => rpgUseSkill(id);
       cmd.appendChild(btn);
     });
