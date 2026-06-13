@@ -35,3 +35,6 @@ GitHub Pages公開のため、生成物の規約・ライセンスはクリー�
    例: `const RPG_ART_ENEMIES = ["slime", "boss1"];`
 3. `index.html` の `?v=` を更新（キャッシュ対策）
 → 登録した敵だけ画像表示。未登録は絵文字のまま（404を出さない）。
+
+## ミミ立ち絵（任意）
+- `images/rpg/mimi.webp` を置き、`js/mall_rpg.js` の `RPG_ART_MIMI = false` を `true` に。戦闘の手前にミミの立ち絵が表示されます（未設定は🐰絵文字＋「ミミ」ラベル）。

@@ -1082,9 +1082,14 @@ function rpgDrawBattle(cv, t) {
       if (e.intent && b.phase === "cmd") { const it = e.intent, ic = it.sp ? (RPG_STATUS[it.status] ? RPG_STATUS[it.status].ic : "✨") : "⚔️"; ctx.font = "17px serif"; ctx.fillText(ic, s.x, s.y - 62 + Math.sin(ph * 3 + i) * 2); }
     }
   });
-  // ミミ
+  // ミミ（手前＝プレイヤー）
   ell(L.mimi.x, L.mimi.y, 27, "rgba(0,0,0,0.30)");
-  ctx.font = "60px serif"; ctx.fillText("🧝", L.mimi.x, L.mimi.y - 32 + Math.sin(ph * 1.6) * 3);
+  const mbobY = L.mimi.y - 32 + Math.sin(ph * 1.6) * 3, mart = rpgMimiArt();
+  if (mart) { const mw = 92, mh = mw * (mart.naturalHeight / mart.naturalWidth); ctx.drawImage(mart, L.mimi.x - mw / 2, L.mimi.y - mh + 8 + Math.sin(ph * 1.6) * 3, mw, mh); }
+  else { ctx.font = "60px serif"; ctx.fillText("🐰", L.mimi.x, mbobY); }
+  // 「ミミ」ラベル（プレイヤーだと一目で分かるように）
+  ctx.fillStyle = "rgba(255,95,162,0.92)"; rpgRRect(ctx, L.mimi.x - 22, L.mimi.y + 1, 44, 18, 9); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textBaseline = "middle"; ctx.fillText("ミミ", L.mimi.x, L.mimi.y + 10);
   // 手番バナー
   const yt = b.phase === "cmd", bw = 150, bx = W / 2 - bw / 2;
   ctx.fillStyle = yt ? "rgba(58,143,206,0.95)" : "rgba(196,70,70,0.95)"; rpgRRect(ctx, bx, 8, bw, 26, 13); ctx.fill();
@@ -1154,6 +1159,14 @@ function rpgMakeSprite(emoji, disp, cls) {
 //   （未登録なら画像を読みに行かない＝404/コンソールエラーが出ない）
 //   例: const RPG_ART_ENEMIES = ["slime", "boss1"];  → images/rpg/enemies/slime.webp 等を表示
 const RPG_ART_ENEMIES = [];
+// ミミ立ち絵の差し込み口：images/rpg/mimi.webp を置いて true にすると戦闘の手前に立ち絵表示
+const RPG_ART_MIMI = false;
+let _rpgMimiImg = null;
+function rpgMimiArt() {
+  if (!RPG_ART_MIMI) return null;
+  if (!_rpgMimiImg) { _rpgMimiImg = new Image(); _rpgMimiImg.src = "images/rpg/mimi.webp"; }
+  return (_rpgMimiImg.complete && _rpgMimiImg.naturalWidth) ? _rpgMimiImg : null;
+}
 function rpgEnemyVisual(id, emoji, disp, cls) {
   if (RPG_ART_ENEMIES.indexOf(id) < 0) return rpgMakeSprite(emoji, disp, cls);
   const img = document.createElement("img");
