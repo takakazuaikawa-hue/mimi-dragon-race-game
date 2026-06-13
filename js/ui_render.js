@@ -1771,19 +1771,22 @@ function showMimiViewer() {
   let expr = "default";
   const EXPRS = [["default", "🙂"], ["smile", "😊"], ["happy", "🌟"], ["panic", "💦"]];
 
+  // 没入フルスクリーン構成：画像を主役（画面いっぱい）に、操作系は上下バーへ薄く重ねる。
+  // ★鑑賞モードはホームより大きく見せるのが目的（小さくしない）。
   const ov = el("div", "mv-ov");
   ov.id = "mimi-viewer";
   ov.innerHTML =
-    '<div class="mv-card">' +
-      '<div class="mv-top"><span class="mv-mode">🪞 鑑賞モード</span><button class="mv-x" aria-label="とじる">✕</button></div>' +
-      '<div class="mv-stage">' +
-        '<button class="mv-nav mv-prev" aria-label="前の衣装">‹</button>' +
-        '<div class="mv-imgwrap"><img class="mv-img" alt="ミミ" decoding="async"></div>' +
-        '<button class="mv-nav mv-next" aria-label="次の衣装">›</button>' +
-        '<div class="mv-count"></div>' +
-      '</div>' +
-      '<div class="mv-exprs"></div>' +
+    '<div class="mv-top">' +
+      '<span class="mv-mode">🪞 鑑賞モード</span>' +
+      '<span class="mv-count"></span>' +
+      '<button class="mv-x" aria-label="とじる">✕</button>' +
+    '</div>' +
+    '<button class="mv-nav mv-prev" aria-label="前の衣装">‹</button>' +
+    '<div class="mv-imgwrap"><img class="mv-img" alt="ミミ" decoding="async"></div>' +
+    '<button class="mv-nav mv-next" aria-label="次の衣装">›</button>' +
+    '<div class="mv-bottom">' +
       '<div class="mv-info"><div class="mv-nm"></div><div class="mv-fl"></div></div>' +
+      '<div class="mv-exprs"></div>' +
       '<div class="mv-dots"></div>' +
       '<div class="mv-acts"></div>' +
     '</div>';
@@ -1818,12 +1821,55 @@ function showMimiViewer() {
     dots.appendChild(d);
   });
 
+  // ★立ち絵の透過バウンディングボックスを実測し、“キャラ本体”が画面いっぱいになるよう拡大。
+  // 素材は512×768で左右に透過余白あり→contain任せだとキャラが小さい。余白ぶん拡大＝ホームより大きく見せる。
+  // 余白は画面外へ（overflow:hidden）。同origin配信なのでgetImageDataは可（透過判定で実績あり）。
+  const RATIO = 768 / 512, bboxCache = {};
+  function applyFit(bb) {
+    const wrap = imgwrap.getBoundingClientRect();
+    if (!wrap.width || !wrap.height) return;
+    const padTop = 46;                                   // 頭が上バーに隠れない余白
+    const availW = wrap.width * 0.96;
+    const availH = window.innerHeight - padTop - 56;     // 足元は下パネルのグラデへ沈める前提でフル高近く使う
+    let imgW = Math.min(availW / bb.charW, (availH / bb.charH) / RATIO);
+    imgW = Math.min(imgW, 760);                          // 過度なアップスケール抑制
+    const imgH = imgW * RATIO;
+    img.style.maxWidth = "none"; img.style.maxHeight = "none";
+    img.style.width = Math.round(imgW) + "px";
+    img.style.height = Math.round(imgH) + "px";
+    img.style.position = "relative";
+    img.style.left = Math.round((0.5 - bb.cx) * imgW) + "px";   // キャラ本体を水平センターへ
+    img.style.opacity = "1";
+  }
+  function fitImage() {
+    const o = owned[idx];
+    if (bboxCache[o.id]) { applyFit(bboxCache[o.id]); return; }
+    const im = new Image();
+    im.onload = () => {
+      let bb = { cx: 0.5, charW: 0.62, charH: 0.98 };
+      try {
+        const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight;
+        const g = c.getContext("2d"); g.drawImage(im, 0, 0);
+        const d = g.getImageData(0, 0, c.width, c.height).data;
+        let minX = c.width, maxX = 0, minY = c.height, maxY = 0, any = false;
+        for (let y = 0; y < c.height; y += 3) for (let xx = 0; xx < c.width; xx += 3) {
+          if (d[(y * c.width + xx) * 4 + 3] > 18) { any = true; if (xx < minX) minX = xx; if (xx > maxX) maxX = xx; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+        }
+        if (any) bb = { cx: ((minX + maxX) / 2) / c.width, charW: Math.max(0.2, (maxX - minX) / c.width), charH: Math.max(0.5, (maxY - minY) / c.height) };
+      } catch (e) {}
+      bboxCache[o.id] = bb; applyFit(bb);
+    };
+    im.onerror = () => applyFit({ cx: 0.5, charW: 0.62, charH: 0.98 });
+    im.src = outfitImg(o.id, expr);
+  }
   function paint(dir) {
     const o = owned[idx];
     if (typeof wearOutfit === "function") wearOutfit(o.id); else state.player.outfit = o.id;   // 無料で即着替え（保存込み）
     const src = outfitImg(o.id, expr), fbSmile = outfitImg(o.id, "smile"), fbDef = outfitImg(o.id, "default");
+    img.style.opacity = "0";
     img.onerror = function () { this.onerror = function () { this.onerror = null; this.src = fbDef; }; this.src = fbSmile; };
     img.src = src;
+    fitImage();
     nm.textContent = o.name;
     fl.textContent = o.flavor || "";
     cnt.textContent = (idx + 1) + " / " + owned.length;
@@ -1851,13 +1897,13 @@ function showMimiViewer() {
   done.onclick = (e) => { e.stopPropagation(); close(); };
   acts.appendChild(done);
 
-  // スワイプ（左右で前後の衣装へ）
-  let sx = 0, sw = false;
+  // スワイプ（左右で前後の衣装へ）。スワイプ直後の click で閉じないよう suppressClick でガード。
+  let sx = 0, sw = false, suppressClick = false;
   imgwrap.addEventListener("pointerdown", (e) => { sx = e.clientX; sw = true; });
   imgwrap.addEventListener("pointerup", (e) => {
     if (!sw) return; sw = false;
     const dx = e.clientX - sx;
-    if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+    if (Math.abs(dx) > 40) { suppressClick = true; go(dx < 0 ? 1 : -1); }
   });
   imgwrap.addEventListener("pointercancel", () => { sw = false; });
 
@@ -1868,12 +1914,20 @@ function showMimiViewer() {
     else if (e.key === "Escape") close();
   }
   window.addEventListener("keydown", onKey);
+  const onResize = () => fitImage();
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", onResize);
 
-  // 背景（カード外）タップで閉じる
-  ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+  // 背景（画像の外側＝余白）タップで閉じる。スワイプ直後は閉じない。
+  ov.addEventListener("click", (e) => {
+    if (suppressClick) { suppressClick = false; return; }
+    if (e.target === ov || (e.target.classList && e.target.classList.contains("mv-imgwrap"))) close();
+  });
 
   function close() {
     window.removeEventListener("keydown", onKey);
+    window.removeEventListener("resize", onResize);
+    window.removeEventListener("orientationchange", onResize);
     if (ov.parentNode) ov.remove();
     if (state.ui.screen === "home") renderHome();   // 着替えをホームへ反映
   }
