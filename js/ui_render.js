@@ -512,6 +512,10 @@ function renderHome() {
   const ddMoney = el("button", null, "💰 お金のしくみ");
   ddMoney.onclick = () => { sysDd.classList.add("hidden"); showMoneyMap(); };
   sysDd.appendChild(ddMoney);
+  // シェアはトップナビから⋯メニューへ格下げ（ナビの混雑を整理）。
+  const ddShare = el("button", null, "📣 このゲームをシェア");
+  ddShare.onclick = () => { sysDd.classList.add("hidden"); shareGameInfo(); };
+  sysDd.appendChild(ddShare);
   const ddTitle = el("button", null, "🏠 タイトルへ"); ddTitle.onclick = () => renderTitle();
   // ⛶ 全画面（Android Chrome等＝ステータスバーごと隠せる。iOS Safariは非対応のため非表示）
   if (document.documentElement.requestFullscreen) {
@@ -896,19 +900,16 @@ function renderHome() {
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。勝てば、いいことがあるかも？</small></div></div>`);
     rail.appendChild(lockedMall);
   }
-  rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
   rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
-  // 泣き虫竜ポロ発見で解放（第4章）。表示専用＝レース不変。js/poro.js
+  // 泣き虫竜ポロ発見で解放（第4章）。アイコンは🐲（🏠暮らしと重複しないよう）。竜スカウトは
+  // 龍舎内の導線に集約＝トップナビの重複を整理。表示専用＝レース不変。js/poro.js
   if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
-    rail.appendChild(navItem("🏠", "龍舎", "ポロと、出会った竜たちの拠点。なでて仲良くなれます。", () => renderStable()));
+    rail.appendChild(navItem("🐲", "龍舎", "ポロと出会った竜たちの拠点。なでて仲良く＋竜スカウトもここから。", () => renderStable()));
   }
-  if (typeof poroScoutUnlocked === "function" && poroScoutUnlocked()) {
-    rail.appendChild(navItem("🔍", "スカウト", "野に眠る竜を探しにいきます（出会いは表示専用）。", () => renderScout()));
-  }
-  rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
+  rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
   rail.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
   rail.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
-  rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
+  rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   dock.appendChild(rail);
   wrap.appendChild(dock);
 

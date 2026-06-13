@@ -45,7 +45,12 @@ function poroGourmetUnlocked() { return typeof getStoryFlag === "function" && ge
   if (typeof window !== "undefined" && window.Dialogue && Dialogue.registerCast) {
     Dialogue.registerCast("poro", {
       name: "ポロ", color: "#9a6ad0", symbol: "🥹", side: "left",
-      img: "images/cast/stand/poro.webp"   // 紫ポロ立ち絵（ユーザー用意予定）。404時はsymbolへ。
+      // 紫ポロ立ち絵（ユーザー提供・512×768透過）。表情差分：default/cry/surprise。未配置時はsymbolへ。
+      img: {
+        default: "images/cast/stand/poro.webp",
+        cry: "images/cast/stand/poro_cry.webp",
+        surprise: "images/cast/stand/poro_surprise.webp"
+      }
     });
   }
 })();
@@ -57,9 +62,9 @@ function poroDiscoveryScript() {
   return [
     ["narrator", "雷雨の去ったレース場の裏手。資材置き場、木箱の陰で——なにかが、ちいさく震えていた。"],
     ["mimi", "……あれ？ なにか、ふるえてる……。", "default"],
-    ["poro", "……ぽろ……ぴゃっ……！"],
+    ["poro", "……ぽろ……ぴゃっ……！", "surprise"],
     ["mimi", "わわっ、ごめんね。こわくないよ。ほら……おいで。", "happy"],
-    ["poro", "……ぽろぉ……。"],
+    ["poro", "……ぽろぉ……。", "cry"],
     ["mimi", "あったかい……。ちっちゃな竜さん。どこから来たの？", "default"],
     ["villager", "っ……その紫の体に、宝石みたいな鱗……ま、まさか、聖龍の幼体じゃ……！？"],
     ["makura", "出たァ！ 雨上がり・聖龍レース当日・祭祀布にくるまれた紫の仔竜！ こいつぁバズらせない手はないぜ！？"],
@@ -72,7 +77,7 @@ function poroDiscoveryScript() {
     ["narrator", "＜鑑定結果＞　種族：ムラサキマルチビ竜／成長段階：幼体／希少指定：なし／聖龍との血縁：なし／特殊能力：なし／……食べ過ぎ傾向：あり。"],
     ["makura", "……な〜んだ。ぜんぶ、ふつうの仔竜かぁ。聖龍ちゃうんかい。"],
     ["mizu", "紫も、宝石の鱗も、この地方では珍しくない。祭祀布は夜市の古布屋の品。開催日に現れたのも——屋台の果物が目当て。市場が、勝手に夢を見ただけ。"],
-    ["poro", "……ぽろ？"],
+    ["poro", "……ぽろ？", "default"],
     ["mimi", "……。", "default"],
     ["mimi", "じゃあ、世界を救わなくていいんですね。", "smile"],
     ["mimi", "よかった。ポロは、ポロのままでいいです。", "happy"],
