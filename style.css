@@ -1773,6 +1773,26 @@ table.entry-table {
 .hs-body { padding: 2px 13px 12px; font-size: 12.5px; color: var(--mist-soft); line-height: 1.7; }
 .hs-body b { color: var(--mist); }
 
+/* ===== レース選択：1スクロールのグループ表示（タブ往復を廃止） ===== */
+.rs-ctrl { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 4px 0 10px; padding: 8px 0; background: linear-gradient(180deg, var(--bg, #12161c) 65%, transparent); }
+.rs-seg { display: inline-flex; background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); border-radius: 999px; padding: 3px; }
+.rs-seg-b { font-size: 12.5px; font-weight: 800; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  background: transparent; border: none; color: var(--mist-soft); }
+.rs-seg-b.on { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; }
+.rs-lockbtn { flex: none; font-size: 12px; font-weight: 800; padding: 8px 13px; border-radius: 999px; cursor: pointer;
+  background: rgba(73,200,156,.12); border: 1px solid rgba(73,200,156,.4); color: var(--jade-bright); }
+.rs-lockbtn.on { background: rgba(255,216,119,.12); border-color: var(--gold-line); color: var(--gold-bright); }
+.rs-lockbtn:active, .rs-seg-b:active { transform: translateY(1px); }
+.rs-list { display: flex; flex-direction: column; gap: 4px; }
+.rs-grp-head { position: sticky; top: 52px; z-index: 5; display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  margin: 12px 0 6px; padding: 6px 11px; border-radius: 10px;
+  background: linear-gradient(90deg, rgba(230,178,74,.16), rgba(230,178,74,.04)); border: 1px solid var(--gold-line); }
+.rs-grp-head b { font-size: 14px; color: var(--gold-bright); display: flex; align-items: center; gap: 4px; }
+.rs-grp-head span { font-size: 10.5px; color: var(--mist-soft); white-space: nowrap; }
+.rs-morehint { margin: 12px 2px 2px; padding: 9px 11px; border-radius: 10px; font-size: 11.5px; color: var(--mist-soft);
+  background: rgba(255,255,255,.04); border: 1px dashed var(--glass-border); text-align: center; }
+
 /* ===== 賭け画面UX：選択サマリー＋ハズレ時表示 ===== */
 .bet-sel-sum { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; padding: 8px 11px;
   border-radius: 11px; background: rgba(255,216,119,.08); border: 1px solid var(--gold-line); }
@@ -1856,7 +1876,7 @@ table.entry-table {
   border: 1px solid rgba(255,255,255,0.32); box-shadow: 0 3px 10px -4px rgba(0,0,0,0.55);
 }
 .dlg-text {
-  color: #f3ecdd; font-size: 15px; line-height: 1.85; min-height: 3.5em;
+  color: #f3ecdd; font-size: 15px; line-height: 1.85; min-height: 5.55em;   /* ≒3行ぶんを確保＝発話ごとに枠が伸縮してガタつかない（短文でも高さ一定） */
   white-space: pre-wrap; word-break: break-word;
 }
 .dlg-next {
@@ -3717,14 +3737,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   text-align: center;
   color: #f3ece0;
   will-change: transform;
-  transform: translateY(100%);
+  transform: translateY(100vh);            /* 開始＝画面下のすぐ外（コンテンツ高さ基準だと長尺で数十秒の空白が出る） */
   animation: edrScroll linear forwards;
 }
 .edr-static .edr-scroll { transform: none; animation: none; padding-top: 24px; padding-bottom: 24px; }
 .edr-overlay.edr-ended .edr-scroll { /* animationend 後は最後で停止 */ }
 
+/* 画面下(100vh)から流れ込み、コンテンツが完全に上へ抜けるまで（-100%=コンテンツ高さ）。
+   ＝最初の数十秒が無表示になる不具合を解消し、すぐ文字が流れ始める。 */
 @keyframes edrScroll {
-  from { transform: translateY(100%); }
+  from { transform: translateY(100vh); }
   to   { transform: translateY(-100%); }
 }
 

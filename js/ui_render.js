@@ -2224,64 +2224,63 @@ function renderRaceSelect() {
   const ranks = Object.keys(byRank).map(Number).sort((a, b) => a - b);
   const regions = Object.keys(byRegion);   // RACES定義順（おおむねランク昇順）
 
-  let mode = state.ui.raceMode || "region";   // 既定は「場所で選ぶ」
-  const modeRow = el("div", "rs-mode");
-  const mRegion = el("button", "", "📍 場所で選ぶ");
-  const mRank = el("button", "", "🏆 格で選ぶ");
-  modeRow.appendChild(mRegion); modeRow.appendChild(mRank);
-  app.appendChild(modeRow);
+  // ── 操作バー（sticky）：並べ替え（地域順/格順）＋表示フィルタ（今いける/すべて）。
+  //    旧「モード→タブ→カード」の往復をやめ、1スクロールのグループ表示で全体を一望できる。
+  let mode = state.ui.raceMode || "region";
+  if (state.ui.raceShowLocked == null) state.ui.raceShowLocked = false;
+  const ctrl = el("div", "rs-ctrl");
+  const sortSeg = el("div", "rs-seg");
+  const sRegion = el("button", "rs-seg-b", "📍 地域順");
+  const sRank = el("button", "rs-seg-b", "🏆 格順");
+  sortSeg.appendChild(sRegion); sortSeg.appendChild(sRank);
+  const lockToggle = el("button", "rs-lockbtn", "");
+  ctrl.appendChild(sortSeg); ctrl.appendChild(lockToggle);
+  app.appendChild(ctrl);
 
-  const tabs = el("div", "hr2-tabs");
-  const pane = el("div", "hr2-tabpane");
-  app.appendChild(tabs); app.appendChild(pane);
+  const listWrap = el("div", "rs-list");
+  app.appendChild(listWrap);
 
-  const renderRankPane = (rk) => {
-    pane.innerHTML = "";
-    const races = (byRank[rk] || []).slice().sort((a, b) => a.region.localeCompare(b.region) || a.number - b.number);
-    const lockedRank = rk > state.player.rank;
-    pane.appendChild(el("div", "rs-rank-head", `${gradeBadgeHTML(rk)}Rank ${rk}　${(RANKS[rk] && RANKS[rk].label) || ""}<span class="rs-rank-n">${races.length}レース</span>`));
-    if (lockedRank) pane.appendChild(el("div", "hr2-tabhint", `🔒 このランクは ランク${rk} で解放されます（プレビュー）`));
-    const body = el("div", "rs-rank-body");
-    races.forEach(r => body.appendChild(buildRaceCard(r, lockedRank)));
-    pane.appendChild(body);
-  };
-  const renderRegionPane = (reg) => {
-    pane.innerHTML = "";
-    const races = (byRegion[reg] || []).slice().sort((a, b) => a.number - b.number || a.rank - b.rank);
-    const minRank = races.reduce((m, r) => Math.min(m, r.rank), 99);
-    pane.appendChild(el("div", "rs-rank-head", `${reg}<span class="rs-rank-n">第一〜第五（朝→夜）</span>`));
-    if (races.every(r => r.rank > state.player.rank)) pane.appendChild(el("div", "hr2-tabhint", `🔒 この地域は ランク${minRank} で解放されます（プレビュー）`));
-    const body = el("div", "rs-rank-body");
-    races.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank, true)));
-    pane.appendChild(body);
-  };
-
-  const buildTabs = () => {
-    tabs.innerHTML = "";
+  function renderList() {
+    listWrap.innerHTML = "";
+    const showLocked = state.ui.raceShowLocked;
+    const groups = [];
     if (mode === "region") {
-      let activeReg = (state.ui.raceRegion && byRegion[state.ui.raceRegion]) ? state.ui.raceRegion : regions[0];
       regions.forEach(reg => {
-        const locked = (byRegion[reg] || []).every(r => r.rank > state.player.rank);
-        const tab = el("button", "hr2-tab" + (locked ? " locked" : "") + (reg === activeReg ? " on" : ""), `${locked ? "🔒 " : ""}${reg.replace(/地域$/, "")}`);
-        tab.onclick = () => { state.ui.raceRegion = reg; Array.from(tabs.children).forEach(t => t.classList.remove("on")); tab.classList.add("on"); renderRegionPane(reg); };
-        tabs.appendChild(tab);
+        const races = (byRegion[reg] || []).slice().sort((a, b) => a.number - b.number || a.rank - b.rank);
+        groups.push({ title: reg.replace(/地域$/, ""), sub: "第一〜第五（朝→夜）", races, hideRegion: true });
       });
-      renderRegionPane(activeReg);
     } else {
-      let activeRk = (state.ui.raceTab && ranks.indexOf(state.ui.raceTab) >= 0) ? state.ui.raceTab : (ranks.indexOf(state.player.rank) >= 0 ? state.player.rank : ranks[0]);
       ranks.forEach(rk => {
-        const locked = rk > state.player.rank;
-        const tab = el("button", "hr2-tab" + (locked ? " locked" : "") + (rk === activeRk ? " on" : ""), `${locked ? "🔒 " : ""}${RACE_GRADE[rk] || ("R" + rk)}`);
-        tab.onclick = () => { state.ui.raceTab = rk; Array.from(tabs.children).forEach(t => t.classList.remove("on")); tab.classList.add("on"); renderRankPane(rk); };
-        tabs.appendChild(tab);
+        const races = (byRank[rk] || []).slice().sort((a, b) => a.region.localeCompare(b.region) || a.number - b.number);
+        groups.push({ title: (RANKS[rk] && RANKS[rk].label) || ("ランク" + rk), sub: races.length + "レース", races, grade: rk });
       });
-      renderRankPane(activeRk);
     }
-  };
-  const setMode = (m) => { mode = m; state.ui.raceMode = m; mRegion.classList.toggle("on", m === "region"); mRank.classList.toggle("on", m === "rank"); buildTabs(); };
-  mRegion.onclick = () => setMode("region");
-  mRank.onclick = () => setMode("rank");
-  setMode(mode);
+    let shownAny = 0, hiddenLocked = 0;
+    groups.forEach(g => {
+      const vis = g.races.filter(r => showLocked || r.rank <= state.player.rank);
+      hiddenLocked += g.races.length - vis.length;
+      if (!vis.length) return;
+      shownAny += vis.length;
+      const head = el("div", "rs-grp-head",
+        `<b>${mode === "rank" ? gradeBadgeHTML(g.grade) : "📍 "}${g.title}</b><span>${g.sub}</span>`);
+      listWrap.appendChild(head);
+      const body = el("div", "rs-rank-body");
+      vis.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank, g.hideRegion)));
+      listWrap.appendChild(body);
+    });
+    if (!shownAny) listWrap.appendChild(el("div", "condition-line", "表示できるレースがありません。「すべて表示」で先のレースも見られます。"));
+    else if (!showLocked && hiddenLocked > 0) listWrap.appendChild(el("div", "rs-morehint", `🔒 ほか ${hiddenLocked} レースはランクを上げると解放（「すべて表示」でプレビュー）`));
+  }
+  function syncCtrl() {
+    sRegion.classList.toggle("on", mode === "region");
+    sRank.classList.toggle("on", mode === "rank");
+    lockToggle.classList.toggle("on", state.ui.raceShowLocked);
+    lockToggle.innerHTML = state.ui.raceShowLocked ? "🔓 すべて表示中" : "▶ 今いけるレース";
+  }
+  sRegion.onclick = () => { mode = "region"; state.ui.raceMode = "region"; syncCtrl(); renderList(); };
+  sRank.onclick = () => { mode = "rank"; state.ui.raceMode = "rank"; syncCtrl(); renderList(); };
+  lockToggle.onclick = () => { state.ui.raceShowLocked = !state.ui.raceShowLocked; syncCtrl(); renderList(); };
+  syncCtrl(); renderList();
 
   const back = el("button", "secondary", "ホームへ"); back.onclick = renderHome;
   app.appendChild(back);
