@@ -47,6 +47,7 @@ const state = {
       poroConfirmedNotSacredDragon: false,
       dragonScoutUnlocked: false,
       dragonStableUnlocked: false,
+      metMakura: false,            // 第4話「マクラと推し竜文化」到達で図鑑解放（js/poro.js dexUnlocked）
       gameCleared: false,
       poroGourmetRaceUnlocked: false
     },

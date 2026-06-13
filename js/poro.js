@@ -39,6 +39,12 @@ function poroFound() { return typeof getStoryFlag === "function" && getStoryFlag
 function poroScoutUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("dragonScoutUnlocked"); }
 function poroStableUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("dragonStableUnlocked"); }
 function poroGourmetUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("poroGourmetRaceUnlocked"); }
+// 図鑑は「第4話＝マクラ(枕)と推し竜文化」に到達してから解放（ユーザー指定）。metMakura は
+// renderStoryChapter("4") で立つ。_chapter_intro_4 は既に第4話を開いた既存セーブの救済。
+function dexUnlocked() {
+  if (typeof getStoryFlag !== "function") return false;
+  return getStoryFlag("metMakura") || getStoryFlag("_chapter_intro_4");
+}
 
 // ── ダイアログ立ち絵キャラとして登録（紫＝仕様の体色。立ち絵 webp が無ければ絵文字へ自動FB） ──
 (function registerPoroCast() {
@@ -225,12 +231,19 @@ function renderStable() {
   poroCard.querySelector(".stable-poro-info").appendChild(pet);
   app.appendChild(poroCard);
 
-  // ── スカウトへの導線 ──
+  // ── スカウト／図鑑への導線（トップナビから龍舎に集約） ──
+  const subnav = el("div", "stable-subnav");
   if (poroScoutUnlocked()) {
-    const scoutRow = el("button", "stable-scout-cta", "🔍 竜スカウトへ行く ▶");
+    const scoutRow = el("button", "stable-scout-cta", "🔍 竜スカウトへ行く");
     scoutRow.onclick = () => renderScout();
-    app.appendChild(scoutRow);
+    subnav.appendChild(scoutRow);
   }
+  if (typeof renderCollection === "function" && dexUnlocked()) {   // 図鑑は第4話マクラに会ってから
+    const dexRow = el("button", "stable-scout-cta stable-dex-cta", "📖 図鑑（記録・ごほうび）");
+    dexRow.onclick = () => renderCollection();
+    subnav.appendChild(dexRow);
+  }
+  app.appendChild(subnav);
 
   // ── 出会った竜の一覧 ──
   const met = poroMetDragonIds().filter(id => id !== "poro");
