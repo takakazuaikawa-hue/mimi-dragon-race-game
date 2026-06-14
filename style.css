@@ -4469,3 +4469,55 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-final:active { transform: scale(.98); }
 @keyframes epFinalPulse { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 @media (prefers-reduced-motion: reduce) { .hl-final { animation: none; } }
+
+/* ===== 第5話：神眼開眼カットイン（表示専用・物語演出） ===== */
+.sg-cutin { position: fixed; inset: 0; z-index: 9000; overflow: hidden; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(120% 90% at 50% 44%, #2a1840 0%, #150b24 46%, #07040d 100%);
+  animation: sgIn .35s ease both; }
+.sg-cutin.out { animation: sgOut .3s ease both; }
+@keyframes sgIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sgOut { to { opacity: 0; } }
+.sg-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; animation: sgFlash 1.7s ease-out; }
+@keyframes sgFlash { 0% { opacity: .92; } 14% { opacity: 0; } 48% { opacity: 0; } 54% { opacity: .42; } 72% { opacity: 0; } 100% { opacity: 0; } }
+.sg-rays { position: absolute; left: 50%; top: 44%; width: 150vmax; height: 150vmax; pointer-events: none; opacity: 0;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, rgba(180,130,255,.15) 0deg 5deg, transparent 5deg 15deg);
+  animation: sgRays 2.4s ease-out forwards; }
+@keyframes sgRays { 0% { opacity: 0; } 45% { opacity: .85; } 100% { opacity: .5; } }
+.sg-meteors { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.sg-meteors i { position: absolute; top: -14vmax; width: 2px; height: 30vmax; opacity: 0; transform: rotate(24deg);
+  background: linear-gradient(180deg, transparent, rgba(206,170,255,.9), transparent); animation: sgMeteor 1.6s ease-in forwards; }
+.sg-meteors i:nth-child(1) { left: 30%; animation-delay: .2s; }
+.sg-meteors i:nth-child(2) { left: 58%; animation-delay: .55s; }
+.sg-meteors i:nth-child(3) { left: 78%; animation-delay: .9s; }
+@keyframes sgMeteor { 0% { opacity: 0; transform: translate(0, -20vmax) rotate(24deg); } 16% { opacity: .85; } 100% { opacity: 0; transform: translate(16vmax, 52vmax) rotate(24deg); } }
+.sg-eye-wrap { position: relative; width: min(64vw, 250px); height: min(64vw, 250px); display: flex; align-items: center; justify-content: center; }
+.sg-eye { position: relative; width: 100%; height: 56%; border-radius: 50%; overflow: hidden; opacity: 0; transform: scaleY(.04);
+  background: radial-gradient(ellipse at 50% 50%, #fff 0%, #d9c2ff 16%, #9a6ad0 44%, #3a1d63 76%, #160b28 100%);
+  box-shadow: 0 0 44px 8px rgba(154,106,208,.7), inset 0 0 30px rgba(0,0,0,.55);
+  animation: sgEyeOpen 1s cubic-bezier(.2,.9,.25,1) .25s forwards; }
+@keyframes sgEyeOpen { 0% { transform: scaleY(.04); opacity: 0; } 35% { opacity: 1; } 100% { transform: scaleY(1); opacity: 1; } }
+.sg-iris { position: absolute; left: 50%; top: 50%; width: 44%; height: 84%; transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(circle at 50% 44%, #fff 0%, #c9a9ff 24%, #7a3fc0 62%, #2a1147 100%);
+  box-shadow: 0 0 26px rgba(201,169,255,.9); animation: sgIris 1.6s ease-in-out .7s infinite; }
+@keyframes sgIris { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.45); } }
+.sg-pupil { position: absolute; left: 50%; top: 50%; width: 13%; height: 78%; transform: translate(-50%, -50%); border-radius: 50%; background: #08030f; }
+.sg-ring { position: absolute; inset: 20%; border-radius: 50%; border: 2px solid rgba(201,169,255,.6); opacity: 0; animation: sgRing 1.5s ease-out .7s; }
+@keyframes sgRing { 0% { opacity: .8; transform: scale(.7); } 100% { opacity: 0; transform: scale(1.7); } }
+.sg-text { position: absolute; left: 0; right: 0; bottom: 17%; text-align: center; padding: 0 18px; pointer-events: none; }
+.sg-kicker { font-size: 13px; font-weight: 800; letter-spacing: .12em; color: #cdaaff; opacity: 0; animation: sgFade .5s ease .9s forwards; }
+.sg-title { font-size: 46px; font-weight: 900; letter-spacing: .3em; color: #fff; margin: 2px 0 7px;
+  text-shadow: 0 0 20px rgba(154,106,208,.95), 0 2px 6px rgba(0,0,0,.6); opacity: 0;
+  animation: sgTitle .7s cubic-bezier(.2,.9,.25,1) 1.05s forwards; }
+@keyframes sgTitle { 0% { opacity: 0; transform: scale(1.5); letter-spacing: .6em; } 100% { opacity: 1; transform: scale(1); letter-spacing: .3em; } }
+.sg-sub { font-size: 13.5px; color: #e7d8ff; opacity: 0; animation: sgFade .6s ease 1.5s forwards; }
+@keyframes sgFade { to { opacity: 1; } }
+.sg-skip { position: absolute; right: 14px; bottom: 12px; font-size: 10.5px; color: rgba(255,255,255,.5); opacity: 0; animation: sgFade .5s ease 1.9s forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .sg-flash, .sg-rays, .sg-meteors i, .sg-ring { display: none; }
+  .sg-eye { animation: none; opacity: 1; transform: scaleY(1); }
+  .sg-iris { animation: none; }
+  .sg-kicker, .sg-title, .sg-sub, .sg-skip { animation: none; opacity: 1; }
+  .sg-title { letter-spacing: .3em; transform: none; }
+}
