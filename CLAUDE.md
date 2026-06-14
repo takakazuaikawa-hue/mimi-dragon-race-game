@@ -9,6 +9,11 @@
 3. **CSS/JSを変更したら index.html の `?v=YYYYMMDDx` を全箇所一括更新**してから同時にコミット（スマホキャッシュ対策。例: `?v=20260612a` → `?v=20260613a` に置換）。
 4. classicスクリプト構成：トップレベル `const/function` はファイル間で参照可（windowには載らない）。`<script>` の追加は index.html に列挙。
 
+## 並行作業の鉄則（PC側 plumbing × クラウド側を同時に進める）
+開発は2系統並行：**PC側**＝変更ファイルだけ git plumbing で部分push（`js/mall_rpg.js`等は触らない）／**クラウド側(GitHub)**＝モール戦闘等を直接コミット。先祖返り事故を防ぐ：
+- **出す前に必ず `origin/main` を取り込む**。マージ/競合解消で**相手の変更を消さない**（PC発＝`js/poro*.js`・`js/ui_render.js`・`js/dialogue*`・ポロ立ち絵／クラウド発＝`js/mall_rpg.js`・`style.css`の戦闘CSS）。乗せる前に `git diff --name-only <自分の前回> origin/main -- <該当file>` で相手の変更有無を確認。
+- `index.html` の `?v=` は**「今ライブの版数の次」**へ前方更新（自分の系列で決めない・後退/重複させない）。`git show origin/main:index.html | grep -oE '\?v=20[0-9]{6}[a-z]'` で今を確認。
+
 ## ホーム背景の規格
 背景を追加/差し替える時は **`docs/HOME_BG_SPEC.md`** に従う（床の接地ライン=上端74%・火山は右1/3・中央±22%は抜く・実写調・昼夜2枚で `images/homebg/<id>_{day,night}.webp`→`HOME_BGS`に1行）。
 

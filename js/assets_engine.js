@@ -146,15 +146,20 @@ function recomputeAssets(state) {
 }
 
 // §7 — the highest story chapter unlocked at this 総資産 (spec 32 §9 thresholds).
+// ★EDは総資産1兆 か、終章クリア（epilogue.edFlag＝絶滅メーターを押し切り最終決戦を完走）で解放。
+function epStoryGateOk(ch, total) {
+  if (ch.id === "ED" && state.player && state.player.epilogue && state.player.epilogue.edFlag) return true;
+  return total >= storyUnlockAt(ch.id);
+}
 function currentStoryChapter(total) {
   let cur = STORY_CHAPTERS[0];
-  for (const ch of STORY_CHAPTERS) { if (total >= storyUnlockAt(ch.id)) cur = ch; }
+  for (const ch of STORY_CHAPTERS) { if (epStoryGateOk(ch, total)) cur = ch; }
   return cur;
 }
 
 // All story chapters unlocked so far (for the progress list).
 function unlockedStoryChapters(total) {
-  return STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id));
+  return STORY_CHAPTERS.filter(ch => epStoryGateOk(ch, total));
 }
 
 // §10 / §13.4 — base rescue from the established village-level curve, so the

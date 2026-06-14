@@ -165,6 +165,7 @@ function buyOutfit(id) {
   state.player.coins -= o.acquire.price;           // コイン消費（既存の生活資産購入と同じ・着順/オッズ/配当には非干渉）
   if (!state.player.outfitsBought) state.player.outfitsBought = [];
   state.player.outfitsBought.push(id);
+  if (typeof epPush === "function") epPush("mallBuy");   // 終章：買い物が灯り＝絶滅メーターを押し戻す（終章中のみ・表示メタ）
   if (typeof saveGame === "function") saveGame();
   if (typeof updateHeader === "function") updateHeader();
   return { ok: true };

@@ -33,6 +33,7 @@ const state = {
     // §37 Tier 2 — win streak (連勝): consecutive bet hits (any type).
     streak: 0, bestStreak: 0,
     lastLoginDay: null, loginStreak: 0,   // §37 daily login reward
+    brokeCount: 0,   // 終章伏線：0円落ち込み（無心）の回数。3回超で「知らないお姉さん」登場（js/epilogue_engine.js）
     flags: {
       seenFirstRaceTutorial: false,
       seenFirstWideTutorial: false,
@@ -185,6 +186,7 @@ function resetGame() {
     biggestPayout: 0,
     streak: 0, bestStreak: 0,
     lastLoginDay: null, loginStreak: 0,   // §37 daily login reward
+    brokeCount: 0,   // 終章伏線：0円落ち込み（無心）の回数。3回超で「知らないお姉さん」登場（js/epilogue_engine.js）
     flags: {
       seenFirstRaceTutorial:false, seenFirstWideTutorial:false,
       reachedCoins_10000:false, reachedCoins_100000000:false,

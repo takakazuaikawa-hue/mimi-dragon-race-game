@@ -876,6 +876,32 @@ function renderHome() {
     dock.appendChild(broke);
   }
 
+  // 終章：絶滅メーター（綱引き）HUD＋最終決戦の導線（終章中のみ・表示専用＝実オッズ非干渉）。js/epilogue_engine.js
+  if (typeof epilogueOn === "function" && epilogueOn()) {
+    const e = epData(); const dial = epilogueDial().toFixed(2); const prog = epilogueProgress();
+    if (e.finalReady) {
+      const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
+      fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
+      dock.appendChild(fin);
+    } else {
+      const zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
+      const react = (typeof epilogueDialReaction === "function") ? epilogueDialReaction() : "";
+      const hud = el("div", "ep-hud ep-hud--" + zone + (react ? " ep-react-" + react : ""));
+      hud.innerHTML =
+        `<div class="ep-hud-top"><span class="ep-hud-ttl">☄️ 絶滅メーター <button class="info-q" title="絶滅メーターって？">？</button></span>` +
+        `<span class="ep-hud-odds">答えの単勝 <b class="ep-dial-num">${dial}</b><span class="ep-dial-x">倍</span></span></div>` +
+        `<div class="ep-dial"><div class="ep-dial-track"><span class="ep-dial-needle" style="left:${prog}%"></span></div>` +
+        `<div class="ep-dial-scale"><span class="ep-tk ep-tk-doom">1.0<small>淘汰</small></span>` +
+        `<span class="ep-tk ep-tk-mid">1.05</span>` +
+        `<span class="ep-tk ep-tk-safe">1.1<small>安全</small></span></div></div>` +
+        `<div class="ep-hud-note">スカウト・暮らし・買い物・的中で押し戻す（0で最終決戦）</div>`;
+      const _q = hud.querySelector(".info-q");
+      if (_q) _q.onclick = (ev) => { ev.stopPropagation(); if (typeof showEpilogueMeterHelp === "function") showEpilogueMeterHelp(); };
+      dock.appendChild(hud);
+      if (typeof maybeShowMeterHelpFirstTime === "function") maybeShowMeterHelpFirstTime();  // 初表示時に一度だけ自動で説明
+    }
+  }
+
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
   raceBtn.onclick = () => renderRaceSelect();
   dock.appendChild(raceBtn);
@@ -967,6 +993,7 @@ function runMushin(ov, amt) {
 
 function finishMushin(ov, amt) {
   state.player.coins += amt;                          // 額・計算は不変（基準の救済額）
+  state.player.brokeCount = (state.player.brokeCount || 0) + 1;   // 終章伏線：破産回数（救済額には非干渉・演出のみ）
   if (typeof bumpMaxCoins === "function") bumpMaxCoins();
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   if (typeof saveGame === "function") saveGame();
@@ -980,7 +1007,13 @@ function finishMushin(ov, amt) {
       `<div class="mushin-sub">ありがとう。…次は、当てる。</div>` +
     `</div>`;
   const done = el("button", "mushin-go", "立て直す ▶");
-  done.onclick = () => { ov.remove(); if (typeof updateHeader === "function") updateHeader(); renderHome(); };
+  done.onclick = () => {
+    ov.remove();
+    if (typeof updateHeader === "function") updateHeader();
+    // 終章伏線：破産3回超で「知らないお姉さん」が現れる（VN再生時は内部で renderHome する）。
+    if (typeof maybeStrangerCameo === "function" && maybeStrangerCameo()) return;
+    renderHome();
+  };
   ov.querySelector(".mushin-card").appendChild(done);
 }
 
@@ -1368,61 +1401,68 @@ function photoOr(src, fallbackHTML) {
 }
 
 // =========================================================================
-// (3) Celestia's 神眼 — opt-in consult on the race-detail screen (unlocked at
-// 総資産 1億). Reveals the race winner but COLLAPSES that dragon's market odds
-// (§7.3), teaching "knowing the winner ≠ growing assets". The finish ORDER is
-// never altered — only this one dragon's odds for this one race change, and
-// only because the player chose to ask.
+// (3) Celestia's 神眼 — opt-in consult on the race-detail screen.
+// 解放＝総資産1億 か、または「救済」＝破産3回超で“知らないお姉さん”に出会う（js/epilogue_engine.js）。
+// 1着を教える代わりに、答えが知れ渡り、その竜の**単勝も複勝も実際の馬券どおり最低の1.1倍**まで弾ける。
+// 着順は不変・プレイヤー任意・1レースのみ＝[[race-math-immutable]]の“意図された唯一の例外”。
+// ＝「教わった1頭を単勝/複勝で1.1倍は確実に取れる」(救済) かつ「知るだけでは大きく勝てない」(教訓)。
 // =========================================================================
 function applyCelestiaCollapse(oddsResult, dragonId) {
   const od = oddsResult.oddsData.find(o => o.dragonId === dragonId);
-  if (od) { od.winOdds = 1.01; od.placeOdds = Math.min(od.placeOdds, 1.01); od._celestia = true; }
-  Object.keys(oddsResult.wideOdds || {}).forEach(k => {
-    if (k.split("|").indexOf(dragonId) !== -1) oddsResult.wideOdds[k].odds = Math.min(oddsResult.wideOdds[k].odds, 1.01);
-  });
+  if (od) {
+    od.winOdds = 1.1;                              // 単勝＝最低1.1倍（実際の馬券の最低配当）
+    od.placeOdds = Math.min(od.placeOdds, 1.1);    // 複勝＝最低1.1倍まで弾ける
+    od._celestia = true;
+  }
 }
 function consultCelestia() {
   const c = state.current;
   if (!c || c._celestiaRevealed) return;
   if (!c._fixedResult) c._fixedResult = runRace(c.race, c.trialForms);  // fix the result so the reveal is TRUE and the race plays to it
   const winId = c._fixedResult.entries[0].dragon.id;
-  applyCelestiaCollapse(c.oddsResult, winId);
+  applyCelestiaCollapse(c.oddsResult, winId);   // 単勝・複勝とも最低1.1倍へ
   c._celestiaRevealed = winId;
   renderRaceDetail(c.race);   // re-render; the consult guard reuses the collapsed odds + fixed forms
 }
 function celestiaSectionEl() {
   const c = state.current;
   if (!c || !c.race) return null;
-  if ((state.player.totalAssets || 0) < castUnlockAt("celestia")) return null;   // not met yet
+  // 解放＝総資産1億 or「救済」＝破産3回超で“知らないお姉さん”に出会った（js/epilogue_engine.js）。
+  const rich = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
+  const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
+  if (!rich && !met) return null;   // まだ出会っていない
+  const revealed = (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"));   // 第5話で正体判明
   const cast = STORY_CAST.celestia;
+  const sym = revealed ? cast.symbol : "🌌";
+  const who = revealed ? "セレスティア" : "あのお姉さん";
   const box = el("div", "card celestia-box");
-  box.style.setProperty("--cg", cast.color);
+  box.style.setProperty("--cg", revealed ? cast.color : "#7a6aa0");
   if (c._celestiaRevealed) {
     const win = DRAGONS.find(d => d.id === c._celestiaRevealed);
     const nm = win ? win.name : "？";
     box.classList.add("revealed");
+    const warn = `……ただし答えは知れ渡った。<b>${nm}</b> の単勝も複勝も、実際の馬券どおり最低の <b>1.1倍</b> まで弾けた。それでも、教わった1頭なら1.1倍は確実。──1着を知ることと、大きく勝つことは違うわ。`;
     box.innerHTML =
-      `<div class="cel-head">${cast.symbol} セレスティアの神眼</div>` +
+      `<div class="cel-head">${sym} ${revealed ? "セレスティアの神眼" : "あのお姉さんの“予想”"}</div>` +
       `<div class="cel-reveal">この一戦、生き残る一頭は <b>${nm}</b>。</div>` +
-      `<div class="cel-warn">……ただし答えは知れ渡った。<b>${nm}</b> の単竜オッズは弾けて消え（×1.01）、絡む複・ワイドも沈んだ。1着を知ることと、価値を残すことは違うわ。</div>`;
+      `<div class="cel-warn">${warn}</div>`;
   } else {
-    // Progressive disclosure: a compact ask button up front. Pressing it reveals the
-    // catch (odds collapse) AND the real 聞く / やめる choice — so the screen isn't
-    // pre-loaded with the warning before the player has opted to look.
+    // 段階開示：まず小さな「聞いてみる」→押すと“代償”と本当の 聞く/やめる を出す。
     const renderClosed = () => {
       box.classList.remove("cel-open");
-      box.innerHTML = `<div class="cel-head">${cast.symbol} セレスティアに1着を聞く</div>`;
+      box.innerHTML = `<div class="cel-head">${sym} ${who}に1着を聞く</div>`;
       const ask = el("button", "cel-ask", "🔮 聞いてみる");
       ask.onclick = renderOpen;
       box.appendChild(ask);
     };
     const renderOpen = () => {
       box.classList.add("cel-open");
+      const catchTx = "1着を、教えてくれる。ただし開示した瞬間、その竜の単勝も複勝も、最低の1.1倍まで弾ける。──それでも、確実な1.1倍は残るわ。聞く？";
       box.innerHTML =
-        `<div class="cel-head">${cast.symbol} セレスティアに1着を聞く</div>` +
-        `<div class="cel-warn">神眼は1着を教えてくれる。ただし開示した瞬間、その竜のオッズは弾けて消える（×1.01）。それでも聞く？</div>`;
+        `<div class="cel-head">${sym} ${who}に1着を聞く</div>` +
+        `<div class="cel-warn">${catchTx}</div>`;
       const row = el("div", "cel-choice");
-      const yes = el("button", "cel-ask", "聞く（×1.01覚悟）");
+      const yes = el("button", "cel-ask", "聞く（1.1倍は確実）");
       yes.onclick = () => consultCelestia();
       const no = el("button", "cel-ask ghost", "やめておく");
       no.onclick = renderClosed;
@@ -1529,6 +1569,8 @@ function renderStoryChapter(chId) {
   if (typeof maybePlayPoroArcOnChapter === "function") maybePlayPoroArcOnChapter(ch.id);
   // 第4話「マクラと推し竜文化」を開く＝図鑑（推し竜の記録）を解放（ユーザー指定：図鑑は枕に会ってから）。
   if (ch.id === "4" && typeof setStoryFlag === "function" && !getStoryFlag("metMakura")) setStoryFlag("metMakura", true);
+  // 第5話「セレスティアの神眼」を開く＝終章（絶滅メーターの綱引き）起動（js/epilogue_engine.js）。
+  if (ch.id === "5" && typeof epilogueStart === "function") epilogueStart();
   const app = beginScreen();   // 上部に「← 物語」
   app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
   if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
@@ -1750,8 +1792,19 @@ function renderSettings() {
     grid.appendChild(act("🪙 コインを0に", () => { state.player.coins = 0; }));
     grid.appendChild(act("🏅 ランク+1", () => { state.player.rank = Math.min(7, (state.player.rank || 1) + 1); }));
     grid.appendChild(act("👗 全衣装を所持", () => { state.player.outfitsBought = OUTFITS.filter(o => o.acquire && o.acquire.price != null).map(o => o.id); }));
+    // 終章テスト用：第5話は総資産1億で解放。これで一気に開ける状態＋全機能解放にする。
+    grid.appendChild(act("🌌 終章テスト準備（総資産2億）", () => {
+      state.player.maxCoinsReached = Math.max(state.player.maxCoinsReached || 0, 200000000);
+      if (typeof setStoryFlag === "function") ["poroFound", "dragonScoutUnlocked", "dragonStableUnlocked", "metMakura", "celestiaStrangerSeen"].forEach(f => setStoryFlag(f, true));
+      if (state.player.flags) state.player.flags.everHit = true;
+    }));
+    grid.appendChild(act("☄️ 絶滅メーターを残り10に", () => {
+      if (typeof epilogueStart === "function") epilogueStart();
+      const e = (typeof epData === "function") ? epData() : null;
+      if (e) { e.active = true; e.finalReady = false; e.edFlag = false; e.meter = 10; }
+    }));
     app.appendChild(grid);
-    app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク）。レースの着順・オッズ・配当の計算には触れません。"));
+    app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク/物語の解放）。レースの着順・オッズ・配当の計算には触れません。終章メーターも表示専用。"));
   }
 
   // おまけ：エンディング＆スタッフロール（表示専用。進行に関係なくいつでも観られる）。
@@ -2627,14 +2680,22 @@ function renderRaceDetail(race) {
     const btnByKey = {};
     ADVS.forEach(a => {
       const cast = STORY_CAST[a.key];
-      const locked = a.gated && (state.player.totalAssets || 0) < castUnlockAt(a.key);
+      let locked = a.gated && (state.player.totalAssets || 0) < castUnlockAt(a.key);
+      let name = cast.name.split("・")[0], sym = cast.symbol;
+      if (a.key === "celestia") {
+        // 救済（破産3回超で“お姉さん”に出会う）でも解放。正体は第5話まで伏せる（名前/記号を隠す）。
+        const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
+        const revealed = (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"));
+        if (met) locked = false;
+        if (!revealed) { name = "？？？"; sym = "🌌"; }
+      }
       const b = el("button", "adv-tab" + (locked ? " locked" : ""));
       b.dataset.key = a.key;
       b.style.setProperty("--cg", cast.color);
       b.innerHTML =
-        `<span class="adv-mark">${locked ? "🔒" : cast.symbol}</span>` +
+        `<span class="adv-mark">${locked ? "🔒" : sym}</span>` +
         `<span class="adv-tab-label">${a.label}</span>` +
-        `<span class="adv-tab-name">${cast.name.split("・")[0]}</span>`;
+        `<span class="adv-tab-name">${name}</span>`;
       b.onclick = () => setOpen(state.current._openAdvisor === a.key ? null : a.key);
       btnByKey[a.key] = b;
       tabRow.appendChild(b);
@@ -2744,16 +2805,18 @@ function renderRaceDetail(race) {
   }
 
   // -- セレスティア：1着を聞く（解放済みなら2段階の神眼、未解放ならロック表示） --
+  // 解放＝総資産1億 or「救済」＝破産3回超で“知らないお姉さん”に出会う（js/epilogue_engine.js）。
   function buildCelestiaPanel() {
-    const unlocked = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
-    if (unlocked) { const cel = celestiaSectionEl(); if (cel) return cel; }
+    const rich = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
+    const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
+    if (rich || met) { const cel = celestiaSectionEl(); if (cel) return cel; }
     const cast = STORY_CAST.celestia;
     const wrap = el("div", "card adv-panel cel-locked");
     wrap.style.setProperty("--cg", cast.color);
     wrap.innerHTML =
       `<div class="cel-lock-row"><span class="cel-lock-sym">🔒</span>` +
-      `<div class="cel-lock-body"><div class="cel-lock-title">セレスティアの神眼は、まだ開かない</div>` +
-      `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("celestia"))} に届くと、この一戦の1着を聞けるようになります。</div></div></div>`;
+      `<div class="cel-lock-body"><div class="cel-lock-title">“1着を聞ける相手” には、まだ出会っていない</div>` +
+      `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("celestia"))} に届くか、何度も無一文になって立ち上がるうち、ふと現れる誰かに出会うかもしれません。</div></div></div>`;
     return wrap;
   }
 
@@ -3377,6 +3440,12 @@ function settleRace() {
   const justUnlocked = STORY_CHAPTERS.filter(ch => prevTotal < storyUnlockAt(ch.id) && newTotal >= storyUnlockAt(ch.id));
   if (ra.level > prevStage || justUnlocked.length) {
     runEventHooks("onStoryUnlock", { stage: ra.level, chapter: ra.unlockedStory, chapters: justUnlocked });
+  }
+  // 終章：絶滅メーターの綱引き（終章中のみ・内部ガード。表示メタ＝着順/オッズ/配当には非干渉）。
+  if (typeof doomTick === "function") {
+    doomTick();                                                      // レース確定＝淘汰が前進
+    if (betResult.hit) epPush(c.bet.type === "win" ? "win" : "hit"); // 守り手予想家の信頼＝評判
+    if (ra.level > prevStage) epPush("assetLevel");                  // 暮らし向上＝経済発展
   }
   // 📦 獲得台帳（このレースで増えたもの一覧＝結果画面の「今回の獲得」。表示専用・数値はここまでで確定済み）
   try {
