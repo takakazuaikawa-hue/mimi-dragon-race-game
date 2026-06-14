@@ -211,9 +211,9 @@ function hd2d(ctx) {
   const soft = blurBuf(buf, W, H, 2), strong = blurBuf(buf, W, H, 4);
   for (let y = 0; y < H; y++) { const dist = Math.abs(y - focus) / (H * 0.5); const m = Math.min(1, Math.max(0, (dist - 0.30) * 1.7)); if (m <= 0.01) continue; const src = m > 0.55 ? strong : soft, f = m; for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; buf[i] = buf[i] * (1 - f) + src[i] * f; buf[i + 1] = buf[i + 1] * (1 - f) + src[i + 1] * f; buf[i + 2] = buf[i + 2] * (1 - f) + src[i + 2] * f; } }
   const bp = Buffer.alloc(W * H * 4);
-  for (let i = 0; i < W * H; i++) { const o = i * 4, l = (buf[o] + buf[o + 1] + buf[o + 2]) / 3, e = Math.max(0, l - 190) / 65; bp[o] = buf[o] * e; bp[o + 1] = buf[o + 1] * e; bp[o + 2] = buf[o + 2] * e; }
+  for (let i = 0; i < W * H; i++) { const o = i * 4, l = (buf[o] + buf[o + 1] + buf[o + 2]) / 3, e = Math.max(0, l - 214) / 50; bp[o] = buf[o] * e; bp[o + 1] = buf[o + 1] * e; bp[o + 2] = buf[o + 2] * e; }
   const bb = blurBuf(bp, W, H, 6);
-  for (let i = 0; i < W * H; i++) { const o = i * 4; buf[o] = Math.min(255, buf[o] + bb[o] * 0.7); buf[o + 1] = Math.min(255, buf[o + 1] + bb[o + 1] * 0.7); buf[o + 2] = Math.min(255, buf[o + 2] + bb[o + 2] * 0.7); }
+  for (let i = 0; i < W * H; i++) { const o = i * 4; buf[o] = Math.min(255, buf[o] + bb[o] * 0.55); buf[o + 1] = Math.min(255, buf[o + 1] + bb[o + 1] * 0.55); buf[o + 2] = Math.min(255, buf[o + 2] + bb[o + 2] * 0.55); }
   for (let i = 0; i < W * H; i++) { const o = i * 4; let r = (buf[o] - 128) * 1.08 + 128 + 7, g = (buf[o + 1] - 128) * 1.06 + 128 + 2, b = (buf[o + 2] - 128) * 1.06 + 128 - 6; buf[o] = Math.max(0, Math.min(255, r)); buf[o + 1] = Math.max(0, Math.min(255, g)); buf[o + 2] = Math.max(0, Math.min(255, b)); }
   // ビネット
   const cx = W / 2, cy = H * 0.46;
@@ -277,6 +277,111 @@ function rpgIsoArena(ctx, env) {
 }
 
 const shots = [];
+// ★敵キャラ（浮かれた観光客）のフラットベクター図＝丸顔のかわいいヒト＋アロハ＋帽子＋手持ち小物
+function rpgTouristPal(id) {
+  let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  const shirts = [[255, 138, 96], [86, 178, 222], [122, 200, 144], [244, 200, 96], [200, 142, 214], [246, 152, 172]];
+  const hats = [[250, 238, 214], [255, 255, 255], [250, 224, 140], [126, 202, 210]];
+  const skins = [[255, 224, 196], [244, 206, 174], [228, 188, 158]];
+  return { shirt: shirts[h % shirts.length], hat: hats[(h >>> 3) % hats.length], skin: skins[(h >>> 6) % skins.length] };
+}
+function rpgDrawTourist(ctx, cx, gy, fh, pal, emoji) {
+  const rgb = (a, k) => `rgb(${Math.min(255, a[0] * (k || 1)) | 0},${Math.min(255, a[1] * (k || 1)) | 0},${Math.min(255, a[2] * (k || 1)) | 0})`;
+  const poly = (pts, f) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = f; ctx.fill(); };
+  const disc = (x, y, r, f) => { ctx.fillStyle = f; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+  const sh = pal.shirt, sk = pal.skin, ht = pal.hat;
+  const rh = fh * 0.2, headY = gy - fh + rh, shoulderY = headY + rh * 1.15, hipY = gy - fh * 0.32, bw = fh * 0.36;
+  // 脚＋靴
+  ctx.fillStyle = rgb([70, 80, 104]); ctx.fillRect(cx - bw * 0.36, hipY, bw * 0.3, gy - hipY - 3); ctx.fillRect(cx + bw * 0.06, hipY, bw * 0.3, gy - hipY - 3);
+  ctx.fillStyle = rgb([238, 238, 244]); ctx.fillRect(cx - bw * 0.42, gy - 4, bw * 0.36, 4); ctx.fillRect(cx + bw * 0.06, gy - 4, bw * 0.36, 4);
+  // 腕（奥）
+  disc(cx + bw * 0.52, shoulderY + fh * 0.16, fh * 0.05, rgb(sk, 0.96));
+  // 胴（アロハシャツ＝台形）＋柄
+  poly([[cx - bw * 0.5, hipY + 2], [cx + bw * 0.5, hipY + 2], [cx + bw * 0.42, shoulderY], [cx - bw * 0.42, shoulderY]], rgb(sh));
+  ctx.fillStyle = rgb(sk); poly([[cx - bw * 0.12, shoulderY], [cx + bw * 0.12, shoulderY], [cx, shoulderY + fh * 0.08]], rgb(sk)); // 襟元のV
+  ctx.fillStyle = rgb(sh, 0.82); for (let i = 0; i < 3; i++) disc(cx - bw * 0.22 + i * bw * 0.22, hipY - fh * 0.06, fh * 0.03, rgb(sh, 0.8));
+  // 腕（手前）＋手
+  disc(cx - bw * 0.52, shoulderY + fh * 0.16, fh * 0.05, rgb(sk));
+  // 首＋頭
+  ctx.fillStyle = rgb(sk); ctx.fillRect(cx - rh * 0.28, shoulderY - rh * 0.5, rh * 0.56, rh * 0.7);
+  disc(cx, headY, rh, rgb(sk));
+  // 顔
+  ctx.fillStyle = "#3a2a22"; disc(cx - rh * 0.36, headY - rh * 0.02, rh * 0.12, "#3a2a22"); disc(cx + rh * 0.36, headY - rh * 0.02, rh * 0.12, "#3a2a22");
+  ctx.strokeStyle = "#3a2a22"; ctx.lineWidth = Math.max(1, fh * 0.018); ctx.beginPath(); ctx.arc(cx, headY + rh * 0.12, rh * 0.3, 0.18 * Math.PI, 0.82 * Math.PI); ctx.stroke();
+  ctx.fillStyle = "rgba(255,150,150,0.45)"; disc(cx - rh * 0.56, headY + rh * 0.24, rh * 0.15, "rgba(255,150,150,0.45)"); disc(cx + rh * 0.56, headY + rh * 0.24, rh * 0.15, "rgba(255,150,150,0.45)");
+  // 帽子（麦わら＝クラウン＋つば＋リボン）
+  const hatY = headY - rh * 0.62;
+  poly([[cx - rh * 1.45, hatY], [cx + rh * 1.45, hatY], [cx + rh * 0.95, hatY - rh * 0.12], [cx - rh * 0.95, hatY - rh * 0.12]], rgb(ht, 0.94));
+  poly([[cx - rh * 0.82, hatY - rh * 0.06], [cx + rh * 0.82, hatY - rh * 0.06], [cx + rh * 0.58, hatY - rh * 0.82], [cx - rh * 0.58, hatY - rh * 0.82]], rgb(ht));
+  ctx.fillStyle = rgb(sh); ctx.fillRect(cx - rh * 0.82, hatY - rh * 0.34, rh * 1.64, rh * 0.16);
+  // 手持ち小物（その客のシンボル絵文字）
+  if (emoji) { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(cx - bw * 0.55, shoulderY + fh * 0.22, fh * 0.14, 0, 7); ctx.fill(); if (ctx.fillText) { ctx.font = (fh * 0.2) + "px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#000"; ctx.fillText(emoji, cx - bw * 0.55, shoulderY + fh * 0.22); } }
+}
+// ★HD-2D風バトル背景の検証（前景ヤシ枠／遠景リゾート／海きらめき／床映り込み／ブルーム）
+function rpgBattleBgRich(ctx, env) {
+  const W = env.W, H = env.H, A = env.accent, sunset = env.sunset, n = env.n || 3, ph = (env.t || 0) / 1000;
+  const rgb = (a, k) => `rgb(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0})`;
+  const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
+  const poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+  const ell = (x, y, rw, rh, c) => { ctx.fillStyle = c; ctx.beginPath(); for (let a = 0; a < 6.5; a += 0.22) { const px = x + Math.cos(a) * rw, py = y + Math.sin(a) * rh; a === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); } ctx.fill(); };
+  const circ = (x, y, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+  const palm = (bx, by, s, k) => { // ヤシ（前景フレーム）
+    ctx.fillStyle = rgb([70, 52, 40], k); ctx.fillRect(bx - s * 0.1, by - s * 2.2, s * 0.2, s * 2.2);
+    for (let a = 0; a < 7; a++) { const ang = -Math.PI / 2 + (a - 3) * 0.42, ex = bx + Math.cos(ang) * s * 1.6, ey = by - s * 2.2 + Math.sin(ang) * s * 1.05; poly([[bx, by - s * 2.2], [ex - s * 0.18, ey], [ex + s * 0.18, ey + s * 0.12]], rgb([40, 120, 80], k * (0.8 + a * 0.03))); }
+    circ(bx, by - s * 2.2, s * 0.28, rgb([54, 140, 92], k));
+  };
+  const L = rpgIsoLayout(W, H, n);
+  // 空
+  let sg = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+  if (sunset) { sg.addColorStop(0, "rgb(255,138,86)"); sg.addColorStop(0.5, "rgb(255,178,120)"); sg.addColorStop(1, "rgb(255,222,180)"); }
+  else { sg.addColorStop(0, "rgb(96,176,228)"); sg.addColorStop(0.6, "rgb(160,212,240)"); sg.addColorStop(1, "rgb(224,242,250)"); }
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.64);
+  // 雲（やわらかい層雲＝低彩度で奥行き）
+  ctx.globalAlpha = 0.5; for (let i = 0; i < 3; i++) { const cx = (i * 190 + 60) % W, cy = H * (0.1 + i * 0.07); ell(cx, cy, 54, 11, sunset ? "rgba(255,236,214,0.7)" : "rgba(255,255,255,0.6)"); ell(cx + 34, cy + 5, 38, 8, sunset ? "rgba(255,228,205,0.55)" : "rgba(248,252,255,0.5)"); } ctx.globalAlpha = 1;
+  // 太陽＋ブルームの光輪
+  const sux = W * 0.76, suy = H * 0.2;
+  circ(sux, suy, 54, sunset ? "rgba(255,200,140,0.25)" : "rgba(255,250,225,0.3)");
+  circ(sux, suy, 34, sunset ? "rgba(255,210,150,0.45)" : "rgba(255,252,235,0.55)");
+  circ(sux, suy, 22, sunset ? "rgb(255,180,110)" : "rgb(255,252,225)");
+  // 遠景リゾートのシルエット（地平）
+  const hz = H * 0.42;
+  ctx.fillStyle = sunset ? "rgba(120,90,120,0.5)" : "rgba(90,140,160,0.42)";
+  for (let x = 0; x < W; x += 46) { ctx.fillRect(x + 6, hz - 10, 3, 10); for (let a = 0; a < 5; a++) { const ang = -Math.PI / 2 + (a - 2) * 0.5; ctx.fillRect(x + 7 + Math.cos(ang) * 7, hz - 10 + Math.sin(ang) * 5, 2, 2); } }
+  ctx.fillStyle = sunset ? "rgba(120,90,120,0.35)" : "rgba(90,140,160,0.3)"; ctx.fillRect(W * 0.4, hz - 16, 10, 16); ctx.fillRect(W * 0.55, hz - 22, 8, 22);
+  // 海
+  let se = ctx.createLinearGradient(0, hz, 0, H * 0.66);
+  if (sunset) { se.addColorStop(0, "rgb(150,130,180)"); se.addColorStop(1, "rgb(64,78,124)"); }
+  else { se.addColorStop(0, "rgb(96,196,228)"); se.addColorStop(1, "rgb(38,128,182)"); }
+  ctx.fillStyle = se; ctx.fillRect(0, hz, W, H * 0.66 - hz);
+  // 地平のもや＋日光の柱
+  ctx.fillStyle = sunset ? "rgba(255,200,150,0.35)" : "rgba(225,245,252,0.4)"; ctx.fillRect(0, hz - 3, W, 7);
+  ctx.fillStyle = sunset ? "rgba(255,210,150,0.3)" : "rgba(255,252,230,0.3)"; ctx.fillRect(sux - 14, hz, 28, H * 0.66 - hz);
+  for (let i = 0; i < 4; i++) { const wy = hz + (H * 0.66 - hz) * (0.18 + i * 0.2); ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.beginPath(); for (let xx = 0; xx <= W; xx += 3) { const yy = wy + Math.sin(xx * 0.05 + ph * 2 + i) * 1.5; xx === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
+  // プラットフォーム（側面＋天面＋アクセント縁光＋スポット）
+  const dp = 18; poly([L.left, L.bot, [L.bot[0], L.bot[1] + dp], [L.left[0], L.left[1] + dp]], rgb(A, 0.42)); poly([L.bot, L.right, [L.right[0], L.right[1] + dp], [L.bot[0], L.bot[1] + dp]], rgb(A, 0.32));
+  let pg = ctx.createLinearGradient(0, L.pcy - L.pdh, 0, L.pcy + L.pdh); pg.addColorStop(0, sunset ? "rgb(206,176,158)" : "rgb(200,196,186)"); pg.addColorStop(1, sunset ? "rgb(232,206,184)" : "rgb(228,222,210)"); poly([L.top, L.right, L.bot, L.left], pg);
+  // 暖色の差し込み光（手前＝暖／奥＝中立で暖寒コントラスト）
+  let wg = ctx.createRadialGradient(L.pcx - L.pw * 0.3, L.pcy + L.pdh * 0.4, 6, L.pcx - L.pw * 0.3, L.pcy + L.pdh * 0.4, L.pw); wg.addColorStop(0, sunset ? "rgba(255,196,140,0.4)" : "rgba(255,226,180,0.32)"); wg.addColorStop(1, "rgba(255,226,180,0)"); poly([L.top, L.right, L.bot, L.left], wg);
+  // 床タイル
+  const lerp = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  for (let i = 1; i < 5; i++) { const f = i / 5; ctx.strokeStyle = "rgba(150,138,120,0.35)"; ctx.lineWidth = 1; const p1 = lerp(L.top, L.left, f), p2 = lerp(L.right, L.bot, f); ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke(); const q1 = lerp(L.top, L.right, f), q2 = lerp(L.left, L.bot, f); ctx.beginPath(); ctx.moveTo(q1[0], q1[1]); ctx.lineTo(q2[0], q2[1]); ctx.stroke(); }
+  // アクセント縁光（奥のエッジ）
+  ctx.strokeStyle = rgba(A, 1.25, 0.9); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(L.left[0], L.left[1]); ctx.lineTo(L.top[0], L.top[1]); ctx.lineTo(L.right[0], L.right[1]); ctx.stroke();
+  let spg = ctx.createRadialGradient(L.pcx, L.pcy, 8, L.pcx, L.pcy, L.pw * 0.95); spg.addColorStop(0, "rgba(255,248,224,0.16)"); spg.addColorStop(1, "rgba(255,248,224,0)"); poly([L.top, L.right, L.bot, L.left], spg);
+  // 戦闘者（観光客のベクター図）＋接地影
+  const tids = ["baku", "selfie", "gourmet", "oldies"]; const temo = ["🛍️", "🤳", "🍢", "📷"];
+  L.slots.forEach((s, i) => { ell(s.x, s.y, 24, 9, "rgba(0,0,0,0.28)"); rpgDrawTourist(ctx, s.x, s.y, 62, rpgTouristPal(tids[i % tids.length]), temo[i % temo.length]); });
+  ell(L.mimi.x, L.mimi.y, 26, 10, "rgba(0,0,0,0.28)"); circ(L.mimi.x, L.mimi.y - 30, 26, "rgb(255,120,170)");
+  // 前景フレーム（ヤシ・やや暗く＝被写界深度の手前）
+  palm(W * 0.06, H + 6, 30, 0.78); palm(W * 0.95, H + 10, 34, 0.72);
+  // 後処理（ブルーム＋暖色グレード＋ビネット）
+  hd2d(ctx);
+}
+[[0, "day"], [4, "sunset"]].forEach(([fi, name]) => {
+  const env = { W: 560, H: 320, accent: FLOORS[fi].accent, sunset: !!FLOORS[fi].sky, t: 1500, n: 3 };
+  const ctx = new Ctx(env.W, env.H); rpgBattleBgRich(ctx, env);
+  const fn = `/tmp/btlbg_${name}.png`; fs.writeFileSync(fn, png(env.W, env.H, ctx.buf)); console.log("wrote", fn);
+});
 // ★攻撃モーションのキーフレーム実証（予備動作/着弾）＝canvasで本当に表現できるかの検証
 function rpgAttackKF(ctx, env) {
   const W = env.W, H = env.H, A = env.accent, n = env.n || 2;
