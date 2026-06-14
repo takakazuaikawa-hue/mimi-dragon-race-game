@@ -1784,8 +1784,19 @@ function renderSettings() {
     grid.appendChild(act("🪙 コインを0に", () => { state.player.coins = 0; }));
     grid.appendChild(act("🏅 ランク+1", () => { state.player.rank = Math.min(7, (state.player.rank || 1) + 1); }));
     grid.appendChild(act("👗 全衣装を所持", () => { state.player.outfitsBought = OUTFITS.filter(o => o.acquire && o.acquire.price != null).map(o => o.id); }));
+    // 終章テスト用：第5話は総資産1億で解放。これで一気に開ける状態＋全機能解放にする。
+    grid.appendChild(act("🌌 終章テスト準備（総資産2億）", () => {
+      state.player.maxCoinsReached = Math.max(state.player.maxCoinsReached || 0, 200000000);
+      if (typeof setStoryFlag === "function") ["poroFound", "dragonScoutUnlocked", "dragonStableUnlocked", "metMakura", "celestiaStrangerSeen"].forEach(f => setStoryFlag(f, true));
+      if (state.player.flags) state.player.flags.everHit = true;
+    }));
+    grid.appendChild(act("☄️ 絶滅メーターを残り10に", () => {
+      if (typeof epilogueStart === "function") epilogueStart();
+      const e = (typeof epData === "function") ? epData() : null;
+      if (e) { e.active = true; e.finalReady = false; e.edFlag = false; e.meter = 10; }
+    }));
     app.appendChild(grid);
-    app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク）。レースの着順・オッズ・配当の計算には触れません。"));
+    app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク/物語の解放）。レースの着順・オッズ・配当の計算には触れません。終章メーターも表示専用。"));
   }
 
   // おまけ：エンディング＆スタッフロール（表示専用。進行に関係なくいつでも観られる）。
