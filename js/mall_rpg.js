@@ -129,12 +129,11 @@ function rpgStartRun() {
     fi: 0, map: [], w: 9, h: 9, px: 1, py: 1, dir: 1,
     mode: "explore", steps: 0, grace: 1,
     explored: {}, collected: {},
-    log: [], battle: null, flash: null, auto: true,
+    log: [], battle: null, flash: null, auto: false,
   };
   rpgLoadFloor(0);
-  rpgLog("🏝️ リゾートを自動で探検！ 戦闘になったら手動です", "good");
+  rpgLog("🏝️ リゾート探検へ！ ▲で進む・↰↱で向き（▶でオートにも切替）", "good");
   renderMallRpg();
-  rpgAutoLoop();
 }
 // フロア読み込み（fi=フロア番号）
 function rpgLoadFloor(i) {
@@ -167,12 +166,11 @@ function rpgStartTower() {
   RPG = {
     fi: RPG_FLOORS.length, map: [], w: 9, h: 9, px: 1, py: 1, dir: 1,
     mode: "explore", steps: 0, grace: 1, explored: {}, collected: {},
-    log: [], battle: null, flash: null, tower: true, depth: 1, towerLuck: 0.2, auto: true,
+    log: [], battle: null, flash: null, tower: true, depth: 1, towerLuck: 0.2, auto: false,
   };
   rpgLoadFloor(RPG_FLOORS.length);
   rpgLog("🌟 エンドレスタワーに挑戦！ どこまで上れる？", "good");
   renderMallRpg();
-  rpgAutoLoop();
 }
 function rpgTowerAscendPrompt() { if (!RPG) return; RPG.mode = "ascend"; rpgSfx("nav"); renderMallRpg(); }
 function rpgTowerAscend() {
@@ -830,7 +828,7 @@ function rpgRenderExplore(app) {
     pause.onclick = () => rpgToggleAuto();
     ctl.appendChild(pause);
   } else {
-    const run = el("button", "rpg-ctl-main play", "▶ 自動探検を再開");
+    const run = el("button", "rpg-ctl-main play", "▶ オートで歩く");
     run.onclick = () => rpgToggleAuto();
     ctl.appendChild(run);
     const nudge = el("div", "rpg-nudge");
@@ -1060,6 +1058,38 @@ function rpgArenaPost(cv, ctx, W, H) {
 
 // ===== 戦闘シーン（全部canvasに描く＝DOM絶対配置のバグを根絶） =====
 function rpgRRect(ctx, x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); } ctx.closePath(); }
+// ★浮かれた観光客＝丸顔のかわいいフラットベクター人物（アロハ＋麦わら帽＋手持ち小物）
+function rpgTouristPal(id) {
+  let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  const shirts = [[255, 138, 96], [86, 178, 222], [122, 200, 144], [244, 200, 96], [200, 142, 214], [246, 152, 172]];
+  const hats = [[250, 238, 214], [255, 255, 255], [250, 224, 140], [126, 202, 210]];
+  const skins = [[255, 224, 196], [244, 206, 174], [228, 188, 158]];
+  return { shirt: shirts[h % shirts.length], hat: hats[(h >>> 3) % hats.length], skin: skins[(h >>> 6) % skins.length] };
+}
+function rpgDrawTourist(ctx, cx, gy, fh, pal, emoji) {
+  const rgb = (a, k) => `rgb(${Math.min(255, a[0] * (k || 1)) | 0},${Math.min(255, a[1] * (k || 1)) | 0},${Math.min(255, a[2] * (k || 1)) | 0})`;
+  const poly = (pts, f) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = f; ctx.fill(); };
+  const disc = (x, y, r, f) => { ctx.fillStyle = f; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+  const sh = pal.shirt, sk = pal.skin, ht = pal.hat;
+  const rh = fh * 0.2, headY = gy - fh + rh, shoulderY = headY + rh * 1.15, hipY = gy - fh * 0.32, bw = fh * 0.36;
+  ctx.fillStyle = rgb([70, 80, 104]); ctx.fillRect(cx - bw * 0.36, hipY, bw * 0.3, gy - hipY - 3); ctx.fillRect(cx + bw * 0.06, hipY, bw * 0.3, gy - hipY - 3);
+  ctx.fillStyle = rgb([238, 238, 244]); ctx.fillRect(cx - bw * 0.42, gy - 4, bw * 0.36, 4); ctx.fillRect(cx + bw * 0.06, gy - 4, bw * 0.36, 4);
+  disc(cx + bw * 0.52, shoulderY + fh * 0.16, fh * 0.05, rgb(sk, 0.96));
+  poly([[cx - bw * 0.5, hipY + 2], [cx + bw * 0.5, hipY + 2], [cx + bw * 0.42, shoulderY], [cx - bw * 0.42, shoulderY]], rgb(sh));
+  poly([[cx - bw * 0.12, shoulderY], [cx + bw * 0.12, shoulderY], [cx, shoulderY + fh * 0.08]], rgb(sk));
+  for (let i = 0; i < 3; i++) disc(cx - bw * 0.22 + i * bw * 0.22, hipY - fh * 0.06, fh * 0.03, rgb(sh, 0.8));
+  disc(cx - bw * 0.52, shoulderY + fh * 0.16, fh * 0.05, rgb(sk));
+  ctx.fillStyle = rgb(sk); ctx.fillRect(cx - rh * 0.28, shoulderY - rh * 0.5, rh * 0.56, rh * 0.7);
+  disc(cx, headY, rh, rgb(sk));
+  disc(cx - rh * 0.36, headY - rh * 0.02, rh * 0.12, "#3a2a22"); disc(cx + rh * 0.36, headY - rh * 0.02, rh * 0.12, "#3a2a22");
+  ctx.strokeStyle = "#3a2a22"; ctx.lineWidth = Math.max(1, fh * 0.018); ctx.beginPath(); ctx.arc(cx, headY + rh * 0.12, rh * 0.3, 0.18 * Math.PI, 0.82 * Math.PI); ctx.stroke();
+  disc(cx - rh * 0.56, headY + rh * 0.24, rh * 0.15, "rgba(255,150,150,0.45)"); disc(cx + rh * 0.56, headY + rh * 0.24, rh * 0.15, "rgba(255,150,150,0.45)");
+  const hatY = headY - rh * 0.62;
+  poly([[cx - rh * 1.45, hatY], [cx + rh * 1.45, hatY], [cx + rh * 0.95, hatY - rh * 0.12], [cx - rh * 0.95, hatY - rh * 0.12]], rgb(ht, 0.94));
+  poly([[cx - rh * 0.82, hatY - rh * 0.06], [cx + rh * 0.82, hatY - rh * 0.06], [cx + rh * 0.58, hatY - rh * 0.82], [cx - rh * 0.58, hatY - rh * 0.82]], rgb(ht));
+  ctx.fillStyle = rgb(sh); ctx.fillRect(cx - rh * 0.82, hatY - rh * 0.34, rh * 1.64, rh * 0.16);
+  if (emoji) { disc(cx - bw * 0.55, shoulderY + fh * 0.22, fh * 0.14, "rgba(255,252,240,0.95)"); if (ctx.fillText) { ctx.font = (fh * 0.2) + "px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#000"; ctx.fillText(emoji, cx - bw * 0.55, shoulderY + fh * 0.22); } }
+}
 function rpgDrawBattle(cv, t) {
   const b = RPG && RPG.battle; if (!b) return;
   const ctx = cv.getContext("2d"); ctx.imageSmoothingEnabled = true;
@@ -1092,17 +1122,40 @@ function rpgDrawBattle(cv, t) {
   // シェイク（着弾時・減衰）
   let shx = 0, shy = 0;
   if (an) { const cA = an.contactAt; if (now >= cA && now < cA + 260) { const dec = Math.max(0, 1 - (now - cA) / 260), m = (an.shakeMag || 8) * dec; shx = (Math.random() * 2 - 1) * m; shy = (Math.random() * 2 - 1) * m; } }
-  // ── 背景（固定）
-  let sg = ctx.createLinearGradient(0, 0, 0, H * 0.62); if (sunset) { sg.addColorStop(0, "rgb(255,150,95)"); sg.addColorStop(1, "rgb(255,212,165)"); } else { sg.addColorStop(0, "rgb(130,198,234)"); sg.addColorStop(1, "rgb(222,240,250)"); } ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.64);
-  ctx.fillStyle = sunset ? "rgba(255,200,140,.4)" : "rgba(255,250,225,.4)"; ctx.beginPath(); ctx.arc(W * 0.78, H * 0.2, 40, 0, 7); ctx.fill();
-  ctx.fillStyle = sunset ? "rgba(255,178,108,.96)" : "rgba(255,250,220,.96)"; ctx.beginPath(); ctx.arc(W * 0.78, H * 0.2, 22, 0, 7); ctx.fill();
-  let se = ctx.createLinearGradient(0, H * 0.4, 0, H * 0.64); if (sunset) { se.addColorStop(0, "rgb(120,120,170)"); se.addColorStop(1, "rgb(70,84,128)"); } else { se.addColorStop(0, "rgb(72,176,216)"); se.addColorStop(1, "rgb(40,135,185)"); } ctx.fillStyle = se; ctx.fillRect(0, H * 0.4, W, H * 0.24);
-  for (let i = 0; i < 3; i++) { const wy = H * (0.44 + i * 0.04); ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1; ctx.beginPath(); for (let xx = 0; xx <= W; xx += 4) { const yy = wy + Math.sin(xx * 0.05 + ph * 2 + i) * 1.4; xx === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
+  // ── 背景（固定・HD-2D風ジオラマ：暖色の砂石床×寒色の空海／遠景リゾート／前景ヤシ）
+  const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
+  const ellf = (x, y, rw, rh, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse ? ctx.ellipse(x, y, rw, rh, 0, 0, 7) : ctx.arc(x, y, rw, 0, 7); ctx.fill(); };
+  const lerp = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  // 空（3段グラデ）
+  let sg = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+  if (sunset) { sg.addColorStop(0, "rgb(255,138,86)"); sg.addColorStop(0.5, "rgb(255,178,120)"); sg.addColorStop(1, "rgb(255,222,180)"); }
+  else { sg.addColorStop(0, "rgb(96,176,228)"); sg.addColorStop(0.6, "rgb(160,212,240)"); sg.addColorStop(1, "rgb(224,242,250)"); }
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H * 0.64);
+  // 雲（やわらかい層雲）
+  ctx.globalAlpha = 0.5; for (let i = 0; i < 3; i++) { const cx = (i * 190 + 60) % W, cy = H * (0.1 + i * 0.07); ellf(cx, cy, 54, 11, sunset ? "rgba(255,236,214,0.7)" : "rgba(255,255,255,0.6)"); ellf(cx + 34, cy + 5, 38, 8, sunset ? "rgba(255,228,205,0.55)" : "rgba(248,252,255,0.5)"); } ctx.globalAlpha = 1;
+  // 太陽＋ブルーム光輪
+  const sux = W * 0.78, suy = H * 0.2;
+  ellf(sux, suy, 50, 50, sunset ? "rgba(255,200,140,0.25)" : "rgba(255,250,225,0.3)");
+  ellf(sux, suy, 32, 32, sunset ? "rgba(255,210,150,0.45)" : "rgba(255,252,235,0.55)");
+  ellf(sux, suy, 21, 21, sunset ? "rgb(255,180,110)" : "rgb(255,252,225)");
+  // 遠景リゾートのシルエット
+  const hz = H * 0.42;
+  ctx.fillStyle = sunset ? "rgba(120,90,120,0.45)" : "rgba(90,140,160,0.4)";
+  for (let x = 0; x < W; x += 46) { ctx.fillRect(x + 6, hz - 10, 3, 10); for (let a = 0; a < 5; a++) { const ang = -Math.PI / 2 + (a - 2) * 0.5; ctx.fillRect(x + 7 + Math.cos(ang) * 7, hz - 10 + Math.sin(ang) * 5, 2, 2); } }
+  ctx.fillStyle = sunset ? "rgba(120,90,120,0.32)" : "rgba(90,140,160,0.28)"; ctx.fillRect(W * 0.4, hz - 16, 10, 16); ctx.fillRect(W * 0.55, hz - 22, 8, 22);
+  // 海＋地平もや＋日光の柱
+  let se = ctx.createLinearGradient(0, hz, 0, H * 0.66); if (sunset) { se.addColorStop(0, "rgb(150,130,180)"); se.addColorStop(1, "rgb(64,78,124)"); } else { se.addColorStop(0, "rgb(96,196,228)"); se.addColorStop(1, "rgb(38,128,182)"); } ctx.fillStyle = se; ctx.fillRect(0, hz, W, H * 0.66 - hz);
+  ctx.fillStyle = sunset ? "rgba(255,200,150,0.32)" : "rgba(225,245,252,0.38)"; ctx.fillRect(0, hz - 3, W, 7);
+  ctx.fillStyle = sunset ? "rgba(255,210,150,0.28)" : "rgba(255,252,230,0.28)"; ctx.fillRect(sux - 14, hz, 28, H * 0.66 - hz);
+  for (let i = 0; i < 4; i++) { const wy = hz + (H * 0.66 - hz) * (0.18 + i * 0.2); ctx.strokeStyle = "rgba(255,255,255,.42)"; ctx.lineWidth = 1; ctx.beginPath(); for (let xx = 0; xx <= W; xx += 4) { const yy = wy + Math.sin(xx * 0.05 + ph * 2 + i) * 1.5; xx === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
   // ── ステージ（シェイク適用）
   ctx.save(); ctx.translate(shx, shy);
   const dp = 16; poly([L.left, L.bot, [L.bot[0], L.bot[1] + dp], [L.left[0], L.left[1] + dp]], rgb(A, 0.45)); poly([L.bot, L.right, [L.right[0], L.right[1] + dp], [L.bot[0], L.bot[1] + dp]], rgb(A, 0.34));
-  let pg = ctx.createLinearGradient(0, L.pcy - L.pdh, 0, L.pcy + L.pdh); pg.addColorStop(0, "rgb(196,206,218)"); pg.addColorStop(1, "rgb(238,242,247)"); poly([L.top, L.right, L.bot, L.left], pg);
-  let spg = ctx.createRadialGradient(L.pcx, L.pcy, 8, L.pcx, L.pcy, L.pw * 0.95); spg.addColorStop(0, "rgba(255,250,225,0.28)"); spg.addColorStop(1, "rgba(255,250,225,0)"); poly([L.top, L.right, L.bot, L.left], spg);
+  let pg = ctx.createLinearGradient(0, L.pcy - L.pdh, 0, L.pcy + L.pdh); pg.addColorStop(0, sunset ? "rgb(206,176,158)" : "rgb(200,196,186)"); pg.addColorStop(1, sunset ? "rgb(232,206,184)" : "rgb(228,222,210)"); poly([L.top, L.right, L.bot, L.left], pg);
+  let wg = ctx.createRadialGradient(L.pcx - L.pw * 0.3, L.pcy + L.pdh * 0.4, 6, L.pcx - L.pw * 0.3, L.pcy + L.pdh * 0.4, L.pw); wg.addColorStop(0, sunset ? "rgba(255,196,140,0.4)" : "rgba(255,226,180,0.3)"); wg.addColorStop(1, "rgba(255,226,180,0)"); poly([L.top, L.right, L.bot, L.left], wg);
+  for (let i = 1; i < 6; i++) { const f = i / 6; ctx.strokeStyle = "rgba(150,138,120,0.34)"; ctx.lineWidth = 1; const p1 = lerp(L.top, L.left, f), p2 = lerp(L.right, L.bot, f); ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke(); const q1 = lerp(L.top, L.right, f), q2 = lerp(L.left, L.bot, f); ctx.beginPath(); ctx.moveTo(q1[0], q1[1]); ctx.lineTo(q2[0], q2[1]); ctx.stroke(); }
+  ctx.strokeStyle = rgba(A, 1.2, 0.85); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(L.left[0], L.left[1]); ctx.lineTo(L.top[0], L.top[1]); ctx.lineTo(L.right[0], L.right[1]); ctx.stroke();
+  let spg = ctx.createRadialGradient(L.pcx, L.pcy, 8, L.pcx, L.pcy, L.pw * 0.95); spg.addColorStop(0, "rgba(255,248,224,0.16)"); spg.addColorStop(1, "rgba(255,248,224,0)"); poly([L.top, L.right, L.bot, L.left], spg);
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   b.enemies.forEach((e, i) => {
     const s = L.slots[i] || L.slots[L.slots.length - 1], alive = e.alive, off = enemyOff(i), ex = s.x + off[0];
@@ -1113,7 +1166,10 @@ function rpgDrawBattle(cv, t) {
     ctx.save(); ctx.globalAlpha = alive ? intro : 0.3;
     if (b.rare && alive) { const ga = ctx.createRadialGradient(ex, cy, 4, ex, cy, 42); ga.addColorStop(0, "rgba(255,220,120," + (0.55 * intro) + ")"); ga.addColorStop(1, "rgba(255,220,120,0)"); ctx.fillStyle = ga; ctx.beginPath(); ctx.arc(ex, cy, 42, 0, 7); ctx.fill(); }
     if (alive && e._flash && now - e._flash < 150) { ctx.shadowColor = "#fff"; ctx.shadowBlur = 22; }
-    ctx.font = ((b.boss ? 70 : 48) * (0.45 + 0.55 * intro)) + "px serif"; ctx.fillText(e.ref.ic, ex, cy);
+    if (e.ref.kind === "tourist") {
+      e._pal = e._pal || rpgTouristPal(e.id);
+      rpgDrawTourist(ctx, ex, s.y + off[1] - bob * 0.5, 62 * (0.5 + 0.5 * intro), e._pal, e.ref.ic);
+    } else { ctx.font = ((b.boss ? 70 : 48) * (0.45 + 0.55 * intro)) + "px serif"; ctx.fillText(e.ref.ic, ex, cy); }
     ctx.shadowBlur = 0; ctx.restore();
     if (alive) {
       const pct = Math.max(0, e.hp) / e.maxhp;
@@ -1141,6 +1197,15 @@ function rpgDrawBattle(cv, t) {
     ctx.restore();
   }
   ctx.restore(); // ステージ終了（シェイク解除）
+  // ── 前景ヤシ（被写界深度の手前＝フレーミング）
+  const palm = (bx, by, s, k) => {
+    ctx.fillStyle = rgb([70, 52, 40], k); ctx.fillRect(bx - s * 0.1, by - s * 2.2, s * 0.2, s * 2.2);
+    for (let a = 0; a < 7; a++) { const ang = -Math.PI / 2 + (a - 3) * 0.42, ex = bx + Math.cos(ang) * s * 1.5, ey = by - s * 2.2 + Math.sin(ang) * s; poly([[bx, by - s * 2.2], [ex - s * 0.16, ey], [ex + s * 0.16, ey + s * 0.1]], rgb([40, 120, 80], k * (0.8 + a * 0.03))); }
+    ctx.fillStyle = rgb([54, 140, 92], k); ctx.beginPath(); ctx.arc(bx, by - s * 2.2, s * 0.26, 0, 7); ctx.fill();
+  };
+  palm(W * 0.045, H + 6, 26, 0.74); palm(W * 0.965, H + 8, 28, 0.7);
+  // ── HD-2D風ブルーム（明部を加算でにじませて発光感）
+  if ("filter" in ctx) { try { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.16; ctx.filter = "blur(5px) brightness(1.32)"; ctx.drawImage(cv, 0, 0); ctx.restore(); } catch (e) {} ctx.filter = "none"; ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
   // ── UI（固定・最小限：手番はターン切替の一瞬演出で示す）
   ctx.textAlign = "left"; ctx.textBaseline = "middle";
   const stk = Object.keys(RPG_STATUS).filter(k => b.pstatus[k] > 0);
