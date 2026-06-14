@@ -83,6 +83,25 @@ function epiloguePushable() { const e = epData(); return e.active && !e.edFlag &
 function epilogueDial() { const e = epData(); const r = Math.max(0, Math.min(1, e.meter / EP_CONST.RANGE)); return (1.1 - 0.1 * r); }
 function epilogueProgress() { const e = epData(); return Math.max(0, Math.min(100, Math.round((1 - e.meter / EP_CONST.RANGE) * 100))); } // 0..100（1.1倍＝安全への近さ）
 
+// ===== 文字盤の演出ヘルパー（表示専用）=====
+// ゾーン：safe(1.1寄り)/mid/doom(1.0寄り)。数値・枠・針の色分けに使う。
+function epilogueZone() {
+  const prog = epilogueProgress();
+  if (prog >= 66) return "safe";
+  if (prog <= 33) return "doom";
+  return "mid";
+}
+// 反応方向：前回HUD表示時から、メーターが淘汰(1.0)側へ増えたら "doom"、安全(1.1)側へ減ったら "push"、不変は ""。
+// ★HUD描画ごとに1回だけ呼ぶ（呼ぶたび基準を更新＝変化は次の描画で一度だけ演出）。保存しない＝リロードで初期化（演出のみ）。
+let _epLastDialMeter = null;
+function epilogueDialReaction() {
+  const cur = epData().meter;
+  let r = "";
+  if (_epLastDialMeter !== null) { if (cur > _epLastDialMeter) r = "doom"; else if (cur < _epLastDialMeter) r = "push"; }
+  _epLastDialMeter = cur;
+  return r;
+}
+
 // =========================================================================
 // 絶滅メーターの説明（HUDの「？」からいつでも／初表示時に一度だけ自動で開く）
 // =========================================================================

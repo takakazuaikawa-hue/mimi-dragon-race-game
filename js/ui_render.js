@@ -884,11 +884,16 @@ function renderHome() {
       fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
       dock.appendChild(fin);
     } else {
-      const hud = el("div", "ep-hud");
+      const zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
+      const react = (typeof epilogueDialReaction === "function") ? epilogueDialReaction() : "";
+      const hud = el("div", "ep-hud ep-hud--" + zone + (react ? " ep-react-" + react : ""));
       hud.innerHTML =
         `<div class="ep-hud-top"><span class="ep-hud-ttl">☄️ 絶滅メーター <button class="info-q" title="絶滅メーターって？">？</button></span>` +
-        `<span class="ep-hud-odds">答えの単勝 <b>${dial}</b>倍</span></div>` +
-        `<div class="ep-hud-bar"><i style="width:${prog}%"></i></div>` +
+        `<span class="ep-hud-odds">答えの単勝 <b class="ep-dial-num">${dial}</b><span class="ep-dial-x">倍</span></span></div>` +
+        `<div class="ep-dial"><div class="ep-dial-track"><span class="ep-dial-needle" style="left:${prog}%"></span></div>` +
+        `<div class="ep-dial-scale"><span class="ep-tk ep-tk-doom">1.0<small>淘汰</small></span>` +
+        `<span class="ep-tk ep-tk-mid">1.05</span>` +
+        `<span class="ep-tk ep-tk-safe">1.1<small>安全</small></span></div></div>` +
         `<div class="ep-hud-note">スカウト・暮らし・買い物・的中で押し戻す（0で最終決戦）</div>`;
       const _q = hud.querySelector(".info-q");
       if (_q) _q.onclick = (ev) => { ev.stopPropagation(); if (typeof showEpilogueMeterHelp === "function") showEpilogueMeterHelp(); };
