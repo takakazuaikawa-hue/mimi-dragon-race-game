@@ -1377,30 +1377,25 @@ function photoOr(src, fallbackHTML) {
 // =========================================================================
 // (3) Celestia's 神眼 — opt-in consult on the race-detail screen.
 // 解放＝総資産1億 か、または「救済」＝破産3回超で“知らないお姉さん”に出会う（js/epilogue_engine.js）。
-// 1着を教える代わりに、その竜の単勝オッズを弾けさせる（×1.01）。着順は不変・プレイヤー任意・1レースのみ
-// ＝[[race-math-immutable]]の“意図された唯一の例外”。
-//   - gentle（救済・正体判明前）＝**単勝だけ**潰す→複勝は自然の下限1.1倍が残る＝「1着を教わって複勝で拾えば最低1.1倍」。
-//   - 通常（正体判明後・1億）＝単・複・ワイド全部沈める＝「1着を知ること≠価値を残すこと」の厳しい教訓。
+// 1着を教える代わりに、答えが知れ渡り、その竜の**単勝も複勝も実際の馬券どおり最低の1.1倍**まで弾ける。
+// 着順は不変・プレイヤー任意・1レースのみ＝[[race-math-immutable]]の“意図された唯一の例外”。
+// ＝「教わった1頭を単勝/複勝で1.1倍は確実に取れる」(救済) かつ「知るだけでは大きく勝てない」(教訓)。
 // =========================================================================
-function applyCelestiaCollapse(oddsResult, dragonId, gentle) {
+function applyCelestiaCollapse(oddsResult, dragonId) {
   const od = oddsResult.oddsData.find(o => o.dragonId === dragonId);
   if (od) {
-    od.winOdds = 1.01; od._celestia = true;                       // 単勝は必ず弾ける（答えが知れ渡る）
-    if (!gentle) od.placeOdds = Math.min(od.placeOdds, 1.01);     // 厳しい版だけ複勝も沈める（救済版は複勝1.1倍を残す）
+    od.winOdds = 1.1;                              // 単勝＝最低1.1倍（実際の馬券の最低配当）
+    od.placeOdds = Math.min(od.placeOdds, 1.1);    // 複勝＝最低1.1倍まで弾ける
+    od._celestia = true;
   }
-  if (!gentle) Object.keys(oddsResult.wideOdds || {}).forEach(k => {
-    if (k.split("|").indexOf(dragonId) !== -1) oddsResult.wideOdds[k].odds = Math.min(oddsResult.wideOdds[k].odds, 1.01);
-  });
 }
 function consultCelestia() {
   const c = state.current;
   if (!c || c._celestiaRevealed) return;
   if (!c._fixedResult) c._fixedResult = runRace(c.race, c.trialForms);  // fix the result so the reveal is TRUE and the race plays to it
   const winId = c._fixedResult.entries[0].dragon.id;
-  // 正体判明前（第5話未読）＝救済の“優しい版”（単勝のみ潰し・複勝1.1倍は残す）。判明後＝厳しい版。
-  const gentle = !(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"));
-  applyCelestiaCollapse(c.oddsResult, winId, gentle);
-  c._celestiaRevealed = winId; c._celestiaGentle = gentle;
+  applyCelestiaCollapse(c.oddsResult, winId);   // 単勝・複勝とも最低1.1倍へ
+  c._celestiaRevealed = winId;
   renderRaceDetail(c.race);   // re-render; the consult guard reuses the collapsed odds + fixed forms
 }
 function celestiaSectionEl() {
@@ -1420,9 +1415,7 @@ function celestiaSectionEl() {
     const win = DRAGONS.find(d => d.id === c._celestiaRevealed);
     const nm = win ? win.name : "？";
     box.classList.add("revealed");
-    const warn = c._celestiaGentle
-      ? `……ただし答えは知れ渡った。<b>${nm}</b> の単竜オッズは弾けて消える（×1.01）。でも1着なら、必ず3着内。<b>複勝</b>でなら、最低1.1倍の“価値”が残るわ。`
-      : `……ただし答えは知れ渡った。<b>${nm}</b> の単竜オッズは弾けて消え（×1.01）、絡む複・ワイドも沈んだ。1着を知ることと、価値を残すことは違うわ。`;
+    const warn = `……ただし答えは知れ渡った。<b>${nm}</b> の単勝も複勝も、実際の馬券どおり最低の <b>1.1倍</b> まで弾けた。それでも、教わった1頭なら1.1倍は確実。──1着を知ることと、大きく勝つことは違うわ。`;
     box.innerHTML =
       `<div class="cel-head">${sym} ${revealed ? "セレスティアの神眼" : "あのお姉さんの“予想”"}</div>` +
       `<div class="cel-reveal">この一戦、生き残る一頭は <b>${nm}</b>。</div>` +
@@ -1438,14 +1431,12 @@ function celestiaSectionEl() {
     };
     const renderOpen = () => {
       box.classList.add("cel-open");
-      const catchTx = revealed
-        ? "神眼は1着を教えてくれる。ただし開示した瞬間、その竜の単勝は弾けて消える（×1.01・複もワイドも沈む）。それでも聞く？"
-        : "1着を、そっと教えてくれるみたい。開示した瞬間、その竜の単勝は弾けて消える（×1.01）。──でも複勝なら、最低1.1倍は残るわ。聞く？";
+      const catchTx = "1着を、教えてくれる。ただし開示した瞬間、その竜の単勝も複勝も、最低の1.1倍まで弾ける。──それでも、確実な1.1倍は残るわ。聞く？";
       box.innerHTML =
         `<div class="cel-head">${sym} ${who}に1着を聞く</div>` +
         `<div class="cel-warn">${catchTx}</div>`;
       const row = el("div", "cel-choice");
-      const yes = el("button", "cel-ask", revealed ? "聞く（×1.01覚悟）" : "聞く（複勝で拾う）");
+      const yes = el("button", "cel-ask", "聞く（1.1倍は確実）");
       yes.onclick = () => consultCelestia();
       const no = el("button", "cel-ask ghost", "やめておく");
       no.onclick = renderClosed;
