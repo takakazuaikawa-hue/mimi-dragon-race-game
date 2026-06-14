@@ -133,6 +133,7 @@ function rpgStartRun() {
   };
   rpgLoadFloor(0);
   rpgLog("🏝️ リゾート探検へ！ ▲で進む・↰↱で向き（▶でオートにも切替）", "good");
+  rpgFx.floorCard(RPG_FLOORS[0].name, "DUNGEON START", RPG_FLOORS[0].accent);
   renderMallRpg();
 }
 // フロア読み込み（fi=フロア番号）
@@ -152,8 +153,9 @@ function rpgGoUp() {
   if (RPG.tower) { rpgTowerAscendPrompt(); return; }     // タワーは「さらに上 or 降りる」選択
   if (RPG.fi + 1 >= RPG_FLOORS.length) { renderMallRpg(); return; }
   RPG.busy = true; rpgSfx("nav");
-  rpgFx.cover("elev", 760, () => {
-    rpgLoadFloor(RPG.fi + 1);
+  const ni = RPG.fi + 1, nm = rpgFloorMeta(ni);
+  rpgFx.floorCard(nm.name, "NEXT FLOOR", nm.accent, () => {
+    rpgLoadFloor(ni);
     rpgLog(`🛗 ${rpgFloorMeta(RPG.fi).name} に上ってきた！`, "good");
     RPG.busy = false;
     renderMallRpg();
@@ -177,7 +179,8 @@ function rpgTowerAscend() {
   if (!RPG) return;
   RPG.depth++; RPG.towerLuck += 0.18; RPG.busy = true; rpgSfx("nav");
   const d = rpgData(); if (RPG.depth > (d.records.depth || 0)) { d.records.depth = RPG.depth; rpgBumpRecords(); }
-  rpgFx.cover("elev", 760, () => {
+  const tm = rpgFloorMeta(RPG.fi + 1);
+  rpgFx.floorCard(tm.name, "ASCENDING ✦ レア度UP", tm.accent, () => {
     if (!RPG) return;
     rpgLoadFloor(RPG.fi + 1); RPG.mode = "explore"; RPG.busy = false;
     rpgLog(`🌟 ${RPG.depth}層へ！ レア度UP・敵も強化`, "good");
@@ -304,6 +307,17 @@ const rpgFx = {
   shakeApp() { const a = document.getElementById("app"); if (!a) return; a.classList.remove("rpg-shake"); void a.offsetWidth; a.classList.add("rpg-shake"); setTimeout(() => a.classList.remove("rpg-shake"), 420); },
   flash(cls) { const n = document.createElement("div"); n.className = "rpg-fxflash " + (cls || ""); this.layer().appendChild(n); setTimeout(() => n.remove(), 520); },
   cover(cls, ms, cb) { const n = document.createElement("div"); n.className = "rpg-fxcover " + (cls || ""); this.layer().appendChild(n); if (cb) setTimeout(cb, ms * 0.45); setTimeout(() => n.remove(), ms); },
+  // フロア切替の余韻：ゆっくり暗転→フロア名がふわっと浮かぶ→明転（cbは暗転しきった頃に呼ぶ）
+  floorCard(name, sub, accent, cb) {
+    const ac = accent ? "rgb(" + accent[0] + "," + accent[1] + "," + accent[2] + ")" : "#7fd0ff";
+    const n = document.createElement("div"); n.className = "rpg-floorcard"; n.style.setProperty("--fc", ac);
+    n.innerHTML = '<div class="fc-bg"></div><div class="fc-inner"><div class="fc-sub"></div><div class="fc-name"></div><div class="fc-line"></div></div>';
+    n.querySelector(".fc-sub").textContent = sub || ""; n.querySelector(".fc-name").textContent = name || "";
+    this.layer().appendChild(n);
+    if (cb) setTimeout(cb, 850);
+    setTimeout(() => n.remove(), 2300);
+  },
+
 };
 function rpgEnemyEl(i) { return document.getElementById("rpg-enemy-" + i); }
 function rpgPlayerEl() { return document.getElementById("rpg-mimichar") || document.getElementById("rpg-bhud"); }
@@ -1431,35 +1445,48 @@ function rpgBackBtn() { const b = el("button", "rpg-cmdbtn back", "<b>↩ もど
 // ── 勝利（モダンなリザルト：カウントアップ＋演出）
 function rpgRenderWon(app) {
   const f = RPG.flash || {};
-  app.appendChild(el("h2", "rpg-won-h", f.boss ? "👑 ボス撃破！" : "🎉 VICTORY"));
+  const wrap = el("div", "rpg-won-wrap");
+  wrap.appendChild(el("h2", "rpg-won-h", f.boss ? "👑 ボス撃破！" : (f.combo >= 5 ? "🎉 PERFECT VICTORY" : "🎉 VICTORY")));
   const box = el("div", "rpg-resbox good");
-  let rows = `<div class="rpg-res-row"><span>獲得EXP</span><b class="rpg-cu" data-to="${f.exp || 0}">0</b></div>` +
-    `<div class="rpg-res-row"><span>獲得ゴールド</span><b class="rpg-cu" data-to="${f.gold || 0}">0</b><span class="rpg-cu-suf">G</span></div>`;
-  if ((f.combo || 0) >= 2) rows += `<div class="rpg-res-row combo"><span>🔥 最大コンボ</span><b>×${f.combo}（報酬+${Math.round(Math.min(f.combo, 25) * 6)}%）</b></div>`;
+  // 一つずつ理解できるよう、行を順番に出す（reveal遅延とカウントアップ開始を同期）
+  let rows = `<div class="rpg-res-row rpg-rev" style="animation-delay:.25s"><span>獲得EXP</span><b class="rpg-cu" data-to="${f.exp || 0}" data-delay="250">0</b></div>` +
+    `<div class="rpg-res-row rpg-rev" style="animation-delay:.95s"><span>獲得ゴールド</span><b class="rpg-cu" data-to="${f.gold || 0}" data-delay="950">0</b><span class="rpg-cu-suf">G</span></div>`;
+  let d = 1.6;
+  if ((f.combo || 0) >= 2) { rows += `<div class="rpg-res-row combo rpg-rev" style="animation-delay:${d}s"><span>🔥 最大コンボ</span><b>×${f.combo}（報酬+${Math.round(Math.min(f.combo, 25) * 6)}%）</b></div>`; d += 0.45; }
   box.innerHTML = rows;
-  app.appendChild(box);
+  wrap.appendChild(box);
   if (f.ups && f.ups.length) {
-    f.ups.forEach(u => app.appendChild(el("div", "rpg-res-lv pop", `⬆️ LEVEL ${u.lv}！${u.learn && u.learn.length ? " 新スキル「" + u.learn.map(s => RPG_SKILLS[s].n).join("・") + "」習得！" : ""}`)));
+    f.ups.forEach(u => { const e = el("div", "rpg-res-lv rpg-rev", `⬆️ LEVEL ${u.lv}！${u.learn && u.learn.length ? " 新スキル「" + u.learn.map(s => RPG_SKILLS[s].n).join("・") + "」習得！" : ""}`); e.style.animationDelay = d + "s"; e.setAttribute("data-sfx", "unlock"); e.setAttribute("data-delay", Math.round(d * 1000)); wrap.appendChild(e); d += 0.5; });
   }
   if (f.outfit) {
-    const o = el("div", "rpg-res-outfit pop"); o.innerHTML = `👑 衣装「${f.outfit.name}」GET！ <small>モールで着られるよ</small>`;
-    app.appendChild(o);
+    const o = el("div", "rpg-res-outfit rpg-rev"); o.innerHTML = `👑 衣装「${f.outfit.name}」GET！ <small>モールで着られるよ</small>`; o.style.animationDelay = d + "s"; o.setAttribute("data-sfx", "win"); o.setAttribute("data-delay", Math.round(d * 1000)); wrap.appendChild(o); d += 0.5;
   }
-  const cont = el("button", "rpg-start", "▶ 探索を続ける");
+  const cont = el("button", "rpg-start rpg-rev", "▶ 探索を続ける"); cont.style.animationDelay = d + "s";
   cont.onclick = () => rpgAfterWin();
-  app.appendChild(cont);
-  // カウントアップ
+  wrap.appendChild(cont);
+  app.appendChild(wrap);
+  // カウントアップ（各行の出現タイミングで開始＝順番に「効いてくる」）
   app.querySelectorAll(".rpg-cu").forEach(elm => {
-    const to = parseInt(elm.getAttribute("data-to"), 10) || 0; let cur = 0; const step = Math.max(1, Math.round(to / 24));
-    const iv = setInterval(() => { cur += step; if (cur >= to) { cur = to; clearInterval(iv); } elm.textContent = cur; }, 28);
+    const to = parseInt(elm.getAttribute("data-to"), 10) || 0, dl = parseInt(elm.getAttribute("data-delay"), 10) || 0;
+    setTimeout(() => {
+      if (!(RPG && RPG.mode === "won")) return;
+      if (to > 0) rpgSfx("coin");
+      let cur = 0; const step = Math.max(1, Math.round(to / 20));
+      const iv = setInterval(() => { if (!(RPG && RPG.mode === "won")) { clearInterval(iv); return; } cur += step; if (cur >= to) { cur = to; clearInterval(iv); } elm.textContent = cur; }, 26);
+    }, dl);
+  });
+  // ボーナス行（レベルUP/衣装）が出る瞬間に効果音
+  app.querySelectorAll("[data-sfx]").forEach(elm => {
+    const dl = parseInt(elm.getAttribute("data-delay"), 10) || 0, s = elm.getAttribute("data-sfx");
+    setTimeout(() => { if (RPG && RPG.mode === "won") rpgSfx(s); }, dl);
   });
 }
 // ── 敗北
 function rpgRenderLost(app) {
-  app.appendChild(el("h2", null, "💫 気絶…"));
+  app.appendChild(el("h2", "rpg-won-h", "💫 気絶…"));
   const txt = RPG && RPG.tower ? `タワーの宝は手に入らなかった…（Lv・ゴールドは無事）` : `目が覚めたら迷宮の入口だった。<br>（持ち物・ゴールドは無事。HPは半分回復）`;
-  app.appendChild(el("div", "rpg-resbox bad", txt));
-  const cont = el("button", "rpg-start", "▶ 入口にもどる");
+  const bx = el("div", "rpg-resbox bad rpg-rev", txt); bx.style.animationDelay = ".25s"; app.appendChild(bx);
+  const cont = el("button", "rpg-start rpg-rev", "▶ 入口にもどる"); cont.style.animationDelay = ".7s";
   cont.onclick = () => rpgAfterLose();
   app.appendChild(cont);
 }
