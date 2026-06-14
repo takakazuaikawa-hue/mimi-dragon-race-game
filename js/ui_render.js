@@ -886,11 +886,14 @@ function renderHome() {
     } else {
       const hud = el("div", "ep-hud");
       hud.innerHTML =
-        `<div class="ep-hud-top"><span class="ep-hud-ttl">☄️ 絶滅メーター</span>` +
+        `<div class="ep-hud-top"><span class="ep-hud-ttl">☄️ 絶滅メーター <button class="info-q" title="絶滅メーターって？">？</button></span>` +
         `<span class="ep-hud-odds">答えの単勝 <b>${dial}</b>倍</span></div>` +
         `<div class="ep-hud-bar"><i style="width:${prog}%"></i></div>` +
         `<div class="ep-hud-note">スカウト・暮らし・買い物・的中で押し戻す（0で最終決戦）</div>`;
+      const _q = hud.querySelector(".info-q");
+      if (_q) _q.onclick = (ev) => { ev.stopPropagation(); if (typeof showEpilogueMeterHelp === "function") showEpilogueMeterHelp(); };
       dock.appendChild(hud);
+      if (typeof maybeShowMeterHelpFirstTime === "function") maybeShowMeterHelpFirstTime();  // 初表示時に一度だけ自動で説明
     }
   }
 

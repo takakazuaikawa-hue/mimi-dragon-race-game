@@ -83,6 +83,31 @@ function epiloguePushable() { const e = epData(); return e.active && !e.edFlag &
 function epilogueDial() { const e = epData(); const r = Math.max(0, Math.min(1, e.meter / EP_CONST.RANGE)); return (1.1 - 0.1 * r); }
 function epilogueProgress() { const e = epData(); return Math.max(0, Math.min(100, Math.round((1 - e.meter / EP_CONST.RANGE) * 100))); } // 0..100（1.1倍＝安全への近さ）
 
+// =========================================================================
+// 絶滅メーターの説明（HUDの「？」からいつでも／初表示時に一度だけ自動で開く）
+// =========================================================================
+// ★最後の段落で必ず「演出専用＝実レースの着順・オッズ・配当には一切影響しない」と明言する（[[race-math-immutable]]）。
+function showEpilogueMeterHelp() {
+  if (typeof showInfoPopup !== "function") return;
+  showInfoPopup("☄️ 絶滅メーターって？",
+    `<div class="mm-flow">▼ 1.0倍（淘汰）　…　1.05倍（いま）　…　1.1倍（安全）▲</div>` +
+    `<div class="mm-row"><span class="mm-ic">🎯</span><div><b>これは「綱引き」です</b><small>終章のあいだ、淘汰（絶滅）の圧と、あなたの積み上げが綱を引き合います。メーターは<u>ちょうど真ん中＝単勝1.05倍</u>から始まります。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">☄️</span><div><b>淘汰（1.0倍へ）</b><small>レースを走るたび、淘汰の圧が少しずつ <u>1.0倍（絶滅）側</u> へ進みます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🛡️</span><div><b>押し戻し（1.1倍へ）</b><small>🌴スカウト・🏠暮らしの向上・🛍️お買い物・🏅的中——積み上げが <u>1.1倍（安全）側</u> へ押し返します。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">⚔️</span><div><b>1.1倍まで押し切ると最終決戦</b><small>安全（1.1倍）まで押し切れば、ホームに「最終決戦へ」が現れます。逆に1.0倍へ振り切れても<u>仕切り直すだけ（ゲームオーバーなし）</u>。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">📌</span><div><b>これは演出メーターです</b><small>このゲージは物語の演出専用。<u>実際のレースの着順・オッズ・配当には一切影響しません</u>。安心して綱を引いてください。</small></div></div>`);
+}
+// 初めてメーターが表示された時に一度だけ自動で開く（"表示時にしっかり説明"）。既読＝storyFlag "epMeterHelpSeen"。
+// VN（.dlg-overlay）や別ポップアップ（.navpop-ov）が出ている間は被せず、次回の表示時に回す。
+function maybeShowMeterHelpFirstTime() {
+  if (typeof getStoryFlag === "function" && getStoryFlag("epMeterHelpSeen")) return;
+  if (typeof showInfoPopup !== "function" || typeof document === "undefined") return;
+  if (document.querySelector(".navpop-ov")) return;                       // 別ポップアップが開いている
+  if (document.querySelector(".dlg-overlay:not(.hidden)")) return;        // VN再生中
+  if (typeof setStoryFlag === "function") setStoryFlag("epMeterHelpSeen", true);
+  showEpilogueMeterHelp();
+}
+
 // 第5話再生で起動（renderStoryChapter("5") から）。★真ん中(RANGE/2＝1.05倍)スタート。
 function epilogueStart() {
   const e = epData(); if (e.active) return;
