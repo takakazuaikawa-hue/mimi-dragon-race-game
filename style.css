@@ -4399,3 +4399,23 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-cmdbtn.adv { box-shadow:0 0 0 2px rgba(255,228,94,.85), 0 4px 14px rgba(0,0,0,.25); }
 .rpg-adv { position:absolute; top:-7px; right:-6px; font-size:10px; font-weight:800; color:#1a1400;
   background:linear-gradient(135deg,#ffe45e,#ffc83a); padding:1px 6px; border-radius:999px; box-shadow:0 1px 4px rgba(0,0,0,.4); z-index:2; }
+
+/* ===== 終章：絶滅メーターHUD ＋ 最終決戦ボタン（表示専用・実オッズ非干渉） ===== */
+.ep-hud { margin: 6px 0 2px; padding: 9px 12px; border-radius: 13px;
+  background: linear-gradient(180deg, rgba(40,20,46,.92), rgba(20,12,28,.92));
+  border: 1px solid rgba(154,106,208,.55); box-shadow: 0 4px 16px rgba(80,30,120,.25); }
+.ep-hud-top { display: flex; align-items: baseline; justify-content: space-between; }
+.ep-hud-ttl { font-size: 12.5px; font-weight: 800; color: #d8b6ff; letter-spacing: .03em; }
+.ep-hud-odds { font-size: 12px; color: #cdb6e8; } .ep-hud-odds b { color: #ff7a7a; font-size: 15px; }
+.ep-hud-bar { height: 9px; border-radius: 999px; margin: 6px 0 5px; overflow: hidden;
+  background: linear-gradient(90deg, rgba(255,90,90,.30), rgba(255,90,90,.12)); }
+.ep-hud-bar i { display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #6ac06a, #49c89c); transition: width .35s ease; }
+.ep-hud-note { font-size: 10.5px; color: #b29ccf; }
+.hl-final { width: 100%; margin: 6px 0 2px; padding: 13px; border-radius: 13px; cursor: pointer; border: none;
+  font-size: 16px; font-weight: 800; color: #2a0a0a;
+  background: linear-gradient(135deg, #ff8a5e, #ffd24a, #ff7a7a); background-size: 200% 100%;
+  box-shadow: 0 0 20px rgba(255,120,90,.5); animation: epFinalPulse 1.7s ease-in-out infinite; }
+.hl-final:active { transform: scale(.98); }
+@keyframes epFinalPulse { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@media (prefers-reduced-motion: reduce) { .hl-final { animation: none; } }

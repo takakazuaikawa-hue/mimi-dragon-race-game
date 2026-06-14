@@ -394,8 +394,10 @@ function showScoutResult(spot) {
       const take = el("button", "scout-take", "契約する");
       take.onclick = () => {
         const e = poroColEntry(d.id);
+        const isNew = !e.scouted;
         e.scouted = true; e.seen = true;
         raiseAffection(d.id, 10);
+        if (isNew && typeof epPush === "function") epPush("scoutNew");   // 終章：新種の保護＝穴の母数＝絶滅メーター押し戻し
         if (window.Sfx && Sfx.play) Sfx.play("coin");
         c.classList.add("done");
         take.textContent = "✓ 龍舎へ"; take.disabled = true;

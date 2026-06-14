@@ -876,6 +876,24 @@ function renderHome() {
     dock.appendChild(broke);
   }
 
+  // 終章：絶滅メーター（綱引き）HUD＋最終決戦の導線（終章中のみ・表示専用＝実オッズ非干渉）。js/epilogue_engine.js
+  if (typeof epilogueOn === "function" && epilogueOn()) {
+    const e = epData(); const dial = epilogueDial().toFixed(2); const prog = epilogueProgress();
+    if (e.finalReady) {
+      const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
+      fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
+      dock.appendChild(fin);
+    } else {
+      const hud = el("div", "ep-hud");
+      hud.innerHTML =
+        `<div class="ep-hud-top"><span class="ep-hud-ttl">☄️ 絶滅メーター</span>` +
+        `<span class="ep-hud-odds">答えの単勝 <b>${dial}</b>倍</span></div>` +
+        `<div class="ep-hud-bar"><i style="width:${prog}%"></i></div>` +
+        `<div class="ep-hud-note">スカウト・暮らし・買い物・的中で押し戻す（0で最終決戦）</div>`;
+      dock.appendChild(hud);
+    }
+  }
+
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
   raceBtn.onclick = () => renderRaceSelect();
   dock.appendChild(raceBtn);
@@ -1543,6 +1561,8 @@ function renderStoryChapter(chId) {
   if (typeof maybePlayPoroArcOnChapter === "function") maybePlayPoroArcOnChapter(ch.id);
   // 第4話「マクラと推し竜文化」を開く＝図鑑（推し竜の記録）を解放（ユーザー指定：図鑑は枕に会ってから）。
   if (ch.id === "4" && typeof setStoryFlag === "function" && !getStoryFlag("metMakura")) setStoryFlag("metMakura", true);
+  // 第5話「セレスティアの神眼」を開く＝終章（絶滅メーターの綱引き）起動（js/epilogue_engine.js）。
+  if (ch.id === "5" && typeof epilogueStart === "function") epilogueStart();
   const app = beginScreen();   // 上部に「← 物語」
   app.appendChild(el("h2", null, chapterDisplayTitle(ch)));
   if (ch.id !== "ED") app.appendChild(el("div", "as-hint2", ch.title));
@@ -3401,6 +3421,12 @@ function settleRace() {
   const justUnlocked = STORY_CHAPTERS.filter(ch => prevTotal < storyUnlockAt(ch.id) && newTotal >= storyUnlockAt(ch.id));
   if (ra.level > prevStage || justUnlocked.length) {
     runEventHooks("onStoryUnlock", { stage: ra.level, chapter: ra.unlockedStory, chapters: justUnlocked });
+  }
+  // 終章：絶滅メーターの綱引き（終章中のみ・内部ガード。表示メタ＝着順/オッズ/配当には非干渉）。
+  if (typeof doomTick === "function") {
+    doomTick();                                                      // レース確定＝淘汰が前進
+    if (betResult.hit) epPush(c.bet.type === "win" ? "win" : "hit"); // 守り手予想家の信頼＝評判
+    if (ra.level > prevStage) epPush("assetLevel");                  // 暮らし向上＝経済発展
   }
   // 📦 獲得台帳（このレースで増えたもの一覧＝結果画面の「今回の獲得」。表示専用・数値はここまでで確定済み）
   try {
