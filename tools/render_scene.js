@@ -382,6 +382,22 @@ function rpgBattleBgRich(ctx, env) {
   const ctx = new Ctx(env.W, env.H); rpgBattleBgRich(ctx, env);
   const fn = `/tmp/btlbg_${name}.png`; fs.writeFileSync(fn, png(env.W, env.H, ctx.buf)); console.log("wrote", fn);
 });
+// ★撃破の余韻（ポップ＋舞い上がるきらめき）の検証：1スロットを進行度別に描く
+function rpgDefeatPoofMock(ctx, px, py, du, tourist) {
+  ctx.globalAlpha = Math.max(0, 1 - du);
+  ctx.strokeStyle = (tourist ? "rgba(255,196,110," : "rgba(255,255,255,") + (1 - du) + ")"; ctx.lineWidth = (1 - du) * 5 + 1; ctx.beginPath(); ctx.arc(px, py, 6 + du * 40, 0, 7); ctx.stroke();
+  for (let k = 0; k < 9; k++) { const a = (k / 9) * 6.283 + 0.5, sp = 12 + (k % 3) * 9, pr = (1 - du) * 3 + 1.6; const qx = px + Math.cos(a) * sp * (0.35 + du * 1.1), qy = py + Math.sin(a) * sp * 0.5 - du * 46; ctx.fillStyle = tourist ? (k % 2 ? "rgba(255,138,178,0.96)" : "rgba(255,226,120,0.96)") : (k % 2 ? "rgba(206,214,232,0.96)" : "rgba(255,255,255,0.92)"); ctx.beginPath(); ctx.arc(qx, qy, pr, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+{
+  const env = { W: 560, H: 320, accent: FLOORS[0].accent, sunset: false, t: 1500, n: 3 };
+  const ctx = new Ctx(env.W, env.H); rpgBattleBgRich(ctx, env);
+  const L = rpgIsoLayout(env.W, env.H, 3);
+  // スロット0,1,2を 進行度 0.25 / 0.5 / 0.8 の撃破演出として上描き
+  [[0, 0.25], [1, 0.5], [2, 0.8]].forEach(([i, du]) => { const s = L.slots[i]; rpgDefeatPoofMock(ctx, s.x, s.y - 34, du, true); });
+  hd2d(ctx);
+  fs.writeFileSync("/tmp/btl_defeat.png", png(env.W, env.H, ctx.buf)); console.log("wrote /tmp/btl_defeat.png");
+}
 // ★攻撃モーションのキーフレーム実証（予備動作/着弾）＝canvasで本当に表現できるかの検証
 function rpgAttackKF(ctx, env) {
   const W = env.W, H = env.H, A = env.accent, n = env.n || 2;

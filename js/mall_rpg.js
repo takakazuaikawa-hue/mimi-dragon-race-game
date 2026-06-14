@@ -415,7 +415,7 @@ function rpgUseSkill(id) {
       rpgSfx(weakHit ? "win" : "tick");
       rpgFx.spot(ep.x, ep.y, "-" + dmg, weakHit ? "weak" : (mult === 0.5 ? "resist" : "dmg"));
       if (weakHit) rpgFx.banner("WEAK!", "weak");
-      if (tgt.hp <= 0) { tgt.alive = false; b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); }
+      if (tgt.hp <= 0) { tgt.alive = false; tgt._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfx("coin"); rpgFx.spot(ep.x, ep.y - 34, tourist ? "満足♪" : "撃破！", "weak"); rpgFx.shakeApp(); }
       if ((b.combo || 0) >= 3) rpgFx.banner("COMBO ×" + b.combo, "more");
     }
     rpgSave();
@@ -462,7 +462,7 @@ function rpgFlee() {
 function rpgAfterAct(weakHit) {
   if (!RPG || !RPG.battle) return;
   const b = RPG.battle;
-  if (rpgAliveEnemies().length === 0) { rpgBattleWin(); return; }
+  if (rpgAliveEnemies().length === 0) { RPG.busy = true; b.phase = "anim"; setTimeout(() => { if (RPG && RPG.battle) rpgBattleWin(); }, 560); return; }   // 撃破の余韻を見せてから勝利へ
   if (weakHit && (b.acts || 1) < 3) { b.acts = (b.acts || 1) + 1; rpgFx.banner("1 MORE!", "more"); rpgBLog("✨ 弱点を突いた！ もう1回！", "good"); }
   b.acts = (b.acts || 1) - 1;
   if (b.acts > 0) { b.phase = "cmd"; RPG.busy = false; rpgSave(); renderMallRpg(); return; }
@@ -559,7 +559,7 @@ function rpgUltimate() {
     const dmg = Math.max(1, Math.round((34 + rpgPlayerPow() * 1.4) * mult * rpgRnd(0.95, 1.1)));
     e.hp -= dmg;
     e._flash = (typeof performance !== "undefined" ? performance.now() : Date.now()); const ep2 = rpgEnemyPt(i); rpgFx.spot(ep2.x, ep2.y, "-" + dmg, "weak");
-    if (e.hp <= 0) { e.alive = false; const tourist = e.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${e.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); }
+    if (e.hp <= 0) { e.alive = false; e._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); const tourist = e.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${e.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfx("coin"); rpgFx.spot(ep2.x, ep2.y - 34, tourist ? "満足♪" : "撃破！", "weak"); }
   });
   rpgFx.shakeApp();
   RPG.busy = true; b.phase = "anim"; rpgSave();
@@ -1160,17 +1160,38 @@ function rpgDrawBattle(cv, t) {
   b.enemies.forEach((e, i) => {
     const s = L.slots[i] || L.slots[L.slots.length - 1], alive = e.alive, off = enemyOff(i), ex = s.x + off[0];
     const intro = b.introT0 ? Math.min(1, Math.max(0, (now - b.introT0 - i * 70) / 340)) : 1;
-    ell(s.x, s.y, 25, "rgba(0,0,0," + (0.30 * intro) + ")");
+    const DDUR = 760, dt = e._deadAt ? now - e._deadAt : 1e9, dying = !alive && dt < DDUR, du = dt / DDUR;
+    const tourist = e.ref.kind === "tourist";
+    if (alive || dying) ell(s.x, s.y, 25, "rgba(0,0,0," + (0.30 * (alive ? intro : Math.max(0, 1 - du * 1.4))) + ")");
     if (b.target === i && alive && b.phase === "cmd") { ell(s.x, s.y, 33, "rgba(255,95,162,0.20)"); const ay = s.y - 72 + Math.sin(ph * 4) * 3; poly([[s.x, ay], [s.x - 7, ay - 10], [s.x + 7, ay - 10]], "rgb(255,95,162)"); }
     const bob = alive ? Math.sin(ph * 2 + i * 1.3) * 3 : 0, cy = s.y + off[1] - 30 + bob - 18 * (1 - intro);
-    ctx.save(); ctx.globalAlpha = alive ? intro : 0.3;
-    if (b.rare && alive) { const ga = ctx.createRadialGradient(ex, cy, 4, ex, cy, 42); ga.addColorStop(0, "rgba(255,220,120," + (0.55 * intro) + ")"); ga.addColorStop(1, "rgba(255,220,120,0)"); ctx.fillStyle = ga; ctx.beginPath(); ctx.arc(ex, cy, 42, 0, 7); ctx.fill(); }
-    if (alive && e._flash && now - e._flash < 150) { ctx.shadowColor = "#fff"; ctx.shadowBlur = 22; }
-    if (e.ref.kind === "tourist") {
-      e._pal = e._pal || rpgTouristPal(e.id);
-      rpgDrawTourist(ctx, ex, s.y + off[1] - bob * 0.5, 62 * (0.5 + 0.5 * intro), e._pal, e.ref.ic);
-    } else { ctx.font = ((b.boss ? 70 : 48) * (0.45 + 0.55 * intro)) + "px serif"; ctx.fillText(e.ref.ic, ex, cy); }
-    ctx.shadowBlur = 0; ctx.restore();
+    if (alive || dying) {
+      const riseY = dying ? -du * 32 : 0;
+      ctx.save(); ctx.globalAlpha = alive ? intro : Math.max(0, 1 - du * 1.15);
+      if (b.rare && alive) { const ga = ctx.createRadialGradient(ex, cy, 4, ex, cy, 42); ga.addColorStop(0, "rgba(255,220,120," + (0.55 * intro) + ")"); ga.addColorStop(1, "rgba(255,220,120,0)"); ctx.fillStyle = ga; ctx.beginPath(); ctx.arc(ex, cy, 42, 0, 7); ctx.fill(); }
+      if (alive && e._flash && now - e._flash < 150) { ctx.shadowColor = "#fff"; ctx.shadowBlur = 22; }
+      if (dying) { const sc = 1 + du * 0.28; ctx.translate(ex, s.y + off[1] + riseY); ctx.scale(sc, sc); ctx.translate(-ex, -(s.y + off[1])); }
+      if (tourist) {
+        e._pal = e._pal || rpgTouristPal(e.id);
+        rpgDrawTourist(ctx, ex, s.y + off[1] - bob * 0.5, 62 * (0.5 + 0.5 * intro), e._pal, e.ref.ic);
+      } else { ctx.font = ((b.boss ? 70 : 48) * (0.45 + 0.55 * intro)) + "px serif"; ctx.fillText(e.ref.ic, ex, cy); }
+      ctx.shadowBlur = 0; ctx.restore();
+    }
+    // ── 撃破の余韻（ポップ＋舞い上がるきらめき／ハート＝観光客は満足、モンスターは砕け散る）
+    if (dying) {
+      const px = ex, py = s.y + off[1] - 34;
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - du);
+      const ring = tourist ? "rgba(255,196,110," : "rgba(255,255,255,";
+      ctx.strokeStyle = ring + (1 - du) + ")"; ctx.lineWidth = (1 - du) * 5 + 1; ctx.beginPath(); ctx.arc(px, py, 6 + du * 40, 0, 7); ctx.stroke();
+      for (let k = 0; k < 9; k++) {
+        const a = (k / 9) * 6.283 + 0.5, sp = 12 + (k % 3) * 9, pr = (1 - du) * 3 + 1.6;
+        const qx = px + Math.cos(a) * sp * (0.35 + du * 1.1), qy = py + Math.sin(a) * sp * 0.5 - du * 46;
+        ctx.fillStyle = tourist ? (k % 2 ? "rgba(255,138,178,0.96)" : "rgba(255,226,120,0.96)") : (k % 2 ? "rgba(206,214,232,0.96)" : "rgba(255,255,255,0.92)");
+        ctx.beginPath(); ctx.arc(qx, qy, pr, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = Math.max(0, 1 - du * 1.2); ctx.font = (16 + du * 10) + "px serif"; ctx.fillText(tourist ? "💕" : "💥", px, py - du * 50);
+      ctx.restore();
+    }
     if (alive) {
       const pct = Math.max(0, e.hp) / e.maxhp;
       ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(ex - 26, s.y + 3, 52, 6);
