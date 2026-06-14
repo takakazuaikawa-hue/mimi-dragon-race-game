@@ -1375,16 +1375,20 @@ function photoOr(src, fallbackHTML) {
 }
 
 // =========================================================================
-// (3) Celestia's 神眼 — opt-in consult on the race-detail screen (unlocked at
-// 総資産 1億). Reveals the race winner but COLLAPSES that dragon's market odds
-// (§7.3), teaching "knowing the winner ≠ growing assets". The finish ORDER is
-// never altered — only this one dragon's odds for this one race change, and
-// only because the player chose to ask.
+// (3) Celestia's 神眼 — opt-in consult on the race-detail screen.
+// 解放＝総資産1億 か、または「救済」＝破産3回超で“知らないお姉さん”に出会う（js/epilogue_engine.js）。
+// 1着を教える代わりに、その竜の単勝オッズを弾けさせる（×1.01）。着順は不変・プレイヤー任意・1レースのみ
+// ＝[[race-math-immutable]]の“意図された唯一の例外”。
+//   - gentle（救済・正体判明前）＝**単勝だけ**潰す→複勝は自然の下限1.1倍が残る＝「1着を教わって複勝で拾えば最低1.1倍」。
+//   - 通常（正体判明後・1億）＝単・複・ワイド全部沈める＝「1着を知ること≠価値を残すこと」の厳しい教訓。
 // =========================================================================
-function applyCelestiaCollapse(oddsResult, dragonId) {
+function applyCelestiaCollapse(oddsResult, dragonId, gentle) {
   const od = oddsResult.oddsData.find(o => o.dragonId === dragonId);
-  if (od) { od.winOdds = 1.01; od.placeOdds = Math.min(od.placeOdds, 1.01); od._celestia = true; }
-  Object.keys(oddsResult.wideOdds || {}).forEach(k => {
+  if (od) {
+    od.winOdds = 1.01; od._celestia = true;                       // 単勝は必ず弾ける（答えが知れ渡る）
+    if (!gentle) od.placeOdds = Math.min(od.placeOdds, 1.01);     // 厳しい版だけ複勝も沈める（救済版は複勝1.1倍を残す）
+  }
+  if (!gentle) Object.keys(oddsResult.wideOdds || {}).forEach(k => {
     if (k.split("|").indexOf(dragonId) !== -1) oddsResult.wideOdds[k].odds = Math.min(oddsResult.wideOdds[k].odds, 1.01);
   });
 }
@@ -1393,43 +1397,55 @@ function consultCelestia() {
   if (!c || c._celestiaRevealed) return;
   if (!c._fixedResult) c._fixedResult = runRace(c.race, c.trialForms);  // fix the result so the reveal is TRUE and the race plays to it
   const winId = c._fixedResult.entries[0].dragon.id;
-  applyCelestiaCollapse(c.oddsResult, winId);
-  c._celestiaRevealed = winId;
+  // 正体判明前（第5話未読）＝救済の“優しい版”（単勝のみ潰し・複勝1.1倍は残す）。判明後＝厳しい版。
+  const gentle = !(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"));
+  applyCelestiaCollapse(c.oddsResult, winId, gentle);
+  c._celestiaRevealed = winId; c._celestiaGentle = gentle;
   renderRaceDetail(c.race);   // re-render; the consult guard reuses the collapsed odds + fixed forms
 }
 function celestiaSectionEl() {
   const c = state.current;
   if (!c || !c.race) return null;
-  if ((state.player.totalAssets || 0) < castUnlockAt("celestia")) return null;   // not met yet
+  // 解放＝総資産1億 or「救済」＝破産3回超で“知らないお姉さん”に出会った（js/epilogue_engine.js）。
+  const rich = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
+  const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
+  if (!rich && !met) return null;   // まだ出会っていない
+  const revealed = (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"));   // 第5話で正体判明
   const cast = STORY_CAST.celestia;
+  const sym = revealed ? cast.symbol : "🌌";
+  const who = revealed ? "セレスティア" : "あのお姉さん";
   const box = el("div", "card celestia-box");
-  box.style.setProperty("--cg", cast.color);
+  box.style.setProperty("--cg", revealed ? cast.color : "#7a6aa0");
   if (c._celestiaRevealed) {
     const win = DRAGONS.find(d => d.id === c._celestiaRevealed);
     const nm = win ? win.name : "？";
     box.classList.add("revealed");
+    const warn = c._celestiaGentle
+      ? `……ただし答えは知れ渡った。<b>${nm}</b> の単竜オッズは弾けて消える（×1.01）。でも1着なら、必ず3着内。<b>複勝</b>でなら、最低1.1倍の“価値”が残るわ。`
+      : `……ただし答えは知れ渡った。<b>${nm}</b> の単竜オッズは弾けて消え（×1.01）、絡む複・ワイドも沈んだ。1着を知ることと、価値を残すことは違うわ。`;
     box.innerHTML =
-      `<div class="cel-head">${cast.symbol} セレスティアの神眼</div>` +
+      `<div class="cel-head">${sym} ${revealed ? "セレスティアの神眼" : "あのお姉さんの“予想”"}</div>` +
       `<div class="cel-reveal">この一戦、生き残る一頭は <b>${nm}</b>。</div>` +
-      `<div class="cel-warn">……ただし答えは知れ渡った。<b>${nm}</b> の単竜オッズは弾けて消え（×1.01）、絡む複・ワイドも沈んだ。1着を知ることと、価値を残すことは違うわ。</div>`;
+      `<div class="cel-warn">${warn}</div>`;
   } else {
-    // Progressive disclosure: a compact ask button up front. Pressing it reveals the
-    // catch (odds collapse) AND the real 聞く / やめる choice — so the screen isn't
-    // pre-loaded with the warning before the player has opted to look.
+    // 段階開示：まず小さな「聞いてみる」→押すと“代償”と本当の 聞く/やめる を出す。
     const renderClosed = () => {
       box.classList.remove("cel-open");
-      box.innerHTML = `<div class="cel-head">${cast.symbol} セレスティアに1着を聞く</div>`;
+      box.innerHTML = `<div class="cel-head">${sym} ${who}に1着を聞く</div>`;
       const ask = el("button", "cel-ask", "🔮 聞いてみる");
       ask.onclick = renderOpen;
       box.appendChild(ask);
     };
     const renderOpen = () => {
       box.classList.add("cel-open");
+      const catchTx = revealed
+        ? "神眼は1着を教えてくれる。ただし開示した瞬間、その竜の単勝は弾けて消える（×1.01・複もワイドも沈む）。それでも聞く？"
+        : "1着を、そっと教えてくれるみたい。開示した瞬間、その竜の単勝は弾けて消える（×1.01）。──でも複勝なら、最低1.1倍は残るわ。聞く？";
       box.innerHTML =
-        `<div class="cel-head">${cast.symbol} セレスティアに1着を聞く</div>` +
-        `<div class="cel-warn">神眼は1着を教えてくれる。ただし開示した瞬間、その竜のオッズは弾けて消える（×1.01）。それでも聞く？</div>`;
+        `<div class="cel-head">${sym} ${who}に1着を聞く</div>` +
+        `<div class="cel-warn">${catchTx}</div>`;
       const row = el("div", "cel-choice");
-      const yes = el("button", "cel-ask", "聞く（×1.01覚悟）");
+      const yes = el("button", "cel-ask", revealed ? "聞く（×1.01覚悟）" : "聞く（複勝で拾う）");
       yes.onclick = () => consultCelestia();
       const no = el("button", "cel-ask ghost", "やめておく");
       no.onclick = renderClosed;
@@ -2634,14 +2650,22 @@ function renderRaceDetail(race) {
     const btnByKey = {};
     ADVS.forEach(a => {
       const cast = STORY_CAST[a.key];
-      const locked = a.gated && (state.player.totalAssets || 0) < castUnlockAt(a.key);
+      let locked = a.gated && (state.player.totalAssets || 0) < castUnlockAt(a.key);
+      let name = cast.name.split("・")[0], sym = cast.symbol;
+      if (a.key === "celestia") {
+        // 救済（破産3回超で“お姉さん”に出会う）でも解放。正体は第5話まで伏せる（名前/記号を隠す）。
+        const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
+        const revealed = (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"));
+        if (met) locked = false;
+        if (!revealed) { name = "？？？"; sym = "🌌"; }
+      }
       const b = el("button", "adv-tab" + (locked ? " locked" : ""));
       b.dataset.key = a.key;
       b.style.setProperty("--cg", cast.color);
       b.innerHTML =
-        `<span class="adv-mark">${locked ? "🔒" : cast.symbol}</span>` +
+        `<span class="adv-mark">${locked ? "🔒" : sym}</span>` +
         `<span class="adv-tab-label">${a.label}</span>` +
-        `<span class="adv-tab-name">${cast.name.split("・")[0]}</span>`;
+        `<span class="adv-tab-name">${name}</span>`;
       b.onclick = () => setOpen(state.current._openAdvisor === a.key ? null : a.key);
       btnByKey[a.key] = b;
       tabRow.appendChild(b);
@@ -2751,16 +2775,18 @@ function renderRaceDetail(race) {
   }
 
   // -- セレスティア：1着を聞く（解放済みなら2段階の神眼、未解放ならロック表示） --
+  // 解放＝総資産1億 or「救済」＝破産3回超で“知らないお姉さん”に出会う（js/epilogue_engine.js）。
   function buildCelestiaPanel() {
-    const unlocked = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
-    if (unlocked) { const cel = celestiaSectionEl(); if (cel) return cel; }
+    const rich = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
+    const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
+    if (rich || met) { const cel = celestiaSectionEl(); if (cel) return cel; }
     const cast = STORY_CAST.celestia;
     const wrap = el("div", "card adv-panel cel-locked");
     wrap.style.setProperty("--cg", cast.color);
     wrap.innerHTML =
       `<div class="cel-lock-row"><span class="cel-lock-sym">🔒</span>` +
-      `<div class="cel-lock-body"><div class="cel-lock-title">セレスティアの神眼は、まだ開かない</div>` +
-      `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("celestia"))} に届くと、この一戦の1着を聞けるようになります。</div></div></div>`;
+      `<div class="cel-lock-body"><div class="cel-lock-title">“1着を聞ける相手” には、まだ出会っていない</div>` +
+      `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("celestia"))} に届くか、何度も無一文になって立ち上がるうち、ふと現れる誰かに出会うかもしれません。</div></div></div>`;
     return wrap;
   }
 
