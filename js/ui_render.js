@@ -1054,6 +1054,33 @@ function showLifeCutin(node) {
   } catch (e) {}
 }
 
+// 第5話「セレスティアの神眼」開眼カットイン。生命淘汰の神眼が開く荘厳な一枚（表示専用＝状態は一切変えない）。
+// 約2.6秒で自動消滅／タップで即スキップ。showLifeCutin と同じ流儀（body直下オーバーレイ・SFX・自動消滅）。
+let _sgCutinTimer = null;
+function playShinganCutin() {
+  try {
+    const ex = document.getElementById("sg-cutin"); if (ex) ex.remove();
+    if (_sgCutinTimer) { clearTimeout(_sgCutinTimer); _sgCutinTimer = null; }
+    const ov = el("div", "sg-cutin"); ov.id = "sg-cutin";
+    ov.innerHTML =
+      `<div class="sg-flash"></div><div class="sg-rays"></div>` +
+      `<div class="sg-meteors"><i></i><i></i><i></i></div>` +
+      `<div class="sg-eye-wrap"><div class="sg-eye"><div class="sg-iris"><div class="sg-pupil"></div></div></div><div class="sg-ring"></div></div>` +
+      `<div class="sg-text"><div class="sg-kicker">☄️ 生命淘汰の神眼</div><div class="sg-title">開 眼</div>` +
+        `<div class="sg-sub">竜の「生き残る順番」が、視える——</div></div>` +
+      `<div class="sg-skip">タップでスキップ</div>`;
+    const close = () => {
+      if (_sgCutinTimer) { clearTimeout(_sgCutinTimer); _sgCutinTimer = null; }
+      const o = document.getElementById("sg-cutin");
+      if (o) { o.classList.add("out"); setTimeout(() => { if (o) o.remove(); }, 320); }
+    };
+    ov.onclick = close;
+    document.body.appendChild(ov);
+    try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+    _sgCutinTimer = setTimeout(close, 2600);
+  } catch (e) {}
+}
+
 // §30/§38 — 暮らしと資産：総資産から貯まる「暮らしポイント」を生活の方向（食/住/装/移/遊/格）に
 // 振り分けて、約200の生活アップグレードを解放していく“くらしスキルツリー”。完全に表示専用のメタ進行で、
 // コイン・着順・オッズ・配当・賭け経済には一切触れない（暮らしPは総資産＝再起度から導出するだけ）。
@@ -1561,8 +1588,12 @@ function renderStoryChapter(chId) {
   const cast = STORY_CAST[ch.cast];
   // 各話の導入セリフ（立ち絵）— 章ごとに1回だけ。本文はそのまま下に表示。
   if (window.Dialogue && window.DLG && typeof getStoryFlag === "function" && !getStoryFlag("_chapter_intro_" + ch.id)) {
-    Dialogue.play(DLG.chapterIntro(ch, cast));
+    const _introP = Dialogue.play(DLG.chapterIntro(ch, cast));
     if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
+    // 第5話：導入セリフのあと、神眼開眼のカットインを一度だけ（初回のみ・表示専用）。
+    if (ch.id === "5" && typeof playShinganCutin === "function" && _introP && _introP.then) {
+      _introP.then(function () { playShinganCutin(); });
+    }
   }
   // フォールバック：2勝より先に第3/4章へ到達していた場合のみ、章を開いた時にポロ発見アークを再生。
   // 通常は結果画面の「2勝目」で出会う（js/poro.js）。既存のレース出走ポロ・図鑑は不変＝表示専用。
@@ -1803,6 +1834,7 @@ function renderSettings() {
       const e = (typeof epData === "function") ? epData() : null;
       if (e) { e.active = true; e.finalReady = false; e.edFlag = false; e.meter = 10; }
     }));
+    grid.appendChild(act("👁️ 神眼カットイン再生", () => { if (typeof playShinganCutin === "function") playShinganCutin(); }));
     app.appendChild(grid);
     app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク/物語の解放）。レースの着順・オッズ・配当の計算には触れません。終章メーターも表示専用。"));
   }
