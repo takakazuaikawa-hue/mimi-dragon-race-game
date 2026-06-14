@@ -967,6 +967,7 @@ function runMushin(ov, amt) {
 
 function finishMushin(ov, amt) {
   state.player.coins += amt;                          // 額・計算は不変（基準の救済額）
+  state.player.brokeCount = (state.player.brokeCount || 0) + 1;   // 終章伏線：破産回数（救済額には非干渉・演出のみ）
   if (typeof bumpMaxCoins === "function") bumpMaxCoins();
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   if (typeof saveGame === "function") saveGame();
@@ -980,7 +981,13 @@ function finishMushin(ov, amt) {
       `<div class="mushin-sub">ありがとう。…次は、当てる。</div>` +
     `</div>`;
   const done = el("button", "mushin-go", "立て直す ▶");
-  done.onclick = () => { ov.remove(); if (typeof updateHeader === "function") updateHeader(); renderHome(); };
+  done.onclick = () => {
+    ov.remove();
+    if (typeof updateHeader === "function") updateHeader();
+    // 終章伏線：破産3回超で「知らないお姉さん」が現れる（VN再生時は内部で renderHome する）。
+    if (typeof maybeStrangerCameo === "function" && maybeStrangerCameo()) return;
+    renderHome();
+  };
   ov.querySelector(".mushin-card").appendChild(done);
 }
 
