@@ -64,10 +64,11 @@ function maybeStrangerCameo() {
 //   メーターを0まで押し切ると「最終バトルレース」解放→完走でED。失敗してもソフト（仕切り直し）。
 // ★メーターは“演出専用の別ゲージ”。実レースのオッズ・配当・着順には一切触れない（[[race-math-immutable]]）。
 //   表示は「答えの竜の単勝が 1.1倍 → 1.0倍 へ近づく」体（実オッズではない）。
+// メーターは 0(=安全/単勝1.1倍) 〜 RANGE(=絶滅/単勝1.0倍)。★起動は“真ん中”(RANGE/2＝1.05倍)から。
+// 淘汰(doom)が 1.0 側へ、4活動(push)が 1.1 側へ動かす綱引き。0で最終決戦、RANGEでソフト失敗。
 const EP_CONST = {
-  START: 120,            // 第5話起動時のメーター初期値（淘汰の圧）
-  MAX: 260,              // これを超えるとソフト失敗（仕切り直し・ゲームオーバーにしない）
-  DOOM_PER_RACE: 3,      // レース確定ごとの上昇
+  RANGE: 160,            // メーター幅（0=安全1.1倍 / RANGE=絶滅1.0倍＝ソフト失敗ライン）
+  DOOM_PER_RACE: 3,      // レース確定ごとに絶滅(1.0)側へ
   PUSH: { scoutNew: 22, assetLevel: 16, mallBuy: 6, hit: 6, win: 11 }   // 押し戻し配点（要バランス）
 };
 function epData() {
@@ -78,24 +79,24 @@ function epData() {
 function epSave() { if (typeof saveGame === "function") saveGame(); }
 function epilogueOn() { const e = epData(); return e.active && !e.edFlag; }                 // 終章中（HUD表示など）
 function epiloguePushable() { const e = epData(); return e.active && !e.edFlag && !e.finalReady; } // 押し戻し受付中
-// メーターのダイヤル表示：満（START）＝1.0倍(絶滅)、0＝1.1倍(安全)。実オッズではない演出値。
-function epilogueDial() { const e = epData(); const r = Math.max(0, Math.min(1, e.meter / EP_CONST.START)); return (1.1 - 0.1 * r); }
-function epilogueProgress() { const e = epData(); return Math.max(0, Math.min(100, Math.round((1 - e.meter / EP_CONST.START) * 100))); } // 0..100（押し戻し率）
+// ダイヤル：meter 0＝1.1倍(安全)、RANGE＝1.0倍(絶滅)。実オッズではない演出値。
+function epilogueDial() { const e = epData(); const r = Math.max(0, Math.min(1, e.meter / EP_CONST.RANGE)); return (1.1 - 0.1 * r); }
+function epilogueProgress() { const e = epData(); return Math.max(0, Math.min(100, Math.round((1 - e.meter / EP_CONST.RANGE) * 100))); } // 0..100（1.1倍＝安全への近さ）
 
-// 第5話再生で起動（renderStoryChapter("5") から呼ぶ）。
+// 第5話再生で起動（renderStoryChapter("5") から）。★真ん中(RANGE/2＝1.05倍)スタート。
 function epilogueStart() {
   const e = epData(); if (e.active) return;
-  e.active = true; e.meter = EP_CONST.START; epSave();
+  e.active = true; e.meter = Math.round(EP_CONST.RANGE / 2); epSave();
 }
-// レース確定ごとに上昇（settleRace から呼ぶ。終章中のみ内部ガード）。
+// レース確定ごとに絶滅(1.0)側へ（settleRace から。終章中のみ内部ガード）。
 function doomTick() {
   if (!epiloguePushable()) return;
   const e = epData();
-  e.meter = Math.min(EP_CONST.MAX, e.meter + EP_CONST.DOOM_PER_RACE);
-  if (e.meter >= EP_CONST.MAX) onDoomReached();
+  e.meter = Math.min(EP_CONST.RANGE, e.meter + EP_CONST.DOOM_PER_RACE);
+  if (e.meter >= EP_CONST.RANGE) onDoomReached();
   epSave();
 }
-// 4活動の成果が押し戻す（各フックから epPush("reason") で呼ぶ）。
+// 4活動の成果が安全(1.1)側へ押し戻す（各フックから epPush("reason")）。
 function epPush(reason) {
   if (!epiloguePushable()) return;
   const e = epData();
@@ -103,9 +104,9 @@ function epPush(reason) {
   if (e.meter <= 0) { e.meter = 0; e.finalReady = true; onFinalReady(); }
   epSave();
 }
-// ソフト失敗：詰まらせない。少し戻して仕切り直し（押し戻しの積み上げは活きる）。
+// ソフト失敗（絶滅に振り切れた）：詰まらせない。真ん中やや上へ戻して仕切り直し。
 function onDoomReached() {
-  const e = epData(); e.cycle += 1; e.meter = Math.floor(EP_CONST.START * 0.85);
+  const e = epData(); e.cycle += 1; e.meter = Math.round(EP_CONST.RANGE * 0.65);
   if (typeof showInfoPopup === "function") showInfoPopup("☄️ 淘汰は終わらない",
     `<div class="mm-row"><span class="mm-ic">🌌</span><div><b>「……まだ、終わらないわ」</b><small>淘汰の圧はぶり返した。それでも、灯りはまだ消えていない。押し戻し続けよう。</small></div></div>`);
 }
