@@ -100,6 +100,7 @@ utils → data_*（純データ）→ state → *_engine（純ロジック）→
 ## 6. 最適化の方針（今後）
 
 - ✅**ルーティング集約＝完了**（nav.js）。画面追加が1箇所で済み、`?go=`で検証が速い。
-- 🔜**ui_render.js(4929行)の分割候補**：画面群ごとに `ui_home.js / ui_race.js / ui_assets.js / ui_story.js / ui_meta.js(goals,meals,settings)` へ抽出可能（**ロジック移動のみ・グローバル共有なので参照は不変＝低リスクだが要慎重・段階的）。今は nav.js が橋渡し。
+- ✅**分割第1弾＝`ui_meta.js`抽出済**（renderGoals/renderMeals/showMealDetail/_mealTab を ui_render.js から無改変で移動）。参照はグローバル共有で不変、`?go=goals`/`?go=meals`で全機能スモーク→コンソール0で確認済。
+- 🔜**ui_render.js(残り約4800行)の分割候補（続き）**：`ui_home.js / ui_race.js(select/detail/run/result/analysis) / ui_assets.js(assets/life_tree/collection/active_skills) / ui_story.js(story/consult/help/settings)` へ同方式で抽出。**ロジック移動のみ＝低リスクだが1ファイルずつ・各段階で`?go=`全画面スモーク→デプロイ**。nav.js が橋渡し。
 - 🔜 race_canvas.js / mall_rpg.js も大きいが自己完結度が高い。
 - 原則：**抽出はロジックを変えず移すだけ**。1ファイルずつ・プレビュー(`?go=`)で全画面スモーク→デプロイ。数値engineには触れない。
