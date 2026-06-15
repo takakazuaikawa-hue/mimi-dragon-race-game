@@ -3714,11 +3714,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 }
 .edr-fin-sub { font-size: 14px; font-weight: 600; letter-spacing: .12em; color: #cdbb95; }
 
-/* スタッフロール中の振り返り一枚絵（各話のキー絵） */
-.edr-image { margin: 18px auto; max-width: 420px; }
-.edr-image img { display: block; width: 100%; height: auto; border-radius: 12px;
-  box-shadow: 0 6px 24px rgba(0,0,0,.55), 0 0 0 1px rgba(255,231,168,.18); }
-.edr-image-cap { display: block; margin-top: 9px; font-size: 12.5px; line-height: 1.7; color: #d8cdb8; }
+/* スタッフロール中の振り返り一枚絵（各話のキー絵）。★高さ固定＝縦領域を読込前から予約し、
+   スクロール中に画像が遅れて入って起こる「ガタガタ」を根治。各話で比率が違っても高さは揃う。 */
+.edr-image { margin: 22px auto; text-align: center; }
+.edr-image img { display: inline-block; height: 320px; width: auto; max-width: 90%; vertical-align: top;
+  border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.55), 0 0 0 1px rgba(255,231,168,.18); }
+.edr-image-cap { display: block; margin-top: 10px; font-size: 12.5px; line-height: 1.7; color: #d8cdb8; }
 
 /* ロール完走後の「ED一枚絵＋締めの物語」フィナーレ（held・流れ去らず読める） */
 .edr-overlay.edr-ended .edr-view { opacity: 0; transition: opacity .6s ease; pointer-events: none; }  /* フィナーレ時はロール本体を隠す（透け重なり防止） */
@@ -3728,9 +3729,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   background: linear-gradient(180deg, rgba(6,12,14,.42), rgba(6,12,14,.74));
   animation: edrFinaleIn 1.3s ease both; }
 @keyframes edrFinaleIn { from { opacity: 0; } to { opacity: 1; } }
-.edr-finale-art { width: min(74%, 360px); flex: none; }
-.edr-finale-art img { display: block; width: 100%; height: auto; border-radius: 14px;
-  box-shadow: 0 10px 36px rgba(0,0,0,.6), 0 0 0 1px rgba(255,231,168,.22); }
+.edr-finale-art { flex: none; }
+.edr-finale-art img { display: block; height: min(42vh, 400px); width: auto; max-width: 86%; margin: 0 auto;
+  border-radius: 14px; box-shadow: 0 10px 36px rgba(0,0,0,.6), 0 0 0 1px rgba(255,231,168,.22); }
 .edr-finale-ttl { font-size: 15px; font-weight: 800; letter-spacing: .26em; color: #ffe7a8; margin-bottom: 4px; }
 .edr-finale-tx { max-width: 26em; flex: none; }
 .edr-finale-tx p { margin: 9px 0; font-size: 14px; line-height: 1.95; color: #ece2d0; }
