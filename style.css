@@ -3754,6 +3754,27 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border:1px solid rgba(150,120,200,.35); border-radius:12px; color:#e9e0f5; font-weight:600; cursor:pointer; }
 .rpg-box { margin:10px 0; background:rgba(28,22,40,.7); border:1px solid rgba(120,96,160,.3); border-radius:14px; padding:12px; }
 .rpg-box-t { font-weight:700; color:#d8c8f0; margin-bottom:8px; }
+/* ── ハブの情報整理（2段ステータス／？／次目標／折りたたみsummary） */
+.rpg-hero-title { text-align:center; font-size:18px; font-weight:800; color:#fff; margin:6px 0 4px; letter-spacing:1px; }
+.rpg-hero-stats { display:flex; flex-direction:column; gap:5px; margin:0 0 8px; }
+.rpg-st { display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:13px; color:#e9e0f5;
+  background:rgba(30,24,44,.7); border:1px solid rgba(150,120,200,.25); border-radius:999px; padding:5px 12px; }
+.rpg-st b { color:#ffd98a; }
+.rpg-st.wallet { position:relative; }
+.rpg-st .rep { color:#ffd0e4; }
+.rpg-help { margin-left:auto; width:22px; height:22px; border-radius:50%; border:1px solid rgba(180,200,255,.5);
+  background:rgba(80,110,160,.5); color:#fff; font-weight:800; font-size:12px; cursor:pointer; line-height:1; }
+.rpg-goal-line { margin:8px 0; padding:9px 14px; border-radius:12px; font-size:14px; color:#fff4d6; text-align:center;
+  background:linear-gradient(135deg,rgba(120,80,40,.55),rgba(80,52,28,.6)); border:1px solid rgba(255,200,120,.4); }
+.rpg-goal-line b { color:#ffe07a; font-size:17px; }
+.rpg-sec[open] { padding-bottom:10px; }
+.rpg-sec > summary { cursor:pointer; font-weight:700; color:#e0d2f5; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+.rpg-sec > summary::-webkit-details-marker { display:none; }
+.rpg-sec > summary::after { content:"▾"; color:#a892c8; font-size:12px; margin-left:6px; }
+.rpg-sec[open] > summary { margin-bottom:9px; }
+.rpg-sec[open] > summary::after { content:"▴"; }
+.rpg-sec .sec-r { font-weight:700; color:#ffd98a; font-size:13px; }
+.badge-new { background:#ff4d6d; color:#fff; font-size:10px; font-weight:800; padding:1px 6px; border-radius:999px; }
 .rpg-shopgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .rpg-shopbtn { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:10px 12px;
   background:rgba(46,36,64,.9); border:1px solid rgba(150,120,200,.35); border-radius:12px; color:#eee; cursor:pointer; position:relative; }

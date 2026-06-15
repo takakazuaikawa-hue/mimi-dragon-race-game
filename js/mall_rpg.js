@@ -877,10 +877,14 @@ function renderMallRpg(flash) {
   return rpgRenderHub(app);
 }
 
-// ── ハブ
+// ── ハブ（情報の見え方：主役=冒険を1つ立て、副次情報は折りたたみ＋！バッジ・？モーダル）
 function rpgRenderHub(app) {
   const d = rpgData();
-  // ヒーローヘッダー（動くリゾート背景＋タイトル＋ステータスを1つに統合＝箱を減らす）
+  const rec = d.records || {};
+  const tot = rpgShopTotalOwned();
+  const topI = RPG_FLOORS.length - 1;
+
+  // ── ヒーロー（背景＋タイトル＋ステータス2段：キャラ状態／もちもの）
   const hero = el("div", "rpg-hero");
   const resort = el("div", "rpg-resort");
   resort.innerHTML =
@@ -890,77 +894,46 @@ function rpgRenderHub(app) {
     `<div class="rpg-palm pl">🌴</div><div class="rpg-palm pr">🌴</div>` +
     `<div class="rpg-beach"></div><div class="rpg-sea"></div>`;
   hero.appendChild(resort);
-  hero.appendChild(el("div", "rpg-hero-title", "🏝️ 島のリゾートモール大冒険"));
+  hero.appendChild(el("div", "rpg-hero-title", "🏝️ 巨大モール大冒険"));
   const stat = el("div", "rpg-hero-stats");
   stat.innerHTML =
-    `<span>Lv <b>${d.lv}</b></span><span>❤️ ${d.hp}/${d.maxhp}</span><span>💧 ${d.mp}/${d.maxmp}</span>` +
-    `<span>🪙 ${d.gold}G</span><span class="tk">🎟️ ${d.tickets || 0}</span><span class="rep">✨ ${d.rep || 0}</span>` +
-    (d.cleared ? `<span class="cl">🌿 制覇</span>` : "");
+    `<div class="rpg-st char">🧝 Lv<b>${d.lv}</b><span>❤️${d.hp}/${d.maxhp}</span><span>💧${d.mp}/${d.maxmp}</span>${d.cleared ? `<span class="cl">🌿制覇</span>` : ""}</div>` +
+    `<div class="rpg-st wallet">🪙<b>${d.gold}</b><span class="tk">🎟️${d.tickets || 0}</span><span class="rep">✨${d.rep || 0}</span><button class="rpg-help" title="もちもの・あそびかた">？</button></div>`;
   hero.appendChild(stat);
   app.appendChild(hero);
+  const helpBtn = stat.querySelector(".rpg-help");
+  if (helpBtn) helpBtn.onclick = () => rpgShowHelp();
 
-  // ベスト記録（中毒性＝自己ベスト更新）
-  const rec = d.records || {};
-  const rc = el("div", "rpg-records");
-  rc.innerHTML =
-    `<div class="rpg-rec"><small>ベストスコア</small><b>${rec.score || 0}</b></div>` +
-    `<div class="rpg-rec"><small>最高Lv</small><b>${rec.lv || d.lv}</b></div>` +
-    `<div class="rpg-rec"><small>最高到達</small><b>${rec.floor != null ? RPG_FLOORS[Math.min(rec.floor, RPG_FLOORS.length - 1)].name.replace(/ .*/, "") : "—"}</b></div>` +
-    `<div class="rpg-rec"><small>最大コンボ</small><b>×${rec.combo || 0}</b></div>` +
-    `<div class="rpg-rec"><small>🎯ミッション達成</small><b>${rec.missions || 0}</b></div>`;
-  app.appendChild(rc);
+  // ── つぎの目標（あと◯◯：ゴールグラデーション）
+  let goal;
+  if (!d.cleared) {
+    const bf = rec.floor || 0;
+    goal = bf < topI ? `🎯 屋上をめざそう：あと <b>${topI - bf}</b> フロアで制覇！` : `🎯 屋上のボスを倒せば制覇！`;
+  } else if (tot.o < tot.t) {
+    goal = `🛍️ ショッピング・コンプまで あと <b>${tot.t - tot.o}</b> 品！`;
+  } else {
+    goal = `🌟 エンドレスタワー 最深 <b>${rec.depth || 0}</b> 層を更新しよう！`;
+  }
+  app.appendChild(el("div", "rpg-goal-line", goal));
 
-  // デイリー・ログインボーナス
+  // ── ログボ（あれば主役のすぐ上にコンパクトに）
   if (d.daily !== rpgToday()) {
-    const dl = el("button", "rpg-daily", "🎁 本日のログインボーナスを受け取る（🎟️＋おまけ）");
+    const dl = el("button", "rpg-daily", "🎁 ログインボーナス（🎟️＋おまけ）を受け取る");
     dl.onclick = () => rpgClaimDaily();
     app.appendChild(dl);
   }
 
-  const go = el("button", "rpg-start", d.cleared ? "🏬 1Fから冒険する ▶（再挑戦）" : "🏬 1Fから冒険する ▶");
+  // ── 主役：冒険（＋タワー）
+  const go = el("button", "rpg-start", d.cleared ? "🏬 冒険する ▶（再挑戦）" : "🏬 冒険する ▶");
   go.onclick = () => rpgStartRun();
   app.appendChild(go);
-
-  // 🌟 エンドレスタワー（屋上クリア後に解放）
   if (d.cleared) {
-    const tw = el("button", "rpg-start tower", `🌟 エンドレスタワーに挑む ▶${(d.records.depth || 0) ? `（最深 ${d.records.depth}層）` : ""}`);
+    const tw = el("button", "rpg-start tower", `🌟 エンドレスタワー ▶${(rec.depth || 0) ? `（最深 ${rec.depth}層）` : ""}`);
     tw.onclick = () => rpgStartTower();
     app.appendChild(tw);
   }
 
-  // 💖 自分磨き（恒久メタ進行＝モール内で完結する成長。ぼうけんのたびに✨みがきがたまる）
-  const lab = el("div", "rpg-box lab-box");
-  lab.innerHTML = `<div class="rpg-box-t">💖 自分磨き <span class="rpg-rep">✨ ${d.rep || 0}</span></div>` +
-    `<div class="rpg-lab-hint">ぼうけんのたびに<b>✨みがき</b>がたまる（倒れても・途中で出てもOK）。つかうとミミがずっと成長するっ！</div>`;
-  const labg = el("div", "rpg-labgrid");
-  RPG_UP.forEach(u => {
-    const lv = rpgUpLv(u.id), maxed = lv >= u.max, cost = u.cost(lv), can = (d.rep || 0) >= cost;
-    const b = el("button", "rpg-labbtn" + (maxed ? " maxed" : can ? " ready" : " off"));
-    b.innerHTML = `<span class="li">${u.ic}</span><b>${u.n}</b><small>${u.d}</small>` +
-      `<span class="lv">${maxed ? "MAX" : "Lv" + lv + " / " + u.max}</span>` +
-      `<span class="cost">${maxed ? "✓" : "✨" + cost}</span>`;
-    if (!maxed) b.onclick = () => rpgBuyUp(u.id);
-    labg.appendChild(b);
-  });
-  lab.appendChild(labg);
-  app.appendChild(lab);
-
-  // 🛍️ ショッピング帳（フロアで買った品のコレクション＝集める達成感・周回動機）
-  const tot = rpgShopTotalOwned();
-  const book = el("details", "rpg-box shopbook");
-  let bh = `<summary>🛍️ ショッピング帳　<b>${tot.o}/${tot.t}</b></summary>`;
-  bh += `<div class="rpg-shopbook-body">`;
-  RPG_FLOORS.forEach((f, i) => {
-    const arr = rpgShopFor(i), o = rpgShopOwnedN(arr);
-    bh += `<div class="sb-floor"><div class="sb-floor-t">${f.name.replace(/ .*/, " ")}<small>${o}/${arr.length}</small></div><div class="sb-items">` +
-      arr.map(it => `<span class="sb-it${rpgOwned(it.id) ? " got" : ""}" title="${it.n}">${rpgOwned(it.id) ? it.ic : "❔"}</span>`).join("") +
-      `</div></div>`;
-  });
-  bh += `</div>`;
-  book.innerHTML = bh;
-  app.appendChild(book);
-
-  // 🎰 ガチャ（射幸性）
+  // ── 🎰 ガチャ（主要ループ・1箱だけ常時表示）
   const gacha = el("div", "rpg-box gacha-box");
   gacha.innerHTML = `<div class="rpg-box-t">🎰 おたからガチャ <span class="rpg-gacha-rates">伝説0.7% / 激レア2.8% / SR9.5%</span></div>`;
   const gg = el("div", "rpg-gachagrid");
@@ -974,41 +947,85 @@ function rpgRenderHub(app) {
   gacha.appendChild(gg);
   app.appendChild(gacha);
 
-  const row = el("div", "rpg-hubrow");
-  const rest = el("button", "rpg-hubbtn", "🛏️ 休む（HP/MP全回復）");
-  rest.onclick = () => rpgRest();
-  row.appendChild(rest);
-  app.appendChild(row);
-
-  // 道具屋（折りたたみ＝画面をすっきり）
-  const shop = el("details", "rpg-box rpg-shopdetails");
-  let sgh = "";
-  [["potion", "🧪 回復薬", "HP+40", 20], ["ether", "🔵 マナ水", "MP+20", 30]].forEach(([k, n, ds, price]) => {
-    sgh += `<button class="rpg-shopbtn${d.gold >= price ? "" : " off"}" data-buy="${k}"${d.gold < price ? " disabled" : ""}><b>${n}</b><small>${ds}</small><span class="cost">${price}G</span></button>`;
+  // ── 💖 自分磨き（折りたたみ・つかえる時は！バッジ）
+  const upReady = RPG_UP.some(u => { const lv = rpgUpLv(u.id); return lv < u.max && (d.rep || 0) >= u.cost(lv); });
+  const lab = el("details", "rpg-box rpg-sec lab-box");
+  let lh = `<summary>💖 自分磨き <span class="sec-r">✨${d.rep || 0}${upReady ? ` <span class="badge-new">！</span>` : ""}</span></summary>`;
+  lh += `<div class="rpg-lab-hint">ぼうけんでたまる✨みがきで、ミミがずっと成長するっ！（倒れても持ち帰る）</div>`;
+  lab.innerHTML = lh;
+  const labg = el("div", "rpg-labgrid");
+  RPG_UP.forEach(u => {
+    const lv = rpgUpLv(u.id), maxed = lv >= u.max, cost = u.cost(lv), can = (d.rep || 0) >= cost;
+    const b = el("button", "rpg-labbtn" + (maxed ? " maxed" : can ? " ready" : " off"));
+    b.innerHTML = `<span class="li">${u.ic}</span><b>${u.n}</b><small>${u.d}</small>` +
+      `<span class="lv">${maxed ? "MAX" : "Lv" + lv + " / " + u.max}</span><span class="cost">${maxed ? "✓" : "✨" + cost}</span>`;
+    if (!maxed) b.onclick = () => rpgBuyUp(u.id);
+    labg.appendChild(b);
   });
-  shop.innerHTML = `<summary>🛒 道具屋（ゴールドで購入）</summary><div class="rpg-shopgrid">${sgh}</div>`;
-  shop.querySelectorAll("[data-buy]").forEach(b => { b.onclick = () => rpgBuy(b.getAttribute("data-buy")); });
-  app.appendChild(shop);
+  lab.appendChild(labg);
+  app.appendChild(lab);
 
-  // 図鑑（判明した弱点）
-  const codex = el("details", "rpg-codex");
+  // ── 🛍️ ショッピング帳（折りたたみ）
+  const book = el("details", "rpg-box rpg-sec shopbook");
+  let bh = `<summary>🛍️ ショッピング帳 <span class="sec-r">${tot.o}/${tot.t}</span></summary><div class="rpg-shopbook-body">`;
+  RPG_FLOORS.forEach((f, i) => {
+    const arr = rpgShopFor(i), o = rpgShopOwnedN(arr);
+    bh += `<div class="sb-floor"><div class="sb-floor-t">${f.name.replace(/ .*/, " ")}<small>${o}/${arr.length}</small></div><div class="sb-items">` +
+      arr.map(it => `<span class="sb-it${rpgOwned(it.id) ? " got" : ""}" title="${it.n}">${rpgOwned(it.id) ? it.ic : "❔"}</span>`).join("") + `</div></div>`;
+  });
+  bh += `</div>`;
+  book.innerHTML = bh;
+  app.appendChild(book);
+
+  // ── 🧰 おでかけ準備（道具屋＋休む・折りたたみ）
+  const prep = el("details", "rpg-box rpg-sec");
+  let ph = `<summary>🧰 おでかけ準備</summary><div class="rpg-shopgrid">`;
+  [["potion", "🧪 回復薬", "HP+40", 20], ["ether", "🔵 マナ水", "MP+20", 30]].forEach(([k, n, ds, price]) => {
+    ph += `<button class="rpg-shopbtn${d.gold >= price ? "" : " off"}" data-buy="${k}"${d.gold < price ? " disabled" : ""}><b>${n}</b><small>${ds}</small><span class="cost">${price}G</span></button>`;
+  });
+  ph += `</div>`;
+  prep.innerHTML = ph;
+  const restBtn = el("button", "rpg-hubbtn", "🛏️ 休む（HP/MP全回復）");
+  restBtn.onclick = () => rpgRest();
+  prep.appendChild(restBtn);
+  prep.querySelectorAll("[data-buy]").forEach(b => { b.onclick = () => rpgBuy(b.getAttribute("data-buy")); });
+  app.appendChild(prep);
+
+  // ── 📖 ずかん（折りたたみ）
+  const codex = el("details", "rpg-box rpg-sec");
   let rows = "";
   RPG_TOURISTS.concat(RPG_MONSTERS_MINOR, ["boss1"]).forEach(id => {
     const m = RPG_MONS[id], seen = d.codex[id];
     const w = seen && seen.weak.length ? seen.weak.map(e => RPG_ELEM_IC[e]).join("") : "？";
     rows += `<div class="rpg-codexrow"><span>${m.ic} ${seen ? m.n : "？？？"}</span><span>弱点 ${w}</span></div>`;
   });
-  codex.innerHTML = `<summary>📖 すれちがい図鑑</summary><div class="rpg-codexlist">${rows}</div>`;
+  codex.innerHTML = `<summary>📖 ずかん（すれちがい）</summary><div class="rpg-codexlist">${rows}</div>`;
   app.appendChild(codex);
 
-  const how = el("details", "rpg-how");
-  how.innerHTML = `<summary>📖 遊び方</summary><div>モールに来た目的は<b>🛍️ショッピング</b>！ 各フロアには<b>限定の品</b>（👗着る・🪴飾る・🐚集める・🍧食べ歩き）が並ぶので、<b>「お店」ボタン</b>でお買い物。<b>上の階ほど別の品</b>が待ってるよ。歩いて稼いだ🪙ゴールドが先立つもの——<b>浮かれた観光客</b>や👾モンスターと戦って稼ごう（<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>で「もう1回！」）。<b>🛗階段で上の階へ</b>。各フロアの<b>🎯ミッション</b>や、ぼうけんでたまる<b>✨みがき</b>（ハブの💖自分磨き）も。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
-  app.appendChild(how);
+  // ── 🏆 きろく（折りたたみ）
+  const recd = el("details", "rpg-box rpg-sec");
+  recd.innerHTML = `<summary>🏆 きろく</summary><div class="rpg-records">` +
+    `<div class="rpg-rec"><small>ベストスコア</small><b>${rec.score || 0}</b></div>` +
+    `<div class="rpg-rec"><small>最高Lv</small><b>${rec.lv || d.lv}</b></div>` +
+    `<div class="rpg-rec"><small>最高到達</small><b>${rec.floor != null ? RPG_FLOORS[Math.min(rec.floor, topI)].name.replace(/ .*/, "") : "—"}</b></div>` +
+    `<div class="rpg-rec"><small>最大コンボ</small><b>×${rec.combo || 0}</b></div>` +
+    `<div class="rpg-rec"><small>🎯ミッション</small><b>${rec.missions || 0}</b></div>` +
+    `</div>`;
+  app.appendChild(recd);
 
   const actions = el("div", "actions");
   const back = el("button", "secondary", "← モールへ戻る"); back.onclick = () => renderMall();
   actions.appendChild(back);
   app.appendChild(actions);
+}
+// もちもの＆あそびかた（？モーダル＝常設説明を隠す）
+function rpgShowHelp() {
+  const html =
+    `<p><b>🪙 ゴールド</b>：探索で稼ぐお金。お店の買い物・道具・10連ガチャに使う。</p>` +
+    `<p><b>🎟️ おたから券</b>：ガチャ1回ぶん。ログボや探索で手に入る。</p>` +
+    `<p><b>✨ みがき</b>：ぼうけんのたびにたまる成長ポイント。「💖自分磨き」で永久に強くなる（倒れても持ち帰る）。</p>` +
+    `<hr><p>モールに来る目的は<b>🛍️ショッピング</b>！ 歩いて稼ぎ、各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。<b>「お店」</b>で値切りやセールも。<b>🛗階段</b>で上の階へ。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>`;
+  if (typeof showInfoPopup === "function") showInfoPopup("もちもの＆あそびかた", html);
 }
 
 // ── 🛍️ フロアのショップ（買い物＝モールに来る理由。店主との値切り・タイムセール＝買い物自体を遊びに）
