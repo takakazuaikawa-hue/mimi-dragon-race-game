@@ -4608,7 +4608,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ── 戦闘：アリーナ(伸縮)＋コマンド(下部固定) */
 .rpg-bt-arena { flex:1 1 auto; min-height:210px; max-width:none; margin:0; position:relative; border-radius:16px 16px 0 0; }
 .rpg-bt-cv { position:absolute; inset:0; width:100%; height:100%; }
-.rpg-bt-panel { flex:none; max-width:none; margin:0; }
+.rpg-bt-panel { flex:none; max-width:none; margin:0; overflow:hidden; }
 .rpg-cmd .rpg-cmdbtn { min-height:54px; justify-content:center; }
 .rpg-cmd .rpg-cmdbtn.back { min-height:44px; }
 
@@ -4763,17 +4763,20 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-padbtn2.dim { opacity:.5; }
 .rpg-actbtn.leave.wide { flex:none; width:100%; }
 
-/* ⚔️ 戦闘パネル整理：敵チップ＋コンパクトな自分ステータス（HP巨大化をやめ情報を集約） */
+/* ⚔️ 戦闘パネル整理：敵=1行サマリ＋アイコンチップ（旧 .rpg-foe[canvas用] と衝突しない命名） */
 .rpg-foes { display:flex; flex-direction:column; gap:6px; margin-bottom:7px; }
-.rpg-foe { display:flex; align-items:center; gap:9px; width:100%; padding:7px 11px; border-radius:12px; cursor:pointer; text-align:left;
-  color:#f0e8ff; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); }
-.rpg-foe.on { border-color:#ff5fa2; box-shadow:0 0 0 2px rgba(255,95,162,.5); background:rgba(255,95,162,.12); }
-.rpg-foe .foe-ic { font-size:24px; line-height:1; flex:none; }
-.rpg-foe .foe-mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
-.rpg-foe .foe-n { font-size:13px; font-weight:700; display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
-.rpg-foe .foe-n em { font-style:normal; font-size:11px; color:#ffe45e; flex:none; }
-.rpg-foe .foe-hpbar { height:8px; border-radius:5px; background:rgba(0,0,0,.45); overflow:hidden; }
-.rpg-foe .foe-hpbar > span { display:block; height:100%; background:linear-gradient(90deg,#e35,#f86); }
+.foe-line { font-size:13px; color:#f0e8ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  padding:7px 11px; border-radius:11px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); }
+.foe-line b { color:#fff; font-weight:800; }
+.foe-line .fl-wk { color:#ffe45e; margin-left:4px; }
+.foe-line .fl-hp { color:#ffcfc0; margin-left:4px; }
+.foe-chips { display:flex; gap:8px; flex-wrap:wrap; }
+.foe-chip { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 10px; border-radius:11px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); }
+.foe-chip.on { border-color:#ff5fa2; box-shadow:0 0 0 2px rgba(255,95,162,.5); background:rgba(255,95,162,.12); }
+.foe-chip .fc-ic { font-size:22px; line-height:1; }
+.foe-chip .fc-hp { width:50px; height:7px; border-radius:4px; background:rgba(0,0,0,.45); overflow:hidden; }
+.foe-chip .fc-hp > span { display:block; height:100%; background:linear-gradient(90deg,#e35,#f86); }
 
 .rpg-me { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-bottom:6px; padding:7px 11px; border-radius:12px; background:rgba(0,0,0,.25); }
 .rpg-me .me-name { font-size:13px; font-weight:800; color:#f3ecff; }
