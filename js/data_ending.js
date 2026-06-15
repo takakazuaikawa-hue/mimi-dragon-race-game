@@ -28,8 +28,17 @@
 // 全体設定（背景・テンポ・送り出しVNの有無・実在クレジット）。
 const ENDING_CONFIG = {
   bg: "images/home_vista_day.jpg",   // ロールの背景（発展した島の遠景。後で差し替え可）
-  finBg: "images/story/ED.jpg",      // 最後のカードの背景（夜明けの桟橋）
-  scrollSeconds: 48,                 // ロールが流れ切るまでの秒数（小さく＝速い）
+  finBg: "images/story/ED.webp",     // フィナーレのED一枚絵（夜明けの桟橋）
+  scrollSeconds: 88,                 // ロールが流れ切るまでの秒数（長め＝振り返りにたっぷり浸る）
+  // ロール完走後に held で出す「ED一枚絵＋締めの物語」のフィナーレ文（STORY_CHAPTERS:ED の締めを凝縮）。
+  finStory: [
+    "単勝の正解は、たったひとつ。",
+    "そのまわりに、複で、ワイドで、穴で——まだ沈んでいない席を、ぜんぶ拾った。",
+    "「これが、わたしの全部です。」　震える手で、最後の賭け札を切り直す。",
+    "夜明け前の賭場に、もう一度だけ歓声が爆発して……この島の灯りは、消えなかった。",
+    "あの日、入口で拾われたバニーは。今度は自分で、出口を選ぶ。",
+    "霧の向こうの、次の物語へ。"
+  ],
   playVN: true,                      // true: 先に顧問たちの送り出しVNを流す
   bgm: "bgm/ある日森の中ドラゴンに出会った.mp3",   // スタッフロールBGM（パス＝RaceBgm.playFileでループ再生・音ありを選んだ時のみ）
   // 実在クレジット（{ type:"credits", from:"REAL" } で展開）。お好みで書き換え。
@@ -75,9 +84,15 @@ const STAFF_ROLL = [
   { type: "cast",  from: "DRAGONS" },
   { type: "gap",   size: "md" },
 
-  { type: "head",  text: "STORY" },
-  { type: "voice", who: "sake", text: "息を見ろ。脚より先に、息で崩れる。" },
+  { type: "head",  text: "STORY ─ あの島の日々" },
   { type: "role",  role: "全5話＋エンディング" },
+  { type: "note",  text: "── ここまでの旅を、もう一度。" },
+  { type: "gap",   size: "sm" },
+  { type: "image", src: "images/story/1.webp", cap: "第一話　霧の島に拾われて。「まず食え」と竜王女は言った。" },
+  { type: "image", src: "images/story/2.webp", cap: "第二話　オッズは祈りじゃない。市場の歪みに、価値を探す。" },
+  { type: "image", src: "images/story/3.webp", cap: "第三話　住居も食事も名声も。総資産が、再起の土台になる。" },
+  { type: "image", src: "images/story/4.webp", cap: "第四話　当てるだけなら予想、名を覚えさせたら物語。推しの熱が、島を満たす。" },
+  { type: "image", src: "images/story/5.webp", cap: "第五話　絶滅の神眼。応えがひとつへ淘汰されても──賭場は、壊れなかった。" },
   { type: "gap",   size: "sm" },
 
   { type: "head",  text: "RACE ENGINE" },
