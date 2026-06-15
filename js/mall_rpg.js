@@ -28,8 +28,9 @@ function rpgData() {
   if (!d.records) d.records = { lv: d.lv || 1, floor: d.best.floor || 0, combo: 0, score: 0, pulls: 0, depth: 0 };
   if (d.records.depth == null) d.records.depth = 0;
   if (d.daily == null) d.daily = "";                 // 最終ログボ受取日
-  if (d.rep == null) d.rep = 0;                       // ⭐島の評判（恒久メタ進行の資源）
-  if (!d.up) d.up = {};                               // 恒久強化レベル
+  if (d.rep == null) d.rep = 0;                       // ✨みがき（自分磨きの資源）
+  if (!d.up) d.up = {};                               // 自分磨きレベル
+  if (!d.shop) d.shop = {};                           // 🛍️ ショッピング・コレクション（買った品）
   return d;
 }
 // ── ✨ 自分磨き（モール内で完結する恒久成長）：ぼうけんのたびに✨みがきがたまり、つかうとミミが少しずつ成長する
@@ -183,6 +184,8 @@ function rpgLoadFloor(i) {
   // フロア・ミッション（任意＋達成ボーナス）：入場のたびに進捗リセット
   const g = rpgFloorMeta(i).goal;
   RPG.goal = g ? { type: g.type, n: g.n, label: g.label, ic: g.ic, prog: 0, done: false, base: g.type === "gold" ? d.gold : 0 } : null;
+  const s0 = rpgShopFor(i), nleft = s0.length - rpgShopOwnedN(s0);
+  if (nleft > 0) rpgLog(`🛍️ お店に ${s0[0].ic}${s0[0].n} など${nleft}品！「お店」ボタンでお買い物♪`, "good");
   if (!RPG.tower && (d.best.floor == null || i > d.best.floor)) { d.best.floor = i; rpgSave(); }
 }
 // ミッション表示用テキスト（HUDチップ／フロアカード）
@@ -749,6 +752,69 @@ function rpgBuy(kind) {
 }
 
 // =========================================================================
+// 🛍️ ショッピング（モールに来る理由＝買い物を楽しむ。各フロア限定の品＝次の階へ行きたくなる引き）
+//    着る👗／飾る🪴／集める🐚／食べ歩き🍧 の4カテゴリ。すべて表示・コレクション（レース数値に非干渉）
+// =========================================================================
+const RPG_SHOP_CAT = { wear: { ic: "👗", n: "ファッション" }, decor: { ic: "🪴", n: "ざっか" }, souv: { ic: "🐚", n: "おみやげ" }, food: { ic: "🍧", n: "グルメ" } };
+const RPG_SHOPS = [
+  [ // 1F ビーチサイド
+    { id: "b_hat", ic: "👒", n: "むぎわら帽子", cat: "wear", price: 80 },
+    { id: "b_sandal", ic: "🩴", n: "ビーチサンダル", cat: "wear", price: 60 },
+    { id: "b_shell", ic: "🐚", n: "貝がらネックレス", cat: "souv", price: 70 },
+    { id: "b_parasol", ic: "⛱️", n: "ビーチパラソル", cat: "decor", price: 120 },
+    { id: "b_ice", ic: "🍉", n: "スイカバー", cat: "food", price: 40 },
+  ],
+  [ // 2F プールデッキ
+    { id: "p_sun", ic: "🕶️", n: "サングラス", cat: "wear", price: 90 },
+    { id: "p_swim", ic: "👙", n: "リゾート水着", cat: "wear", price: 150 },
+    { id: "p_float", ic: "🛟", n: "フラミンゴ浮き輪", cat: "decor", price: 110 },
+    { id: "p_flam", ic: "🦩", n: "フラミンゴの置物", cat: "decor", price: 130 },
+    { id: "p_drink", ic: "🍹", n: "ブルーラグーン", cat: "food", price: 60 },
+  ],
+  [ // 3F 南国グルメ横丁
+    { id: "g_kakigori", ic: "🍧", n: "マンゴーかき氷", cat: "food", price: 50 },
+    { id: "g_skewer", ic: "🍢", n: "屋台の串焼き", cat: "food", price: 45 },
+    { id: "g_coco", ic: "🥥", n: "ココナッツジュース", cat: "food", price: 55 },
+    { id: "g_lantern", ic: "🏮", n: "横丁のちょうちん", cat: "decor", price: 100 },
+    { id: "g_tenugui", ic: "🎏", n: "グルメ手ぬぐい", cat: "souv", price: 80 },
+  ],
+  [ // 4F マリンアドベンチャー
+    { id: "m_dolph", ic: "🐬", n: "イルカのぬいぐるみ", cat: "souv", price: 180 },
+    { id: "m_fish", ic: "🐠", n: "熱帯魚の標本", cat: "decor", price: 140 },
+    { id: "m_map", ic: "🧭", n: "宝の海図", cat: "souv", price: 120 },
+    { id: "m_conch", ic: "🐚", n: "大きなほら貝", cat: "souv", price: 90 },
+    { id: "m_snack", ic: "🦐", n: "海鮮スナック", cat: "food", price: 60 },
+  ],
+  [ // 屋上 サンセットテラス
+    { id: "r_photo", ic: "🌅", n: "夕日のフォト", cat: "souv", price: 200 },
+    { id: "r_hat", ic: "👒", n: "つば広サンハット", cat: "wear", price: 170 },
+    { id: "r_cocktail", ic: "🥂", n: "サンセットカクテル", cat: "food", price: 90 },
+    { id: "r_candle", ic: "🕯️", n: "アロマキャンドル", cat: "decor", price: 150 },
+    { id: "r_ring", ic: "💍", n: "記念のリング", cat: "wear", price: 320 },
+  ],
+];
+const RPG_SHOP_TOWER = [
+  { id: "t_star", ic: "⭐", n: "タワーのお守り", cat: "souv", price: 130 },
+  { id: "t_crystal", ic: "🔮", n: "ふしぎな水晶", cat: "decor", price: 170 },
+  { id: "t_tea", ic: "🍵", n: "天空のお茶", cat: "food", price: 85 },
+];
+function rpgShopFor(i) { return (i != null && i >= 0 && i < RPG_SHOPS.length) ? RPG_SHOPS[i] : RPG_SHOP_TOWER; }
+function rpgOwned(id) { const d = rpgData(); return !!(d.shop && d.shop[id]); }
+function rpgShopOwnedN(arr) { let o = 0; arr.forEach(it => { if (rpgOwned(it.id)) o++; }); return o; }
+function rpgShopTotalOwned() { let o = 0, t = 0; RPG_SHOPS.forEach(a => a.forEach(it => { t++; if (rpgOwned(it.id)) o++; })); return { o, t }; }
+function rpgOpenShop() { if (!RPG) return; RPG._ret = RPG.mode; RPG.mode = "shop"; rpgSfx("nav"); renderMallRpg(); }
+function rpgCloseShop() { if (!RPG) return; RPG.mode = RPG._ret || "explore"; renderMallRpg(); }
+function rpgBuyGoods(id) {
+  const d = rpgData(), arr = rpgShopFor(RPG ? RPG.fi : 0), it = arr.find(x => x.id === id);
+  if (!it || rpgOwned(id)) return;
+  if (d.gold < it.price) { rpgSfx("tick"); rpgFx.banner("ゴールドが足りない…", "bad"); return; }
+  d.gold -= it.price; d.shop = d.shop || {}; d.shop[id] = true;
+  rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！", "victory");
+  if (RPG) rpgLog(`🛍️ ${it.ic} ${it.n} を買った！`, "good");
+  rpgSave(); renderMallRpg();
+}
+
+// =========================================================================
 // 描画
 // =========================================================================
 let _rpgKeyBound = false;
@@ -770,6 +836,7 @@ function renderMallRpg(flash) {
   const app = beginScreen();
   if (RPG_REVEAL) return rpgRenderReveal(app);          // ガチャ/宝箱の演出は最優先
   if (RPG && RPG.mode === "ascend") return rpgRenderAscend(app);
+  if (RPG && RPG.mode === "shop") return rpgRenderShop(app);
   if (RPG && RPG.mode === "explore") return rpgRenderExplore(app);
   if (RPG && RPG.mode === "battle") return rpgRenderBattle(app);
   if (RPG && RPG.mode === "won") return rpgRenderWon(app);
@@ -846,6 +913,21 @@ function rpgRenderHub(app) {
   lab.appendChild(labg);
   app.appendChild(lab);
 
+  // 🛍️ ショッピング帳（フロアで買った品のコレクション＝集める達成感・周回動機）
+  const tot = rpgShopTotalOwned();
+  const book = el("details", "rpg-box shopbook");
+  let bh = `<summary>🛍️ ショッピング帳　<b>${tot.o}/${tot.t}</b></summary>`;
+  bh += `<div class="rpg-shopbook-body">`;
+  RPG_FLOORS.forEach((f, i) => {
+    const arr = rpgShopFor(i), o = rpgShopOwnedN(arr);
+    bh += `<div class="sb-floor"><div class="sb-floor-t">${f.name.replace(/ .*/, " ")}<small>${o}/${arr.length}</small></div><div class="sb-items">` +
+      arr.map(it => `<span class="sb-it${rpgOwned(it.id) ? " got" : ""}" title="${it.n}">${rpgOwned(it.id) ? it.ic : "❔"}</span>`).join("") +
+      `</div></div>`;
+  });
+  bh += `</div>`;
+  book.innerHTML = bh;
+  app.appendChild(book);
+
   // 🎰 ガチャ（射幸性）
   const gacha = el("div", "rpg-box gacha-box");
   gacha.innerHTML = `<div class="rpg-box-t">🎰 おたからガチャ <span class="rpg-gacha-rates">伝説0.7% / 激レア2.8% / SR9.5%</span></div>`;
@@ -888,13 +970,52 @@ function rpgRenderHub(app) {
   app.appendChild(codex);
 
   const how = el("details", "rpg-how");
-  how.innerHTML = `<summary>📖 遊び方</summary><div>矢印キー or 画面のパッドでモールを1歩ずつ進み、<b>🛗階段で上の階へ</b>。各フロアには<b>🎯ミッション</b>があり、達成するとごほうび（階段はいつでも使えます）。ぼうけんのたびに<b>✨みがき</b>がたまり（倒れても持ち帰る）、ハブの<b>💖自分磨き</b>でミミがずっと成長できます。<b>浮かれた観光客</b>や時々まぎれる👾モンスターと戦い、<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)を突く</b>と「もう1回！」。<b>🌿屋上のボスを倒すと衣装GET</b>。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
+  how.innerHTML = `<summary>📖 遊び方</summary><div>モールに来た目的は<b>🛍️ショッピング</b>！ 各フロアには<b>限定の品</b>（👗着る・🪴飾る・🐚集める・🍧食べ歩き）が並ぶので、<b>「お店」ボタン</b>でお買い物。<b>上の階ほど別の品</b>が待ってるよ。歩いて稼いだ🪙ゴールドが先立つもの——<b>浮かれた観光客</b>や👾モンスターと戦って稼ごう（<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>で「もう1回！」）。<b>🛗階段で上の階へ</b>。各フロアの<b>🎯ミッション</b>や、ぼうけんでたまる<b>✨みがき</b>（ハブの💖自分磨き）も。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
   app.appendChild(how);
 
   const actions = el("div", "actions");
   const back = el("button", "secondary", "← モールへ戻る"); back.onclick = () => renderMall();
   actions.appendChild(back);
   app.appendChild(actions);
+}
+
+// ── 🛍️ フロアのショップ（買い物＝モールに来る理由。次の階の品を予告して前へ引く）
+function rpgRenderShop(app) {
+  const d = rpgData();
+  const fi = RPG ? RPG.fi : 0, meta = rpgFloorMeta(fi), arr = rpgShopFor(fi);
+  const own = rpgShopOwnedN(arr);
+  const head = el("div", "rpg-shop-head");
+  head.innerHTML = `<div class="rpg-shop-t">🛍️ ${meta.name} のお店</div>` +
+    `<div class="rpg-shop-sub"><span>🪙 ${d.gold}G</span><span class="sc">そろえた ${own}/${arr.length}</span></div>`;
+  app.appendChild(head);
+
+  const grid = el("div", "rpg-shopwall");
+  arr.forEach(it => {
+    const owned = rpgOwned(it.id), can = d.gold >= it.price;
+    const cat = RPG_SHOP_CAT[it.cat] || { ic: "🛍️" };
+    const b = el("button", "rpg-good" + (owned ? " owned" : can ? " ready" : " off"));
+    b.innerHTML = `<span class="gic">${it.ic}</span><b>${it.n}</b><span class="gcat">${cat.ic}${cat.n}</span>` +
+      `<span class="gprice">${owned ? "✓ 購入ずみ" : "🪙" + it.price}</span>`;
+    if (!owned) b.onclick = () => rpgBuyGoods(it.id);
+    grid.appendChild(b);
+  });
+  app.appendChild(grid);
+
+  // 次の階の予告（好奇心＝前進の引き）
+  const nextI = fi + 1, hasNext = RPG && (RPG.tower || nextI < RPG_FLOORS.length);
+  if (hasNext) {
+    const nm = rpgFloorMeta(nextI), na = rpgShopFor(RPG.tower ? -1 : nextI);
+    const peek = na.slice(0, 3).map(x => x.ic + x.n).join("・");
+    const tz = el("div", "rpg-shop-teaser");
+    tz.innerHTML = `🔼 <b>${RPG.tower ? "上の階" : nm.name}</b> のお店には…<br><span class="pk">${peek} などが並んでるみたい！</span>`;
+    app.appendChild(tz);
+  } else {
+    app.appendChild(el("div", "rpg-shop-teaser", "🌅 ここは最上階。ぜんぶ集めたら自慢できるっ！"));
+  }
+
+  const back = el("button", "rpg-start", "↩ 探索にもどる");
+  back.onclick = () => rpgCloseShop();
+  app.appendChild(back);
 }
 
 // ── 探索（一人称）
@@ -942,6 +1063,11 @@ function rpgRenderExplore(app) {
     [["↰", () => rpgTurn(-1)], ["▲", () => rpgForward(1)], ["↱", () => rpgTurn(1)]].forEach(([l, f]) => { const b = el("button", "rpg-nudgebtn", l); b.onclick = f; nudge.appendChild(b); });
     ctl.appendChild(nudge);
   }
+  // 🛍️ このフロアのお店（買い物＝来訪の目的）。未購入が残っていれば🆕
+  const shopArr = rpgShopFor(RPG.fi), shopLeft = shopArr.length - rpgShopOwnedN(shopArr);
+  const shopBtn = el("button", "rpg-ctl-shop" + (shopLeft > 0 ? " has" : ""), `🛍️ お店${shopLeft > 0 ? `<span class="nw">${shopLeft}</span>` : ""}`);
+  shopBtn.onclick = () => rpgOpenShop();
+  ctl.appendChild(shopBtn);
   const leave = el("button", "rpg-ctl-leave", "🏠 出る");
   leave.onclick = () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); rpgEndRun(); RPG = null; renderMallRpg(); };
   ctl.appendChild(leave);
