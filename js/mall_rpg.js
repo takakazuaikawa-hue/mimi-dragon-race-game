@@ -141,14 +141,14 @@ const RPG_BASE = [
 // 島のリゾートモール・1F→屋上。far: U=上り階段 / E=ボス(屋上)。accent=フロアのテーマ色
 // 🏝️ アラモアナを手本にした巨大オープンエア・モール（全7階＋屋上）。屋上=ボス（最終）
 const RPG_FLOORS = [
-  { name: "1F 🏄 サーフ＆ビーチ通り", t: "id",        far: "U", accent: [38, 196, 176], goal: { type: "defeat", n: 3, label: "観光客をもてなす", ic: "😌" } },
-  { name: "2F 🏊 プールデッキ",      t: "mirrorH",   far: "U", accent: [64, 176, 235], goal: { type: "explore", n: 70, label: "フロアを踏破", ic: "🗺️" } },
-  { name: "3F 🍱 マカイ・フードコート", t: "mirrorV", far: "U", accent: [255, 140, 90], goal: { type: "gold", n: 250, label: "グルメで稼ぐ", ic: "🪙" } },
-  { name: "4F 🐬 マリンアドベンチャー", t: "rot180",  far: "U", accent: [40, 130, 210], goal: { type: "weak", n: 5, label: "弱点を突く", ic: "⚡" } },
-  { name: "5F 💎 ラグジュアリー大通り", t: "transpose", far: "U", accent: [222, 150, 192], goal: { type: "gold", n: 450, label: "ハイブランドで散財", ic: "👜" } },
-  { name: "6F 🏬 ハレ百貨店",        t: "id",        far: "U", accent: [150, 120, 210], goal: { type: "explore", n: 75, label: "デパートを巡る", ic: "🛗" } },
-  { name: "7F 🎪 センターステージ",   t: "mirrorH",   far: "U", accent: [255, 170, 70], goal: { type: "defeat", n: 6, label: "フェスの人波をさばく", ic: "💃" } },
-  { name: "🌅 屋上サンセットテラス",  t: "transpose", far: "E", accent: [255, 120, 150], sky: true, goal: { type: "boss", n: 1, label: "ボスを倒す", ic: "👑" } },
+  { name: "1F 🏄 龍鱗ビーチ通り",    t: "id",        far: "U", accent: [38, 196, 176], goal: { type: "defeat", n: 3, label: "観光客をもてなす", ic: "😌" } },
+  { name: "2F 🏊 雲海プールデッキ",   t: "mirrorH",   far: "U", accent: [64, 176, 235], goal: { type: "explore", n: 70, label: "フロアを踏破", ic: "🗺️" } },
+  { name: "3F 🍱 崑崙グルメ横丁",     t: "mirrorV",   far: "U", accent: [255, 140, 90], goal: { type: "gold", n: 250, label: "グルメで稼ぐ", ic: "🪙" } },
+  { name: "4F 🐬 海竜アドベンチャー", t: "rot180",   far: "U", accent: [40, 130, 210], goal: { type: "weak", n: 5, label: "弱点を突く", ic: "⚡" } },
+  { name: "5F 💎 龍玉ラグジュアリー大通り", t: "transpose", far: "U", accent: [222, 150, 192], goal: { type: "gold", n: 450, label: "ハイブランドで散財", ic: "👜" } },
+  { name: "6F 🏬 崑崙百貨店",         t: "id",        far: "U", accent: [150, 120, 210], goal: { type: "explore", n: 75, label: "デパートを巡る", ic: "🛗" } },
+  { name: "7F 🎪 龍神フェスステージ", t: "mirrorH",   far: "U", accent: [255, 170, 70], goal: { type: "defeat", n: 6, label: "フェスの人波をさばく", ic: "💃" } },
+  { name: "🌅 雲頂サンセットテラス",  t: "transpose", far: "E", accent: [255, 120, 150], sky: true, goal: { type: "boss", n: 1, label: "ボスを倒す", ic: "👑" } },
 ];
 function rpgTransform(base, kind) {
   const m = base.map(r => r.split("")), n = m.length;
@@ -321,7 +321,10 @@ function rpgForward(sign) {
   rpgSfx("tick");
   const here = rpgCell(nx, ny);
   if (here === "T") { rpgTreasure(nx, ny); return; }
-  if (here === "U") { rpgGoUp(); return; }
+  if (here === "U") {   // 階段＝自動で上らない。オートは一旦停止して「上る？残る？」を選ばせる
+    if (RPG.auto) { RPG.auto = false; if (RPG._autoT) { clearTimeout(RPG._autoT); RPG._autoT = null; } }
+    rpgLog("🛗 階段に着いた。『上の階へ』で上れる（残ってお買い物・ミッションもOK）", "good"); rpgSfx("nav"); renderMallRpg(); return;
+  }
   if (here === "E") { rpgReachExit(); return; }
   // ランダムエンカウント
   if (RPG.grace > 0) RPG.grace--;
@@ -337,11 +340,21 @@ function rpgToggleAuto() {
 }
 function rpgAutoStep() {
   if (!RPG || RPG.mode !== "explore" || RPG.busy || RPG_REVEAL) return;
-  for (const turn of [-1, 0, 1, 2]) {              // 左→前→右→後ろの順（壁づたい）
-    const nd = (RPG.dir + turn + 4) % 4;
-    const nx = RPG.px + RPG_DV[nd][0], ny = RPG.py + RPG_DV[nd][1];
-    if (!rpgIsWall(rpgCell(nx, ny))) { RPG.dir = nd; rpgForward(1); return; }
+  // 壁づたい（同方向ループ）をやめ、未踏マスを優先しつつランダムに分岐＝探索が前に進む。
+  const back = (RPG.dir + 2) % 4, cands = [];
+  for (let dd = 0; dd < 4; dd++) {
+    const nx = RPG.px + RPG_DV[dd][0], ny = RPG.py + RPG_DV[dd][1];
+    if (rpgIsWall(rpgCell(nx, ny))) continue;
+    cands.push({ dir: dd, fresh: !RPG.explored[nx + "," + ny], isBack: dd === back });
   }
+  if (!cands.length) return;
+  const pick = a => a[(Math.random() * a.length) | 0];
+  let pool = cands.filter(c => c.fresh && !c.isBack);   // ①未踏かつ後戻りでない＝最優先
+  if (!pool.length) pool = cands.filter(c => c.fresh);   // ②未踏（袋小路からの引き返し含む）
+  if (!pool.length) pool = cands.filter(c => !c.isBack); // ③既踏でも前進方向を優先
+  if (!pool.length) pool = cands;                        // ④行き止まり＝引き返す
+  RPG.dir = pick(pool).dir;
+  rpgForward(1);
 }
 function rpgAutoLoop() {
   if (!RPG || !RPG.auto) { if (RPG) RPG._autoT = null; return; }
@@ -985,7 +998,7 @@ function rpgRenderHub(app) {
     `<div class="rpg-palm pl">🌴</div><div class="rpg-palm pr">🌴</div>` +
     `<div class="rpg-beach"></div><div class="rpg-sea"></div>`;
   hero.appendChild(resort);
-  hero.appendChild(el("div", "rpg-hero-title", "🏝️ 巨大モール大冒険"));
+  hero.appendChild(el("div", "rpg-hero-title", "🐲 崑崙ドラゴンモール大冒険"));
   const stat = el("div", "rpg-hero-stats");
   stat.innerHTML =
     `<div class="rpg-st char">🧝 Lv<b>${d.lv}</b><span>❤️${d.hp}/${d.maxhp}</span><span>💧${d.mp}/${d.maxmp}</span>${d.cleared ? `<span class="cl">🌿制覇</span>` : ""}</div>` +
@@ -1115,7 +1128,7 @@ function rpgShowHelp() {
     `<p><b>🪙 ゴールド</b>：探索で稼ぐお金。お店の買い物・道具・10連ガチャに使う。</p>` +
     `<p><b>🎟️ おたから券</b>：ガチャ1回ぶん。ログボや探索で手に入る。</p>` +
     `<p><b>✨ みがき</b>：ぼうけんのたびにたまる成長ポイント。「💖自分磨き」で永久に強くなる（倒れても持ち帰る）。</p>` +
-    `<hr><p>ここは<b>ハワイの巨大オープンエア・モール</b>がモデル。<b>全7階＋屋上</b>に、サーフ通り→プール→🍱マカイ・フードコート→マリン→💎ラグジュアリー大通り→🏬ハレ百貨店→🎪センターステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。<b>「お店」</b>（世界をタップ）で値切りやセールも。<b>🛗階段</b>で上の階へ。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>`;
+    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>`;
   if (typeof showInfoPopup === "function") showInfoPopup("もちもの＆あそびかた", html);
 }
 
@@ -1209,16 +1222,40 @@ function rpgRenderExplore(app) {
   const lg = el("div", "rpg-log ov");
   RPG.log.slice(0, 3).forEach(L => lg.appendChild(el("div", "rpg-logline " + L.cls, L.t)));
   stage.appendChild(lg);
+  // 文脈フック：目の前が“お店の入口”か判定（壁＝店構え）。タップで世界そのものから入店できる導線を残しつつ、主役は下のボタン。
+  const onStairs = rpgCell(RPG.px, RPG.py) === "U";
+  const facingShop = !onStairs && rpgIsWall(rpgAhead(1, 0));
   const shopArr = rpgShopFor(RPG.fi), shopLeft = shopArr.length - rpgShopOwnedN(shopArr);
-  const shopHint = el("div", "rpg-shop-hint" + (shopLeft > 0 ? " has" : ""), `🛍️ お店をタップ${shopLeft > 0 ? `（あと${shopLeft}品）` : "（コンプ済み）"}`);
-  stage.appendChild(shopHint);
-  stage.onclick = () => rpgOpenShop();
+  if (facingShop) {
+    const hint = el("div", "rpg-shop-hint" + (shopLeft > 0 ? " has" : ""), `🛍️ 目の前のお店${shopLeft > 0 ? `（未入手 ${shopLeft}品）` : "（コンプ済み）"}`);
+    stage.appendChild(hint);
+    stage.onclick = () => rpgOpenShop();
+  } else {
+    stage.onclick = null;
+  }
   wrap.appendChild(stage);
   rpgDrawView(cv, (typeof performance !== "undefined" ? performance.now() : 0));
   rpgStartAmbient(cv);
 
-  // 下部ドック（高さ一定）：D-pad＋オート＋出る。お店は“世界をタップ”でボタンは置かない
+  // 下部ドック（高さ一定）：文脈アクション帯＋D-pad＋オート＋出る。
   const dock = el("div", "rpg-dock");
+
+  // ① 文脈アクション帯（高さ固定でレイアウトを揺らさない）：階段なら『上の階へ』、店の前なら『お店に入る』。
+  const ctx = el("div", "rpg-ctx");
+  if (onStairs) {
+    const last = RPG.fi + 1 >= RPG_FLOORS.length && !RPG.tower;
+    const up = el("button", "rpg-movebtn wide stairs", last ? "🛗 上の階へ（ここが最上階）" : "🛗 この階段で上の階へ");
+    up.disabled = last; up.onclick = () => { if (RPG && RPG._autoT) { clearTimeout(RPG._autoT); RPG._autoT = null; RPG.auto = false; } rpgGoUp(); };
+    ctx.appendChild(up);
+  } else if (facingShop) {
+    const enter = el("button", "rpg-movebtn wide shopenter" + (shopLeft > 0 ? " has" : ""), shopLeft > 0 ? `🛍️ お店に入る（未入手 ${shopLeft}品）` : "🛍️ お店に入る（コンプ済み）");
+    enter.onclick = () => rpgOpenShop();
+    ctx.appendChild(enter);
+  } else {
+    ctx.appendChild(el("div", "rpg-ctx-idle", "🔍 通路を進んでお店や階段をさがそう"));
+  }
+  dock.appendChild(ctx);
+
   const pad = el("div", "rpg-dpad");
   [["↰", () => rpgTurn(-1), "turn"], ["▲", () => rpgForward(1), "fw"], ["↱", () => rpgTurn(1), "turn"]].forEach(([l, f, c]) => { const b = el("button", "rpg-padbtn2 " + c + (RPG.auto ? " dim" : ""), l); b.onclick = f; pad.appendChild(b); });
   dock.appendChild(pad);
