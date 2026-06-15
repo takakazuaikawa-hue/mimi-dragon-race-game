@@ -110,14 +110,20 @@ const RPG_MONS = {
   stroller: { n: "ベビーカー隊",   ic: "👶", kind: "tourist", hp: 24, atk: 7, exp: 9, gold: 11, weak: ["phys"], resist: ["force"], nul: [], el: "phys", act: "ベビーカーで猛突進！" },
   oldies:   { n: "団体のおば様",   ic: "📷", kind: "tourist", hp: 22, atk: 6, exp: 9, gold: 14, weak: ["fire"], resist: [], nul: [], el: "phys", act: "おしゃべりの渦に巻き込んできた！", sp: { name: "質問ぜめ", status: "stun", dur: 1, chance: 0.28, msg: "話につかまって動けない！" } },
   kid:      { n: "はぐれっ子",     ic: "🧒", kind: "tourist", hp: 10, atk: 5, exp: 5, gold: 6,  weak: ["fire", "ice", "elec", "force"], resist: [], nul: [], el: "phys", act: "泣きわめいて気をひいてきた！" },
+  // 🛍️ アラモアナ拡張の観光客（モール各所に出現）
+  luxe:     { n: "ハイブランド客", ic: "👜", kind: "tourist", hp: 26, atk: 8, exp: 11, gold: 18, weak: ["force"], resist: ["phys"], nul: [], el: "phys", act: "重い紙袋でなぎ払い！", sp: { name: "見栄ばり", status: "defdown", dur: 2, chance: 0.3, msg: "気おされて守りが下がった…" } },
+  hula:     { n: "フラ見物客",     ic: "💃", kind: "tourist", hp: 22, atk: 7, exp: 10, gold: 13, weak: ["ice"], resist: [], nul: [], el: "phys", act: "のりのりで巻き込んできた！", sp: { name: "総踊り", status: "stun", dur: 1, chance: 0.3, msg: "リズムにつられて動けない！" } },
+  madam:    { n: "デパ地下マダム", ic: "👛", kind: "tourist", hp: 24, atk: 7, exp: 10, gold: 16, weak: ["elec"], resist: [], nul: [], el: "phys", act: "試食をぐいぐい勧めてきた！", sp: { name: "値切り交渉", status: "seal", dur: 2, chance: 0.28, msg: "気圧されて技が出せない！" } },
+  influencer:{ n: "インフルエンサー", ic: "📸", kind: "tourist", hp: 18, atk: 7, exp: 9, gold: 12, weak: ["fire"], resist: [], nul: [], el: "phys", act: "ライブ配信に巻き込んできた！", sp: { name: "バズり狙い", status: "dazzle", dur: 2, chance: 0.32, msg: "映え光で目がチカチカ！" } },
   // 👾 モンスター（少数）
   slime:    { n: "マヨイスライム", ic: "🟢", kind: "monster", hp: 20, atk: 7, exp: 9, gold: 10, weak: ["fire"], resist: ["ice"], nul: [], el: "phys", act: "ベタベタ体当たり！" },
   mannequin:{ n: "うごくマネキン", ic: "🤖", kind: "monster", hp: 28, atk: 9, exp: 14, gold: 16, weak: ["elec"], resist: ["phys"], nul: [], el: "phys", act: "マネキンチョップ！" },
+  escalator:{ n: "暴走エスカレーター", ic: "🛗", kind: "monster", hp: 36, atk: 11, exp: 18, gold: 20, weak: ["elec"], resist: ["phys"], nul: [], el: "phys", act: "逆走して巻き込んだ！" },
   // 🎡 ボス（屋上）
   boss1:    { n: "観覧車ゴーレム", ic: "🎡", kind: "monster", hp: 110, atk: 13, exp: 80, gold: 200, weak: ["elec"], resist: ["fire", "ice"], nul: [], el: "phys", boss: true, act: "巨大ゴンドラが回転しながら突撃！", sp: { name: "大回転プレス", status: "defdown", dur: 3, chance: 0.4, msg: "おしつぶされて守りが下がった…", dmg: true } },
 };
-const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid"];
-const RPG_MONSTERS_MINOR = ["slime", "mannequin"];
+const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid", "luxe", "hula", "madam", "influencer"];
+const RPG_MONSTERS_MINOR = ["slime", "mannequin", "escalator"];
 
 // ── 迷宮マップ（# 壁 / . 床 / S 入口 / T 宝 / F=上り階段 or ボス出口）。
 // 連結確認済みの基本形を回転/反転して各フロアに展開（変形は連結性を保つ）。
@@ -133,12 +139,16 @@ const RPG_BASE = [
   "#########",
 ];
 // 島のリゾートモール・1F→屋上。far: U=上り階段 / E=ボス(屋上)。accent=フロアのテーマ色
+// 🏝️ アラモアナを手本にした巨大オープンエア・モール（全7階＋屋上）。屋上=ボス（最終）
 const RPG_FLOORS = [
-  { name: "1F 🏖️ ビーチサイド",    t: "id",        far: "U", accent: [38, 196, 176], goal: { type: "defeat", n: 3, label: "観光客をもてなす", ic: "😌" } },
-  { name: "2F 🏊 プールデッキ",    t: "mirrorH",   far: "U", accent: [64, 176, 235], goal: { type: "explore", n: 70, label: "フロアを踏破", ic: "🗺️" } },
-  { name: "3F 🍹 南国グルメ横丁",  t: "mirrorV",   far: "U", accent: [255, 140, 90], goal: { type: "gold", n: 200, label: "グルメで稼ぐ", ic: "🪙" } },
-  { name: "4F 🐬 マリンアドベンチャー", t: "rot180", far: "U", accent: [40, 130, 210], goal: { type: "weak", n: 5, label: "弱点を突く", ic: "⚡" } },
-  { name: "🌅 屋上サンセットテラス", t: "transpose", far: "E", accent: [255, 120, 150], sky: true, goal: { type: "boss", n: 1, label: "ボスを倒す", ic: "👑" } },
+  { name: "1F 🏄 サーフ＆ビーチ通り", t: "id",        far: "U", accent: [38, 196, 176], goal: { type: "defeat", n: 3, label: "観光客をもてなす", ic: "😌" } },
+  { name: "2F 🏊 プールデッキ",      t: "mirrorH",   far: "U", accent: [64, 176, 235], goal: { type: "explore", n: 70, label: "フロアを踏破", ic: "🗺️" } },
+  { name: "3F 🍱 マカイ・フードコート", t: "mirrorV", far: "U", accent: [255, 140, 90], goal: { type: "gold", n: 250, label: "グルメで稼ぐ", ic: "🪙" } },
+  { name: "4F 🐬 マリンアドベンチャー", t: "rot180",  far: "U", accent: [40, 130, 210], goal: { type: "weak", n: 5, label: "弱点を突く", ic: "⚡" } },
+  { name: "5F 💎 ラグジュアリー大通り", t: "transpose", far: "U", accent: [222, 150, 192], goal: { type: "gold", n: 450, label: "ハイブランドで散財", ic: "👜" } },
+  { name: "6F 🏬 ハレ百貨店",        t: "id",        far: "U", accent: [150, 120, 210], goal: { type: "explore", n: 75, label: "デパートを巡る", ic: "🛗" } },
+  { name: "7F 🎪 センターステージ",   t: "mirrorH",   far: "U", accent: [255, 170, 70], goal: { type: "defeat", n: 6, label: "フェスの人波をさばく", ic: "💃" } },
+  { name: "🌅 屋上サンセットテラス",  t: "transpose", far: "E", accent: [255, 120, 150], sky: true, goal: { type: "boss", n: 1, label: "ボスを倒す", ic: "👑" } },
 ];
 function rpgTransform(base, kind) {
   const m = base.map(r => r.split("")), n = m.length;
@@ -825,10 +835,13 @@ const RPG_SHOPS = [
     { id: "p_flam", ic: "🦩", n: "フラミンゴの置物", cat: "decor", price: 130 },
     { id: "p_drink", ic: "🍹", n: "ブルーラグーン", cat: "food", price: 60 },
   ],
-  [ // 3F 南国グルメ横丁
-    { id: "g_kakigori", ic: "🍧", n: "マンゴーかき氷", cat: "food", price: 50 },
+  [ // 3F マカイ・フードコート（アンカー＝品ぞろえ豊富）
+    { id: "g_kakigori", ic: "🍧", n: "レインボーかき氷", cat: "food", price: 50 },
     { id: "g_skewer", ic: "🍢", n: "屋台の串焼き", cat: "food", price: 45 },
     { id: "g_coco", ic: "🥥", n: "ココナッツジュース", cat: "food", price: 55 },
+    { id: "f_shrimp", ic: "🍤", n: "ガーリックシュリンプ", cat: "food", price: 75 },
+    { id: "f_poke", ic: "🐟", n: "ポケ丼", cat: "food", price: 80 },
+    { id: "f_malasada", ic: "🍩", n: "マラサダ", cat: "food", price: 40 },
     { id: "g_lantern", ic: "🏮", n: "横丁のちょうちん", cat: "decor", price: 100 },
     { id: "g_tenugui", ic: "🎏", n: "グルメ手ぬぐい", cat: "souv", price: 80 },
   ],
@@ -838,6 +851,30 @@ const RPG_SHOPS = [
     { id: "m_map", ic: "🧭", n: "宝の海図", cat: "souv", price: 120 },
     { id: "m_conch", ic: "🐚", n: "大きなほら貝", cat: "souv", price: 90 },
     { id: "m_snack", ic: "🦐", n: "海鮮スナック", cat: "food", price: 60 },
+  ],
+  [ // 5F ラグジュアリー大通り（ハイブランド・高価格）
+    { id: "l_bag", ic: "👜", n: "高級バッグ「リューカ」", cat: "wear", price: 520 },
+    { id: "l_watch", ic: "⌚", n: "スイス製の腕時計", cat: "wear", price: 480 },
+    { id: "l_scarf", ic: "🧣", n: "シルクのスカーフ", cat: "wear", price: 260 },
+    { id: "l_perfume", ic: "🧴", n: "南国の香水", cat: "decor", price: 300 },
+    { id: "l_choco", ic: "🍫", n: "ショコラ・ボックス", cat: "food", price: 120 },
+    { id: "l_ring", ic: "💍", n: "ダイヤのリング", cat: "wear", price: 680 },
+  ],
+  [ // 6F ハレ百貨店（アンカー＝デパ地下/コスメ/ギフト）
+    { id: "d_cosme", ic: "💄", n: "デパコスのリップ", cat: "wear", price: 150 },
+    { id: "d_teaset", ic: "🫖", n: "高級茶器セット", cat: "decor", price: 240 },
+    { id: "d_sweets", ic: "🍰", n: "デパ地下スイーツ", cat: "food", price: 80 },
+    { id: "d_towel", ic: "🧺", n: "今治タオルギフト", cat: "decor", price: 130 },
+    { id: "d_bear", ic: "🧸", n: "限定くまのぬいぐるみ", cat: "souv", price: 200 },
+    { id: "d_gift", ic: "🎁", n: "のし付きギフト", cat: "souv", price: 160 },
+  ],
+  [ // 7F センターステージ（フラ・ライブ）
+    { id: "s_lei", ic: "💐", n: "生花のレイ", cat: "wear", price: 110 },
+    { id: "s_skirt", ic: "🌿", n: "フラのパウスカート", cat: "wear", price: 170 },
+    { id: "s_uku", ic: "🪕", n: "ウクレレ", cat: "decor", price: 260 },
+    { id: "s_ticket", ic: "🎫", n: "ライブのチケット半券", cat: "souv", price: 100 },
+    { id: "s_photo", ic: "📸", n: "フラ記念フォト", cat: "souv", price: 90 },
+    { id: "s_music", ic: "🎶", n: "オルゴール", cat: "decor", price: 150 },
   ],
   [ // 屋上 サンセットテラス
     { id: "r_photo", ic: "🌅", n: "夕日のフォト", cat: "souv", price: 200 },
@@ -1078,7 +1115,7 @@ function rpgShowHelp() {
     `<p><b>🪙 ゴールド</b>：探索で稼ぐお金。お店の買い物・道具・10連ガチャに使う。</p>` +
     `<p><b>🎟️ おたから券</b>：ガチャ1回ぶん。ログボや探索で手に入る。</p>` +
     `<p><b>✨ みがき</b>：ぼうけんのたびにたまる成長ポイント。「💖自分磨き」で永久に強くなる（倒れても持ち帰る）。</p>` +
-    `<hr><p>モールに来る目的は<b>🛍️ショッピング</b>！ 歩いて稼ぎ、各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。<b>「お店」</b>で値切りやセールも。<b>🛗階段</b>で上の階へ。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>`;
+    `<hr><p>ここは<b>ハワイの巨大オープンエア・モール</b>がモデル。<b>全7階＋屋上</b>に、サーフ通り→プール→🍱マカイ・フードコート→マリン→💎ラグジュアリー大通り→🏬ハレ百貨店→🎪センターステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。<b>「お店」</b>（世界をタップ）で値切りやセールも。<b>🛗階段</b>で上の階へ。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>`;
   if (typeof showInfoPopup === "function") showInfoPopup("もちもの＆あそびかた", html);
 }
 
