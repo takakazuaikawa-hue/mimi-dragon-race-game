@@ -68,6 +68,9 @@ function rpgScene(ctx, env) {
   const rgb = (a, k) => `rgb(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0})`;
   const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
   const cell = env.cell, wall = (d, l) => cell(d, l) === "#";
+  const SHOP_AWN = [[226, 90, 110], [70, 160, 210], [240, 178, 70], [110, 200, 140], [200, 120, 210], [245, 140, 88], [90, 170, 175]];
+  const shopList = null;
+  const SHOP_IC = ["🛍️", "👗", "🍧", "🐚", "🍹", "🎁", "👒", "🧸", "🍩", "💍"];
   // パレット（明るいリゾート基調）
   const WALL = [236, 232, 224], FLOOR = [206, 198, 186], CEIL = [240, 242, 244], TRIM = [120, 112, 100], GLASS = [200, 224, 230];
   const rect = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W * 0.5) * s, t: cy - (H * 0.5) * s, r: cx + (W * 0.5) * s, b: cy + (H * 0.5) * s }; }
@@ -111,12 +114,15 @@ function rpgScene(ctx, env) {
   // 店先（側壁・グラデ＋日よけ＋ガラス映り込み＋柱＋幅木）
   const storefront = (near, far, left, k, depth) => {
     const nx = left ? near.l : near.r, fx = left ? far.l : far.r;
+    const si = depth * 2 + (left ? 0 : 1);
+    const awn = SHOP_AWN[si % SHOP_AWN.length];
+    const ic = (shopList && shopList.length) ? shopList[si % shopList.length].ic : SHOP_IC[si % SHOP_IC.length];
     const band = (f0, f1, fill) => poly([[nx, yN(near, f0)], [fx, yN(far, f0)], [fx, yN(far, f1)], [nx, yN(near, f1)]], fill);
     // 壁（縦グラデ：上下AO）
     let wg = ctx.createLinearGradient(0, near.t, 0, near.b); wg.addColorStop(0, rgb(WALL, k * 0.8)); wg.addColorStop(0.5, rgb(WALL, k)); wg.addColorStop(1, rgb(WALL, k * 0.78));
     band(0, 1, wg);
-    // 日よけ（アクセント色・グラデ）
-    let ag = ctx.createLinearGradient(0, yN(near, 0.05), 0, yN(near, 0.26)); ag.addColorStop(0, rgb(A, k * 1.05)); ag.addColorStop(1, rgb(A, k * 0.8));
+    // 日よけ（店ごとの色）
+    let ag = ctx.createLinearGradient(0, yN(near, 0.05), 0, yN(near, 0.26)); ag.addColorStop(0, rgb(awn, k * 1.08)); ag.addColorStop(1, rgb(awn, k * 0.82));
     band(0.05, 0.26, ag);
     line(nx, yN(near, 0.26), fx, yN(far, 0.26), rgba([0, 0, 0], 1, 0.18 * k), 1);
     // ガラス（縦グラデ＋斜めハイライト＋店内シルエット）
@@ -131,6 +137,8 @@ function rpgScene(ctx, env) {
     let cg = ctx.createLinearGradient(nx - 1, 0, nx + 2, 0); cg.addColorStop(0, rgb(TRIM, k * 0.7)); cg.addColorStop(1, rgb([210, 204, 196], k));
     ctx.fillStyle = cg; ctx.fillRect(nx - (left ? 0 : 2), near.t, 2, near.b - near.t);
     line(fx, far.t, fx, far.b, rgba(TRIM, k, 0.8), 1);
+    const sx = nx + (fx - nx) * 0.30, sy = yN(near, 0.47), fs = Math.max(9, (near.b - near.t) * 0.13);
+    try { ctx.save(); ctx.globalAlpha = 0.96 * k; ctx.font = fs + "px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(ic, sx, sy); ctx.restore(); } catch (e) {}
   };
 
   // 正面＝海の見える大きな窓
