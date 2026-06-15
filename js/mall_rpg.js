@@ -1719,42 +1719,29 @@ function rpgRenderBattle(app) {
 
   // ===== コマンドパネル（下部固定・親指ゾーン） =====
   const panel = el("div", "rpg-bt-panel");
-  let ti = (b.enemies[b.target] && b.enemies[b.target].alive) ? b.target : -1;
-  if (ti < 0) { const a = rpgAliveEnemies()[0]; ti = a ? b.enemies.indexOf(a) : -1; }
-  if (ti >= 0) {
-    const tg = b.enemies[ti], seen = d.codex[tg.id];
-    const wk = seen && seen.weak.length ? seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "？";
-    panel.appendChild(el("div", "rpg-bt-target", `🎯 ${tg.ref.ic} <b>${tg.ref.n}</b><span class="rpg-bt-hp">HP ${Math.max(0, tg.hp)}/${tg.maxhp}</span><span class="rpg-bt-wk">弱点 ${wk}</span>`));
-  }
-  // 敵の選択ボタン（確実に効く・敵が2体以上のとき）
-  const aliveN = rpgAliveEnemies().length;
-  if (aliveN >= 2) {
-    const sel = el("div", "rpg-foesel");
-    sel.appendChild(el("span", "rpg-foesel-lb", "ねらう:"));
-    b.enemies.forEach((e, i) => {
-      if (!e.alive) return;
-      const chip = el("button", "rpg-foechip" + (b.target === i ? " on" : ""));
-      const pct = Math.round(Math.max(0, e.hp) / e.maxhp * 100);
-      chip.innerHTML = `<span class="ic">${e.ref.ic}</span><span class="rpg-hpbar"><span style="width:${pct}%"></span></span>`;
-      chip.onclick = () => rpgSelectTarget(i);
-      sel.appendChild(chip);
-    });
-    panel.appendChild(sel);
-  }
-  // 大きく読みやすいHP＋MP/SP
-  const hp = Math.max(0, d.hp), hpPct = Math.round(hp / d.maxhp * 100);
-  const hud = el("div", "rpg-bhud2");
-  hud.innerHTML =
-    `<div class="rpg-hp2${d.hp <= d.maxhp * 0.25 ? " low" : ""}">` +
-      `<div class="hp2-top"><span class="hp2-name">🧝 ミミ</span>` +
-      ((b.combo || 0) >= 2 ? `<span class="rpg-combo lvl${Math.min(5, Math.floor(b.combo / 3) + 1)}">🔥×${b.combo}</span>` : "") +
-      `<span class="hp2-val">${hp}<i>/${d.maxhp}</i></span></div>` +
-      `<div class="hp2-bar"><span style="width:${hpPct}%"></span></div></div>` +
-    `<div class="rpg-mpsp">` +
-      `<span class="mpsp mp"><i>MP</i><span class="mpsp-bar"><span style="width:${Math.round(d.mp / d.maxmp * 100)}%"></span></span><b>${d.mp}/${d.maxmp}</b></span>` +
-      `<span class="mpsp sp${(b.gauge || 0) >= 100 ? " full" : ""}"><i>SP</i><span class="mpsp-bar"><span style="width:${Math.round(b.gauge || 0)}%"></span></span><b>${(b.gauge || 0) >= 100 ? "MAX" : Math.round(b.gauge || 0)}</b></span>` +
-    `</div>`;
-  panel.appendChild(hud);
+  // 敵パネル＝狙う対象（タップで切替）。名前/HP/弱点を1か所に集約＝対象表示の重複を排除
+  const foes = el("div", "rpg-foes");
+  b.enemies.forEach((e, i) => {
+    if (!e.alive) return;
+    const seen = d.codex[e.id], wk = seen && seen.weak.length ? seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "？";
+    const pct = Math.round(Math.max(0, e.hp) / e.maxhp * 100);
+    const chip = el("button", "rpg-foe" + (b.target === i ? " on" : ""));
+    chip.innerHTML = `<span class="foe-ic">${e.ref.ic}</span>` +
+      `<span class="foe-mid"><span class="foe-n">${e.ref.n}<em>弱点 ${wk}</em></span><span class="foe-hpbar"><span style="width:${pct}%"></span></span></span>`;
+    chip.onclick = () => rpgSelectTarget(i);
+    foes.appendChild(chip);
+  });
+  panel.appendChild(foes);
+
+  // 自分の状態＝コンパクト1行（HP管理が楽になったのでHPは“読める範囲で控えめ”に）
+  const me = el("div", "rpg-me");
+  me.innerHTML =
+    `<span class="me-name">🧝 ミミ</span>` +
+    ((b.combo || 0) >= 2 ? `<span class="rpg-combo lvl${Math.min(5, Math.floor(b.combo / 3) + 1)}">🔥×${b.combo}</span>` : "") +
+    `<span class="me-stat hp${d.hp <= d.maxhp * 0.25 ? " low" : ""}"><i>HP</i><span class="me-bar"><span style="width:${Math.round(Math.max(0, d.hp) / d.maxhp * 100)}%"></span></span><b>${Math.max(0, d.hp)}/${d.maxhp}</b></span>` +
+    `<span class="me-stat mp"><i>MP</i><span class="me-bar"><span style="width:${Math.round(d.mp / d.maxmp * 100)}%"></span></span><b>${d.mp}</b></span>` +
+    `<span class="me-stat sp${(b.gauge || 0) >= 100 ? " full" : ""}"><i>SP</i><span class="me-bar"><span style="width:${Math.round(b.gauge || 0)}%"></span></span><b>${(b.gauge || 0) >= 100 ? "MAX" : Math.round(b.gauge || 0)}</b></span>`;
+  panel.appendChild(me);
   const lg = el("div", "rpg-blog fixed1");
   if (b.log[0]) lg.appendChild(el("div", "rpg-logline " + b.log[0].cls + " fresh", b.log[0].t));
   panel.appendChild(lg);

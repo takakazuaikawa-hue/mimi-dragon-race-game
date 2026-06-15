@@ -4762,3 +4762,32 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-shop-hint.has { animation:rpgpulse 1.8s ease-in-out infinite; }
 .rpg-padbtn2.dim { opacity:.5; }
 .rpg-actbtn.leave.wide { flex:none; width:100%; }
+
+/* ⚔️ 戦闘パネル整理：敵チップ＋コンパクトな自分ステータス（HP巨大化をやめ情報を集約） */
+.rpg-foes { display:flex; flex-direction:column; gap:6px; margin-bottom:7px; }
+.rpg-foe { display:flex; align-items:center; gap:9px; width:100%; padding:7px 11px; border-radius:12px; cursor:pointer; text-align:left;
+  color:#f0e8ff; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); }
+.rpg-foe.on { border-color:#ff5fa2; box-shadow:0 0 0 2px rgba(255,95,162,.5); background:rgba(255,95,162,.12); }
+.rpg-foe .foe-ic { font-size:24px; line-height:1; flex:none; }
+.rpg-foe .foe-mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.rpg-foe .foe-n { font-size:13px; font-weight:700; display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.rpg-foe .foe-n em { font-style:normal; font-size:11px; color:#ffe45e; flex:none; }
+.rpg-foe .foe-hpbar { height:8px; border-radius:5px; background:rgba(0,0,0,.45); overflow:hidden; }
+.rpg-foe .foe-hpbar > span { display:block; height:100%; background:linear-gradient(90deg,#e35,#f86); }
+
+.rpg-me { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-bottom:6px; padding:7px 11px; border-radius:12px; background:rgba(0,0,0,.25); }
+.rpg-me .me-name { font-size:13px; font-weight:800; color:#f3ecff; }
+.rpg-me .me-stat { display:flex; align-items:center; gap:5px; font-size:12px; }
+.rpg-me .me-stat i { font-style:normal; font-size:10px; color:#b9a8d4; }
+.rpg-me .me-stat b { font-variant-numeric:tabular-nums; color:#e9e0f5; }
+.rpg-me .me-bar { width:64px; height:9px; border-radius:5px; background:rgba(0,0,0,.45); overflow:hidden; }
+.rpg-me .me-bar > span { display:block; height:100%; }
+.rpg-me .me-stat.hp { flex:1 1 100%; }
+.rpg-me .me-stat.hp .me-bar { flex:1; width:auto; height:12px; }
+.rpg-me .me-stat.hp b { font-size:15px; color:#9fe6b0; min-width:64px; text-align:right; }
+.rpg-me .me-stat.hp.low b { color:#ff8aa0; }
+.rpg-me .me-stat.hp .me-bar > span { background:linear-gradient(90deg,#39d46a,#7af0a0); }
+.rpg-me .me-stat.hp.low .me-bar > span { background:linear-gradient(90deg,#e2384f,#ff7a92); }
+.rpg-me .me-stat.mp .me-bar > span { background:linear-gradient(90deg,#48f,#6cf); }
+.rpg-me .me-stat.sp .me-bar > span { background:linear-gradient(90deg,#c89b3c,#ffd86a); }
+.rpg-me .me-stat.sp.full b { color:#ffe07a; }
