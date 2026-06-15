@@ -32,6 +32,10 @@ const RACE_BGM_TRACKS = [
 var RaceBgm = (function () {
   var audio = null;
   var MUTE_KEY = "mimi_muted";
+  var VOL_KEY = "mimi_bgmvol";
+  var BGM_BASE = 0.42;          // チューニング済みの基準音量（=従来値）
+  var bgmLevel = 1;             // ユーザー音量 0..1（1.0=従来）
+  try { var _bv = parseFloat(localStorage.getItem(VOL_KEY)); if (_bv >= 0 && _bv <= 1) bgmLevel = _bv; } catch (e) {}
   var lastIdx = -1;   // 直前と同じ曲を避けて選ぶ
 
   function isMuted() {
@@ -82,7 +86,7 @@ var RaceBgm = (function () {
     try {
       var a = new Audio(RACE_BGM_DIR + encodeURIComponent(RACE_BGM_TRACKS[idx]));
       a.loop = true;                     // レースの長さに合わせてループ
-      a.volume = 0.42;                   // 効果音(Sfx master 0.42)に埋もれない程度
+      a.volume = BGM_BASE * bgmLevel;    // 効果音(Sfx master 0.42)に埋もれない程度（×ユーザー音量）
       var p = a.play();
       if (p && p.catch) p.catch(function () {});   // 自動再生がブロックされても無視
       audio = a;
@@ -92,11 +96,21 @@ var RaceBgm = (function () {
   // ミュート時は即停止（レース中にミュートされても止まるように）。
   function setMuted(m) { if (m) stop(); }
 
+  // ユーザー音量 0..1。再生中の audio へ即反映＋localStorage 保存（表示専用）。
+  function setVolume(v) {
+    bgmLevel = Math.max(0, Math.min(1, (v == null ? 1 : v)));
+    try { localStorage.setItem(VOL_KEY, String(bgmLevel)); } catch (e) {}
+    if (audio) { try { audio.volume = BGM_BASE * bgmLevel; } catch (e) {} }
+  }
+  function getVolume() { return bgmLevel; }
+
   return {
     start: start,
     stop: stop,
     fadeOut: fadeOut,
     setMuted: setMuted,
+    setVolume: setVolume,
+    getVolume: getVolume,
     isPlaying: function () { return !!audio; },
     trackCount: function () { return RACE_BGM_TRACKS.length; }
   };
