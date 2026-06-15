@@ -29,7 +29,7 @@
 const ENDING_CONFIG = {
   bg: "images/home_vista_day.jpg",   // ロールの背景（発展した島の遠景。後で差し替え可）
   finBg: "images/story/ED.webp",     // フィナーレのED一枚絵（夜明けの桟橋）
-  scrollSeconds: 100,                // ロールが流れ切るまでの秒数（一枚絵が増えた分も含めゆっくり振り返る）
+  scrollSeconds: 130,                // ロールが流れ切るまでの秒数（一枚絵＋個人化セクションが増えた分ゆっくり）
   // ロール完走後に held で出す「ED一枚絵＋締めの物語」のフィナーレ文（STORY_CHAPTERS:ED の締めを凝縮）。
   finStory: [
     "単勝の正解は、たったひとつ。",
@@ -80,7 +80,7 @@ const STAFF_ROLL = [
   { type: "cast",  from: "STORY_CAST" },
   { type: "gap",   size: "md" },
 
-  { type: "head",  text: "八頭の聖龍" },
+  { type: "head",  text: "龍舎に迎えた聖龍" },
   { type: "cast",  from: "DRAGONS" },
   { type: "gap",   size: "md" },
 
@@ -93,7 +93,20 @@ const STAFF_ROLL = [
   { type: "image", src: "images/story/3.webp", cap: "第三話　住居も食事も名声も。総資産が、再起の土台になる。" },
   { type: "image", src: "images/story/4.webp", cap: "第四話　当てるだけなら予想、名を覚えさせたら物語。推しの熱が、島を満たす。" },
   { type: "image", src: "images/story/5.webp", cap: "第五話　絶滅の神眼。応えがひとつへ淘汰されても──賭場は、壊れなかった。" },
-  { type: "gap",   size: "sm" },
+  { type: "gap",   size: "md" },
+
+  // ── あなたの軌跡（プレイヤーの実績で個人化・未取得は ？？？？？？）──
+  { type: "head",  text: "あなたの戦績" },
+  { type: "records" },
+  { type: "gap",   size: "md" },
+
+  { type: "head",  text: "集めた晴れ着" },
+  { type: "outfitsOwned" },
+  { type: "gap",   size: "md" },
+
+  { type: "head",  text: "暮らしで手に入れたもの" },
+  { type: "lifeOwned" },
+  { type: "gap",   size: "lg" },
 
   { type: "head",  text: "RACE ENGINE" },
   { type: "role",  role: "FinalPower 7成分／スタミナシステム" },
