@@ -164,26 +164,100 @@ function epilogueClear() {
   const e = epData(); if (e.edFlag) return; e.edFlag = true; epSave();
 }
 
-// 最終決戦（Phase②骨）：押し切った後の締めの会話 → 終章クリア(edFlag) → 既存エンディング。
-// ※Stage2で「これまで積み上げた全部を紹介する演出レース」に拡張予定（着順/オッズ/配当は不変のまま祝祭化）。
+// 最終決戦（Stage2＝積み上げ紹介の演出レース）：前口上 → 走馬灯ショー（積み上げ紹介）→ 最後のレース＋締め
+//   → 終章クリア(edFlag) → 既存エンディング。すべて表示専用＝着順/オッズ/配当は不変（普通のレースを
+//   演出で祝祭化するだけ・docs/epilogue_extinction_design.md §6）。読むデータは総資産/ランク/完走/図鑑/
+//   スカウト/衣装/ポロ/村＝既存のものを参照するだけ（変更しない）。
+function finalShowcaseBeats() {
+  const p = state.player || {};
+  if (typeof recomputeAssets === "function") { try { recomputeAssets(state); } catch (e) {} }
+  const fc = (typeof fmtCoins === "function") ? fmtCoins : function (n) { return String(n); };
+  const beats = [];
+  beats.push({ ic: "🏦", k: "築いた暮らし", v: fc(p.totalAssets || 0), c: "ゼロから、ここまで立て直してきた。" });
+  beats.push({ ic: "🏅", k: "駆け抜けた軌跡", v: "ランク" + (p.rank || 1) + "・" + (p.completedRaces || 0) + "走", c: (p.wins || 0) + "勝。負けても、また立った。" });
+  const dex = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0;
+  if (dex > 0) beats.push({ ic: "📖", k: "出会った竜たち", v: dex + "頭を図鑑に", c: "どの子にも、ちゃんと物語があった。" });
+  const scouted = Object.values(p.collection || {}).filter(function (e) { return e && e.scouted; }).length;
+  if (scouted > 0) beats.push({ ic: "🐲", k: "龍舎に迎えた仲間", v: scouted + "頭をスカウト", c: "強さじゃなく、好きで選んだ。" });
+  const outfits = (p.outfitsBought || []).length;
+  if (outfits > 0) beats.push({ ic: "👗", k: "着てきた晴れ着", v: outfits + "着", c: "今日も、いちばんの一着で。" });
+  if (typeof poroFound === "function" && poroFound()) beats.push({ ic: "🐉", k: "いちばんの相棒", v: "ポロ", c: "特別じゃなくても、愛されていい。" });
+  const vlv = p.villageLevel || (p.village && p.village.level) || 1;
+  beats.push({ ic: "🏘️", k: "灯りを守った島", v: "村レベル " + vlv, c: "この賭場の灯りは、消えなかった。" });
+  return beats;
+}
+// 走馬灯ショー（全画面・自動送り＋タップで先へ）。完了で resolve（→ 締めのVN）。表示専用。
+// タイマーはモジュール変数＝外から凍結/掃除できる（神眼カットイン _sgCutinTimer と同流儀）。
+let _finShowTimer = null;
+function playFinalShowcase() {
+  return new Promise(function (resolve) {
+    if (!(typeof el === "function" && typeof document !== "undefined")) { resolve(); return; }
+    var ex = document.getElementById("fin-show"); if (ex) ex.remove();
+    if (_finShowTimer) { clearTimeout(_finShowTimer); _finShowTimer = null; }
+    var beats = finalShowcaseBeats();
+    beats.push({ ic: "☄️", k: "そして、最後のレース", v: "全員が、沸いた", c: "単勝の正解は動かない。それでも複で、ワイドで、穴で——みんな、まだ笑っていた。", finale: true });
+    var ov = el("div", "fin-show"); ov.id = "fin-show";
+    ov.innerHTML = '<div class="fin-rays"></div><div class="fin-card"></div>' +
+      '<div class="fin-dots">' + beats.map(function () { return "<i></i>"; }).join("") + '</div>' +
+      '<div class="fin-skip">タップで進む ▶</div>';
+    document.body.appendChild(ov);
+    var card = ov.querySelector(".fin-card");
+    var dots = ov.querySelector(".fin-dots").children;
+    var i = -1;
+    function show(b) {
+      card.className = "fin-card" + (b.finale ? " finale" : "");
+      card.innerHTML = '<div class="fin-ic">' + b.ic + '</div><div class="fin-k">' + b.k + '</div>' +
+        '<div class="fin-v">' + b.v + '</div><div class="fin-c">' + b.c + '</div>';
+      void card.offsetWidth; card.classList.add("in");
+      for (var d = 0; d < dots.length; d++) dots[d].className = (d <= i) ? "on" : "";
+    }
+    function done() {
+      if (_finShowTimer) { clearTimeout(_finShowTimer); _finShowTimer = null; }
+      ov.classList.add("out");
+      setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); resolve(); }, 440);
+    }
+    function next() {
+      i++;
+      if (i >= beats.length) { done(); return; }
+      show(beats[i]);
+      if (_finShowTimer) clearTimeout(_finShowTimer);
+      _finShowTimer = setTimeout(next, beats[i].finale ? 2800 : 1750);
+    }
+    ov.onclick = function () { next(); };
+    try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+    next();
+  });
+}
 function startFinalBattle() {
   const e = epData();
   if (e.edFlag) { if (window.Ending && Ending.play) Ending.play(); return; }
-  const reveal = typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5");   // 第5話既読＝正体判明
-  const who = reveal ? "celestia" : "celestia";  // この時点では第5話到達済みのため常にセレスティア
-  const script = [
-    ["narrator", "夜明け前の聖龍レース場。歓声が、もう一度だけ爆発する。"],
+  const who = "celestia";   // 第5話到達済み＝正体判明
+  const preamble = [
+    ["narrator", "夜明け前の聖龍レース場。最後のレースを前に、歓声がふくらんでいく。"],
+    [who, "ねえ、ミミ。……ここまで歩いてきた道を、少しだけ振り返ってみない？", "default"],
+    ["mimi", "はいっ。……わたしたちが積み上げてきた、ぜんぶを。", "happy"]
+  ];
+  const closing = [
+    ["narrator", "そして、最後のレースが始まる。セレスティアの読みどおり、1着は動かない。──それでも。"],
     [who, "……驚いた。淘汰の前で、ここまで“穴”を残す島は、そうないわ。", "default"],
     ["mimi", "わたし、強い竜を当てたわけじゃないです。……ただ、みんなが、いろんな子を好きでいただけ。", "default"],
     [who, "そう。価値は、1着の上にだけあるんじゃない。──いい賭場。この賭場、壊れなかったね。"],
     ["mimi", "はいっ。……また、見に来てください。", "happy"]
   ];
-  const go = function () {
+  const toEnding = function () {
     epilogueClear();
     if (typeof showInfoPopup === "function") showInfoPopup("🎬 終章クリア",
       `<div class="mm-row"><span class="mm-ic">✨</span><div><b>この賭場、壊れなかったね</b><small>エンディングが解放されました。物語の最終話、または設定のおまけからどうぞ。</small></div></div>`);
     if (window.Ending && Ending.play) Ending.play();
   };
-  if (window.Dialogue && Dialogue.play) Dialogue.play(script, { force: true }).then(go);
-  else go();
+  const afterShow = function () {
+    if (window.Dialogue && Dialogue.play) Dialogue.play(closing, { force: true }).then(toEnding);
+    else toEnding();
+  };
+  const runShow = function () {
+    if (typeof playFinalShowcase === "function") playFinalShowcase().then(afterShow);
+    else afterShow();
+  };
+  if (window.Dialogue && Dialogue.play) Dialogue.play(preamble, { force: true }).then(runShow);
+  else runShow();
 }

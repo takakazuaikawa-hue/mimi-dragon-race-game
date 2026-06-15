@@ -4541,3 +4541,34 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .sg-kicker, .sg-title, .sg-sub, .sg-skip { animation: none; opacity: 1; }
   .sg-title { letter-spacing: .3em; transform: none; }
 }
+
+/* ===== 終章・最終決戦の走馬灯ショー（積み上げ紹介・表示専用） ===== */
+.fin-show { position: fixed; inset: 0; z-index: 9000; overflow: hidden; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(125% 100% at 50% 32%, #3a2a14 0%, #241a10 52%, #0c0906 100%);
+  animation: sgIn .4s ease both; }
+.fin-show.out { animation: sgOut .4s ease both; }
+.fin-rays { position: absolute; left: 50%; top: 32%; width: 165vmax; height: 165vmax; transform: translate(-50%,-50%);
+  pointer-events: none; opacity: .45;
+  background: repeating-conic-gradient(from 0deg, rgba(255,206,120,.10) 0deg 6deg, transparent 6deg 16deg);
+  animation: finSpin 18s linear infinite; }
+@keyframes finSpin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+.fin-card { position: relative; text-align: center; padding: 0 28px; max-width: 520px; opacity: 0; }
+.fin-card.in { animation: finIn .6s cubic-bezier(.2,.9,.25,1) both; }
+@keyframes finIn { 0% { opacity: 0; transform: translateY(16px) scale(.96); } 100% { opacity: 1; transform: none; } }
+.fin-ic { font-size: 54px; line-height: 1; filter: drop-shadow(0 0 16px rgba(255,200,110,.55)); }
+.fin-k { margin-top: 10px; font-size: 12.5px; font-weight: 800; letter-spacing: .16em; color: #ffce7a; }
+.fin-v { margin-top: 6px; font-size: 34px; font-weight: 900; color: #fff; text-shadow: 0 0 18px rgba(255,200,110,.55); }
+.fin-c { margin-top: 13px; font-size: 14px; line-height: 1.75; color: #f0e2cc; }
+.fin-card.finale .fin-v { color: #ffe49a; font-size: 28px; }
+.fin-card.finale .fin-ic { animation: finPulse 1.4s ease-in-out infinite; }
+@keyframes finPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+.fin-dots { position: absolute; left: 0; right: 0; bottom: 34px; display: flex; gap: 6px; justify-content: center; }
+.fin-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.22); transition: background .3s; }
+.fin-dots i.on { background: #ffce6a; }
+.fin-skip { position: absolute; right: 14px; bottom: 12px; font-size: 11px; color: rgba(255,255,255,.5); }
+@media (prefers-reduced-motion: reduce) {
+  .fin-rays { animation: none; }
+  .fin-card.in { animation: none; opacity: 1; }
+  .fin-card.finale .fin-ic { animation: none; }
+}
