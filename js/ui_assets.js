@@ -65,6 +65,8 @@ function renderAssets() {
   ent.appendChild(entry("🎁", "生活資産コレクション", `${colOwned} / ${LIFE_ASSETS.length} 解放`, "", () => renderLifeCollection()));
   ent.appendChild(entry("🎫", "習い事（アクティブスキル）", `称号 ${skTitles} / ${ACTIVE_SKILLS.length} 獲得 ・ ミミの暮らしの記録`, skTitles >= ACTIVE_SKILLS.length ? "コンプ!" : "", () => renderActiveSkills()));
   ent.appendChild(entry("📖", "物語", `${unlockedCh} / ${STORY_CHAPTERS.length} 話 解放`, "", () => renderStory()));
+  // 相談（顧問）はホームのナビから移設＝暮らしハブに配置（予想の視点をもらう・任意）。
+  if (typeof renderConsult === "function") ent.appendChild(entry("💬", "相談（顧問）", "サケ・ミズ・スミカから、予想の視点をもらいます。", "", () => renderConsult()));
   app.appendChild(ent);
 
   const actions = el("div", "actions");

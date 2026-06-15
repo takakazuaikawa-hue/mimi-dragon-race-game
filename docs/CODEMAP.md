@@ -38,7 +38,8 @@ utils → data_*（純データ）→ state → *_engine（純ロジック）→
 | モール | `js/mall_rpg.js` (2073) | お買い物ダンジョン（ローグライク・独立通貨／`outfitsWon`・表示メタ）。 |
 | VN | `dialogue`(399) `data_dialogue`(98) | 立ち絵セリフ（`Dialogue.play`→Promise・cast自動取込）。 |
 | 相棒ポロ | `poro`(416) `poro_gourmet`(285) | 発見/鑑定アーク・龍舎・スカウト・グルメレース（表示メタ）。 |
-| ホーム・メタ収集 | `goals`(91) `meals`(185) | 🎯目標(クエスト)／🍽️食事(みみしんぼ)。`done(state)`/`mealUnlocked`で判定する表示専用。 |
+| ホーム・メタ収集 | `goals`(91) `meals`(185) `sns` | 🎯目標(クエスト)／🍽️食事(みみしんぼ)／📱SNS(`sns.js`=タイムライン投稿・ファンレター データ)。`done(state)`/`unlock(state)`で判定する表示専用。 |
+| SNS UI | `ui_sns` | 📱`renderTimeline`(投稿フィード＋❤️)／✉️`renderFanletters`(受信箱＋手紙詳細)。ホームのナビから予想入門・相談を外した枠に配置。 |
 | 終章/ED | `epilogue_engine`(274) `data_ending`(140) `ending_engine`(354) | 伏線→絶滅メーター→最終決戦→スタッフロール。全て表示メタ。 |
 | 音 | `sfx`(284) `bgm`(135) | 合成SE／レースBGM。`setVolume/setMuted/playFile`。 |
 | Live2D | `dragon_live2d`(58) ＋ `live2d/js/*` | リグ竜ランタイム（マスコット）。 |
@@ -76,8 +77,10 @@ utils → data_*（純データ）→ state → *_engine（純ロジック）→
 | 21 | story_read | 物語(各話) | renderStoryChapter(id) |
 | 22 | consult | 相談(顧問) | renderConsult |
 | 23 | goals | 目標(クエスト) | renderGoals (ui_render+goals) |
-| 24 | help | 予想入門 | renderHelp |
+| 24 | help | 予想入門 | renderHelp（設定→「予想入門をひらく」へ移設） |
 | 25 | settings | 設定 | renderSettings |
+| 26 | timeline | タイムライン(SNS) | renderTimeline (ui_sns) |
+| 27 | fanletters | ファンレター(SNS) | renderFanletters (ui_sns) |
 
 ---
 

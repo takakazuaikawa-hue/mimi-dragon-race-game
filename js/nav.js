@@ -36,7 +36,9 @@ var SCREEN_INDEX = [
   { no: 22, id: "consult",         label: "相談(顧問)",         group: "物語" },
   { no: 23, id: "goals",           label: "目標(クエスト)",      group: "拠点" },
   { no: 24, id: "help",            label: "予想入門",          group: "情報" },
-  { no: 25, id: "settings",        label: "設定",              group: "情報" }
+  { no: 25, id: "settings",        label: "設定",              group: "情報" },
+  { no: 26, id: "timeline",        label: "タイムライン",       group: "SNS" },
+  { no: 27, id: "fanletters",      label: "ファンレター",       group: "SNS" }
 ];
 
 // 画面名 → 描画を呼ぶ thunk。呼び出し時に解決（全描画関数が定義済みの状態で動く）。
@@ -69,7 +71,9 @@ function screenMap() {
     consult:         function () { renderConsult(); },
     goals:           function () { opt("renderGoals", "renderHome")(); },
     help:            function () { renderHelp(); },
-    settings:        function () { renderSettings(); }
+    settings:        function () { renderSettings(); },
+    timeline:        function () { opt("renderTimeline", "renderHome")(); },
+    fanletters:      function () { opt("renderFanletters", "renderHome")(); }
   };
 }
 

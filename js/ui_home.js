@@ -682,8 +682,12 @@ function renderHome() {
     rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
   }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  rail.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
-  rail.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
+  // SNS（予想入門・相談はここから外し、それぞれ設定・暮らしハブへ移設）。
+  if (typeof renderTimeline === "function") rail.appendChild(navItem("📱", "タイムライン", "島のみんなの投稿。❤️でリアクション。", () => renderTimeline()));
+  if (typeof renderFanletters === "function") {
+    const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
+    rail.appendChild(navItem("✉️", "ファンレター", unread ? `未読 ${unread} 通の手紙が届いています。` : "あなたに届いた手紙を読みます。", () => renderFanletters()));
+  }
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
   // 列数を“実際の項目数”に追従させ、右に空きセル（隙間）ができるのを防ぐ。8以下は1行、9以上は2行に均等割り。

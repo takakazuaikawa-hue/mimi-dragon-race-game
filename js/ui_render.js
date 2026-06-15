@@ -756,6 +756,15 @@ function renderSettings() {
       `<span>🎰 賭金 <b>×${villMult}</b></span>` +
       `<span>🐉 解放竜 <b>${(v.unlockedDragonIds || []).length}/${dn}</b></span></div>`));
 
+  // 予想入門・ヘルプ（ホームのナビから移設＝ここから開く）
+  if (typeof renderHelp === "function") {
+    app.appendChild(el("div", "as-sec", "予想入門・ヘルプ"));
+    const help = el("div", "set-data");
+    const bHelp = el("button", "secondary", "🎓 予想入門をひらく"); bHelp.onclick = () => renderHelp();
+    help.appendChild(bHelp);
+    app.appendChild(help);
+  }
+
   // データ
   app.appendChild(el("div", "as-sec", "データ"));
   const data = el("div", "set-data");
