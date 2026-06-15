@@ -813,6 +813,32 @@ function renderSettings() {
     app.appendChild(grid);
     app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク/物語の解放）。レースの着順・オッズ・配当の計算には触れません。終章メーターも表示専用。"));
 
+    // 🩺 レスポンシブ自己診断（js/devcheck.js）：横溢れ/横向きクリップ/16px未満input/壊れ表示/100vh残存を機械検出。
+    if (typeof responsiveSelfCheck === "function") {
+      const showRep = (rep) => {
+        const ov = el("div", "navpop-ov");
+        const box = el("div", "navpop");
+        const body = (rep.problems && rep.problems.length)
+          ? "<ul style='text-align:left;margin:9px 0;padding-left:18px;line-height:1.55;font-size:12px'>" + rep.problems.map(p => "<li>" + String(p).replace(/</g, "&lt;") + "</li>").join("") + "</ul>"
+          : "<div style='margin:12px 0;color:#7fd6a0'>この範囲では問題は見つかりませんでした 🎉</div>";
+        box.innerHTML = `<div class="navpop-t">🩺 自己診断　${rep.verdict}</div>` +
+          `<div style="font-size:11.5px;color:#9fb0b8;margin-bottom:2px">${rep.viewport}　${rep.framed ? "PC/タブレット枠" : "スマホ全幅"}</div>${body}`;
+        const btns = el("div", "navpop-btns");
+        const ok = el("button", "navpop-go", "とじる"); ok.onclick = () => ov.remove(); btns.appendChild(ok); box.appendChild(btns);
+        ov.appendChild(box); ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+        document.body.appendChild(ov);
+      };
+      app.appendChild(el("div", "as-sec", "🩺 レスポンシブ自己診断"));
+      const dg = el("div", "set-debug");
+      const d1 = el("button", "set-dbg-b", "🩺 今の画面を診断");
+      d1.onclick = () => showRep(responsiveSelfCheck());
+      const d2 = el("button", "set-dbg-b", "🔁 全画面を巡回診断");
+      d2.onclick = () => { if (typeof responsiveSelfCheckAll === "function") responsiveSelfCheckAll().then(showRep); else showRep(responsiveSelfCheck()); };
+      dg.appendChild(d1); dg.appendChild(d2);
+      app.appendChild(dg);
+      app.appendChild(el("div", "as-hint2", "現在の画面サイズで検査します。スマホ実機やプレビューを 360 / 740×360（横）/ 1280 にして実行すると効果的（docs/RESPONSIVE_GUARDRAILS.md）。"));
+    }
+
     // 🧭 画面ジャンプ：全画面に番号で直接ジャンプ（開発・確認の高速化。js/nav.js SCREEN_INDEX）。
     if (typeof SCREEN_INDEX !== "undefined" && typeof goto === "function") {
       app.appendChild(el("div", "as-sec", "🧭 画面ジャンプ（番号で直接表示）"));
