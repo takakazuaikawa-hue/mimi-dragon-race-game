@@ -74,12 +74,12 @@ const RPG_ELEM = { phys: "物理", fire: "火", ice: "氷", elec: "電", force: 
 const RPG_ELEM_IC = { phys: "⚔️", fire: "🔥", ice: "❄️", elec: "⚡", force: "🌀", heal: "💚" };
 const RPG_EL_BURST = { phys: "#ffffff", fire: "#ff8a3c", ice: "#7fd8ff", elec: "#ffe04a", force: "#c08bff", heal: "#7af0a0" };
 const RPG_SKILLS = {
-  atk:   { n: "ぱほっ！",       el: "phys", mp: 0, pow: 9 },
-  fire:  { n: "サンバースト",   el: "fire", mp: 4, pow: 13 },
-  ice:   { n: "クールミスト",   el: "ice",  mp: 4, pow: 13 },
-  elec:  { n: "スパークラー",   el: "elec", mp: 4, pow: 13 },
-  force: { n: "うずしおウェーブ", el: "force", mp: 5, pow: 14 },
-  heal:  { n: "リフレッシュ",   el: "heal", mp: 6, heal: 30 },
+  atk:   { n: "ぱほっ！",   el: "phys", mp: 0, pow: 9 },
+  fire:  { n: "ぱファ！",   el: "fire", mp: 4, pow: 13 },
+  ice:   { n: "ぱきーん！", el: "ice",  mp: 4, pow: 13 },
+  elec:  { n: "ぱちぱち！", el: "elec", mp: 4, pow: 13 },
+  force: { n: "ぱわー！",   el: "force", mp: 5, pow: 14 },
+  heal:  { n: "ぱふぅ♪",   el: "heal", mp: 6, heal: 30 },
 };
 // レベルで覚える
 const RPG_LEARN = { 3: ["ice"], 5: ["elec"], 7: ["force"] };
