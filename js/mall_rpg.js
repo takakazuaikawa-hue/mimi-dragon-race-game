@@ -1162,7 +1162,7 @@ function rpgRenderExplore(app) {
     `</div>`;
   wrap.appendChild(head);
 
-  // 没入ステージ：一人称ビュー（縦を満たす）＋ミニマップ＆ログをオーバーレイ
+  // 没入ステージ：一人称ビュー＋ミニマップ＆ログ。タップで“見えているお店”に入る
   const stage = el("div", "rpg-stage");
   const cv = el("canvas", "rpg-view hd" + (RPG._stepFx ? " rpg-step-" + RPG._stepFx : ""));
   RPG._stepFx = null;
@@ -1172,36 +1172,25 @@ function rpgRenderExplore(app) {
   const lg = el("div", "rpg-log ov");
   RPG.log.slice(0, 3).forEach(L => lg.appendChild(el("div", "rpg-logline " + L.cls, L.t)));
   stage.appendChild(lg);
+  const shopArr = rpgShopFor(RPG.fi), shopLeft = shopArr.length - rpgShopOwnedN(shopArr);
+  const shopHint = el("div", "rpg-shop-hint" + (shopLeft > 0 ? " has" : ""), `🛍️ お店をタップ${shopLeft > 0 ? `（あと${shopLeft}品）` : "（コンプ済み）"}`);
+  stage.appendChild(shopHint);
+  stage.onclick = () => rpgOpenShop();
   wrap.appendChild(stage);
   rpgDrawView(cv, (typeof performance !== "undefined" ? performance.now() : 0));
   rpgStartAmbient(cv);
 
-  // 下部ドック：移動（親指ゾーン）＋お店／出る
+  // 下部ドック（高さ一定）：D-pad＋オート＋出る。お店は“世界をタップ”でボタンは置かない
   const dock = el("div", "rpg-dock");
-  const move = el("div", "rpg-move");
-  if (RPG.auto) {
-    const pause = el("button", "rpg-movebtn wide pause", "⏸ 一時停止（オートで探索中）");
-    pause.onclick = () => rpgToggleAuto();
-    move.appendChild(pause);
-  } else {
-    const pad = el("div", "rpg-dpad");
-    [["↰", () => rpgTurn(-1), "turn"], ["▲", () => rpgForward(1), "fw"], ["↱", () => rpgTurn(1), "turn"]].forEach(([l, f, c]) => { const b = el("button", "rpg-padbtn2 " + c, l); b.onclick = f; pad.appendChild(b); });
-    move.appendChild(pad);
-    const run = el("button", "rpg-movebtn wide play", "▶ オートで歩く");
-    run.onclick = () => rpgToggleAuto();
-    move.appendChild(run);
-  }
-  dock.appendChild(move);
-
-  const acts = el("div", "rpg-dock-acts");
-  const shopArr = rpgShopFor(RPG.fi), shopLeft = shopArr.length - rpgShopOwnedN(shopArr);
-  const shopBtn = el("button", "rpg-actbtn shop" + (shopLeft > 0 ? " has" : ""), `🛍️ お店${shopLeft > 0 ? `<span class="nw">${shopLeft}</span>` : ""}`);
-  shopBtn.onclick = () => rpgOpenShop();
-  acts.appendChild(shopBtn);
-  const leave = el("button", "rpg-actbtn leave", "🏠 出る");
+  const pad = el("div", "rpg-dpad");
+  [["↰", () => rpgTurn(-1), "turn"], ["▲", () => rpgForward(1), "fw"], ["↱", () => rpgTurn(1), "turn"]].forEach(([l, f, c]) => { const b = el("button", "rpg-padbtn2 " + c + (RPG.auto ? " dim" : ""), l); b.onclick = f; pad.appendChild(b); });
+  dock.appendChild(pad);
+  const auto = el("button", "rpg-movebtn wide " + (RPG.auto ? "pause" : "play"), RPG.auto ? "⏸ オートで歩き中（タップで止める）" : "▶ オートで歩く");
+  auto.onclick = () => rpgToggleAuto();
+  dock.appendChild(auto);
+  const leave = el("button", "rpg-actbtn leave wide", "🏠 モールを出る");
   leave.onclick = () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); rpgEndRun(); RPG = null; renderMallRpg(); };
-  acts.appendChild(leave);
-  dock.appendChild(acts);
+  dock.appendChild(leave);
 
   wrap.appendChild(dock);
   app.appendChild(wrap);
@@ -1214,6 +1203,10 @@ function rpgScene(ctx, env) {
   const rgb = (a, k) => `rgb(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0})`;
   const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
   const cell = env.cell, wall = (d, l) => cell(d, l) === "#";
+  // 店ごとの差異（日よけ色＋看板）＝“いろんなお店”に見せる
+  const SHOP_AWN = [[226, 90, 110], [70, 160, 210], [240, 178, 70], [110, 200, 140], [200, 120, 210], [245, 140, 88], [90, 170, 175]];
+  const shopList = (typeof rpgShopFor === "function" && typeof RPG !== "undefined" && RPG && RPG.fi != null) ? rpgShopFor(RPG.fi) : null;
+  const SHOP_IC = ["🛍️", "👗", "🍧", "🐚", "🍹", "🎁", "👒", "🧸", "🍩", "💍"];
   // パレット（明るいリゾート基調）
   const WALL = [236, 232, 224], FLOOR = [206, 198, 186], CEIL = [240, 242, 244], TRIM = [120, 112, 100], GLASS = [200, 224, 230];
   const rect = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W * 0.5) * s, t: cy - (H * 0.5) * s, r: cx + (W * 0.5) * s, b: cy + (H * 0.5) * s }; }
@@ -1257,13 +1250,17 @@ function rpgScene(ctx, env) {
   // 店先（側壁・グラデ＋日よけ＋ガラス映り込み＋柱＋幅木）
   const storefront = (near, far, left, k, depth) => {
     const nx = left ? near.l : near.r, fx = left ? far.l : far.r;
+    const si = depth * 2 + (left ? 0 : 1);                 // 店の通し番号（奥行×左右で別の店）
+    const awn = SHOP_AWN[si % SHOP_AWN.length];            // 店ごとに違う日よけ色
+    const ic = (shopList && shopList.length) ? shopList[si % shopList.length].ic : SHOP_IC[si % SHOP_IC.length];
     const band = (f0, f1, fill) => poly([[nx, yN(near, f0)], [fx, yN(far, f0)], [fx, yN(far, f1)], [nx, yN(near, f1)]], fill);
     // 壁（縦グラデ：上下AO）
     let wg = ctx.createLinearGradient(0, near.t, 0, near.b); wg.addColorStop(0, rgb(WALL, k * 0.8)); wg.addColorStop(0.5, rgb(WALL, k)); wg.addColorStop(1, rgb(WALL, k * 0.78));
     band(0, 1, wg);
-    // 日よけ（アクセント色・グラデ）
-    let ag = ctx.createLinearGradient(0, yN(near, 0.05), 0, yN(near, 0.26)); ag.addColorStop(0, rgb(A, k * 1.05)); ag.addColorStop(1, rgb(A, k * 0.8));
+    // 日よけ（店ごとの色・グラデ＋ストライプ）
+    let ag = ctx.createLinearGradient(0, yN(near, 0.05), 0, yN(near, 0.26)); ag.addColorStop(0, rgb(awn, k * 1.08)); ag.addColorStop(1, rgb(awn, k * 0.82));
     band(0.05, 0.26, ag);
+    ctx.save(); ctx.globalAlpha = 0.18 * k; for (let s = 0; s < 5; s++) { const f = s / 5; band(0.05 + f * 0.21 * 0.5, 0.05 + (f + 0.5 / 5) * 0.21, "rgb(255,255,255)"); } ctx.restore();
     line(nx, yN(near, 0.26), fx, yN(far, 0.26), rgba([0, 0, 0], 1, 0.18 * k), 1);
     // ガラス（縦グラデ＋斜めハイライト＋店内シルエット）
     let gg = ctx.createLinearGradient(0, yN(near, 0.30), 0, yN(near, 0.74)); gg.addColorStop(0, rgb(GLASS, k * 1.05)); gg.addColorStop(1, rgb(GLASS, k * 0.82));
@@ -1277,6 +1274,9 @@ function rpgScene(ctx, env) {
     let cg = ctx.createLinearGradient(nx - 1, 0, nx + 2, 0); cg.addColorStop(0, rgb(TRIM, k * 0.7)); cg.addColorStop(1, rgb([210, 204, 196], k));
     ctx.fillStyle = cg; ctx.fillRect(nx - (left ? 0 : 2), near.t, 2, near.b - near.t);
     line(fx, far.t, fx, far.b, rgba(TRIM, k, 0.8), 1);
+    // 看板（店の商品アイコン）＝“何のお店か”を一目で
+    const sx = nx + (fx - nx) * 0.30, sy = yN(near, 0.47), fs = Math.max(9, (near.b - near.t) * 0.13);
+    try { ctx.save(); ctx.globalAlpha = 0.96 * k; ctx.font = fs + "px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(ic, sx, sy); ctx.restore(); } catch (e) {}
   };
 
   // 正面＝海の見える大きな窓
