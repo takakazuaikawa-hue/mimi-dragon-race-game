@@ -1753,7 +1753,7 @@ function rpgRenderWon(app) {
   if (f.outfit) {
     const o = el("div", "rpg-res-outfit rpg-rev"); o.innerHTML = `👑 衣装「${f.outfit.name}」GET！ <small>モールで着られるよ</small>`; o.style.animationDelay = d + "s"; o.setAttribute("data-sfx", "win"); o.setAttribute("data-delay", Math.round(d * 1000)); wrap.appendChild(o); d += 0.5;
   }
-  const cont = el("button", "rpg-start rpg-rev", "▶ 探索を続ける"); cont.style.animationDelay = d + "s";
+  const cont = el("button", "rpg-start rpg-next", "▶ 次へ進む"); // アニメ非依存で常に押せる
   cont.onclick = () => rpgAfterWin();
   wrap.appendChild(cont);
   app.appendChild(wrap);
@@ -1777,8 +1777,8 @@ function rpgRenderWon(app) {
 function rpgRenderLost(app) {
   app.appendChild(el("h2", "rpg-won-h", "💫 気絶…"));
   const txt = RPG && RPG.tower ? `タワーの宝は手に入らなかった…（Lv・ゴールドは無事）` : `目が覚めたら迷宮の入口だった。<br>（持ち物・ゴールドは無事。HPは半分回復）`;
-  const bx = el("div", "rpg-resbox bad rpg-rev", txt); bx.style.animationDelay = ".25s"; app.appendChild(bx);
-  const cont = el("button", "rpg-start rpg-rev", "▶ 入口にもどる"); cont.style.animationDelay = ".7s";
+  const bx = el("div", "rpg-resbox bad", txt); app.appendChild(bx);
+  const cont = el("button", "rpg-start rpg-next", "▶ 次へ進む"); // アニメ非依存で常に押せる
   cont.onclick = () => rpgAfterLose();
   app.appendChild(cont);
 }

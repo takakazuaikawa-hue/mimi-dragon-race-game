@@ -3756,6 +3756,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-start { display:block; width:100%; margin:10px 0; padding:14px; font-size:17px; font-weight:700;
   background:linear-gradient(135deg,#5b3f86,#7a4fae); color:#fff; border:none; border-radius:14px; cursor:pointer; }
 .rpg-start:active { transform:scale(.98); }
+/* 結果画面の「次へ進む」：いかなる演出にも依存せず常に見えて押せる（戦闘結果から抜けられない不具合の確実な対策） */
+.rpg-start.rpg-next { opacity:1 !important; background:linear-gradient(135deg,#3a7d4f,#46b06a); animation:rpgpulse 1.6s ease-in-out infinite; }
 .rpg-hubrow { display:flex; gap:8px; margin:8px 0; }
 .rpg-hubbtn { flex:1; padding:11px; background:rgba(40,32,56,.8);
   border:1px solid rgba(150,120,200,.35); border-radius:12px; color:#e9e0f5; font-weight:600; cursor:pointer; }
