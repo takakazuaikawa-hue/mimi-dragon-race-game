@@ -4161,18 +4161,32 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-shop-sub { display:flex; justify-content:center; gap:14px; margin-top:4px; font-size:14px; color:#ffd98a; }
 .rpg-shop-sub .sc { color:#bfe8ff; }
 .rpg-shopwall { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
-.rpg-good { display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center; cursor:pointer;
+.rpg-good { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center;
   padding:12px 8px 9px; border-radius:14px; color:#fff7ef; border:1px solid rgba(255,200,150,.35);
   background:linear-gradient(165deg,rgba(86,60,44,.92),rgba(58,40,30,.95)); }
 .rpg-good .gic { font-size:30px; line-height:1.1; }
 .rpg-good b { font-size:13px; }
 .rpg-good .gcat { font-size:10px; color:#e8c9a8; }
-.rpg-good .gprice { margin-top:3px; font-size:12px; font-weight:700; color:#ffe07a; }
-.rpg-good.ready { border-color:rgba(255,215,150,.7); box-shadow:0 0 12px rgba(255,190,110,.3); }
-.rpg-good.off { opacity:.55; }
-.rpg-good.off .gprice { color:#ca9a66; }
-.rpg-good.owned { background:linear-gradient(165deg,rgba(50,72,52,.92),rgba(34,52,38,.95)); border-color:rgba(150,230,170,.55); cursor:default; }
+.rpg-good .gprice { margin-top:3px; font-size:13px; font-weight:700; color:#ffe07a; }
+.rpg-good .gprice s { color:#c79a78; font-size:11px; font-weight:400; margin-left:3px; }
+.rpg-good.ready { border-color:rgba(255,215,150,.7); }
+.rpg-good.off { opacity:.7; }
+.rpg-good.off .gprice { color:#ffd07a; }
+.rpg-good.owned { background:linear-gradient(165deg,rgba(50,72,52,.92),rgba(34,52,38,.95)); border-color:rgba(150,230,170,.55); }
 .rpg-good.owned .gprice { color:#9cf0b0; }
+.rpg-good.deal { border-color:rgba(255,120,120,.8); box-shadow:0 0 14px rgba(255,110,110,.4); }
+.rpg-good .deal-tag { position:absolute; top:-7px; right:-5px; background:#ff4d5e; color:#fff; font-size:10px; font-weight:800; padding:1px 6px; border-radius:999px; transform:rotate(6deg); }
+.good-acts { display:flex; gap:5px; margin-top:6px; width:100%; }
+.good-acts .gbuy, .good-acts .ghaggle { flex:1; padding:6px 4px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid transparent; }
+.good-acts .gbuy { background:linear-gradient(135deg,#d68a3c,#f0b35f); color:#fff; }
+.good-acts .gbuy.off { opacity:.45; }
+.good-acts .ghaggle { background:rgba(255,255,255,.12); color:#ffe7c8; border-color:rgba(255,210,160,.4); }
+/* 店主スミカ */
+.rpg-shopkeep { display:flex; align-items:flex-start; gap:9px; margin:4px 0 10px; padding:10px; border-radius:14px;
+  background:linear-gradient(135deg,rgba(70,46,64,.85),rgba(48,30,46,.9)); border:1px solid rgba(255,170,210,.35); }
+.rpg-shopkeep .sk-face { font-size:34px; line-height:1; }
+.rpg-shopkeep .sk-bubble { flex:1; font-size:13px; line-height:1.45; color:#ffe6f2; }
+.rpg-shopkeep .sk-bubble b { display:block; font-size:11px; color:#ffb0d4; margin-bottom:2px; }
 .rpg-shop-teaser { margin:12px 0; padding:11px 12px; border-radius:12px; line-height:1.5; font-size:13px; text-align:center;
   background:rgba(40,52,70,.7); border:1px dashed rgba(140,190,240,.5); color:#dcebff; }
 .rpg-shop-teaser .pk { color:#ffe7a8; font-weight:700; }
