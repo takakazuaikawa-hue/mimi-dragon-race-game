@@ -66,6 +66,12 @@
         return castBlockHTML(b.from);
       case "credits":
         return creditsBlockHTML(b.from);
+      case "records":
+        return recordsHTML();
+      case "outfitsOwned":
+        return outfitsOwnedHTML();
+      case "lifeOwned":
+        return lifeOwnedHTML();
       case "fin":
         return '<div class="edr-fin">' + esc(b.text) +
           (b.sub ? '<span class="edr-fin-sub">' + esc(b.sub) + "</span>" : "") + "</div>";
@@ -91,16 +97,80 @@
       } catch (e) {}
     } else if (from === "DRAGONS") {
       try {
-        var ds = (typeof DRAGONS !== "undefined" && DRAGONS) || [];
+        var ds = ((typeof DRAGONS !== "undefined" && DRAGONS) || []).filter(function (d) { return d.id !== "poro"; });
+        var dcol = (typeof state !== "undefined" && state.player && state.player.collection) || {};
+        var lockedN = 0;
         for (var j = 0; j < ds.length; j++) {
           var d = ds[j];
-          var sub = (d.traits && d.traits.length) ? d.traits.join("・") : "";
-          var col = (typeof dragonColor === "function") ? dragonColor(d) : (d.color || null);
-          out += rowHTML("🐉 " + d.name, sub, col);
+          if (dcol[d.id] && dcol[d.id].scouted) {   // ★スカウト済みだけ正体を見せる
+            var sub = (d.traits && d.traits.length) ? d.traits.join("・") : "";
+            var col = (typeof dragonColor === "function") ? dragonColor(d) : (d.color || null);
+            out += rowHTML("🐉 " + d.name, sub, col);
+          } else lockedN++;
         }
+        if (lockedN > 0) out += rowHTML("── まだ見ぬ聖龍", "？？？？？？ ×" + lockedN, "#5a5a66");   // 未スカウトはまとめてマスク
       } catch (e2) {}
     }
     return out;
+  }
+
+  // ── プレイヤーの実績ブロック（戦績・手に入れたもの。未取得は ？？？？？？）──
+  function recordsHTML() {
+    try {
+      var p = state.player; if (typeof recomputeAssets === "function") recomputeAssets(state);
+      var run = p.completedRaces || 0, win = p.wins || 0, rate = run > 0 ? Math.round(win / run * 100) : 0;
+      var fc = (typeof fmtCoins === "function") ? fmtCoins : function (n) { return String(n); };
+      var dexT = (typeof DRAGONS !== "undefined") ? DRAGONS.filter(function (d) { return d.id !== "poro"; }).length : 0;
+      var dexS = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0;
+      var scouted = Object.values(p.collection || {}).filter(function (e) { return e && e.scouted; }).length;
+      var ob = (p.outfitsBought || []).length + ((p.outfitsWon || []).length);
+      var ot = (typeof OUTFITS !== "undefined") ? OUTFITS.length : 0;
+      var rows = [
+        ["完走", run + "戦 " + win + "勝（勝率 " + rate + "％）"],
+        ["総資産", fc(p.totalAssets || 0)],
+        ["図鑑", dexS + " ／ " + dexT + " 頭"],
+        ["スカウト", scouted + " 頭を龍舎へ"],
+        ["晴れ着", Math.min(ob, ot) + " ／ " + ot + " 着"],
+        ["村レベル", String(p.villageLevel || (p.village && p.village.level) || 1)]
+      ];
+      if (typeof poroFound === "function" && poroFound()) rows.push(["相棒", "ポロと出会えた"]);
+      var html = "";
+      for (var i = 0; i < rows.length; i++) html += rowHTML(rows[i][0], rows[i][1], "#caa24a");
+      return html;
+    } catch (e) { return ""; }
+  }
+  // 集めた晴れ着（所持を列挙＋未所持はまとめて ？？？？？？）。
+  function outfitsOwnedHTML() {
+    try {
+      var list = (typeof OUTFITS !== "undefined" && OUTFITS) || [];
+      var html = "", lockedN = 0;
+      for (var i = 0; i < list.length; i++) {
+        var o = list[i];
+        if ((typeof outfitOwned === "function") && outfitOwned(o)) html += rowHTML("👗 " + o.name, "", "#ec7fb9");
+        else lockedN++;
+      }
+      if (html === "") html += rowHTML("👗 ？？？？？？", "まだ集めていない", "#5a5a66");
+      if (lockedN > 0) html += rowHTML("── 未入手の晴れ着", "？？？？？？ ×" + lockedN, "#5a5a66");
+      return html;
+    } catch (e) { return ""; }
+  }
+  // 暮らしで手に入れたもの（解放済みを列挙＋未解放はまとめて ？？？？？？）。
+  function lifeOwnedHTML() {
+    try {
+      var u = (state.lifeTree && state.lifeTree.unlocked) || {};
+      var got = Object.keys(u).filter(function (k) { return u[k]; });
+      var total = (typeof LIFE_MILESTONES !== "undefined") ? LIFE_MILESTONES.length : 0;
+      var cap = 14, html = "";
+      if (!got.length) {
+        html += rowHTML("🌱 ？？？？？？", "まだ暮らしを育てていない", "#5a5a66");
+      } else {
+        for (var i = 0; i < Math.min(got.length, cap); i++) html += rowHTML("🌱 " + got[i], "", "#6ac06a");
+        if (got.length > cap) html += rowHTML("ほか " + (got.length - cap) + " 品", "手に入れた", "#6ac06a");
+      }
+      var locked = Math.max(0, total - got.length);
+      if (locked > 0) html += rowHTML("── まだ見ぬ暮らし", "？？？？？？ ×" + locked, "#5a5a66");
+      return html;
+    } catch (e) { return ""; }
   }
 
   function creditsBlockHTML(from) {
