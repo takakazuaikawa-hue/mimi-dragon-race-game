@@ -415,20 +415,29 @@ function rpgAddGauge(b, amt) {
   b.gauge = Math.min(100, was + amt);
   if (was < 100 && b.gauge >= 100) { rpgFx.banner("✨ ぱほぱほMAX！", "victory"); rpgSfx("streak"); }
 }
-// ⏱ タイミングバー（ぱほビート）：マーカーが左右に往復。中央で当てると JUST（ボーナス＋回復）
-function rpgBeatPos() {
-  const b = RPG && RPG.battle; if (!b) return 0.5;
-  const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
-  if (!b._beatT0) b._beatT0 = now;
-  const per = 1150, p = ((now - b._beatT0) % per) / per;   // 0..1
-  return p < 0.5 ? p * 2 : (1 - p) * 2;                    // 三角波（端→中央→端）
+// 🎯 自動ターゲット：弱点が判明していて手持ち技で突ける敵を優先、いなければHP最少の敵（パズドラ式＝狙いのタップ不要）
+function rpgAutoPickTarget() {
+  const b = RPG && RPG.battle; if (!b) return;
+  const d = rpgData();
+  const alive = b.enemies.map((e, i) => ({ e, i })).filter(o => o.e.alive);
+  if (!alive.length) return;
+  const weak = alive.find(o => { const w = d.codex[o.e.id] && d.codex[o.e.id].weak; return w && w.some(el => d.skills.some(id => RPG_SKILLS[id].el === el && d.mp >= RPG_SKILLS[id].mp)); });
+  const target = weak || alive.reduce((a, o) => (o.e.hp < a.e.hp ? o : a), alive[0]);
+  b.target = target.i;
 }
-function rpgBeatJudge() {
-  const dd = Math.abs(rpgBeatPos() - 0.5);
-  if (dd <= 0.075) return { mult: 1.35, heal: 1, label: "JUST!", cls: "just" };
-  if (dd <= 0.21) return { mult: 1.12, heal: 0, label: "GOOD", cls: "good" };
-  return { mult: 1.0, heal: 0, label: "", cls: "" };
+// 🤖 オートバトル：頻発戦闘をノーストレスに（必殺優先→低HPなら回復→弱点技→通常）。手で技を押せばその場だけ手動。
+function rpgAutoBattleTick() {
+  const b = RPG && RPG.battle, d = rpgData();
+  if (!b || b.phase !== "cmd" || RPG.busy || !b.auto) return;
+  if ((b.gauge || 0) >= 100) { rpgUltimate(); return; }
+  if (d.hp <= d.maxhp * 0.3 && d.skills.indexOf("heal") >= 0 && d.mp >= RPG_SKILLS.heal.mp && b.pstatus.seal <= 0) { rpgUseSkill("heal"); return; }
+  rpgAutoPickTarget();
+  const tg = b.enemies[b.target], known = tg && d.codex[tg.id] && d.codex[tg.id].weak ? d.codex[tg.id].weak : [];
+  let pick = null;
+  for (let k = 0; k < d.skills.length; k++) { const sk = RPG_SKILLS[d.skills[k]]; if (sk.el !== "heal" && known.indexOf(sk.el) >= 0 && d.mp >= sk.mp) { pick = d.skills[k]; break; } }
+  rpgUseSkill(pick || "atk");
 }
+function rpgToggleBtlAuto() { const b = RPG && RPG.battle; if (!b) return; b.auto = !b.auto; rpgSfx("nav"); renderMallRpg(); }
 function rpgEnemyEl(i) { return document.getElementById("rpg-enemy-" + i); }
 function rpgPlayerEl() { return document.getElementById("rpg-mimichar") || document.getElementById("rpg-bhud"); }
 // canvas戦闘の座標→画面座標（FX配置用）
@@ -502,12 +511,9 @@ function rpgUseSkill(id) {
     setTimeout(() => rpgAfterAct(false), 380);
     return;
   }
-  // ⏱ タイミング判定（タップ位置でJUST/GOOD）＝ワンタップ快感＋JUSTは回復
-  const beat = rpgBeatJudge();
-  if (beat.label) { rpgFx.banner(beat.label, beat.cls); rpgSfx(beat.cls === "just" ? "streak" : "tick"); }
   d.mp -= sk.mp;
   if (sk.el === "heal") {
-    const h = Math.round((sk.heal + d.lv * 2) * beat.mult) + (beat.heal ? 6 : 0);
+    const h = sk.heal + d.lv * 2;
     d.hp = Math.min(d.maxhp, d.hp + h);
     rpgBLog(`💚 ${sk.n}！ HPが${h}回復した。`, "good");
     rpgSfx("unlock");
@@ -523,7 +529,7 @@ function rpgUseSkill(id) {
   if (!tgt) { rpgAfterAct(false); return; }
   const ti = b.enemies.indexOf(tgt);
   const mult = rpgMult(tgt.ref, sk.el), weakHit = mult >= 1.9;
-  const dmg = mult === 0 ? 0 : Math.max(1, Math.round((sk.pow + rpgPlayerPow() * 0.6) * mult * beat.mult * rpgRnd(0.9, 1.1)));
+  const dmg = mult === 0 ? 0 : Math.max(1, Math.round((sk.pow + rpgPlayerPow() * 0.6) * mult * rpgRnd(0.9, 1.1)));
   const now0 = (typeof performance !== "undefined" ? performance.now() : Date.now());
   const freeze = weakHit ? 120 : (dmg ? 70 : 40), total = 240 + freeze + (weakHit ? 90 : 220);   // 弱点は戻りを短縮＝もう1回へ素早く
   b.anim = { who: "mimi", tIdx: ti, t0: now0, contactAt: now0 + 240, freeze: freeze, knock: weakHit ? 18 : 12, shakeMag: weakHit ? 14 : 8, burst: { col: RPG_EL_BURST[sk.el] || "#fff", n: weakHit ? 16 : 12, r: 34 } };
@@ -535,9 +541,10 @@ function rpgUseSkill(id) {
     else {
       tgt.hp -= dmg; tgt._flash = (typeof performance !== "undefined" ? performance.now() : Date.now());
       rpgAddGauge(b, weakHit ? 22 : 12);
-      if (beat.heal) { const hh = 5 + Math.floor(d.lv * 0.8); d.hp = Math.min(d.maxhp, d.hp + hh); rpgAddGauge(b, 8); const pp = rpgPlayerPt(); rpgFx.spot(pp.x, pp.y - 16, "+" + hh, "heal"); }   // JUST＝攻撃しながら回復
       let tag = "";
-      if (weakHit) { tag = " 弱点!"; b.combo = (b.combo || 0) + 1; rpgGoalBump("weak", 1); if (rpgCodexLearn(tgt.id, sk.el)) rpgBLog(`📖 ${tgt.ref.n}の弱点「${RPG_ELEM[sk.el]}」を見つけた！`, "good"); }
+      if (weakHit) { tag = " 弱点!"; b.combo = (b.combo || 0) + 1; rpgGoalBump("weak", 1);
+        const hh = 5 + Math.floor(d.lv * 0.8); d.hp = Math.min(d.maxhp, d.hp + hh); const pp = rpgPlayerPt(); rpgFx.spot(pp.x, pp.y - 16, "+" + hh, "heal");   // 弱点ヒット＝巧く戦うと回復（反射タイミングではなく戦略）
+        if (rpgCodexLearn(tgt.id, sk.el)) rpgBLog(`📖 ${tgt.ref.n}の弱点「${RPG_ELEM[sk.el]}」を見つけた！`, "good"); }
       else if (mult === 0.5) tag = " 耐性…";
       rpgBLog(`${RPG_ELEM_IC[sk.el]} ${sk.n}！ ${tgt.ref.n}に${dmg}ダメージ${tag}`, weakHit ? "good" : "");
       rpgSfx(weakHit ? "win" : "tick");
@@ -1612,7 +1619,6 @@ function rpgStartBattleRaf(cv) {
     _rpgBRaf = 0;
     if (RPG && RPG.mode === "battle" && state.ui.screen === "mall_rpg" && RPG._btlCv && RPG._btlCv.isConnected) {
       try { rpgDrawBattle(RPG._btlCv, t); } catch (e) {}
-      if (RPG._beatMk && RPG._beatMk.isConnected) RPG._beatMk.style.left = (rpgBeatPos() * 100) + "%";   // タイミングバー駆動
       _rpgBRaf = requestAnimationFrame(loop);
     }
   };
@@ -1700,6 +1706,7 @@ function rpgMiniMap() {
 // ── 戦闘画面（シーンは1枚canvas／コマンドは単純な縦積み＝崩れない）
 function rpgRenderBattle(app) {
   const d = rpgData(), b = RPG.battle;
+  if (b.phase === "cmd" && !(b.enemies[b.target] && b.enemies[b.target].alive)) rpgAutoPickTarget();   // 狙いは自動
   // ===== 斜め視点シーン（全部canvasに描画） =====
   const scr = el("div", "rpg-battle");   // 縦いっぱい：アリーナ(伸縮)＋コマンド(下部固定＝親指ゾーン)
   const arena = el("div", "rpg-bt-arena");
@@ -1752,13 +1759,10 @@ function rpgRenderBattle(app) {
   if (b.log[0]) lg.appendChild(el("div", "rpg-logline " + b.log[0].cls + " fresh", b.log[0].t));
   panel.appendChild(lg);
 
-  // ⏱ タイミングバー（cmd時のみ・中央でJUST＝回復つき）
-  if (b.phase === "cmd") {
-    const beatW = el("div", "rpg-beat");
-    beatW.innerHTML = `<span class="beat-zone good"></span><span class="beat-zone just"></span><span class="beat-mk"></span><span class="beat-lb">中央でタップ＝JUST（回復つき）</span>`;
-    panel.appendChild(beatW);
-    RPG._beatMk = beatW.querySelector(".beat-mk");
-  } else { RPG._beatMk = null; }
+  // 🤖 オートバトル切替（回数の多い雑魚はおまかせ＝ノーストレス）
+  const autoBar = el("button", "rpg-autobtn" + (b.auto ? " on" : ""), b.auto ? "🤖 オートでたたかい中（タップで手動にもどる）" : "🤖 オートでたたかう");
+  autoBar.onclick = () => rpgToggleBtlAuto();
+  panel.appendChild(autoBar);
 
   // ── ワンタップ・アクションデッキ（多段メニュー廃止＝技も道具も1タップ）
   const cmd = el("div", "rpg-deck");
@@ -1802,6 +1806,8 @@ function rpgRenderBattle(app) {
   panel.appendChild(cmd);
   scr.appendChild(panel);
   app.appendChild(scr);
+  // オート進行ループ（cmd時に次の手を自動で。手動タップが割り込んでもOK）
+  if (b.auto && b.phase === "cmd" && !RPG.busy) { clearTimeout(RPG._btlAutoT); RPG._btlAutoT = setTimeout(rpgAutoBattleTick, 430); }
 }
 function rpgBackBtn() { const b = el("button", "rpg-cmdbtn back", "<b>↩ もどる</b>"); b.onclick = () => rpgCmdBack(); return b; }
 

@@ -4748,3 +4748,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-fxbanner.good { color:#ffe45e; font-size:38px; }
 
 @media (prefers-reduced-motion: reduce) { .rpg-act.ult.full, .mpsp.sp.full, .rpg-hp2.low { animation:none; } }
+
+/* 🤖 オートバトル切替 */
+.rpg-autobtn { width:100%; min-height:46px; margin:2px 0 8px; padding:11px; border-radius:13px; cursor:pointer; font-size:14px; font-weight:800;
+  color:#dfeaff; border:1px solid rgba(120,180,230,.4); background:linear-gradient(135deg, rgba(50,66,92,.92), rgba(34,46,66,.96)); }
+.rpg-autobtn.on { color:#0a1a12; background:linear-gradient(135deg,#46b06a,#7be0a0); border-color:rgba(140,230,160,.6); box-shadow:0 0 12px rgba(90,220,140,.4); }
+.rpg-autobtn:active { transform:scale(.98); }
