@@ -180,6 +180,19 @@ var Sfx = (function () {
           noiseSwell(t + 0.05, 1.5, 0.20, 1500, 0.7);  // 主体
           noiseSwell(t + 0.12, 1.3, 0.10, 3000, 0.9);  // 明るい上層
           break;
+        case "amb_wave": // 🌊 さざ波／そよ風（やわらかいスウェル・環境音）
+          noiseSwell(t,        1.3, 0.05, 480,  0.45);
+          noiseSwell(t + 0.18, 1.0, 0.03, 1100, 0.7);
+          break;
+        case "amb_crowd": // 👥 遠いざわめき（人波のフロア）
+          noiseSwell(t,        1.5, 0.045, 700,  0.6);
+          noiseSwell(t + 0.12, 1.2, 0.025, 1700, 0.85);
+          break;
+        case "amb_chime": // 🔔 上品なベル（高級フロア・館内放送ふう）
+          tone(1318.5, t,        0.55, "sine", 0.045);
+          tone(1760.0, t + 0.14, 0.6,  "sine", 0.035);
+          tone(2093.0, t + 0.30, 0.5,  "sine", 0.025);
+          break;
       }
     } catch (e) {}
   }

@@ -129,6 +129,15 @@ const RPG_MONS = {
 const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid", "luxe", "hula", "madam", "influencer"];
 const RPG_MONSTERS_MINOR = ["slime", "mannequin", "escalator"];
 const RPG_KUNLUN = ["kowako", "shisa", "kumonosei"];   // 崑崙島の固有モンスター（図鑑・タワー出現に合流）
+// 🔊 フロア別の環境音（さざ波／ざわめき／上品なベル）。索引＝フロア番号。
+const RPG_AMB = ["amb_wave", "amb_wave", "amb_crowd", "amb_wave", "amb_chime", "amb_chime", "amb_crowd", "amb_wave"];
+function rpgAmbient(force) {
+  if (!RPG || RPG.mode !== "explore" || !window.state || state.ui.screen !== "mall_rpg") return;
+  const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+  if (!force && now < (RPG._ambNext || 0)) return;
+  RPG._ambNext = now + 8500 + Math.random() * 5000;     // 8.5〜13.5秒ごとにそっと鳴らす
+  rpgSfx(RPG_AMB[(RPG.tower ? 0 : RPG.fi) % RPG_AMB.length]);
+}
 
 // ── 迷宮マップ（# 壁 / . 床 / S 入口 / T 宝 / F=上り階段 or ボス出口）。
 // 連結確認済みの基本形を回転/反転して各フロアに展開（変形は連結性を保つ）。
@@ -240,6 +249,7 @@ function rpgLoadFloor(i) {
   rpgApplyClosures();                       // 🚧 この潜入だけの通路閉鎖（道順がランダムに変わる）
   RPG.explored = {}; RPG.explored[sx + "," + sy] = 1;
   if (RPG._closedN > 0) rpgLog(`🚧 きょうは通路が${RPG._closedN}か所 閉鎖中。道が変わってる！`, "good");
+  RPG._ambNext = 0; setTimeout(() => rpgAmbient(true), 400);   // 🔊 フロアの環境音を入場時にそっと
   const d = rpgData();
   // フロア・ミッション（任意＋達成ボーナス）：入場のたびに進捗リセット
   const g = rpgFloorMeta(i).goal;
@@ -1357,7 +1367,10 @@ function rpgScene(ctx, env) {
   const WALL = [236, 232, 224], FLOOR = [206, 198, 186], CEIL = [240, 242, 244], TRIM = [120, 112, 100], GLASS = [200, 224, 230];
   // 🏝️ オープンエア：天井を閉じず“開いた空”にする（中央＝空・両脇＝建物の軒）。
   const openAir = env.openAir !== false;
-  const SKY_HI = sunset ? [255, 188, 142] : [140, 192, 232], SKY_LO = sunset ? [255, 222, 182] : [204, 230, 246];
+  // 🕖 時間帯：低層=昼の青空 → 上層=黄昏 → 屋上=夕焼け（dusk 0..1で空色を補間）
+  const lerp3 = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  const dusk = Math.max(0, Math.min(1, env.dusk != null ? env.dusk : (sunset ? 1 : 0)));
+  const SKY_HI = lerp3([140, 192, 232], [255, 176, 128], dusk), SKY_LO = lerp3([206, 230, 246], [255, 220, 180], dusk);
   const EAVE = [222, 216, 206];
   const rect = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W * 0.5) * s, t: cy - (H * 0.5) * s, r: cx + (W * 0.5) * s, b: cy + (H * 0.5) * s }; }
   const yN = (r, f) => r.t + f * (r.b - r.t), xN = (r, f) => r.l + f * (r.r - r.l);
@@ -1376,7 +1389,7 @@ function rpgScene(ctx, env) {
     for (let i = 0; i < 3; i++) {
       const cyy = cy * (0.16 + i * 0.17), cw = W * (0.10 + i * 0.03), chh = cw * 0.42;
       const cxx = ((ph * (5 + i * 4) + i * W * 0.45) % (W + cw * 2.4)) - cw * 1.2;
-      ctx.fillStyle = rgba([255, 255, 255], 1, sunset ? 0.42 : 0.66);
+      ctx.fillStyle = rgba(lerp3([255, 255, 255], [255, 224, 202], dusk), 1, 0.66 - dusk * 0.22);
       ctx.beginPath();
       if (ctx.ellipse) { ctx.ellipse(cxx, cyy, cw, chh, 0, 0, 7); ctx.ellipse(cxx + cw * 0.7, cyy + chh * 0.25, cw * 0.66, chh * 0.8, 0, 0, 7); ctx.ellipse(cxx - cw * 0.65, cyy + chh * 0.2, cw * 0.6, chh * 0.7, 0, 0, 7); }
       else { ctx.arc(cxx, cyy, chh, 0, 7); }
@@ -1500,10 +1513,23 @@ function rpgScene(ctx, env) {
     }
   }
 
+  // 👥 通行客（遠景シルエット）＝賑わうモールの空気感（純コスメ・当たり判定なし）
+  if (!wall(1, 0) && !wall(2, 0)) {
+    const R = rect[2], fh = (R.b - R.t) * 0.42;
+    for (let i = 0; i < 3; i++) {
+      const sp = 0.05 + i * 0.025, dir = i % 2 ? 1 : -1;
+      let f = (ph * sp + i * 0.37) % 1; if (dir < 0) f = 1 - f;
+      const wx = xN(R, 0.22 + f * 0.56), wy = R.b + Math.sin(ph * 3 + i) * fh * 0.03;
+      const dark = 1 - dusk * 0.4, col = `rgba(${(64 * dark) | 0},${(58 * dark) | 0},${(72 * dark) | 0},0.45)`;
+      ctx.fillStyle = "rgba(0,0,0,.16)"; ctx.beginPath(); ctx.ellipse ? ctx.ellipse(wx, wy, fh * 0.2, fh * 0.05, 0, 0, 7) : ctx.arc(wx, wy, fh * 0.1, 0, 7); ctx.fill();
+      poly([[wx - fh * 0.12, wy], [wx + fh * 0.12, wy], [wx + fh * 0.08, wy - fh * 0.6], [wx - fh * 0.08, wy - fh * 0.6]], col);
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(wx, wy - fh * 0.7, fh * 0.11, 0, 7); ctx.fill();
+    }
+  }
   // 光のシャフト（天窓から床へ）
   ctx.save(); ctx.globalAlpha = 0.10; let ls = ctx.createLinearGradient(0, rect[maxD].t, 0, H); ls.addColorStop(0, "rgb(255,250,225)"); ls.addColorStop(1, "rgba(255,250,225,0)"); ctx.fillStyle = ls; poly([[xN(rect[maxD], 0.42), rect[maxD].t], [xN(rect[maxD], 0.58), rect[maxD].t], [W * 0.72, H], [W * 0.28, H]], ls); ctx.restore();
   // 遠景もや（空気遠近）
-  ctx.save(); ctx.globalAlpha = 0.5; let hz = ctx.createLinearGradient(0, cy - 18, 0, cy + 22); hz.addColorStop(0, "rgba(255,255,255,0)"); hz.addColorStop(0.5, sunset ? "rgba(255,220,190,0.5)" : "rgba(225,240,248,0.55)"); hz.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = hz; ctx.fillRect(0, cy - 22, W, 46); ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.5; let hz = ctx.createLinearGradient(0, cy - 18, 0, cy + 22); hz.addColorStop(0, "rgba(255,255,255,0)"); hz.addColorStop(0.5, dusk > 0.45 ? "rgba(255,220,190,0.5)" : "rgba(225,240,248,0.55)"); hz.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = hz; ctx.fillRect(0, cy - 22, W, 46); ctx.restore();
 }
 
 function rpgDrawView(cv, t) {
@@ -1512,7 +1538,8 @@ function rpgDrawView(cv, t) {
   const ctx = cv.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   const fl = rpgFloorMeta(RPG.fi) || {};
-  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: fl.accent || [120, 160, 200], sunset: !!fl.sky, openAir: !fl.tower, cell: (d, l) => rpgAhead(d, l) });
+  const dusk = fl.tower ? 0.2 : (fl.sky ? 1 : RPG.fi / Math.max(1, RPG_FLOORS.length - 1));
+  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: fl.accent || [120, 160, 200], sunset: !!fl.sky, dusk: dusk, openAir: !fl.tower, cell: (d, l) => rpgAhead(d, l) });
   // 前方アイコン（宝箱/階段/ボス）＋ふわふわ
   const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46, maxD = 4, pp = 0.6, ph = t / 1000;
   const rt = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(pp, d); rt[d] = { t: cy - H * 0.5 * s, b: cy + H * 0.5 * s }; }
@@ -1813,6 +1840,7 @@ function rpgStartAmbient(cv) {
     _rpgRaf = 0;
     if (RPG && RPG.mode === "explore" && state.ui.screen === "mall_rpg" && RPG._viewCv && RPG._viewCv.isConnected) {
       try { rpgDrawView(RPG._viewCv, t); } catch (e) {}
+      rpgAmbient();                                   // 🔊 環境音を周期的にそっと鳴らす（自前スロットル）
       _rpgRaf = requestAnimationFrame(loop);
     }
   };
