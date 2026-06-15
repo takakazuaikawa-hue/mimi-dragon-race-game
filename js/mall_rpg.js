@@ -388,6 +388,15 @@ const rpgFx = {
   shakeApp() { const a = document.getElementById("app"); if (!a) return; a.classList.remove("rpg-shake"); void a.offsetWidth; a.classList.add("rpg-shake"); setTimeout(() => a.classList.remove("rpg-shake"), 420); },
   flash(cls) { const n = document.createElement("div"); n.className = "rpg-fxflash " + (cls || ""); this.layer().appendChild(n); setTimeout(() => n.remove(), 520); },
   cover(cls, ms, cb) { const n = document.createElement("div"); n.className = "rpg-fxcover " + (cls || ""); this.layer().appendChild(n); if (cb) setTimeout(cb, ms * 0.45); setTimeout(() => n.remove(), ms); },
+  // バトル突入トランジション：上下のバーが閉じて開く＋フラッシュ＋ラベルズーム（kind: enc/boss/rare）
+  encounter(kind) {
+    const n = document.createElement("div"); n.className = "rpg-enc " + (kind || "enc");
+    const label = kind === "boss" ? "👹 BOSS" : (kind === "rare" ? "✨ おたからチャンス ✨" : "⚔ バトル！");
+    n.innerHTML = '<div class="enc-flash"></div><div class="enc-bar top"></div><div class="enc-bar bot"></div><div class="enc-seam"></div><div class="enc-label"></div>';
+    n.querySelector(".enc-label").textContent = label;
+    this.layer().appendChild(n);
+    setTimeout(() => n.remove(), 1050);
+  },
   // フロア切替の余韻：ゆっくり暗転→フロア名がふわっと浮かぶ→明転（cbは暗転しきった頃に呼ぶ）
   floorCard(name, sub, accent, cb) {
     const ac = accent ? "rgb(" + accent[0] + "," + accent[1] + "," + accent[2] + ")" : "#7fd0ff";
@@ -400,6 +409,12 @@ const rpgFx = {
   },
 
 };
+// SPゲージ加算＝MAX到達の瞬間に「ぱほぱほMAX！」を一度だけ告知（演出の欠落を補う）
+function rpgAddGauge(b, amt) {
+  if (!b) return; const was = b.gauge || 0;
+  b.gauge = Math.min(100, was + amt);
+  if (was < 100 && b.gauge >= 100) { rpgFx.banner("✨ ぱほぱほMAX！", "victory"); rpgSfx("streak"); }
+}
 function rpgEnemyEl(i) { return document.getElementById("rpg-enemy-" + i); }
 function rpgPlayerEl() { return document.getElementById("rpg-mimichar") || document.getElementById("rpg-bhud"); }
 // canvas戦闘の座標→画面座標（FX配置用）
@@ -428,8 +443,8 @@ function rpgEncounter(boss) {
   rpgComputeIntents();               // 敵の行動予告（読み合い）
   rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : (rare ? `✨ おたからチャンス！ ${enemies.map(e => e.ref.n).join("・")}（ごほうび倍）` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`));
   rpgSfx(rare ? "win" : "alert");
-  rpgFx.cover(rare ? "rare" : "enc", rare ? 700 : 520);     // エンカウント演出
-  rpgFx.banner(boss ? "👹 BOSS!" : (rare ? "✨ おたからチャンス！ ✨" : "⚔️ BATTLE!"), boss ? "down" : (rare ? "victory" : "more"));
+  rpgFx.encounter(boss ? "boss" : (rare ? "rare" : "enc"));   // バトル突入トランジション
+  rpgFx.shakeApp();
   renderMallRpg();
 }
 function rpgBLog(t, cls) { if (RPG && RPG.battle) { RPG.battle.log.unshift({ t, cls: cls || "" }); RPG.battle.log = RPG.battle.log.slice(0, 6); } }
@@ -502,7 +517,7 @@ function rpgUseSkill(id) {
     if (mult === 0) { rpgBLog(`${RPG_ELEM_IC[sk.el]} ${sk.n}！ …${tgt.ref.n}には効かない！`, ""); rpgSfx("tick"); rpgFx.spot(ep.x, ep.y, "NULL", "nullx"); }
     else {
       tgt.hp -= dmg; tgt._flash = (typeof performance !== "undefined" ? performance.now() : Date.now());
-      b.gauge = Math.min(100, (b.gauge || 0) + (weakHit ? 22 : 12));
+      rpgAddGauge(b, weakHit ? 22 : 12);
       let tag = "";
       if (weakHit) { tag = " 弱点!"; b.combo = (b.combo || 0) + 1; rpgGoalBump("weak", 1); if (rpgCodexLearn(tgt.id, sk.el)) rpgBLog(`📖 ${tgt.ref.n}の弱点「${RPG_ELEM[sk.el]}」を見つけた！`, "good"); }
       else if (mult === 0.5) tag = " 耐性…";
@@ -610,7 +625,12 @@ function rpgEnemyStep(idx) {
       d.hp -= dealt;
       rpgBLog(`${e.ref.ic} ${e.ref.act || (e.ref.n + "の攻撃！")}${b.guard ? "（ガード）" : ""} ${dealt}ダメージ。`, "bad");
     }
-    if (dealt > 0) { b.combo = 0; b.gauge = Math.min(100, (b.gauge || 0) + 15); const p = rpgPlayerPt(); rpgFx.spot(p.x, p.y, "-" + dealt, "pdmg"); rpgFx.flash("hurt"); rpgSfx("tick"); }
+    if (dealt > 0) {
+      b.combo = 0; rpgAddGauge(b, 15); const p = rpgPlayerPt(); rpgFx.spot(p.x, p.y, "-" + dealt, "pdmg"); rpgFx.flash("hurt"); rpgSfx("tick");
+      // 低HP警告：25%以下に踏み込んだ瞬間に一度だけ「ピンチ！」
+      const hpWas = d.hp + dealt;
+      if (d.hp > 0 && d.hp <= d.maxhp * 0.25 && hpWas > d.maxhp * 0.25) { rpgFx.banner("⚠️ ピンチ！", "bad"); rpgFx.flash("hurt"); rpgSfx("alert"); }
+    }
     rpgSave();
     if (d.hp <= 0) { d.hp = 0; b.anim = null; setTimeout(() => rpgBattleLose(), 380); }
   }, 230);
@@ -638,7 +658,7 @@ function rpgToPlayer() {
 function rpgGuard() {
   const b = RPG.battle;
   if (!b || b.phase !== "cmd" || RPG.busy) return;
-  b.guard = true; b.gauge = Math.min(100, (b.gauge || 0) + 12); b.sub = null;
+  b.guard = true; rpgAddGauge(b, 12); b.sub = null;
   rpgBLog("🛡️ みをまもった！", "good"); rpgSfx("unlock");
   RPG.busy = true; b.phase = "anim"; rpgSave();
   setTimeout(() => rpgAfterAct(false), 300);
@@ -1700,7 +1720,7 @@ function rpgRenderBattle(app) {
     `<div class="rpg-bhud-name">🧝 ミミ <b>Lv${d.lv}</b>` +
     ((b.combo || 0) >= 2 ? `<span class="rpg-combo lvl${Math.min(5, Math.floor(b.combo / 3) + 1)}">🔥×${b.combo}</span>` : "") + `</div>` +
     `<div class="rpg-bars3">` +
-    `<span class="rpg-b3"><i>HP</i><span class="rpg-hpbar big"><span style="width:${Math.round(d.hp / d.maxhp * 100)}%"></span></span><b>${d.hp}/${d.maxhp}</b></span>` +
+    `<span class="rpg-b3"><i>HP</i><span class="rpg-hpbar big${d.hp <= d.maxhp * 0.25 ? " low" : ""}"><span style="width:${Math.round(d.hp / d.maxhp * 100)}%"></span></span><b>${d.hp}/${d.maxhp}</b></span>` +
     `<span class="rpg-b3"><i>MP</i><span class="rpg-mpbar"><span style="width:${Math.round(d.mp / d.maxmp * 100)}%"></span></span><b>${d.mp}/${d.maxmp}</b></span>` +
     `<span class="rpg-b3"><i>SP</i><span class="rpg-gauge${(b.gauge || 0) >= 100 ? " full" : ""}"><span style="width:${Math.round(b.gauge || 0)}%"></span></span><b>${(b.gauge || 0) >= 100 ? "MAX" : Math.round(b.gauge || 0)}</b></span>` +
     `</div>`;

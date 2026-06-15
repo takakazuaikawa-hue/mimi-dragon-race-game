@@ -4647,3 +4647,26 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .fin-card.in { animation: none; opacity: 1; }
   .fin-card.finale .fin-ic { animation: none; }
 }
+
+/* ===== バトル突入トランジション（上下バー＋フラッシュ＋ラベル） ===== */
+.rpg-enc { position:absolute; inset:0; overflow:hidden; }
+.rpg-enc .enc-flash { position:absolute; inset:0; background:#fff; animation:encFlash .5s ease-out forwards; }
+.rpg-enc.boss .enc-flash { background:radial-gradient(circle,#fff 0%,#ff5252 80%); }
+.rpg-enc.rare .enc-flash { background:radial-gradient(circle,#fff7d6 0%,#ffce5a 80%); }
+@keyframes encFlash { 0%{ opacity:0; } 7%{ opacity:.95; } 100%{ opacity:0; } }
+.rpg-enc .enc-bar { position:absolute; left:0; right:0; height:52%; background:linear-gradient(180deg,#241a3a,#0a0814); z-index:1; }
+.rpg-enc .enc-bar.top { top:0; animation:encTop .95s cubic-bezier(.5,0,.25,1) forwards; }
+.rpg-enc .enc-bar.bot { bottom:0; animation:encBot .95s cubic-bezier(.5,0,.25,1) forwards; }
+@keyframes encTop { 0%{ transform:translateY(-101%);} 34%{ transform:translateY(0);} 60%{ transform:translateY(0);} 100%{ transform:translateY(-101%);} }
+@keyframes encBot { 0%{ transform:translateY(101%);} 34%{ transform:translateY(0);} 60%{ transform:translateY(0);} 100%{ transform:translateY(101%);} }
+.rpg-enc .enc-seam { position:absolute; left:0; right:0; top:50%; height:3px; transform:translateY(-50%); z-index:2;
+  background:linear-gradient(90deg,transparent,#fff,transparent); opacity:0; animation:encSeam .95s ease-out forwards; }
+@keyframes encSeam { 0%,30%{ opacity:0;} 38%{ opacity:1;} 58%{ opacity:.8;} 64%,100%{ opacity:0;} }
+.rpg-enc .enc-label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:3;
+  font-size:38px; font-weight:900; color:#fff; letter-spacing:2px; text-shadow:0 3px 18px rgba(0,0,0,.7); animation:encLabel .95s ease-out forwards; }
+.rpg-enc.boss .enc-label { color:#ff8a8a; }
+.rpg-enc.rare .enc-label { color:#ffe07a; }
+@keyframes encLabel { 0%{ opacity:0; transform:scale(2.2) rotate(-7deg);} 30%{ opacity:1; transform:scale(1) rotate(0);} 66%{ opacity:1; transform:scale(1);} 100%{ opacity:0; transform:scale(1.08);} }
+/* 低HPピンチ：HPバーの脈動 */
+.rpg-hpbar.low { animation:rpgpulse .8s ease-in-out infinite; box-shadow:0 0 9px rgba(255,70,100,.7); }
+@media (prefers-reduced-motion: reduce) { .rpg-enc { display:none; } .rpg-hpbar.low { animation:none; } }
