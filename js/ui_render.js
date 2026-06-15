@@ -77,7 +77,7 @@ function beginScreen() {
   // quick back button pinned at the very top of sub-pages (sticky), so you don't have to
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
-    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home",
+    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home",
     life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
@@ -627,6 +627,17 @@ function renderHome() {
   floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
   stage.appendChild(floatBox);
 
+  // 🎯 目標（クエスト）チップ：ステージ左上に常設。現在の目標＋進捗。タップで一覧へドリルダウン（表示専用・js/goals.js）。
+  if (typeof nextGoal === "function") {
+    const _ng = nextGoal(); const _gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
+    const goalBtn = el("button", "hl-goal");
+    goalBtn.innerHTML = _ng
+      ? `<span class="hl-goal-k">🎯 つぎの目標</span><span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-p"><i style="width:${_gs.total ? Math.round(_gs.done / _gs.total * 100) : 0}%"></i></span><span class="hl-goal-n">${_gs.done}/${_gs.total} 達成 ▸</span>`
+      : `<span class="hl-goal-k">🎯 目標</span><span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">${_gs.done}/${_gs.total} ▸</span>`;
+    goalBtn.onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
+    stage.appendChild(goalBtn);
+  }
+
   // 背景の火の粉（CSSのみで常時ゆらめく・reduced-motionでは非表示）＝画面が止まって見えない
   const emb = el("div", "hl-embers");
   emb.innerHTML = "<span></span><span></span><span></span><span></span><span></span><span></span><span></span>";
@@ -1152,6 +1163,37 @@ let _lifeTab = null;   // 選択中の枝（null は自動選択）
 
 // 暮らし＝コンパクトなダッシュボード。状態は小さくグラフィカルに、情報量の多いもの
 //（スキルツリー＝約200ノード／コレクション＝約200点）は専用画面へ遷移させてスクロールを抑える。
+// 🎯 目標（クエスト）一覧＝ホーム左上チップのドリルダウン先。段（物語進行）ごとに達成/挑戦中/未達を表示。
+// 完全に表示専用＝goals.js の done(state) を読むだけ。js/goals.js
+function renderGoals() {
+  state.ui.screen = "goals";
+  const app = beginScreen();
+  app.appendChild(el("h2", null, "🎯 目標（クエスト）"));
+  const gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
+  app.appendChild(el("div", "as-hint2", `ストーリーを進めながら、ひとつずつクリアしていこう。`));
+  const bar = el("div", "goals-bar");
+  bar.innerHTML = `<i style="width:${gs.total ? Math.round(gs.done / gs.total * 100) : 0}%"></i><b>${gs.done}/${gs.total} 達成</b>`;
+  app.appendChild(bar);
+  const ng = (typeof nextGoal === "function") ? nextGoal() : null;
+  (typeof GOAL_PHASES !== "undefined" ? GOAL_PHASES : []).forEach(ph => {
+    const items = GOALS.filter(g => g.phase === ph.id);
+    if (!items.length) return;
+    app.appendChild(el("div", "as-sec", ph.label));
+    const list = el("div", "goals-list");
+    items.forEach(g => {
+      const done = (typeof goalDone === "function") ? goalDone(g) : false;
+      const isNext = ng && g.id === ng.id;
+      const row = el("div", "goal-row" + (done ? " done" : "") + (isNext ? " next" : ""));
+      row.innerHTML =
+        `<span class="goal-ic">${done ? "✅" : (isNext ? "🎯" : g.icon)}</span>` +
+        `<span class="goal-tx"><b>${g.title}</b><small>${done ? "達成ずみ" : g.hint}</small></span>` +
+        `<span class="goal-st">${done ? "✓ クリア" : (isNext ? "挑戦中" : "")}</span>`;
+      list.appendChild(row);
+    });
+    app.appendChild(list);
+  });
+}
+
 function renderAssets() {
   state.ui.screen = "assets";
   recomputeAssets(state);
