@@ -100,7 +100,7 @@ utils → data_*（純データ）→ state → *_engine（純ロジック）→
 ## 6. 最適化の方針（今後）
 
 - ✅**ルーティング集約＝完了**（nav.js）。画面追加が1箇所で済み、`?go=`で検証が速い。
-- ✅**分割第1弾＝`ui_meta.js`**（renderGoals/renderMeals/showMealDetail/_mealTab）。✅**第2弾＝`ui_assets.js`**（renderAssets/renderActiveSkills/showSkillTitleCutin/renderLifeTree/renderLifeCollection＋_lifeTab/_ltJustUnlocked）。いずれも ui_render.js から**無改変で移動**・`?go=`で全画面スモーク→コンソール0確認済（ui_render.js 約5000→約4500行）。
-- 🔜**残りの候補**：`ui_story.js`(story/consult/help・`?go=`検証可) ／ `ui_race.js`(select/detail/run/result/analysis・**settleRace/onConfirmBetは賭け・状態に絡むため要注意＋race状態が無いと検証困難**) ／ `ui_home.js`(ホーム＝最大・中枢で高リスク)。**1ファイルずつ・各段階で`?go=`スモーク→デプロイ。検証できない/危険なものは無理に動かさない**＝[[race-math-immutable]]優先。nav.js が橋渡し。
+- ✅**分割済（3弾・ui_render.js 約5000→約4390行）**：①`ui_meta.js`(renderGoals/renderMeals/showMealDetail/_mealTab) ②`ui_assets.js`(renderAssets/renderActiveSkills/showSkillTitleCutin/renderLifeTree/renderLifeCollection＋_lifeTab/_ltJustUnlocked) ③`ui_story.js`(renderStory/renderStoryChapter/renderConsult)。すべて ui_render.js から**無改変で移動**（共有helperは残置・グローバル参照で不変）、`?go=`で各画面スモーク→コンソール0で確認済。
+- ⏸**意図的に保留（高リスク・低検証性）**：`ui_race.js`(renderRaceSelect/renderRaceDetail/**settleRace=レース確定＋終章フック**/onConfirmBet/renderRaceRun/broadcast/renderResult)＝**賭け・レース状態・数値engineに隣接し、race状態が無いと`?go=`検証できない**。`ui_home.js`(renderHome＝約600行・中枢・多数のhelper/canvas/intervalと密結合)。**この2つは無理に動かさない**（[[race-math-immutable]]＋「動く本体を壊さない」を優先）。やるなら1関数ずつ＋実レースを組んでの検証が必須。nav.js が橋渡しなので、未分割でも保守性は確保。
 - 🔜 race_canvas.js / mall_rpg.js も大きいが自己完結度が高い。
 - 原則：**抽出はロジックを変えず移すだけ**。1ファイルずつ・プレビュー(`?go=`)で全画面スモーク→デプロイ。数値engineには触れない。
