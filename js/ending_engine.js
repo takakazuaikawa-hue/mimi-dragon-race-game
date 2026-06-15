@@ -152,6 +152,13 @@
       view.appendChild(scroll);
       overlay.appendChild(view);
 
+      // 🔊 音量ボタン生成（操作バー用・グローバルの音量パネルを開く）。
+      function makeVolBtn() {
+        var b = document.createElement("button");
+        b.className = "edr-btn edr-vol"; b.textContent = "🔊"; b.title = "音量";
+        b.onclick = function () { if (typeof showVolumePanel === "function") showVolumePanel(); };
+        return b;
+      }
       // 操作バー：スキップ／（終了後）もう一度・閉じる
       var bar = document.createElement("div");
       bar.className = "edr-bar";
@@ -160,6 +167,7 @@
       skip.textContent = "スキップ ✕";
       skip.onclick = function () { finish(); };
       bar.appendChild(skip);
+      bar.appendChild(makeVolBtn());                 // 🔊 エンディング中も音量調整（表示専用）
       overlay.appendChild(bar);
 
       // 終了後パネル（最後のカードで停止 → もう一度／閉じる）
@@ -172,7 +180,7 @@
         var done = document.createElement("button");
         done.className = "edr-btn edr-done"; done.textContent = "🏠 とじる";
         done.onclick = function () { close(); };
-        bar.appendChild(again); bar.appendChild(done);
+        bar.appendChild(again); bar.appendChild(done); bar.appendChild(makeVolBtn());
         scroll.style.animationPlayState = "paused";
         overlay.classList.add("edr-ended");
       }
