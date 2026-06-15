@@ -1091,15 +1091,19 @@ function rpgRenderShop(app) {
 function rpgRenderExplore(app) {
   const d = rpgData();
   rpgGoalSync();   // gold/踏破型のミッション進捗を反映
-  const head = el("div", "rpg-runhead");
+  // HUDは2段で整理：上＝いる場所＋🎯目標（右に強調）／下＝バイタル（向きはミニマップの▲で表示）
+  const head = el("div", "rpg-runhead2");
   head.innerHTML =
-    `<span class="rpg-chip win">${RPG.tower ? "🌟" : "🏬"} ${rpgFloorMeta(RPG.fi).name}</span>` +
-    (RPG.goal ? `<span class="rpg-chip goal${RPG.goal.done ? " done" : ""}">${RPG.goal.done ? "✅ " + RPG.goal.label : rpgGoalChip(RPG.goal)}</span>` : "") +
-    `<span class="rpg-chip">Lv${d.lv}</span>` +
-    `<span class="rpg-chip">❤️${d.hp}/${d.maxhp}</span>` +
-    `<span class="rpg-chip">💧${d.mp}/${d.maxmp}</span>` +
-    `<span class="rpg-chip">🪙${d.gold}G</span>` +
-    `<span class="rpg-chip">🧭 ${RPG_DIRNAME[RPG.dir]}向き</span>`;
+    `<div class="rh-top">` +
+      `<span class="rpg-chip win">${RPG.tower ? "🌟" : "🏬"} ${rpgFloorMeta(RPG.fi).name}</span>` +
+      (RPG.goal ? `<span class="rpg-chip goal${RPG.goal.done ? " done" : ""}">${RPG.goal.done ? "✅ " + RPG.goal.label : rpgGoalChip(RPG.goal)}</span>` : "") +
+    `</div>` +
+    `<div class="rh-vit">` +
+      `<span class="rpg-chip hp">❤️${d.hp}/${d.maxhp}</span>` +
+      `<span class="rpg-chip mp">💧${d.mp}/${d.maxmp}</span>` +
+      `<span class="rpg-chip">🪙${d.gold}</span>` +
+      `<span class="rpg-chip">🧝Lv${d.lv}</span>` +
+    `</div>`;
   app.appendChild(head);
 
   // 一人称ビュー（HD-2D風・高解像＋ブルーム/被写界深度）＋移動の方向アニメ
