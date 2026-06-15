@@ -24,7 +24,7 @@
 - `index.html` / `style.css`（全画面共通・約3700行）
 - `js/ui_render.js` … 全画面のUI描画（最大ファイル）。ホーム=TikTokライブ風（`renderHome`・接頭辞 `hl-`）
 - `js/race_canvas.js` … レース描画（canvas）。リグ竜の色替え＝`_rcRigPartImg`（filter非対応端末はピクセル処理に自動フォールバック）
-- `js/mall_dungeon.js` … ミニゲーム「リゾートモール探検」（完全表示メタ・コイン非干渉）
+- `js/mall_rpg.js` … ミニゲーム「巨大モール大冒険」（一人称ダンジョン＋戦闘＋ショッピング・完全表示メタ・コイン非干渉。着替え画面から起動）
 - `js/dialogue.js`+`js/data_dialogue.js` … 立ち絵会話システム／`js/event_registry.js` … 全セリフ台帳（足す/消すだけで反映）
 - `js/data_assets.js` … 衣装19種（OUTFITS）。立ち絵= `images/cast/mimi/mimi_{outfit}_{default|smile|happy|panic}.webp`
 - `js/state.js` … セーブ（localStorage）。`js/sfx.js`（合成SE）/`js/bgm.js`（レースBGM・RACE_BGM_TRACKSに手動列挙）
