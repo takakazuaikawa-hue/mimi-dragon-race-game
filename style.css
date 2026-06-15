@@ -4697,6 +4697,15 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-movebtn.pause { background:linear-gradient(135deg,#3a6f9e,#5fa8ce); }
 .rpg-movebtn.play { background:linear-gradient(135deg,#5b3f86,#7a4fae); }
 .rpg-movebtn.wide:active { transform:scale(.98); }
+.rpg-movebtn.stairs { background:linear-gradient(135deg,#2f7d6b,#46b08a); border:1px solid rgba(120,230,190,.5); box-shadow:0 0 14px rgba(70,200,150,.45); animation:rpgpulse 1.8s ease-in-out infinite; }
+.rpg-movebtn.shopenter { background:linear-gradient(135deg,#c8743f,#e0a35f); border:1px solid rgba(255,180,120,.55); }
+.rpg-movebtn.shopenter.has { box-shadow:0 0 14px rgba(255,180,110,.5); animation:rpgpulse 1.8s ease-in-out infinite; }
+.rpg-movebtn.wide:disabled { opacity:.55; filter:grayscale(.4); animation:none; cursor:default; }
+/* 文脈アクション帯：高さ固定でドックを揺らさない（階段/店頭で中身だけ差し替え） */
+.rpg-ctx { min-height:50px; display:flex; align-items:stretch; }
+.rpg-ctx > * { width:100%; }
+.rpg-ctx-idle { display:flex; align-items:center; justify-content:center; min-height:50px; border-radius:14px;
+  border:1px dashed rgba(150,120,200,.35); background:rgba(40,32,56,.5); color:#b9add0; font-size:13px; font-weight:700; }
 .rpg-dock-acts { display:flex; gap:8px; }
 .rpg-actbtn { flex:1; min-height:50px; padding:13px; font-size:15px; font-weight:800; color:#fff; cursor:pointer; position:relative;
   border:1px solid rgba(150,120,200,.35); border-radius:14px; }
@@ -4718,6 +4727,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .rpg-explore, .rpg-battle { min-height:calc(100svh - 86px); }
   .rpg-padbtn2 { min-height:50px; font-size:20px; }
   .rpg-movebtn.wide, .rpg-actbtn { min-height:46px; }
+  .rpg-ctx, .rpg-ctx-idle { min-height:46px; }
 }
 /* ===== 終章・最終決戦の走馬灯ショー（積み上げ紹介・表示専用） ===== */
 .fin-show { position: fixed; inset: 0; z-index: 9000; overflow: hidden; cursor: pointer;
