@@ -100,7 +100,7 @@ utils → data_*（純データ）→ state → *_engine（純ロジック）→
 ## 6. 最適化の方針（今後）
 
 - ✅**ルーティング集約＝完了**（nav.js）。画面追加が1箇所で済み、`?go=`で検証が速い。
-- ✅**分割済（3弾・ui_render.js 約5000→約4390行）**：①`ui_meta.js`(renderGoals/renderMeals/showMealDetail/_mealTab) ②`ui_assets.js`(renderAssets/renderActiveSkills/showSkillTitleCutin/renderLifeTree/renderLifeCollection＋_lifeTab/_ltJustUnlocked) ③`ui_story.js`(renderStory/renderStoryChapter/renderConsult)。すべて ui_render.js から**無改変で移動**（共有helperは残置・グローバル参照で不変）、`?go=`で各画面スモーク→コンソール0で確認済。
-- ⏸**意図的に保留（高リスク・低検証性）**：`ui_race.js`(renderRaceSelect/renderRaceDetail/**settleRace=レース確定＋終章フック**/onConfirmBet/renderRaceRun/broadcast/renderResult)＝**賭け・レース状態・数値engineに隣接し、race状態が無いと`?go=`検証できない**。`ui_home.js`(renderHome＝約600行・中枢・多数のhelper/canvas/intervalと密結合)。**この2つは無理に動かさない**（[[race-math-immutable]]＋「動く本体を壊さない」を優先）。やるなら1関数ずつ＋実レースを組んでの検証が必須。nav.js が橋渡しなので、未分割でも保守性は確保。
+- ✅**分割済（4弾・ui_render.js 約5000→約3700行＝−26%）**：①`ui_meta.js`(目標/食事) ②`ui_assets.js`(暮らし/くらしツリー/習い事/暮らしコレクション) ③`ui_story.js`(物語/各話/相談) ④`ui_home.js`(renderHome＋startMimiIdle/startDragonWarp/_dailyMissionText＋_mimiGaze/_mimiIdleRAF・686行)。すべて ui_render.js から**無改変で移動**（共有helperは残置・グローバル参照で不変）、`?go=`＋スクショ＋コンソール0で確認済。
+- ⏸**残り1つだけ意図的に保留（race系）**：`ui_race.js`候補＝renderRaceSelect/renderRaceDetail/**settleRace(=レース確定＋払戻＋終章フック)**/onConfirmBet/updateExpected/renderRaceRun/broadcast系/renderResult/renderAnalysis。**賭け・レース状態・数値engineに隣接し、race状態が無いと`?go=`で検証できない**＝動く本体（特にレース数値＝[[race-math-immutable]]）を壊すリスクが検証で拾えないため**意図的に未分割**。やるなら1関数ずつ＋実レースを最後まで走らせての検証が必須。nav.js 集約済みなので未分割でも保守性は確保。残置の主なもの：updateHeader/beginScreen/各種showXxxポップ/renderMall/renderSettings/renderVillage/renderCollection/renderHelp/race系。
 - 🔜 race_canvas.js / mall_rpg.js も大きいが自己完結度が高い。
 - 原則：**抽出はロジックを変えず移すだけ**。1ファイルずつ・プレビュー(`?go=`)で全画面スモーク→デプロイ。数値engineには触れない。
