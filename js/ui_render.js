@@ -77,7 +77,7 @@ function beginScreen() {
   // quick back button pinned at the very top of sub-pages (sticky), so you don't have to
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
-    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home",
+    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
     life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
@@ -627,6 +627,17 @@ function renderHome() {
   floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
   stage.appendChild(floatBox);
 
+  // 🎯 目標（クエスト）チップ：ステージ左上に常設。現在の目標＋進捗。タップで一覧へドリルダウン（表示専用・js/goals.js）。
+  if (typeof nextGoal === "function") {
+    const _ng = nextGoal(); const _gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
+    const goalBtn = el("button", "hl-goal");
+    goalBtn.innerHTML = _ng
+      ? `<span class="hl-goal-k">🎯 つぎの目標</span><span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-p"><i style="width:${_gs.total ? Math.round(_gs.done / _gs.total * 100) : 0}%"></i></span><span class="hl-goal-n">${_gs.done}/${_gs.total} 達成 ▸</span>`
+      : `<span class="hl-goal-k">🎯 目標</span><span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">${_gs.done}/${_gs.total} ▸</span>`;
+    goalBtn.onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
+    stage.appendChild(goalBtn);
+  }
+
   // 背景の火の粉（CSSのみで常時ゆらめく・reduced-motionでは非表示）＝画面が止まって見えない
   const emb = el("div", "hl-embers");
   emb.innerHTML = "<span></span><span></span><span></span><span></span><span></span><span></span><span></span>";
@@ -977,6 +988,7 @@ function renderHome() {
     return b;
   };
   rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
+  if (typeof renderMeals === "function") rail.appendChild(navItem("🍽️", "食事", "ミミの食べ歩きコレクション。食べて・当てて集めます。", () => renderMeals()));
   if (mallUnlocked()) {
     rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
   } else {
@@ -999,8 +1011,9 @@ function renderHome() {
   rail.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
-  // 列数を“実際の項目数”に追従させ、8列固定で右に空きセル（隙間）ができるのを防ぐ（最大8列・以降は折返し）。
-  rail.style.gridTemplateColumns = "repeat(" + Math.min(rail.children.length, 8) + ", 1fr)";
+  // 列数を“実際の項目数”に追従させ、右に空きセル（隙間）ができるのを防ぐ。8以下は1行、9以上は2行に均等割り。
+  const _rn = rail.children.length;
+  rail.style.gridTemplateColumns = "repeat(" + (_rn <= 8 ? _rn : Math.ceil(_rn / 2)) + ", 1fr)";
   dock.appendChild(rail);
   wrap.appendChild(dock);
 
@@ -1152,6 +1165,113 @@ let _lifeTab = null;   // 選択中の枝（null は自動選択）
 
 // 暮らし＝コンパクトなダッシュボード。状態は小さくグラフィカルに、情報量の多いもの
 //（スキルツリー＝約200ノード／コレクション＝約200点）は専用画面へ遷移させてスクロールを抑える。
+// 🎯 目標（クエスト）一覧＝ホーム左上チップのドリルダウン先。段（物語進行）ごとに達成/挑戦中/未達を表示。
+// 完全に表示専用＝goals.js の done(state) を読むだけ。js/goals.js
+function renderGoals() {
+  state.ui.screen = "goals";
+  const app = beginScreen();
+  app.appendChild(el("h2", null, "🎯 目標（クエスト）"));
+  const gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
+  app.appendChild(el("div", "as-hint2", `ストーリーを進めながら、ひとつずつクリアしていこう。`));
+  const bar = el("div", "goals-bar");
+  bar.innerHTML = `<i style="width:${gs.total ? Math.round(gs.done / gs.total * 100) : 0}%"></i><b>${gs.done}/${gs.total} 達成</b>`;
+  app.appendChild(bar);
+  const ng = (typeof nextGoal === "function") ? nextGoal() : null;
+  (typeof GOAL_PHASES !== "undefined" ? GOAL_PHASES : []).forEach(ph => {
+    const items = GOALS.filter(g => g.phase === ph.id);
+    if (!items.length) return;
+    app.appendChild(el("div", "as-sec", ph.label));
+    const list = el("div", "goals-list");
+    items.forEach(g => {
+      const done = (typeof goalDone === "function") ? goalDone(g) : false;
+      const isNext = ng && g.id === ng.id;
+      const row = el("div", "goal-row" + (done ? " done" : "") + (isNext ? " next" : ""));
+      row.innerHTML =
+        `<span class="goal-ic">${done ? "✅" : (isNext ? "🎯" : g.icon)}</span>` +
+        `<span class="goal-tx"><b>${g.title}</b><small>${done ? "達成ずみ" : g.hint}</small></span>` +
+        `<span class="goal-st">${done ? "✓ クリア" : (isNext ? "挑戦中" : "")}</span>`;
+      list.appendChild(row);
+    });
+    app.appendChild(list);
+  });
+}
+
+// 🍽️ 食事＝ミミの食べ歩きコレクション（みみしんぼ）。段ごとに食べる/当てるで集めていく。js/meals.js
+// 完全に表示専用＝食べた/解いたを state.player.meals に記録するだけ。
+function renderMeals() {
+  state.ui.screen = "meals";
+  const app = beginScreen();
+  app.appendChild(el("h2", null, "🍽️ 食事 ― みみの食べ歩き"));
+  const all = (typeof mealStatsAll === "function") ? mealStatsAll() : { got: 0, total: 0 };
+  app.appendChild(el("div", "as-hint2", `食べて、味わって、コレクション。　<b>${all.got}/${all.total}</b> 品`));
+  (typeof MEAL_TIERS !== "undefined" ? MEAL_TIERS : []).forEach(t => {
+    const st = mealTierStats(t.id);
+    const sec = el("div", "meal-sec");
+    sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
+      `<small>${t.sub}　・　${st.got}/${st.total}　${t.mode === "guess" ? "🔍当てる" : "🍴食べる"}</small></span>`;
+    app.appendChild(sec);
+    const grid = el("div", "meal-grid");
+    mealsByTier(t.id).forEach(m => {
+      const un = mealUnlocked(m);
+      const card = el("button", "meal-card" + (un ? " got" : ""));
+      card.innerHTML = `<span class="meal-card-ic">${un ? m.icon : "❔"}</span><span class="meal-card-nm">${un ? m.name : "？？？"}</span>`;
+      card.onclick = () => showMealDetail(m);
+      grid.appendChild(card);
+    });
+    app.appendChild(grid);
+  });
+}
+// 一品の詳細＝実食（eat）or 食材/隠し味あて（guess）。解放後は何度でも読める。
+function showMealDetail(m) {
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop meal-pop");
+  const head = () => `<div class="meal-pop-ic">${m.icon}</div><div class="navpop-t">${m.name}</div>`;
+  const render = () => {
+    if (!m.quiz) {
+      // ── 食べる ──
+      if (mealEaten(m.id)) {
+        box.innerHTML = head() + `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`;
+        const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => ov.remove(); btns.appendChild(ok); box.appendChild(btns);
+      } else {
+        box.innerHTML = head() + `<div class="meal-prompt">ひとくち、いってみる？</div>`;
+        const btns = el("div", "navpop-btns");
+        const eat = el("button", "navpop-go", "🍴 いただきます！");
+        eat.onclick = () => { eatMeal(m.id); if (window.Sfx) Sfx.play("coin"); render(); };
+        const later = el("button", "navpop-cancel", "また今度"); later.onclick = () => ov.remove();
+        btns.appendChild(eat); btns.appendChild(later); box.appendChild(btns);
+      }
+    } else {
+      // ── 当てる（食材／隠し味） ──
+      if (mealSolved(m.id)) {
+        box.innerHTML = head() + `<div class="meal-desc">${m.desc}</div><div class="meal-react meal-hit">${m.quiz.hit}</div><div class="meal-note">📖 ${m.note}</div>`;
+        const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => ov.remove(); btns.appendChild(ok); box.appendChild(btns);
+      } else {
+        box.innerHTML = head() + `<div class="meal-desc">${m.desc}</div><div class="meal-q">${m.quiz.q}</div>`;
+        const ch = el("div", "meal-choices");
+        m.quiz.choices.forEach((c, i) => {
+          const cb = el("button", "meal-choice", c);
+          cb.onclick = () => {
+            if (i === m.quiz.answer) { solveMeal(m.id); if (window.Sfx) Sfx.play("bigwin"); render(); }
+            else {
+              cb.classList.add("wrong"); cb.disabled = true;
+              let fb = box.querySelector(".meal-miss");
+              if (!fb) { fb = el("div", "meal-miss", m.quiz.miss); box.appendChild(fb); }
+              if (window.Sfx) Sfx.play("miss");
+            }
+          };
+          ch.appendChild(cb);
+        });
+        box.appendChild(ch);
+        const later = el("button", "meal-x", "✕ また今度"); later.onclick = () => ov.remove(); box.appendChild(later);
+      }
+    }
+  };
+  render();
+  ov.appendChild(box);
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+
 function renderAssets() {
   state.ui.screen = "assets";
   recomputeAssets(state);
