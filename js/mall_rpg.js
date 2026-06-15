@@ -420,6 +420,22 @@ const rpgFx = {
     this.layer().appendChild(n);
     setTimeout(() => n.remove(), 1050);
   },
+  // 敵の名前カットイン：突入後にアイコン＋名前が左右から“ポンポン”と飛び込む（敵に目が向くように）
+  cutins(refs, boss) {
+    const layer = this.layer(), N = refs.length;
+    refs.forEach((m, i) => {
+      const n = document.createElement("div");
+      n.className = "rpg-cutin " + (boss ? "boss " : "") + (i % 2 ? "r" : "l");
+      n.style.setProperty("--d", (0.34 + i * 0.16) + "s");
+      n.style.setProperty("--y", (N > 1 ? 30 + i * 13 : 40) + "%");
+      const ic = document.createElement("span"); ic.className = "ci-ic"; ic.textContent = m.ic || "👾";
+      const nm = document.createElement("span"); nm.className = "ci-nm"; nm.textContent = m.n || "なぞの影";
+      n.appendChild(ic); n.appendChild(nm);
+      layer.appendChild(n);
+      setTimeout(() => { try { rpgSfx(boss ? "alert" : "tick"); } catch (e) {} }, (0.34 + i * 0.16) * 1000 + 40);
+      setTimeout(() => n.remove(), 1550 + i * 160);
+    });
+  },
   // フロア切替の余韻：ゆっくり暗転→フロア名がふわっと浮かぶ→明転（cbは暗転しきった頃に呼ぶ）
   floorCard(name, sub, accent, cb) {
     const ac = accent ? "rgb(" + accent[0] + "," + accent[1] + "," + accent[2] + ")" : "#7fd0ff";
@@ -491,6 +507,7 @@ function rpgEncounter(boss) {
   rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : (rare ? `✨ おたからチャンス！ ${enemies.map(e => e.ref.n).join("・")}（ごほうび倍）` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`));
   rpgSfx(rare ? "win" : "alert");
   rpgFx.encounter(boss ? "boss" : (rare ? "rare" : "enc"));   // バトル突入トランジション
+  rpgFx.cutins(enemies.map(e => e.ref), !!boss);               // 敵名カットイン（ポンポン）
   rpgFx.shakeApp();
   renderMallRpg();
 }
