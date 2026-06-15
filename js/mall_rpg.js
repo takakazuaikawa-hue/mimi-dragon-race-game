@@ -141,14 +141,14 @@ const RPG_BASE = [
 // 島のリゾートモール・1F→屋上。far: U=上り階段 / E=ボス(屋上)。accent=フロアのテーマ色
 // 🏝️ アラモアナを手本にした巨大オープンエア・モール（全7階＋屋上）。屋上=ボス（最終）
 const RPG_FLOORS = [
-  { name: "1F 🏄 龍鱗ビーチ通り",    t: "id",        far: "U", accent: [38, 196, 176], goal: { type: "defeat", n: 3, label: "観光客をもてなす", ic: "😌" } },
-  { name: "2F 🏊 雲海プールデッキ",   t: "mirrorH",   far: "U", accent: [64, 176, 235], goal: { type: "explore", n: 70, label: "フロアを踏破", ic: "🗺️" } },
-  { name: "3F 🍱 崑崙グルメ横丁",     t: "mirrorV",   far: "U", accent: [255, 140, 90], goal: { type: "gold", n: 250, label: "グルメで稼ぐ", ic: "🪙" } },
-  { name: "4F 🐬 海竜アドベンチャー", t: "rot180",   far: "U", accent: [40, 130, 210], goal: { type: "weak", n: 5, label: "弱点を突く", ic: "⚡" } },
-  { name: "5F 💎 龍玉ラグジュアリー大通り", t: "transpose", far: "U", accent: [222, 150, 192], goal: { type: "gold", n: 450, label: "ハイブランドで散財", ic: "👜" } },
-  { name: "6F 🏬 崑崙百貨店",         t: "id",        far: "U", accent: [150, 120, 210], goal: { type: "explore", n: 75, label: "デパートを巡る", ic: "🛗" } },
-  { name: "7F 🎪 龍神フェスステージ", t: "mirrorH",   far: "U", accent: [255, 170, 70], goal: { type: "defeat", n: 6, label: "フェスの人波をさばく", ic: "💃" } },
-  { name: "🌅 雲頂サンセットテラス",  t: "transpose", far: "E", accent: [255, 120, 150], sky: true, goal: { type: "boss", n: 1, label: "ボスを倒す", ic: "👑" } },
+  { name: "1F 🏄 龍鱗ビーチ通り",    t: "id",        far: "U", accent: [38, 196, 176], foes: ["selfie", "kid", "hula", "baku", "slime"], goal: { type: "defeat", n: 3, label: "観光客をもてなす", ic: "😌" } },
+  { name: "2F 🏊 雲海プールデッキ",   t: "mirrorH",   far: "U", accent: [64, 176, 235], foes: ["kid", "selfie", "stroller", "hula", "slime"], goal: { type: "explore", n: 70, label: "フロアを踏破", ic: "🗺️" } },
+  { name: "3F 🍱 崑崙グルメ横丁",     t: "mirrorV",   far: "U", accent: [255, 140, 90], foes: ["gourmet", "oldies", "baku", "madam", "gourmet"], goal: { type: "gold", n: 250, label: "グルメで稼ぐ", ic: "🪙" } },
+  { name: "4F 🐬 海竜アドベンチャー", t: "rot180",   far: "U", accent: [40, 130, 210], foes: ["stroller", "kid", "gourmet", "selfie", "slime"], goal: { type: "weak", n: 5, label: "弱点を突く", ic: "⚡" } },
+  { name: "5F 💎 龍玉ラグジュアリー大通り", t: "transpose", far: "U", accent: [222, 150, 192], foes: ["luxe", "madam", "influencer", "mannequin"], goal: { type: "gold", n: 450, label: "ハイブランドで散財", ic: "👜" } },
+  { name: "6F 🏬 崑崙百貨店",         t: "id",        far: "U", accent: [150, 120, 210], foes: ["madam", "oldies", "luxe", "mannequin", "escalator"], goal: { type: "explore", n: 75, label: "デパートを巡る", ic: "🛗" } },
+  { name: "7F 🎪 龍神フェスステージ", t: "mirrorH",   far: "U", accent: [255, 170, 70], foes: ["hula", "influencer", "baku", "selfie", "escalator"], goal: { type: "defeat", n: 6, label: "フェスの人波をさばく", ic: "💃" } },
+  { name: "🌅 雲頂サンセットテラス",  t: "transpose", far: "E", accent: [255, 120, 150], sky: true, foes: ["influencer", "luxe", "madam", "mannequin", "escalator"], goal: { type: "boss", n: 1, label: "ボスを倒す", ic: "👑" } },
 ];
 function rpgTransform(base, kind) {
   const m = base.map(r => r.split("")), n = m.length;
@@ -472,8 +472,9 @@ function rpgEncounter(boss) {
   let ids;
   if (boss) ids = ["boss1"];
   else {
+    const pool = (rpgFloorMeta(RPG.fi) || {}).foes;   // フロア別テーマの出現テーブル（無ければ従来の全体抽選）
     const n = Math.random() < 0.45 ? 2 : 1;
-    ids = []; for (let i = 0; i < n; i++) ids.push(Math.random() < 0.82 ? rpgPick(RPG_TOURISTS) : rpgPick(RPG_MONSTERS_MINOR));
+    ids = []; for (let i = 0; i < n; i++) ids.push(pool && pool.length ? rpgPick(pool) : (Math.random() < 0.82 ? rpgPick(RPG_TOURISTS) : rpgPick(RPG_MONSTERS_MINOR)));
   }
   const sc = 1 + RPG.fi * 0.22, scR = 1 + RPG.fi * 0.3;   // 上の階ほど手応えUP
   const enemies = ids.map(id => {
@@ -1283,6 +1284,10 @@ function rpgScene(ctx, env) {
   const SHOP_IC = ["🛍️", "👗", "🍧", "🐚", "🍹", "🎁", "👒", "🧸", "🍩", "💍"];
   // パレット（明るいリゾート基調）
   const WALL = [236, 232, 224], FLOOR = [206, 198, 186], CEIL = [240, 242, 244], TRIM = [120, 112, 100], GLASS = [200, 224, 230];
+  // 🏝️ オープンエア：天井を閉じず“開いた空”にする（中央＝空・両脇＝建物の軒）。
+  const openAir = env.openAir !== false;
+  const SKY_HI = sunset ? [255, 188, 142] : [140, 192, 232], SKY_LO = sunset ? [255, 222, 182] : [204, 230, 246];
+  const EAVE = [222, 216, 206];
   const rect = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(p, d); rect[d] = { l: cx - (W * 0.5) * s, t: cy - (H * 0.5) * s, r: cx + (W * 0.5) * s, b: cy + (H * 0.5) * s }; }
   const yN = (r, f) => r.t + f * (r.b - r.t), xN = (r, f) => r.l + f * (r.r - r.l);
   const poly = (pts, fill) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
@@ -1290,7 +1295,24 @@ function rpgScene(ctx, env) {
   const sh = d => Math.max(0.55, 1 - d * 0.1);
 
   // 空（天井）と床のベース・グラデ
-  let g = ctx.createLinearGradient(0, 0, 0, cy); g.addColorStop(0, rgb(CEIL, 0.82)); g.addColorStop(1, rgb(CEIL, 1.0)); ctx.fillStyle = g; ctx.fillRect(0, 0, W, cy + 1);
+  let g = ctx.createLinearGradient(0, 0, 0, cy);
+  if (openAir) { g.addColorStop(0, rgb(SKY_HI, 1)); g.addColorStop(1, rgb(SKY_LO, 1)); }
+  else { g.addColorStop(0, rgb(CEIL, 0.82)); g.addColorStop(1, rgb(CEIL, 1.0)); }
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, cy + 1);
+  // 開いた空にゆっくり流れる雲（オープンエアの空気感）
+  if (openAir) {
+    ctx.save();
+    for (let i = 0; i < 3; i++) {
+      const cyy = cy * (0.16 + i * 0.17), cw = W * (0.10 + i * 0.03), chh = cw * 0.42;
+      const cxx = ((ph * (5 + i * 4) + i * W * 0.45) % (W + cw * 2.4)) - cw * 1.2;
+      ctx.fillStyle = rgba([255, 255, 255], 1, sunset ? 0.42 : 0.66);
+      ctx.beginPath();
+      if (ctx.ellipse) { ctx.ellipse(cxx, cyy, cw, chh, 0, 0, 7); ctx.ellipse(cxx + cw * 0.7, cyy + chh * 0.25, cw * 0.66, chh * 0.8, 0, 0, 7); ctx.ellipse(cxx - cw * 0.65, cyy + chh * 0.2, cw * 0.6, chh * 0.7, 0, 0, 7); }
+      else { ctx.arc(cxx, cyy, chh, 0, 7); }
+      ctx.fill();
+    }
+    ctx.restore();
+  }
   g = ctx.createLinearGradient(0, cy, 0, H); g.addColorStop(0, rgb(FLOOR, 1.02)); g.addColorStop(1, rgb(FLOOR, 0.62)); ctx.fillStyle = g; ctx.fillRect(0, cy, W, H - cy);
 
   // 海の見える窓
@@ -1378,13 +1400,23 @@ function rpgScene(ctx, env) {
       if (wall(c, 1)) { ctx.save(); ctx.globalAlpha = 0.12 * k; poly([[xN(near, 0.8), near.b], [xN(far, 0.8), far.b], [far.r, far.b], [near.r, near.b]], rgb(A, 1)); ctx.restore(); }
       // 中央グロス
       ctx.save(); ctx.globalAlpha = 0.10; poly([[xN(near, 0.42), near.b], [xN(far, 0.46), far.b], [xN(far, 0.54), far.b], [xN(near, 0.58), near.b]], "rgb(255,255,255)"); ctx.restore();
-      // 天井（グラデ＋天窓＋照明パネル＋梁）
-      let cg = ctx.createLinearGradient(0, near.t, 0, far.t); cg.addColorStop(0, rgb(CEIL, k)); cg.addColorStop(1, rgb(CEIL, k * 0.9));
-      poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], cg);
-      poly([[xN(near, 0.40), near.t], [xN(far, 0.42), far.t], [xN(far, 0.58), far.t], [xN(near, 0.60), near.t]], rgba([255, 252, 240], k, 0.9)); // 天窓
-      poly([[xN(near, 0.30), far.t], [xN(far, 0.34), far.t], [xN(far, 0.66), far.t], [xN(near, 0.70), far.t]], rgba([255, 255, 235], 1, 0.8)); // 照明
-      line(near.l, near.t, far.l, far.t, rgba([90, 86, 80], k, 0.4), 1);
-      line(near.r, near.t, far.r, far.t, rgba([90, 86, 80], k, 0.4), 1);
+      if (openAir) {
+        // オープンエア天井＝中央は開いた空（ベース空が見える）、両脇に建物の軒だけ描く
+        poly([[near.l, near.t], [far.l, far.t], [xN(far, 0.20), far.t], [xN(near, 0.18), near.t]], rgb(EAVE, k));
+        poly([[xN(near, 0.82), near.t], [xN(far, 0.80), far.t], [far.r, far.t], [near.r, near.t]], rgb(EAVE, k));
+        // 軒の内側の影＋ワイヤー（吊り装飾）で“通路の上が抜けている”感
+        line(xN(near, 0.18), near.t, xN(far, 0.20), far.t, rgba([90, 86, 80], k, 0.45), 1);
+        line(xN(near, 0.82), near.t, xN(far, 0.80), far.t, rgba([90, 86, 80], k, 0.45), 1);
+        if (c <= 2) { ctx.strokeStyle = rgba([120, 116, 108], k, 0.4); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xN(near, 0.18), far.t + (near.t - far.t) * 0.5); ctx.quadraticCurveTo(cx, far.t + (near.t - far.t) * 0.62, xN(near, 0.82), far.t + (near.t - far.t) * 0.5); ctx.stroke(); }
+      } else {
+        // 天井（グラデ＋天窓＋照明パネル＋梁）
+        let cg = ctx.createLinearGradient(0, near.t, 0, far.t); cg.addColorStop(0, rgb(CEIL, k)); cg.addColorStop(1, rgb(CEIL, k * 0.9));
+        poly([[near.l, near.t], [far.l, far.t], [far.r, far.t], [near.r, near.t]], cg);
+        poly([[xN(near, 0.40), near.t], [xN(far, 0.42), far.t], [xN(far, 0.58), far.t], [xN(near, 0.60), near.t]], rgba([255, 252, 240], k, 0.9)); // 天窓
+        poly([[xN(near, 0.30), far.t], [xN(far, 0.34), far.t], [xN(far, 0.66), far.t], [xN(near, 0.70), far.t]], rgba([255, 255, 235], 1, 0.8)); // 照明
+        line(near.l, near.t, far.l, far.t, rgba([90, 86, 80], k, 0.4), 1);
+        line(near.r, near.t, far.r, far.t, rgba([90, 86, 80], k, 0.4), 1);
+      }
       // 側壁
       if (wall(c, -1)) storefront(near, far, true, k, c);
       if (wall(c, 1)) storefront(near, far, false, k, c);
@@ -1409,7 +1441,7 @@ function rpgDrawView(cv, t) {
   const ctx = cv.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   const fl = rpgFloorMeta(RPG.fi) || {};
-  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: fl.accent || [120, 160, 200], sunset: !!fl.sky, cell: (d, l) => rpgAhead(d, l) });
+  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: fl.accent || [120, 160, 200], sunset: !!fl.sky, openAir: !fl.tower, cell: (d, l) => rpgAhead(d, l) });
   // 前方アイコン（宝箱/階段/ボス）＋ふわふわ
   const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46, maxD = 4, pp = 0.6, ph = t / 1000;
   const rt = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(pp, d); rt[d] = { t: cy - H * 0.5 * s, b: cy + H * 0.5 * s }; }
