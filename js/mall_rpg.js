@@ -68,6 +68,15 @@ function rpgSave() { if (typeof saveGame === "function") saveGame(); }
 function rpgRnd(a, b) { return a + Math.random() * (b - a); }
 function rpgPick(a) { return a[Math.floor(Math.random() * a.length)]; }
 function rpgSfx(id) { try { if (window.Sfx) Sfx.play(id); } catch (e) {} }
+// canvasの描画バッファを表示サイズ（×DPR）に追従させる＝縦型フレームを余白なく埋める
+function rpgFitCanvas(cv) {
+  if (!cv || !cv.getBoundingClientRect) return;
+  const r = cv.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const dpr = Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+  if (Math.abs(cv.width - w) > 1 || Math.abs(cv.height - h) > 1) { cv.width = w; cv.height = h; }
+}
 
 // ── 属性・スキル（戦闘専用の独立計算。レース数式とは無関係）
 const RPG_ELEM = { phys: "物理", fire: "火", ice: "氷", elec: "電", force: "力", heal: "回復" };
@@ -1087,11 +1096,13 @@ function rpgRenderShop(app) {
   app.appendChild(back);
 }
 
-// ── 探索（一人称）
+// ── 探索（一人称）＝没入ステージ（縦いっぱい）＋下部の操作ドック（親指ゾーン）
 function rpgRenderExplore(app) {
   const d = rpgData();
   rpgGoalSync();   // gold/踏破型のミッション進捗を反映
-  // HUDは2段で整理：上＝いる場所＋🎯目標（右に強調）／下＝バイタル（向きはミニマップの▲で表示）
+  const wrap = el("div", "rpg-explore");
+
+  // 上段HUD：いる場所＋🎯目標／バイタル
   const head = el("div", "rpg-runhead2");
   head.innerHTML =
     `<div class="rh-top">` +
@@ -1104,47 +1115,51 @@ function rpgRenderExplore(app) {
       `<span class="rpg-chip">🪙${d.gold}</span>` +
       `<span class="rpg-chip">🧝Lv${d.lv}</span>` +
     `</div>`;
-  app.appendChild(head);
+  wrap.appendChild(head);
 
-  // 一人称ビュー（HD-2D風・高解像＋ブルーム/被写界深度）＋移動の方向アニメ
+  // 没入ステージ：一人称ビュー（縦を満たす）＋ミニマップ＆ログをオーバーレイ
+  const stage = el("div", "rpg-stage");
   const cv = el("canvas", "rpg-view hd" + (RPG._stepFx ? " rpg-step-" + RPG._stepFx : ""));
   RPG._stepFx = null;
-  cv.width = 480; cv.height = 300;
-  app.appendChild(cv);
+  cv.width = 470; cv.height = 430;   // 初期値（以後 rpgFitCanvas が表示枠に追従）
+  stage.appendChild(cv);
+  const mini = rpgMiniMap(); mini.classList.add("ov"); stage.appendChild(mini);
+  const lg = el("div", "rpg-log ov");
+  RPG.log.slice(0, 3).forEach(L => lg.appendChild(el("div", "rpg-logline " + L.cls, L.t)));
+  stage.appendChild(lg);
+  wrap.appendChild(stage);
   rpgDrawView(cv, (typeof performance !== "undefined" ? performance.now() : 0));
   rpgStartAmbient(cv);
 
-  // ミニマップ
-  app.appendChild(rpgMiniMap());
-
-  // ログ
-  const lg = el("div", "rpg-log");
-  RPG.log.forEach(L => lg.appendChild(el("div", "rpg-logline " + L.cls, L.t)));
-  app.appendChild(lg);
-
-  // コントロール（移動はオート。一時停止すると手動で歩ける）
-  const ctl = el("div", "rpg-ctl");
+  // 下部ドック：移動（親指ゾーン）＋お店／出る
+  const dock = el("div", "rpg-dock");
+  const move = el("div", "rpg-move");
   if (RPG.auto) {
-    const pause = el("button", "rpg-ctl-main pause", "⏸ 一時停止");
+    const pause = el("button", "rpg-movebtn wide pause", "⏸ 一時停止（オートで探索中）");
     pause.onclick = () => rpgToggleAuto();
-    ctl.appendChild(pause);
+    move.appendChild(pause);
   } else {
-    const run = el("button", "rpg-ctl-main play", "▶ オートで歩く");
+    const pad = el("div", "rpg-dpad");
+    [["↰", () => rpgTurn(-1), "turn"], ["▲", () => rpgForward(1), "fw"], ["↱", () => rpgTurn(1), "turn"]].forEach(([l, f, c]) => { const b = el("button", "rpg-padbtn2 " + c, l); b.onclick = f; pad.appendChild(b); });
+    move.appendChild(pad);
+    const run = el("button", "rpg-movebtn wide play", "▶ オートで歩く");
     run.onclick = () => rpgToggleAuto();
-    ctl.appendChild(run);
-    const nudge = el("div", "rpg-nudge");
-    [["↰", () => rpgTurn(-1)], ["▲", () => rpgForward(1)], ["↱", () => rpgTurn(1)]].forEach(([l, f]) => { const b = el("button", "rpg-nudgebtn", l); b.onclick = f; nudge.appendChild(b); });
-    ctl.appendChild(nudge);
+    move.appendChild(run);
   }
-  // 🛍️ このフロアのお店（買い物＝来訪の目的）。未購入が残っていれば🆕
+  dock.appendChild(move);
+
+  const acts = el("div", "rpg-dock-acts");
   const shopArr = rpgShopFor(RPG.fi), shopLeft = shopArr.length - rpgShopOwnedN(shopArr);
-  const shopBtn = el("button", "rpg-ctl-shop" + (shopLeft > 0 ? " has" : ""), `🛍️ お店${shopLeft > 0 ? `<span class="nw">${shopLeft}</span>` : ""}`);
+  const shopBtn = el("button", "rpg-actbtn shop" + (shopLeft > 0 ? " has" : ""), `🛍️ お店${shopLeft > 0 ? `<span class="nw">${shopLeft}</span>` : ""}`);
   shopBtn.onclick = () => rpgOpenShop();
-  ctl.appendChild(shopBtn);
-  const leave = el("button", "rpg-ctl-leave", "🏠 出る");
+  acts.appendChild(shopBtn);
+  const leave = el("button", "rpg-actbtn leave", "🏠 出る");
   leave.onclick = () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); rpgEndRun(); RPG = null; renderMallRpg(); };
-  ctl.appendChild(leave);
-  app.appendChild(ctl);
+  acts.appendChild(leave);
+  dock.appendChild(acts);
+
+  wrap.appendChild(dock);
+  app.appendChild(wrap);
 }
 
 // ★リッチHD-2D風 一人称シーン（tools/render_scene.js と同一ロジック）
@@ -1272,6 +1287,7 @@ function rpgScene(ctx, env) {
 
 function rpgDrawView(cv, t) {
   t = t || 0;
+  rpgFitCanvas(cv);                 // 表示枠いっぱいに描く（縦長フレームを埋める）
   const ctx = cv.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   const fl = rpgFloorMeta(RPG.fi) || {};
@@ -1398,6 +1414,7 @@ function rpgDrawTourist(ctx, cx, gy, fh, pal, emoji) {
 }
 function rpgDrawBattle(cv, t) {
   const b = RPG && RPG.battle; if (!b) return;
+  rpgFitCanvas(cv);                 // 表示枠いっぱいに描く（縦長フレームを埋める）
   const ctx = cv.getContext("2d"); ctx.imageSmoothingEnabled = true;
   const W = cv.width, H = cv.height, n = b.enemies.length, fl = rpgFloorMeta(RPG.fi) || {}, A = fl.accent || [80, 160, 200], sunset = !!fl.sky, ph = (t || 0) / 1000;
   const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -1645,15 +1662,16 @@ function rpgMiniMap() {
 function rpgRenderBattle(app) {
   const d = rpgData(), b = RPG.battle;
   // ===== 斜め視点シーン（全部canvasに描画） =====
+  const scr = el("div", "rpg-battle");   // 縦いっぱい：アリーナ(伸縮)＋コマンド(下部固定＝親指ゾーン)
   const arena = el("div", "rpg-bt-arena");
-  const cv = el("canvas", "rpg-bt-cv"); cv.width = 520; cv.height = 300;
+  const cv = el("canvas", "rpg-bt-cv"); cv.width = 520; cv.height = 380;   // 初期値（以後 rpgFitCanvas が追従）
   arena.appendChild(cv);
   try { rpgDrawBattle(cv, (typeof performance !== "undefined" ? performance.now() : 0)); } catch (e) {}
   cv.onclick = (ev) => rpgBattleTap(ev, cv);
-  app.appendChild(arena);
+  scr.appendChild(arena);
   rpgStartBattleRaf(cv);
 
-  // ===== コマンドパネル（縦積み・固定構造） =====
+  // ===== コマンドパネル（下部固定・親指ゾーン） =====
   const panel = el("div", "rpg-bt-panel");
   let ti = (b.enemies[b.target] && b.enemies[b.target].alive) ? b.target : -1;
   if (ti < 0) { const a = rpgAliveEnemies()[0]; ti = a ? b.enemies.indexOf(a) : -1; }
@@ -1730,7 +1748,8 @@ function rpgRenderBattle(app) {
     cmd.appendChild(fight); cmd.appendChild(guard); cmd.appendChild(item); cmd.appendChild(flee);
   }
   panel.appendChild(cmd);
-  app.appendChild(panel);
+  scr.appendChild(panel);
+  app.appendChild(scr);
 }
 function rpgBackBtn() { const b = el("button", "rpg-cmdbtn back", "<b>↩ もどる</b>"); b.onclick = () => rpgCmdBack(); return b; }
 
