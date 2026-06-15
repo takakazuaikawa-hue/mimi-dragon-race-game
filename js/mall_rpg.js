@@ -119,11 +119,16 @@ const RPG_MONS = {
   slime:    { n: "マヨイスライム", ic: "🟢", kind: "monster", hp: 20, atk: 7, exp: 9, gold: 10, weak: ["fire"], resist: ["ice"], nul: [], el: "phys", act: "ベタベタ体当たり！" },
   mannequin:{ n: "うごくマネキン", ic: "🤖", kind: "monster", hp: 28, atk: 9, exp: 14, gold: 16, weak: ["elec"], resist: ["phys"], nul: [], el: "phys", act: "マネキンチョップ！" },
   escalator:{ n: "暴走エスカレーター", ic: "🛗", kind: "monster", hp: 36, atk: 11, exp: 18, gold: 20, weak: ["elec"], resist: ["phys"], nul: [], el: "phys", act: "逆走して巻き込んだ！" },
+  // 🐲 崑崙島の住人（ドラゴンモールならではの固有モンスター）
+  kowako:   { n: "はぐれ子竜",     ic: "🐲", kind: "monster", hp: 24, atk: 8, exp: 12, gold: 14, weak: ["ice"], resist: ["fire"], nul: [], el: "fire", act: "ちいさな火の息を「ぷしゅー」！", sp: { name: "甘えん坊ブレス", status: "dazzle", dur: 2, chance: 0.3, msg: "可愛さに見とれて目がチカチカ…！" } },
+  shisa:    { n: "門番の石獅子",   ic: "🦁", kind: "monster", hp: 34, atk: 10, exp: 16, gold: 18, weak: ["force"], resist: ["phys"], nul: [], el: "phys", act: "石の前足でドンと一撃！", sp: { name: "睨みの構え", status: "stun", dur: 1, chance: 0.28, msg: "睨まれて足がすくんだ！" } },
+  kumonosei:{ n: "雲の精",         ic: "☁️", kind: "monster", hp: 22, atk: 9, exp: 13, gold: 12, weak: ["elec"], resist: ["ice"], nul: [], el: "ice", act: "ひんやりした霧で包んできた！", sp: { name: "もやもや化", status: "seal", dur: 2, chance: 0.3, msg: "霧で技が見えない…！" } },
   // 🎡 ボス（屋上）
   boss1:    { n: "観覧車ゴーレム", ic: "🎡", kind: "monster", hp: 110, atk: 13, exp: 80, gold: 200, weak: ["elec"], resist: ["fire", "ice"], nul: [], el: "phys", boss: true, act: "巨大ゴンドラが回転しながら突撃！", sp: { name: "大回転プレス", status: "defdown", dur: 3, chance: 0.4, msg: "おしつぶされて守りが下がった…", dmg: true } },
 };
 const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid", "luxe", "hula", "madam", "influencer"];
 const RPG_MONSTERS_MINOR = ["slime", "mannequin", "escalator"];
+const RPG_KUNLUN = ["kowako", "shisa", "kumonosei"];   // 崑崙島の固有モンスター（図鑑・タワー出現に合流）
 
 // ── 迷宮マップ（# 壁 / . 床 / S 入口 / T 宝 / F=上り階段 or ボス出口）。
 // 連結確認済みの基本形を回転/反転して各フロアに展開（変形は連結性を保つ）。
@@ -141,14 +146,14 @@ const RPG_BASE = [
 // 島のリゾートモール・1F→屋上。far: U=上り階段 / E=ボス(屋上)。accent=フロアのテーマ色
 // 🏝️ アラモアナを手本にした巨大オープンエア・モール（全7階＋屋上）。屋上=ボス（最終）
 const RPG_FLOORS = [
-  { name: "1F 🏄 龍鱗ビーチ通り",    t: "id",        far: "U", accent: [38, 196, 176], foes: ["selfie", "kid", "hula", "baku", "slime"], goal: { type: "defeat", n: 3, label: "観光客をもてなす", ic: "😌" } },
-  { name: "2F 🏊 雲海プールデッキ",   t: "mirrorH",   far: "U", accent: [64, 176, 235], foes: ["kid", "selfie", "stroller", "hula", "slime"], goal: { type: "explore", n: 70, label: "フロアを踏破", ic: "🗺️" } },
-  { name: "3F 🍱 崑崙グルメ横丁",     t: "mirrorV",   far: "U", accent: [255, 140, 90], foes: ["gourmet", "oldies", "baku", "madam", "gourmet"], goal: { type: "gold", n: 250, label: "グルメで稼ぐ", ic: "🪙" } },
-  { name: "4F 🐬 海竜アドベンチャー", t: "rot180",   far: "U", accent: [40, 130, 210], foes: ["stroller", "kid", "gourmet", "selfie", "slime"], goal: { type: "weak", n: 5, label: "弱点を突く", ic: "⚡" } },
-  { name: "5F 💎 龍玉ラグジュアリー大通り", t: "transpose", far: "U", accent: [222, 150, 192], foes: ["luxe", "madam", "influencer", "mannequin"], goal: { type: "gold", n: 450, label: "ハイブランドで散財", ic: "👜" } },
-  { name: "6F 🏬 崑崙百貨店",         t: "id",        far: "U", accent: [150, 120, 210], foes: ["madam", "oldies", "luxe", "mannequin", "escalator"], goal: { type: "explore", n: 75, label: "デパートを巡る", ic: "🛗" } },
-  { name: "7F 🎪 龍神フェスステージ", t: "mirrorH",   far: "U", accent: [255, 170, 70], foes: ["hula", "influencer", "baku", "selfie", "escalator"], goal: { type: "defeat", n: 6, label: "フェスの人波をさばく", ic: "💃" } },
-  { name: "🌅 雲頂サンセットテラス",  t: "transpose", far: "E", accent: [255, 120, 150], sky: true, foes: ["influencer", "luxe", "madam", "mannequin", "escalator"], goal: { type: "boss", n: 1, label: "ボスを倒す", ic: "👑" } },
+  { name: "1F 🏄 龍鱗ビーチ通り",    t: "id",        far: "U", accent: [38, 196, 176], foes: ["selfie", "kid", "hula", "baku", "kowako"], nushi: { base: "hula", n: "フラ大会の主", ic: "💃" }, goal: { type: "defeat", n: 3, label: "観光客をもてなす", ic: "😌" } },
+  { name: "2F 🏊 雲海プールデッキ",   t: "mirrorH",   far: "U", accent: [64, 176, 235], foes: ["kid", "selfie", "stroller", "hula", "kumonosei"], nushi: { base: "stroller", n: "プールデッキの主", ic: "🌊" }, goal: { type: "explore", n: 70, label: "フロアを踏破", ic: "🗺️" } },
+  { name: "3F 🍱 崑崙グルメ横丁",     t: "mirrorV",   far: "U", accent: [255, 140, 90], foes: ["gourmet", "oldies", "baku", "madam", "gourmet"], nushi: { base: "gourmet", n: "食べ歩きの主", ic: "🍢" }, goal: { type: "gold", n: 250, label: "グルメで稼ぐ", ic: "🪙" } },
+  { name: "4F 🐬 海竜アドベンチャー", t: "rot180",   far: "U", accent: [40, 130, 210], foes: ["stroller", "kid", "gourmet", "kowako", "slime"], nushi: { base: "kowako", n: "海竜の主", ic: "🐉" }, goal: { type: "weak", n: 5, label: "弱点を突く", ic: "⚡" } },
+  { name: "5F 💎 龍玉ラグジュアリー大通り", t: "transpose", far: "U", accent: [222, 150, 192], foes: ["luxe", "madam", "influencer", "mannequin"], nushi: { base: "luxe", n: "爆買いの主", ic: "👜" }, goal: { type: "gold", n: 450, label: "ハイブランドで散財", ic: "👜" } },
+  { name: "6F 🏬 崑崙百貨店",         t: "id",        far: "U", accent: [150, 120, 210], foes: ["madam", "oldies", "luxe", "mannequin", "shisa"], nushi: { base: "shisa", n: "百貨店の門番", ic: "🦁" }, goal: { type: "explore", n: 75, label: "デパートを巡る", ic: "🛗" } },
+  { name: "7F 🎪 龍神フェスステージ", t: "mirrorH",   far: "U", accent: [255, 170, 70], foes: ["hula", "influencer", "baku", "selfie", "kumonosei"], nushi: { base: "influencer", n: "バズりの主", ic: "📸" }, goal: { type: "defeat", n: 6, label: "フェスの人波をさばく", ic: "💃" } },
+  { name: "🌅 雲頂サンセットテラス",  t: "transpose", far: "E", accent: [255, 120, 150], sky: true, foes: ["influencer", "luxe", "kowako", "mannequin", "kumonosei"], goal: { type: "boss", n: 1, label: "ボスを倒す", ic: "👑" } },
 ];
 function rpgTransform(base, kind) {
   const m = base.map(r => r.split("")), n = m.length;
@@ -173,6 +178,40 @@ function rpgBuildFloor(i) {
   return rpgTransform(RPG_BASE, meta.t).map(r => r.replace("F", meta.far));
 }
 const RPG_DV = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // N E S W
+// マップ上で (sx,sy)→(gx,gy) が壁を通らずに到達可能か（閉鎖の連結性チェック用・BFS）
+function rpgConnected(map, sx, sy, gx, gy) {
+  const h = map.length, w = map[0].length, seen = {}, q = [[sx, sy]]; seen[sx + "," + sy] = 1;
+  while (q.length) {
+    const cur = q.shift(); if (cur[0] === gx && cur[1] === gy) return true;
+    for (let d = 0; d < 4; d++) {
+      const nx = cur[0] + RPG_DV[d][0], ny = cur[1] + RPG_DV[d][1];
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen[nx + "," + ny] || map[ny][nx] === "#") continue;
+      seen[nx + "," + ny] = 1; q.push([nx, ny]);
+    }
+  }
+  return false;
+}
+// 🚧 ランダム通路閉鎖：潜るたびに一部の通路を塞いで道順を変える（連結性＝入口→階段/宝は必ず保つ）。
+function rpgApplyClosures() {
+  RPG.closed = {}; RPG._closedN = 0;
+  if (RPG.tower) return;                                  // タワーは手続き生成のままにする
+  const map = RPG.map, h = RPG.h, w = RPG.w;
+  let gx = RPG.px, gy = RPG.py, treas = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (map[y][x] === "U" || map[y][x] === "E") { gx = x; gy = y; }
+    else if (map[y][x] === "T") treas.push([x, y]);
+  }
+  const cands = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (map[y][x] === ".") cands.push([x, y]);
+  for (let i = cands.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = cands[i]; cands[i] = cands[j]; cands[j] = t; }
+  const want = (Math.random() * 4) | 0;                   // 0〜3か所（0なら全開放＝“閉鎖されてたりされてなかったり”）
+  for (let c = 0; c < cands.length && RPG._closedN < want; c++) {
+    const x = cands[c][0], y = cands[c][1]; map[y][x] = "#";          // 仮に閉鎖
+    let ok = rpgConnected(map, RPG.px, RPG.py, gx, gy);
+    if (ok) for (let k = 0; k < treas.length; k++) if (!rpgConnected(map, RPG.px, RPG.py, treas[k][0], treas[k][1])) { ok = false; break; }
+    if (ok) { RPG.closed[x + "," + y] = 1; RPG._closedN++; } else { map[y][x] = "."; }   // ダメなら戻す
+  }
+}
 const RPG_DIRNAME = ["北", "東", "南", "西"];
 
 // ── 探索の開始
@@ -198,7 +237,9 @@ function rpgLoadFloor(i) {
   let sx = 1, sy = 1;
   for (let y = 0; y < RPG.h; y++) for (let x = 0; x < RPG.w; x++) if (RPG.map[y][x] === "S") { sx = x; sy = y; }
   RPG.px = sx; RPG.py = sy; RPG.dir = 1;
+  rpgApplyClosures();                       // 🚧 この潜入だけの通路閉鎖（道順がランダムに変わる）
   RPG.explored = {}; RPG.explored[sx + "," + sy] = 1;
+  if (RPG._closedN > 0) rpgLog(`🚧 きょうは通路が${RPG._closedN}か所 閉鎖中。道が変わってる！`, "good");
   const d = rpgData();
   // フロア・ミッション（任意＋達成ボーナス）：入場のたびに進捗リセット
   const g = rpgFloorMeta(i).goal;
@@ -328,7 +369,12 @@ function rpgForward(sign) {
   if (here === "E") { rpgReachExit(); return; }
   // ランダムエンカウント
   if (RPG.grace > 0) RPG.grace--;
-  else if (Math.random() < 0.22) { rpgEncounter(); return; }
+  else if (Math.random() < 0.22) {
+    const fm = rpgFloorMeta(RPG.fi);   // 🐲 フロアの主（未討伐なら一定確率で出現）
+    if (fm.nushi && !(RPG._nushiBeat && RPG._nushiBeat[RPG.fi]) && Math.random() < 0.2) rpgEncounter("nushi");
+    else rpgEncounter();
+    return;
+  }
   renderMallRpg();
 }
 // ── オート歩行（左手法で迷宮を自動探索。戦闘/演出中は自動停止し、終わると再開）
@@ -484,30 +530,37 @@ function rpgScenePt(sx, sy) { const cv = RPG && RPG._btlCv; if (!cv || !cv.getBo
 function rpgEnemyPt(i) { const cv = RPG && RPG._btlCv, nn = RPG.battle ? RPG.battle.enemies.length : 1; const L = rpgIsoLayout(cv ? cv.width : 520, cv ? cv.height : 300, nn); const s = L.slots[i] || L.slots[0]; return rpgScenePt(s.x, s.y - 30); }
 function rpgPlayerPt() { const cv = RPG && RPG._btlCv, nn = RPG.battle ? RPG.battle.enemies.length : 1; const L = rpgIsoLayout(cv ? cv.width : 520, cv ? cv.height : 300, nn); return rpgScenePt(L.mimi.x, L.mimi.y - 30); }
 
-function rpgEncounter(boss) {
+function rpgEncounter(kind) {
+  const boss = kind === true || kind === "boss";        // 屋上ボス
+  const nushi = kind === "nushi";                        // 🐲 フロアの主（ミニボス）
+  const ncfg = nushi ? (rpgFloorMeta(RPG.fi) || {}).nushi : null;
   let ids;
   if (boss) ids = ["boss1"];
+  else if (nushi && ncfg) ids = [ncfg.base];
   else {
     const pool = (rpgFloorMeta(RPG.fi) || {}).foes;   // フロア別テーマの出現テーブル（無ければ従来の全体抽選）
     const n = Math.random() < 0.45 ? 2 : 1;
-    ids = []; for (let i = 0; i < n; i++) ids.push(pool && pool.length ? rpgPick(pool) : (Math.random() < 0.82 ? rpgPick(RPG_TOURISTS) : rpgPick(RPG_MONSTERS_MINOR)));
+    ids = []; for (let i = 0; i < n; i++) ids.push(pool && pool.length ? rpgPick(pool) : (Math.random() < 0.82 ? rpgPick(RPG_TOURISTS) : rpgPick(RPG_MONSTERS_MINOR.concat(RPG_KUNLUN))));
   }
   const sc = 1 + RPG.fi * 0.22, scR = 1 + RPG.fi * 0.3;   // 上の階ほど手応えUP
   const enemies = ids.map(id => {
     const m = RPG_MONS[id];
-    const hp = boss ? m.hp : Math.round(m.hp * sc);
-    return { id, ref: m, hp, maxhp: hp, alive: true,
-      atk: boss ? m.atk : Math.round(m.atk * sc), exp: Math.round(m.exp * scR), gold: Math.round(m.gold * scR) };
+    let hp = boss ? m.hp : Math.round(m.hp * sc), atk = boss ? m.atk : Math.round(m.atk * sc), exp = Math.round(m.exp * scR), gold = Math.round(m.gold * scR), ref = m;
+    if (nushi && ncfg) {                                  // 主＝強化＋固有名・大きめ報酬
+      hp = Math.round(hp * 2.0); atk = Math.round(atk * 1.35); exp = Math.round(exp * 2.6); gold = Math.round(gold * 2.3);
+      ref = Object.assign({}, m, { n: ncfg.n, ic: ncfg.ic, nushi: true });
+    }
+    return { id, ref, hp, maxhp: hp, alive: true, atk, exp, gold };
   });
-  const rare = !boss && Math.random() < 0.1;   // ✨おたからチャンス（射幸性）
-  RPG.battle = { enemies, target: 0, extra: false, acts: 1, combo: 0, gauge: 0, guard: false, log: [], boss: !!boss, phase: "cmd", sub: null, rare: rare, introT0: (typeof performance !== "undefined" ? performance.now() : Date.now()),
+  const rare = !boss && !nushi && Math.random() < 0.1;   // ✨おたからチャンス（射幸性）
+  RPG.battle = { enemies, target: 0, extra: false, acts: 1, combo: 0, gauge: 0, guard: false, log: [], boss: !!boss, nushi: !!nushi, phase: "cmd", sub: null, rare: rare, introT0: (typeof performance !== "undefined" ? performance.now() : Date.now()),
     pstatus: { stun: 0, defdown: 0, dazzle: 0, seal: 0 } };
   RPG.mode = "battle"; RPG.busy = false;
   rpgComputeIntents();               // 敵の行動予告（読み合い）
-  rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : (rare ? `✨ おたからチャンス！ ${enemies.map(e => e.ref.n).join("・")}（ごほうび倍）` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`));
+  rpgBLog(boss ? `🎡 ${enemies[0].ref.n} が立ちはだかった！` : (nushi ? `👑 フロアの主「${enemies[0].ref.n}」が現れた！` : (rare ? `✨ おたからチャンス！ ${enemies.map(e => e.ref.n).join("・")}（ごほうび倍）` : `🎫 ${enemies.map(e => e.ref.n).join("・")} に囲まれた！`)));
   rpgSfx(rare ? "win" : "alert");
-  rpgFx.encounter(boss ? "boss" : (rare ? "rare" : "enc"));   // バトル突入トランジション
-  rpgFx.cutins(enemies.map(e => e.ref), !!boss);               // 敵名カットイン（ポンポン）
+  rpgFx.encounter(boss || nushi ? "boss" : (rare ? "rare" : "enc"));   // バトル突入トランジション
+  rpgFx.cutins(enemies.map(e => e.ref), boss || nushi);               // 敵名カットイン（ポンポン）
   rpgFx.shakeApp();
   renderMallRpg();
 }
@@ -591,7 +644,8 @@ function rpgUseSkill(id) {
       rpgSfx(weakHit ? "win" : "tick");
       rpgFx.spot(ep.x, ep.y, "-" + dmg, weakHit ? "weak" : (mult === 0.5 ? "resist" : "dmg"));
       if (weakHit) rpgFx.banner("WEAK!", "weak");
-      if (tgt.hp <= 0) { tgt.alive = false; tgt._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfx("coin"); rpgFx.spot(ep.x, ep.y - 34, tourist ? "満足♪" : "撃破！", "weak"); rpgFx.shakeApp(); }
+      if (tgt.hp <= 0) { tgt.alive = false; tgt._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfx("coin"); rpgFx.spot(ep.x, ep.y - 34, tourist ? "満足♪" : "撃破！", "weak"); rpgFx.shakeApp();
+        if (tgt.ref.nushi) { RPG._nushiBeat = RPG._nushiBeat || {}; RPG._nushiBeat[RPG.fi] = 1; rpgFx.banner("👑 主を討伐！", "victory"); rpgSfx("unlock"); rpgBLog(`👑 フロアの主「${tgt.ref.n}」を討伐！ ✨評判UP`, "win"); RPG.runMissions = (RPG.runMissions || 0) + 1; } }
       if ((b.combo || 0) >= 3) rpgFx.banner("COMBO ×" + b.combo, "more");
     }
     rpgSave();
@@ -1116,7 +1170,7 @@ function rpgRenderHub(app) {
   // ── 📖 ずかん（折りたたみ）
   const codex = el("details", "rpg-box rpg-sec");
   let rows = "";
-  RPG_TOURISTS.concat(RPG_MONSTERS_MINOR, ["boss1"]).forEach(id => {
+  RPG_TOURISTS.concat(RPG_MONSTERS_MINOR, RPG_KUNLUN, ["boss1"]).forEach(id => {
     const m = RPG_MONS[id], seen = d.codex[id];
     const w = seen && seen.weak.length ? seen.weak.map(e => RPG_ELEM_IC[e]).join("") : "？";
     rows += `<div class="rpg-codexrow"><span>${m.ic} ${seen ? m.n : "？？？"}</span><span>弱点 ${w}</span></div>`;
@@ -1463,7 +1517,11 @@ function rpgDrawView(cv, t) {
   const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46, maxD = 4, pp = 0.6, ph = t / 1000;
   const rt = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(pp, d); rt[d] = { t: cy - H * 0.5 * s, b: cy + H * 0.5 * s }; }
   for (let c = 1; (!cv._noIcons) && c <= maxD; c++) {
-    if (rpgIsWall(rpgAhead(c, 0))) break;
+    if (rpgIsWall(rpgAhead(c, 0))) {
+      const bx = RPG.px + RPG_DV[RPG.dir][0] * c, by = RPG.py + RPG_DV[RPG.dir][1] * c;
+      if (RPG.closed && RPG.closed[bx + "," + by]) rpgDrawIcon(ctx, "🚧", rt[c], cx, (rt[c].t + rt[c].b) / 2);   // 🚧 閉鎖された通路
+      break;
+    }
     const cch = rpgAhead(c, 0), tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
     const bob = Math.sin(ph * 2.2) * (rt[c].b - rt[c].t) * 0.03;
     if (cch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) { rpgDrawIcon(ctx, "📦", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
