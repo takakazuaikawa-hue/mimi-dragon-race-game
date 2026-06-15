@@ -231,9 +231,9 @@ function playFinalShowcase() {
 function startFinalBattle() {
   const e = epData();
   if (e.edFlag) { if (window.Ending && Ending.play) Ending.play(); return; }
-  // ① 専用BGM：the-fanfare（既存レース曲）。現在のミュート設定を尊重（音オンなら鳴る）。
+  // ① 専用BGM：絶滅のファンファーレ。現在のミュート設定を尊重（音オンなら鳴る）。
   //   エンディング側 confirmAudio→playFile(森のくまさん) が stop() するので、ED開始で自動的に切替わる。
-  if (window.RaceBgm && RaceBgm.playFile) { try { RaceBgm.playFile("bgm/racebgm/the-fanfare.mp3"); } catch (e2) {} }
+  if (window.RaceBgm && RaceBgm.playFile) { try { RaceBgm.playFile("bgm/絶滅のファンファーレ.mp3"); } catch (e2) {} }
   const who = "celestia";   // 第5話到達済み＝正体判明
   const preamble = [
     ["narrator", "夜明け前の聖龍レース場。最後のレースを前に、歓声がふくらんでいく。"],

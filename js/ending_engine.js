@@ -69,6 +69,9 @@
       case "fin":
         return '<div class="edr-fin">' + esc(b.text) +
           (b.sub ? '<span class="edr-fin-sub">' + esc(b.sub) + "</span>" : "") + "</div>";
+      case "image":
+        return '<div class="edr-image"><img src="' + esc(b.src) + '" alt="" loading="lazy">' +
+          (b.cap ? '<span class="edr-image-cap">' + esc(b.cap) + "</span>" : "") + "</div>";
       default:
         return "";
     }
@@ -174,6 +177,16 @@
       // 終了後パネル（最後のカードで停止 → もう一度／閉じる）
       function finish() {
         if (!overlay.parentNode) return;
+        // ロール完走後の「ED一枚絵＋締めの物語」フィナーレ（held・流れ去らず読める・一度だけ）。
+        if (!overlay.querySelector(".edr-finale")) {
+          var cF = cfg();
+          var artHTML = cF.finBg ? '<div class="edr-finale-art"><img src="' + cF.finBg + '" alt=""></div>' : "";
+          var storyHTML = ((cF.finStory) || []).map(function (s) { return "<p>" + esc(s) + "</p>"; }).join("");
+          var fnl = document.createElement("div");
+          fnl.className = "edr-finale";
+          fnl.innerHTML = artHTML + '<div class="edr-finale-tx"><div class="edr-finale-ttl">― 次の物語へ ―</div>' + storyHTML + "</div>";
+          overlay.insertBefore(fnl, bar);
+        }
         bar.innerHTML = "";
         var again = document.createElement("button");
         again.className = "edr-btn"; again.textContent = "🔁 もう一度";
