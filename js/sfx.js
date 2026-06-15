@@ -25,9 +25,14 @@ var Sfx = (function () {
   var muted = false;
   var crowd = null;                 // sustained goal-crowd controller (loops until stopped)
   var MUTE_KEY = "mimi_muted";
+  var VOL_KEY = "mimi_sfxvol";
+  var SFX_BASE = 0.42;          // チューニング済みの基準音量（=従来の master 値）
+  var sfxLevel = 1;             // ユーザー音量 0..1（1.0=従来の音量）
 
   // restore mute preference
   try { muted = localStorage.getItem(MUTE_KEY) === "1"; } catch (e) { muted = false; }
+  // restore SFX volume preference
+  try { var _sv = parseFloat(localStorage.getItem(VOL_KEY)); if (_sv >= 0 && _sv <= 1) sfxLevel = _sv; } catch (e) {}
 
   function ensure() {
     if (ctx) return ctx;
@@ -36,7 +41,7 @@ var Sfx = (function () {
       if (!AC) return null;
       ctx = new AC();
       master = ctx.createGain();
-      master.gain.value = 0.42;
+      master.gain.value = SFX_BASE * sfxLevel;
       master.connect(ctx.destination);
     } catch (e) { ctx = null; }
     return ctx;
@@ -249,6 +254,14 @@ var Sfx = (function () {
     if (!muted) { ensure(); resume(); }
   }
 
+  // ユーザー音量 0..1。master へ即反映＋localStorage 保存（表示専用＝着順/オッズ/配当に非干渉）。
+  function setVolume(v) {
+    sfxLevel = Math.max(0, Math.min(1, (v == null ? 1 : v)));
+    try { localStorage.setItem(VOL_KEY, String(sfxLevel)); } catch (e) {}
+    if (master) { try { master.gain.value = SFX_BASE * sfxLevel; } catch (e) {} }
+  }
+  function getVolume() { return sfxLevel; }
+
   // self-installing unlock on first user gesture
   function unlock() { try { ensure(); resume(); } catch (e) {} }
   try {
@@ -263,6 +276,8 @@ var Sfx = (function () {
     stopCrowd: stopCrowd,
     setMuted: setMuted,
     isMuted: function () { return muted; },
+    setVolume: setVolume,
+    getVolume: getVolume,
     unlock: unlock
   };
 })();

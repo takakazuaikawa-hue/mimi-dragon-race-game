@@ -240,6 +240,58 @@ function showInfoPopup(title, html) {
   document.body.appendChild(ov);
 }
 
+// 🔊 音量パネル（都度呼び出し）。BGM／効果音の音量スライダー＋ミュート。
+// 表示専用＝着順・オッズ・配当には一切非干渉（音だけ）。設定は localStorage に保存。
+function showVolumePanel() {
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop vol-panel");
+  const isMuted = () => !!(window.Sfx && Sfx.isMuted && Sfx.isMuted());
+  const bgmV = Math.round(((window.RaceBgm && RaceBgm.getVolume) ? RaceBgm.getVolume() : 1) * 100);
+  const sfxV = Math.round(((window.Sfx && Sfx.getVolume) ? Sfx.getVolume() : 1) * 100);
+  box.innerHTML =
+    `<div class="navpop-t">🔊 音量</div>` +
+    `<div class="vol-mute-row"><span class="vol-mute-lb">${isMuted() ? "🔇 ミュート中" : "🔊 サウンド ON"}</span>` +
+      `<button class="set-toggle${isMuted() ? "" : " on"} vol-mute-btn">${isMuted() ? "OFF" : "ON"}</button></div>` +
+    `<div class="vol-row"><span class="vol-ic">🎵</span><span class="vol-lb">BGM</span>` +
+      `<input type="range" class="vol-slider vol-bgm" min="0" max="100" value="${bgmV}"><span class="vol-pct vol-bgm-pct">${bgmV}%</span></div>` +
+    `<div class="vol-row"><span class="vol-ic">🔊</span><span class="vol-lb">効果音</span>` +
+      `<input type="range" class="vol-slider vol-sfx" min="0" max="100" value="${sfxV}"><span class="vol-pct vol-sfx-pct">${sfxV}%</span></div>` +
+    `<div class="vol-note">レースの結果・オッズ・配当には影響しません</div>`;
+  const btns = el("div", "navpop-btns");
+  const ok = el("button", "navpop-go", "とじる"); ok.onclick = () => ov.remove();
+  btns.appendChild(ok); box.appendChild(btns);
+  ov.appendChild(box);
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+
+  const bgmS = box.querySelector(".vol-bgm"), sfxS = box.querySelector(".vol-sfx");
+  const bgmP = box.querySelector(".vol-bgm-pct"), sfxP = box.querySelector(".vol-sfx-pct");
+  const muteBtn = box.querySelector(".vol-mute-btn");
+  const syncMuted = () => { const m = isMuted(); bgmS.disabled = m; sfxS.disabled = m; box.classList.toggle("vol-muted", m); };
+  syncMuted();
+  bgmS.oninput = () => { const v = +bgmS.value; bgmP.textContent = v + "%"; if (window.RaceBgm && RaceBgm.setVolume) RaceBgm.setVolume(v / 100); };
+  sfxS.oninput = () => { const v = +sfxS.value; sfxP.textContent = v + "%"; if (window.Sfx && Sfx.setVolume) Sfx.setVolume(v / 100); };
+  sfxS.onchange = () => { if (window.Sfx && Sfx.play && !isMuted()) Sfx.play("tick"); };  // 離した瞬間に試聴
+  muteBtn.onclick = () => {
+    const m = !isMuted();
+    if (window.Sfx && Sfx.setMuted) Sfx.setMuted(m);
+    if (window.RaceBgm && RaceBgm.setMuted) RaceBgm.setMuted(m);
+    muteBtn.textContent = m ? "OFF" : "ON";
+    muteBtn.classList.toggle("on", !m);
+    box.querySelector(".vol-mute-lb").textContent = m ? "🔇 ミュート中" : "🔊 サウンド ON";
+    if (!m && window.Sfx && Sfx.play) Sfx.play("click");
+    syncMuted();
+  };
+}
+// レース画面などに置く「都度呼び出せる」🔊フローティングボタン（beginScreen の再描画で自動的に消える）。
+function addVolumeFab(parent) {
+  const fab = el("button", "vol-fab", "🔊");
+  fab.title = "音量";
+  fab.onclick = (e) => { e.stopPropagation(); showVolumePanel(); };
+  (parent || document.body).appendChild(fab);
+  return fab;
+}
+
 // 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
 // 設計：1通貨1役割／コイン→総資産→解放（物語・ランク・暮らしP）の一方向の流れを見せる。
 function showMoneyMap() {
@@ -1750,6 +1802,9 @@ function renderSettings() {
     if (!m && window.Sfx && Sfx.play) Sfx.play("click");
     renderSettings();
   };
+  const volBtn = el("button", "set-toggle on set-vol-open", "🎚 音量");
+  volBtn.onclick = () => { if (typeof showVolumePanel === "function") showVolumePanel(); };
+  sound.appendChild(volBtn);
   sound.appendChild(sBtn);
   app.appendChild(sound);
 
@@ -2468,6 +2523,7 @@ function renderRaceSelect() {
   runEventHooks("beforeRaceSelect");
   const app = beginScreen();
   app.appendChild(screenHeader("レース選択", "images/race_header.webp"));
+  if (typeof addVolumeFab === "function") addVolumeFab(app);   // 都度呼び出せる音量バー
 
   // 本日の注目レース — a prominent, daily-rotating spotlight
   try {
@@ -3580,6 +3636,7 @@ function renderRaceRun() {
     betResult: c.betResult,
     timeline: c.timeline, commentary: c.commentary, broadcast: c.broadcast
   });
+  if (typeof addVolumeFab === "function") addVolumeFab(app);   // 都度呼び出せる音量バー（レース中もOK）
   // （レース隅のマスコット竜は撤去：レース画面には不要）
 }
 
