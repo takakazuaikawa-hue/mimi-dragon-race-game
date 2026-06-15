@@ -1604,13 +1604,32 @@ table.entry-table {
   border: 1px solid var(--gold-line); border-radius: 14px; padding: 10px;
   margin-top: 10px; box-shadow: 0 -10px 28px -12px rgba(0,0,0,.9); backdrop-filter: blur(6px); }
 
-/* ===== PC＝縦型ゲームフレーム固定（470px・全画面共通） =====
-   画面幅で伸縮させない＝キャラ立ち位置/レイアウトがPCとスマホで完全に同一になる。
-   左右の余白にはホームのライブ背景や世界観背景がそのまま見え、額縁のように機能する。 */
-@media (min-width: 700px) {
-  body:not(.title-mode) #header { max-width: 470px; }
+/* ===== PC/タブレット＝縦型ゲームフレーム（現代スマホ風・全画面共通） =====
+   画面幅で伸縮させない＝キャラ立ち位置/レイアウトがPCとスマホで完全に同一。
+   閾値540px：471〜699pxの“どっちつかず帯”もフレーム化（中間幅対策）。
+   ワイド時の左右は「ぼかした世界観背景＋ヴィネット」で充填し、中央列を“端末”として見せる。
+   ホーム/タイトルは自前の全画面背景を持つのでアンビエント＆ガラス地は除外。 */
+@media (min-width: 540px) {
+  /* 左右の余白を世界観アンビエント（ぼかし）で充填 */
+  body:not(.home-mode):not(.title-mode)::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: url("images/home_bg.webp") center/cover no-repeat;
+    filter: blur(36px) saturate(.8) brightness(.42); transform: scale(1.18); }
+  /* 中央へ視線を集めるヴィネット＋上部の締め */
+  body:not(.home-mode):not(.title-mode)::after {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(128% 86% at 50% 36%, rgba(10,15,18,0) 30%, rgba(8,12,15,.6) 100%),
+      linear-gradient(180deg, rgba(8,12,15,.5), rgba(8,12,15,0) 18%); }
+
+  /* 中央列＝“端末”：角丸・金のヘアライン・柔らかい外側グロー（温かい火山の照り返し） */
+  body:not(.title-mode) #header { max-width: 470px; border-radius: 16px 16px 0 0; }
   body:not(.title-mode) #app { max-width: 470px;
-    box-shadow: 0 0 0 1px rgba(230,178,74,.16), 0 40px 90px -40px rgba(0,0,0,.85); }
+    box-shadow: 0 0 0 1px rgba(230,178,74,.18), 0 34px 90px -36px rgba(0,0,0,.92), 0 0 130px -48px rgba(255,150,80,.14); }
+  /* 通常画面はガラス調サーフェスを敷き、アンビエント上でも内容を読みやすく */
+  body:not(.home-mode):not(.title-mode) #app {
+    background: linear-gradient(180deg, rgba(14,21,25,.66), rgba(9,14,17,.74));
+    border-radius: 0 0 22px 22px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 }
 
 /* ===== 📦 今回の獲得（レース結果のリワード台帳） ===== */
