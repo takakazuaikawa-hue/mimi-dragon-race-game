@@ -117,6 +117,7 @@
 
   // ── ロール再生 ────────────────────────────────────────────────
   var _activeResolve = null;
+  var _endAudioOn = true;   // エンディングの音声ON/OFF（confirmAudioで決定・既定=音あり）
 
   function reduceMotion() {
     try { return global.matchMedia && global.matchMedia("(prefers-reduced-motion: reduce)").matches; }
@@ -187,9 +188,9 @@
 
       scroll.addEventListener("animationend", finish);
 
-      // BGM 流用（任意・指定があれば）
+      // スタッフロールBGM（音ありを選んだ時だけ・任意ファイル＝「ある日森の中ドラゴンに出会った」）。
       try {
-        if (c.bgm && global.RaceBgm && RaceBgm.play) RaceBgm.play(c.bgm);
+        if (_endAudioOn && c.bgm && global.RaceBgm && RaceBgm.playFile) RaceBgm.playFile(c.bgm);
       } catch (e) {}
 
       document.body.appendChild(overlay);
@@ -201,18 +202,50 @@
   function close() {
     var ov = document.getElementById(OVERLAY_ID);
     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
-    try { if (cfg().bgm && global.RaceBgm && RaceBgm.stop) RaceBgm.stop(); } catch (e) {}
+    try { if (global.RaceBgm && RaceBgm.fadeOut) RaceBgm.fadeOut(700); } catch (e) {}   // スタッフロールBGMをなめらかに絞って停止
     if (_activeResolve) { var r = _activeResolve; _activeResolve = null; r(); }
+  }
+
+  // エンディング前の確認：「音声を出しますか？」（没入のため・音楽つきを促す）。
+  // 音あり=ミュート解除（スタッフロールBGMが流れる）／音なし=ミュート。選ぶと resolve。
+  function confirmAudio() {
+    return new Promise(function (resolve) {
+      var ov = document.createElement("div"); ov.className = "navpop-ov";
+      var box = document.createElement("div"); box.className = "navpop";
+      box.innerHTML =
+        '<div class="navpop-ic">🔊</div>' +
+        '<div class="navpop-t">音声を出しますか？</div>' +
+        '<div class="navpop-d">エンディングは音楽つきがおすすめです。<br>スタッフロールに曲が流れます。</div>';
+      var btns = document.createElement("div"); btns.className = "navpop-btns";
+      var yes = document.createElement("button"); yes.className = "navpop-go"; yes.textContent = "🔊 音ありで観る";
+      var no = document.createElement("button"); no.className = "navpop-cancel"; no.textContent = "🔇 音なしで観る";
+      function done(on) {
+        _endAudioOn = on;
+        try {
+          if (global.Sfx && Sfx.setMuted) Sfx.setMuted(!on);
+          if (global.RaceBgm && RaceBgm.setMuted) RaceBgm.setMuted(!on);
+        } catch (e) {}
+        if (ov.parentNode) ov.parentNode.removeChild(ov);
+        resolve();
+      }
+      yes.onclick = function () { done(true); };
+      no.onclick = function () { done(false); };
+      btns.appendChild(yes); btns.appendChild(no);
+      box.appendChild(btns); ov.appendChild(box);
+      document.body.appendChild(ov);
+    });
   }
 
   // ── 送り出しVN → ロール ───────────────────────────────────────
   function play(opts) {
     opts = opts || {};
-    var c = cfg();
-    var vnOn = c.playVN && !opts.skipVN &&
-      (typeof ENDING_VN !== "undefined") && global.Dialogue && Dialogue.play;
-    var chain = vnOn ? Dialogue.play(ENDING_VN, { force: true }) : Promise.resolve();
-    return chain.then(function () { return playRoll(); });
+    return confirmAudio().then(function () {
+      var c = cfg();
+      var vnOn = c.playVN && !opts.skipVN &&
+        (typeof ENDING_VN !== "undefined") && global.Dialogue && Dialogue.play;
+      var chain = vnOn ? Dialogue.play(ENDING_VN, { force: true }) : Promise.resolve();
+      return chain.then(function () { return playRoll(); });
+    });
   }
 
   global.Ending = { play: play, playRoll: playRoll, close: close };
