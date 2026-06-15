@@ -29,7 +29,7 @@
 const ENDING_CONFIG = {
   bg: "images/home_vista_day.jpg",   // ロールの背景（発展した島の遠景。後で差し替え可）
   finBg: "images/story/ED.webp",     // フィナーレのED一枚絵（夜明けの桟橋）
-  scrollSeconds: 88,                 // ロールが流れ切るまでの秒数（長め＝振り返りにたっぷり浸る）
+  scrollSeconds: 100,                // ロールが流れ切るまでの秒数（一枚絵が増えた分も含めゆっくり振り返る）
   // ロール完走後に held で出す「ED一枚絵＋締めの物語」のフィナーレ文（STORY_CHAPTERS:ED の締めを凝縮）。
   finStory: [
     "単勝の正解は、たったひとつ。",

@@ -70,7 +70,7 @@
         return '<div class="edr-fin">' + esc(b.text) +
           (b.sub ? '<span class="edr-fin-sub">' + esc(b.sub) + "</span>" : "") + "</div>";
       case "image":
-        return '<div class="edr-image"><img src="' + esc(b.src) + '" alt="" loading="lazy">' +
+        return '<div class="edr-image"><img src="' + esc(b.src) + '" alt="">' +
           (b.cap ? '<span class="edr-image-cap">' + esc(b.cap) + "</span>" : "") + "</div>";
       default:
         return "";
@@ -127,6 +127,22 @@
     catch (e) { return false; }
   }
 
+  // 一枚絵の先読み（読み込み完了 or 失敗 or タイムアウトで cb）。スクロール開始前に高さを確定させる。
+  function preloadImages(scrollEl, cb) {
+    var imgs = [].slice.call(scrollEl.querySelectorAll("img"));
+    var remaining = imgs.length;
+    if (!remaining) { cb(); return; }
+    var done = false;
+    function finish() { if (!done) { done = true; cb(); } }
+    function one() { remaining -= 1; if (remaining <= 0) finish(); }
+    imgs.forEach(function (im) {
+      if (im.complete && im.naturalWidth) { one(); return; }
+      im.addEventListener("load", one, { once: true });
+      im.addEventListener("error", one, { once: true });
+    });
+    setTimeout(finish, 2500);   // 遅延・失敗でも止まらない保険
+  }
+
   function playRoll() {
     close(); // 二重再生ガード
     return new Promise(function (resolve) {
@@ -151,10 +167,13 @@
         view.classList.add("edr-static");
       } else {
         scroll.style.animationDuration = secs + "s";
+        scroll.style.animationPlayState = "paused";   // 先読み完了まで止める（途中ロードのガタつき防止）
       }
 
       view.appendChild(scroll);
       overlay.appendChild(view);
+      // 一枚絵を先読みしてから流し始める＝スクロール中に画像が遅れて入りレイアウトがずれる「ガタガタ」を防ぐ。
+      if (!reduceMotion()) preloadImages(scroll, function () { if (scroll.parentNode) scroll.style.animationPlayState = "running"; });
 
       // 🔊 音量ボタン生成（操作バー用・グローバルの音量パネルを開く）。
       function makeVolBtn() {
