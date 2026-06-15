@@ -1260,7 +1260,6 @@ function rpgScene(ctx, env) {
     // 日よけ（店ごとの色・グラデ＋ストライプ）
     let ag = ctx.createLinearGradient(0, yN(near, 0.05), 0, yN(near, 0.26)); ag.addColorStop(0, rgb(awn, k * 1.08)); ag.addColorStop(1, rgb(awn, k * 0.82));
     band(0.05, 0.26, ag);
-    ctx.save(); ctx.globalAlpha = 0.18 * k; for (let s = 0; s < 5; s++) { const f = s / 5; band(0.05 + f * 0.21 * 0.5, 0.05 + (f + 0.5 / 5) * 0.21, "rgb(255,255,255)"); } ctx.restore();
     line(nx, yN(near, 0.26), fx, yN(far, 0.26), rgba([0, 0, 0], 1, 0.18 * k), 1);
     // ガラス（縦グラデ＋斜めハイライト＋店内シルエット）
     let gg = ctx.createLinearGradient(0, yN(near, 0.30), 0, yN(near, 0.74)); gg.addColorStop(0, rgb(GLASS, k * 1.05)); gg.addColorStop(1, rgb(GLASS, k * 0.82));
@@ -1688,7 +1687,7 @@ function rpgMiniMap() {
   for (let y = 0; y < RPG.h; y++) for (let x = 0; x < RPG.w; x++) {
     const seen = RPG.explored[x + "," + y];
     const c = rpgCell(x, y);
-    ctx.fillStyle = !seen ? "#15101f" : (c === "#" ? "#3a2f4d" : (c === "E" ? "#6a4" : (c === "T" ? "#a86" : "#2a2238")));
+    ctx.fillStyle = !seen ? "#322a46" : (c === "#" ? "#5a4d72" : (c === "E" ? "#7ad07a" : (c === "T" ? "#d0a060" : "#9a8fc0")));
     ctx.fillRect(x * cell, y * cell, cell - 1, cell - 1);
   }
   // プレイヤー
@@ -1719,18 +1718,29 @@ function rpgRenderBattle(app) {
 
   // ===== コマンドパネル（下部固定・親指ゾーン） =====
   const panel = el("div", "rpg-bt-panel");
-  // 敵パネル＝狙う対象（タップで切替）。名前/HP/弱点を1か所に集約＝対象表示の重複を排除
+  // 敵：1行サマリ（省略表示で崩れない）＋アイコンのみのチップ（複数時のみ）。名前はサマリだけに置き重なりを排除
   const foes = el("div", "rpg-foes");
-  b.enemies.forEach((e, i) => {
-    if (!e.alive) return;
-    const seen = d.codex[e.id], wk = seen && seen.weak.length ? seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "？";
-    const pct = Math.round(Math.max(0, e.hp) / e.maxhp * 100);
-    const chip = el("button", "rpg-foe" + (b.target === i ? " on" : ""));
-    chip.innerHTML = `<span class="foe-ic">${e.ref.ic}</span>` +
-      `<span class="foe-mid"><span class="foe-n">${e.ref.n}<em>弱点 ${wk}</em></span><span class="foe-hpbar"><span style="width:${pct}%"></span></span></span>`;
-    chip.onclick = () => rpgSelectTarget(i);
-    foes.appendChild(chip);
-  });
+  const aliveList = rpgAliveEnemies();
+  let tgi = (b.enemies[b.target] && b.enemies[b.target].alive) ? b.target : (aliveList[0] ? b.enemies.indexOf(aliveList[0]) : 0);
+  const tg0 = b.enemies[tgi];
+  if (tg0) {
+    const seen = d.codex[tg0.id], wk = seen && seen.weak.length ? seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "？";
+    const line = el("div", "foe-line");
+    line.innerHTML = `🎯 ${tg0.ref.ic} <b>${tg0.ref.n}</b> <span class="fl-wk">弱点 ${wk}</span> <span class="fl-hp">HP ${Math.max(0, tg0.hp)}/${tg0.maxhp}</span>`;
+    foes.appendChild(line);
+  }
+  if (aliveList.length >= 2) {
+    const chips = el("div", "foe-chips");
+    b.enemies.forEach((e, i) => {
+      if (!e.alive) return;
+      const pct = Math.round(Math.max(0, e.hp) / e.maxhp * 100);
+      const c = el("button", "foe-chip" + (b.target === i ? " on" : ""));
+      c.innerHTML = `<span class="fc-ic">${e.ref.ic}</span><span class="fc-hp"><span style="width:${pct}%"></span></span>`;
+      c.onclick = () => rpgSelectTarget(i);
+      chips.appendChild(c);
+    });
+    foes.appendChild(chips);
+  }
   panel.appendChild(foes);
 
   // 自分の状態＝コンパクト1行（HP管理が楽になったのでHPは“読める範囲で控えめ”に）
