@@ -3290,6 +3290,39 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .goal-row.done .goal-tx b { text-decoration: line-through; text-decoration-color: rgba(255,255,255,.3); }
 .goal-st { flex: none; font-size: 11px; font-weight: 800; color: #7bdca0; }
 .goal-row.next .goal-st { color: #ffd966; }
+
+/* 🍽️ 食事コレクション（みみしんぼ）：一覧グリッド＋実食/クイズ ポップ（表示専用・js/meals.js） */
+.meal-sec { display: flex; align-items: center; gap: 9px; margin: 16px 0 8px; }
+.meal-sec-ic { font-size: 22px; flex: none; }
+.meal-sec-tx b { display: block; font-size: 14px; color: var(--mist); }
+.meal-sec-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; }
+.meal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.meal-card { display: flex; align-items: center; gap: 9px; padding: 11px 12px; border-radius: 12px; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); text-align: left; }
+.meal-card:active { transform: translateY(1px); }
+.meal-card-ic { font-size: 24px; flex: none; width: 30px; text-align: center; filter: grayscale(.9) opacity(.55); }
+.meal-card.got .meal-card-ic { filter: none; }
+.meal-card-nm { font-size: 12.5px; font-weight: 700; color: var(--mist-soft); line-height: 1.25; }
+.meal-card.got .meal-card-nm { color: var(--mist); }
+
+.meal-pop { max-width: 360px; text-align: center; }
+.meal-pop-ic { font-size: 52px; line-height: 1; margin-bottom: 2px; }
+.meal-prompt { font-size: 13px; color: var(--mist-soft); margin: 10px 0; }
+.meal-react { font-size: 14.5px; font-weight: 800; line-height: 1.7; color: #ffe7a8; margin: 12px 4px; }
+.meal-react.meal-hit { color: #ffd36a; }
+.meal-react b { color: #fff; }
+.meal-desc { font-size: 13px; line-height: 1.8; color: var(--mist); margin: 12px 4px; text-align: left; }
+.meal-q { font-size: 13.5px; font-weight: 800; color: #cdeaff; margin: 10px 0 8px; }
+.meal-choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.meal-choice { padding: 11px 8px; border-radius: 10px; cursor: pointer; font-size: 12.5px; font-weight: 700;
+  background: var(--glass-2); border: 1px solid var(--glass-border); color: var(--mist); }
+.meal-choice:active { transform: translateY(1px); }
+.meal-choice.wrong { background: rgba(255,90,90,.16); border-color: rgba(255,90,90,.5); opacity: .6; text-decoration: line-through; }
+.meal-miss { font-size: 12.5px; color: #ff9a9a; margin-top: 10px; font-weight: 700; }
+.meal-note { font-size: 11.5px; color: var(--mist-soft); line-height: 1.6; margin-top: 12px;
+  border-top: 1px dashed rgba(255,255,255,.12); padding-top: 10px; text-align: left; }
+.meal-x { display: block; width: 100%; margin-top: 12px; padding: 9px; border-radius: 10px; cursor: pointer;
+  background: rgba(255,255,255,.06); border: 1px solid var(--glass-border); color: var(--mist-soft); font-size: 12px; }
 .hl-float-live { display: flex; align-items: center; gap: 7px; background: transparent !important; border: 0 !important; padding: 0 !important; box-shadow: none !important; }
 .hl-float-rank { color: var(--gold-bright); font-weight: 700; }
 .hl-float-rec { font-variant-numeric: tabular-nums; }
