@@ -3291,8 +3291,18 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .goal-st { flex: none; font-size: 11px; font-weight: 800; color: #7bdca0; }
 .goal-row.next .goal-st { color: #ffd966; }
 
-/* 🍽️ 食事コレクション（みみしんぼ）：一覧グリッド＋実食/クイズ ポップ（表示専用・js/meals.js） */
-.meal-sec { display: flex; align-items: center; gap: 9px; margin: 16px 0 8px; }
+/* 🍽️ 食事コレクション（みみしんぼ）：段タブ＋一覧グリッド＋実食/クイズ ポップ（表示専用・js/meals.js） */
+.meal-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 2px; }
+.meal-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); border-radius: 11px; }
+.meal-tab:active { transform: translateY(1px); }
+.meal-tab-ic { font-size: 22px; line-height: 1; filter: grayscale(.4) opacity(.8); }
+.meal-tab.on { background: rgba(255,217,102,.12); border-color: #ffd966; box-shadow: 0 0 0 1px rgba(255,217,102,.4); }
+.meal-tab.on .meal-tab-ic { filter: none; }
+.meal-tab-p { font-size: 10px; font-weight: 800; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
+.meal-tab.on .meal-tab-p { color: #ffce8a; }
+.meal-tab.done .meal-tab-p { color: #7bdca0; }
+.meal-sec { display: flex; align-items: center; gap: 9px; margin: 14px 0 8px; }
 .meal-sec-ic { font-size: 22px; flex: none; }
 .meal-sec-tx b { display: block; font-size: 14px; color: var(--mist); }
 .meal-sec-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; }

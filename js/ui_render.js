@@ -1198,17 +1198,40 @@ function renderGoals() {
 
 // 🍽️ 食事＝ミミの食べ歩きコレクション（みみしんぼ）。段ごとに食べる/当てるで集めていく。js/meals.js
 // 完全に表示専用＝食べた/解いたを state.player.meals に記録するだけ。
+// UX：4段を縦に積まず“上の段タブ”で切替＝選んだ段だけ表示してスクロールを抑える（compact＋drill-down）。
+let _mealTab = null;
 function renderMeals() {
   state.ui.screen = "meals";
   const app = beginScreen();
   app.appendChild(el("h2", null, "🍽️ 食事 ― みみの食べ歩き"));
   const all = (typeof mealStatsAll === "function") ? mealStatsAll() : { got: 0, total: 0 };
-  app.appendChild(el("div", "as-hint2", `食べて、味わって、コレクション。　<b>${all.got}/${all.total}</b> 品`));
-  (typeof MEAL_TIERS !== "undefined" ? MEAL_TIERS : []).forEach(t => {
+  const ob = el("div", "goals-bar");
+  ob.innerHTML = `<i style="width:${all.total ? Math.round(all.got / all.total * 100) : 0}%"></i><b>${all.got} / ${all.total} 品</b>`;
+  app.appendChild(ob);
+
+  const tiers = (typeof MEAL_TIERS !== "undefined") ? MEAL_TIERS : [];
+  if (!_mealTab || !tiers.some(t => t.id === _mealTab)) {
+    const firstInc = tiers.find(t => { const s = mealTierStats(t.id); return s.got < s.total; });
+    _mealTab = (firstInc || tiers[0] || {}).id;
+  }
+  // 段タブ（アイコン＋進捗・完成は✓）
+  const tabs = el("div", "meal-tabs");
+  tiers.forEach(t => {
     const st = mealTierStats(t.id);
+    const done = st.total > 0 && st.got === st.total;
+    const tab = el("button", "meal-tab" + (t.id === _mealTab ? " on" : "") + (done ? " done" : ""));
+    tab.innerHTML = `<span class="meal-tab-ic">${t.icon}</span><span class="meal-tab-p">${done ? "✓ " : ""}${st.got}/${st.total}</span>`;
+    tab.onclick = () => { _mealTab = t.id; renderMeals(); };
+    tabs.appendChild(tab);
+  });
+  app.appendChild(tabs);
+
+  // 選択中の段だけ：見出し＋グリッド
+  const t = tiers.find(x => x.id === _mealTab) || tiers[0];
+  if (t) {
     const sec = el("div", "meal-sec");
     sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
-      `<small>${t.sub}　・　${st.got}/${st.total}　${t.mode === "guess" ? "🔍当てる" : "🍴食べる"}</small></span>`;
+      `<small>${t.sub}　・　${t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める"}</small></span>`;
     app.appendChild(sec);
     const grid = el("div", "meal-grid");
     mealsByTier(t.id).forEach(m => {
@@ -1219,32 +1242,34 @@ function renderMeals() {
       grid.appendChild(card);
     });
     app.appendChild(grid);
-  });
+  }
 }
 // 一品の詳細＝実食（eat）or 食材/隠し味あて（guess）。解放後は何度でも読める。
 function showMealDetail(m) {
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop meal-pop");
+  // 閉じる時、食事画面なら再描画＝食べた/解いたカードが即「取得済み」に反映される。
+  const _closeMeal = () => { ov.remove(); if (state.ui.screen === "meals" && typeof renderMeals === "function") renderMeals(); };
   const head = () => `<div class="meal-pop-ic">${m.icon}</div><div class="navpop-t">${m.name}</div>`;
   const render = () => {
     if (!m.quiz) {
       // ── 食べる ──
       if (mealEaten(m.id)) {
         box.innerHTML = head() + `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`;
-        const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => ov.remove(); btns.appendChild(ok); box.appendChild(btns);
+        const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => _closeMeal(); btns.appendChild(ok); box.appendChild(btns);
       } else {
         box.innerHTML = head() + `<div class="meal-prompt">ひとくち、いってみる？</div>`;
         const btns = el("div", "navpop-btns");
         const eat = el("button", "navpop-go", "🍴 いただきます！");
         eat.onclick = () => { eatMeal(m.id); if (window.Sfx) Sfx.play("coin"); render(); };
-        const later = el("button", "navpop-cancel", "また今度"); later.onclick = () => ov.remove();
+        const later = el("button", "navpop-cancel", "また今度"); later.onclick = () => _closeMeal();
         btns.appendChild(eat); btns.appendChild(later); box.appendChild(btns);
       }
     } else {
       // ── 当てる（食材／隠し味） ──
       if (mealSolved(m.id)) {
         box.innerHTML = head() + `<div class="meal-desc">${m.desc}</div><div class="meal-react meal-hit">${m.quiz.hit}</div><div class="meal-note">📖 ${m.note}</div>`;
-        const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => ov.remove(); btns.appendChild(ok); box.appendChild(btns);
+        const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => _closeMeal(); btns.appendChild(ok); box.appendChild(btns);
       } else {
         box.innerHTML = head() + `<div class="meal-desc">${m.desc}</div><div class="meal-q">${m.quiz.q}</div>`;
         const ch = el("div", "meal-choices");
@@ -1262,13 +1287,13 @@ function showMealDetail(m) {
           ch.appendChild(cb);
         });
         box.appendChild(ch);
-        const later = el("button", "meal-x", "✕ また今度"); later.onclick = () => ov.remove(); box.appendChild(later);
+        const later = el("button", "meal-x", "✕ また今度"); later.onclick = () => _closeMeal(); box.appendChild(later);
       }
     }
   };
   render();
   ov.appendChild(box);
-  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.onclick = (e) => { if (e.target === ov) _closeMeal(); };
   document.body.appendChild(ov);
 }
 
