@@ -31,7 +31,7 @@ const ENDING_CONFIG = {
   finBg: "images/story/ED.jpg",      // 最後のカードの背景（夜明けの桟橋）
   scrollSeconds: 48,                 // ロールが流れ切るまでの秒数（小さく＝速い）
   playVN: true,                      // true: 先に顧問たちの送り出しVNを流す
-  bgm: null,                         // RACE_BGM_TRACKS のIDを入れると流用再生（null=無音）
+  bgm: "bgm/ある日森の中ドラゴンに出会った.mp3",   // スタッフロールBGM（パス＝RaceBgm.playFileでループ再生・音ありを選んだ時のみ）
   // 実在クレジット（{ type:"credits", from:"REAL" } で展開）。お好みで書き換え。
   realCredits: [
     { role: "企画・原案",                 name: "あいかわ" },

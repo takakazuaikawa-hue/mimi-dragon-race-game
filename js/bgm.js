@@ -104,6 +104,22 @@ var RaceBgm = (function () {
   }
   function getVolume() { return bgmLevel; }
 
+  // 任意ファイルをBGMとして再生（エンディングの「ある日森の中ドラゴンに出会った」等）。
+  // audio を共有するので、音量スライダー(setVolume)・ミュート(setMuted)・停止(stop/fadeOut)がそのまま効く。
+  function playFile(relPath) {
+    stop();
+    if (isMuted()) return;
+    try {
+      var parts = String(relPath).split("/");
+      parts[parts.length - 1] = encodeURIComponent(parts[parts.length - 1]);   // 日本語/空白のファイル名を安全に
+      var a = new Audio(parts.join("/"));
+      a.loop = true;
+      a.volume = BGM_BASE * bgmLevel;
+      var p = a.play(); if (p && p.catch) p.catch(function () {});
+      audio = a;
+    } catch (e) { audio = null; }
+  }
+
   return {
     start: start,
     stop: stop,
@@ -111,6 +127,7 @@ var RaceBgm = (function () {
     setMuted: setMuted,
     setVolume: setVolume,
     getVolume: getVolume,
+    playFile: playFile,
     isPlaying: function () { return !!audio; },
     trackCount: function () { return RACE_BGM_TRACKS.length; }
   };
