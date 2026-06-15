@@ -48,6 +48,7 @@ function beginScreen() {
   const prev = _prevScreen;
   app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart");
   if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
+  if (typeof syncVolumeFab === "function") syncVolumeFab();              // 🔊 全画面常設の音量ボタンを画面に合わせて表示/非表示
   if (prev !== screen) window.scrollTo(0, 0);   // start every new screen at the top
 
   // Hero "expand from the tapped card" (race card → detail) takes priority.
@@ -283,13 +284,24 @@ function showVolumePanel() {
     syncMuted();
   };
 }
-// レース画面などに置く「都度呼び出せる」🔊フローティングボタン（beginScreen の再描画で自動的に消える）。
-function addVolumeFab(parent) {
-  const fab = el("button", "vol-fab", "🔊");
-  fab.title = "音量";
-  fab.onclick = (e) => { e.stopPropagation(); showVolumePanel(); };
-  (parent || document.body).appendChild(fab);
+// 🔊 グローバル常設の音量ボタン（全画面で同じ位置＝既存作品の作法／consistent placement）。
+// body直下に1つだけ常駐。z-index は VN(200)・モーダル/カットイン(9000+)・エンディング(4000) より低い 150 なので、
+// それらの最中は覆われて自然に隠れ、閉じれば再び現れる（明示的な開閉ロジック不要）。
+function mountVolumeFab() {
+  let fab = document.getElementById("vol-fab");
+  if (!fab) {
+    fab = el("button", "vol-fab", "🔊"); fab.id = "vol-fab"; fab.title = "音量";
+    fab.onclick = (e) => { e.stopPropagation(); if (typeof showVolumePanel === "function") showVolumePanel(); };
+    document.body.appendChild(fab);
+  }
   return fab;
+}
+// 画面に応じて表示/非表示（beginScreen から毎遷移で呼ぶ）。ホームはナビに⚙️設定（🎚音量）があり
+// 下部が密なので隠す。タイトル・レース・物語・結果・設定など他の全画面では表示。
+function syncVolumeFab() {
+  const fab = mountVolumeFab();
+  const screen = state.ui && state.ui.screen;
+  fab.style.display = (screen === "home") ? "none" : "flex";
 }
 
 // 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
@@ -2523,7 +2535,6 @@ function renderRaceSelect() {
   runEventHooks("beforeRaceSelect");
   const app = beginScreen();
   app.appendChild(screenHeader("レース選択", "images/race_header.webp"));
-  if (typeof addVolumeFab === "function") addVolumeFab(app);   // 都度呼び出せる音量バー
 
   // 本日の注目レース — a prominent, daily-rotating spotlight
   try {
@@ -3636,8 +3647,7 @@ function renderRaceRun() {
     betResult: c.betResult,
     timeline: c.timeline, commentary: c.commentary, broadcast: c.broadcast
   });
-  if (typeof addVolumeFab === "function") addVolumeFab(app);   // 都度呼び出せる音量バー（レース中もOK）
-  // （レース隅のマスコット竜は撤去：レース画面には不要）
+  // （レース隅のマスコット竜は撤去：レース画面には不要。音量ボタンはグローバル常設 mountVolumeFab）
 }
 
 function stopAutoTimer() {
