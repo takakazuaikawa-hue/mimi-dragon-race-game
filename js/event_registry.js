@@ -324,7 +324,12 @@ registerEvent({
   hook: "onVillageUpdate",
   condition: { once: false },
   actions: [{ type: "dialogue", speaker: "sumika",
-    text: ctx => `ミミ様、村レベルが ${ctx && ctx.newLevel ? ctx.newLevel : "?"} に上がりました。賭金倍率と救済コインの基準が上がります。` }]
+    text: ctx => {
+      const lv = (ctx && ctx.newLevel) || (state.player && ((state.player.village && state.player.village.level) || state.player.villageLevel));
+      return lv
+        ? `ミミ様、村レベルが ${lv} に上がりました。賭金倍率と救済コインの基準が上がります。`
+        : `ミミ様、村が一段、育ちました。賭金倍率と救済コインの基準が上がります。`;
+    } }]
 });
 
 // ===== §10 Phase 4: Rank intros + Major rival intros =====

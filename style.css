@@ -43,7 +43,7 @@ body {
   background: var(--bg-world);
   background-attachment: fixed;
   color: var(--cream);
-  min-height: 100vh;
+  min-height: 100dvh;                 /* モバイルのURLバーでズレないよう dvh（L1・ガードレール準拠） */
   -webkit-user-select: none; user-select: none;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -2105,8 +2105,33 @@ body.home-mode #app { padding: 12px 12px 16px; }
    （内容が数px超えてもページが動かない。離脱時はクラスが外れて通常スクロールに戻る） */
 body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height: 100%;
   overflow: hidden; overscroll-behavior: none; }
+
+/* ===== H1: 横向き(低い高さ)対策 =====
+   縦持ち前提の全画面ノースクロールUIは横向きで下部(レース/ナビ/コメント)がクリップされ操作不能になる。
+   (a) home/title の固定＋overflow:hidden を解いてスクロールで操作部へ到達可能に（全環境の保険）。
+   (b) タッチ端末に限り「縦にしてね」を被せる（PCの低い窓は回転できないので除外＝(a)で救済）。 */
+@media (orientation: landscape) and (max-height: 560px) {
+  body.home-mode, body.title-mode { position: static; inset: auto; width: auto; height: auto; overflow: visible; }
+  .hl { min-height: auto; }
+  .title-screen { min-height: auto; overflow: visible; }
+}
+/* 見た目は常に定義し、出し入れ(display)だけを media で切替＝強制表示テストや将来の再利用が容易 */
+#rotate-hint {
+  display: none; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; text-align: center;
+  background: radial-gradient(120% 120% at 50% 28%, rgba(18,28,33,.97), rgba(8,12,15,.99));
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  padding: max(16px, env(safe-area-inset-top)) 20px max(16px, env(safe-area-inset-bottom)); }
+@media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
+  #rotate-hint { display: flex; }
+}
+.rh-card { max-width: 320px; }
+.rh-ic { font-size: 54px; line-height: 1; display: inline-block; animation: rhRotate 2.6s ease-in-out infinite; }
+@keyframes rhRotate { 0%,16%{ transform: rotate(0deg); } 40%,62%{ transform: rotate(-90deg); } 86%,100%{ transform: rotate(0deg); } }
+.rh-t { margin-top: 14px; font-size: 18px; font-weight: 900; color: var(--gold-bright); }
+.rh-s { margin-top: 8px; font-size: 13px; line-height: 1.75; color: var(--mist); }
+@media (prefers-reduced-motion: reduce) { .rh-ic { animation: none; } }
 .title-screen {
-  position: relative; min-height: 100vh; min-height: 100dvh;
+  position: relative; min-height: 100dvh;
   overflow: hidden; display: flex; align-items: stretch; justify-content: center;
 }
 .title-bg {
