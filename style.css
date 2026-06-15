@@ -4563,6 +4563,60 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .sg-title { letter-spacing: .3em; transform: none; }
 }
 
+/* =========================================================================
+   🗺️ 巨大モール大冒険：探索＆戦闘を縦フレームいっぱいに（没入ステージ＋下部ドック）
+   研究準拠：ビュー/アリーナが縦を満たし、操作は親指ゾーン(下部)に固定・44px以上
+   ========================================================================= */
+.rpg-explore, .rpg-battle { display:flex; flex-direction:column; gap:8px; min-height:calc(100dvh - 100px); }
+.rpg-explore .rpg-runhead2 { flex:none; margin:0; }
+
+/* ── 没入ステージ（一人称ビューが縦を満たす） */
+.rpg-stage { position:relative; flex:1 1 auto; min-height:190px; border-radius:16px; overflow:hidden;
+  background:#10131c; border:1px solid rgba(120,96,160,.35); box-shadow:0 8px 28px rgba(0,0,0,.45); }
+.rpg-stage .rpg-view { position:absolute; inset:0; width:100%; height:100%; margin:0; border:none; border-radius:0; box-shadow:none; }
+/* ミニマップ＝右上オーバーレイ */
+.rpg-mini.ov { position:absolute; top:8px; right:8px; margin:0; padding:3px; z-index:3;
+  background:rgba(10,8,16,.5); border-radius:9px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+.rpg-mini.ov canvas { width:76px; height:auto; border-radius:5px; }
+/* ログ＝左下オーバーレイ（最新数行・半透明） */
+.rpg-log.ov { position:absolute; left:8px; right:96px; bottom:8px; margin:0; min-height:0; z-index:3; pointer-events:none;
+  display:flex; flex-direction:column; gap:2px; align-items:flex-start; }
+.rpg-log.ov .rpg-logline { background:rgba(8,6,14,.55); border-radius:7px; padding:2px 9px; font-size:12px; max-width:100%; }
+
+/* ── 下部ドック（親指ゾーン） */
+.rpg-dock { flex:none; display:flex; flex-direction:column; gap:8px; }
+.rpg-move { display:flex; flex-direction:column; gap:8px; }
+.rpg-dpad { display:grid; grid-template-columns:1fr 1.3fr 1fr; gap:8px; }
+.rpg-padbtn2 { min-height:58px; padding:14px 0; font-size:22px; font-weight:800; color:#fff; cursor:pointer; user-select:none;
+  border:1px solid rgba(150,120,200,.4); border-radius:14px; background:rgba(52,42,72,.92); }
+.rpg-padbtn2.fw { background:linear-gradient(135deg,#5b3f86,#8a5fce); font-size:27px; box-shadow:0 4px 14px rgba(110,70,180,.4); }
+.rpg-padbtn2:active { transform:scale(.95); filter:brightness(1.12); }
+.rpg-movebtn.wide { width:100%; min-height:50px; padding:13px; font-size:15px; font-weight:800; color:#fff; border:none; border-radius:14px; cursor:pointer; }
+.rpg-movebtn.pause { background:linear-gradient(135deg,#3a6f9e,#5fa8ce); }
+.rpg-movebtn.play { background:linear-gradient(135deg,#5b3f86,#7a4fae); }
+.rpg-movebtn.wide:active { transform:scale(.98); }
+.rpg-dock-acts { display:flex; gap:8px; }
+.rpg-actbtn { flex:1; min-height:50px; padding:13px; font-size:15px; font-weight:800; color:#fff; cursor:pointer; position:relative;
+  border:1px solid rgba(150,120,200,.35); border-radius:14px; }
+.rpg-actbtn.shop { background:linear-gradient(135deg,#c8743f,#e0a35f); border-color:rgba(255,180,120,.55); }
+.rpg-actbtn.shop.has { box-shadow:0 0 12px rgba(255,180,110,.5); animation:rpgpulse 1.8s ease-in-out infinite; }
+.rpg-actbtn.leave { flex:0 0 38%; background:rgba(40,32,56,.85); }
+.rpg-actbtn .nw { display:inline-block; min-width:18px; margin-left:5px; padding:0 5px; border-radius:999px; background:#ff4d6d; color:#fff; font-size:12px; }
+.rpg-actbtn:active { transform:scale(.98); }
+
+/* ── 戦闘：アリーナ(伸縮)＋コマンド(下部固定) */
+.rpg-bt-arena { flex:1 1 auto; min-height:210px; max-width:none; margin:0; position:relative; border-radius:16px 16px 0 0; }
+.rpg-bt-cv { position:absolute; inset:0; width:100%; height:100%; }
+.rpg-bt-panel { flex:none; max-width:none; margin:0; }
+.rpg-cmd .rpg-cmdbtn { min-height:54px; justify-content:center; }
+.rpg-cmd .rpg-cmdbtn.back { min-height:44px; }
+
+/* 小型機：ドックが嵩張りすぎないよう少し詰める */
+@media (max-height:680px) {
+  .rpg-explore, .rpg-battle { min-height:calc(100dvh - 86px); }
+  .rpg-padbtn2 { min-height:50px; font-size:20px; }
+  .rpg-movebtn.wide, .rpg-actbtn { min-height:46px; }
+}
 /* ===== 終章・最終決戦の走馬灯ショー（積み上げ紹介・表示専用） ===== */
 .fin-show { position: fixed; inset: 0; z-index: 9000; overflow: hidden; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
