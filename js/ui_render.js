@@ -2049,6 +2049,20 @@ function renderSettings() {
     grid.appendChild(act("👁️ 神眼カットイン再生", () => { if (typeof playShinganCutin === "function") playShinganCutin(); }));
     app.appendChild(grid);
     app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク/物語の解放）。レースの着順・オッズ・配当の計算には触れません。終章メーターも表示専用。"));
+
+    // 🧭 画面ジャンプ：全画面に番号で直接ジャンプ（開発・確認の高速化。js/nav.js SCREEN_INDEX）。
+    if (typeof SCREEN_INDEX !== "undefined" && typeof goto === "function") {
+      app.appendChild(el("div", "as-sec", "🧭 画面ジャンプ（番号で直接表示）"));
+      const jg = el("div", "set-jump");
+      SCREEN_INDEX.forEach(s => {
+        const b = el("button", "set-jump-b", `<b>${s.no}</b><span>${s.label}</span>`);
+        b.title = s.id + "　（URL：?go=" + s.id + "）";
+        b.onclick = () => { if (typeof goto === "function") goto(s.id); };
+        jg.appendChild(b);
+      });
+      app.appendChild(jg);
+      app.appendChild(el("div", "as-hint2", "URLでも直接起動できます：<code>?go=meals</code> のように画面IDを指定（<code>&debug=1</code> でデバッグもON）。"));
+    }
   }
 
   // おまけ：エンディング＆スタッフロール（表示専用。進行に関係なくいつでも観られる）。

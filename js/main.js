@@ -22,20 +22,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const _infoSel = document.getElementById("info-level");
   if (_infoSel && state.ui.infoLevel) _infoSel.value = state.ui.infoLevel;
 
-  const rerenderCurrent = () => {
-    const map = {
-      title: renderTitle, home: renderHome, race_select: renderRaceSelect,
-      race_detail: () => renderRaceDetail(state.current.race),
-      race_run: renderRaceRun, result: renderResult, analysis: renderAnalysis,
-      assets: renderAssets, village: renderVillage, collection: renderCollection, help: renderHelp,
-      story: renderStory, consult: renderConsult, settings: renderSettings, mall: renderMall,
-      mall_rpg: renderMallRpg,
-      stable: (typeof renderStable === "function" ? renderStable : renderHome),
-      scout: (typeof renderScout === "function" ? renderScout : renderHome),
-      poro_gourmet: (typeof renderPoroGourmet === "function" ? renderPoroGourmet : renderHome)
-    };
-    if (map[state.ui.screen]) map[state.ui.screen]();
-  };
+  // 画面の再描画・ジャンプは js/nav.js の rerenderCurrent()/goto()/SCREEN_INDEX に集約（全画面網羅）。
+  // ここでは nav.js のグローバル rerenderCurrent() をそのまま使う（ローカルの画面マップは廃止）。
 
   // Debug toggle
   document.getElementById("debug-toggle").addEventListener("change", (e) => {
@@ -77,5 +65,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  renderTitle();
+  // ?go=<screen> があれば、その画面で直接起動（開発・プレビュー高速化）。無ければ通常どおりタイトルから。
+  if (!(typeof applyStartupRoute === "function" && applyStartupRoute())) renderTitle();
 });

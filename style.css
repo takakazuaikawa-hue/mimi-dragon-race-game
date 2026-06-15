@@ -3333,6 +3333,14 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border-top: 1px dashed rgba(255,255,255,.12); padding-top: 10px; text-align: left; }
 .meal-x { display: block; width: 100%; margin-top: 12px; padding: 9px; border-radius: 10px; cursor: pointer;
   background: rgba(255,255,255,.06); border: 1px solid var(--glass-border); color: var(--mist-soft); font-size: 12px; }
+
+/* 🧭 画面ジャンプ（デバッグ・開発用・js/nav.js SCREEN_INDEX） */
+.set-jump { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0; }
+.set-jump-b { display: flex; align-items: center; gap: 6px; padding: 8px 9px; border-radius: 9px; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); color: var(--mist); font-size: 11.5px; text-align: left; }
+.set-jump-b:active { transform: translateY(1px); }
+.set-jump-b b { flex: none; min-width: 18px; text-align: center; color: #ffce8a; font-variant-numeric: tabular-nums; }
+.set-jump-b span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hl-float-live { display: flex; align-items: center; gap: 7px; background: transparent !important; border: 0 !important; padding: 0 !important; box-shadow: none !important; }
 .hl-float-rank { color: var(--gold-bright); font-weight: 700; }
 .hl-float-rec { font-variant-numeric: tabular-nums; }
