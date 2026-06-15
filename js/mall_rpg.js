@@ -32,25 +32,25 @@ function rpgData() {
   if (!d.up) d.up = {};                               // 恒久強化レベル
   return d;
 }
-// ── ⭐ 恒久メタ進行（モール内で完結）：倒れても降りても毎回⭐がたまり、強化で永続的に強く/広くなる
-//    ＝「失敗した回も前進」というロゲライトの鉄則＋ゴールドとは別の“使い道のある成長”
+// ── ✨ 自分磨き（モール内で完結する恒久成長）：ぼうけんのたびに✨みがきがたまり、つかうとミミが少しずつ成長する
+//    ＝「失敗した回も前進」というロゲライトの鉄則＋ゴールドとは別の“使い道のある成長”。世界観＝リゾートで自分を磨く
 const RPG_UP = [
-  { id: "pow",  ic: "🗡️", n: "剣の心得",   d: "攻撃力 +2/Lv",  max: 8, cost: l => 4 + l * 3 },
-  { id: "hp",   ic: "❤️", n: "体力増強",   d: "最大HP +8/Lv",  max: 8, cost: l => 4 + l * 3, stat: { maxhp: 8 } },
-  { id: "mp",   ic: "💧", n: "魔力増強",   d: "最大MP +4/Lv",  max: 6, cost: l => 4 + l * 3, stat: { maxmp: 4 } },
-  { id: "def",  ic: "🛡️", n: "守りの心得", d: "被ダメ -6%/Lv", max: 5, cost: l => 6 + l * 4 },
-  { id: "luck", ic: "📦", n: "宝の目利き", d: "宝・ガチャのレア度UP", max: 5, cost: l => 7 + l * 5 },
-  { id: "gold", ic: "🪙", n: "軍資金",     d: "探索開始 +50G/Lv", max: 5, cost: l => 5 + l * 3 },
+  { id: "pow",  ic: "💪", n: "ぱほぱほ特訓", d: "ぱほぱほの威力 +2/Lv",  max: 8, cost: l => 4 + l * 3 },
+  { id: "hp",   ic: "🌿", n: "健康づくり",   d: "たいりょく(最大HP) +8/Lv", max: 8, cost: l => 4 + l * 3, stat: { maxhp: 8 } },
+  { id: "mp",   ic: "🧘", n: "こころの余裕", d: "集中(最大MP) +4/Lv",   max: 6, cost: l => 4 + l * 3, stat: { maxmp: 4 } },
+  { id: "def",  ic: "🎀", n: "身のこなし",   d: "うけるダメージ -6%/Lv", max: 5, cost: l => 6 + l * 4 },
+  { id: "luck", ic: "🍀", n: "運気みがき",   d: "おたから運がよくなる",   max: 5, cost: l => 7 + l * 5 },
+  { id: "gold", ic: "👛", n: "やりくり上手", d: "ぼうけん開始 +50G/Lv",  max: 5, cost: l => 5 + l * 3 },
 ];
 function rpgUpLv(id) { const d = rpgData(); return (d.up && d.up[id]) || 0; }
 function rpgBuyUp(id) {
   const d = rpgData(), def = RPG_UP.find(u => u.id === id); if (!def) return;
   const lv = rpgUpLv(id); if (lv >= def.max) { rpgSfx("tick"); return; }
   const cost = def.cost(lv);
-  if ((d.rep || 0) < cost) { rpgSfx("tick"); rpgFx.banner("⭐が足りない…", "bad"); return; }
+  if ((d.rep || 0) < cost) { rpgSfx("tick"); rpgFx.banner("✨みがきが足りない…", "bad"); return; }
   d.rep -= cost; d.up = d.up || {}; d.up[id] = lv + 1;
   if (def.stat) { if (def.stat.maxhp) { d.maxhp += def.stat.maxhp; d.hp += def.stat.maxhp; } if (def.stat.maxmp) { d.maxmp += def.stat.maxmp; d.mp += def.stat.maxmp; } }
-  rpgSfx("unlock"); rpgFx.banner("⭐ 強化！ " + def.n, "levelup"); rpgSave(); renderMallRpg();
+  rpgSfx("unlock"); rpgFx.banner("💖 自分磨き！ " + def.n, "levelup"); rpgSave(); renderMallRpg();
 }
 // 探索の成果 → ⭐に変換してバンク（leave／気絶／タワー降りのすべてで必ず前進）
 function rpgEndRun() {
@@ -59,7 +59,7 @@ function rpgEndRun() {
   const floors = RPG.tower ? (RPG.depth || 1) : ((RPG.fi || 0) + 1);
   const rep = Math.max(1, floors * 2 + (RPG.runKills || 0) + (RPG.runMissions || 0) * 3 + (RPG.tower ? floors : 0));
   d.rep = (d.rep || 0) + rep; rpgSave();
-  rpgFx.banner("⭐ 島の評判 +" + rep, "victory");
+  rpgFx.banner("✨ みがき +" + rep, "victory");
   return rep;
 }
 function rpgToday() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return "x"; } }
@@ -165,7 +165,7 @@ function rpgStartRun() {
     runKills: 0, runMissions: 0,
   };
   rpgLoadFloor(0);
-  const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`🪙 軍資金 +${sg}G で出発！`, "good"); }   // 🪙軍資金（恒久強化）
+  const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`👛 やりくり上手で +${sg}G で出発！`, "good"); }   // 👛やりくり上手（自分磨き）
   rpgLog("🏝️ リゾート探検へ！ ▲で進む・↰↱で向き（▶でオートにも切替）", "good");
   rpgFx.floorCard(RPG_FLOORS[0].name, rpgGoalCardSub(RPG_FLOORS[0]), RPG_FLOORS[0].accent);
   renderMallRpg();
@@ -795,7 +795,7 @@ function rpgRenderHub(app) {
   const stat = el("div", "rpg-hero-stats");
   stat.innerHTML =
     `<span>Lv <b>${d.lv}</b></span><span>❤️ ${d.hp}/${d.maxhp}</span><span>💧 ${d.mp}/${d.maxmp}</span>` +
-    `<span>🪙 ${d.gold}G</span><span class="tk">🎟️ ${d.tickets || 0}</span><span class="rep">⭐ ${d.rep || 0}</span>` +
+    `<span>🪙 ${d.gold}G</span><span class="tk">🎟️ ${d.tickets || 0}</span><span class="rep">✨ ${d.rep || 0}</span>` +
     (d.cleared ? `<span class="cl">🌿 制覇</span>` : "");
   hero.appendChild(stat);
   app.appendChild(hero);
@@ -829,17 +829,17 @@ function rpgRenderHub(app) {
     app.appendChild(tw);
   }
 
-  // ⭐ 強化ラボ（恒久メタ進行＝モール内で完結する成長。探索のたびに⭐がたまる）
+  // 💖 自分磨き（恒久メタ進行＝モール内で完結する成長。ぼうけんのたびに✨みがきがたまる）
   const lab = el("div", "rpg-box lab-box");
-  lab.innerHTML = `<div class="rpg-box-t">⭐ 強化ラボ <span class="rpg-rep">⭐ ${d.rep || 0}</span></div>` +
-    `<div class="rpg-lab-hint">探索のたびに⭐がたまる（倒れても・途中で出てもOK）。使うとずっと強くなる。</div>`;
+  lab.innerHTML = `<div class="rpg-box-t">💖 自分磨き <span class="rpg-rep">✨ ${d.rep || 0}</span></div>` +
+    `<div class="rpg-lab-hint">ぼうけんのたびに<b>✨みがき</b>がたまる（倒れても・途中で出てもOK）。つかうとミミがずっと成長するっ！</div>`;
   const labg = el("div", "rpg-labgrid");
   RPG_UP.forEach(u => {
     const lv = rpgUpLv(u.id), maxed = lv >= u.max, cost = u.cost(lv), can = (d.rep || 0) >= cost;
     const b = el("button", "rpg-labbtn" + (maxed ? " maxed" : can ? " ready" : " off"));
     b.innerHTML = `<span class="li">${u.ic}</span><b>${u.n}</b><small>${u.d}</small>` +
       `<span class="lv">${maxed ? "MAX" : "Lv" + lv + " / " + u.max}</span>` +
-      `<span class="cost">${maxed ? "✓" : "⭐" + cost}</span>`;
+      `<span class="cost">${maxed ? "✓" : "✨" + cost}</span>`;
     if (!maxed) b.onclick = () => rpgBuyUp(u.id);
     labg.appendChild(b);
   });
@@ -888,7 +888,7 @@ function rpgRenderHub(app) {
   app.appendChild(codex);
 
   const how = el("details", "rpg-how");
-  how.innerHTML = `<summary>📖 遊び方</summary><div>矢印キー or 画面のパッドでモールを1歩ずつ進み、<b>🛗階段で上の階へ</b>。各フロアには<b>🎯ミッション</b>があり、達成するとごほうび（階段はいつでも使えます）。探索のたびに<b>⭐島の評判</b>がたまり（倒れても持ち帰る）、ハブの<b>⭐強化ラボ</b>でずっと強くなれます。<b>浮かれた観光客</b>や時々まぎれる👾モンスターと戦い、<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)を突く</b>と「もう1回！」。<b>🌿屋上のボスを倒すと衣装GET</b>。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
+  how.innerHTML = `<summary>📖 遊び方</summary><div>矢印キー or 画面のパッドでモールを1歩ずつ進み、<b>🛗階段で上の階へ</b>。各フロアには<b>🎯ミッション</b>があり、達成するとごほうび（階段はいつでも使えます）。ぼうけんのたびに<b>✨みがき</b>がたまり（倒れても持ち帰る）、ハブの<b>💖自分磨き</b>でミミがずっと成長できます。<b>浮かれた観光客</b>や時々まぎれる👾モンスターと戦い、<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)を突く</b>と「もう1回！」。<b>🌿屋上のボスを倒すと衣装GET</b>。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
   app.appendChild(how);
 
   const actions = el("div", "actions");
