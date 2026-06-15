@@ -231,23 +231,34 @@ function playFinalShowcase() {
 function startFinalBattle() {
   const e = epData();
   if (e.edFlag) { if (window.Ending && Ending.play) Ending.play(); return; }
+  // ① 専用BGM：the-fanfare（既存レース曲）。現在のミュート設定を尊重（音オンなら鳴る）。
+  //   エンディング側 confirmAudio→playFile(森のくまさん) が stop() するので、ED開始で自動的に切替わる。
+  if (window.RaceBgm && RaceBgm.playFile) { try { RaceBgm.playFile("bgm/racebgm/the-fanfare.mp3"); } catch (e2) {} }
   const who = "celestia";   // 第5話到達済み＝正体判明
   const preamble = [
     ["narrator", "夜明け前の聖龍レース場。最後のレースを前に、歓声がふくらんでいく。"],
     [who, "ねえ、ミミ。……ここまで歩いてきた道を、少しだけ振り返ってみない？", "default"],
     ["mimi", "はいっ。……わたしたちが積み上げてきた、ぜんぶを。", "happy"]
   ];
+  // ② 最終レース＝立ち絵連発（顧問5人＋ミミ＋観客が沸く）→ 締め。予想は覆らない／それでも全員が沸く。
   const closing = [
-    ["narrator", "そして、最後のレースが始まる。セレスティアの読みどおり、1着は動かない。──それでも。"],
-    [who, "……驚いた。淘汰の前で、ここまで“穴”を残す島は、そうないわ。", "default"],
+    ["narrator", "高らかにファンファーレ。最終レース――島じゅうの視線が、ゲートに集まる。"],
+    ["makura", "さあさあ最後の大一番、実況はこのマクラ！　全頭そろい踏み、観客のボルテージは過去最高だァ！"],
+    ["sake", "ハッ、いい息してやがる。どの竜も、今日ばかりは気配が違うぜ。"],
+    [who, "……視えている。1着は、動かない。わたしの神眼の、とおりに。", "default"],
+    ["narrator", "ゲートが開く。先頭は、セレスティアの読みどおりの一頭。だが――"],
+    ["mizu", "見て。単勝はたった1点に潰れても……複勝が、ワイドが、割れて咲いてる。願いの乗った値よ、あはん。"],
+    ["sumika", "住居も食事も名声も、ぜんぶ賭け札になって島を巡りました。……だから、こんなに沸くんです。"],
+    ["makura", "2着に伏兵ッ！　3着はなんと万年最下位ァ！　当たり札も、外れ札も、総立ちだァ――！"],
+    ["mimi", "……みんな、笑ってる。勝っても、負けても。", "happy"],
+    [who, "驚いた。淘汰の前で、ここまで“穴”を残す島は、そうないわ。", "default"],
     ["mimi", "わたし、強い竜を当てたわけじゃないです。……ただ、みんなが、いろんな子を好きでいただけ。", "default"],
     [who, "そう。価値は、1着の上にだけあるんじゃない。──いい賭場。この賭場、壊れなかったね。"],
     ["mimi", "はいっ。……また、見に来てください。", "happy"]
   ];
   const toEnding = function () {
     epilogueClear();
-    if (typeof showInfoPopup === "function") showInfoPopup("🎬 終章クリア",
-      `<div class="mm-row"><span class="mm-ic">✨</span><div><b>この賭場、壊れなかったね</b><small>エンディングが解放されました。物語の最終話、または設定のおまけからどうぞ。</small></div></div>`);
+    // ※「終章クリア」告知はエンディング側（confirmAudio→送り出し→ロール）が担うので二重モーダルにしない。
     if (window.Ending && Ending.play) Ending.play();
   };
   const afterShow = function () {
