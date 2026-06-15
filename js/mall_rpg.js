@@ -28,7 +28,39 @@ function rpgData() {
   if (!d.records) d.records = { lv: d.lv || 1, floor: d.best.floor || 0, combo: 0, score: 0, pulls: 0, depth: 0 };
   if (d.records.depth == null) d.records.depth = 0;
   if (d.daily == null) d.daily = "";                 // 最終ログボ受取日
+  if (d.rep == null) d.rep = 0;                       // ⭐島の評判（恒久メタ進行の資源）
+  if (!d.up) d.up = {};                               // 恒久強化レベル
   return d;
+}
+// ── ⭐ 恒久メタ進行（モール内で完結）：倒れても降りても毎回⭐がたまり、強化で永続的に強く/広くなる
+//    ＝「失敗した回も前進」というロゲライトの鉄則＋ゴールドとは別の“使い道のある成長”
+const RPG_UP = [
+  { id: "pow",  ic: "🗡️", n: "剣の心得",   d: "攻撃力 +2/Lv",  max: 8, cost: l => 4 + l * 3 },
+  { id: "hp",   ic: "❤️", n: "体力増強",   d: "最大HP +8/Lv",  max: 8, cost: l => 4 + l * 3, stat: { maxhp: 8 } },
+  { id: "mp",   ic: "💧", n: "魔力増強",   d: "最大MP +4/Lv",  max: 6, cost: l => 4 + l * 3, stat: { maxmp: 4 } },
+  { id: "def",  ic: "🛡️", n: "守りの心得", d: "被ダメ -6%/Lv", max: 5, cost: l => 6 + l * 4 },
+  { id: "luck", ic: "📦", n: "宝の目利き", d: "宝・ガチャのレア度UP", max: 5, cost: l => 7 + l * 5 },
+  { id: "gold", ic: "🪙", n: "軍資金",     d: "探索開始 +50G/Lv", max: 5, cost: l => 5 + l * 3 },
+];
+function rpgUpLv(id) { const d = rpgData(); return (d.up && d.up[id]) || 0; }
+function rpgBuyUp(id) {
+  const d = rpgData(), def = RPG_UP.find(u => u.id === id); if (!def) return;
+  const lv = rpgUpLv(id); if (lv >= def.max) { rpgSfx("tick"); return; }
+  const cost = def.cost(lv);
+  if ((d.rep || 0) < cost) { rpgSfx("tick"); rpgFx.banner("⭐が足りない…", "bad"); return; }
+  d.rep -= cost; d.up = d.up || {}; d.up[id] = lv + 1;
+  if (def.stat) { if (def.stat.maxhp) { d.maxhp += def.stat.maxhp; d.hp += def.stat.maxhp; } if (def.stat.maxmp) { d.maxmp += def.stat.maxmp; d.mp += def.stat.maxmp; } }
+  rpgSfx("unlock"); rpgFx.banner("⭐ 強化！ " + def.n, "levelup"); rpgSave(); renderMallRpg();
+}
+// 探索の成果 → ⭐に変換してバンク（leave／気絶／タワー降りのすべてで必ず前進）
+function rpgEndRun() {
+  if (!RPG) return 0;
+  const d = rpgData();
+  const floors = RPG.tower ? (RPG.depth || 1) : ((RPG.fi || 0) + 1);
+  const rep = Math.max(1, floors * 2 + (RPG.runKills || 0) + (RPG.runMissions || 0) * 3 + (RPG.tower ? floors : 0));
+  d.rep = (d.rep || 0) + rep; rpgSave();
+  rpgFx.banner("⭐ 島の評判 +" + rep, "victory");
+  return rep;
 }
 function rpgToday() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return "x"; } }
 function rpgSave() { if (typeof saveGame === "function") saveGame(); }
@@ -130,8 +162,10 @@ function rpgStartRun() {
     mode: "explore", steps: 0, grace: 1,
     explored: {}, collected: {},
     log: [], battle: null, flash: null, auto: false,
+    runKills: 0, runMissions: 0,
   };
   rpgLoadFloor(0);
+  const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`🪙 軍資金 +${sg}G で出発！`, "good"); }   // 🪙軍資金（恒久強化）
   rpgLog("🏝️ リゾート探検へ！ ▲で進む・↰↱で向き（▶でオートにも切替）", "good");
   rpgFx.floorCard(RPG_FLOORS[0].name, rpgGoalCardSub(RPG_FLOORS[0]), RPG_FLOORS[0].accent);
   renderMallRpg();
@@ -172,6 +206,7 @@ function rpgGoalCheck() {
   const g = RPG && RPG.goal; if (!g || g.done || g.prog < g.n) return;
   g.done = true;
   const d = rpgData();
+  RPG.runMissions = (RPG.runMissions || 0) + 1;   // ⭐評判の算出に反映
   const bonusG = 50 + RPG.fi * 30, bonusE = 15 + RPG.fi * 10;
   d.gold += bonusG; d.exp += bonusE;
   d.records = d.records || {}; d.records.missions = (d.records.missions || 0) + 1;
@@ -201,6 +236,7 @@ function rpgStartTower() {
     fi: RPG_FLOORS.length, map: [], w: 9, h: 9, px: 1, py: 1, dir: 1,
     mode: "explore", steps: 0, grace: 1, explored: {}, collected: {},
     log: [], battle: null, flash: null, tower: true, depth: 1, towerLuck: 0.2, auto: false,
+    runKills: 0, runMissions: 0,
   };
   rpgLoadFloor(RPG_FLOORS.length);
   rpgLog("🌟 エンドレスタワーに挑戦！ どこまで上れる？", "good");
@@ -226,6 +262,7 @@ function rpgTowerDescend() {
   rpgBumpRecords();
   const n = Math.min(5, 1 + Math.floor(RPG.depth / 2)), luck = RPG.towerLuck;
   const items = []; for (let i = 0; i < n; i++) items.push(rpgGrantReward(rpgRollRarity(luck)));
+  rpgEndRun();   // 深く上るほど⭐も増える
   rpgSave();
   RPG.tower = false;
   rpgReveal(items, { title: `🏁 ${RPG.depth}層クリアのごほうび！`, onDone: () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); RPG = null; renderMallRpg(); } });
@@ -385,7 +422,7 @@ function rpgEncounter(boss) {
 }
 function rpgBLog(t, cls) { if (RPG && RPG.battle) { RPG.battle.log.unshift({ t, cls: cls || "" }); RPG.battle.log = RPG.battle.log.slice(0, 6); } }
 function rpgAliveEnemies() { return RPG.battle.enemies.filter(e => e.alive); }
-function rpgPlayerPow() { return 5 + rpgData().lv * 2; }
+function rpgPlayerPow() { return 5 + rpgData().lv * 2 + rpgUpLv("pow") * 2; }
 
 // 弱点・耐性の倍率
 function rpgMult(mon, el) {
@@ -546,6 +583,7 @@ function rpgEnemyStep(idx) {
   let dealt = 0;
   if (useSp) { if (sp.dmg) dealt = Math.max(1, Math.round((e.atk || e.ref.atk) * 0.8 * dmgMult * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6))); }
   else dealt = Math.max(1, Math.round((e.atk || e.ref.atk) * dmgMult * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6)));
+  if (dealt > 0) dealt = Math.max(1, Math.round(dealt * (1 - rpgUpLv("def") * 0.06)));   // 🛡️守りの心得（恒久強化）
   e.intent = null;
   const now0 = (typeof performance !== "undefined" ? performance.now() : Date.now()), freeze = 70, total = 230 + freeze + 200;
   b.anim = { who: "enemy", aIdx: ei, t0: now0, contactAt: now0 + 230, freeze: freeze, knock: dealt > 0 ? 12 : 0, shakeMag: dealt > 0 ? 9 : 0, burst: dealt > 0 ? { col: "#ff6b6b", n: 12, r: 30 } : null };
@@ -619,6 +657,7 @@ function rpgBattleWin() {
   exp = Math.round(exp * cmult); gold = Math.round(gold * cmult);
   if (b.rare) { gold = Math.round(gold * 2.5); exp = Math.round(exp * 1.5); }   // ✨おたからチャンス
   d.exp += exp; d.gold += gold;
+  if (RPG) RPG.runKills = (RPG.runKills || 0) + b.enemies.length;   // ⭐評判の算出に反映
   rpgGoalBump("defeat", b.enemies.length); if (b.boss) rpgGoalBump("boss", 1); rpgGoalSync();   // フロア・ミッション進捗
   if (combo > (d.records.combo || 0)) d.records.combo = combo;
   rpgBLog(`🎉 勝利！ EXP+${exp}・ゴールド+${gold}` + (b.rare ? `（✨おたからチャンス！）` : "") + (combo >= 2 ? `（COMBO×${combo}・報酬+${Math.round((cmult - 1) * 100)}%）` : ""), "win");
@@ -689,6 +728,7 @@ function rpgAfterWin() {
 function rpgAfterLose() {
   const d = rpgData();
   d.hp = Math.max(1, Math.floor(d.maxhp * 0.5));   // ソフト：気絶して入口へ（罰は軽め）
+  rpgEndRun();   // 倒れても⭐は持ち帰る（失敗も前進）
   RPG = null; rpgSave();
   renderMallRpg();
 }
@@ -755,7 +795,7 @@ function rpgRenderHub(app) {
   const stat = el("div", "rpg-hero-stats");
   stat.innerHTML =
     `<span>Lv <b>${d.lv}</b></span><span>❤️ ${d.hp}/${d.maxhp}</span><span>💧 ${d.mp}/${d.maxmp}</span>` +
-    `<span>🪙 ${d.gold}G</span><span class="tk">🎟️ ${d.tickets || 0}</span>` +
+    `<span>🪙 ${d.gold}G</span><span class="tk">🎟️ ${d.tickets || 0}</span><span class="rep">⭐ ${d.rep || 0}</span>` +
     (d.cleared ? `<span class="cl">🌿 制覇</span>` : "");
   hero.appendChild(stat);
   app.appendChild(hero);
@@ -788,6 +828,23 @@ function rpgRenderHub(app) {
     tw.onclick = () => rpgStartTower();
     app.appendChild(tw);
   }
+
+  // ⭐ 強化ラボ（恒久メタ進行＝モール内で完結する成長。探索のたびに⭐がたまる）
+  const lab = el("div", "rpg-box lab-box");
+  lab.innerHTML = `<div class="rpg-box-t">⭐ 強化ラボ <span class="rpg-rep">⭐ ${d.rep || 0}</span></div>` +
+    `<div class="rpg-lab-hint">探索のたびに⭐がたまる（倒れても・途中で出てもOK）。使うとずっと強くなる。</div>`;
+  const labg = el("div", "rpg-labgrid");
+  RPG_UP.forEach(u => {
+    const lv = rpgUpLv(u.id), maxed = lv >= u.max, cost = u.cost(lv), can = (d.rep || 0) >= cost;
+    const b = el("button", "rpg-labbtn" + (maxed ? " maxed" : can ? " ready" : " off"));
+    b.innerHTML = `<span class="li">${u.ic}</span><b>${u.n}</b><small>${u.d}</small>` +
+      `<span class="lv">${maxed ? "MAX" : "Lv" + lv + " / " + u.max}</span>` +
+      `<span class="cost">${maxed ? "✓" : "⭐" + cost}</span>`;
+    if (!maxed) b.onclick = () => rpgBuyUp(u.id);
+    labg.appendChild(b);
+  });
+  lab.appendChild(labg);
+  app.appendChild(lab);
 
   // 🎰 ガチャ（射幸性）
   const gacha = el("div", "rpg-box gacha-box");
@@ -831,7 +888,7 @@ function rpgRenderHub(app) {
   app.appendChild(codex);
 
   const how = el("details", "rpg-how");
-  how.innerHTML = `<summary>📖 遊び方</summary><div>矢印キー or 画面のパッドでモールを1歩ずつ進み、<b>🛗階段で上の階へ</b>。各フロアには<b>🎯ミッション</b>があり、達成するとごほうび（階段はいつでも使えます）。<b>浮かれた観光客</b>や時々まぎれる👾モンスターと戦い、<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)を突く</b>と「もう1回！」。<b>🌿屋上のボスを倒すと衣装GET</b>。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
+  how.innerHTML = `<summary>📖 遊び方</summary><div>矢印キー or 画面のパッドでモールを1歩ずつ進み、<b>🛗階段で上の階へ</b>。各フロアには<b>🎯ミッション</b>があり、達成するとごほうび（階段はいつでも使えます）。探索のたびに<b>⭐島の評判</b>がたまり（倒れても持ち帰る）、ハブの<b>⭐強化ラボ</b>でずっと強くなれます。<b>浮かれた観光客</b>や時々まぎれる👾モンスターと戦い、<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)を突く</b>と「もう1回！」。<b>🌿屋上のボスを倒すと衣装GET</b>。倒れても入口に戻るだけ（持ち物は無事）。</div>`;
   app.appendChild(how);
 
   const actions = el("div", "actions");
@@ -886,7 +943,7 @@ function rpgRenderExplore(app) {
     ctl.appendChild(nudge);
   }
   const leave = el("button", "rpg-ctl-leave", "🏠 出る");
-  leave.onclick = () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); RPG = null; renderMallRpg(); };
+  leave.onclick = () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); rpgEndRun(); RPG = null; renderMallRpg(); };
   ctl.appendChild(leave);
   app.appendChild(ctl);
 }
@@ -1570,7 +1627,8 @@ const RPG_RARITY = [
 ];
 const RPG_RIDX = { c: 0, r: 1, sr: 2, ssr: 3, ur: 4 };
 function rpgRollRarity(luck) {
-  const ws = RPG_RARITY.map((R, i) => R.w * (i >= 2 ? (1 + (luck || 0) * 0.6) : 1));
+  luck = (luck || 0) + rpgUpLv("luck") * 0.12;   // 📦宝の目利き（恒久強化）＝全ロールのレア度UP
+  const ws = RPG_RARITY.map((R, i) => R.w * (i >= 2 ? (1 + luck * 0.6) : 1));
   let t = ws.reduce((a, b) => a + b, 0) * Math.random();
   for (let i = 0; i < RPG_RARITY.length; i++) { t -= ws[i]; if (t <= 0) return RPG_RARITY[i]; }
   return RPG_RARITY[0];
