@@ -802,15 +802,47 @@ function rpgShopFor(i) { return (i != null && i >= 0 && i < RPG_SHOPS.length) ? 
 function rpgOwned(id) { const d = rpgData(); return !!(d.shop && d.shop[id]); }
 function rpgShopOwnedN(arr) { let o = 0; arr.forEach(it => { if (rpgOwned(it.id)) o++; }); return o; }
 function rpgShopTotalOwned() { let o = 0, t = 0; RPG_SHOPS.forEach(a => a.forEach(it => { t++; if (rpgOwned(it.id)) o++; })); return { o, t }; }
-function rpgOpenShop() { if (!RPG) return; RPG._ret = RPG.mode; RPG.mode = "shop"; rpgSfx("nav"); renderMallRpg(); }
+function rpgOpenShop() {
+  if (!RPG) return;
+  RPG._ret = RPG.mode; RPG.mode = "shop";
+  RPG._haggle = {};                                   // 値切り結果（来店ごとにリセット）
+  const left = rpgShopFor(RPG.fi).filter(x => !rpgOwned(x.id));
+  RPG._dealId = left.length ? rpgPick(left).id : null; // 本日のタイムセール（未購入から1品）
+  RPG._shopMsg = "";
+  rpgSfx("nav"); renderMallRpg();
+}
 function rpgCloseShop() { if (!RPG) return; RPG.mode = RPG._ret || "explore"; renderMallRpg(); }
-function rpgBuyGoods(id) {
-  const d = rpgData(), arr = rpgShopFor(RPG ? RPG.fi : 0), it = arr.find(x => x.id === id);
+// 実売価格＝定価 ×セール ×値切り（10円刻み）
+function rpgItemPrice(it) {
+  let p = it.price;
+  if (RPG && RPG._dealId === it.id) p *= 0.8;
+  const h = RPG && RPG._haggle && RPG._haggle[it.id];
+  if (h) p *= h.mul;
+  return Math.max(10, Math.round(p / 10) * 10);
+}
+// 値切り交渉（1品1回・リスクは“強気すぎ”で逆に高くなる）＝買い物をミニゲーム化
+function rpgHaggle(id) {
+  if (!RPG) return;
+  const it = rpgShopFor(RPG.fi).find(x => x.id === id);
   if (!it || rpgOwned(id)) return;
-  if (d.gold < it.price) { rpgSfx("tick"); rpgFx.banner("ゴールドが足りない…", "bad"); return; }
-  d.gold -= it.price; d.shop = d.shop || {}; d.shop[id] = true;
+  RPG._haggle = RPG._haggle || {}; if (RPG._haggle[id]) return;
+  const r = Math.random(); let mul, msg, tag, cls;
+  if (r < 0.18)      { mul = 0.7; msg = "まあ、ミミ様ったらお上手！ 特別お値引きですわ✨"; tag = "おまけしちゃう！"; cls = "victory"; rpgSfx("coin"); }
+  else if (r < 0.60) { mul = 0.85; msg = "しょうがないですね…少しだけお勉強しますわ"; tag = "値切り成功！"; cls = "weak"; rpgSfx("coin"); }
+  else if (r < 0.85) { mul = 1.0; msg = "うーん、これ以上はごめんなさいね？"; tag = "渋い顔…"; cls = "miss"; rpgSfx("tick"); }
+  else               { mul = 1.1; msg = "あらあら、強気ですこと！ むしろ正規で、ね？"; tag = "ちょい高め…"; cls = "bad"; rpgSfx("tick"); }
+  RPG._haggle[id] = { mul: mul }; RPG._shopMsg = msg;
+  rpgFx.banner(tag, cls);
+  renderMallRpg();
+}
+function rpgBuyGoods(id) {
+  const d = rpgData(), it = rpgShopFor(RPG ? RPG.fi : 0).find(x => x.id === id);
+  if (!it || rpgOwned(id)) return;
+  const price = rpgItemPrice(it);
+  if (d.gold < price) { rpgSfx("tick"); if (RPG) RPG._shopMsg = "あら、ゴールドが足りないみたい…"; renderMallRpg(); return; }
+  d.gold -= price; d.shop = d.shop || {}; d.shop[id] = true;
+  if (RPG) { RPG._shopMsg = "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${price}G で買った！`, "good"); }
   rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！", "victory");
-  if (RPG) rpgLog(`🛍️ ${it.ic} ${it.n} を買った！`, "good");
   rpgSave(); renderMallRpg();
 }
 
@@ -979,11 +1011,20 @@ function rpgRenderHub(app) {
   app.appendChild(actions);
 }
 
-// ── 🛍️ フロアのショップ（買い物＝モールに来る理由。次の階の品を予告して前へ引く）
+// ── 🛍️ フロアのショップ（買い物＝モールに来る理由。店主との値切り・タイムセール＝買い物自体を遊びに）
 function rpgRenderShop(app) {
   const d = rpgData();
   const fi = RPG ? RPG.fi : 0, meta = rpgFloorMeta(fi), arr = rpgShopFor(fi);
   const own = rpgShopOwnedN(arr);
+  const dealIt = RPG && RPG._dealId ? arr.find(x => x.id === RPG._dealId) : null;
+
+  // 店主スミカ（声＝施設・暮らしのスミカ「ミミ様」）
+  const keep = el("div", "rpg-shopkeep");
+  const line = (RPG && RPG._shopMsg) ? RPG._shopMsg
+    : (dealIt ? `いらっしゃいませ、ミミ様♪ 本日のおすすめは ${dealIt.ic}${dealIt.n} ですわ！` : "いらっしゃいませ、ミミ様♪ ごゆっくりどうぞ");
+  keep.innerHTML = `<div class="sk-face">💁‍♀️</div><div class="sk-bubble"><b>スミカ</b><span>${line}</span></div>`;
+  app.appendChild(keep);
+
   const head = el("div", "rpg-shop-head");
   head.innerHTML = `<div class="rpg-shop-t">🛍️ ${meta.name} のお店</div>` +
     `<div class="rpg-shop-sub"><span>🪙 ${d.gold}G</span><span class="sc">そろえた ${own}/${arr.length}</span></div>`;
@@ -991,13 +1032,24 @@ function rpgRenderShop(app) {
 
   const grid = el("div", "rpg-shopwall");
   arr.forEach(it => {
-    const owned = rpgOwned(it.id), can = d.gold >= it.price;
-    const cat = RPG_SHOP_CAT[it.cat] || { ic: "🛍️" };
-    const b = el("button", "rpg-good" + (owned ? " owned" : can ? " ready" : " off"));
-    b.innerHTML = `<span class="gic">${it.ic}</span><b>${it.n}</b><span class="gcat">${cat.ic}${cat.n}</span>` +
-      `<span class="gprice">${owned ? "✓ 購入ずみ" : "🪙" + it.price}</span>`;
-    if (!owned) b.onclick = () => rpgBuyGoods(it.id);
-    grid.appendChild(b);
+    const owned = rpgOwned(it.id), price = rpgItemPrice(it);
+    const isDeal = RPG && RPG._dealId === it.id, haggled = RPG && RPG._haggle && RPG._haggle[it.id];
+    const can = d.gold >= price, cat = RPG_SHOP_CAT[it.cat] || { ic: "🛍️" };
+    const card = el("div", "rpg-good" + (owned ? " owned" : can ? " ready" : " off") + (isDeal ? " deal" : ""));
+    let inner = (isDeal ? `<span class="deal-tag">🎉SALE</span>` : "") +
+      `<span class="gic">${it.ic}</span><b>${it.n}</b><span class="gcat">${cat.ic}${cat.n}</span>`;
+    if (owned) inner += `<span class="gprice owned">✓ 購入ずみ</span>`;
+    else inner += `<span class="gprice">🪙${price}${(isDeal || haggled) && price < it.price ? ` <s>${it.price}</s>` : ""}</span>`;
+    card.innerHTML = inner;
+    if (!owned) {
+      const acts = el("div", "good-acts");
+      const buy = el("button", "gbuy" + (can ? "" : " off"), "買う");
+      buy.onclick = () => rpgBuyGoods(it.id);
+      acts.appendChild(buy);
+      if (!haggled) { const hg = el("button", "ghaggle", "💬値切る"); hg.onclick = () => rpgHaggle(it.id); acts.appendChild(hg); }
+      card.appendChild(acts);
+    }
+    grid.appendChild(card);
   });
   app.appendChild(grid);
 
