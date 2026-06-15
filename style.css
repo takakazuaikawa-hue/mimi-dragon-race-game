@@ -4151,6 +4151,42 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-labbtn.maxed .cost { color:#ffd98a; }
 @media (max-width:380px){ .rpg-labgrid { grid-template-columns:1fr 1fr; } }
 
+/* 🛍️ ショッピング（モールに来る理由＝買い物） */
+.rpg-ctl-shop { position:relative; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,180,120,.5);
+  background:linear-gradient(135deg,#c8743f,#e0a35f); color:#fff; font-weight:700; cursor:pointer; }
+.rpg-ctl-shop.has { box-shadow:0 0 12px rgba(255,180,110,.5); animation:rpgpulse 1.8s ease-in-out infinite; }
+.rpg-ctl-shop .nw { display:inline-block; min-width:16px; margin-left:4px; padding:0 4px; border-radius:999px; background:#ff4d6d; color:#fff; font-size:11px; }
+.rpg-shop-head { margin:6px 0 10px; }
+.rpg-shop-t { font-size:18px; font-weight:800; color:#ffe7c8; text-align:center; }
+.rpg-shop-sub { display:flex; justify-content:center; gap:14px; margin-top:4px; font-size:14px; color:#ffd98a; }
+.rpg-shop-sub .sc { color:#bfe8ff; }
+.rpg-shopwall { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.rpg-good { display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center; cursor:pointer;
+  padding:12px 8px 9px; border-radius:14px; color:#fff7ef; border:1px solid rgba(255,200,150,.35);
+  background:linear-gradient(165deg,rgba(86,60,44,.92),rgba(58,40,30,.95)); }
+.rpg-good .gic { font-size:30px; line-height:1.1; }
+.rpg-good b { font-size:13px; }
+.rpg-good .gcat { font-size:10px; color:#e8c9a8; }
+.rpg-good .gprice { margin-top:3px; font-size:12px; font-weight:700; color:#ffe07a; }
+.rpg-good.ready { border-color:rgba(255,215,150,.7); box-shadow:0 0 12px rgba(255,190,110,.3); }
+.rpg-good.off { opacity:.55; }
+.rpg-good.off .gprice { color:#ca9a66; }
+.rpg-good.owned { background:linear-gradient(165deg,rgba(50,72,52,.92),rgba(34,52,38,.95)); border-color:rgba(150,230,170,.55); cursor:default; }
+.rpg-good.owned .gprice { color:#9cf0b0; }
+.rpg-shop-teaser { margin:12px 0; padding:11px 12px; border-radius:12px; line-height:1.5; font-size:13px; text-align:center;
+  background:rgba(40,52,70,.7); border:1px dashed rgba(140,190,240,.5); color:#dcebff; }
+.rpg-shop-teaser .pk { color:#ffe7a8; font-weight:700; }
+/* ショッピング帳（コレクション） */
+.rpg-box.shopbook summary { cursor:pointer; color:#ffe7c8; font-weight:700; }
+.rpg-box.shopbook summary b { color:#ffd98a; }
+.rpg-shopbook-body { margin-top:8px; display:flex; flex-direction:column; gap:8px; }
+.sb-floor-t { font-size:12px; color:#e8d6c2; display:flex; justify-content:space-between; }
+.sb-floor-t small { color:#9fdcae; }
+.sb-items { display:flex; flex-wrap:wrap; gap:5px; margin-top:3px; }
+.sb-it { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:8px;
+  background:rgba(255,255,255,.06); font-size:16px; filter:grayscale(1) opacity(.55); }
+.sb-it.got { background:rgba(255,210,140,.18); filter:none; }
+
 /* レアリティ・リール演出 */
 .rpg-reveal-h { text-align:center; }
 .rpg-reveal-grid { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:18px 0; }
