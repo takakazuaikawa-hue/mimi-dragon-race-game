@@ -4783,6 +4783,30 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-hpbar.low { animation:rpgpulse .8s ease-in-out infinite; box-shadow:0 0 9px rgba(255,70,100,.7); }
 @media (prefers-reduced-motion: reduce) { .rpg-enc { display:none; } .rpg-hpbar.low { animation:none; } }
 
+/* 敵名カットイン：左右から“ポンポン”と飛び込むネームプレート（突入時・敵に目が向く） */
+.rpg-cutin { position:fixed; top:var(--y,40%); z-index:100002; display:flex; align-items:center; gap:9px;
+  padding:7px 16px 7px 10px; border-radius:0 16px 16px 0; white-space:nowrap;
+  background:linear-gradient(100deg, rgba(168,59,59,.96), rgba(216,90,90,.92));
+  border:1px solid rgba(255,210,170,.5); box-shadow:0 6px 20px rgba(0,0,0,.5), 0 0 0 2px rgba(0,0,0,.25);
+  transform:translateX(-130%); opacity:0; will-change:transform,opacity; }
+.rpg-cutin.r { right:0; left:auto; border-radius:16px 0 0 16px; transform:translateX(130%);
+  background:linear-gradient(260deg, rgba(140,52,150,.96), rgba(190,86,200,.92)); animation:rpgCutinR .95s cubic-bezier(.22,1.2,.36,1) var(--d,0s) both; }
+.rpg-cutin.l { left:0; right:auto; animation:rpgCutinL .95s cubic-bezier(.22,1.2,.36,1) var(--d,0s) both; }
+.rpg-cutin.boss { background:linear-gradient(100deg, rgba(120,20,30,.98), rgba(220,40,60,.95)); border-color:rgba(255,180,120,.7);
+  box-shadow:0 8px 26px rgba(180,30,50,.6), 0 0 0 2px rgba(255,120,90,.4); }
+.rpg-cutin .ci-ic { font-size:30px; line-height:1; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+.rpg-cutin .ci-nm { font-size:18px; font-weight:900; color:#fff; letter-spacing:.5px; text-shadow:0 2px 4px rgba(0,0,0,.6); }
+.rpg-cutin.boss .ci-ic { font-size:36px; }
+.rpg-cutin.boss .ci-nm { font-size:22px; color:#ffe1c8; }
+@keyframes rpgCutinL { 0%{ transform:translateX(-130%) skewX(-9deg); opacity:0; } 22%{ transform:translateX(7%) skewX(-9deg); opacity:1; }
+  30%{ transform:translateX(0) skewX(-9deg); } 74%{ transform:translateX(0) skewX(-9deg); opacity:1; } 100%{ transform:translateX(-22%) skewX(-9deg); opacity:0; } }
+@keyframes rpgCutinR { 0%{ transform:translateX(130%) skewX(9deg); opacity:0; } 22%{ transform:translateX(-7%) skewX(9deg); opacity:1; }
+  30%{ transform:translateX(0) skewX(9deg); } 74%{ transform:translateX(0) skewX(9deg); opacity:1; } 100%{ transform:translateX(22%) skewX(9deg); opacity:0; } }
+@media (prefers-reduced-motion: reduce) {
+  .rpg-cutin, .rpg-cutin.l, .rpg-cutin.r { transform:none; animation:rpgCutinFade 1.2s ease-out var(--d,0s) both; }
+  @keyframes rpgCutinFade { 0%{opacity:0;} 20%{opacity:1;} 80%{opacity:1;} 100%{opacity:0;} }
+}
+
 /* =========================================================================
    ⚔️ バトルUIリニューアル：大きなHP／ワンタップ・アクションデッキ／タイミングバー／パチスロ調
    ========================================================================= */
