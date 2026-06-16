@@ -290,11 +290,17 @@ function renderHome() {
   mimiIn.innerHTML =
     "<div class='hl-mimi-flip'><img alt='ミミ' src='" + _defSrc + "' onerror=\"this.onerror=null;this.src='" + _smileSrc + "'\"></div>";
   mimi.appendChild(mimiIn);
-  // 本体タップ＝鑑賞＆きせかえビューア（大きい立ち絵＋説明、スワイプ/◀▶で所持衣装めくり・無料着替え）。
-  // きせかえ専用ボタンは廃止（モールはナビ🛍️とビューア内「モールで買う」から）。
-  mimi.title = "タップで鑑賞＆きせかえ";
-  mimi.onclick = (e) => { e.stopPropagation(); showMimiViewer(); };
+  // 本体タップ＝ミミの反応（声＋表情＋ハート／配信者をタップ＝リアクションの作法）。
+  // 以前は本体タップ＝きせかえビューアだったが「毎回ビューアが開いて煩わしい」ため反応に変更。
+  // きせかえ（鑑賞＆無料着替え）は下の専用👗ボタンから（モールはナビ🛍️とビューア内「モールで買う」）。
+  mimi.title = "タップでミミが反応";
+  mimi.onclick = (e) => { e.stopPropagation(); try { _mimiTalk(); } catch (err) {} };
   stage.appendChild(mimi);
+  // 👗 きせかえ＝明示ボタン（本体タップを反応にした分、着替え導線をここに復活）。
+  const dressBtn = el("button", "hl-dress", "👗 きせかえ");
+  dressBtn.title = "きせかえ（衣装をめくる・無料）";
+  dressBtn.onclick = (e) => { e.stopPropagation(); if (typeof showMimiViewer === "function") showMimiViewer(); };
+  stage.appendChild(dressBtn);
 
   // 出走情報・ランク情報を背景に“浮かせる”フロート（配信オーバーレイ風・半透明・右上）。
   // 新規プレイヤーのゼロ統計はノイズなので非表示。🎯目標は📌ピン留めコメントへ移設。
