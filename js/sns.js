@@ -47,6 +47,43 @@ var SNS_REACTS = [
   { k: "clap", e: "👏", lb: "ぱちぱち" }
 ];
 
+// ── 投稿写真（Instagram風＝画像主体）。投稿主(handle)ごとに世界観の画像を割り当て、id でブレずに1枚選ぶ。 ──
+var SNS_IMGS = {
+  "@mimi_yosou":     ["images/39_char_mimi-keyvisual-racetrack.png", "images/homebg/beach_day.webp", "images/homebg/balcony_night.webp"],
+  "@usamimi_fc":     ["images/homebg/beach_day.webp", "images/home_vista_day.jpg"],
+  "@sake_oyakata":   ["images/cast/stand/sake.webp"],
+  "@oshi_dragon":    ["images/racebg/fire.webp", "images/12_stage_seiryu-street-sunset_v2.png"],
+  "@mizu_market":    ["images/cast/stand/mizu.webp"],
+  "@sumika_village": ["images/homebg/market_day.webp"],
+  "@makura_live":    ["images/12_stage_seiryu-street-sunset_v2.png", "images/racebg/fire.webp"],
+  "@poro_naki":      ["images/cast/stand/poro.webp"],
+  "@shima_weather":  ["images/home_vista_day.jpg", "images/homebg/beach_day.webp"],
+  "@shima_gohan":    ["images/homebg/market_day.webp"],
+  "@dragon_news":    ["images/10_stage_seiryu-street-night.png"],
+  "@rival_yosou":    ["images/14_stage_seiryu-street-day_v1.png"],
+  "@aya_no_hibi":    ["images/homebg/balcony_night.webp"],
+  "@celestia_sky":   ["images/cast/stand/celestia.webp"],
+  "@ryusha_news":    ["images/cast/stand/poro.webp", "images/home_vista_day.jpg"]
+};
+var SNS_IMG_FALLBACK = ["images/home_vista_day.jpg", "images/12_stage_seiryu-street-sunset_v2.png", "images/homebg/beach_day.webp"];
+function _snsHash(s) { var h = 0, t = String(s || ""); for (var i = 0; i < t.length; i++) { h = (h * 31 + t.charCodeAt(i)) >>> 0; } return h; }
+function _snsPostImg(po) {
+  if (po && po.img) return po.img;
+  var pool = (po && SNS_IMGS[po.handle]) || SNS_IMG_FALLBACK;
+  return pool[_snsHash(po && po.id) % pool.length];
+}
+// 自分の投稿で選べる“カメラロール”（写真＋既定キャプション）。
+var SNS_CAMERA = [
+  { img: "images/39_char_mimi-keyvisual-racetrack.png", cap: "きょうのわたし📸 配信たのしかった！" },
+  { img: "images/homebg/beach_day.webp", cap: "島のビーチでひとやすみ🏖️" },
+  { img: "images/homebg/balcony_night.webp", cap: "夜のバルコニーから。いい風🌙" },
+  { img: "images/racebg/fire.webp", cap: "今日のレース場、熱かった🔥" },
+  { img: "images/home_vista_day.jpg", cap: "いい天気！ 竜たちもごきげん☀️" },
+  { img: "images/12_stage_seiryu-street-sunset_v2.png", cap: "聖龍街の夕暮れ、すきだなぁ🌇" },
+  { img: "images/cast/stand/poro.webp", cap: "相棒のポロと📷 泣き虫だけど最高の子" },
+  { img: "images/homebg/market_day.webp", cap: "食べ歩き中〜🍢 なに食べよ" }
+];
+
 // =========================================================================
 // 日替わり“生フィード”の投稿プール（毎日ここから巡回して数件流れる）。
 //   base=元のリアクション数の目安。replies=リプライ選択肢[{choice, back}]（任意）。
@@ -243,9 +280,9 @@ function pollResults(poll) {
 
 // ── 自分で投稿してバズる ──
 function myPosts() { return snsData().myPosts.slice().reverse(); }   // 新しい順
-function addMyPost(text) {
+function addMyPost(text, img) {
   var s = snsData();
-  s.myPosts.push({ id: "my_" + _snsDay() + "_" + (s.myPosts.length + 1), text: String(text || "").slice(0, 140), day: _snsDay() });
+  s.myPosts.push({ id: "my_" + _snsDay() + "_" + (s.myPosts.length + 1), text: String(text || "").slice(0, 140), img: img || SNS_CAMERA[0].img, day: _snsDay() });
   if (s.myPosts.length > 40) s.myPosts = s.myPosts.slice(-40);   // 上限
   _snsSave();
 }
