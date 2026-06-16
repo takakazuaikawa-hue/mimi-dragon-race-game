@@ -30,6 +30,16 @@ window.addEventListener("DOMContentLoaded", () => {
     state.ui.debug = e.target.checked;
     rerenderCurrent();
   });
+  // ヘッダーのタイトル（ブランド）＝タップでホームへ（“ロゴ＝ホーム”の王道。ホームではヘッダー自体が非表示なので重複なし）。
+  const _brand = document.querySelector(".hd-brand");
+  if (_brand) {
+    _brand.setAttribute("title", "ホームへ戻る");
+    _brand.setAttribute("role", "button");
+    _brand.addEventListener("click", () => {
+      if (typeof goto === "function") goto("home");
+      else if (typeof renderHome === "function") renderHome();
+    });
+  }
   // Info level selector (情報量 is now changed from the ⚙️設定 screen; the header
   // <select> was removed for a cleaner HUD, so this binding is optional/guarded).
   const _infoLevelEl = document.getElementById("info-level");

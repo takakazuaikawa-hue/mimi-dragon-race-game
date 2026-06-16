@@ -78,7 +78,11 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 /* keep the main content column above the fixed home world scene */
 #app { position: relative; z-index: 1; }
 /* 左：ブランド（紋章＋タイトル） */
-.hd-brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
+.hd-brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; cursor: pointer; border-radius: 9px; padding: 2px 4px; margin: -2px -4px; transition: background .15s ease, transform .1s ease; -webkit-tap-highlight-color: transparent; }
+.hd-brand:hover { background: rgba(255,255,255,.06); }
+.hd-brand:active { transform: scale(.97); }
+.hd-brand .hd-crest { transition: transform .2s ease; }
+.hd-brand:hover .hd-crest { transform: scale(1.12) rotate(-6deg); }
 .hd-crest { font-size: 20px; line-height: 1; flex: none; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6)); }
 #header h1 {
   margin: 0; font-size: 17px; color: var(--gold-bright); min-width: 0;
