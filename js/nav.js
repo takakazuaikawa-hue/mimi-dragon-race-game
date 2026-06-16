@@ -37,8 +37,7 @@ var SCREEN_INDEX = [
   { no: 23, id: "goals",           label: "目標(クエスト)",      group: "拠点" },
   { no: 24, id: "help",            label: "予想入門",          group: "情報" },
   { no: 25, id: "settings",        label: "設定",              group: "情報" },
-  { no: 26, id: "timeline",        label: "タイムライン",       group: "SNS" },
-  { no: 27, id: "fanletters",      label: "ファンレター",       group: "SNS" }
+  { no: 26, id: "sns",             label: "SNS(TL/手紙)",       group: "SNS" }
 ];
 
 // 画面名 → 描画を呼ぶ thunk。呼び出し時に解決（全描画関数が定義済みの状態で動く）。
@@ -72,8 +71,9 @@ function screenMap() {
     goals:           function () { opt("renderGoals", "renderHome")(); },
     help:            function () { renderHelp(); },
     settings:        function () { renderSettings(); },
-    timeline:        function () { opt("renderTimeline", "renderHome")(); },
-    fanletters:      function () { opt("renderFanletters", "renderHome")(); }
+    sns:             function () { opt("renderSns", "renderHome")(); },
+    timeline:        function () { opt("renderSns", "renderHome")("timeline"); },     // 後方互換（旧?go=）
+    fanletters:      function () { opt("renderSns", "renderHome")("fanletters"); }
   };
 }
 

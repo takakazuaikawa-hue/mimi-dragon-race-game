@@ -24,7 +24,7 @@
   var HOME_ZONE = {
     home: 1, race_select: 1, race_detail: 1, assets: 1, life_tree: 1, life_collection: 1,
     active_skills: 1, meals: 1, goals: 1, story: 1, story_read: 1, consult: 1, collection: 1,
-    village: 1, stable: 1, scout: 1, poro_gourmet: 1, help: 1, settings: 1, timeline: 1, fanletters: 1
+    village: 1, stable: 1, scout: 1, poro_gourmet: 1, help: 1, settings: 1, sns: 1, timeline: 1, fanletters: 1
   };
   var MALL_ZONE = { mall: 1, mall_rpg: 1 };
 

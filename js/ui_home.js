@@ -245,6 +245,15 @@ function renderHome() {
   buddyBtn.onclick = () => { try { mimiSay("この子はわたしの相棒なんだ！"); } catch (e) {} };
   top.appendChild(buddyBtn);
 
+  // 🔊 音量＝ホームはBGMが鳴るので、深いメニューに潜らず“すぐ”調整できるよう上部に常設（1タップでパネル）。
+  if (typeof showVolumePanel === "function") {
+    const _muted = (window.Sfx && Sfx.isMuted && Sfx.isMuted());
+    const volBtn = el("button", "hl-sys hl-vol", _muted ? "🔇" : "🔊");
+    volBtn.title = "音量を調整"; volBtn.style.marginLeft = "auto";
+    volBtn.onclick = () => showVolumePanel();
+    top.appendChild(volBtn);
+  }
+
   const sysWrap = el("div", "hl-syswrap");
   const sysBtn = el("button", "hl-sys", "⋯");
   const sysDd = el("div", "hl-dd hidden");
@@ -682,11 +691,10 @@ function renderHome() {
     rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
   }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  // SNS（予想入門・相談はここから外し、それぞれ設定・暮らしハブへ移設）。
-  if (typeof renderTimeline === "function") rail.appendChild(navItem("📱", "タイムライン", "島のみんなの投稿。❤️でリアクション。", () => renderTimeline()));
-  if (typeof renderFanletters === "function") {
+  // 📱 SNS＝タイムライン＋ファンレターを1画面にタブ統合（予想入門・相談は設定/暮らしへ移設済）。
+  if (typeof renderSns === "function") {
     const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
-    rail.appendChild(navItem("✉️", "ファンレター", unread ? `未読 ${unread} 通の手紙が届いています。` : "あなたに届いた手紙を読みます。", () => renderFanletters()));
+    rail.appendChild(navItem("📱", "SNS", unread ? `島の投稿＋ファンレター（未読 ${unread} 通）。` : "島のみんなの投稿とファンレター。", () => renderSns()));
   }
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
