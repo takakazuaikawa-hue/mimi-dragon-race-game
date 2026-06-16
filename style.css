@@ -3476,6 +3476,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   box-shadow: 0 6px 18px -8px rgba(0,0,0,.7); transition: transform .1s ease, background .15s ease; -webkit-tap-highlight-color: transparent; }
 .hl-dress:hover { background: rgba(20,26,34,.78); }
 .hl-dress:active { transform: scale(.92); }
+.hl-dress-ic { font-size: 13px; line-height: 1; flex: none; }
+.hl-dress-nm { max-width: 116px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ミミは中央・周囲とのバランスを取りつつ最大化（PCはコンテナ相対、スマホは画面幅相対）。
    背が高い時は上段バー(z-index:3)の背後に収まるので情報を隠さない。 */
 .hl-mimi { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 1;

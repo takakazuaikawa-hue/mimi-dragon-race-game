@@ -296,9 +296,12 @@ function renderHome() {
   mimi.title = "タップでミミが反応";
   mimi.onclick = (e) => { e.stopPropagation(); try { _mimiTalk(); } catch (err) {} };
   stage.appendChild(mimi);
-  // 👗 きせかえ＝明示ボタン（本体タップを反応にした分、着替え導線をここに復活）。
-  const dressBtn = el("button", "hl-dress", "👗 きせかえ");
-  dressBtn.title = "きせかえ（衣装をめくる・無料）";
+  // 👗 きせかえ＝明示ボタン。ラベルに“今の衣装名”を出して「表示（今の衣装）＋操作（着替え）」の二役に。
+  const _curOutfit = (typeof outfitById === "function") ? outfitById(oid) : null;
+  const _outfitNm = (_curOutfit && _curOutfit.name) ? _curOutfit.name : "きせかえ";
+  const dressBtn = el("button", "hl-dress");
+  dressBtn.innerHTML = `<span class="hl-dress-ic">👗</span><span class="hl-dress-nm">${_outfitNm}</span>`;
+  dressBtn.title = `いまの衣装：${_outfitNm}（タップできせかえ）`;
   dressBtn.onclick = (e) => { e.stopPropagation(); if (typeof showMimiViewer === "function") showMimiViewer(); };
   stage.appendChild(dressBtn);
 
