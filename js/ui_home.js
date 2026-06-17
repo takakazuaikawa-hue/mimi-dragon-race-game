@@ -603,9 +603,10 @@ function renderHome() {
     }
   }, 5200));
 
-  // ── 下段ドック（すっきり）：コメントバー → (破産時)無心 → レースCTA → ナビ。
-  // 資産情報はヘッダー、出走/ランク/目標はステージ上のフロートへ移動済み＝ミミの領域を最大化。
+  // ── 下段（固定ドック）：レースへ進む → ナビ のみ。★進行で出入りする可変要素（コメント/いいね・無心・最終決戦）は
+  //   この上の独立フロート層(.hl-actionbar)へ分離＝出入りしても固定ドックを圧縮しない（ユーザー指摘）。stage(flex:1)が伸縮を吸収。
   const dock = el("div", "hl-dock");
+  const actionFloat = el("div", "hl-actionbar");
 
   // コメントバー（TikTok風の参加UI・完全に表示専用）：定型コメントを「あなた」として流す＋❤️いいね
   const cmwrap = el("div", "hl-cmbar-wrap");
@@ -654,23 +655,25 @@ function renderHome() {
   }, 2600));
   cmbar.appendChild(likeBtn);
   cmwrap.appendChild(qr); cmwrap.appendChild(cmbar);
-  dock.appendChild(cmwrap);
+  actionFloat.appendChild(cmwrap);   // コメント/いいねバー＝フロート層の最下段（レースへ進むの直上に浮く）
 
-  // §38 — 破産時：最優先で「無心」導線
+  // §38 — 破産時：最優先で「無心」導線（フロート層・コメントバーの上に積む）
   if (p.coins <= 0) {
     const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
     const broke = el("button", "hl-broke", `🙏 無心する　基準額 ${fmtCoins(begAmt)} 相当`);
     broke.onclick = () => showMushinOverlay();
-    dock.appendChild(broke);
+    actionFloat.insertBefore(broke, cmwrap);
   }
 
-  // 終章：最終決戦の準備が整ったらホームに目立つCTA。綱引き中の絶滅メーターは🎯目標チップに統合済み
-  //   （別チップは作らない＝ドックを膨らませない・ホーム崩れ防止）。詳細は🏦島の経済へ。表示専用＝実オッズ非干渉。
+  // 終章：最終決戦の準備が整ったらフロート層の最上段に目立つCTA。綱引き中の絶滅メーターは🎯目標チップに統合済み。
+  //   詳細は🏦島の経済へ。表示専用＝実オッズ非干渉。
   if (typeof epilogueOn === "function" && epilogueOn() && epData().finalReady) {
     const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
     fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
-    dock.appendChild(fin);
+    actionFloat.insertBefore(fin, actionFloat.firstChild);
   }
+  // 可変要素は stage(flex:1) と 固定dock の間の独立フロート層へ＝出入りしても固定ドックを圧縮しない。
+  if (actionFloat.children.length) wrap.appendChild(actionFloat);
 
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
   raceBtn.onclick = () => renderRaceSelect();

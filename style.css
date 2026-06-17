@@ -3875,6 +3875,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-dock { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 10px 12px;
   background: rgba(13,17,23,.82); border: 1px solid var(--gold-line); border-radius: 18px;
   backdrop-filter: blur(7px); box-shadow: 0 -10px 32px -18px rgba(0,0,0,.9); }
+/* 進行で出入りする可変要素（コメント/いいね・無心・最終決戦）の独立フロート層（stageと固定dockの間）。
+   出入りしても固定ドック（レース+ナビ）を圧縮しない＝stage(flex:1)が伸縮を吸収。js/ui_home.js renderHome */
+.hl-actionbar { flex: 0 0 auto; display: flex; flex-direction: column; gap: 7px; position: relative; z-index: 3; }
+.hl-actionbar:empty { display: none; }
 /* コメントバー（TikTok風の参加UI）＝💬定型コメント＋❤️いいね */
 .hl-cmbar-wrap { position: relative; }
 .hl-cmbar { display: flex; align-items: stretch; gap: 7px; }
