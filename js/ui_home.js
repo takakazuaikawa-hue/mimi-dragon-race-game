@@ -320,13 +320,34 @@ function renderHome() {
   floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
   stage.appendChild(floatBox);
 
-  // 🎯 目標（クエスト）チップ：ステージ左上に常設。終章中は「絶滅メーター」を“今の目標”として統合表示し、
-  //   タップで🏦島の経済（メーター詳細＋？説明）へ。★別チップは作らない＝ホームのドックを膨らませない（崩れ防止）。表示専用。
+  // 🎯 目標（クエスト）チップ：ステージ左上に常設＝「いま次にやること」を1つだけ表示。
+  //   ★優先順位：⚔️最終決戦 ＞ 🙏無心(0コイン) ＞ ☄️絶滅メーター(綱引き中) ＞ 🎯通常の目標。
+  //   無心/最終決戦も「必ず次にやること」なのでここに統合（ユーザー指摘）＝別CTAは出さない＝ミミの上もスッキリ・立ち位置不変。
+  //   チップはステージ左上の絶対配置＝出入りしてもレイアウト（ミミ/ドック）を一切動かさない。表示専用。
   {
     const _epOn = (typeof epilogueOn === "function") && epilogueOn();
     const _ep = _epOn ? epData() : null;
+    const _broke = p.coins <= 0;
     let _html = null, _cls = "hl-goal", _onclick = null;
-    if (_epOn && !_ep.finalReady) {
+    if (_epOn && _ep.finalReady) {
+      // ⚔️ 最終決戦へ（クライマックス・最優先）
+      _cls += " hl-goal--act hl-goal--final";
+      _html =
+        `<span class="hl-goal-k">☄️ 終章・クライマックス</span>` +
+        `<span class="hl-goal-t">⚔️ 最終決戦へ</span>` +
+        `<span class="hl-goal-n">淘汰を押し切った ・ タップで決戦 ▸</span>`;
+      _onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
+    } else if (_broke) {
+      // 🙏 無心する（コイン0＝何よりまず立て直す）
+      const _begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
+      _cls += " hl-goal--act hl-goal--broke";
+      _html =
+        `<span class="hl-goal-k">🆘 いま次にやること</span>` +
+        `<span class="hl-goal-t">🙏 無心する</span>` +
+        `<span class="hl-goal-n">コインが0 ・ 基準額 ${fmtCoins(_begAmt)} 相当 ▸</span>`;
+      _onclick = () => { if (typeof showMushinOverlay === "function") showMushinOverlay(); };
+    } else if (_epOn) {
+      // ☄️ 絶滅メーター（綱引き中）→ 島の経済で詳細
       const _dial = epilogueDial().toFixed(2); const _prog = epilogueProgress();
       const _zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
       _cls += " hl-goal--ep hl-goal--ep-" + _zone;
@@ -603,13 +624,12 @@ function renderHome() {
     }
   }, 5200));
 
-  // ── 下段（固定ドック）：レースへ進む → ナビ のみ。可変要素は2層に分離（ユーザー指摘）：
+  // ── 下段（固定ドック）：レースへ進む → ナビ のみ。
   //   ・コメント/いいねバー＝常設なので flex の独立層(.hl-actionbar)（stageとdockの間・足元の接地は保つ）。
-  //   ・進行で出入りするCTA（無心/最終決戦）＝stage上の絶対オーバーレイ(.hl-cta)＝出入りしても
-  //     フローが変わらず、ミミの立ち位置も固定ドックも一切動かさない。
+  //   ・🙏無心 / ⚔️最終決戦＝「いま次にやること」なので🎯目標チップに統合済み（上の goalBtn）＝
+  //     ここでは作らない＝ミミの上に被るCTAなし・立ち位置不変（ユーザー指摘）。
   const dock = el("div", "hl-dock");
   const actionFloat = el("div", "hl-actionbar");
-  const ctaOverlay = el("div", "hl-cta");
 
   // コメントバー（TikTok風の参加UI・完全に表示専用）：定型コメントを「あなた」として流す＋❤️いいね
   const cmwrap = el("div", "hl-cmbar-wrap");
@@ -658,28 +678,11 @@ function renderHome() {
   }, 2600));
   cmbar.appendChild(likeBtn);
   cmwrap.appendChild(qr); cmwrap.appendChild(cmbar);
-  actionFloat.appendChild(cmwrap);   // コメント/いいねバー＝フロート層の最下段（レースへ進むの直上に浮く）
+  actionFloat.appendChild(cmwrap);   // コメント/いいねバー＝常設の独立フロート層（レースへ進むの直上に浮く）
 
-  // §38 — 破産時：最優先で「無心」導線。★stage上の絶対オーバーレイ(.hl-cta)に積む＝出入りしても
-  //   ミミの立ち位置・コメントバー・固定ドックを一切動かさない（フロー不変）。コメントバーの直上に浮く。
-  if (p.coins <= 0) {
-    const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
-    const broke = el("button", "hl-broke", `🙏 無心する　基準額 ${fmtCoins(begAmt)} 相当`);
-    broke.onclick = () => showMushinOverlay();
-    ctaOverlay.appendChild(broke);
-  }
-
-  // 終章：最終決戦の準備が整ったらオーバーレイ最上段に目立つCTA。綱引き中の絶滅メーターは🎯目標チップに統合済み。
-  //   詳細は🏦島の経済へ。表示専用＝実オッズ非干渉。
-  if (typeof epilogueOn === "function" && epilogueOn() && epData().finalReady) {
-    const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
-    fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
-    ctaOverlay.insertBefore(fin, ctaOverlay.firstChild);
-  }
-  // コメント/いいねバーは常設＝flexの独立層（stageとdockの間）。CTA(無心/最終決戦)はstage上の絶対オーバーレイ＝
-  // 出入りしてもフローが変わらない＝ミミの立ち位置・固定ドックが不動（ユーザー指摘の核心）。
+  // 🙏無心(0コイン) / ⚔️最終決戦 は「いま次にやること」＝🎯目標チップ（上の goalBtn）に統合済み＝ここでは作らない。
+  // コメント/いいねバーだけが常設フロート層＝出入りが無いのでミミの立ち位置も固定ドックも不動（ユーザー指摘）。
   if (actionFloat.children.length) wrap.appendChild(actionFloat);
-  if (ctaOverlay.children.length) stage.appendChild(ctaOverlay);
 
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
   raceBtn.onclick = () => renderRaceSelect();
