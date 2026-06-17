@@ -36,7 +36,7 @@ function updateHeader() {
 const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2, stable: 2, scout: 2,
-  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, poro_gourmet: 3,
+  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, economy: 3, poro_gourmet: 3,
   story_read: 4, race_run: 4, result: 5, analysis: 6
 };
 let _prevScreen = null;
@@ -79,7 +79,7 @@ function beginScreen() {
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
     race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
-    life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
+    life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
   const bt = BACK_TGT[TOP_BACK[screen]];

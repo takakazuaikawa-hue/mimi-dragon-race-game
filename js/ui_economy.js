@@ -1,0 +1,132 @@
+// =============================================================================
+// ui_economy.js — 「🏦 島の経済」画面（暮らし配下）。島の経済状態のダッシュボード。
+// =============================================================================
+// ・総資産＝島の景気ティア／6資産成分の内訳／名声・フォロワー・村・レース経済の指標。
+// ・終章中のみ、上部に☄️絶滅メーター本体（綱引きダイヤル＋？説明＋最終決戦導線）を集約＝
+//   ホームの大HUDをここへ移設し、ホームは🎯目標と同じコンパクトなチップに（ドリルダウン先）。
+// ★完全に表示専用＝読むだけ（state.player/state.assets）。着順・オッズ・配当・経済計算には
+//   一切干渉しない（[[race-math-immutable]]）。recomputeAssets は再計算（高水位）で値が下がらない。
+// =============================================================================
+
+// 島の景気ティア（総資産レベル 0..5 に対応。assetLevelOf=data_assets.js）。表示専用のフレーバー。
+var ECO_TIERS = [
+  { ic: "🏕️", name: "開拓期",     note: "灯りはまだ小さい。これからの島。" },
+  { ic: "🍢", name: "屋台の賑わい", note: "場外に屋台が並びはじめた。" },   // 1万〜
+  { ic: "🏪", name: "商店街の活気", note: "店が増え、人の流れができた。" }, // 10万〜
+  { ic: "🏙️", name: "市場町の繁栄", note: "島の市場に、金が巡りはじめた。" }, // 1000万〜
+  { ic: "🌆", name: "経済都市",     note: "島は大きな経済圏になった。" },   // 10億〜
+  { ic: "🌃", name: "大龍経済圏",   note: "島の灯りは、もう消えない。" }    // 1兆〜
+];
+function _ecoTierOf(total) {
+  var lv = (typeof assetLevelOf === "function") ? assetLevelOf(total) : 0;
+  lv = Math.max(0, Math.min(5, lv));
+  return { lv: lv, t: ECO_TIERS[lv] };
+}
+function _ecoNum(n) { n = Math.floor(n || 0); return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+
+function renderEconomy() {
+  state.ui.screen = "economy";
+  if (typeof recomputeAssets === "function") recomputeAssets(state);
+  const p = state.player, a = state.assets || {};
+  const total = p.totalAssets || 0;
+  const app = beginScreen();   // 上部に「← 暮らし」
+
+  const _h2 = el("h2", null, `🏦 島の経済 <button class="info-q" title="お金のしくみ">？</button>`);
+  const _q = _h2.querySelector(".info-q"); if (_q) _q.onclick = () => { if (typeof showMoneyMap === "function") showMoneyMap(); };
+  app.appendChild(_h2);
+  app.appendChild(el("div", "as-hint2", "ミミの再起が、島の景気を回している。賭場の灯りが大きくなるほど、島は栄える。"));
+
+  // ── 終章：絶滅メーター本体（終章中のみ・ホームから移設した詳細＋説明）──
+  if (typeof epilogueOn === "function" && epilogueOn()) {
+    app.appendChild(_ecoExtinctionPanel());
+  }
+
+  // ── 島の景気（総資産ティア＋次の段階への進捗）──
+  const tier = _ecoTierOf(total);
+  const nextTh = (typeof nextAssetThreshold === "function") ? nextAssetThreshold(total) : null;
+  const curFloor = (tier.lv >= 1 && typeof ASSET_LEVELS !== "undefined") ? ASSET_LEVELS[tier.lv - 1].threshold : 0;
+  const pct = nextTh ? Math.max(2, Math.min(100, Math.round((total - curFloor) / (nextTh - curFloor) * 100))) : 100;
+  const nextTier = nextTh ? _ecoTierOf(nextTh).t : null;
+  const hero = el("div", "card eco-hero eco-hero--" + tier.lv);
+  hero.innerHTML =
+    `<div class="eco-hero-top"><span class="eco-hero-ic">${tier.t.ic}</span>` +
+      `<div class="eco-hero-id"><div class="eco-hero-k">島の景気　Lv ${tier.lv} / 5</div>` +
+      `<div class="eco-hero-name">${tier.t.name}</div></div></div>` +
+    `<div class="eco-hero-total"><span class="eco-hero-tl">島の総資産（ミミの再起度）</span><b>${fmtCoins(total)}</b></div>` +
+    `<div class="eco-hero-bar"><i style="width:${pct}%"></i></div>` +
+    `<div class="eco-hero-next">${nextTh ? `あと <b>${fmtCoins(nextTh - total)}</b> で「${nextTier.name}」へ` : "🌃 最高景気に到達。島の灯りは、もう消えない。"}</div>` +
+    `<div class="eco-hero-note">${tier.t.note}</div>`;
+  app.appendChild(hero);
+
+  // ── 経済の内訳（6成分のセグメントバー＝暮らし画面と同じ見せ方）──
+  const parts = [
+    ["最大到達", p.maxCoinsReached, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
+    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
+  ].filter(x => (x[1] || 0) > 0);
+  const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
+  app.appendChild(el("div", "eco-sec", "経済の内訳"));
+  app.appendChild(el("div", "card as-break",
+    `<div class="as-break-bar">${parts.map(x => `<div style="width:${x[1] / sum * 100}%;background:${x[2]}"></div>`).join("")}</div>` +
+    `<div class="as-break-legend">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} ${fmtCoins(x[1])}</span>`).join("")}</div>`));
+
+  // ── 島の指標（フォロワー・名声・村・レース経済）──
+  const folV = 800 + Math.floor((a.fameValue || 0) * 2) + (p.completedRaces || 0) * 15 + (p.wins || 0) * 40;
+  const winRate = (p.completedRaces || 0) > 0 ? Math.round((p.wins || 0) / p.completedRaces * 100) : 0;
+  const vlv = p.villageLevel || (p.village && p.village.level) || 1;
+  const tile = (ic, val, label, sub) =>
+    `<div class="eco-tile"><span class="eco-tile-ic">${ic}</span><span class="eco-tile-v">${val}</span>` +
+    `<span class="eco-tile-l">${label}</span>${sub ? `<span class="eco-tile-s">${sub}</span>` : ""}</div>`;
+  app.appendChild(el("div", "eco-sec", "島の指標"));
+  app.appendChild(el("div", "eco-grid",
+    tile("💗", _ecoNum(folV), "フォロワー", "島を見守る観客") +
+    tile("🏅", fmtCoins(a.fameValue || 0), "名声（評判）", "ランク " + (p.rank || 1)) +
+    tile("🏘️", "Lv " + vlv, "村の発展", "島のインフラ") +
+    tile("🐉", _ecoNum(p.completedRaces || 0), "開催レース", "賭けの取引量") +
+    tile("🏆", (p.wins || 0) + "勝", "的中の実績", "勝率 " + winRate + "%") +
+    tile("💰", fmtCoins(p.biggestPayout || 0), "最高配当", "一撃の最高記録")));
+
+  // ── 市況メモ（ミズの声・表示専用フレーバー）──
+  const memo = tier.lv >= 4
+    ? "市場はあなたを中心に回りはじめた。……あはん、いい流れね。"
+    : tier.lv >= 2
+      ? "人とお金が動きはじめた。市場は、まだ伸びる余地があるわ。"
+      : "まだ小さな賭場。でも、灯りが一つ点くたび、島は少しずつ温まる。";
+  app.appendChild(el("div", "card eco-memo", `<span class="eco-memo-who">💧 ミズの市況メモ</span><span class="eco-memo-tx">「${memo}」</span>`));
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← 暮らしへ戻る"); back.onclick = () => renderAssets();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// 終章：絶滅メーター本体（綱引きダイヤル＋？説明＋最終決戦）。ホームのHUDをここへ移設。表示専用。
+function _ecoExtinctionPanel() {
+  const e = epData();
+  const dial = epilogueDial().toFixed(2);
+  const prog = epilogueProgress();
+  const zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
+  const react = (typeof epilogueDialReaction === "function") ? epilogueDialReaction() : "";
+  const wrap = el("div", "card eco-ext eco-ext--" + zone);
+  const hud = el("div", "ep-hud ep-hud--" + zone + (react ? " ep-react-" + react : ""));
+  hud.innerHTML =
+    `<div class="ep-hud-top"><span class="ep-hud-ttl">☄️ 絶滅メーター <button class="info-q" title="絶滅メーターって？">？</button></span>` +
+    `<span class="ep-hud-odds">答えの単勝 <b class="ep-dial-num">${dial}</b><span class="ep-dial-x">倍</span></span></div>` +
+    `<div class="ep-dial"><div class="ep-dial-track"><span class="ep-dial-needle" style="left:${prog}%"></span></div>` +
+    `<div class="ep-dial-scale"><span class="ep-tk ep-tk-doom">1.0<small>淘汰</small></span>` +
+    `<span class="ep-tk ep-tk-mid">1.05</span>` +
+    `<span class="ep-tk ep-tk-safe">1.1<small>安全</small></span></div></div>` +
+    `<div class="ep-hud-note">🌴スカウト・🏠暮らし・🛍️買い物・🏅的中で押し戻す（0で最終決戦）</div>`;
+  const _q = hud.querySelector(".info-q");
+  if (_q) _q.onclick = (ev) => { ev.stopPropagation(); if (typeof showEpilogueMeterHelp === "function") showEpilogueMeterHelp(); };
+  wrap.appendChild(hud);
+  if (e.finalReady) {
+    const fin = el("button", "hl-final eco-final", `⚔️ 最終決戦へ ▶`);
+    fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
+    wrap.appendChild(fin);
+  }
+  // 初めてメーター詳細を開いた時に一度だけ自動で説明（VN/別ポップ中は次回へ）。
+  if (typeof maybeShowMeterHelpFirstTime === "function") setTimeout(function () { try { maybeShowMeterHelpFirstTime(); } catch (x) {} }, 360);
+  return wrap;
+}
+
+if (typeof window !== "undefined") { window.renderEconomy = renderEconomy; }

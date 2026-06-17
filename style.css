@@ -3707,6 +3707,56 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-goal-p i { display: block; height: 100%; background: linear-gradient(90deg, #ffd966, #ff9a5e); border-radius: 999px; }
 .hl-goal-n { font-size: 9px; color: #ffce8a; font-variant-numeric: tabular-nums; margin-top: 1px; }
 
+/* 終章：絶滅メーターのコンパクトチップ（ドックに常設・🎯目標と同じ扱い）。タップで「島の経済」へ。js/ui_home.js */
+.hl-meter { width: 100%; margin: 6px 0 2px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  background: rgba(8,11,16,.5); border: 1px solid var(--glass-border); border-left: 3px solid #e6b24a; border-radius: 12px;
+  padding: 9px 12px; cursor: pointer; text-align: left; }
+.hl-meter:active { transform: translateY(1px); background: rgba(8,11,16,.65); }
+.hl-meter-k { font-size: 10px; font-weight: 800; letter-spacing: .03em; color: #ff9a5e; }
+.hl-meter-t { font-size: 12px; font-weight: 800; color: var(--mist); line-height: 1.25; }
+.hl-meter-bar { width: 100%; height: 5px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; margin-top: 1px; }
+.hl-meter-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #e6b24a, #ffce8a); }
+.hl-meter-n { font-size: 9.5px; color: #ffb38a; font-variant-numeric: tabular-nums; }
+.hl-meter--safe { border-left-color: #49c89c; } .hl-meter--safe .hl-meter-bar i { background: linear-gradient(90deg, #49c89c, #7be0b0); } .hl-meter--safe .hl-meter-k { color: #6fd6a6; }
+.hl-meter--mid { border-left-color: #e6b24a; }
+.hl-meter--doom { border-left-color: #d6452f; } .hl-meter--doom .hl-meter-bar i { background: linear-gradient(90deg, #d6452f, #ff8a5e); } .hl-meter--doom .hl-meter-k { color: #ff7a6a; }
+
+/* 🏦 島の経済（ui_economy.js）：暮らし配下のダッシュボード。表示専用＝レース数値に非干渉。名前空間 .eco-* */
+.eco-hero { background: linear-gradient(160deg, rgba(40,46,58,.96), rgba(22,26,33,.96)); border: 1px solid var(--glass-border); }
+.eco-hero-top { display: flex; align-items: center; gap: 12px; }
+.eco-hero-ic { font-size: 34px; line-height: 1; }
+.eco-hero-id { min-width: 0; }
+.eco-hero-k { font-size: 11px; font-weight: 800; color: var(--astone); letter-spacing: .03em; }
+.eco-hero-name { font-size: 18px; font-weight: 900; color: var(--mist); }
+.eco-hero-total { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 11px 0 7px;
+  border-top: 1px solid var(--glass-border); padding-top: 9px; }
+.eco-hero-tl { font-size: 11px; color: var(--mist-soft); }
+.eco-hero-total b { font-size: 21px; font-weight: 900; color: var(--gold); font-variant-numeric: tabular-nums; }
+.eco-hero-bar { width: 100%; height: 8px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
+.eco-hero-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #49c89c, #ffd966); }
+.eco-hero-next { font-size: 11px; color: var(--mist-soft); margin-top: 6px; }
+.eco-hero-next b { color: #ffd98a; }
+.eco-hero-note { font-size: 11px; color: var(--astone); font-style: italic; margin-top: 4px; }
+
+.eco-sec { font-size: 12px; font-weight: 800; color: var(--mist); letter-spacing: .05em; margin: 16px 2px 7px; }
+.eco-sec::before { content: "◆ "; color: var(--gold); }
+
+.eco-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.eco-tile { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1px;
+  background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); border-radius: 12px; padding: 11px 5px; }
+.eco-tile-ic { font-size: 19px; line-height: 1.15; }
+.eco-tile-v { font-size: 14.5px; font-weight: 900; color: var(--mist); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.eco-tile-l { font-size: 9.5px; font-weight: 700; color: var(--mist-soft); }
+.eco-tile-s { font-size: 8.5px; color: var(--astone); }
+
+.eco-memo { display: flex; flex-direction: column; gap: 3px; border-left: 3px solid #5aa0d0; margin-top: 14px; }
+.eco-memo-who { font-size: 10px; font-weight: 800; color: #7cc0e6; }
+.eco-memo-tx { font-size: 12px; line-height: 1.6; color: var(--mist); }
+
+.eco-ext { border: 1px solid var(--glass-border); padding: 12px; }
+.eco-ext--doom { box-shadow: 0 0 0 1px rgba(214,69,47,.25) inset; }
+.eco-final { margin-top: 10px; }
+
 .goals-bar { position: relative; height: 22px; border-radius: 999px; background: rgba(255,255,255,.08);
   border: 1px solid var(--glass-border); overflow: hidden; margin: 4px 0 14px; display: flex; align-items: center; }
 .goals-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ffd966, #ff9a5e); }

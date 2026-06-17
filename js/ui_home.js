@@ -644,29 +644,27 @@ function renderHome() {
     dock.appendChild(broke);
   }
 
-  // 終章：絶滅メーター（綱引き）HUD＋最終決戦の導線（終章中のみ・表示専用＝実オッズ非干渉）。js/epilogue_engine.js
+  // 終章：絶滅メーター。大HUDはホームに出さず、🎯目標と同じコンパクトなチップに（情報密度を適正化）。
+  //   詳細・？説明・押し戻し状況は「🏦島の経済」画面へドリルダウン（js/ui_economy.js）。表示専用＝実オッズ非干渉。
+  //   最終決戦の準備が整った時だけは、目立つCTAボタンをホームに残す（クライマックスの導線）。
   if (typeof epilogueOn === "function" && epilogueOn()) {
-    const e = epData(); const dial = epilogueDial().toFixed(2); const prog = epilogueProgress();
+    const e = epData();
     if (e.finalReady) {
       const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
       fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
       dock.appendChild(fin);
     } else {
+      const dial = epilogueDial().toFixed(2); const prog = epilogueProgress();
       const zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
-      const react = (typeof epilogueDialReaction === "function") ? epilogueDialReaction() : "";
-      const hud = el("div", "ep-hud ep-hud--" + zone + (react ? " ep-react-" + react : ""));
-      hud.innerHTML =
-        `<div class="ep-hud-top"><span class="ep-hud-ttl">☄️ 絶滅メーター <button class="info-q" title="絶滅メーターって？">？</button></span>` +
-        `<span class="ep-hud-odds">答えの単勝 <b class="ep-dial-num">${dial}</b><span class="ep-dial-x">倍</span></span></div>` +
-        `<div class="ep-dial"><div class="ep-dial-track"><span class="ep-dial-needle" style="left:${prog}%"></span></div>` +
-        `<div class="ep-dial-scale"><span class="ep-tk ep-tk-doom">1.0<small>淘汰</small></span>` +
-        `<span class="ep-tk ep-tk-mid">1.05</span>` +
-        `<span class="ep-tk ep-tk-safe">1.1<small>安全</small></span></div></div>` +
-        `<div class="ep-hud-note">スカウト・暮らし・買い物・的中で押し戻す（0で最終決戦）</div>`;
-      const _q = hud.querySelector(".info-q");
-      if (_q) _q.onclick = (ev) => { ev.stopPropagation(); if (typeof showEpilogueMeterHelp === "function") showEpilogueMeterHelp(); };
-      dock.appendChild(hud);
-      if (typeof maybeShowMeterHelpFirstTime === "function") maybeShowMeterHelpFirstTime();  // 初表示時に一度だけ自動で説明
+      const zlabel = zone === "safe" ? "安全圏（あと少し）" : zone === "doom" ? "淘汰の圧が強い" : "綱引き中";
+      const chip = el("button", "hl-meter hl-meter--" + zone);
+      chip.innerHTML =
+        `<span class="hl-meter-k">☄️ 絶滅メーター</span>` +
+        `<span class="hl-meter-t">${zlabel} ・ 答えの単勝 ${dial}倍</span>` +
+        `<span class="hl-meter-bar"><i style="width:${prog}%"></i></span>` +
+        `<span class="hl-meter-n">押し戻して安全(1.1倍)へ ・ くわしく ▸</span>`;
+      chip.onclick = () => { if (typeof renderEconomy === "function") renderEconomy(); else if (typeof renderAssets === "function") renderAssets(); };
+      dock.appendChild(chip);
     }
   }
 
