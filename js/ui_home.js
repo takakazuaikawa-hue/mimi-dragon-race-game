@@ -305,20 +305,25 @@ function renderHome() {
   dressBtn.onclick = (e) => { e.stopPropagation(); if (typeof showMimiViewer === "function") showMimiViewer(); };
   stage.appendChild(dressBtn);
 
-  // 出走情報・ランク情報を背景に“浮かせる”フロート（配信オーバーレイ風・半透明・右上）。
-  // 新規プレイヤーのゼロ統計はノイズなので非表示。🎯目標は📌ピン留めコメントへ移設。
-  const floatBox = el("div", "hl-float");
-  const viewersEl = el("div", "hl-viewers", "👁 <b></b>");
-  // ④ フォロワー数＝名声・戦績と連動（表示専用）
-  const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
-  const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
-  // ランクは左上プロフィールへ（顔の右上を覆わない）。フロートは LIVE＋フォロワー（＋PCのみ戦績）
-  floatBox.innerHTML =
-    `<div class="hl-float-live"><span class="hl-live">LIVE</span></div>` +
-    `<div class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b> フォロワー</div>` +
-    (p.completedRaces > 0 ? `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` : "");
-  floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
-  stage.appendChild(floatBox);
+  // ★配信モード判定：スマホ購入(第4話マクラ後)で配信ホーム化。静かモードでは LIVE/視聴者/フォロワー/
+  //   コメント入力/ハート/ギフト/SNS を出さず、立ち絵・独り言・背景・目標・村人の声だけ残す。docs/PROGRESSION_DESIGN.md
+  const broadcast = (typeof broadcastOn === "function") ? broadcastOn() : true;
+  const _metMakura = (typeof getStoryFlag === "function") && getStoryFlag("metMakura");
+
+  // 出走情報・LIVE・フォロワーを背景に“浮かせる”フロート（配信オーバーレイ・右上）。★配信モードのみ。
+  let viewersEl = null;
+  if (broadcast) {
+    const floatBox = el("div", "hl-float");
+    viewersEl = el("div", "hl-viewers", "👁 <b></b>");
+    const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
+    const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
+    floatBox.innerHTML =
+      `<div class="hl-float-live"><span class="hl-live">LIVE</span></div>` +
+      `<div class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b> フォロワー</div>` +
+      (p.completedRaces > 0 ? `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` : "");
+    floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
+    stage.appendChild(floatBox);
+  }
 
   // 🎯 目標（クエスト）チップ：ステージ左上に常設＝「いま次にやること」を1つだけ表示。
   //   ★優先順位：⚔️最終決戦 ＞ 🙏無心(0コイン) ＞ ☄️絶滅メーター(綱引き中) ＞ 🎯通常の目標。
@@ -346,6 +351,14 @@ function renderHome() {
         `<span class="hl-goal-t">🙏 無心する</span>` +
         `<span class="hl-goal-n">コインが0 ・ 基準額 ${fmtCoins(_begAmt)} 相当 ▸</span>`;
       _onclick = () => { if (typeof showMushinOverlay === "function") showMushinOverlay(); };
+    } else if (_metMakura && !broadcast) {
+      // 📱 スマホを買って配信を始める（第4話マクラ後＝配信ホームへの変身トリガ）
+      _cls += " hl-goal--act hl-goal--phone";
+      _html =
+        `<span class="hl-goal-k">📱 いま次にやること</span>` +
+        `<span class="hl-goal-t">スマホを買って配信を始める</span>` +
+        `<span class="hl-goal-n">マクラに背中を押された ・ タップで開始 ▸</span>`;
+      _onclick = () => { if (typeof buyPhoneAndGoLive === "function") buyPhoneAndGoLive(); };
     } else if (_epOn) {
       // ☄️ 絶滅メーター（綱引き中）→ 島の経済で詳細
       const _dial = epilogueDial().toFixed(2); const _prog = epilogueProgress();
@@ -444,13 +457,15 @@ function renderHome() {
   const _fame = (state.assets && state.assets.fameValue) || 0;
   let _viewers = 380 + p.rank * 260 + ((p.villageLevel || 1) * 180) + Math.min(4000, p.completedRaces * 6) + Math.floor(_fame / 50);
   const _fmtV = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
-  const _vB = viewersEl.querySelector("b");
-  _vB.textContent = _fmtV(_viewers);
-  window._hlTimers.push(setInterval(() => {
-    if (state.ui.screen !== "home") { window._hlTimers.forEach(clearInterval); return; }
-    _viewers = Math.max(120, Math.round(_viewers * (1 + (Math.random() - 0.48) * 0.05)));
+  if (broadcast && viewersEl) {   // ★視聴者数は配信モードのみ
+    const _vB = viewersEl.querySelector("b");
     _vB.textContent = _fmtV(_viewers);
-  }, 2600));
+    window._hlTimers.push(setInterval(() => {
+      if (state.ui.screen !== "home") { window._hlTimers.forEach(clearInterval); return; }
+      _viewers = Math.max(120, Math.round(_viewers * (1 + (Math.random() - 0.48) * 0.05)));
+      _vB.textContent = _fmtV(_viewers);
+    }, 2600));
+  }
 
   const _CMN = ["竜見の村人", "観客アヤ", "常連のジジ", "旅の予想屋", "バニー推し", "島っ子", "屋台のおやじ", "夜勤あけ", "遠征組", "はじめて見た",
     "竜舎の常連", "村の子ども", "予想ノート勢", "観光客さん", "ベテラン勢", "屋台の常連", "通りすがり", "町外れの占い師"];
@@ -513,6 +528,7 @@ function renderHome() {
   }, 3300));
 
   function _heart(x, y, ch) {
+    if (!broadcast) return;   // ★ハート(いいね)は配信モードのみ＝全発生をここで一括ゲート（独り言/タップ反応は別途維持）
     const h = document.createElement("span");
     h.className = "hl-heart";
     h.textContent = ch || ["💖", "💛", "🧡", "💚", "💙", "🤍", "✨"][Math.floor(Math.random() * 7)];
@@ -546,7 +562,7 @@ function renderHome() {
     const nm = _CMN[Math.floor(Math.random() * _CMN.length)];
     _addCm("🌟" + nm, "#b9a0ff", " が遊びにきた！", "join");
   }
-  window._hlTimers.push(setInterval(() => {
+  if (broadcast) window._hlTimers.push(setInterval(() => {   // ★入場通知は配信モードのみ
     if (state.ui.screen !== "home") return;
     if (Math.random() < 0.4) _joinCm();
   }, 9500));
@@ -584,7 +600,7 @@ function renderHome() {
       try { _flipTo("happy"); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 2300); } catch (e) {}
     }
   }
-  window._hlTimers.push(setInterval(() => {
+  if (broadcast) window._hlTimers.push(setInterval(() => {   // ★ギフト演出は配信モードのみ
     if (state.ui.screen !== "home") return;
     if (Math.random() < 0.55) _giftCm();
   }, 21000));
@@ -631,7 +647,8 @@ function renderHome() {
   const dock = el("div", "hl-dock");
   const actionFloat = el("div", "hl-actionbar");
 
-  // コメントバー（TikTok風の参加UI・完全に表示専用）：定型コメントを「あなた」として流す＋❤️いいね
+  // 💬コメント入力＋❤️いいねバー（TikTok風の参加UI）＝★配信モードのみ（あなたが視聴者として参加）。静かモードでは非表示。
+  if (broadcast) {
   const cmwrap = el("div", "hl-cmbar-wrap");
   const qr = el("div", "hl-qr hidden");
   const QRS = ["がんばれー！", "ミミちゃんかわいい", "本命きめた？", "🐲🐲🐲", "ぱほぱほ〜！"];
@@ -678,7 +695,8 @@ function renderHome() {
   }, 2600));
   cmbar.appendChild(likeBtn);
   cmwrap.appendChild(qr); cmwrap.appendChild(cmbar);
-  actionFloat.appendChild(cmwrap);   // コメント/いいねバー＝常設の独立フロート層（レースへ進むの直上に浮く）
+  actionFloat.appendChild(cmwrap);   // コメント/いいねバー（レースへ進むの直上に浮く）
+  }   // ← end if(broadcast)：コメント入力/いいねバー
 
   // 🙏無心(0コイン) / ⚔️最終決戦 は「いま次にやること」＝🎯目標チップ（上の goalBtn）に統合済み＝ここでは作らない。
   // コメント/いいねバーだけが常設フロート層＝出入りが無いのでミミの立ち位置も固定ドックも不動（ユーザー指摘）。
@@ -714,8 +732,8 @@ function renderHome() {
     rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
   }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  // 📱 SNS＝タイムライン＋ファンレターを1画面にタブ統合（予想入門・相談は設定/暮らしへ移設済）。
-  if (typeof renderSns === "function") {
+  // 📱 SNS＝タイムライン＋ファンレター。★配信モード（スマホ購入後）のみ＝それまではSNSナビを出さない。
+  if (broadcast && typeof renderSns === "function") {
     const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
     rail.appendChild(navItem("📱", "SNS", unread ? `島の投稿＋ファンレター（未読 ${unread} 通）。` : "島のみんなの投稿とファンレター。", () => renderSns()));
   }

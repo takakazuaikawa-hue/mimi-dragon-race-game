@@ -3727,7 +3727,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-goal--final .hl-goal-k { color: #ffd98a; } .hl-goal--final .hl-goal-t { color: #fff2cf; } .hl-goal--final .hl-goal-n { color: #ffd98a; }
 @keyframes hlGoalPulseRed { 0%,100% { box-shadow: 0 0 0 0 rgba(255,70,50,0); } 50% { box-shadow: 0 0 13px 1px rgba(255,70,50,.55); } }
 @keyframes hlGoalPulseGold { 0%,100% { box-shadow: 0 0 0 0 rgba(255,190,90,0); } 50% { box-shadow: 0 0 15px 2px rgba(255,190,90,.6); } }
-@media (prefers-reduced-motion: reduce) { .hl-goal--broke, .hl-goal--final { animation: none; } }
+.hl-goal--phone { border-left: 3px solid #57b1dd; background: rgba(18,40,58,.6); animation: hlGoalPulseBlue 1.9s ease-in-out infinite; }
+.hl-goal--phone .hl-goal-k { color: #7cc0e6; } .hl-goal--phone .hl-goal-t { color: #dcefff; } .hl-goal--phone .hl-goal-n { color: #9fd0ec; }
+@keyframes hlGoalPulseBlue { 0%,100% { box-shadow: 0 0 0 0 rgba(90,170,220,0); } 50% { box-shadow: 0 0 14px 1px rgba(90,170,220,.55); } }
+@media (prefers-reduced-motion: reduce) { .hl-goal--broke, .hl-goal--final, .hl-goal--phone { animation: none; } }
 
 /* 🏦 島の経済（ui_economy.js）：暮らし配下のダッシュボード。表示専用＝レース数値に非干渉。名前空間 .eco-* */
 .eco-hero { background: linear-gradient(160deg, rgba(40,46,58,.96), rgba(22,26,33,.96)); border: 1px solid var(--glass-border); }

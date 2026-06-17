@@ -229,6 +229,23 @@ function mallUnlocked() {
     (p.outfit && typeof DEFAULT_OUTFIT !== "undefined" && p.outfit !== DEFAULT_OUTFIT));
 }
 
+// 📱 配信モード判定：スマホ購入（第4話マクラ後）で配信ホーム化＝LIVE/視聴者/フォロワー/コメント入力/ハート/
+// ギフト/SNSが解禁。それまでは静かモード（立ち絵/独り言/背景/目標/村人の声は残す）。docs/PROGRESSION_DESIGN.md。
+// 表示専用＝レース数値に非干渉。
+function broadcastOn() {
+  return typeof getStoryFlag === "function" && !!getStoryFlag("phoneBought");
+}
+// 📱 スマホを買って配信を始める＝phoneBought を立てて配信ホーム化（LIVE/視聴者/フォロワー/コメント/SNS解禁）。
+// ★最小版（フラグ＋通知）。#2 で「マクラに背中を押される→購入の一幕（VN/カットイン）」へ拡張予定。表示専用＝レース非干渉。
+function buyPhoneAndGoLive() {
+  if (typeof getStoryFlag === "function" && getStoryFlag("phoneBought")) return;
+  if (typeof setStoryFlag === "function") setStoryFlag("phoneBought", true);
+  try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+  if (typeof renderHome === "function") renderHome();
+  if (typeof showInfoPopup === "function") showInfoPopup("📱 配信、はじめました！",
+    `<div class="mm-row"><span class="mm-ic">📱</span><div><b>スマホを手に入れた</b><small>マクラに背中を押されて、ミミは配信をスタート。ホームが“放送中”になり、視聴者・コメント・💗フォロワー・📱SNSが解禁されました。</small></div></div>`);
+}
+
 // 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。
 function showInfoPopup(title, html) {
   const ov = el("div", "navpop-ov");
