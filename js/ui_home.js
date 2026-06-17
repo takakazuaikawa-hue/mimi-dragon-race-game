@@ -717,10 +717,10 @@ function renderHome() {
   if (mallUnlocked()) {
     rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
   } else {
-    // 初的中で解放（解放時はサケの解説＋プレゼントつき）
+    // 第2話「ミズの分析」を読むと開放（progression再設計）
     const lockedMall = el("button", "hl-item locked", `<span class="ic">🔒</span><span class="lb">モール</span>`);
     lockedMall.onclick = () => showInfoPopup("🛍️ ショッピングモール",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。勝てば、いいことがあるかも？</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話「ミズの分析」</u>を読むと開放されます（総資産3千で第2話が解禁）。</small></div></div>`);
     rail.appendChild(lockedMall);
   }
   // 竜まわりナビ：龍舎(ポロ発見=2勝)が解放済みなら🐲龍舎（図鑑・竜スカウトは龍舎の中の導線に集約）。

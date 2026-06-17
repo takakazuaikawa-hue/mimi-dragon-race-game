@@ -39,11 +39,11 @@ function poroFound() { return typeof getStoryFlag === "function" && getStoryFlag
 function poroScoutUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("dragonScoutUnlocked"); }
 function poroStableUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("dragonStableUnlocked"); }
 function poroGourmetUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("poroGourmetRaceUnlocked"); }
-// 図鑑は「第4話＝マクラ(枕)と推し竜文化」に到達してから解放（ユーザー指定）。metMakura は
-// renderStoryChapter("4") で立つ。_chapter_intro_4 は既に第4話を開いた既存セーブの救済。
+// ★図鑑(竜を見る)は「序章＝はじめて的中」で開放（progression再設計・docs/PROGRESSION_DESIGN.md）。
+// 深い情報は出会い回数で段階的に解放（第4話頃に自然と深まる）。everHit は的中で立つフラグ。
 function dexUnlocked() {
-  if (typeof getStoryFlag !== "function") return false;
-  return getStoryFlag("metMakura") || getStoryFlag("_chapter_intro_4");
+  return !!(typeof getStoryFlag === "function" && getStoryFlag("everHit"))
+    || !!(state.player && state.player.flags && state.player.flags.everHit);
 }
 
 // ── ダイアログ立ち絵キャラとして登録（紫＝仕様の体色。立ち絵 webp が無ければ絵文字へ自動FB） ──

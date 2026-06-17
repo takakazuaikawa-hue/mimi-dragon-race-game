@@ -223,10 +223,9 @@ function showTitleSwitcher() {
 // 🛍️ モール解放判定：レースで初めて的中すると解放（flags.everHit）。既存セーブ救済として
 // 単勝勝利歴・衣装の購入/入手歴・着替え歴があれば解放済み扱い（巻き戻さない）。表示専用。
 function mallUnlocked() {
+  // ★第2話「ミズの分析」を読むと開放（総資産3千で第2話が解禁→読む）。docs/PROGRESSION_DESIGN.md。
   const p = state.player || {}; const f = p.flags || {};
-  return !!(f.everHit || f.mallIntroSeen || (p.wins || 0) >= 1 ||
-    (p.outfitsBought && p.outfitsBought.length) || (p.outfitsWon && p.outfitsWon.length) ||
-    (p.outfit && typeof DEFAULT_OUTFIT !== "undefined" && p.outfit !== DEFAULT_OUTFIT));
+  return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2")) || !!f.mallIntroSeen;
 }
 
 // 📱 配信モード判定：スマホ購入（第4話マクラ後）で配信ホーム化＝LIVE/視聴者/フォロワー/コメント入力/ハート/
