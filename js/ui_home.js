@@ -243,17 +243,7 @@ function renderHome() {
   money.onclick = () => renderAssets();
   top.appendChild(money);
 
-  // 相棒ドラゴンをヘッダーに小さくボタン化（将来は相棒変更の入口・今はタップで一言）
-  const buddySrc = (typeof buddyDragonSrc === "function") ? buddyDragonSrc() : "images/dragon_ref/ref.webp";
-  const buddyBtn = el("button", "hl-buddy-btn");
-  buddyBtn.title = "相棒ドラゴン";
-  const buddyCv = document.createElement("canvas");
-  buddyCv.width = 384; buddyCv.height = 256;
-  buddyBtn.appendChild(buddyCv);
-  if (window.DragonL2) DragonL2.mountOrWarp(buddyCv, buddySrc, "home");
-  else { const _dImg = new Image(); _dImg.onload = function () { startDragonWarp(buddyCv, _dImg); }; _dImg.onerror = function () { buddyBtn.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = buddySrc; }
-  buddyBtn.onclick = () => { try { mimiSay("この子はわたしの相棒なんだ！"); } catch (e) {} };
-  top.appendChild(buddyBtn);
+  // （相棒ドラゴンのヘッダーボタンは不要のため撤去：ユーザー指定。竜canvasのループも起動しなくなる）
 
   // 🔊 音量＝ホームはBGMが鳴るので、深いメニューに潜らず“すぐ”調整できるよう上部に常設（1タップでパネル）。
   if (typeof showVolumePanel === "function") {
