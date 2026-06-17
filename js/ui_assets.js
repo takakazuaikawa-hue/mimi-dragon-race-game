@@ -66,6 +66,10 @@ function renderAssets() {
     const epOn = (typeof epilogueOn === "function") && epilogueOn();
     ent.appendChild(entry("🏦", "島の経済", epOn ? "総資産・名声・村の景気… ＋ ☄️絶滅メーターの綱引き" : "総資産・名声・フォロワー・村の景気＝島の経済状態", epOn ? "☄️終章" : "", () => renderEconomy()));
   }
+  // 🏆 コレクション・やり込み（各収集の達成度＝得点＋クリア後ミニゲーム）。js/ui_collection_score.js
+  if (typeof renderCollectionScore === "function") {
+    ent.appendChild(entry("🏆", "コレクション", "図鑑・衣装・食・小イベント… 達成度（得点）＋ミニゲーム", "", () => renderCollectionScore()));
+  }
   // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。
   const _ch3unlocked = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
   if (_ch3unlocked) {

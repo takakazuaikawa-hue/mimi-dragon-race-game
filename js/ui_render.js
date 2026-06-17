@@ -36,7 +36,7 @@ function updateHeader() {
 const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2, stable: 2, scout: 2,
-  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, economy: 3, poro_gourmet: 3,
+  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, economy: 3, collection_score: 3, poro_gourmet: 3,
   story_read: 4, race_run: 4, result: 5, analysis: 6
 };
 let _prevScreen = null;
@@ -79,7 +79,7 @@ function beginScreen() {
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
     race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
-    life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", story_read: "story"
+    life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
   const bt = BACK_TGT[TOP_BACK[screen]];
@@ -234,15 +234,35 @@ function mallUnlocked() {
 function broadcastOn() {
   return typeof getStoryFlag === "function" && !!getStoryFlag("phoneBought");
 }
-// 📱 スマホを買って配信を始める＝phoneBought を立てて配信ホーム化（LIVE/視聴者/フォロワー/コメント/SNS解禁）。
-// ★最小版（フラグ＋通知）。#2 で「マクラに背中を押される→購入の一幕（VN/カットイン）」へ拡張予定。表示専用＝レース非干渉。
+// 📱 スマホを買って配信を始める＝マクラに背中を押される一幕(VN)→ phoneBought を立てて配信ホーム化
+// （LIVE/視聴者/フォロワー/コメント/SNS解禁）。買える額(3千)なら支払い／足りなければマクラが立て替え（無料）。
+// ★表示専用＝レース着順/オッズ/配当には非干渉（コインの支払いは衣装購入と同じメタ消費）。docs/PROGRESSION_DESIGN.md
 function buyPhoneAndGoLive() {
   if (typeof getStoryFlag === "function" && getStoryFlag("phoneBought")) return;
-  if (typeof setStoryFlag === "function") setStoryFlag("phoneBought", true);
-  try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
-  if (typeof renderHome === "function") renderHome();
-  if (typeof showInfoPopup === "function") showInfoPopup("📱 配信、はじめました！",
-    `<div class="mm-row"><span class="mm-ic">📱</span><div><b>スマホを手に入れた</b><small>マクラに背中を押されて、ミミは配信をスタート。ホームが“放送中”になり、視聴者・コメント・💗フォロワー・📱SNSが解禁されました。</small></div></div>`);
+  var _finish = function () {
+    var p = state.player; var cost = 3000;
+    if ((p.coins || 0) >= cost) p.coins = p.coins - cost;   // 買えるなら支払い／足りなければマクラが立て替え
+    if (typeof setStoryFlag === "function") setStoryFlag("phoneBought", true);
+    if (typeof saveGame === "function") saveGame();
+    try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+    if (typeof renderHome === "function") renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("📱 配信、はじめました！",
+      `<div class="mm-row"><span class="mm-ic">📱</span><div><b>配信デビュー！</b><small>ミミはスマホを手に入れ、配信を開始。ホームが“放送中”になり、👁視聴者・💬コメント・💗フォロワー・📱SNS が解禁されました。</small></div></div>`);
+  };
+  var afford = (state.player.coins || 0) >= 3000;
+  if (window.Dialogue && Dialogue.play && typeof STORY_CAST !== "undefined") {
+    var script = [
+      ["makura", "ミミ。お前の予想、村の中だけにしとくのは……もったいねえな。", "default"],
+      ["mimi", "え？　マクラさん、それって……", "default"],
+      ["makura", "これだ。スマホ。これさえありゃ“配信”ができる。お前のぱほぱほ、島の外まで届くぞ。", "default"],
+      ["mimi", "わ、わたしが配信なんて……できるかな……", "panic"],
+      ["makura", "できるさ。もう村のみんなが応援してる。あとは、世界に見せるだけだ。", "default"],
+      afford ? ["mimi", "……うん。やってみますっ！　えいっ、買っちゃう！", "happy"]
+             : ["makura", "金は気にすんな。最初はおれが立て替えとく。さ、デビューだ。", "default"],
+      ["mimi", "ありがとうございますっ……！　よーし——配信、はじめます！", "happy"]
+    ];
+    Dialogue.play(script, { force: true }).then(_finish);
+  } else { _finish(); }
 }
 
 // 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。

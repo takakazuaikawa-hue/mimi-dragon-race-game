@@ -3768,6 +3768,23 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .eco-ext--doom { box-shadow: 0 0 0 1px rgba(214,69,47,.25) inset; }
 .eco-final { margin-top: 10px; }
 
+/* 🏆 コレクション・やり込み（ui_collection_score.js）：各収集の達成度＝得点。表示専用。名前空間 .cs-* */
+.cs-hero { text-align: center; background: linear-gradient(160deg, rgba(48,40,18,.96), rgba(24,22,16,.96)); border: 1px solid var(--glass-border); }
+.cs-hero-k { font-size: 12px; font-weight: 800; color: var(--astone); letter-spacing: .04em; }
+.cs-hero-pct { font-size: 44px; font-weight: 900; color: var(--gold); line-height: 1.05; }
+.cs-hero-pct small { font-size: 18px; margin-left: 2px; }
+.cs-hero-bar { width: 100%; height: 9px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; margin: 6px 0 5px; }
+.cs-hero-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #e6b24a, #ffd966); }
+.cs-hero-sub { font-size: 11.5px; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
+.cs-list { display: flex; flex-direction: column; gap: 9px; }
+.cs-row { display: flex; align-items: center; gap: 10px; }
+.cs-ic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; background: rgba(255,255,255,.05); }
+.cs-tx { flex: 1; min-width: 0; }
+.cs-nm { display: block; font-size: 12.5px; font-weight: 700; color: var(--mist); margin-bottom: 3px; }
+.cs-bar { display: block; width: 100%; height: 6px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
+.cs-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #57b1dd, #7be0b0); }
+.cs-num { flex: none; font-size: 11.5px; font-weight: 800; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
+
 .goals-bar { position: relative; height: 22px; border-radius: 999px; background: rgba(255,255,255,.08);
   border: 1px solid var(--glass-border); overflow: hidden; margin: 4px 0 14px; display: flex; align-items: center; }
 .goals-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ffd966, #ff9a5e); }
