@@ -11,18 +11,20 @@
 // ── 1. ロケーション（場）：段階開放＋マスク ────────────────────────────
 //   unlock は scout_engine.js の scoutLocationUnlocked(locId) が判定（章/総資産）。
 //   ここには表示用の解放ラベルだけ持たせる。pool は arch/traits から決定的に割当。
+// cost＝遠征の旅費（島の経済のコイン吸い込み口・表示専用メタ／着順・オッズ・配当には非干渉）。
+// 序盤は安く、奥地ほど高い。コイン消費は衣装購入等と同じ＝総資産(高水位)には影響しない。
 const SCOUT_LOCATIONS = [
-  { id: "grass",   name: "草むら",     ic: "🌾", tier: "序盤", mood: "やわらかな陽だまり。人なつこい竜が顔を出す。",
+  { id: "grass",   name: "草むら",     ic: "🌾", tier: "序盤", cost: 600,   mood: "やわらかな陽だまり。人なつこい竜が顔を出す。",
     unlockLabel: "スカウト解放で開放（2勝）",                  archs: ["allrounder", "turn_tech"] },
-  { id: "jungle",  name: "密林",       ic: "🌳", tier: "序盤", mood: "湿った緑の奥。隠れたがりの竜の気配。",
+  { id: "jungle",  name: "密林",       ic: "🌳", tier: "序盤", cost: 900,   mood: "湿った緑の奥。隠れたがりの竜の気配。",
     unlockLabel: "スカウト解放で開放（2勝）",                  archs: ["cloud_chaser", "fog_mystic"] },
-  { id: "cliff",   name: "崖",         ic: "🪨", tier: "中盤", mood: "切り立った岩棚。頑固で誇り高い竜の住処。",
+  { id: "cliff",   name: "崖",         ic: "🪨", tier: "中盤", cost: 2000,  mood: "切り立った岩棚。頑固で誇り高い竜の住処。",
     unlockLabel: "総資産3万で開放（第3話・くらし）",            archs: ["stamina_tank"] },
-  { id: "volcano", name: "火山地帯",   ic: "🌋", tier: "中盤", mood: "熱気と火の粉。気の立った竜が多い。難所。",
+  { id: "volcano", name: "火山地帯",   ic: "🌋", tier: "中盤", cost: 4000,  mood: "熱気と火の粉。気の立った竜が多い。難所。",
     unlockLabel: "総資産100万で開放（第4話）",                 archs: ["fire_bruiser", "speed_escape"] },
-  { id: "sea",     name: "水中",       ic: "🌊", tier: "中盤", mood: "青い静寂。動きはゆるやか、しぐさは読みやすい。",
+  { id: "sea",     name: "水中",       ic: "🌊", tier: "中盤", cost: 3000,  mood: "青い静寂。動きはゆるやか、しぐさは読みやすい。",
     unlockLabel: "総資産100万で開放（第4話）",                 archs: ["wing_closer"] },
-  { id: "sky",     name: "空中",       ic: "☁️", tier: "終盤", mood: "雲の高み。高潔な竜が翼を休める。最難。",
+  { id: "sky",     name: "空中",       ic: "☁️", tier: "終盤", cost: 12000, mood: "雲の高み。高潔な竜が翼を休める。最難。",
     unlockLabel: "終章で開放（第5話・総資産1億）",              archs: ["speed_dragon", "_star"] }
 ];
 

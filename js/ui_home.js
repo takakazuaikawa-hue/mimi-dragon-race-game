@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // ui_home.js — ホーム（配信風トップ）画面（CODEMAP §6・分割第4弾）。
 // =============================================================================
 // ★ui_render.js から無改変で抽出：renderHome ＋ 専用helper（startMimiIdle / startDragonWarp /
@@ -141,7 +141,7 @@ function renderHome() {
   const HOME_BGS = [
     // floorDay/floorNight＝床の接地ライン（上端からの比率・実測）。無ければ floor。
     // 屋外ロケ（日替わりローテーション）。images/homebg/<id>_{day,night}.webp。
-    { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.73, floorNight: 0.70 },
+    { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.74, floorNight: 0.74 },
     { id: "beach",   day: "images/homebg/beach_day.webp",   night: "images/homebg/beach_night.webp",   floorDay: 0.64, floorNight: 0.64 },
     { id: "market",  day: "images/homebg/market_day.webp",  night: "images/homebg/market_night.webp",  floorDay: 0.62, floorNight: 0.60 },
     { id: "onsen",   day: "images/homebg/onsen_day.webp",   night: "images/homebg/onsen_night.webp",   floorDay: 0.73, floorNight: 0.72 },
@@ -154,7 +154,7 @@ function renderHome() {
   // ★縦構図の背景（全景が縦に収まる）。横16:9は縦持ちで左右が大きく落ち全景が見えない＝背景が生かせない問題への対応。
   //   当面デモとして常時表示。photoreal縦版を images/homebg/island_portrait_{day,night}.webp で差し替え可
   //   （docs/HOME_BG_SPEC.md「縦構図」節の仕様/プロンプト）。PORTRAIT_DEMO=false で従来の横ロケ・ローテに戻る。
-  const PORTRAIT_DEMO = true;
+  const PORTRAIT_DEMO = false;
   const ISLAND_PORTRAIT = { id: "island", portrait: true,
     day: "images/homebg/island_portrait_day.svg", night: "images/homebg/island_portrait_night.svg",
     floorDay: 0.80, floorNight: 0.80 };
@@ -747,3 +747,4 @@ function renderHome() {
 
   app.appendChild(wrap);
 }
+

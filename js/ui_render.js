@@ -2496,12 +2496,14 @@ function renderRaceRun() {
   // incidental rerender (e.g. the debug / info-level toggles call us again).
   if (c.racePlayer && document.getElementById("race-canvas-host")) return;
 
-  if (!c.broadcast) {
-    c.broadcast = buildBroadcastData(c.race, c.raceResult, c.bet, c.oddsResult);
-    c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult, raceResult: c.raceResult });
-  }
+  // タイムライン（画面の物理位置の source）を先に作り、実況/HUDの順位もこれに合わせる
+  // ＝中盤の「先頭/N番手」が画面と一致（表示専用・着順/結果/配当は不変）。
   if (!c.timeline) {
     c.timeline = buildRaceTimeline(c.race, c.raceResult, c.oddsResult, c.bet);
+  }
+  if (!c.broadcast) {
+    c.broadcast = buildBroadcastData(c.race, c.raceResult, c.bet, c.oddsResult, c.timeline);
+    c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult, raceResult: c.raceResult });
   }
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();   // 出走直前に保留中の立ち絵セリフを閉じる（レース上に被せない）
   const app = beginScreen();

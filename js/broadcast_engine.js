@@ -186,14 +186,30 @@ function derivePhaseTags(race, ordered, prevRankMap, currRankMap, oddsResult, ph
  * @param {object} oddsResult  output of simulateMarket() for popularity context
  * @returns {{phases: Array}}
  */
-function buildBroadcastData(race, raceResult, bet, oddsResult) {
+function buildBroadcastData(race, raceResult, bet, oddsResult, timeline) {
   const entries = raceResult.entries;
+  // 実況/HUDの「先頭/N番手」を“画面に映る物理位置”と一致させる。各フェーズの並びは
+  // タイムラインの standingsAt(該当τ) から取る（＝キャンバスの位置と同じ source）。
+  // ★表示専用：着順・結果・オッズ・配当は不変（finish は常に確定着順 rank で固定）。
+  // timeline 省略時は従来どおり phaseScore 順（後方互換）。
+  const _byId = {}; entries.forEach(e => { _byId[e.dragon.id] = e; });
+  const _PIDS = ["early", "mid", "development", "late", "finish"];
+  const _TAU = (typeof TL_PHASE_TAU !== "undefined") ? TL_PHASE_TAU : [0.18, 0.44, 0.66, 0.86, 1.01];
+  const _phaseOrder = (meta) => {
+    if (meta.id === "finish") return [...entries].sort((a, b) => a.rank - b.rank);   // ゴール＝確定着順で固定
+    if (timeline && typeof timeline.standingsAt === "function") {
+      const tau = _TAU[_PIDS.indexOf(meta.id)];
+      if (tau != null) {
+        const ord = timeline.standingsAt(tau).map(id => _byId[id]).filter(Boolean);
+        if (ord.length === entries.length) return ord;   // 画面の物理位置順
+      }
+    }
+    return sortByPhase(entries, meta.id);                 // FB：従来の強さ指標順
+  };
   // Pre-compute phase orderings for all phases so tags can compare with prev.
   let prevRankMap = null;
   const phases = BROADCAST_PHASES.map(meta => {
-    const ordered = (meta.id === "finish")
-      ? [...entries].sort((a, b) => a.rank - b.rank)
-      : sortByPhase(entries, meta.id);
+    const ordered = _phaseOrder(meta);
     const currRankMap = rankMapOf(ordered);
     const { tags: phaseTags, sectionName } =
       derivePhaseTags(race, ordered, prevRankMap, currRankMap, oddsResult, meta.id);

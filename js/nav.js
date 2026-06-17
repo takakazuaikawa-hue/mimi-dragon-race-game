@@ -46,15 +46,18 @@ var SCREEN_INDEX = [
 // レース系は state.current が無い時はレース選択へフォールバック（直接ジャンプでも壊れない）。
 function screenMap() {
   var hasRace = !!(typeof state !== "undefined" && state.current && state.current.race);
+  // race_run/result/analysis は raceResult（賭け→走で確定）が無いと .entries 参照で落ちる。
+  // 開発ジャンプ等の中途状態でも壊れないよう、結果が無ければレース選択へフォールバック。
+  var hasResult = hasRace && !!state.current.raceResult;
   function opt(fn, fb) { return (typeof window[fn] === "function") ? window[fn] : (window[fb] || renderHome); }
   return {
     title:           function () { renderTitle(); },
     home:            function () { renderHome(); },
     race_select:     function () { renderRaceSelect(); },
     race_detail:     function () { hasRace ? renderRaceDetail(state.current.race) : renderRaceSelect(); },
-    race_run:        function () { hasRace ? renderRaceRun() : renderRaceSelect(); },
-    result:          function () { hasRace ? renderResult() : renderRaceSelect(); },
-    analysis:        function () { hasRace ? renderAnalysis() : renderRaceSelect(); },
+    race_run:        function () { hasResult ? renderRaceRun() : renderRaceSelect(); },
+    result:          function () { hasResult ? renderResult() : renderRaceSelect(); },
+    analysis:        function () { hasResult ? renderAnalysis() : renderRaceSelect(); },
     assets:          function () { renderAssets(); },
     economy:         function () { opt("renderEconomy", "renderAssets")(); },
     collection_score: function () { opt("renderCollectionScore", "renderAssets")(); },

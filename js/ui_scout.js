@@ -17,7 +17,7 @@ function renderScout() {
   state.ui.screen = "scout";
   const app = beginScreen();
   app.appendChild(el("h2", null, "🔍 竜スカウト"));
-  app.appendChild(el("div", "as-hint2", "野の竜は人の言葉を話さない。<b>しぐさ</b>から気持ちを読み、<b>交渉術</b>で心を開かせて仲間に迎えよう（表示専用＝レースには出走しません）。"));
+  app.appendChild(el("div", "as-hint2", "野の竜は人の言葉を話さない。<b>しぐさ</b>から気持ちを読み、<b>交渉術</b>で心を開かせて仲間に迎えよう。遠征には<b>旅費</b>がかかる（表示専用＝レースの結果には影響しません）。"));
 
   const owned = (typeof poroMetDragonIds === "function" ? poroMetDragonIds().filter(id => id !== "poro").length : 0);
   app.appendChild(el("div", "scout-bar", `🏠 龍舎の竜：<b>${owned}</b>頭　｜　🪙 <b>${(state.player.coins || 0).toLocaleString("ja-JP")}</b>`));
@@ -31,9 +31,12 @@ function renderScout() {
       const col = (state.player && state.player.collection) || {};
       const done = all.filter(d => col[d.id] && col[d.id].scouted).length;
       const allDone = all.length > 0 && done >= all.length;
-      const card = el("button", "sc-loc" + (allDone ? " sc-loc--done" : ""),
+      const cost = loc.cost || 0;
+      const canPay = (state.player.coins || 0) >= cost;
+      const card = el("button", "sc-loc" + (allDone ? " sc-loc--done" : (canPay ? "" : " sc-loc--poor")),
         `<span class="sc-loc-ic">${loc.ic}</span>` +
-        `<span class="sc-loc-bd"><b>${loc.name}</b><i class="sc-loc-tier">${loc.tier}</i></span>` +
+        `<span class="sc-loc-bd"><b>${loc.name}</b><i class="sc-loc-tier">${loc.tier}</i>` +
+          (allDone ? "" : `<i class="sc-loc-cost">旅費 🪙${cost.toLocaleString("ja-JP")}</i>`) + `</span>` +
         `<span class="sc-loc-mood">${loc.mood}</span>` +
         `<span class="sc-loc-cnt">${allDone ? "✓ この場の竜とは みんな仲良し" : `棲む竜 <b>${all.length}</b>頭・出会い <b>${done}</b>`}</span>`);
       card.onclick = () => scoutEnterLocation(loc.id);
@@ -65,8 +68,18 @@ function scoutEnterLocation(locId) {
       `<div class="mm-row"><span class="mm-ic">✓</span><div><b>この場の竜とは、もう みんな仲良くなった。</b><small>別の場所をのぞいてみよう。</small></div></div>`);
     return;
   }
-  // 決定的に1頭（completedRacesで巡る）。
-  const idx = ((state.player.completedRaces || 0) + (state.player.coins || 0)) % pool.length;
+  // 旅費（島の経済＝コインの吸い込み口・表示専用メタ／着順・オッズ・配当には非干渉）。
+  const cost = loc.cost || 0;
+  if ((state.player.coins || 0) < cost) {
+    showInfoPopup(`${loc.ic} ${loc.name}`,
+      `<div class="mm-row"><span class="mm-ic">🪙</span><div><b>旅費が足りません</b><small>${loc.name}への遠征には ${cost.toLocaleString("ja-JP")} コイン必要です（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）。</small></div></div>`);
+    return;
+  }
+  if (cost > 0) { state.player.coins -= cost; if (typeof updateHeader === "function") updateHeader(); }
+  state.player._scoutTrips = (state.player._scoutTrips || 0) + 1;   // 遠征回数（表示メタ・出会う竜の巡回に使う）
+  if (typeof saveGame === "function") saveGame();
+  // その場の未スカウト竜から決定的に1頭（遠征ごとに巡る・旅費でコインが動くため coins は使わない）。
+  const idx = (state.player._scoutTrips + (state.player.completedRaces || 0)) % pool.length;
   const d = pool[idx];
   _scoutMeetD = d; _scoutMeetLoc = locId;
   _scoutSess = createScoutSession(d.id, locId);
