@@ -151,6 +151,13 @@ function renderHome() {
     { id: "myroom", myroom: true },
   ];
   const MYROOM_FLOORS = [0.63, 0.63, 0.63, 0.66, 0.72, 0.64];   // t0..t5（実測）
+  // ★縦構図の背景（全景が縦に収まる）。横16:9は縦持ちで左右が大きく落ち全景が見えない＝背景が生かせない問題への対応。
+  //   当面デモとして常時表示。photoreal縦版を images/homebg/island_portrait_{day,night}.webp で差し替え可
+  //   （docs/HOME_BG_SPEC.md「縦構図」節の仕様/プロンプト）。PORTRAIT_DEMO=false で従来の横ロケ・ローテに戻る。
+  const PORTRAIT_DEMO = true;
+  const ISLAND_PORTRAIT = { id: "island", portrait: true,
+    day: "images/homebg/island_portrait_day.svg", night: "images/homebg/island_portrait_night.svg",
+    floorDay: 0.80, floorNight: 0.80 };
   const bg = el("div", "hl-bg");
   bg.innerHTML = `<img class="hl-bg-img" alt="" decoding="async"><div class="hl-bg-scrim"></div>`;
   (function () {
@@ -160,7 +167,8 @@ function renderHome() {
     // 配分：偶数日＝自宅(myroom・ホームベース＝引っ越し進行を見せる)／奇数日＝屋外ロケを順番に。
     const myroomEntry = HOME_BGS.find(b => b.myroom);
     const outdoor = HOME_BGS.filter(b => !b.myroom);
-    const set = (dayIdx % 2 === 0 && myroomEntry) ? myroomEntry : outdoor[(dayIdx >> 1) % outdoor.length];
+    const set = PORTRAIT_DEMO ? ISLAND_PORTRAIT
+      : (dayIdx % 2 === 0 && myroomEntry) ? myroomEntry : outdoor[(dayIdx >> 1) % outdoor.length];
     let floorUsed, chain;
     if (set.myroom) {
       // 自宅：現在の総資産レベルの部屋→無ければ下の段→最後はバルコニー/旧背景へ
@@ -177,10 +185,12 @@ function renderHome() {
         : [set.day, set.night, "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
     }
     const im = bg.querySelector(".hl-bg-img");
+    if (set.portrait) im.classList.add("portrait");   // 縦構図＝素直なcover（接地はSVG側のfloorで設計）
     let i = 0;
     im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
     // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±6vh内でだけ動かす）
     function calibrate() {
+      if (set.portrait) { im.style.top = ""; return; }   // 縦構図はcover任せ＝接地はSVGのfloor(約78%)で設計
       try {
         const vh = window.innerHeight, vw = window.innerWidth;
         const boxH = vh * 1.12, boxW = vw * 1.12;

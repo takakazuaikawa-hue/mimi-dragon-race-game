@@ -78,3 +78,55 @@ crater glowing faint orange, city/stadium lights twinkling in the distance` に�
 1. 74%位置に水平線を引いて床エッジが乗るか（±2%）
 2. 縦9:19.5に中央クロップして床/火山が成立するか
 3. 中央に近景物が無いか／無人・文字無しか
+
+---
+
+# ★縦構図（ポートレート）背景 — 推奨（背景を最大限に生かす）
+
+横16:9は縦持ち端末で**左右が大きく落ちて全景が見えない**（中央の縦スライスだけが映る）。
+さらに大きな前景ミミが中央を覆うため「背景が生かせない」。**縦構図で全景を縦に収める**のが本筋。
+現状は **デモとして縦構図のSVG**（`images/homebg/island_portrait_{day,night}.svg`）を `PORTRAIT_DEMO=true`
+（`js/ui_home.js`）で常時表示中。**photoreal縦版を同名(.webp)で差し替えるか、`HOME_BGS`に縦エントリを足す**
+だけで切替できる。横ロケ・ローテに戻すには `PORTRAIT_DEMO=false`。
+
+## 縦構図の必須数値
+| 項目 | 値 | 理由 |
+|---|---|---|
+| アスペクト | **9:16（例 1152×2048）。可能なら 9:18〜9:19 でより縦長** | 端末枠は約0.46〜0.59。9:16で左右±5〜18%だけ切れ全景は縦に収まる |
+| **接地ライン（地平/床の手前エッジ）** | **上から 78%（±3%）** | ミミの足元はメニュー内（下端付近）。地平はメニュー上端あたりに来る |
+| 前景の床 | 78%〜下端まで**連続した床**（板/石畳/砂/土） | ミミが立つ面。下20%強はメニューが重なる前提（隠れてOK） |
+| 火山 | **右1/3・山頂は上から18〜30%** | 縦でも頭上に島のシンボル |
+| 中央の抜け | **横中央±26% は遠景のみ**（近景オブジェクト禁止） | 大きな前景ミミ・吹き出し・ピンが重なる |
+| 上部 0〜18% | 空・遠景（重要モチーフ控えめ） | ヘッダー/フロート/目標チップが重なる（暗めのグラデが乗る） |
+| 明度 | 上18%と下22%はやや暗めOK（スクリムが乗る） | UI/文字の可読性 |
+| 人物・文字 | **無人・文字無し** | 立ち絵とUIが主役 |
+
+## スタイル
+**実写フォトリアル**（既存と統一）。`ultra-realistic travel photography, full-frame, 35mm, natural light, HDR`。
+
+## 生成プロンプト（縦・昼／例：島の高台テラス）
+```
+Ultra-realistic vertical travel photograph (portrait 9:16), no people, no text.
+A wooden terrace on a tropical volcanic resort island, overlooking the island.
+A continuous walkable wooden-plank floor fills the BOTTOM ~22% of the frame; the floor's
+far edge (where it meets the distant view) sits at about 78% from the top.
+Keep the horizontal CENTER (±26%) clear of near objects — open distant view only
+(a tall foreground subject will stand there). A volcanic mountain stands in the RIGHT third,
+its peak around 22% from the top, thin smoke drifting. Lush valley, sea and sky fill the
+upper two thirds. Bright daylight, blue sky, HDR, shot on full-frame 35mm. Vertical 9:16.
+```
+夜版＝末尾を `Warm lantern light, deep blue starry night sky with a moon, the crater glowing
+faint orange, distant village/stadium lights twinkling, misty atmosphere` に差し替え。
+
+ロケ差分は横版（balcony/beach/market/onsen/stable/mall）と同じ語彙で、**床=78%・縦9:16**に読み替える。
+
+## 受け取ったら（縦版の組み込み）
+1. webp最適化（q82前後）→ `images/homebg/<id>_portrait_{day,night}.webp`
+2. `js/ui_home.js` の `HOME_BGS` に縦エントリを足す（または `ISLAND_PORTRAIT` を差し替え）：
+   ```js
+   { id:"balcony", portrait:true, day:"images/homebg/balcony_portrait_day.webp",
+     night:"images/homebg/balcony_portrait_night.webp", floorDay:0.78, floorNight:0.78 }
+   ```
+3. `portrait:true` のエントリは **接地キャリブレーションをスキップ**し素直な cover 表示（`.hl-bg-img.portrait`）。
+   ミミの足元は固定（メニュー内）なので、床=78%で設計すれば自然に立つ。複数縦ロケを入れれば日替わりローテも可。
+4. 検収：縦端末で①地平が78%付近②中央±26%が空き③火山が右上④無人・文字無し。

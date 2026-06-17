@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1400" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="skyd" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f8fc4"/>
+      <stop offset="0.34" stop-color="#7bb3d8"/>
+      <stop offset="0.60" stop-color="#aed4e6"/>
+      <stop offset="0.76" stop-color="#dcecef"/>
+      <stop offset="0.82" stop-color="#eaf2ee"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fffdf2"/>
+      <stop offset="0.5" stop-color="#fff3cf" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#fff3cf" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="groundd" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9a8f76"/>
+      <stop offset="0.32" stop-color="#7d735c"/>
+      <stop offset="1" stop-color="#5d5546"/>
+    </linearGradient>
+    <linearGradient id="horizond" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d9e7e6" stop-opacity="0"/>
+      <stop offset="1" stop-color="#cdd9d2" stop-opacity="0.7"/>
+    </linearGradient>
+    <filter id="softd" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="softd2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="36"/></filter>
+    <filter id="glowd" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+
+  <!-- 空 -->
+  <rect width="800" height="1400" fill="url(#skyd)"/>
+
+  <!-- 太陽 -->
+  <circle cx="230" cy="240" r="190" fill="url(#sun)" filter="url(#glowd)" opacity="0.9"/>
+  <circle cx="230" cy="240" r="60" fill="#fffdf3" opacity="0.95"/>
+
+  <!-- 雲（やわらか） -->
+  <g fill="#ffffff" opacity="0.7" filter="url(#softd)">
+    <ellipse cx="540" cy="260" rx="150" ry="34"/><ellipse cx="640" cy="300" rx="110" ry="28"/>
+    <ellipse cx="120" cy="430" rx="120" ry="26"/><ellipse cx="700" cy="470" rx="130" ry="30"/>
+  </g>
+
+  <!-- 遠景：奥の稜線（霞んで明るい） -->
+  <path d="M0,720 L120,650 L260,690 L400,615 L540,675 L680,620 L800,665 L800,820 L0,820 Z"
+        fill="#9db9c4" opacity="0.6" filter="url(#softd)"/>
+
+  <!-- 火山（右1/3）＋噴煙 -->
+  <path d="M560,1100 L640,470 Q660,430 685,470 L800,1100 Z" fill="#5f6f73"/>
+  <path d="M560,1100 L640,470 Q660,430 685,470 L720,640 L660,610 L640,690 L600,650 Z"
+        fill="#4a585c" opacity="0.7"/>
+  <path d="M540,1100 L640,470 L660,470 L590,1100 Z" fill="#6f7d7e" opacity="0.5"/>
+  <path d="M662,470 Q706,330 660,210 Q648,140 706,84" stroke="#d7dadb" stroke-width="58"
+        fill="none" opacity="0.55" filter="url(#softd2)" stroke-linecap="round"/>
+
+  <!-- 中景の稜線 -->
+  <path d="M0,860 L150,805 L320,850 L470,800 L640,845 L800,805 L800,1000 L0,1000 Z" fill="#8aa39e" opacity="0.85"/>
+
+  <!-- 海/遠景の霞 -->
+  <ellipse cx="300" cy="900" rx="520" ry="46" fill="#e9f1ee" opacity="0.32" filter="url(#softd2)"/>
+  <ellipse cx="540" cy="960" rx="460" ry="42" fill="#e3ede9" opacity="0.28" filter="url(#softd2)"/>
+  <ellipse cx="250" cy="1015" rx="560" ry="52" fill="#dfeae5" opacity="0.26" filter="url(#softd2)"/>
+
+  <!-- 地面（接地ライン約78%） -->
+  <rect x="0" y="1092" width="800" height="60" fill="url(#horizond)"/>
+  <rect x="0" y="1100" width="800" height="300" fill="url(#groundd)"/>
+  <g stroke="#6b6250" stroke-width="2" opacity="0.4">
+    <path d="M-40,1400 L360,1110"/><path d="M250,1400 L400,1110"/>
+    <path d="M840,1400 L440,1110"/><path d="M560,1400 L410,1110"/>
+  </g>
+  <ellipse cx="400" cy="1340" rx="620" ry="120" fill="#4a4334" opacity="0.4" filter="url(#softd2)"/>
+</svg>

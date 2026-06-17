@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1400" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#07101f"/>
+      <stop offset="0.30" stop-color="#0e2034"/>
+      <stop offset="0.55" stop-color="#173247"/>
+      <stop offset="0.72" stop-color="#244154"/>
+      <stop offset="0.80" stop-color="#33485491"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fdf6e3"/>
+      <stop offset="0.45" stop-color="#e9e6cf"/>
+      <stop offset="1" stop-color="#e9e6cf" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="moonGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#cfe2ee" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#cfe2ee" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="crater" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd27a"/>
+      <stop offset="0.4" stop-color="#ff7a2a"/>
+      <stop offset="1" stop-color="#ff5a1e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2c30"/>
+      <stop offset="0.35" stop-color="#121f24"/>
+      <stop offset="1" stop-color="#0a1316"/>
+    </linearGradient>
+    <linearGradient id="horizonGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a5566" stop-opacity="0"/>
+      <stop offset="1" stop-color="#46606e" stop-opacity="0.55"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="soft2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"/></filter>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+
+  <!-- 空 -->
+  <rect width="800" height="1400" fill="url(#sky)"/>
+
+  <!-- 星 -->
+  <g fill="#dbe6f0">
+    <circle cx="90" cy="120" r="1.6" opacity="0.9"/><circle cx="180" cy="70" r="1.1" opacity="0.7"/>
+    <circle cx="300" cy="150" r="1.4" opacity="0.8"/><circle cx="430" cy="90" r="1" opacity="0.6"/>
+    <circle cx="560" cy="60" r="1.5" opacity="0.85"/><circle cx="660" cy="140" r="1.1" opacity="0.7"/>
+    <circle cx="730" cy="80" r="1.3" opacity="0.75"/><circle cx="120" cy="260" r="1.1" opacity="0.6"/>
+    <circle cx="250" cy="300" r="1.3" opacity="0.7"/><circle cx="500" cy="220" r="1" opacity="0.55"/>
+    <circle cx="610" cy="280" r="1.2" opacity="0.65"/><circle cx="380" cy="240" r="0.9" opacity="0.5"/>
+    <circle cx="700" cy="320" r="1" opacity="0.55"/><circle cx="60" cy="420" r="1" opacity="0.45"/>
+  </g>
+
+  <!-- 月 -->
+  <circle cx="220" cy="250" r="150" fill="url(#moonGlow)" opacity="0.8"/>
+  <circle cx="220" cy="250" r="46" fill="url(#moon)"/>
+  <circle cx="206" cy="238" r="44" fill="#0e2034" opacity="0.32"/>
+
+  <!-- 遠景：奥の稜線（霞んで明るい） -->
+  <path d="M0,720 L120,650 L260,690 L400,615 L540,675 L680,620 L800,665 L800,820 L0,820 Z"
+        fill="#2c4659" opacity="0.55" filter="url(#soft)"/>
+
+  <!-- 火山（右1/3・山頂は上から約20%）＋火口の灯り＋噴煙 -->
+  <path d="M560,1100 L640,470 Q660,430 685,470 L800,1100 Z" fill="#16242e"/>
+  <path d="M560,1100 L640,470 Q660,430 685,470 L720,640 L660,610 L640,690 L600,650 Z"
+        fill="#0f1a22" opacity="0.7"/>
+  <ellipse cx="662" cy="478" rx="40" ry="20" fill="url(#crater)" filter="url(#glow)"/>
+  <path d="M662,470 Q700,330 660,210 Q650,140 700,80" stroke="#1a2730" stroke-width="60"
+        fill="none" opacity="0.30" filter="url(#soft2)" stroke-linecap="round"/>
+  <g fill="#ffb060" filter="url(#glow)">
+    <circle cx="660" cy="455" r="3"/><circle cx="675" cy="430" r="2.2"/><circle cx="650" cy="420" r="1.8"/>
+  </g>
+
+  <!-- 中景の稜線（暗い） -->
+  <path d="M0,860 L150,805 L320,850 L470,800 L640,845 L800,805 L800,1000 L0,1000 Z" fill="#101c24"/>
+
+  <!-- 遠くの村・スタジアムの灯り -->
+  <g fill="#ffd49a" filter="url(#glow)">
+    <circle cx="150" cy="858" r="2.4"/><circle cx="172" cy="864" r="1.8"/><circle cx="205" cy="855" r="2"/>
+    <circle cx="235" cy="862" r="1.6"/><circle cx="300" cy="868" r="2.2"/><circle cx="340" cy="860" r="1.7"/>
+    <circle cx="470" cy="852" r="2.1"/><circle cx="500" cy="860" r="1.6"/>
+  </g>
+
+  <!-- 霧（横にたなびく） -->
+  <ellipse cx="300" cy="900" rx="520" ry="44" fill="#9fb8c4" opacity="0.16" filter="url(#soft2)"/>
+  <ellipse cx="540" cy="960" rx="460" ry="40" fill="#b9cdd6" opacity="0.13" filter="url(#soft2)"/>
+  <ellipse cx="250" cy="1010" rx="560" ry="50" fill="#aac0cb" opacity="0.12" filter="url(#soft2)"/>
+
+  <!-- 地面（接地ライン約78%＝ミミが立つ前景の床） -->
+  <rect x="0" y="1092" width="800" height="60" fill="url(#horizonGlow)"/>
+  <rect x="0" y="1100" width="800" height="300" fill="url(#ground)"/>
+  <!-- 床のうっすらした透視ライン -->
+  <g stroke="#2a3c42" stroke-width="2" opacity="0.35">
+    <path d="M-40,1400 L360,1110"/><path d="M250,1400 L400,1110"/>
+    <path d="M840,1400 L440,1110"/><path d="M560,1400 L410,1110"/>
+  </g>
+  <!-- 前景の霞（足元をすこし沈める） -->
+  <ellipse cx="400" cy="1330" rx="620" ry="120" fill="#0a1316" opacity="0.5" filter="url(#soft2)"/>
+</svg>
