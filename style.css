@@ -3879,6 +3879,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    出入りしても固定ドック（レース+ナビ）を圧縮しない＝stage(flex:1)が伸縮を吸収。js/ui_home.js renderHome */
 .hl-actionbar { flex: 0 0 auto; display: flex; flex-direction: column; gap: 7px; position: relative; z-index: 3; }
 .hl-actionbar:empty { display: none; }
+/* 進行で出入りするCTA（無心/最終決戦）＝stage上の絶対オーバーレイ。コメントバーの直上に浮き上方向に伸縮＝
+   出入りしてもフローが変わらず、ミミの立ち位置も固定ドックも動かさない（ユーザー指摘の核心）。上から[最終決戦][無心]。js/ui_home.js */
+.hl-cta { position: absolute; left: 0; right: 0; bottom: 6px; z-index: 6;
+  display: flex; flex-direction: column; gap: 7px; padding: 0 8px; pointer-events: none; }
+.hl-cta > * { pointer-events: auto; }
 /* コメントバー（TikTok風の参加UI）＝💬定型コメント＋❤️いいね */
 .hl-cmbar-wrap { position: relative; }
 .hl-cmbar { display: flex; align-items: stretch; gap: 7px; }

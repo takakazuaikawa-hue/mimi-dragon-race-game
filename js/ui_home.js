@@ -603,10 +603,13 @@ function renderHome() {
     }
   }, 5200));
 
-  // ── 下段（固定ドック）：レースへ進む → ナビ のみ。★進行で出入りする可変要素（コメント/いいね・無心・最終決戦）は
-  //   この上の独立フロート層(.hl-actionbar)へ分離＝出入りしても固定ドックを圧縮しない（ユーザー指摘）。stage(flex:1)が伸縮を吸収。
+  // ── 下段（固定ドック）：レースへ進む → ナビ のみ。可変要素は2層に分離（ユーザー指摘）：
+  //   ・コメント/いいねバー＝常設なので flex の独立層(.hl-actionbar)（stageとdockの間・足元の接地は保つ）。
+  //   ・進行で出入りするCTA（無心/最終決戦）＝stage上の絶対オーバーレイ(.hl-cta)＝出入りしても
+  //     フローが変わらず、ミミの立ち位置も固定ドックも一切動かさない。
   const dock = el("div", "hl-dock");
   const actionFloat = el("div", "hl-actionbar");
+  const ctaOverlay = el("div", "hl-cta");
 
   // コメントバー（TikTok風の参加UI・完全に表示専用）：定型コメントを「あなた」として流す＋❤️いいね
   const cmwrap = el("div", "hl-cmbar-wrap");
@@ -657,23 +660,26 @@ function renderHome() {
   cmwrap.appendChild(qr); cmwrap.appendChild(cmbar);
   actionFloat.appendChild(cmwrap);   // コメント/いいねバー＝フロート層の最下段（レースへ進むの直上に浮く）
 
-  // §38 — 破産時：最優先で「無心」導線（フロート層・コメントバーの上に積む）
+  // §38 — 破産時：最優先で「無心」導線。★stage上の絶対オーバーレイ(.hl-cta)に積む＝出入りしても
+  //   ミミの立ち位置・コメントバー・固定ドックを一切動かさない（フロー不変）。コメントバーの直上に浮く。
   if (p.coins <= 0) {
     const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
     const broke = el("button", "hl-broke", `🙏 無心する　基準額 ${fmtCoins(begAmt)} 相当`);
     broke.onclick = () => showMushinOverlay();
-    actionFloat.insertBefore(broke, cmwrap);
+    ctaOverlay.appendChild(broke);
   }
 
-  // 終章：最終決戦の準備が整ったらフロート層の最上段に目立つCTA。綱引き中の絶滅メーターは🎯目標チップに統合済み。
+  // 終章：最終決戦の準備が整ったらオーバーレイ最上段に目立つCTA。綱引き中の絶滅メーターは🎯目標チップに統合済み。
   //   詳細は🏦島の経済へ。表示専用＝実オッズ非干渉。
   if (typeof epilogueOn === "function" && epilogueOn() && epData().finalReady) {
     const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
     fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
-    actionFloat.insertBefore(fin, actionFloat.firstChild);
+    ctaOverlay.insertBefore(fin, ctaOverlay.firstChild);
   }
-  // 可変要素は stage(flex:1) と 固定dock の間の独立フロート層へ＝出入りしても固定ドックを圧縮しない。
+  // コメント/いいねバーは常設＝flexの独立層（stageとdockの間）。CTA(無心/最終決戦)はstage上の絶対オーバーレイ＝
+  // 出入りしてもフローが変わらない＝ミミの立ち位置・固定ドックが不動（ユーザー指摘の核心）。
   if (actionFloat.children.length) wrap.appendChild(actionFloat);
+  if (ctaOverlay.children.length) stage.appendChild(ctaOverlay);
 
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
   raceBtn.onclick = () => renderRaceSelect();
