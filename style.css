@@ -5085,6 +5085,72 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scout-empty { font-size: 12.5px; color: #aebcc3; text-align: center; padding: 12px; line-height: 1.6; }
 
 /* =========================================================================
+   竜スカウト「発見＆交渉」（ロケ段階ハブ＋しぐさ読み合い・docs/SCOUT_NEGOTIATION_DESIGN.md）
+   ========================================================================= */
+/* ロケ一覧（段階開放＋マスク） */
+.sc-loc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+@media (max-width: 460px) { .sc-loc-grid { grid-template-columns: 1fr; } }
+.sc-loc { display: flex; flex-direction: column; gap: 3px; padding: 11px 12px; border-radius: 13px; text-align: left; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); color: #e9f1f4; transition: transform .08s, box-shadow .15s; }
+.sc-loc:not(.sc-loc--locked):active { transform: scale(.98); }
+.sc-loc:not(.sc-loc--locked):hover { box-shadow: 0 6px 18px rgba(0,0,0,.28); border-color: rgba(202,162,74,.5); }
+.sc-loc--locked { opacity: .6; cursor: default; }
+.sc-loc--done { border-color: rgba(120,200,140,.5); }
+.sc-loc-ic { font-size: 24px; }
+.sc-loc-bd { display: flex; align-items: center; gap: 7px; }
+.sc-loc-bd b { font-size: 14.5px; color: #fff4e0; }
+.sc-loc-tier { font-style: normal; font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: rgba(202,162,74,.2); color: #ffe6a8; }
+.sc-loc-mood { font-size: 11.5px; color: #b3c0c7; line-height: 1.4; }
+.sc-loc-cnt { font-size: 11px; color: #9fb0b8; } .sc-loc-cnt b { color: #ffe6a8; }
+.sc-loc--done .sc-loc-cnt { color: #bfe6c8; }
+
+/* 出会い見出し */
+.sc-meet-head { display: flex; align-items: center; gap: 11px; padding: 4px 2px 10px; }
+.sc-meet-dot { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 3px rgba(255,255,255,.08); }
+.sc-meet-id b { font-size: 17px; color: #fff4e0; } .sc-meet-id small { display: block; font-size: 11.5px; color: #b3c0c7; }
+.sc-discover { font-size: 12.5px; color: #cfe0e6; background: var(--glass-2); border-radius: 11px; padding: 9px 12px; margin-bottom: 9px; line-height: 1.6; }
+.sc-discover b { color: #ffe6a8; }
+
+/* メーター */
+.sc-meters { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.sc-meter { display: flex; align-items: center; gap: 9px; }
+.sc-meter-l { font-size: 11.5px; font-weight: 800; color: #cfe0e6; flex: 0 0 64px; }
+.sc-meter-t { flex: 1 1 auto; height: 11px; border-radius: 999px; background: rgba(0,0,0,.28); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.35); }
+.sc-meter-t i { display: block; height: 100%; border-radius: 999px; transition: width .35s cubic-bezier(.4,1.3,.5,1); }
+.sc-trust .sc-meter-t i { background: linear-gradient(90deg,#5fc88a,#9be6b0); }
+.sc-wary .sc-meter-t i { background: linear-gradient(90deg,#e0a24a,#e2604a); }
+
+/* しぐさ表示 */
+.sc-gesture { background: linear-gradient(180deg, rgba(40,56,64,.55), rgba(24,36,42,.55)); border: 1px solid var(--glass-border);
+  border-radius: 14px; padding: 16px 15px; margin-bottom: 9px; text-align: center; }
+.sc-gesture-tx { font-size: 15.5px; line-height: 1.7; color: #f3ece0; font-weight: 600; }
+.sc-gesture-hint { margin-top: 8px; font-size: 12px; color: #8fa0a8; font-style: italic; }
+.sc-gesture-read { margin-top: 9px; font-size: 12.5px; color: #ffe6a8; line-height: 1.5; }
+.sc-gesture-read b { color: #fff; font-size: 14px; }
+.sc-react { font-size: 13px; color: #d7e4e9; text-align: center; padding: 7px 10px; margin-bottom: 9px;
+  background: rgba(255,230,168,.08); border-radius: 10px; line-height: 1.6; }
+
+/* 手札（交渉術） */
+.sc-hand-lbl { font-size: 11.5px; font-weight: 800; color: #9fb0b8; letter-spacing: .04em; margin: 2px 2px 6px; }
+.sc-hand { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 9px; }
+@media (max-width: 380px) { .sc-hand { grid-template-columns: 1fr; } }
+.sc-app { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; cursor: pointer;
+  padding: 9px 11px 9px 12px; border-radius: 11px; background: var(--glass-2); border: 1px solid var(--glass-border);
+  border-left: 4px solid #caa24a; color: #eaf1f4; transition: transform .07s, box-shadow .14s; }
+.sc-app:active { transform: scale(.97); }
+.sc-app:hover { box-shadow: 0 5px 14px rgba(0,0,0,.26); }
+.sc-app-ic { font-size: 17px; } .sc-app b { font-size: 13px; color: #fff4e0; } .sc-app small { font-size: 10.5px; color: #a7b6bd; line-height: 1.35; }
+
+/* 常設術（観察／ぱほぱほ／ポロ通訳） */
+.sc-extras { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.sc-extra { font-size: 12px; font-weight: 700; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); color: #dce8ec; }
+.sc-extra:active { transform: scale(.96); }
+.sc-extra:disabled { opacity: .4; cursor: default; }
+.sc-extra--paho { background: linear-gradient(180deg, rgba(232,185,78,.3), rgba(202,162,74,.22)); border-color: rgba(255,230,168,.5); color: #ffe6a8; }
+.sc-extra--poro { background: linear-gradient(180deg, rgba(154,106,208,.28), rgba(120,80,180,.2)); border-color: rgba(180,150,220,.5); color: #e7d8f5; }
+
+/* =========================================================================
    斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
    ========================================================================= */
 .rpg-arena2 { position:relative; width:100%; max-width:540px; margin:6px auto 8px; aspect-ratio:520/320;
