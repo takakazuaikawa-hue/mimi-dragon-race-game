@@ -38,6 +38,30 @@ function renderStory() {
   });
   app.appendChild(list);
 
+  // ── ✨ 小イベント（短い挿話・進行で解放・再読可）。本編の章とは別の小さな物語。js/data_story_events.js
+  if (typeof storyEvents === "function") {
+    const evs = storyEvents();
+    const st = (typeof storyEventsStats === "function") ? storyEventsStats() : { got: evs.length, total: evs.length, unread: 0 };
+    app.appendChild(el("div", "as-sec", `✨ 小イベント <small style="font-weight:600;color:#9fb0b8">${st.got} / ${st.total}${st.unread ? `・未読 ${st.unread}` : ""}</small>`));
+    if (!evs.length) {
+      app.appendChild(el("div", "as-hint2", "進めると、ちいさな物語が増えていきます。"));
+    } else {
+      const elist = el("div", "se-list");
+      evs.forEach(e => {
+        const read = (typeof storyEventRead === "function") ? storyEventRead(e.id) : true;
+        const row = el("button", "se-row" + (read ? "" : " unread"));
+        if (e.color) row.style.setProperty("--cg", e.color);
+        row.innerHTML =
+          `<span class="se-ic">${e.ic || "✨"}</span>` +
+          `<span class="se-tx"><b class="se-t">${e.title}</b>${e.who ? `<small class="se-who">${e.who}</small>` : ""}</span>` +
+          (read ? `<span class="se-ch">›</span>` : `<span class="se-new">NEW</span>`);
+        row.onclick = () => showStoryEvent(e);
+        elist.appendChild(row);
+      });
+      app.appendChild(elist);
+    }
+  }
+
   const actions = el("div", "actions");
   const consultBtn = el("button", "secondary", "💬 相談する"); consultBtn.onclick = () => renderConsult();
   const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
@@ -48,6 +72,26 @@ function renderStory() {
   }
   actions.appendChild(back);
   app.appendChild(actions);
+}
+
+// 小イベントを読む（再読可・開封で既読・閉じたら物語画面を再描画して未読バッジ更新）。表示専用。
+function showStoryEvent(e) {
+  if (typeof readStoryEvent === "function") readStoryEvent(e.id);
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop se-pop");
+  if (e.color) box.style.setProperty("--cg", e.color);
+  const close = () => { ov.remove(); if (state.ui.screen === "story" && typeof renderStory === "function") renderStory(); };
+  box.innerHTML =
+    `<div class="se-pop-ic">${e.ic || "✨"}</div>` +
+    `<div class="navpop-t">${e.title}</div>` +
+    (e.who ? `<div class="se-pop-who">${e.who}</div>` : "") +
+    `<div class="se-pop-body">${String(e.body || "").replace(/[<>&]/g, m => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[m])).replace(/\n/g, "<br>")}</div>`;
+  const btns = el("div", "navpop-btns");
+  const ok = el("button", "navpop-go", "とじる"); ok.onclick = () => close();
+  btns.appendChild(ok); box.appendChild(btns);
+  ov.appendChild(box); ov.onclick = (ev) => { if (ev.target === ov) close(); };
+  document.body.appendChild(ov);
+  if (window.Sfx) Sfx.play("tick");
 }
 
 // 専用画面：1話を読む（大きな一枚絵＋話者＋本文）

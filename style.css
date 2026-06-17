@@ -4119,6 +4119,28 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .story-row-t { display: block; font-size: 14px; font-weight: 800; color: var(--mist); }
 .story-row-s { display: block; font-size: 11.5px; color: var(--mist-soft); margin-top: 2px; }
 .story-row-ch { flex: none; font-size: 20px; color: var(--astone); }
+
+/* 物語：✨小イベント（短い挿話・進行で解放・再読可）。data_story_events.js / ui_story.js */
+.se-list { display: flex; flex-direction: column; gap: 7px; margin: 2px 0 12px; }
+.se-row { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 9px 11px; cursor: pointer;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--mist); border-left: 3px solid var(--cg, var(--gold-line)); }
+.se-row:active { transform: translateY(1px); background: rgba(255,255,255,0.08); }
+.se-row.unread { background: rgba(255,255,255,0.07); box-shadow: 0 0 0 1px rgba(229,143,176,0.12) inset; }
+.se-ic { flex: none; width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--cg, #888) 18%, rgba(0,0,0,0.32)); font-size: 20px; overflow: visible; }
+.se-tx { flex: 1; min-width: 0; }
+.se-t { display: block; font-size: 13.5px; font-weight: 800; color: var(--mist); }
+.se-who { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; }
+.se-ch { flex: none; font-size: 19px; color: var(--astone); }
+.se-new { flex: none; font-size: 9.5px; font-weight: 900; letter-spacing: .04em; color: #fff; background: var(--cg, #e58fb0);
+  padding: 2px 6px; border-radius: 999px; }
+/* 再読ポップ（.navpop を流用） */
+.se-pop { text-align: center; }
+.se-pop-ic { font-size: 38px; line-height: 1.1; margin-bottom: 2px; }
+.se-pop-who { font-size: 11.5px; font-weight: 800; color: var(--cg, #e58fb0); margin-bottom: 8px; }
+.se-pop-body { text-align: left; font-size: 13.5px; line-height: 1.85; color: var(--mist); white-space: normal;
+  background: rgba(0,0,0,0.18); border: 1px solid var(--glass-border); border-radius: 12px; padding: 12px 13px; margin: 2px 0 4px; }
+
 /* phones: tighten so the whole home fits one screen without scrolling */
 @media (max-width: 480px) {
   .debug-toggle { display: none; }   /* dev-only; declutter the phone top bar */
