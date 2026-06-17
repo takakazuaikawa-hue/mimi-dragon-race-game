@@ -80,10 +80,10 @@ function renderMall() {
   scm.appendChild(_scmFitting());     // ④ 試着室
   scm.appendChild(_scmShops());       // ⑤ ショップ
   scm.appendChild(_scmService());     // ⑥ サービス・案内（オレンジ角丸ピル＝小ネタ）
-  scm.appendChild(_scmBottomNav());   // ⑦ 下部オレンジナビ（中央MENU）
   scm.appendChild(_scmSnsTab());      // SNS 縦タブ（右端）
 
   app.appendChild(scm);
+  _scmBottomNav();                    // ⑦ 下部オレンジナビ＝body直下にfixedで設置（.scmのtransform外でfloatさせる・beginScreenで掃除）
 }
 
 // ヒーロー：横スクロール・カルーセル＋ドット＋自動送り（操作後はしばらく停止）。
@@ -269,7 +269,9 @@ function _scmBottomNav() {
   nav.appendChild(mk(null, "MENU", () => _scmScrollTo(".scm-head") || window.scrollTo({ top: 0, behavior: "smooth" }), true));
   nav.appendChild(mk("flag", "イベント", () => _scmScrollTo(".scm-hero")));
   nav.appendChild(mk("news", "ショップニュース", () => _scmNews()));
-  return nav;
+  var old = document.getElementById("scm-bnav-host"); if (old) old.remove();
+  nav.id = "scm-bnav-host";
+  document.body.appendChild(nav);   // body直下＝.scmのtransformの影響を受けず viewport基準でfloat
 }
 function _scmSnsTab() {
   const t = el("button", "scm-snstab", "S<br>N<br>S");

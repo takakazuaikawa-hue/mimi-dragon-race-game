@@ -2421,18 +2421,20 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scm-pill-t { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 800; color: #6a3f1c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .scm-pill-go { flex: none; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.85); color: #d2823c; font-size: 13px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
 /* 下部オレンジナビ（中央MENU） */
-.scm-bnav { display: flex; align-items: flex-end; justify-content: space-around; background: var(--scm-org); padding: 9px 4px 9px; margin-top: 4px; position: relative; }
+/* 下部ナビ＝body直下にfixedで設置しviewport下端にfloat（中央470px枠に合わせる）。bodyでは--scm-org不可→直値。 */
+#scm-bnav-host.scm-bnav { display: flex; align-items: flex-end; justify-content: space-around; background: #ef8200; padding: 9px 4px calc(9px + env(safe-area-inset-bottom, 0px));
+  position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 470px; z-index: 45; box-shadow: 0 -7px 20px -8px rgba(0,0,0,.35); }
 .scm-bnav-b { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: #fff; cursor: pointer; padding: 2px 1px; }
 .scm-bnav-ic { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 21px; }
 .scm-bnav-lb { font-size: 9px; font-weight: 700; line-height: 1.1; text-align: center; }
 .scm-bnav-b:active { transform: scale(.92); }
 .scm-bnav-b.mid { position: relative; }
-.scm-bnav-mid { width: 50px; height: 50px; margin-top: -22px; border-radius: 50%; background: var(--scm-org); border: 4px solid #fff; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px -6px rgba(0,0,0,.4); }
+.scm-bnav-mid { width: 50px; height: 50px; margin-top: -22px; border-radius: 50%; background: #ef8200; border: 4px solid #fff; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px -6px rgba(0,0,0,.4); }
 /* SNS 縦タブ（右端） */
 .scm-snstab { position: absolute; right: 0; top: 280px; z-index: 6; writing-mode: initial; padding: 12px 7px; border: none; border-radius: 9px 0 0 9px;
   background: var(--scm-org); color: #fff; font-size: 11px; font-weight: 900; letter-spacing: .05em; line-height: 1.25; cursor: pointer; box-shadow: -3px 4px 12px -6px rgba(0,0,0,.4); }
 .scm-snstab:active { transform: scale(.94); }
-.scm { position: relative; }
+.scm { position: relative; padding-bottom: 80px; }   /* フロート下部ナビ(body直下fixed)の分の余白 */
 
 .title-screen {
   position: relative; min-height: 100dvh;

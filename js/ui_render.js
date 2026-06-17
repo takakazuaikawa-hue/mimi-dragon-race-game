@@ -49,6 +49,7 @@ function beginScreen() {
   app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart");
   if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
   if (typeof syncVolumeFab === "function") syncVolumeFab();              // 🔊 全画面常設の音量ボタンを画面に合わせて表示/非表示
+  var _scmBn = document.getElementById("scm-bnav-host"); if (_scmBn) _scmBn.remove();   // モールのフロート下部ナビ(body直下fixed)を毎遷移で外す（モールで再設置）
   if (prev !== screen) window.scrollTo(0, 0);   // start every new screen at the top
 
   // Hero "expand from the tapped card" (race card → detail) takes priority.
@@ -302,6 +303,7 @@ function syncVolumeFab() {
   const fab = mountVolumeFab();
   const screen = state.ui && state.ui.screen;
   fab.style.display = (screen === "home") ? "none" : "flex";
+  fab.style.bottom = (screen === "mall") ? "84px" : "";   // モールはフロート下部ナビ(.scm-bnav)の上に逃がす
 }
 
 // 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
