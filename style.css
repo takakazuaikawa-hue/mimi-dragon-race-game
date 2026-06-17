@@ -4120,26 +4120,145 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .story-row-s { display: block; font-size: 11.5px; color: var(--mist-soft); margin-top: 2px; }
 .story-row-ch { flex: none; font-size: 20px; color: var(--astone); }
 
-/* 物語：✨小イベント（短い挿話・進行で解放・再読可）。data_story_events.js / ui_story.js */
-.se-list { display: flex; flex-direction: column; gap: 7px; margin: 2px 0 12px; }
-.se-row { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 9px 11px; cursor: pointer;
-  background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--mist); border-left: 3px solid var(--cg, var(--gold-line)); }
-.se-row:active { transform: translateY(1px); background: rgba(255,255,255,0.08); }
-.se-row.unread { background: rgba(255,255,255,0.07); box-shadow: 0 0 0 1px rgba(229,143,176,0.12) inset; }
-.se-ic { flex: none; width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
-  background: color-mix(in srgb, var(--cg, #888) 18%, rgba(0,0,0,0.32)); font-size: 20px; overflow: visible; }
-.se-tx { flex: 1; min-width: 0; }
-.se-t { display: block; font-size: 13.5px; font-weight: 800; color: var(--mist); }
-.se-who { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; }
-.se-ch { flex: none; font-size: 19px; color: var(--astone); }
-.se-new { flex: none; font-size: 9.5px; font-weight: 900; letter-spacing: .04em; color: #fff; background: var(--cg, #e58fb0);
-  padding: 2px 6px; border-radius: 999px; }
-/* 再読ポップ（.navpop を流用） */
-.se-pop { text-align: center; }
-.se-pop-ic { font-size: 38px; line-height: 1.1; margin-bottom: 2px; }
-.se-pop-who { font-size: 11.5px; font-weight: 800; color: var(--cg, #e58fb0); margin-bottom: 8px; }
-.se-pop-body { text-align: left; font-size: 13.5px; line-height: 1.85; color: var(--mist); white-space: normal;
-  background: rgba(0,0,0,0.18); border: 1px solid var(--glass-border); border-radius: 12px; padding: 12px 13px; margin: 2px 0 4px; }
+/* =========================================================================
+   異世界新聞「聖龍日報」（物語・章・相談・小イベント）。明朝＋クリーム紙＋罫線。
+   表示専用＝着順/オッズ/配当に非干渉。名前空間 .news-* / .news-clip-*
+   ========================================================================= */
+.news, .news-clip {
+  --nink: #2b2620; --nink2: #6a5f4c; --naccent: #9a2b22; --nrule: #322c22;
+  --npaper: #f1e7cd; --npaper2: #e7d9b6;
+  font-family: "Yu Mincho","YuMincho","Hiragino Mincho ProN","Hiragino Mincho Pro","HG明朝E","MS PMincho","MS Mincho",serif;
+}
+.news {
+  position: relative; overflow: hidden; color: var(--nink);
+  margin: 2px 0 10px; padding: 16px 15px 16px; border-radius: 5px; border: 1px solid #c9b88f;
+  background:
+    repeating-linear-gradient(0deg, rgba(120,96,60,0.045) 0 1px, transparent 1px 4px),
+    radial-gradient(135% 90% at 50% -12%, #f9f1da, var(--npaper) 58%, var(--npaper2));
+  box-shadow: 0 14px 34px -12px rgba(0,0,0,0.6), inset 0 0 0 2px #e6d6ad, inset 0 0 70px rgba(150,110,55,0.09);
+}
+.news::after {   /* 経年のシミ・ビネット（紙の風合い） */
+  content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .5;
+  background:
+    radial-gradient(70% 90% at 112% -4%, rgba(95,62,20,0.16), transparent 42%),
+    radial-gradient(60% 80% at -12% 104%, rgba(95,62,20,0.14), transparent 42%);
+}
+.news > * { position: relative; z-index: 1; }
+
+/* 題字（マストヘッド） */
+.news-mast { text-align: center; border-bottom: 4px double var(--nrule); padding-bottom: 8px; margin-bottom: 10px; }
+.news-mast-top { display: flex; justify-content: space-between; align-items: center; gap: 6px;
+  font-size: 9.5px; letter-spacing: .04em; color: var(--nink2); padding-bottom: 5px; }
+.news-mast-top > span:nth-child(2) { letter-spacing: .12em; }
+.news-title { display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: clamp(23px, 7vw, 31px); font-weight: 900; letter-spacing: .18em; line-height: 1.04;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4); border-top: 1px solid var(--nrule); padding-top: 6px; }
+.news-title .crest { font-size: .8em; filter: sepia(.5) saturate(.7); }
+.news-sub { font-size: 8.5px; letter-spacing: .4em; color: var(--nink2); margin-top: 4px; }
+.news-mast-rule { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; align-items: center;
+  font-size: 9.5px; color: var(--nink2); margin-top: 6px; }
+.news-mast-rule span:nth-child(even) { color: var(--naccent); font-size: 7px; }
+
+/* リード（発行のことば） */
+.news-lead { font-size: 12px; line-height: 1.85; color: var(--nink); text-align: justify; margin-bottom: 4px; }
+.news-dropcap { float: left; font-size: 38px; font-weight: 900; line-height: .82; padding: 3px 7px 0 0; color: var(--naccent); }
+
+/* 見出し罫（rubric） */
+.news-rubric { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; letter-spacing: .07em;
+  color: var(--nink); margin: 15px 0 7px; }
+.news-rubric::before { content: "◆"; color: var(--naccent); font-size: 11px; }
+.news-rubric::after { content: ""; flex: 1; height: 0; border-top: 2px solid var(--nrule); }
+.news-rub-n { font-size: 10px; font-weight: 700; color: var(--nink2); letter-spacing: .02em; }
+
+/* 連載記事（章一覧） */
+.news-arts { display: flex; flex-direction: column; }
+.news-art { display: flex; gap: 11px; align-items: flex-start; width: 100%; text-align: left;
+  font-family: inherit; color: var(--nink); background: none; border: 0; border-top: 1px solid rgba(43,38,32,0.28);
+  padding: 11px 2px; cursor: pointer; }
+.news-art:first-of-type { border-top: 0; }
+.news-art:active { background: rgba(120,90,40,0.09); }
+.news-art.locked { cursor: default; opacity: .82; }
+.news-art-consult { cursor: default; }
+.news-photo-s { flex: none; width: 60px; height: 60px; position: relative; overflow: hidden;
+  border: 1px solid var(--nink); background: #d8cba8; }
+.news-photo-s img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) sepia(.4) contrast(1.12) brightness(.97); }
+.news-photo-s .sym { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 26px; filter: grayscale(.35) sepia(.25); }
+.news-photo-s.locked { background: #cfc09c; }
+.news-photo-s::after {   /* ハーフトーン網点 */
+  content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .34;
+  background-image: radial-gradient(rgba(0,0,0,0.55) 0.5px, transparent 0.7px); background-size: 3px 3px; }
+.news-art-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.news-kicker { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; color: var(--naccent);
+  border-left: 3px solid var(--na, var(--naccent)); padding-left: 6px; }
+.news-head { font-size: 16px; font-weight: 900; line-height: 1.22; color: var(--nink); }
+.news-lead2 { font-size: 11px; line-height: 1.5; color: var(--nink2); }
+.news-quote { font-size: 11.5px; line-height: 1.6; color: var(--nink); margin-top: 3px; }
+.news-censor { font-family: monospace; letter-spacing: -1px; color: var(--nink2); }
+.news-art-go { flex: none; align-self: center; font-size: 16px; color: var(--naccent); }
+.news-art-seal { flex: none; align-self: center; font-size: 10px; font-weight: 900; color: var(--nink2);
+  border: 1.5px solid var(--nink2); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; transform: rotate(-8deg); }
+
+/* 號外コラム（小イベント briefs・2段組） */
+.news-briefs { column-count: 2; column-gap: 15px; column-rule: 1px solid rgba(43,38,32,0.32); margin-bottom: 2px; }
+.news-brief { break-inside: avoid; display: block; width: 100%; text-align: left; font-family: inherit; color: var(--nink);
+  background: none; border: 0; border-bottom: 1px dotted rgba(43,38,32,.45); padding: 8px 0; cursor: pointer; }
+.news-brief.unread { background: linear-gradient(90deg, rgba(154,43,34,0.07), transparent 70%); }
+.news-brief:active { background: rgba(120,90,40,0.1); }
+.news-brief-h { display: block; font-size: 12.5px; font-weight: 800; line-height: 1.32; color: var(--nink); }
+.news-brief-ic { margin-right: 2px; filter: sepia(.2); }
+.news-brief-b { display: block; font-size: 9.5px; color: var(--nink2); margin-top: 2px; }
+.news-stamp { display: inline-block; font-size: 8.5px; font-weight: 900; color: var(--naccent); letter-spacing: .04em;
+  border: 1.4px solid var(--naccent); border-radius: 2px; padding: 0 3px; margin-right: 4px; transform: rotate(-4deg); }
+.news-empty { font-size: 11px; color: var(--nink2); font-style: italic; padding: 4px 2px 6px; }
+
+/* 章を読む：特集一面 */
+.news-article .news-kicker-lg { display: inline-block; font-size: 11px; border-left: 0; padding: 0; margin: 4px 0 2px;
+  letter-spacing: .16em; text-align: center; width: 100%; }
+.news-headline { font-size: clamp(20px, 6.4vw, 26px); font-weight: 900; line-height: 1.16; letter-spacing: .03em;
+  text-align: center; color: var(--nink); margin: 1px 0 3px; }
+.news-subhead { text-align: center; font-size: 12px; color: var(--nink2); border-bottom: 1px solid var(--nrule);
+  padding-bottom: 8px; margin-bottom: 8px; }
+.news-byline { font-size: 10px; color: var(--nink2); letter-spacing: .03em; text-align: right; margin-bottom: 8px; }
+.news-photo { border: 1px solid var(--nink); margin: 4px 0 6px; cursor: pointer; background: #d8cba8; }
+.news-photo-img { position: relative; overflow: hidden; }
+.news-photo-img img { width: 100%; display: block; filter: grayscale(1) sepia(.38) contrast(1.08) brightness(.98); }
+.news-photo-img .sym { display: flex; align-items: center; justify-content: center; height: 158px; font-size: 66px; filter: grayscale(.3) sepia(.2); }
+.news-photo-img::after { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .3;
+  background-image: radial-gradient(rgba(0,0,0,0.5) 0.5px, transparent 0.7px); background-size: 3px 3px; }
+.news-photo-zoom { position: absolute; right: 6px; bottom: 6px; font-size: 9.5px; color: #f3ead4;
+  background: rgba(20,16,10,0.6); padding: 2px 6px; border-radius: 2px; }
+.news-cap { font-size: 10px; color: var(--nink2); padding: 4px 8px; border-top: 1px solid rgba(43,38,32,.3);
+  background: rgba(255,255,255,0.28); }
+.news-cap-tag { font-weight: 800; color: var(--naccent); margin-right: 6px; }
+.news-text { font-size: 14px; line-height: 1.95; text-align: justify; white-space: pre-line; color: var(--nink); margin-top: 8px; }
+.news-text::first-letter { font-size: 2.5em; font-weight: 900; line-height: .82; float: left; padding: 3px 7px 0 0; color: var(--naccent); }
+
+/* 発行欄（フッター） */
+.news-foot { margin-top: 15px; border-top: 4px double var(--nrule); padding-top: 10px; }
+.news-foot-pub { text-align: center; font-size: 9.5px; letter-spacing: .08em; color: var(--nink2); margin-bottom: 9px; }
+.news-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.news-btn { font-family: inherit; font-size: 12.5px; font-weight: 800; letter-spacing: .04em; color: var(--nink);
+  background: rgba(255,255,255,0.34); border: 1.5px solid var(--nink); border-radius: 3px; padding: 9px 15px; cursor: pointer; }
+.news-btn:active { background: var(--nink); color: var(--npaper); transform: translateY(1px); }
+.news-btn.prim { background: var(--naccent); color: #fbf3df; border-color: var(--naccent); }
+.news-btn.prim:active { background: #7c2019; }
+
+/* 號外切り抜きポップ（小イベント再読・.navpop を新聞スキンで上書き） */
+.navpop.news-clip { background: var(--npaper); border: 1px solid #c9b88f; border-radius: 5px; color: var(--nink);
+  padding: 16px 16px 14px; text-align: center;
+  box-shadow: 0 24px 60px -20px rgba(0,0,0,0.85), inset 0 0 0 2px #e6d6ad; }
+.news-clip-mast { display: flex; justify-content: space-between; align-items: center; font-size: 9px; letter-spacing: .08em;
+  color: var(--nink2); border-bottom: 3px double var(--nrule); padding-bottom: 6px; margin-bottom: 8px; }
+.news-clip-mast span:nth-child(2) { font-weight: 900; font-size: 12px; letter-spacing: .14em; color: var(--nink); }
+.news-clip-ic { font-size: 34px; line-height: 1.1; filter: sepia(.2); }
+.news-clip-head { font-size: 18px; font-weight: 900; letter-spacing: .03em; color: var(--nink); margin-top: 2px; }
+.news-clip-by { font-size: 10.5px; font-weight: 700; color: var(--naccent); margin-top: 3px; }
+.news-clip-body { text-align: justify; font-size: 13px; line-height: 1.9; color: var(--nink); margin-top: 9px;
+  border-top: 1px solid rgba(43,38,32,.3); border-bottom: 1px solid rgba(43,38,32,.3); padding: 10px 2px; }
+.news-clip .news-btns { margin-top: 14px; }
+
+/* 狭い端末：號外コラムは1段組に */
+@media (max-width: 380px) { .news-briefs { column-count: 1; } }
 
 /* phones: tighten so the whole home fits one screen without scrolling */
 @media (max-width: 480px) {
