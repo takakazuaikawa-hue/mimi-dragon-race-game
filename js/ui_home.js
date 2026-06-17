@@ -320,15 +320,35 @@ function renderHome() {
   floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
   stage.appendChild(floatBox);
 
-  // 🎯 目標（クエスト）チップ：ステージ左上に常設。現在の目標＋進捗。タップで一覧へドリルダウン（表示専用・js/goals.js）。
-  if (typeof nextGoal === "function") {
-    const _ng = nextGoal(); const _gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
-    const goalBtn = el("button", "hl-goal");
-    goalBtn.innerHTML = _ng
-      ? `<span class="hl-goal-k">🎯 つぎの目標</span><span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-p"><i style="width:${_gs.total ? Math.round(_gs.done / _gs.total * 100) : 0}%"></i></span><span class="hl-goal-n">${_gs.done}/${_gs.total} 達成 ▸</span>`
-      : `<span class="hl-goal-k">🎯 目標</span><span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">${_gs.done}/${_gs.total} ▸</span>`;
-    goalBtn.onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
-    stage.appendChild(goalBtn);
+  // 🎯 目標（クエスト）チップ：ステージ左上に常設。終章中は「絶滅メーター」を“今の目標”として統合表示し、
+  //   タップで🏦島の経済（メーター詳細＋？説明）へ。★別チップは作らない＝ホームのドックを膨らませない（崩れ防止）。表示専用。
+  {
+    const _epOn = (typeof epilogueOn === "function") && epilogueOn();
+    const _ep = _epOn ? epData() : null;
+    let _html = null, _cls = "hl-goal", _onclick = null;
+    if (_epOn && !_ep.finalReady) {
+      const _dial = epilogueDial().toFixed(2); const _prog = epilogueProgress();
+      const _zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
+      _cls += " hl-goal--ep hl-goal--ep-" + _zone;
+      _html =
+        `<span class="hl-goal-k">☄️ 終章のもくひょう</span>` +
+        `<span class="hl-goal-t">絶滅メーターを押し戻す</span>` +
+        `<span class="hl-goal-p"><i style="width:${_prog}%"></i></span>` +
+        `<span class="hl-goal-n">答えの単勝 ${_dial}倍 ・ くわしく ▸</span>`;
+      _onclick = () => { if (typeof renderEconomy === "function") renderEconomy(); else if (typeof renderGoals === "function") renderGoals(); };
+    } else if (typeof nextGoal === "function") {
+      const _ng = nextGoal(); const _gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
+      _html = _ng
+        ? `<span class="hl-goal-k">🎯 つぎの目標</span><span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-p"><i style="width:${_gs.total ? Math.round(_gs.done / _gs.total * 100) : 0}%"></i></span><span class="hl-goal-n">${_gs.done}/${_gs.total} 達成 ▸</span>`
+        : `<span class="hl-goal-k">🎯 目標</span><span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">${_gs.done}/${_gs.total} ▸</span>`;
+      _onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
+    }
+    if (_html) {
+      const goalBtn = el("button", _cls);
+      goalBtn.innerHTML = _html;
+      if (_onclick) goalBtn.onclick = _onclick;
+      stage.appendChild(goalBtn);
+    }
   }
 
   // 背景の火の粉（CSSのみで常時ゆらめく・reduced-motionでは非表示）＝画面が止まって見えない
@@ -644,28 +664,12 @@ function renderHome() {
     dock.appendChild(broke);
   }
 
-  // 終章：絶滅メーター。大HUDはホームに出さず、🎯目標と同じコンパクトなチップに（情報密度を適正化）。
-  //   詳細・？説明・押し戻し状況は「🏦島の経済」画面へドリルダウン（js/ui_economy.js）。表示専用＝実オッズ非干渉。
-  //   最終決戦の準備が整った時だけは、目立つCTAボタンをホームに残す（クライマックスの導線）。
-  if (typeof epilogueOn === "function" && epilogueOn()) {
-    const e = epData();
-    if (e.finalReady) {
-      const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
-      fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
-      dock.appendChild(fin);
-    } else {
-      const dial = epilogueDial().toFixed(2); const prog = epilogueProgress();
-      const zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
-      const zlabel = zone === "safe" ? "安全圏（あと少し）" : zone === "doom" ? "淘汰の圧が強い" : "綱引き中";
-      const chip = el("button", "hl-meter hl-meter--" + zone);
-      chip.innerHTML =
-        `<span class="hl-meter-k">☄️ 絶滅メーター</span>` +
-        `<span class="hl-meter-t">${zlabel} ・ 答えの単勝 ${dial}倍</span>` +
-        `<span class="hl-meter-bar"><i style="width:${prog}%"></i></span>` +
-        `<span class="hl-meter-n">押し戻して安全(1.1倍)へ ・ くわしく ▸</span>`;
-      chip.onclick = () => { if (typeof renderEconomy === "function") renderEconomy(); else if (typeof renderAssets === "function") renderAssets(); };
-      dock.appendChild(chip);
-    }
+  // 終章：最終決戦の準備が整ったらホームに目立つCTA。綱引き中の絶滅メーターは🎯目標チップに統合済み
+  //   （別チップは作らない＝ドックを膨らませない・ホーム崩れ防止）。詳細は🏦島の経済へ。表示専用＝実オッズ非干渉。
+  if (typeof epilogueOn === "function" && epilogueOn() && epData().finalReady) {
+    const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
+    fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
+    dock.appendChild(fin);
   }
 
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");

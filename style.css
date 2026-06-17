@@ -3707,19 +3707,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-goal-p i { display: block; height: 100%; background: linear-gradient(90deg, #ffd966, #ff9a5e); border-radius: 999px; }
 .hl-goal-n { font-size: 9px; color: #ffce8a; font-variant-numeric: tabular-nums; margin-top: 1px; }
 
-/* 終章：絶滅メーターのコンパクトチップ（ドックに常設・🎯目標と同じ扱い）。タップで「島の経済」へ。js/ui_home.js */
-.hl-meter { width: 100%; margin: 6px 0 2px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-  background: rgba(8,11,16,.5); border: 1px solid var(--glass-border); border-left: 3px solid #e6b24a; border-radius: 12px;
-  padding: 9px 12px; cursor: pointer; text-align: left; }
-.hl-meter:active { transform: translateY(1px); background: rgba(8,11,16,.65); }
-.hl-meter-k { font-size: 10px; font-weight: 800; letter-spacing: .03em; color: #ff9a5e; }
-.hl-meter-t { font-size: 12px; font-weight: 800; color: var(--mist); line-height: 1.25; }
-.hl-meter-bar { width: 100%; height: 5px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; margin-top: 1px; }
-.hl-meter-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #e6b24a, #ffce8a); }
-.hl-meter-n { font-size: 9.5px; color: #ffb38a; font-variant-numeric: tabular-nums; }
-.hl-meter--safe { border-left-color: #49c89c; } .hl-meter--safe .hl-meter-bar i { background: linear-gradient(90deg, #49c89c, #7be0b0); } .hl-meter--safe .hl-meter-k { color: #6fd6a6; }
-.hl-meter--mid { border-left-color: #e6b24a; }
-.hl-meter--doom { border-left-color: #d6452f; } .hl-meter--doom .hl-meter-bar i { background: linear-gradient(90deg, #d6452f, #ff8a5e); } .hl-meter--doom .hl-meter-k { color: #ff7a6a; }
+/* 終章：絶滅メーターを🎯目標チップに統合（ゾーン色の左帯＋進捗バー）。タップで🏦島の経済へ。js/ui_home.js */
+.hl-goal--ep { border-left: 3px solid #e6b24a; padding-left: 8px; }
+.hl-goal--ep .hl-goal-k { color: #ff9a5e; }
+.hl-goal--ep-safe { border-left-color: #49c89c; } .hl-goal--ep-safe .hl-goal-k { color: #6fd6a6; } .hl-goal--ep-safe .hl-goal-p i { background: linear-gradient(90deg, #49c89c, #7be0b0); }
+.hl-goal--ep-mid { border-left-color: #e6b24a; }
+.hl-goal--ep-doom { border-left-color: #d6452f; } .hl-goal--ep-doom .hl-goal-k { color: #ff7a6a; } .hl-goal--ep-doom .hl-goal-p i { background: linear-gradient(90deg, #d6452f, #ff8a5e); }
 
 /* 🏦 島の経済（ui_economy.js）：暮らし配下のダッシュボード。表示専用＝レース数値に非干渉。名前空間 .eco-* */
 .eco-hero { background: linear-gradient(160deg, rgba(40,46,58,.96), rgba(22,26,33,.96)); border: 1px solid var(--glass-border); }
