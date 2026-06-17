@@ -3674,8 +3674,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-dress-nm { max-width: 116px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ミミは中央・周囲とのバランスを取りつつ最大化（PCはコンテナ相対、スマホは画面幅相対）。
    背が高い時は上段バー(z-index:3)の背後に収まるので情報を隠さない。 */
-.hl-mimi { position: absolute; left: 50%; bottom: -46px; transform: translateX(-50%); z-index: 1;
-  width: min(96vw, 90%, 520px); height: min(80vh, 760px);
+.hl-mimi { position: absolute; left: 50%; bottom: -120px; transform: translateX(-50%); z-index: 1;
+  width: min(96vw, 92%, 540px); height: min(88vh, 800px);
   cursor: pointer; will-change: transform; filter: drop-shadow(0 2px 7px rgba(0,0,0,.5)); }
 .hl-mimi-in { width: 100%; height: 100%; will-change: transform; perspective: 700px; }
 .hl-mimi-flip { width: 100%; height: 100%; transition: transform .23s cubic-bezier(.45,0,.55,1); transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
@@ -3884,6 +3884,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   100% { opacity: 0; transform: translate(var(--dx, -14px), -52vh) scale(1.1) rotate(var(--rz, -12deg)); } }
 
 .hl-dock { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 10px 12px;
+  position: relative; z-index: 5;   /* ミミ(z1)より前面＝足元を下げてもメニュー(レース+ナビ)が脚に重なって隠す */
   background: rgba(13,17,23,.82); border: 1px solid var(--gold-line); border-radius: 18px;
   backdrop-filter: blur(7px); box-shadow: 0 -10px 32px -18px rgba(0,0,0,.9); }
 /* 進行で出入りする可変要素（コメント/いいね・無心・最終決戦）の独立フロート層（stageと固定dockの間）。
@@ -3929,7 +3930,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .hl-item .ic { font-size: 16px; }
   .hl-item .lb { font-size: 8.5px; letter-spacing: -.02em; white-space: nowrap; }
   .hl-dock { padding: 8px 8px 10px; gap: 7px; }
-  .hl-mimi { width: min(113vw, 470px); height: min(84vh, 700px); }
+  .hl-mimi { width: min(120vw, 480px); height: min(90vh, 740px); }
   .hl-stage { min-height: 34vh; }   /* 小型機でもドック込みで1画面に収める（はみ出し→スクロール化を防ぐ） */
   .hl-left { width: 58vw; }
   .hl-prof-tx b { font-size: 11.5px; }
