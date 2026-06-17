@@ -11,9 +11,10 @@
 // =========================================================================
 
 (function () {
+  // ★ホームBGMは一時的に無音（音源が好みでないため）。いい音源が手に入ったら下の2行のコメントを外すだけで復活。
   var HOME_TRACKS = [
-    "bgm/homebgm/くつろぎ.mp3",
-    "bgm/homebgm/ホームカントリー.mp3"
+    // "bgm/homebgm/くつろぎ.mp3",
+    // "bgm/homebgm/ホームカントリー.mp3"
   ];
   var MALL_TRACKS = [
     "bgm/mallbgm/mallでお買い物.mp3",
@@ -59,7 +60,7 @@
     if (!force && z === curZone) return;
     var R = window.RaceBgm;
     if (R && R.playFile) {
-      if (z === "home") { curTrack = pick(HOME_TRACKS, curTrack); try { R.playFile(curTrack); } catch (e) {} }
+      if (z === "home") { curTrack = pick(HOME_TRACKS, curTrack); try { if (curTrack) R.playFile(curTrack); else R.stop(); } catch (e) {} }   // 音源が無ければ無音（停止）
       else if (z === "mall") { curTrack = pick(MALL_TRACKS, curTrack); try { R.playFile(curTrack); } catch (e) {} }
       else if (z === "title") { try { R.stop(); } catch (e) {} curTrack = null; }
       // "other"(race/ending) は audio に触れない
