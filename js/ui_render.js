@@ -307,14 +307,13 @@ function showVolumePanel() {
   const muteBtn = box.querySelector(".vol-mute-btn");
   const syncMuted = () => { const m = isMuted(); bgmS.disabled = m; sfxS.disabled = m; box.classList.toggle("vol-muted", m); };
   syncMuted();
-  bgmS.oninput = () => { const v = +bgmS.value; bgmP.textContent = v + "%"; if (window.RaceBgm && RaceBgm.setVolume) RaceBgm.setVolume(v / 100); if (window.MallBgm && MallBgm.setVolume) MallBgm.setVolume(v / 100); };
+  bgmS.oninput = () => { const v = +bgmS.value; bgmP.textContent = v + "%"; if (window.RaceBgm && RaceBgm.setVolume) RaceBgm.setVolume(v / 100); };
   sfxS.oninput = () => { const v = +sfxS.value; sfxP.textContent = v + "%"; if (window.Sfx && Sfx.setVolume) Sfx.setVolume(v / 100); };
   sfxS.onchange = () => { if (window.Sfx && Sfx.play && !isMuted()) Sfx.play("tick"); };  // 離した瞬間に試聴
   muteBtn.onclick = () => {
     const m = !isMuted();
     if (window.Sfx && Sfx.setMuted) Sfx.setMuted(m);
     if (window.RaceBgm && RaceBgm.setMuted) RaceBgm.setMuted(m);
-    if (window.MallBgm && MallBgm.setMuted) MallBgm.setMuted(m);
     muteBtn.textContent = m ? "OFF" : "ON";
     muteBtn.classList.toggle("on", !m);
     box.querySelector(".vol-mute-lb").textContent = m ? "🔇 ミュート中" : "🔊 サウンド ON";
@@ -758,7 +757,6 @@ function renderSettings() {
     const m = !(window.Sfx && Sfx.isMuted && Sfx.isMuted());
     if (window.Sfx && Sfx.setMuted) Sfx.setMuted(m);
     if (window.RaceBgm && RaceBgm.setMuted) RaceBgm.setMuted(m);
-    if (window.MallBgm && MallBgm.setMuted) MallBgm.setMuted(m);
     if (!m && window.Sfx && Sfx.play) Sfx.play("click");
     renderSettings();
   };
