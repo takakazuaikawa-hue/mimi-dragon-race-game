@@ -1945,15 +1945,46 @@ function rpgMiniMap() {
   const cv = el("canvas");
   cv.width = RPG.w * cell; cv.height = RPG.h * cell;
   const ctx = cv.getContext("2d");
+  // 床/壁/未踏のベース塗り（探索済みは永続表示）
   for (let y = 0; y < RPG.h; y++) for (let x = 0; x < RPG.w; x++) {
     const seen = RPG.explored[x + "," + y];
     const c = rpgCell(x, y);
-    ctx.fillStyle = !seen ? "#322a46" : (c === "#" ? "#5a4d72" : (c === "E" ? "#7ad07a" : (c === "T" ? "#d0a060" : "#9a8fc0")));
+    // 階段=青／出口=緑／宝=金（開封済は暗色）／床=薄紫。未踏は暗く沈める。
+    let col = "#9a8fc0";
+    if (c === "#") col = "#5a4d72";
+    else if (c === "U") col = "#5aa6e0";
+    else if (c === "E") col = "#7ad07a";
+    else if (c === "T") col = RPG.collected[RPG.fi + ":" + x + "," + y] ? "#6b5a44" : "#e0b450";
+    ctx.fillStyle = !seen ? "#322a46" : col;
     ctx.fillRect(x * cell, y * cell, cell - 1, cell - 1);
   }
-  // プレイヤー
+  // 目印アイコン（探索済みセルのみ・canvas直描きで小さくても潰れない）
+  for (let y = 0; y < RPG.h; y++) for (let x = 0; x < RPG.w; x++) {
+    if (!RPG.explored[x + "," + y]) continue;
+    const c = rpgCell(x, y), cx = x * cell + (cell - 1) / 2, cy = y * cell + (cell - 1) / 2;
+    if (c === "U") {                                   // 階段＝上向きシェブロン（昇り口）
+      ctx.strokeStyle = "#eaf4ff"; ctx.lineWidth = 1.4; ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx - 3.2, cy + 1.6); ctx.lineTo(cx, cy - 1.8); ctx.lineTo(cx + 3.2, cy + 1.6);
+      ctx.stroke();
+    } else if (c === "T") {                             // 宝＝菱形（未開封=金の塗り／開封済=細い枠だけ）
+      const opened = RPG.collected[RPG.fi + ":" + x + "," + y];
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 3.2); ctx.lineTo(cx + 3.2, cy); ctx.lineTo(cx, cy + 3.2); ctx.lineTo(cx - 3.2, cy);
+      ctx.closePath();
+      if (opened) { ctx.strokeStyle = "rgba(220,200,170,.5)"; ctx.lineWidth = 1; ctx.stroke(); }
+      else { ctx.fillStyle = "#fff1c4"; ctx.fill(); }
+    } else if (c === "E") {                             // 出口＝ドアの白枠
+      ctx.strokeStyle = "#eafff0"; ctx.lineWidth = 1.3;
+      ctx.strokeRect(cx - 3, cy - 3.4, 6, 6.8);
+    }
+  }
+  // 現在地リング（自分の位置を一目で）
+  const px = RPG.px * cell + (cell - 1) / 2, py = RPG.py * cell + (cell - 1) / 2, f = RPG_DV[RPG.dir];
+  ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.stroke();
+  // プレイヤー（向き矢印）
   ctx.fillStyle = "#ff5fa2";
-  const px = RPG.px * cell + cell / 2, py = RPG.py * cell + cell / 2, f = RPG_DV[RPG.dir];
   ctx.beginPath();
   ctx.moveTo(px + f[0] * 5, py + f[1] * 5);
   ctx.lineTo(px - f[1] * 4 - f[0] * 3, py + f[0] * 4 - f[1] * 3);
