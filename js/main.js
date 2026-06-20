@@ -75,6 +75,11 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // 🗓️ ?daily=<合言葉>（値なし＝今日）でデイリーランへ直行。入口は競合中のハブを避けてURLに置く。
+  try {
+    const _dp = new URLSearchParams(location.search);
+    if (_dp.has("daily") && typeof rpgStartDaily === "function") { rpgStartDaily(_dp.get("daily")); return; }
+  } catch (e) {}
   // ?go=<screen> があれば、その画面で直接起動（開発・プレビュー高速化）。無ければ通常どおりタイトルから。
   if (!(typeof applyStartupRoute === "function" && applyStartupRoute())) renderTitle();
 });
