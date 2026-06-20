@@ -188,8 +188,16 @@ function rpgFloorMeta(i) {
 }
 function rpgBuildFloor(i) {
   const meta = rpgFloorMeta(i);
-  return rpgTransform(RPG_BASE, meta.t).map(r => r.replace("F", meta.far));
+  let kind = meta.t;
+  if (RPG && RPG.daily && RPG._frng) kind = RPG_TWR_T[(RPG._frng() * RPG_TWR_T.length) | 0];   // 🗓️デイリー＝日替わりで床の変形も決まる（同じ合言葉なら同じ構造）
+  return rpgTransform(RPG_BASE, kind).map(r => r.replace("F", meta.far));
 }
+// 🎲 シード式PRNG（mulberry32）＝デイリーラン用。Math.random非依存・5行・依存ゼロ。
+function rpgMulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function rpgHashStr(s) { let h = 2166136261 >>> 0; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }   // FNV-1a
+function rpgHash(a, b) { return (Math.imul((a >>> 0) ^ 0x9E3779B9, 2654435761) ^ Math.imul((b + 1) >>> 0, 40503)) >>> 0; }   // (seed, floor)→サブシード
+// 今日の合言葉（実日付。端末をまたいで同一）。
+function rpgTodaySeed() { try { return new Date().toISOString().slice(0, 10).replace(/-/g, ""); } catch (e) { return "default"; } }
 const RPG_DV = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // N E S W
 // マップ上で (sx,sy)→(gx,gy) が壁を通らずに到達可能か（閉鎖の連結性チェック用・BFS）
 function rpgConnected(map, sx, sy, gx, gy) {
@@ -216,8 +224,9 @@ function rpgApplyClosures() {
   }
   const cands = [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (map[y][x] === ".") cands.push([x, y]);
-  for (let i = cands.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = cands[i]; cands[i] = cands[j]; cands[j] = t; }
-  const want = (Math.random() * 4) | 0;                   // 0〜3か所（0なら全開放＝“閉鎖されてたりされてなかったり”）
+  const rnd = (RPG.daily && RPG._frng) ? RPG._frng : Math.random;   // 🗓️デイリーは閉鎖もシードで決定
+  for (let i = cands.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; const t = cands[i]; cands[i] = cands[j]; cands[j] = t; }
+  const want = (rnd() * 4) | 0;                           // 0〜3か所（0なら全開放＝“閉鎖されてたりされてなかったり”）
   for (let c = 0; c < cands.length && RPG._closedN < want; c++) {
     const x = cands[c][0], y = cands[c][1]; map[y][x] = "#";          // 仮に閉鎖
     let ok = rpgConnected(map, RPG.px, RPG.py, gx, gy);
@@ -242,9 +251,30 @@ function rpgStartRun() {
   rpgFx.floorCard(RPG_FLOORS[0].name, rpgGoalCardSub(RPG_FLOORS[0]), RPG_FLOORS[0].accent);
   renderMallRpg();
 }
+// 🗓️ デイリーラン：合言葉（既定＝今日の日付）で“床の変形＋通路閉鎖”が端末をまたいで同一になる固定ダンジョン。
+// 入口は競合中のハブを避け、URL ?daily=YYYYMMDD（値なし＝今日）と window.rpgStartDaily(seed) から起動。
+function rpgStartDaily(seedStr) {
+  const s = (seedStr && String(seedStr).trim()) || rpgTodaySeed();
+  RPG = {
+    fi: 0, map: [], w: 9, h: 9, px: 1, py: 1, dir: 1,
+    mode: "explore", steps: 0, grace: 1,
+    explored: {}, collected: {},
+    log: [], battle: null, flash: null, auto: false,
+    runKills: 0, runMissions: 0,
+    daily: true, seed: rpgHashStr(s), seedStr: s,
+  };
+  rpgLoadFloor(0);
+  const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`👛 やりくり上手で +${sg}G で出発！`, "good"); }
+  rpgLog(`🗓️ デイリーラン（合言葉「${s}」）開始！ 同じ合言葉なら誰でも同じ構造`, "good");
+  rpgFx.floorCard(RPG_FLOORS[0].name, "🗓️ DAILY " + s, RPG_FLOORS[0].accent);
+  renderMallRpg();
+}
+if (typeof window !== "undefined") window.rpgStartDaily = rpgStartDaily;
 // フロア読み込み（fi=フロア番号）
 function rpgLoadFloor(i) {
   RPG.fi = i;
+  // 🗓️デイリーは (合言葉, フロア) からシードを作り、床の変形→閉鎖を同じ順で引く＝端末をまたいで同一構造。
+  RPG._frng = (RPG.daily && RPG.seed != null) ? rpgMulberry(rpgHash(RPG.seed, i)) : null;
   RPG.map = rpgBuildFloor(i).map(r => r.split(""));
   RPG.w = RPG.map[0].length; RPG.h = RPG.map.length;
   let sx = 1, sy = 1;
@@ -1214,7 +1244,8 @@ function rpgShowHelp() {
     `<p><b>🪙 ゴールド</b>：探索で稼ぐお金。お店の買い物・道具・10連ガチャに使う。</p>` +
     `<p><b>🎟️ おたから券</b>：ガチャ1回ぶん。ログボや探索で手に入る。</p>` +
     `<p><b>✨ みがき</b>：ぼうけんのたびにたまる成長ポイント。「💖自分磨き」で永久に強くなる（倒れても持ち帰る）。</p>` +
-    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>`;
+    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>` +
+    `<hr><p><b>🗓️ デイリーラン</b>：URLに <code>?daily</code> を付けて開くと、<b>その日だけの固定ダンジョン</b>（床の変形＋通路閉鎖が日替わり）で遊べます。<code>?daily=合言葉</code> を付ければ友達と<b>同じ構造</b>を共有できる（同じ合言葉＝同じ地形）。</p>`;
   if (typeof showInfoPopup === "function") showInfoPopup("もちもの＆あそびかた", html);
 }
 
