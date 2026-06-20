@@ -415,8 +415,14 @@ function rpgForward(sign) {
   if (RPG.grace > 0) RPG.grace--;
   else if (Math.random() < 0.22) {
     const fm = rpgFloorMeta(RPG.fi);   // 🐲 フロアの主（未討伐なら一定確率で出現）
-    if (fm.nushi && !(RPG._nushiBeat && RPG._nushiBeat[RPG.fi]) && Math.random() < 0.2) rpgEncounter("nushi");
-    else rpgEncounter();
+    const isNushi = fm.nushi && !(RPG._nushiBeat && RPG._nushiBeat[RPG.fi]) && Math.random() < 0.2;
+    RPG.busy = true;                   // 予兆の一拍は操作/オート歩行を止める（戦闘開始で解除）
+    renderMallRpg();                   // 踏み込んだ一歩を先に見せてから予兆を出す
+    rpgFx.telegraph(isNushi ? "nushi" : "enc", () => {
+      if (!RPG) return;
+      if (RPG.mode !== "explore") { RPG.busy = false; return; }   // 画面を離れていたら戦闘は出さずロック解除
+      if (isNushi) rpgEncounter("nushi"); else rpgEncounter();
+    });
     return;
   }
   renderMallRpg();
@@ -509,6 +515,16 @@ const rpgFx = {
     n.querySelector(".enc-label").textContent = label;
     this.layer().appendChild(n);
     setTimeout(() => n.remove(), 1050);
+  },
+  // バトル予兆：踏み込んだ瞬間に画面の縁が“ドクッ”と脈打ち、身構える一拍をつくる（突然の即死戦の理不尽さを和らげる）
+  // reduced-motion時は視覚演出を出さず、ほぼ間を置かずに戦闘へ。kind: enc/nushi/boss
+  telegraph(kind, cb) {
+    rpgSfx("alert", kind === "nushi" ? 0.72 : 0.82);   // 予兆＝低めの“遠い警告”（接敵時の通常ピッチ＝一撃と差別化）
+    if (rpgReduce()) { setTimeout(cb, 120); return; }
+    const n = document.createElement("div"); n.className = "rpg-tele " + (kind || "enc");
+    this.layer().appendChild(n);
+    setTimeout(() => n.remove(), 620);
+    setTimeout(cb, 470);
   },
   // 敵の名前カットイン：突入後にアイコン＋名前が左右から“ポンポン”と飛び込む（敵に目が向くように）
   cutins(refs, boss) {

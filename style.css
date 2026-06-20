@@ -5490,6 +5490,26 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-hpbar.low { animation:rpgpulse .8s ease-in-out infinite; box-shadow:0 0 9px rgba(255,70,100,.7); }
 @media (prefers-reduced-motion: reduce) { .rpg-enc { display:none; } .rpg-hpbar.low { animation:none; } }
 
+/* ⚠ バトル予兆：踏み込んだ瞬間に画面の縁が“ドクッ”と脈打つ（突然の戦闘を一拍だけ予告） */
+.rpg-tele { position:fixed; inset:0; z-index:100001; pointer-events:none;
+  box-shadow:inset 0 0 80px 18px rgba(255,60,80,.0); animation:rpgTele .47s ease-out forwards; }
+.rpg-tele.nushi { animation-name:rpgTeleNushi; }
+@keyframes rpgTele {
+  0%   { box-shadow:inset 0 0 60px 0   rgba(255,60,80,0); }
+  28%  { box-shadow:inset 0 0 110px 30px rgba(255,55,80,.62); }
+  52%  { box-shadow:inset 0 0 70px 10px rgba(255,60,80,.18); }
+  78%  { box-shadow:inset 0 0 120px 34px rgba(255,55,80,.5); }
+  100% { box-shadow:inset 0 0 80px 16px rgba(255,60,80,0); }
+}
+@keyframes rpgTeleNushi {
+  0%   { box-shadow:inset 0 0 60px 0   rgba(190,90,255,0); }
+  28%  { box-shadow:inset 0 0 120px 34px rgba(190,90,255,.66); }
+  52%  { box-shadow:inset 0 0 75px 12px rgba(190,90,255,.2); }
+  78%  { box-shadow:inset 0 0 130px 38px rgba(190,90,255,.56); }
+  100% { box-shadow:inset 0 0 85px 18px rgba(190,90,255,0); }
+}
+@media (prefers-reduced-motion: reduce) { .rpg-tele { display:none; } }
+
 /* 敵名カットイン：左右から“ポンポン”と飛び込むネームプレート（突入時・敵に目が向く） */
 .rpg-cutin { position:fixed; top:var(--y,40%); z-index:100002; display:flex; align-items:center; gap:9px;
   padding:7px 16px 7px 10px; border-radius:0 16px 16px 0; white-space:nowrap;
