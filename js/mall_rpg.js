@@ -1051,6 +1051,12 @@ function renderMallRpg(flash) {
   state.ui.screen = "mall_rpg";
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();
   rpgBindKeys();
+  // 🎵 手続きBGM（音声ファイル無し）：戦闘＝熱め／探索・買い物＝穏やか／ハブ等は静かに
+  if (window.MallBgm) {
+    if (RPG && RPG.mode === "battle") MallBgm.play("battle", RPG.fi, !!RPG.tower);
+    else if (RPG && (RPG.mode === "explore" || RPG.mode === "shop" || RPG.mode === "ascend")) MallBgm.play("explore", RPG.fi, !!RPG.tower);
+    else MallBgm.stop();
+  }
   const app = beginScreen();
   if (RPG_REVEAL) return rpgRenderReveal(app);          // ガチャ/宝箱の演出は最優先
   if (RPG && RPG.mode === "ascend") return rpgRenderAscend(app);
