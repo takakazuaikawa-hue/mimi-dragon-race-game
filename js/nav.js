@@ -36,23 +36,31 @@ var SCREEN_INDEX = [
   { no: 22, id: "consult",         label: "相談(顧問)",         group: "物語" },
   { no: 23, id: "goals",           label: "目標(クエスト)",      group: "拠点" },
   { no: 24, id: "help",            label: "予想入門",          group: "情報" },
-  { no: 25, id: "settings",        label: "設定",              group: "情報" }
+  { no: 25, id: "settings",        label: "設定",              group: "情報" },
+  { no: 26, id: "sns",             label: "SNS(TL/手紙)",       group: "SNS" },
+  { no: 27, id: "economy",         label: "島の経済",           group: "暮らし" },
+  { no: 28, id: "collection_score", label: "コレクション(やり込み)", group: "暮らし" }
 ];
 
 // 画面名 → 描画を呼ぶ thunk。呼び出し時に解決（全描画関数が定義済みの状態で動く）。
 // レース系は state.current が無い時はレース選択へフォールバック（直接ジャンプでも壊れない）。
 function screenMap() {
   var hasRace = !!(typeof state !== "undefined" && state.current && state.current.race);
+  // race_run/result/analysis は raceResult（賭け→走で確定）が無いと .entries 参照で落ちる。
+  // 開発ジャンプ等の中途状態でも壊れないよう、結果が無ければレース選択へフォールバック。
+  var hasResult = hasRace && !!state.current.raceResult;
   function opt(fn, fb) { return (typeof window[fn] === "function") ? window[fn] : (window[fb] || renderHome); }
   return {
     title:           function () { renderTitle(); },
     home:            function () { renderHome(); },
     race_select:     function () { renderRaceSelect(); },
     race_detail:     function () { hasRace ? renderRaceDetail(state.current.race) : renderRaceSelect(); },
-    race_run:        function () { hasRace ? renderRaceRun() : renderRaceSelect(); },
-    result:          function () { hasRace ? renderResult() : renderRaceSelect(); },
-    analysis:        function () { hasRace ? renderAnalysis() : renderRaceSelect(); },
+    race_run:        function () { hasResult ? renderRaceRun() : renderRaceSelect(); },
+    result:          function () { hasResult ? renderResult() : renderRaceSelect(); },
+    analysis:        function () { hasResult ? renderAnalysis() : renderRaceSelect(); },
     assets:          function () { renderAssets(); },
+    economy:         function () { opt("renderEconomy", "renderAssets")(); },
+    collection_score: function () { opt("renderCollectionScore", "renderAssets")(); },
     life_tree:       function () { opt("renderLifeTree", "renderAssets")(); },
     life_collection: function () { opt("renderLifeCollection", "renderAssets")(); },
     active_skills:   function () { opt("renderActiveSkills", "renderAssets")(); },
@@ -69,7 +77,10 @@ function screenMap() {
     consult:         function () { renderConsult(); },
     goals:           function () { opt("renderGoals", "renderHome")(); },
     help:            function () { renderHelp(); },
-    settings:        function () { renderSettings(); }
+    settings:        function () { renderSettings(); },
+    sns:             function () { opt("renderSns", "renderHome")(); },
+    timeline:        function () { opt("renderSns", "renderHome")("timeline"); },     // 後方互換（旧?go=）
+    fanletters:      function () { opt("renderSns", "renderHome")("fanletters"); }
   };
 }
 

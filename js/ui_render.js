@@ -36,7 +36,7 @@ function updateHeader() {
 const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2, stable: 2, scout: 2,
-  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, poro_gourmet: 3,
+  story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, economy: 3, collection_score: 3, poro_gourmet: 3,
   story_read: 4, race_run: 4, result: 5, analysis: 6
 };
 let _prevScreen = null;
@@ -49,6 +49,7 @@ function beginScreen() {
   app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart");
   if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
   if (typeof syncVolumeFab === "function") syncVolumeFab();              // 🔊 全画面常設の音量ボタンを画面に合わせて表示/非表示
+  var _scmBn = document.getElementById("scm-bnav-host"); if (_scmBn) _scmBn.remove();   // モールのフロート下部ナビ(body直下fixed)を毎遷移で外す（モールで再設置）
   if (prev !== screen) window.scrollTo(0, 0);   // start every new screen at the top
 
   // Hero "expand from the tapped card" (race card → detail) takes priority.
@@ -78,7 +79,7 @@ function beginScreen() {
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
     race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
-    life_tree: "assets", life_collection: "assets", active_skills: "assets", story_read: "story"
+    life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story"
   };
   const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
   const bt = BACK_TGT[TOP_BACK[screen]];
@@ -222,10 +223,46 @@ function showTitleSwitcher() {
 // 🛍️ モール解放判定：レースで初めて的中すると解放（flags.everHit）。既存セーブ救済として
 // 単勝勝利歴・衣装の購入/入手歴・着替え歴があれば解放済み扱い（巻き戻さない）。表示専用。
 function mallUnlocked() {
+  // ★第2話「ミズの分析」を読むと開放（総資産3千で第2話が解禁→読む）。docs/PROGRESSION_DESIGN.md。
   const p = state.player || {}; const f = p.flags || {};
-  return !!(f.everHit || f.mallIntroSeen || (p.wins || 0) >= 1 ||
-    (p.outfitsBought && p.outfitsBought.length) || (p.outfitsWon && p.outfitsWon.length) ||
-    (p.outfit && typeof DEFAULT_OUTFIT !== "undefined" && p.outfit !== DEFAULT_OUTFIT));
+  return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2")) || !!f.mallIntroSeen;
+}
+
+// 📱 配信モード判定：スマホ購入（第4話マクラ後）で配信ホーム化＝LIVE/視聴者/フォロワー/コメント入力/ハート/
+// ギフト/SNSが解禁。それまでは静かモード（立ち絵/独り言/背景/目標/村人の声は残す）。docs/PROGRESSION_DESIGN.md。
+// 表示専用＝レース数値に非干渉。
+function broadcastOn() {
+  return typeof getStoryFlag === "function" && !!getStoryFlag("phoneBought");
+}
+// 📱 スマホを買って配信を始める＝マクラに背中を押される一幕(VN)→ phoneBought を立てて配信ホーム化
+// （LIVE/視聴者/フォロワー/コメント/SNS解禁）。買える額(3千)なら支払い／足りなければマクラが立て替え（無料）。
+// ★表示専用＝レース着順/オッズ/配当には非干渉（コインの支払いは衣装購入と同じメタ消費）。docs/PROGRESSION_DESIGN.md
+function buyPhoneAndGoLive() {
+  if (typeof getStoryFlag === "function" && getStoryFlag("phoneBought")) return;
+  var _finish = function () {
+    var p = state.player; var cost = 3000;
+    if ((p.coins || 0) >= cost) p.coins = p.coins - cost;   // 買えるなら支払い／足りなければマクラが立て替え
+    if (typeof setStoryFlag === "function") setStoryFlag("phoneBought", true);
+    if (typeof saveGame === "function") saveGame();
+    try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+    if (typeof renderHome === "function") renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("📱 配信、はじめました！",
+      `<div class="mm-row"><span class="mm-ic">📱</span><div><b>配信デビュー！</b><small>ミミはスマホを手に入れ、配信を開始。ホームが“放送中”になり、👁視聴者・💬コメント・💗フォロワー・📱SNS が解禁されました。</small></div></div>`);
+  };
+  var afford = (state.player.coins || 0) >= 3000;
+  if (window.Dialogue && Dialogue.play && typeof STORY_CAST !== "undefined") {
+    var script = [
+      ["makura", "ミミ。お前の予想、村の中だけにしとくのは……もったいねえな。", "default"],
+      ["mimi", "え？　マクラさん、それって……", "default"],
+      ["makura", "これだ。スマホ。これさえありゃ“配信”ができる。お前のぱほぱほ、島の外まで届くぞ。", "default"],
+      ["mimi", "わ、わたしが配信なんて……できるかな……", "panic"],
+      ["makura", "できるさ。もう村のみんなが応援してる。あとは、世界に見せるだけだ。", "default"],
+      afford ? ["mimi", "……うん。やってみますっ！　えいっ、買っちゃう！", "happy"]
+             : ["makura", "金は気にすんな。最初はおれが立て替えとく。さ、デビューだ。", "default"],
+      ["mimi", "ありがとうございますっ……！　よーし——配信、はじめます！", "happy"]
+    ];
+    Dialogue.play(script, { force: true }).then(_finish);
+  } else { _finish(); }
 }
 
 // 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。
@@ -303,6 +340,7 @@ function syncVolumeFab() {
   const fab = mountVolumeFab();
   const screen = state.ui && state.ui.screen;
   fab.style.display = (screen === "home") ? "none" : "flex";
+  fab.style.bottom = (screen === "mall") ? "84px" : "";   // モールはフロート下部ナビ(.scm-bnav)の上に逃がす
 }
 
 // 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
@@ -758,6 +796,15 @@ function renderSettings() {
       `<span>🎰 賭金 <b>×${villMult}</b></span>` +
       `<span>🐉 解放竜 <b>${(v.unlockedDragonIds || []).length}/${dn}</b></span></div>`));
 
+  // 予想入門・ヘルプ（ホームのナビから移設＝ここから開く）
+  if (typeof renderHelp === "function") {
+    app.appendChild(el("div", "as-sec", "予想入門・ヘルプ"));
+    const help = el("div", "set-data");
+    const bHelp = el("button", "secondary", "🎓 予想入門をひらく"); bHelp.onclick = () => renderHelp();
+    help.appendChild(bHelp);
+    app.appendChild(help);
+  }
+
   // データ
   app.appendChild(el("div", "as-sec", "データ"));
   const data = el("div", "set-data");
@@ -1078,136 +1125,6 @@ function showMimiViewer() {
 
 // 専用画面：ショッピングモール（ミミのきせかえ）。コイン購入＋条件解放、着替えは無料。
 // 立ち絵を実際に差し替える表示専用コスメ。着順・オッズ・配当には非干渉。
-function renderMall() {
-  if (!mallUnlocked()) {   // 解放前の直行ガード（ナビは🔒だが保険）
-    renderHome();
-    showInfoPopup("🛍️ ショッピングモール",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。</small></div></div>`);
-    return;
-  }
-  state.ui.screen = "mall";
-  if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();   // 取り残されたセリフオーバーレイがタップを塞がないように
-  if (typeof recomputeAssets === "function") recomputeAssets(state);
-  const app = beginScreen();   // 上部に「← ホーム」
-  // ブティック内装の背景（images/mall_bg.jpg をドロップインで差し替え可・無ければグラデ）
-  const mbg = el("div", "mall-bg");
-  mbg.innerHTML = `<img alt="" decoding="async" src="images/mall_bg.webp" onerror="this.remove()"><div class="mall-bg-scrim"></div>`;
-  app.appendChild(mbg);
-  app.appendChild(el("h2", null, "🛍️ ショッピングモール"));
-  // 説明はふだん短く、詳しくは？で（冗長表現を常時出さないオンボーディング方針）
-  const _mtop = el("div", "mall-top",
-    `<span class="as-hint">未購入はシルエット <button class="info-q" title="モールの遊び方">？</button></span>` +
-    `<span class="mall-coins">🪙 <b>${fmtCoins(state.player.coins || 0)}</b></span>`);
-  _mtop.querySelector(".info-q").onclick = () => showInfoPopup("🛍️ モールの遊び方",
-    `<div class="mm-row"><span class="mm-ic">👤</span><div><b>未購入はシルエット</b><small>買うと姿が見られる。集める楽しみ！</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">👗</span><div><b>着替えは無料</b><small>所持している服はいつでも切替OK。レース結果には影響しない。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🏬</span><div><b>巨大モール大冒険</b><small>1Fから屋上まで冒険して衣装GET。コインは使わない。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>解放条件つきの服</b><small>総資産で解放される特別な服もある。</small></div></div>`);
-  app.appendChild(_mtop);
-  // ミニゲーム「巨大モール大冒険」への入口（一人称ダンジョンRPG・衣装が手に入る・表示メタ）
-  if (typeof renderMallRpg === "function") {
-    const dg = el("button", "mall-dgbtn");
-    const _rpg = (state.player.rpg || {});
-    dg.innerHTML = `<span class="mall-dgbtn-ic">🏬</span><span class="mall-dgbtn-tx"><b>巨大モール大冒険</b>` +
-      `<small>1Fから🌿屋上まで・観光客や魔物と戦い衣装GET${_rpg.lv ? `　🧝Lv${_rpg.lv}${_rpg.cleared ? "・🌿制覇" : ""}` : ""}</small></span><span class="mall-dgbtn-go">冒険 ▶</span>`;
-    dg.onclick = () => renderMallRpg();
-    app.appendChild(dg);
-  }
-
-  const worn = currentOutfitId();
-  if (!state.ui.mallSel || !OUTFITS.some(o => o.id === state.ui.mallSel)) state.ui.mallSel = worn;
-  if (!state.ui.mallExpr) state.ui.mallExpr = "smile";
-  const sel = outfitById(state.ui.mallSel);
-  const owned = outfitOwned(sel);
-  const isWorn = sel.id === worn;
-
-  // ── 試着室：大プレビュー（表情切替）＋情報＋CTA。未所持でも試着できる（表示のみ）。
-  const fit = el("div", "card mall-fit");
-  const stage = el("div", "mall-fit-stage");
-  // 未購入はシルエット表示（買うと姿が見られる）。所持/着用中はフルカラー。
-  const img = el("div", "mall-fit-img" + (owned ? "" : " silhouette"));
-  const _src = outfitImg(sel.id, state.ui.mallExpr);
-  const _fb = outfitImg(sel.id, "smile");
-  img.innerHTML =
-    `<img alt="${sel.name}" src="${_src}" onerror="this.onerror=null;this.src='${_fb}'">` +
-    (isWorn ? `<span class="mall-badge worn">✓ 着用中</span>` : (owned ? `<span class="mall-badge owned2">所持</span>` : `<span class="mall-badge lock">🔒 ？</span>`)) +
-    (owned ? "" : `<span class="mall-silq">？</span>`);
-  stage.appendChild(img);
-  const seg = el("div", "mall-expr");
-  [["default", "🙂 通常"], ["smile", "😊 にこ"], ["happy", "🌟 よろこび"], ["panic", "💦 あせり"]].forEach(([k, lb]) => {
-    const b = el("button", "mall-expr-b" + (state.ui.mallExpr === k ? " on" : ""), lb);
-    b.onclick = () => { state.ui.mallExpr = k; renderMall(); };
-    seg.appendChild(b);
-  });
-  stage.appendChild(seg);
-  fit.appendChild(stage);
-
-  const info = el("div", "mall-fit-info");
-  let acq;
-  if (sel.acquire.free) acq = "いつでも着られる基本衣装";
-  else if (sel.acquire.price != null) acq = owned ? "購入済み" : `価格 <b>${fmtCoins(sel.acquire.price)}</b>（所持 ${fmtCoins(state.player.coins || 0)}）`;
-  else if (sel.acquire.assets != null) acq = owned ? "解放済み" : `総資産 <b>${fmtCoins(sel.acquire.assets)}</b> で解放（現在 ${fmtCoins(state.player.totalAssets || 0)}）`;
-  else acq = "";
-  info.innerHTML =
-    `<div class="mall-fit-nm">${sel.name}</div>` +
-    `<div class="mall-fit-fl">${sel.flavor}</div>` +
-    `<div class="mall-fit-acq">${acq}</div>`;
-  const cta = el("div", "mall-fit-cta");
-  if (isWorn) {
-    cta.appendChild(el("div", "mall-foot is-worn", "✓ いま着ています"));
-    const hb = el("button", "mall-btn home", "🏠 ホームで見る");   // 購入直後（=着用中）にすぐ確認しに行ける
-    hb.onclick = () => renderHome();
-    cta.appendChild(hb);
-  } else if (owned) {
-    const wb = el("button", "mall-btn wear", "この服に着替える");
-    wb.onclick = () => { wearOutfit(sel.id); if (window.Sfx) Sfx.play("click"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); };
-    cta.appendChild(wb);
-  } else if (sel.acquire.price != null) {
-    const poor = (state.player.coins || 0) < sel.acquire.price;
-    const bb = el("button", "mall-btn buy" + (poor ? " poor" : ""), `🛒 ${fmtCoins(sel.acquire.price)} で購入して着替える`);
-    bb.onclick = () => {
-      const r = buyOutfit(sel.id);
-      if (r.ok) { wearOutfit(sel.id); if (window.Sfx) Sfx.play("coin"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); }
-      else if (r.reason === "poor") alert("コインが足りません。");
-    };
-    cta.appendChild(bb);
-  } else if (sel.acquire.assets != null) {
-    cta.appendChild(el("div", "mall-foot lock", `🔒 総資産 ${fmtCoins(sel.acquire.assets)} で解放`));
-  }
-  info.appendChild(cta);
-  fit.appendChild(info);
-  app.appendChild(fit);
-
-  // ── 衣装一覧（タップで試着室へ反映）
-  const grid = el("div", "mall-grid");
-  OUTFITS.forEach(o => {
-    const oOwned = outfitOwned(o);
-    const oWorn = o.id === worn;
-    const card = el("button", "mall-card" + (oWorn ? " worn" : "") + (oOwned ? "" : " locked") + (o.id === sel.id ? " sel" : ""));
-    let chip;
-    if (oWorn) chip = "";                                            // 着用中はコーナーリボンで表現
-    else if (oOwned) chip = `<span class="mall-chip owned">所持</span>`;
-    else if (o.acquire.price != null) chip = `<span class="mall-chip price">${fmtCoins(o.acquire.price)}</span>`;
-    else if (o.acquire.assets != null) chip = `<span class="mall-chip lock">🔒</span>`;
-    else chip = "";
-    card.innerHTML =
-      `<div class="mall-card-img">${photoOr(outfitImg(o.id, "default"), "<span class='mall-fallback'>🐰</span>")}</div>` +
-      `<div class="mall-card-nm">${o.name}</div>` + chip;
-    card.onclick = () => {
-      state.ui.mallSel = o.id; if (window.Sfx) Sfx.play("click");
-      renderMall();
-      // タップの結果（試着室の切替）が見えるように、ページ上部の試着室へスクロール
-      const f = document.querySelector(".mall-fit"); if (f) f.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
-    grid.appendChild(card);
-  });
-  app.appendChild(grid);
-
-  const actions = el("div", "actions");
-  const back = el("button", "secondary", "← ホームへ戻る"); back.onclick = () => renderHome();
-  actions.appendChild(back);
-  app.appendChild(actions);
-}
 
 // §07 §20 Help / Tutorial screen — §10 explains all V1 prediction concepts.
 function renderHelp() {
@@ -2581,12 +2498,14 @@ function renderRaceRun() {
   // incidental rerender (e.g. the debug / info-level toggles call us again).
   if (c.racePlayer && document.getElementById("race-canvas-host")) return;
 
-  if (!c.broadcast) {
-    c.broadcast = buildBroadcastData(c.race, c.raceResult, c.bet, c.oddsResult);
-    c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult, raceResult: c.raceResult });
-  }
+  // タイムライン（画面の物理位置の source）を先に作り、実況/HUDの順位もこれに合わせる
+  // ＝中盤の「先頭/N番手」が画面と一致（表示専用・着順/結果/配当は不変）。
   if (!c.timeline) {
     c.timeline = buildRaceTimeline(c.race, c.raceResult, c.oddsResult, c.bet);
+  }
+  if (!c.broadcast) {
+    c.broadcast = buildBroadcastData(c.race, c.raceResult, c.bet, c.oddsResult, c.timeline);
+    c.commentary = buildAllCommentary(c.broadcast, { race: c.race, bet: c.bet, oddsResult: c.oddsResult, raceResult: c.raceResult });
   }
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();   // 出走直前に保留中の立ち絵セリフを閉じる（レース上に被せない）
   const app = beginScreen();

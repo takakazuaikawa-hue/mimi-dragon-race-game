@@ -263,4 +263,16 @@ function mealStatsAll() {
   for (var i = 0; i < MEALS.length; i++) if (mealUnlocked(MEALS[i])) got++;
   return { got: got, total: MEALS.length };
 }
+// ★ティアの開放：基本（🍢🍙＝食べ歩き/自宅・eat）は早期から。上級グルメ（🍽️🥢＝島のミミグルマン/みみしんぼ・
+//   “当てる”系）は終章で開放（progression再設計・docs/PROGRESSION_DESIGN.md）。表示専用。
+function mealEndgameOpen() {
+  try {
+    if (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5")) return true;
+    return (state.player.totalAssets || 0) >= 100000000;   // 1億＝第5話/終章のしきい値（総資産は高水位＝戻らない）
+  } catch (e) { return false; }
+}
+function mealTierUnlocked(tierId) {
+  if (tierId === "gourman" || tierId === "shinbo") return mealEndgameOpen();   // 上級グルメ＝終章
+  return true;   // 基本ティアは常時
+}
 if (typeof window !== "undefined") { window.MEALS = MEALS; window.MEAL_TIERS = MEAL_TIERS; }

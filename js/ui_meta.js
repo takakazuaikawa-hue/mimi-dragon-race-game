@@ -55,25 +55,33 @@ function renderMeals() {
   app.appendChild(ob);
 
   const tiers = (typeof MEAL_TIERS !== "undefined") ? MEAL_TIERS : [];
-  if (!_mealTab || !tiers.some(t => t.id === _mealTab)) {
-    const firstInc = tiers.find(t => { const s = mealTierStats(t.id); return s.got < s.total; });
-    _mealTab = (firstInc || tiers[0] || {}).id;
+  const _tUnlocked = id => (typeof mealTierUnlocked !== "function") || mealTierUnlocked(id);   // 上級グルメは終章で開放
+  const _lockMsg = () => { if (typeof showInfoPopup === "function") showInfoPopup("🥢 上級グルメ",
+    `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>「島のミミグルマン」「みみしんぼ」は<u>終章（総資産1億・第5話）</u>で開放されます。まずは食べ歩きから。</small></div></div>`); };
+  if (!_mealTab || !tiers.some(t => t.id === _mealTab) || !_tUnlocked(_mealTab)) {
+    const firstInc = tiers.find(t => _tUnlocked(t.id) && (function () { const s = mealTierStats(t.id); return s.got < s.total; })());
+    _mealTab = (firstInc || tiers.find(t => _tUnlocked(t.id)) || tiers[0] || {}).id;
   }
-  // 段タブ（アイコン＋進捗・完成は✓）
+  // 段タブ（アイコン＋進捗・完成は✓・未開放は🔒終章）
   const tabs = el("div", "meal-tabs");
   tiers.forEach(t => {
+    const locked = !_tUnlocked(t.id);
     const st = mealTierStats(t.id);
-    const done = st.total > 0 && st.got === st.total;
-    const tab = el("button", "meal-tab" + (t.id === _mealTab ? " on" : "") + (done ? " done" : ""));
-    tab.innerHTML = `<span class="meal-tab-ic">${t.icon}</span><span class="meal-tab-p">${done ? "✓ " : ""}${st.got}/${st.total}</span>`;
-    tab.onclick = () => { _mealTab = t.id; renderMeals(); };
+    const done = !locked && st.total > 0 && st.got === st.total;
+    const tab = el("button", "meal-tab" + (t.id === _mealTab ? " on" : "") + (done ? " done" : "") + (locked ? " locked" : ""));
+    tab.innerHTML = locked
+      ? `<span class="meal-tab-ic">🔒</span><span class="meal-tab-p">終章</span>`
+      : `<span class="meal-tab-ic">${t.icon}</span><span class="meal-tab-p">${done ? "✓ " : ""}${st.got}/${st.total}</span>`;
+    tab.onclick = locked ? _lockMsg : () => { _mealTab = t.id; renderMeals(); };
     tabs.appendChild(tab);
   });
   app.appendChild(tabs);
 
-  // 選択中の段だけ：見出し＋グリッド
+  // 選択中の段だけ：見出し＋グリッド（未開放なら開放案内）
   const t = tiers.find(x => x.id === _mealTab) || tiers[0];
-  if (t) {
+  if (t && !_tUnlocked(t.id)) {
+    app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は終章（総資産1億・第5話）で開放されます。"));
+  } else if (t) {
     const sec = el("div", "meal-sec");
     sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
       `<small>${t.sub}　・　${t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める"}</small></span>`;

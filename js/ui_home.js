@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // ui_home.js — ホーム（配信風トップ）画面（CODEMAP §6・分割第4弾）。
 // =============================================================================
 // ★ui_render.js から無改変で抽出：renderHome ＋ 専用helper（startMimiIdle / startDragonWarp /
@@ -141,7 +141,7 @@ function renderHome() {
   const HOME_BGS = [
     // floorDay/floorNight＝床の接地ライン（上端からの比率・実測）。無ければ floor。
     // 屋外ロケ（日替わりローテーション）。images/homebg/<id>_{day,night}.webp。
-    { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.73, floorNight: 0.70 },
+    { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.74, floorNight: 0.74 },
     { id: "beach",   day: "images/homebg/beach_day.webp",   night: "images/homebg/beach_night.webp",   floorDay: 0.64, floorNight: 0.64 },
     { id: "market",  day: "images/homebg/market_day.webp",  night: "images/homebg/market_night.webp",  floorDay: 0.62, floorNight: 0.60 },
     { id: "onsen",   day: "images/homebg/onsen_day.webp",   night: "images/homebg/onsen_night.webp",   floorDay: 0.73, floorNight: 0.72 },
@@ -151,6 +151,13 @@ function renderHome() {
     { id: "myroom", myroom: true },
   ];
   const MYROOM_FLOORS = [0.63, 0.63, 0.63, 0.66, 0.72, 0.64];   // t0..t5（実測）
+  // ★縦構図の背景（全景が縦に収まる）。横16:9は縦持ちで左右が大きく落ち全景が見えない＝背景が生かせない問題への対応。
+  //   当面デモとして常時表示。photoreal縦版を images/homebg/island_portrait_{day,night}.webp で差し替え可
+  //   （docs/HOME_BG_SPEC.md「縦構図」節の仕様/プロンプト）。PORTRAIT_DEMO=false で従来の横ロケ・ローテに戻る。
+  const PORTRAIT_DEMO = false;
+  const ISLAND_PORTRAIT = { id: "island", portrait: true,
+    day: "images/homebg/island_portrait_day.svg", night: "images/homebg/island_portrait_night.svg",
+    floorDay: 0.80, floorNight: 0.80 };
   const bg = el("div", "hl-bg");
   bg.innerHTML = `<img class="hl-bg-img" alt="" decoding="async"><div class="hl-bg-scrim"></div>`;
   (function () {
@@ -160,7 +167,8 @@ function renderHome() {
     // 配分：偶数日＝自宅(myroom・ホームベース＝引っ越し進行を見せる)／奇数日＝屋外ロケを順番に。
     const myroomEntry = HOME_BGS.find(b => b.myroom);
     const outdoor = HOME_BGS.filter(b => !b.myroom);
-    const set = (dayIdx % 2 === 0 && myroomEntry) ? myroomEntry : outdoor[(dayIdx >> 1) % outdoor.length];
+    const set = PORTRAIT_DEMO ? ISLAND_PORTRAIT
+      : (dayIdx % 2 === 0 && myroomEntry) ? myroomEntry : outdoor[(dayIdx >> 1) % outdoor.length];
     let floorUsed, chain;
     if (set.myroom) {
       // 自宅：現在の総資産レベルの部屋→無ければ下の段→最後はバルコニー/旧背景へ
@@ -177,10 +185,12 @@ function renderHome() {
         : [set.day, set.night, "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
     }
     const im = bg.querySelector(".hl-bg-img");
+    if (set.portrait) im.classList.add("portrait");   // 縦構図＝素直なcover（接地はSVG側のfloorで設計）
     let i = 0;
     im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
     // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±6vh内でだけ動かす）
     function calibrate() {
+      if (set.portrait) { im.style.top = ""; return; }   // 縦構図はcover任せ＝接地はSVGのfloor(約78%)で設計
       try {
         const vh = window.innerHeight, vw = window.innerWidth;
         const boxH = vh * 1.12, boxW = vw * 1.12;
@@ -233,17 +243,16 @@ function renderHome() {
   money.onclick = () => renderAssets();
   top.appendChild(money);
 
-  // 相棒ドラゴンをヘッダーに小さくボタン化（将来は相棒変更の入口・今はタップで一言）
-  const buddySrc = (typeof buddyDragonSrc === "function") ? buddyDragonSrc() : "images/dragon_ref/ref.webp";
-  const buddyBtn = el("button", "hl-buddy-btn");
-  buddyBtn.title = "相棒ドラゴン";
-  const buddyCv = document.createElement("canvas");
-  buddyCv.width = 384; buddyCv.height = 256;
-  buddyBtn.appendChild(buddyCv);
-  if (window.DragonL2) DragonL2.mountOrWarp(buddyCv, buddySrc, "home");
-  else { const _dImg = new Image(); _dImg.onload = function () { startDragonWarp(buddyCv, _dImg); }; _dImg.onerror = function () { buddyBtn.innerHTML = "<span class='hl-dragon-fallback'>🐉</span>"; }; _dImg.src = buddySrc; }
-  buddyBtn.onclick = () => { try { mimiSay("この子はわたしの相棒なんだ！"); } catch (e) {} };
-  top.appendChild(buddyBtn);
+  // （相棒ドラゴンのヘッダーボタンは不要のため撤去：ユーザー指定。竜canvasのループも起動しなくなる）
+
+  // 🔊 音量＝ホームはBGMが鳴るので、深いメニューに潜らず“すぐ”調整できるよう上部に常設（1タップでパネル）。
+  if (typeof showVolumePanel === "function") {
+    const _muted = (window.Sfx && Sfx.isMuted && Sfx.isMuted());
+    const volBtn = el("button", "hl-sys hl-vol", _muted ? "🔇" : "🔊");
+    volBtn.title = "音量を調整"; volBtn.style.marginLeft = "auto";
+    volBtn.onclick = () => showVolumePanel();
+    top.appendChild(volBtn);
+  }
 
   const sysWrap = el("div", "hl-syswrap");
   const sysBtn = el("button", "hl-sys", "⋯");
@@ -281,36 +290,99 @@ function renderHome() {
   mimiIn.innerHTML =
     "<div class='hl-mimi-flip'><img alt='ミミ' src='" + _defSrc + "' onerror=\"this.onerror=null;this.src='" + _smileSrc + "'\"></div>";
   mimi.appendChild(mimiIn);
-  // 本体タップ＝鑑賞＆きせかえビューア（大きい立ち絵＋説明、スワイプ/◀▶で所持衣装めくり・無料着替え）。
-  // きせかえ専用ボタンは廃止（モールはナビ🛍️とビューア内「モールで買う」から）。
-  mimi.title = "タップで鑑賞＆きせかえ";
-  mimi.onclick = (e) => { e.stopPropagation(); showMimiViewer(); };
+  // 本体タップ＝ミミの反応（声＋表情＋ハート／配信者をタップ＝リアクションの作法）。
+  // 以前は本体タップ＝きせかえビューアだったが「毎回ビューアが開いて煩わしい」ため反応に変更。
+  // きせかえ（鑑賞＆無料着替え）は下の専用👗ボタンから（モールはナビ🛍️とビューア内「モールで買う」）。
+  mimi.title = "タップでミミが反応";
+  mimi.onclick = (e) => { e.stopPropagation(); try { _mimiTalk(); } catch (err) {} };
   stage.appendChild(mimi);
+  // 👗 きせかえ＝明示ボタン。ラベルに“今の衣装名”を出して「表示（今の衣装）＋操作（着替え）」の二役に。
+  const _curOutfit = (typeof outfitById === "function") ? outfitById(oid) : null;
+  const _outfitNm = (_curOutfit && _curOutfit.name) ? _curOutfit.name : "きせかえ";
+  const dressBtn = el("button", "hl-dress");
+  dressBtn.innerHTML = `<span class="hl-dress-ic">👗</span><span class="hl-dress-nm">${_outfitNm}</span>`;
+  dressBtn.title = `いまの衣装：${_outfitNm}（タップできせかえ）`;
+  dressBtn.onclick = (e) => { e.stopPropagation(); if (typeof showMimiViewer === "function") showMimiViewer(); };
+  stage.appendChild(dressBtn);
 
-  // 出走情報・ランク情報を背景に“浮かせる”フロート（配信オーバーレイ風・半透明・右上）。
-  // 新規プレイヤーのゼロ統計はノイズなので非表示。🎯目標は📌ピン留めコメントへ移設。
-  const floatBox = el("div", "hl-float");
-  const viewersEl = el("div", "hl-viewers", "👁 <b></b>");
-  // ④ フォロワー数＝名声・戦績と連動（表示専用）
-  const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
-  const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
-  // ランクは左上プロフィールへ（顔の右上を覆わない）。フロートは LIVE＋フォロワー（＋PCのみ戦績）
-  floatBox.innerHTML =
-    `<div class="hl-float-live"><span class="hl-live">LIVE</span></div>` +
-    `<div class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b> フォロワー</div>` +
-    (p.completedRaces > 0 ? `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` : "");
-  floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
-  stage.appendChild(floatBox);
+  // ★配信モード判定：スマホ購入(第4話マクラ後)で配信ホーム化。静かモードでは LIVE/視聴者/フォロワー/
+  //   コメント入力/ハート/ギフト/SNS を出さず、立ち絵・独り言・背景・目標・村人の声だけ残す。docs/PROGRESSION_DESIGN.md
+  const broadcast = (typeof broadcastOn === "function") ? broadcastOn() : true;
+  const _metMakura = (typeof getStoryFlag === "function") && getStoryFlag("metMakura");
 
-  // 🎯 目標（クエスト）チップ：ステージ左上に常設。現在の目標＋進捗。タップで一覧へドリルダウン（表示専用・js/goals.js）。
-  if (typeof nextGoal === "function") {
-    const _ng = nextGoal(); const _gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
-    const goalBtn = el("button", "hl-goal");
-    goalBtn.innerHTML = _ng
-      ? `<span class="hl-goal-k">🎯 つぎの目標</span><span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-p"><i style="width:${_gs.total ? Math.round(_gs.done / _gs.total * 100) : 0}%"></i></span><span class="hl-goal-n">${_gs.done}/${_gs.total} 達成 ▸</span>`
-      : `<span class="hl-goal-k">🎯 目標</span><span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">${_gs.done}/${_gs.total} ▸</span>`;
-    goalBtn.onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
-    stage.appendChild(goalBtn);
+  // 出走情報・LIVE・フォロワーを背景に“浮かせる”フロート（配信オーバーレイ・右上）。★配信モードのみ。
+  let viewersEl = null;
+  if (broadcast) {
+    const floatBox = el("div", "hl-float");
+    viewersEl = el("div", "hl-viewers", "👁 <b></b>");
+    const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
+    const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
+    floatBox.innerHTML =
+      `<div class="hl-float-live"><span class="hl-live">LIVE</span></div>` +
+      `<div class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b> フォロワー</div>` +
+      (p.completedRaces > 0 ? `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` : "");
+    floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
+    stage.appendChild(floatBox);
+  }
+
+  // 🎯 目標（クエスト）チップ：ステージ左上に常設＝「いま次にやること」を1つだけ表示。
+  //   ★優先順位：⚔️最終決戦 ＞ 🙏無心(0コイン) ＞ ☄️絶滅メーター(綱引き中) ＞ 🎯通常の目標。
+  //   無心/最終決戦も「必ず次にやること」なのでここに統合（ユーザー指摘）＝別CTAは出さない＝ミミの上もスッキリ・立ち位置不変。
+  //   チップはステージ左上の絶対配置＝出入りしてもレイアウト（ミミ/ドック）を一切動かさない。表示専用。
+  {
+    const _epOn = (typeof epilogueOn === "function") && epilogueOn();
+    const _ep = _epOn ? epData() : null;
+    const _broke = p.coins <= 0;
+    let _html = null, _cls = "hl-goal", _onclick = null;
+    if (_epOn && _ep.finalReady) {
+      // ⚔️ 最終決戦へ（クライマックス・最優先）
+      _cls += " hl-goal--act hl-goal--final";
+      _html =
+        `<span class="hl-goal-k">☄️ 終章・クライマックス</span>` +
+        `<span class="hl-goal-t">⚔️ 最終決戦へ</span>` +
+        `<span class="hl-goal-n">淘汰を押し切った ・ タップで決戦 ▸</span>`;
+      _onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
+    } else if (_broke) {
+      // 🙏 無心する（コイン0＝何よりまず立て直す）
+      const _begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
+      _cls += " hl-goal--act hl-goal--broke";
+      _html =
+        `<span class="hl-goal-k">🆘 いま次にやること</span>` +
+        `<span class="hl-goal-t">🙏 無心する</span>` +
+        `<span class="hl-goal-n">コインが0 ・ 基準額 ${fmtCoins(_begAmt)} 相当 ▸</span>`;
+      _onclick = () => { if (typeof showMushinOverlay === "function") showMushinOverlay(); };
+    } else if (_metMakura && !broadcast) {
+      // 📱 スマホを買って配信を始める（第4話マクラ後＝配信ホームへの変身トリガ）
+      _cls += " hl-goal--act hl-goal--phone";
+      _html =
+        `<span class="hl-goal-k">📱 いま次にやること</span>` +
+        `<span class="hl-goal-t">スマホを買って配信を始める</span>` +
+        `<span class="hl-goal-n">マクラに背中を押された ・ タップで開始 ▸</span>`;
+      _onclick = () => { if (typeof buyPhoneAndGoLive === "function") buyPhoneAndGoLive(); };
+    } else if (_epOn) {
+      // ☄️ 絶滅メーター（綱引き中）→ 島の経済で詳細
+      const _dial = epilogueDial().toFixed(2); const _prog = epilogueProgress();
+      const _zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
+      _cls += " hl-goal--ep hl-goal--ep-" + _zone;
+      _html =
+        `<span class="hl-goal-k">☄️ 終章のもくひょう</span>` +
+        `<span class="hl-goal-t">絶滅メーターを押し戻す</span>` +
+        `<span class="hl-goal-p"><i style="width:${_prog}%"></i></span>` +
+        `<span class="hl-goal-n">答えの単勝 ${_dial}倍 ・ くわしく ▸</span>`;
+      _onclick = () => { if (typeof renderEconomy === "function") renderEconomy(); else if (typeof renderGoals === "function") renderGoals(); };
+    } else if (typeof nextGoal === "function") {
+      const _ng = nextGoal(); const _gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
+      _html = _ng
+        ? `<span class="hl-goal-k">🎯 つぎの目標</span><span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-p"><i style="width:${_gs.total ? Math.round(_gs.done / _gs.total * 100) : 0}%"></i></span><span class="hl-goal-n">${_gs.done}/${_gs.total} 達成 ▸</span>`
+        : `<span class="hl-goal-k">🎯 目標</span><span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">${_gs.done}/${_gs.total} ▸</span>`;
+      _onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
+    }
+    if (_html) {
+      const goalBtn = el("button", _cls);
+      goalBtn.innerHTML = _html;
+      if (_onclick) goalBtn.onclick = _onclick;
+      stage.appendChild(goalBtn);
+    }
   }
 
   // 背景の火の粉（CSSのみで常時ゆらめく・reduced-motionでは非表示）＝画面が止まって見えない
@@ -385,13 +457,15 @@ function renderHome() {
   const _fame = (state.assets && state.assets.fameValue) || 0;
   let _viewers = 380 + p.rank * 260 + ((p.villageLevel || 1) * 180) + Math.min(4000, p.completedRaces * 6) + Math.floor(_fame / 50);
   const _fmtV = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
-  const _vB = viewersEl.querySelector("b");
-  _vB.textContent = _fmtV(_viewers);
-  window._hlTimers.push(setInterval(() => {
-    if (state.ui.screen !== "home") { window._hlTimers.forEach(clearInterval); return; }
-    _viewers = Math.max(120, Math.round(_viewers * (1 + (Math.random() - 0.48) * 0.05)));
+  if (broadcast && viewersEl) {   // ★視聴者数は配信モードのみ
+    const _vB = viewersEl.querySelector("b");
     _vB.textContent = _fmtV(_viewers);
-  }, 2600));
+    window._hlTimers.push(setInterval(() => {
+      if (state.ui.screen !== "home") { window._hlTimers.forEach(clearInterval); return; }
+      _viewers = Math.max(120, Math.round(_viewers * (1 + (Math.random() - 0.48) * 0.05)));
+      _vB.textContent = _fmtV(_viewers);
+    }, 2600));
+  }
 
   const _CMN = ["竜見の村人", "観客アヤ", "常連のジジ", "旅の予想屋", "バニー推し", "島っ子", "屋台のおやじ", "夜勤あけ", "遠征組", "はじめて見た",
     "竜舎の常連", "村の子ども", "予想ノート勢", "観光客さん", "ベテラン勢", "屋台の常連", "通りすがり", "町外れの占い師"];
@@ -454,6 +528,7 @@ function renderHome() {
   }, 3300));
 
   function _heart(x, y, ch) {
+    if (!broadcast) return;   // ★ハート(いいね)は配信モードのみ＝全発生をここで一括ゲート（独り言/タップ反応は別途維持）
     const h = document.createElement("span");
     h.className = "hl-heart";
     h.textContent = ch || ["💖", "💛", "🧡", "💚", "💙", "🤍", "✨"][Math.floor(Math.random() * 7)];
@@ -487,7 +562,7 @@ function renderHome() {
     const nm = _CMN[Math.floor(Math.random() * _CMN.length)];
     _addCm("🌟" + nm, "#b9a0ff", " が遊びにきた！", "join");
   }
-  window._hlTimers.push(setInterval(() => {
+  if (broadcast) window._hlTimers.push(setInterval(() => {   // ★入場通知は配信モードのみ
     if (state.ui.screen !== "home") return;
     if (Math.random() < 0.4) _joinCm();
   }, 9500));
@@ -525,7 +600,7 @@ function renderHome() {
       try { _flipTo("happy"); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 2300); } catch (e) {}
     }
   }
-  window._hlTimers.push(setInterval(() => {
+  if (broadcast) window._hlTimers.push(setInterval(() => {   // ★ギフト演出は配信モードのみ
     if (state.ui.screen !== "home") return;
     if (Math.random() < 0.55) _giftCm();
   }, 21000));
@@ -565,11 +640,15 @@ function renderHome() {
     }
   }, 5200));
 
-  // ── 下段ドック（すっきり）：コメントバー → (破産時)無心 → レースCTA → ナビ。
-  // 資産情報はヘッダー、出走/ランク/目標はステージ上のフロートへ移動済み＝ミミの領域を最大化。
+  // ── 下段（固定ドック）：レースへ進む → ナビ のみ。
+  //   ・コメント/いいねバー＝常設なので flex の独立層(.hl-actionbar)（stageとdockの間・足元の接地は保つ）。
+  //   ・🙏無心 / ⚔️最終決戦＝「いま次にやること」なので🎯目標チップに統合済み（上の goalBtn）＝
+  //     ここでは作らない＝ミミの上に被るCTAなし・立ち位置不変（ユーザー指摘）。
   const dock = el("div", "hl-dock");
+  const actionFloat = el("div", "hl-actionbar");
 
-  // コメントバー（TikTok風の参加UI・完全に表示専用）：定型コメントを「あなた」として流す＋❤️いいね
+  // 💬コメント入力＋❤️いいねバー（TikTok風の参加UI）＝★配信モードのみ（あなたが視聴者として参加）。静かモードでは非表示。
+  if (broadcast) {
   const cmwrap = el("div", "hl-cmbar-wrap");
   const qr = el("div", "hl-qr hidden");
   const QRS = ["がんばれー！", "ミミちゃんかわいい", "本命きめた？", "🐲🐲🐲", "ぱほぱほ〜！"];
@@ -616,41 +695,12 @@ function renderHome() {
   }, 2600));
   cmbar.appendChild(likeBtn);
   cmwrap.appendChild(qr); cmwrap.appendChild(cmbar);
-  dock.appendChild(cmwrap);
+  actionFloat.appendChild(cmwrap);   // コメント/いいねバー（レースへ進むの直上に浮く）
+  }   // ← end if(broadcast)：コメント入力/いいねバー
 
-  // §38 — 破産時：最優先で「無心」導線
-  if (p.coins <= 0) {
-    const begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
-    const broke = el("button", "hl-broke", `🙏 無心する　基準額 ${fmtCoins(begAmt)} 相当`);
-    broke.onclick = () => showMushinOverlay();
-    dock.appendChild(broke);
-  }
-
-  // 終章：絶滅メーター（綱引き）HUD＋最終決戦の導線（終章中のみ・表示専用＝実オッズ非干渉）。js/epilogue_engine.js
-  if (typeof epilogueOn === "function" && epilogueOn()) {
-    const e = epData(); const dial = epilogueDial().toFixed(2); const prog = epilogueProgress();
-    if (e.finalReady) {
-      const fin = el("button", "hl-final", `⚔️ 最終決戦へ ▶`);
-      fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
-      dock.appendChild(fin);
-    } else {
-      const zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
-      const react = (typeof epilogueDialReaction === "function") ? epilogueDialReaction() : "";
-      const hud = el("div", "ep-hud ep-hud--" + zone + (react ? " ep-react-" + react : ""));
-      hud.innerHTML =
-        `<div class="ep-hud-top"><span class="ep-hud-ttl">☄️ 絶滅メーター <button class="info-q" title="絶滅メーターって？">？</button></span>` +
-        `<span class="ep-hud-odds">答えの単勝 <b class="ep-dial-num">${dial}</b><span class="ep-dial-x">倍</span></span></div>` +
-        `<div class="ep-dial"><div class="ep-dial-track"><span class="ep-dial-needle" style="left:${prog}%"></span></div>` +
-        `<div class="ep-dial-scale"><span class="ep-tk ep-tk-doom">1.0<small>淘汰</small></span>` +
-        `<span class="ep-tk ep-tk-mid">1.05</span>` +
-        `<span class="ep-tk ep-tk-safe">1.1<small>安全</small></span></div></div>` +
-        `<div class="ep-hud-note">スカウト・暮らし・買い物・的中で押し戻す（0で最終決戦）</div>`;
-      const _q = hud.querySelector(".info-q");
-      if (_q) _q.onclick = (ev) => { ev.stopPropagation(); if (typeof showEpilogueMeterHelp === "function") showEpilogueMeterHelp(); };
-      dock.appendChild(hud);
-      if (typeof maybeShowMeterHelpFirstTime === "function") maybeShowMeterHelpFirstTime();  // 初表示時に一度だけ自動で説明
-    }
-  }
+  // 🙏無心(0コイン) / ⚔️最終決戦 は「いま次にやること」＝🎯目標チップ（上の goalBtn）に統合済み＝ここでは作らない。
+  // コメント/いいねバーだけが常設フロート層＝出入りが無いのでミミの立ち位置も固定ドックも不動（ユーザー指摘）。
+  if (actionFloat.children.length) wrap.appendChild(actionFloat);
 
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
   raceBtn.onclick = () => renderRaceSelect();
@@ -667,10 +717,10 @@ function renderHome() {
   if (mallUnlocked()) {
     rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
   } else {
-    // 初的中で解放（解放時はサケの解説＋プレゼントつき）
+    // 第2話「ミズの分析」を読むと開放（progression再設計）
     const lockedMall = el("button", "hl-item locked", `<span class="ic">🔒</span><span class="lb">モール</span>`);
     lockedMall.onclick = () => showInfoPopup("🛍️ ショッピングモール",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。勝てば、いいことがあるかも？</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話「ミズの分析」</u>を読むと開放されます（総資産3千で第2話が解禁）。</small></div></div>`);
     rail.appendChild(lockedMall);
   }
   // 竜まわりナビ：龍舎(ポロ発見=2勝)が解放済みなら🐲龍舎（図鑑・竜スカウトは龍舎の中の導線に集約）。
@@ -682,8 +732,11 @@ function renderHome() {
     rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
   }
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  rail.appendChild(navItem("💬", "相談", "顧問から予想の視点をもらいます。", () => renderConsult()));
-  rail.appendChild(navItem("🎓", "予想入門", "賭けの基礎をやさしく学びます。", () => renderHelp()));
+  // 📱 SNS＝タイムライン＋ファンレター。★配信モード（スマホ購入後）のみ＝それまではSNSナビを出さない。
+  if (broadcast && typeof renderSns === "function") {
+    const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
+    rail.appendChild(navItem("📱", "SNS", unread ? `島の投稿＋ファンレター（未読 ${unread} 通）。` : "島のみんなの投稿とファンレター。", () => renderSns()));
+  }
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
   // 列数を“実際の項目数”に追従させ、右に空きセル（隙間）ができるのを防ぐ。8以下は1行、9以上は2行に均等割り。
@@ -694,3 +747,4 @@ function renderHome() {
 
   app.appendChild(wrap);
 }
+

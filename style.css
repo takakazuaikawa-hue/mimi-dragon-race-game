@@ -43,7 +43,7 @@ body {
   background: var(--bg-world);
   background-attachment: fixed;
   color: var(--cream);
-  min-height: 100vh;
+  min-height: 100dvh;                 /* モバイルのURLバーでズレないよう dvh（L1・ガードレール準拠） */
   -webkit-user-select: none; user-select: none;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -78,7 +78,11 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 /* keep the main content column above the fixed home world scene */
 #app { position: relative; z-index: 1; }
 /* 左：ブランド（紋章＋タイトル） */
-.hd-brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
+.hd-brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; cursor: pointer; border-radius: 9px; padding: 2px 4px; margin: -2px -4px; transition: background .15s ease, transform .1s ease; -webkit-tap-highlight-color: transparent; }
+.hd-brand:hover { background: rgba(255,255,255,.06); }
+.hd-brand:active { transform: scale(.97); }
+.hd-brand .hd-crest { transition: transform .2s ease; }
+.hd-brand:hover .hd-crest { transform: scale(1.12) rotate(-6deg); }
 .hd-crest { font-size: 20px; line-height: 1; flex: none; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6)); }
 #header h1 {
   margin: 0; font-size: 17px; color: var(--gold-bright); min-width: 0;
@@ -2105,8 +2109,409 @@ body.home-mode #app { padding: 12px 12px 16px; }
    （内容が数px超えてもページが動かない。離脱時はクラスが外れて通常スクロールに戻る） */
 body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height: 100%;
   overflow: hidden; overscroll-behavior: none; }
+
+/* ===== H1: 横向き(低い高さ)対策 =====
+   縦持ち前提の全画面ノースクロールUIは横向きで下部(レース/ナビ/コメント)がクリップされ操作不能になる。
+   (a) home/title の固定＋overflow:hidden を解いてスクロールで操作部へ到達可能に（全環境の保険）。
+   (b) タッチ端末に限り「縦にしてね」を被せる（PCの低い窓は回転できないので除外＝(a)で救済）。 */
+@media (orientation: landscape) and (max-height: 560px) {
+  body.home-mode, body.title-mode { position: static; inset: auto; width: auto; height: auto; overflow: visible; }
+  .hl { min-height: auto; }
+  .title-screen { min-height: auto; overflow: visible; }
+}
+/* 見た目は常に定義し、出し入れ(display)だけを media で切替＝強制表示テストや将来の再利用が容易 */
+#rotate-hint {
+  display: none; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; text-align: center;
+  background: radial-gradient(120% 120% at 50% 28%, rgba(18,28,33,.97), rgba(8,12,15,.99));
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  padding: max(16px, env(safe-area-inset-top)) 20px max(16px, env(safe-area-inset-bottom)); }
+@media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
+  #rotate-hint { display: flex; }
+}
+.rh-card { max-width: 320px; }
+.rh-ic { font-size: 54px; line-height: 1; display: inline-block; animation: rhRotate 2.6s ease-in-out infinite; }
+@keyframes rhRotate { 0%,16%{ transform: rotate(0deg); } 40%,62%{ transform: rotate(-90deg); } 86%,100%{ transform: rotate(0deg); } }
+.rh-t { margin-top: 14px; font-size: 18px; font-weight: 900; color: var(--gold-bright); }
+.rh-s { margin-top: 8px; font-size: 13px; line-height: 1.75; color: var(--mist); }
+@media (prefers-reduced-motion: reduce) { .rh-ic { animation: none; } }
+
+/* ===== 📱 SNS（タイムライン／ファンレター・表示専用メタ・js/sns.js） ===== */
+.sns-feed { display: flex; flex-direction: column; gap: 9px; margin-top: 6px; }
+.sns-post { display: flex; gap: 10px; padding: 11px 12px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(34,38,46,.92), rgba(22,25,31,.92));
+  border: 1px solid var(--glass-border, rgba(255,255,255,.08)); box-shadow: 0 8px 22px -14px rgba(0,0,0,.7); }
+.sns-av { flex: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 21px; background: radial-gradient(circle at 50% 35%, rgba(255,210,120,.18), rgba(10,13,18,.55)); border: 1px solid var(--gold-line, rgba(230,178,74,.28)); }
+.sns-body { flex: 1 1 auto; min-width: 0; }
+.sns-pmeta { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; line-height: 1.2; }
+.sns-pname { font-size: 13.5px; color: var(--cream); font-weight: 800; }
+.sns-phandle { font-size: 11.5px; color: var(--gold); }
+.sns-pago { font-size: 11px; color: #8a98a0; }
+.sns-ptext { margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--mist); word-break: break-word; }
+.sns-actions { margin-top: 8px; display: flex; gap: 10px; }
+.sns-like { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 999px;
+  font-size: 12px; color: var(--mist); background: rgba(255,255,255,.05); border: 1px solid var(--glass-border, rgba(255,255,255,.08)); cursor: pointer; transition: transform .1s ease, background .15s ease; }
+.sns-like b { font-variant-numeric: tabular-nums; }
+.sns-like:active { transform: scale(.92); }
+.sns-like.on { background: rgba(255,90,120,.16); border-color: rgba(255,90,120,.4); color: #ffd0db; }
+
+.sns-inbox { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.sns-letter { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 11px 12px; border-radius: 13px;
+  background: linear-gradient(180deg, rgba(34,38,46,.9), rgba(22,25,31,.9)); border: 1px solid var(--glass-border, rgba(255,255,255,.08)); cursor: pointer; }
+.sns-letter.unread { border-color: rgba(230,178,74,.45); box-shadow: 0 0 0 1px rgba(230,178,74,.18), 0 8px 22px -14px rgba(0,0,0,.7); }
+.sns-lt-av { flex: none; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; background: rgba(255,255,255,.05); }
+.sns-lt-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sns-lt-subj { font-size: 13.5px; color: var(--cream); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sns-lt-from { font-size: 11.5px; color: #9fb0b8; }
+.sns-lt-st { flex: none; font-size: 11px; color: #8a98a0; }
+.sns-letter.unread .sns-lt-st { color: #ff8e8e; font-weight: 800; }
+
+.sns-letter-pop { text-align: left; max-width: 360px; }
+.sns-lp-av { font-size: 40px; text-align: center; line-height: 1; margin-bottom: 4px; }
+.sns-letter-pop .navpop-t { text-align: center; }
+.sns-lp-from { text-align: center; font-size: 12px; color: var(--gold); margin-bottom: 10px; }
+.sns-lp-body { font-size: 13px; line-height: 1.85; color: var(--mist); background: rgba(0,0,0,.22); border-radius: 12px; padding: 13px 14px; border: 1px dashed rgba(255,255,255,.1); }
+
+
+/* ===== SNS「Pyogram」＝Instagram風に忠実（黒テーマ・写真主体・js/ui_sns.js） ===== */
+.ig-app { background: #000; color: #fafafa; border-radius: 14px; overflow: hidden; border: 1px solid #262626; margin-top: -2px; }
+.ig-topbar { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid #1f1f1f; }
+.ig-logo { font-family: "Snell Roundhand", "Brush Script MT", "Segoe Script", cursive; font-style: italic; font-weight: 700; font-size: 24px; color: #fafafa; line-height: 1; letter-spacing: .5px; }
+.ig-top-dm { position: relative; background: none; border: none; font-size: 20px; cursor: pointer; padding: 2px; }
+.ig-dmbadge { position: absolute; top: -4px; right: -6px; min-width: 15px; padding: 0 4px; border-radius: 999px; background: #ed4956; color: #fff; font-size: 9px; font-weight: 800; line-height: 15px; }
+.ig-body { min-height: 40px; }
+.ig-nav { display: flex; border-top: 1px solid #1f1f1f; }
+.ig-nav-b { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 2px 10px; background: none; border: none; color: #8a8a8a; cursor: pointer; position: relative; }
+.ig-nav-b.on { color: #fafafa; }
+.ig-nav-ic { font-size: 19px; line-height: 1; height: 28px; display: inline-flex; align-items: center; justify-content: center; overflow: visible; }
+.ig-nav-lb { font-size: 10px; }
+.ig-nav-dot { position: absolute; top: 7px; right: 50%; margin-right: -16px; width: 7px; height: 7px; border-radius: 50%; background: #ed4956; }
+.ig-stories { display: flex; gap: 14px; padding: 12px 12px 13px; overflow-x: auto; border-bottom: 1px solid #1f1f1f; scrollbar-width: none; }
+.ig-stories::-webkit-scrollbar { display: none; }
+.ig-story { flex: none; width: 62px; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0; }
+.ig-story-ring { position: relative; width: 60px; height: 60px; border-radius: 50%; padding: 2.5px; box-sizing: border-box;
+  background: linear-gradient(45deg, #f09433, #e6683c 30%, #dc2743 55%, #cc2366 75%, #bc1888); }
+.ig-story-ring.seen, .ig-story-ring.you { background: #363636; }
+.ig-story-av { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px;
+  background: radial-gradient(circle at 50% 38%, #2a2f36, #14181d); border: 2.5px solid #000; box-sizing: border-box; }
+.ig-story-av.sm { width: 30px; height: 30px; font-size: 16px; border-width: 0; }
+.ig-story-plus { position: absolute; right: -1px; bottom: -1px; width: 19px; height: 19px; border-radius: 50%; background: #0095f6; color: #fff; font-size: 13px; line-height: 17px; text-align: center; border: 2px solid #000; }
+.ig-story-nm { font-size: 11px; color: #d8d8d8; max-width: 62px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ig-post { border-bottom: 1px solid #1a1a1a; }
+.ig-post-head { display: flex; align-items: center; gap: 9px; padding: 10px 13px; }
+.ig-post-av { flex: none; width: 33px; height: 33px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px;
+  background: radial-gradient(circle at 50% 38%, #2a2f36, #14181d); border: 1px solid #333; }
+.ig-post-av.sm { width: 26px; height: 26px; font-size: 14px; }
+.ig-post-who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.ig-post-who b { font-size: 13px; color: #fafafa; font-weight: 700; }
+.ig-post-who small { font-size: 11px; color: #a8a8a8; }
+.ig-post-more { flex: none; color: #fafafa; font-size: 17px; }
+.ig-post-imgwrap { position: relative; width: 100%; aspect-ratio: 1 / 1; background: #0c0c0c; overflow: hidden; }
+.ig-post-img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
+.ig-heart-burst { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%) scale(0); font-size: 90px; opacity: 0; pointer-events: none; text-shadow: 0 4px 20px rgba(0,0,0,.5); }
+.ig-heart-burst.go { animation: igHeart .9s ease both; }
+@keyframes igHeart { 0% { transform: translate(-50%,-50%) scale(0); opacity: 0; } 15% { transform: translate(-50%,-50%) scale(1.15); opacity: 1; } 30% { transform: translate(-50%,-50%) scale(.92); } 45% { transform: translate(-50%,-50%) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%,-50%) scale(1); opacity: 0; } }
+.ig-post-actions { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px 4px; }
+.ig-act-left { display: flex; gap: 14px; }
+.ig-like, .ig-comment, .ig-share, .ig-save { background: none; border: none; font-size: 22px; line-height: 1; height: 30px; display: inline-flex; align-items: center; justify-content: center; overflow: visible; cursor: pointer; padding: 0; transition: transform .12s ease; }
+.ig-like:active, .ig-comment:active, .ig-share:active, .ig-save:active { transform: scale(.8); }
+.ig-likes { padding: 1px 14px 0; font-size: 13px; color: #fafafa; }
+.ig-likes b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ig-cap { padding: 4px 14px 0; font-size: 13px; line-height: 1.5; color: #fafafa; word-break: break-word; }
+.ig-cap b { font-weight: 700; margin-right: 3px; }
+.ig-comline { padding: 4px 14px 0; }
+.ig-comlink { background: none; border: none; padding: 0; font-size: 13px; color: #a8a8a8; cursor: pointer; }
+.ig-com { font-size: 13px; color: #fafafa; line-height: 1.5; margin-bottom: 2px; }
+.ig-com b { font-weight: 700; margin-right: 3px; } .ig-com.mine b { color: #d8d8ff; }
+.ig-post-time { padding: 5px 14px 12px; font-size: 10.5px; color: #8a8a8a; text-transform: uppercase; letter-spacing: .03em; }
+.ig-comments { max-width: 360px; text-align: left; background: #1a1a1a; }
+.ig-cm-head { display: flex; gap: 10px; padding-bottom: 11px; border-bottom: 1px solid #2a2a2a; margin-bottom: 11px; }
+.ig-cm-cap { font-size: 12.5px; color: #d8d8d8; line-height: 1.5; margin-top: 2px; }
+.ig-cm-list { display: flex; flex-direction: column; gap: 11px; margin-bottom: 4px; }
+.ig-cm-row { display: flex; gap: 9px; font-size: 13px; color: #fafafa; line-height: 1.5; align-items: flex-start; }
+.ig-cm-row b { margin-right: 4px; }
+.ig-cm-row.mine b { color: #9fd6ff; }
+.ig-cm-pick-lb { font-size: 11px; color: #a8a8a8; margin: 10px 0 6px; }
+.ig-cm-picks { display: flex; flex-direction: column; gap: 7px; }
+.ig-cm-pick { text-align: left; padding: 9px 13px; border-radius: 10px; font-size: 13px; color: #fafafa; background: rgba(255,255,255,.06); border: 1px solid #333; cursor: pointer; }
+.ig-cm-pick:active { transform: scale(.98); }
+.ig-story-ov { position: fixed; inset: 0; z-index: 9300; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; padding: 18px; -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.ig-story-card { width: 100%; max-width: 340px; background: linear-gradient(160deg, #3a2f5a, #2a1f44); border-radius: 18px; overflow: hidden; padding: 12px 14px 18px; box-shadow: 0 24px 60px -20px rgba(0,0,0,.9); animation: snsPop .25s ease both; }
+@keyframes snsPop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.ig-st-bar { height: 2.5px; border-radius: 999px; background: rgba(255,255,255,.3); overflow: hidden; margin-bottom: 11px; }
+.ig-st-bar i { display: block; height: 100%; width: 100%; background: #fff; }
+.ig-st-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.ig-st-head b { font-size: 13px; color: #fff; flex: 1 1 auto; }
+.ig-st-x { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; }
+.ig-st-sticker { background: rgba(255,255,255,.96); border-radius: 16px; padding: 16px 15px; box-shadow: 0 10px 30px -12px rgba(0,0,0,.5); }
+.ig-st-q { font-size: 15px; font-weight: 800; color: #1a1a1a; text-align: center; margin-bottom: 13px; line-height: 1.4; }
+.ig-st-opts { display: flex; flex-direction: column; gap: 8px; }
+.ig-st-opt { padding: 11px; border-radius: 11px; font-size: 14px; font-weight: 700; color: #262626; background: #efeff0; border: none; cursor: pointer; transition: transform .1s ease, background .15s ease; }
+.ig-st-opt:hover { background: #e4e4ff; } .ig-st-opt:active { transform: scale(.98); }
+.ig-st-res { position: relative; padding: 11px 13px; border-radius: 11px; overflow: hidden; background: #efeff0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ig-st-res i { position: absolute; inset: 0; width: 0; background: #d9d2ff; z-index: 0; transition: width .6s cubic-bezier(.22,.61,.36,1); }
+.ig-st-res.mine i { background: linear-gradient(90deg, #ffaa88, #c9b8ff); }
+.ig-st-rt { position: relative; z-index: 1; font-size: 13.5px; font-weight: 700; color: #262626; }
+.ig-st-rp { position: relative; z-index: 1; font-size: 13px; font-weight: 800; color: #262626; }
+.ig-st-note { font-size: 11px; color: #fff; text-align: center; margin-top: 12px; opacity: .85; }
+.ig-st-photo { width: 100%; aspect-ratio: 9 / 13; border-radius: 12px; background-size: cover; background-position: center; margin-bottom: 10px; }
+.ig-st-cap { font-size: 13px; color: #fff; line-height: 1.5; text-align: center; }
+.ig-compose { max-width: 360px; text-align: left; background: #1a1a1a; }
+.ig-cp-prev { width: 100%; aspect-ratio: 1 / 1; border-radius: 12px; background: #0c0c0c center/cover no-repeat; margin-bottom: 10px; }
+.ig-cp-rolllabel { font-size: 11px; color: #a8a8a8; margin-bottom: 6px; }
+.ig-cp-roll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none; }
+.ig-cp-roll::-webkit-scrollbar { display: none; }
+.ig-cp-thumb { flex: none; width: 56px; height: 56px; border-radius: 8px; background: #0c0c0c center/cover no-repeat; border: 2px solid transparent; cursor: pointer; }
+.ig-cp-thumb.on { border-color: #0095f6; }
+.ig-cp-cap { width: 100%; min-height: 60px; resize: vertical; font-size: 16px; line-height: 1.5; color: #fafafa; font-family: inherit; background: rgba(255,255,255,.05); border: 1px solid #333; border-radius: 10px; padding: 9px 11px; box-sizing: border-box; }
+.ig-cp-cap:focus { outline: none; border-color: #0095f6; }
+.ig-prof-head { display: flex; align-items: center; gap: 22px; padding: 16px 16px 6px; }
+.ig-prof-ring { flex: none; width: 78px; height: 78px; border-radius: 50%; padding: 3px; box-sizing: border-box; background: linear-gradient(45deg, #f09433, #dc2743 55%, #bc1888); }
+.ig-prof-av { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 38px; background: radial-gradient(circle at 50% 38%, #2a2f36, #14181d); border: 3px solid #000; box-sizing: border-box; }
+.ig-prof-stats { flex: 1 1 auto; display: flex; justify-content: space-around; }
+.ig-prof-stat { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.ig-prof-stat b { font-size: 17px; color: #fafafa; font-variant-numeric: tabular-nums; }
+.ig-prof-stat small { font-size: 12px; color: #d8d8d8; }
+.ig-prof-info { padding: 4px 16px 0; }
+.ig-prof-name { font-size: 14px; font-weight: 700; color: #fafafa; display: flex; align-items: center; gap: 5px; }
+.ig-verif { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; background: #0095f6; color: #fff; font-size: 9px; }
+.ig-prof-cat { font-size: 12.5px; color: #a8a8a8; margin-top: 1px; }
+.ig-prof-bio { font-size: 12.5px; color: #fafafa; line-height: 1.5; margin-top: 4px; }
+.ig-prof-btns { display: flex; gap: 6px; padding: 12px 16px 4px; }
+.ig-prof-btn { flex: 1 1 auto; padding: 7px; border-radius: 9px; font-size: 13px; font-weight: 700; color: #fafafa; background: #363636; border: none; cursor: pointer; }
+.ig-prof-btn.add { flex: 0 0 40px; }
+.ig-prof-btn:active { transform: scale(.97); }
+.ig-highlights { display: flex; gap: 16px; padding: 14px 16px 6px; overflow-x: auto; scrollbar-width: none; }
+.ig-highlights::-webkit-scrollbar { display: none; }
+.ig-hi { flex: none; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.ig-hi-c { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; background: #1c1c1c; border: 1px solid #363636; }
+.ig-hi-lb { font-size: 11px; color: #d8d8d8; max-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ig-gridtab { display: flex; border-top: 1px solid #262626; margin-top: 8px; }
+.ig-gridtab span { flex: 1 1 0; text-align: center; padding: 9px; font-size: 18px; color: #6a6a6a; border-top: 1px solid transparent; margin-top: -1px; }
+.ig-gridtab span.on { color: #fafafa; border-top-color: #fafafa; }
+.ig-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.ig-cell { position: relative; aspect-ratio: 1 / 1; background: #0c0c0c center/cover no-repeat; border: none; cursor: pointer; padding: 0; }
+.ig-cell-mine { position: absolute; top: 4px; right: 5px; font-size: 12px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
+.ig-buzz { font-size: 10.5px; font-weight: 900; color: #ff7a3c; padding: 1px 7px; border-radius: 999px; background: rgba(255,120,60,.16); border: 1px solid rgba(255,120,60,.4); }
+.ig-detail { max-width: 340px; padding: 0; overflow: hidden; background: #000; }
+.ig-detail .ig-post { border: none; }
+.ig-detail .navpop-btns { padding: 10px 12px 12px; }
+.ig-dm-head { font-size: 13px; font-weight: 700; color: #fafafa; padding: 12px 4px 8px; }
+.ig-dm-list { display: flex; flex-direction: column; }
+.ig-dm-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 9px 6px; background: none; border: none; cursor: pointer; }
+.ig-dm-av { flex: none; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 23px; background: radial-gradient(circle at 50% 38%, #2a2f36, #14181d); border: 1px solid #333; }
+.ig-dm-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ig-dm-tx b { font-size: 13.5px; color: #fafafa; font-weight: 600; }
+.ig-dm-tx small { font-size: 12px; color: #a8a8a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ig-dm-row.unread .ig-dm-tx b, .ig-dm-row.unread .ig-dm-tx small { color: #fafafa; font-weight: 700; }
+.ig-dm-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #0095f6; }
+.ig-dm-pop { max-width: 340px; text-align: left; background: #1a1a1a; }
+.ig-dm-pop-head { display: flex; align-items: center; gap: 10px; padding-bottom: 11px; border-bottom: 1px solid #2a2a2a; margin-bottom: 12px; }
+.ig-dm-pop-head b { font-size: 14px; color: #fafafa; }
+.ig-dm-bubble { font-size: 13px; line-height: 1.8; color: #fafafa; background: #262626; border-radius: 4px 16px 16px 16px; padding: 12px 14px; }
+.ig-empty { text-align: center; padding: 26px 16px; font-size: 13px; line-height: 1.7; color: #a8a8a8; }
+.sns-toast { position: fixed; left: 50%; bottom: 80px; transform: translate(-50%, 14px); z-index: 9400; max-width: 84vw;
+  padding: 11px 18px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff;
+  background: rgba(20,20,20,.98); border: 1px solid #444; box-shadow: 0 14px 34px -14px rgba(0,0,0,.85);
+  opacity: 0; pointer-events: none; transition: opacity .3s ease, transform .3s cubic-bezier(.22,.61,.36,1); }
+.sns-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ===== ショッピングモール「MIMI MALL」＝station SQUARE風ライト・ポータル（js/ui_mall.js） ===== */
+.scm { --scm-org: #ef8200; --scm-ink: #3f3a36; --scm-sub: #8a8178; --scm-line: #ececec;
+  background: #fff; color: var(--scm-ink); border-radius: 14px; overflow: hidden; margin: -2px 0 0;
+  border: 1px solid #e6e6e6; box-shadow: 0 18px 40px -24px rgba(0,0,0,.5); font-feature-settings: "palt"; }
+.scm-ico { width: 1em; height: 1em; display: block; }
+/* ヘッダー */
+.scm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 15px 12px; border-bottom: 1px solid var(--scm-line); }
+.scm-logo { line-height: 1.15; }
+.scm-logo small { display: block; font-size: 8.5px; letter-spacing: .12em; color: var(--scm-sub); }
+.scm-logo b { font-size: 20px; font-weight: 800; letter-spacing: .02em; color: #4a443e; }
+.scm-logo b span { color: var(--scm-org); }
+.scm-headic { display: flex; align-items: center; gap: 8px; }
+.scm-hbtn { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: #6a635c; cursor: pointer; padding: 4px; font-size: 21px; }
+.scm-hcoins { font-size: 18px; gap: 4px; }
+.scm-hcoins b { font-size: 12px; font-weight: 800; color: #4a443e; }
+.scm-hbtn:active { transform: scale(.9); }
+/* ヒーロー・カルーセル */
+.scm-hero { padding: 13px 0 6px; }
+.scm-hero-track { display: flex; gap: 11px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 15px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.scm-hero-track::-webkit-scrollbar { display: none; }
+.scm-banner { scroll-snap-align: center; flex: 0 0 86%; display: flex; align-items: center; gap: 12px; text-align: left;
+  padding: 16px 16px; border-radius: 14px; border: none; cursor: pointer; min-height: 92px; box-shadow: 0 8px 20px -12px rgba(0,0,0,.35); }
+.scm-banner.b-adv { background: linear-gradient(120deg, #f6ecd6, #efe0bd); }
+.scm-banner.b-new { background: linear-gradient(120deg, #ffe6d8, #ffd2c0); }
+.scm-banner.b-vip { background: linear-gradient(120deg, #d9efe2, #c2e6d2); }
+.scm-banner-k { font-size: 34px; line-height: 1; flex: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.12)); }
+.scm-banner-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.scm-banner-tx b { font-size: 16px; font-weight: 800; color: #5a4a32; }
+.scm-banner-tx small { font-size: 11.5px; color: #8a7a5e; line-height: 1.4; }
+.scm-banner-go { flex: none; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.7); color: #b07b3a; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.scm-banner.b-new .scm-banner-tx b { color: #a4502f; } .scm-banner.b-new .scm-banner-tx small { color: #b56b4c; } .scm-banner.b-new .scm-banner-go { color: #d2683c; }
+.scm-banner.b-vip .scm-banner-tx b { color: #2f6b4a; } .scm-banner.b-vip .scm-banner-tx small { color: #4d8466; } .scm-banner.b-vip .scm-banner-go { color: #2f8a5c; }
+.scm-dots { display: flex; justify-content: center; gap: 6px; padding: 11px 0 4px; }
+.scm-dot { width: 6px; height: 6px; border-radius: 50%; background: #d8d2cb; transition: background .2s ease, width .2s ease; }
+.scm-dot.on { background: var(--scm-org); width: 16px; border-radius: 99px; }
+/* アイコンメニュー（3列・線画） */
+.scm-cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 0; padding: 14px 8px 16px; border-bottom: 1px solid var(--scm-line); }
+.scm-cat { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 4px; background: none; border: none; cursor: pointer; color: var(--scm-ink); }
+.scm-cat-ic { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; color: #5a534c; font-size: 30px; }
+.scm-cat:active .scm-cat-ic { transform: scale(.9); }
+.scm-cat-lb { font-size: 11.5px; color: #555049; }
+/* セクション見出し */
+.scm-sectitle { display: flex; align-items: baseline; gap: 8px; }
+.scm-sectitle b { font-size: 15px; font-weight: 800; color: #4a443e; }
+.scm-sectitle small { font-size: 10px; letter-spacing: .14em; color: #c2b8ad; }
+.scm-sectitle::before { content: ""; width: 4px; height: 15px; border-radius: 2px; background: var(--scm-org); margin-right: 2px; align-self: center; }
+/* 試着室 */
+.scm-fit { padding: 16px 15px 4px; }
+.scm-fit-card { margin-top: 12px; border-radius: 14px; background: linear-gradient(180deg, #faf7f3, #f3eee8); border: 1px solid #ececec; overflow: hidden; }
+.scm-fit-stage { position: relative; padding: 12px 12px 8px; }
+.scm-fit-img { position: relative; width: 100%; height: 300px; display: flex; align-items: flex-end; justify-content: center; }
+.scm-fit-img img { max-height: 100%; max-width: 86%; object-fit: contain; object-position: bottom; filter: drop-shadow(0 8px 14px rgba(0,0,0,.14)); }
+.scm-fit-img.silhouette img { filter: brightness(0) opacity(.78); }
+.scm-silq { position: absolute; left: 50%; top: 44%; transform: transl(-50%,-50%); transform: translateX(-50%); font-size: 46px; color: #cabfb3; font-weight: 900; }
+.scm-badge { position: absolute; top: 8px; right: 10px; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
+.scm-badge.worn { background: var(--scm-org); color: #fff; } .scm-badge.owned { background: #efe7da; color: #8a6a3a; } .scm-badge.lock { background: #efe9e3; color: #9a9088; }
+.scm-expr { display: flex; gap: 6px; justify-content: center; margin-top: 4px; }
+.scm-expr-b { width: 38px; height: 32px; border-radius: 9px; font-size: 15px; background: #fff; border: 1px solid #e6ddd2; cursor: pointer; }
+.scm-expr-b.on { background: #fff3e4; border-color: #f0c089; }
+.scm-fit-info { padding: 4px 15px 16px; }
+.scm-fit-nm { font-size: 17px; font-weight: 800; color: #443f39; }
+.scm-fit-fl { font-size: 12px; color: #8a8178; line-height: 1.6; margin: 3px 0 6px; }
+.scm-fit-acq { font-size: 12.5px; color: #6a635c; } .scm-fit-acq b { color: var(--scm-org); }
+.scm-fit-cta { margin-top: 12px; }
+.scm-btn { width: 100%; padding: 13px; border-radius: 11px; font-size: 14px; font-weight: 800; cursor: pointer; border: none; }
+.scm-btn.primary { background: var(--scm-org); color: #fff; box-shadow: 0 8px 18px -8px rgba(239,130,0,.6); }
+.scm-btn.primary.poor { background: #d9b48a; box-shadow: none; }
+.scm-btn.ghost { background: #fff; color: #6a635c; border: 1px solid #e6ddd2; }
+.scm-btn:active { transform: scale(.98); }
+.scm-worn { text-align: center; font-size: 13px; font-weight: 800; color: #2f8a5c; margin-bottom: 8px; }
+.scm-lockmsg { text-align: center; font-size: 13px; color: #9a9088; padding: 10px; background: #f4f0ea; border-radius: 10px; }
+/* ショップ */
+.scm-shops { padding: 18px 15px 18px; border-top: 1px solid var(--scm-line); }
+.scm-shops-top { margin-bottom: 10px; }
+.scm-filter { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
+.scm-filter::-webkit-scrollbar { display: none; }
+.scm-chip { flex: none; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #6a635c; background: #f3efe9; border: 1px solid transparent; cursor: pointer; }
+.scm-chip.on { background: #fff3e4; color: var(--scm-org); border-color: #f0c089; }
+.scm-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; }
+.scm-card { padding: 0; background: #fff; border: 1px solid #ececec; border-radius: 13px; overflow: hidden; cursor: pointer; box-shadow: 0 6px 16px -12px rgba(0,0,0,.4); transition: transform .12s ease, box-shadow .15s ease; text-align: left; }
+.scm-card:active { transform: scale(.98); }
+.scm-card.sel { border-color: var(--scm-org); box-shadow: 0 0 0 2px rgba(239,130,0,.25), 0 6px 16px -12px rgba(0,0,0,.4); }
+.scm-card.worn { border-color: #f0c089; }
+.scm-card-img { position: relative; height: 150px; background: linear-gradient(180deg, #faf7f3, #f1ebe4); display: flex; align-items: flex-end; justify-content: center; }
+.scm-card-img img { max-height: 96%; max-width: 88%; object-fit: contain; object-position: bottom; }
+.scm-card-img.silhouette img { filter: brightness(0) opacity(.8); }
+.scm-cardchip { position: absolute; top: 7px; left: 7px; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+.scm-cardchip.worn { background: var(--scm-org); color: #fff; } .scm-cardchip.owned { background: #efe7da; color: #8a6a3a; }
+.scm-cardchip.price { background: rgba(255,255,255,.92); color: #6a5a3a; box-shadow: 0 1px 4px rgba(0,0,0,.12); } .scm-cardchip.lock { background: rgba(255,255,255,.92); color: #9a9088; }
+.scm-card-nm { padding: 8px 10px 10px; font-size: 12.5px; font-weight: 700; color: #4a443e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scm-empty { grid-column: 1/-1; text-align: center; padding: 24px; font-size: 13px; color: #9a9088; }
+/* サービス・案内（大見出し＋オレンジ角丸ピル） */
+.scm-service { padding: 20px 15px 16px; border-top: 1px solid var(--scm-line); }
+.scm-bigtitle { margin-bottom: 14px; }
+.scm-bigtitle b { font-size: 26px; font-weight: 800; letter-spacing: .04em; color: #5a534c; }
+.scm-bigtitle b span { color: var(--scm-org); }
+.scm-bigtitle small { display: block; font-size: 12.5px; font-weight: 700; color: #6a635c; margin-top: 1px; }
+.scm-pills { display: flex; flex-direction: column; gap: 11px; }
+.scm-pill { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 13px 12px 13px 16px; border: none; cursor: pointer;
+  border-radius: 999px; background: linear-gradient(180deg, #f8cca2, #f3bd8d); color: #7a4a22; box-shadow: 0 6px 14px -10px rgba(180,110,40,.7); transition: transform .1s ease, filter .15s ease; }
+.scm-pill:hover { filter: brightness(1.03); } .scm-pill:active { transform: scale(.99); }
+.scm-pill-ic { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: #8a5a2c; font-size: 21px; }
+.scm-pill-t { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 800; color: #6a3f1c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scm-pill-go { flex: none; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.85); color: #d2823c; font-size: 13px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+/* 下部オレンジナビ（中央MENU） */
+/* 下部ナビ＝body直下にfixedで設置しviewport下端にfloat（中央470px枠に合わせる）。bodyでは--scm-org不可→直値。 */
+#scm-bnav-host.scm-bnav { display: flex; align-items: flex-end; justify-content: space-around; background: #ef8200; padding: 9px 4px calc(9px + env(safe-area-inset-bottom, 0px));
+  position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 470px; z-index: 45; box-shadow: 0 -7px 20px -8px rgba(0,0,0,.35); }
+.scm-bnav-b { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: #fff; cursor: pointer; padding: 2px 1px; }
+.scm-bnav-ic { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 21px; }
+.scm-bnav-lb { font-size: 9px; font-weight: 700; line-height: 1.1; text-align: center; }
+.scm-bnav-b:active { transform: scale(.92); }
+.scm-bnav-b.mid { position: relative; }
+.scm-bnav-mid { width: 50px; height: 50px; margin-top: -22px; border-radius: 50%; background: #ef8200; border: 4px solid #fff; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px -6px rgba(0,0,0,.4); }
+/* SNS 縦タブ（右端） */
+.scm-snstab { position: absolute; right: 0; top: 280px; z-index: 6; writing-mode: initial; padding: 12px 7px; border: none; border-radius: 9px 0 0 9px;
+  background: var(--scm-org); color: #fff; font-size: 11px; font-weight: 900; letter-spacing: .05em; line-height: 1.25; cursor: pointer; box-shadow: -3px 4px 12px -6px rgba(0,0,0,.4); }
+.scm-snstab:active { transform: scale(.94); }
+.scm { position: relative; padding-bottom: 80px; }   /* フロート下部ナビ(body直下fixed)の分の余白 */
+
+/* ===== 大冒険ハブ＝station SQUARE風ライト（.scmr・js/ui_mall_rpg.js） ===== */
+.scmr { padding-bottom: 24px; }
+.scmr-stat { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 15px; border-bottom: 1px solid var(--scm-line); }
+.scmr-char { display: flex; align-items: center; gap: 8px; flex: none; }
+.scmr-av { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; background: linear-gradient(180deg,#fff1e0,#ffe2c4); border: 1px solid #f0c089; }
+.scmr-lvl { display: flex; flex-direction: column; line-height: 1.15; }
+.scmr-lvl b { font-size: 15px; color: var(--scm-ink); }
+.scmr-clear { font-size: 11px; font-weight: 800; color: #2e9e6b; }
+.scmr-bars { flex: 1 1 130px; display: flex; flex-direction: column; gap: 5px; min-width: 120px; }
+.scmr-bar { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--scm-sub); }
+.scmr-bk { flex: none; width: 40px; }
+.scmr-bt { flex: 1 1 auto; height: 8px; border-radius: 99px; background: #efe9e1; overflow: hidden; }
+.scmr-bt i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg,#ff8a6a,#ef5a4a); }
+.scmr-bar.mp .scmr-bt i { background: linear-gradient(90deg,#7cc0ff,#4a8fef); }
+.scmr-bv { flex: none; font-variant-numeric: tabular-nums; color: var(--scm-ink); }
+.scmr-wallet { display: flex; gap: 12px; flex: none; font-size: 13px; color: var(--scm-ink); }
+.scmr-wallet b { font-variant-numeric: tabular-nums; }
+.scmr-goal { margin: 14px 15px 0; padding: 11px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #7a4a1c;
+  background: linear-gradient(180deg,#fff6e9,#ffe7d4); border: 1px solid #f3d3a6; }
+.scmr-goal b { color: var(--scm-org); }
+.scmr-daily { display: block; width: calc(100% - 30px); margin: 11px 15px 0; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #fff; cursor: pointer;
+  background: linear-gradient(180deg,#ffb14e,#ef8a1e); border: none; box-shadow: 0 8px 18px -10px rgba(239,130,0,.7); animation: snsPop .3s ease both; }
+.scmr-cta { display: flex; align-items: center; gap: 12px; width: calc(100% - 30px); margin: 13px 15px 0; padding: 15px 15px; border-radius: 16px; cursor: pointer; text-align: left;
+  background: linear-gradient(120deg,#ef8200,#ffb04e); color: #fff; border: none; box-shadow: 0 12px 26px -12px rgba(239,130,0,.8); transition: transform .1s ease, filter .15s ease; }
+.scmr-cta:hover { filter: brightness(1.04); } .scmr-cta:active { transform: scale(.99); }
+.scmr-cta.tower { background: linear-gradient(120deg,#7a5cc0,#b08adf); box-shadow: 0 12px 26px -12px rgba(120,92,192,.7); }
+.scmr-cta-k { flex: none; font-size: 30px; line-height: 1; }
+.scmr-cta-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.scmr-cta-tx b { font-size: 16px; } .scmr-cta-tx small { font-size: 11.5px; opacity: .92; }
+.scmr-cta-go { flex: none; font-size: 16px; opacity: .9; }
+.scmr-card { margin: 13px 15px 0; padding: 13px 14px; border-radius: 14px; background: #fff; border: 1px solid var(--scm-line); box-shadow: 0 8px 20px -16px rgba(0,0,0,.4); }
+.scmr-ctitle { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.scmr-ctitle b { font-size: 14px; color: var(--scm-ink); }
+.scmr-rates { font-size: 10.5px; color: var(--scm-sub); }
+.scmr-gacha { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.scmr-gbtn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 13px 8px; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(180deg,#fff3e3,#ffe6cb); border: 1px solid #f0c089; color: #7a4a1c; }
+.scmr-gbtn.gold { background: linear-gradient(180deg,#fff0f6,#ffe0ef); border-color: #f0a8cf; color: #9a3a6a; }
+.scmr-gbtn b { font-size: 14px; } .scmr-gbtn small { font-size: 10.5px; opacity: .85; }
+.scmr-gbtn.off { opacity: .42; cursor: default; filter: grayscale(.5); }
+.scmr-gbtn:not(.off):active { transform: scale(.96); }
+/* アコーディオン（折りたたみ各種） */
+.scmr-acc { margin: 11px 15px 0; border-radius: 13px; background: #fff; border: 1px solid var(--scm-line); overflow: hidden; }
+.scmr-acc > summary { list-style: none; cursor: pointer; padding: 13px 14px; font-size: 13.5px; font-weight: 800; color: var(--scm-ink); display: flex; align-items: center; justify-content: space-between; }
+.scmr-acc > summary::-webkit-details-marker { display: none; }
+.scmr-acc > summary::after { content: "⌄"; color: var(--scm-org); font-weight: 900; transition: transform .2s ease; }
+.scmr-acc[open] > summary::after { transform: rotate(180deg); }
+.scmr-acc-r { font-size: 11.5px; font-weight: 700; color: var(--scm-sub); margin-left: auto; margin-right: 8px; }
+.scmr-badge { background: #ef5a4a; color: #fff; font-size: 10px; border-radius: 99px; padding: 0 5px; }
+.scmr-hint { padding: 0 14px 8px; font-size: 11.5px; color: var(--scm-sub); line-height: 1.5; }
+.scmr-labgrid, .scmr-shopgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 14px; }
+.scmr-labbtn { display: flex; flex-direction: column; gap: 1px; padding: 10px; border-radius: 11px; text-align: left; cursor: pointer; background: #fbf7f0; border: 1px solid var(--scm-line); color: var(--scm-ink); position: relative; }
+.scmr-labbtn .scmr-labic { font-size: 18px; } .scmr-labbtn b { font-size: 12.5px; } .scmr-labbtn small { font-size: 10.5px; color: var(--scm-sub); }
+.scmr-lablv { font-size: 10.5px; color: var(--scm-sub); } .scmr-labcost { position: absolute; right: 9px; top: 9px; font-size: 11px; font-weight: 800; color: var(--scm-org); }
+.scmr-labbtn.ready { border-color: #f0c089; background: #fff7ec; } .scmr-labbtn.maxed { opacity: .7; } .scmr-labbtn.off { opacity: .5; }
+.scmr-labbtn:not(.off):not(.maxed):active { transform: scale(.97); }
+.scmr-book { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.scmr-bfloor-t { font-size: 12px; font-weight: 800; color: var(--scm-ink); display: flex; gap: 6px; align-items: baseline; }
+.scmr-bfloor-t small { font-size: 10.5px; color: var(--scm-sub); font-weight: 600; }
+.scmr-bitems { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.scmr-bit { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; background: #f1ece4; opacity: .55; }
+.scmr-bit.got { background: #fff3e3; opacity: 1; }
+.scmr-shopbtn { display: flex; flex-direction: column; gap: 1px; padding: 10px; border-radius: 11px; text-align: left; cursor: pointer; background: #fbf7f0; border: 1px solid var(--scm-line); color: var(--scm-ink); position: relative; }
+.scmr-shopbtn b { font-size: 12.5px; } .scmr-shopbtn small { font-size: 10.5px; color: var(--scm-sub); } .scmr-shopbtn .scmr-cost { position: absolute; right: 9px; top: 10px; font-size: 11px; font-weight: 800; color: var(--scm-org); }
+.scmr-shopbtn.off { opacity: .45; }
+.scmr-rest { display: block; width: calc(100% - 28px); margin: 0 14px 14px; padding: 11px; border-radius: 11px; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(180deg,#7cc0a0,#4ea886); border: none; }
+.scmr-codex { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 4px; }
+.scmr-codexrow { display: flex; justify-content: space-between; font-size: 12px; color: var(--scm-ink); padding: 4px 0; border-top: 1px dashed #eee; }
+.scmr-records { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 14px; }
+.scmr-rec { background: #fbf7f0; border: 1px solid var(--scm-line); border-radius: 10px; padding: 9px 11px; }
+.scmr-rec small { display: block; font-size: 10.5px; color: var(--scm-sub); } .scmr-rec b { font-size: 16px; color: var(--scm-ink); font-variant-numeric: tabular-nums; }
+.scmr-back { display: block; width: calc(100% - 30px); margin: 16px 15px 0; padding: 11px; border-radius: 11px; font-size: 13px; font-weight: 700; color: var(--scm-ink); background: #f1ece4; border: 1px solid var(--scm-line); cursor: pointer; }
+.scmr-back:active { transform: scale(.99); }
+
 .title-screen {
-  position: relative; min-height: 100vh; min-height: 100dvh;
+  position: relative; min-height: 100dvh;
   overflow: hidden; display: flex; align-items: stretch; justify-content: center;
 }
 .title-bg {
@@ -3195,6 +3600,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: var(--bg-world); }
 .hl-bg-img { position: absolute; inset: -6%; width: 112%; height: 112%; object-fit: cover; opacity: .82;   /* 余白±6%＝接地キャリブレーションの可動域 */
   animation: hlKen 38s ease-in-out infinite alternate; }
+/* 縦構図背景：全景が縦に収まる＝素直なcover（接地はSVG側のfloorで設計）。縁が出ないようズームのみのKen Burns。 */
+.hl-bg-img.portrait { inset: 0; width: 100%; height: 100%; object-position: center; opacity: .97;
+  animation: hlKenP 42s ease-in-out infinite alternate; }
+@keyframes hlKenP { from { transform: scale(1.015); } to { transform: scale(1.07); } }
 .hl-bg-scrim { position: absolute; inset: 0; background:
   linear-gradient(180deg, rgba(8,12,16,.66) 0%, rgba(8,12,16,.20) 24%, rgba(8,12,16,.06) 52%, rgba(8,10,14,.80) 100%); }
 @keyframes hlKen { from { transform: translate(0,0) scale(1); } to { transform: translate(-1.6%,1.2%) scale(1.06); } }
@@ -3258,11 +3667,20 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border: 1px solid var(--glass-border); color: var(--mist); cursor: pointer; text-align: left; }
 
 .hl-stage { position: relative; flex: 1 1 auto; min-height: 48vh; z-index: 1; }
+/* 👗 きせかえ＝立ち絵右下のFAB風（本体タップは反応なので着替えはここから） */
+.hl-dress { position: absolute; right: 10px; bottom: 12px; z-index: 4; display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; cursor: pointer;
+  background: rgba(10,13,18,.6); border: 1px solid rgba(255,255,255,.22); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  box-shadow: 0 6px 18px -8px rgba(0,0,0,.7); transition: transform .1s ease, background .15s ease; -webkit-tap-highlight-color: transparent; }
+.hl-dress:hover { background: rgba(20,26,34,.78); }
+.hl-dress:active { transform: scale(.92); }
+.hl-dress-ic { font-size: 13px; line-height: 1; flex: none; }
+.hl-dress-nm { max-width: 116px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ミミは中央・周囲とのバランスを取りつつ最大化（PCはコンテナ相対、スマホは画面幅相対）。
    背が高い時は上段バー(z-index:3)の背後に収まるので情報を隠さない。 */
-.hl-mimi { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 1;
-  width: min(96vw, 96%, 520px); height: min(76vh, 720px);
-  cursor: pointer; will-change: transform; filter: drop-shadow(0 16px 26px rgba(0,0,0,.58)); }
+.hl-mimi { position: absolute; left: 50%; bottom: -120px; transform: translateX(-50%); z-index: 1;
+  width: min(96vw, 92%, 540px); height: min(88vh, 800px);
+  cursor: pointer; will-change: transform; filter: drop-shadow(0 2px 7px rgba(0,0,0,.5)); }
 .hl-mimi-in { width: 100%; height: 100%; will-change: transform; perspective: 700px; }
 .hl-mimi-flip { width: 100%; height: 100%; transition: transform .23s cubic-bezier(.45,0,.55,1); transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
 .hl-mimi-flip.flipping { transform: perspective(820px) rotateY(90deg); }   /* perspectiveを関数側に＝親のtransform/コンテナに影響されず確実に立体回転 */
@@ -3292,6 +3710,80 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-goal-p { width: 100%; height: 4px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; margin-top: 3px; }
 .hl-goal-p i { display: block; height: 100%; background: linear-gradient(90deg, #ffd966, #ff9a5e); border-radius: 999px; }
 .hl-goal-n { font-size: 9px; color: #ffce8a; font-variant-numeric: tabular-nums; margin-top: 1px; }
+
+/* 終章：絶滅メーターを🎯目標チップに統合（ゾーン色の左帯＋進捗バー）。タップで🏦島の経済へ。js/ui_home.js */
+.hl-goal--ep { border-left: 3px solid #e6b24a; padding-left: 8px; }
+.hl-goal--ep .hl-goal-k { color: #ff9a5e; }
+.hl-goal--ep-safe { border-left-color: #49c89c; } .hl-goal--ep-safe .hl-goal-k { color: #6fd6a6; } .hl-goal--ep-safe .hl-goal-p i { background: linear-gradient(90deg, #49c89c, #7be0b0); }
+.hl-goal--ep-mid { border-left-color: #e6b24a; }
+.hl-goal--ep-doom { border-left-color: #d6452f; } .hl-goal--ep-doom .hl-goal-k { color: #ff7a6a; } .hl-goal--ep-doom .hl-goal-p i { background: linear-gradient(90deg, #d6452f, #ff8a5e); }
+
+/* 「いま次にやること」を🎯目標チップに出す＝🙏無心(0コイン)/⚔️最終決戦。目立つよう塗り＋パルス。js/ui_home.js */
+.hl-goal--act { padding-left: 9px; }
+.hl-goal--act .hl-goal-t { font-size: 13px; }
+.hl-goal--broke { border-left: 3px solid #ff5a45; background: rgba(58,16,12,.62); animation: hlGoalPulseRed 1.7s ease-in-out infinite; }
+.hl-goal--broke .hl-goal-k { color: #ff8a6a; } .hl-goal--broke .hl-goal-t { color: #ffe0d6; } .hl-goal--broke .hl-goal-n { color: #ffb0a0; }
+.hl-goal--final { border-left: 3px solid #ffcf5a; background: rgba(54,38,10,.62); animation: hlGoalPulseGold 1.6s ease-in-out infinite; }
+.hl-goal--final .hl-goal-k { color: #ffd98a; } .hl-goal--final .hl-goal-t { color: #fff2cf; } .hl-goal--final .hl-goal-n { color: #ffd98a; }
+@keyframes hlGoalPulseRed { 0%,100% { box-shadow: 0 0 0 0 rgba(255,70,50,0); } 50% { box-shadow: 0 0 13px 1px rgba(255,70,50,.55); } }
+@keyframes hlGoalPulseGold { 0%,100% { box-shadow: 0 0 0 0 rgba(255,190,90,0); } 50% { box-shadow: 0 0 15px 2px rgba(255,190,90,.6); } }
+.hl-goal--phone { border-left: 3px solid #57b1dd; background: rgba(18,40,58,.6); animation: hlGoalPulseBlue 1.9s ease-in-out infinite; }
+.hl-goal--phone .hl-goal-k { color: #7cc0e6; } .hl-goal--phone .hl-goal-t { color: #dcefff; } .hl-goal--phone .hl-goal-n { color: #9fd0ec; }
+@keyframes hlGoalPulseBlue { 0%,100% { box-shadow: 0 0 0 0 rgba(90,170,220,0); } 50% { box-shadow: 0 0 14px 1px rgba(90,170,220,.55); } }
+@media (prefers-reduced-motion: reduce) { .hl-goal--broke, .hl-goal--final, .hl-goal--phone { animation: none; } }
+
+/* 🏦 島の経済（ui_economy.js）：暮らし配下のダッシュボード。表示専用＝レース数値に非干渉。名前空間 .eco-* */
+.eco-hero { background: linear-gradient(160deg, rgba(40,46,58,.96), rgba(22,26,33,.96)); border: 1px solid var(--glass-border); }
+.eco-hero-top { display: flex; align-items: center; gap: 12px; }
+.eco-hero-ic { font-size: 34px; line-height: 1; }
+.eco-hero-id { min-width: 0; }
+.eco-hero-k { font-size: 11px; font-weight: 800; color: var(--astone); letter-spacing: .03em; }
+.eco-hero-name { font-size: 18px; font-weight: 900; color: var(--mist); }
+.eco-hero-total { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 11px 0 7px;
+  border-top: 1px solid var(--glass-border); padding-top: 9px; }
+.eco-hero-tl { font-size: 11px; color: var(--mist-soft); }
+.eco-hero-total b { font-size: 21px; font-weight: 900; color: var(--gold); font-variant-numeric: tabular-nums; }
+.eco-hero-bar { width: 100%; height: 8px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
+.eco-hero-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #49c89c, #ffd966); }
+.eco-hero-next { font-size: 11px; color: var(--mist-soft); margin-top: 6px; }
+.eco-hero-next b { color: #ffd98a; }
+.eco-hero-note { font-size: 11px; color: var(--astone); font-style: italic; margin-top: 4px; }
+
+.eco-sec { font-size: 12px; font-weight: 800; color: var(--mist); letter-spacing: .05em; margin: 16px 2px 7px; }
+.eco-sec::before { content: "◆ "; color: var(--gold); }
+
+.eco-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.eco-tile { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1px;
+  background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); border-radius: 12px; padding: 11px 5px; }
+.eco-tile-ic { font-size: 19px; line-height: 1.15; }
+.eco-tile-v { font-size: 14.5px; font-weight: 900; color: var(--mist); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.eco-tile-l { font-size: 9.5px; font-weight: 700; color: var(--mist-soft); }
+.eco-tile-s { font-size: 8.5px; color: var(--astone); }
+
+.eco-memo { display: flex; flex-direction: column; gap: 3px; border-left: 3px solid #5aa0d0; margin-top: 14px; }
+.eco-memo-who { font-size: 10px; font-weight: 800; color: #7cc0e6; }
+.eco-memo-tx { font-size: 12px; line-height: 1.6; color: var(--mist); }
+
+.eco-ext { border: 1px solid var(--glass-border); padding: 12px; }
+.eco-ext--doom { box-shadow: 0 0 0 1px rgba(214,69,47,.25) inset; }
+.eco-final { margin-top: 10px; }
+
+/* 🏆 コレクション・やり込み（ui_collection_score.js）：各収集の達成度＝得点。表示専用。名前空間 .cs-* */
+.cs-hero { text-align: center; background: linear-gradient(160deg, rgba(48,40,18,.96), rgba(24,22,16,.96)); border: 1px solid var(--glass-border); }
+.cs-hero-k { font-size: 12px; font-weight: 800; color: var(--astone); letter-spacing: .04em; }
+.cs-hero-pct { font-size: 44px; font-weight: 900; color: var(--gold); line-height: 1.05; }
+.cs-hero-pct small { font-size: 18px; margin-left: 2px; }
+.cs-hero-bar { width: 100%; height: 9px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; margin: 6px 0 5px; }
+.cs-hero-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #e6b24a, #ffd966); }
+.cs-hero-sub { font-size: 11.5px; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
+.cs-list { display: flex; flex-direction: column; gap: 9px; }
+.cs-row { display: flex; align-items: center; gap: 10px; }
+.cs-ic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; background: rgba(255,255,255,.05); }
+.cs-tx { flex: 1; min-width: 0; }
+.cs-nm { display: block; font-size: 12.5px; font-weight: 700; color: var(--mist); margin-bottom: 3px; }
+.cs-bar { display: block; width: 100%; height: 6px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
+.cs-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #57b1dd, #7be0b0); }
+.cs-num { flex: none; font-size: 11.5px; font-weight: 800; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
 
 .goals-bar { position: relative; height: 22px; border-radius: 999px; background: rgba(255,255,255,.08);
   border: 1px solid var(--glass-border); overflow: hidden; margin: 4px 0 14px; display: flex; align-items: center; }
@@ -3416,8 +3908,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   100% { opacity: 0; transform: translate(var(--dx, -14px), -52vh) scale(1.1) rotate(var(--rz, -12deg)); } }
 
 .hl-dock { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 10px 12px;
+  position: relative; z-index: 5;   /* ミミ(z1)より前面＝足元を下げてもメニュー(レース+ナビ)が脚に重なって隠す */
   background: rgba(13,17,23,.82); border: 1px solid var(--gold-line); border-radius: 18px;
   backdrop-filter: blur(7px); box-shadow: 0 -10px 32px -18px rgba(0,0,0,.9); }
+/* 進行で出入りする可変要素（コメント/いいね・無心・最終決戦）の独立フロート層（stageと固定dockの間）。
+   出入りしても固定ドック（レース+ナビ）を圧縮しない＝stage(flex:1)が伸縮を吸収。js/ui_home.js renderHome */
+.hl-actionbar { flex: 0 0 auto; display: flex; flex-direction: column; gap: 7px; position: relative; z-index: 3; }
+.hl-actionbar:empty { display: none; }
 /* コメントバー（TikTok風の参加UI）＝💬定型コメント＋❤️いいね */
 .hl-cmbar-wrap { position: relative; }
 .hl-cmbar { display: flex; align-items: stretch; gap: 7px; }
@@ -3457,7 +3954,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .hl-item .ic { font-size: 16px; }
   .hl-item .lb { font-size: 8.5px; letter-spacing: -.02em; white-space: nowrap; }
   .hl-dock { padding: 8px 8px 10px; gap: 7px; }
-  .hl-mimi { width: min(99vw, 420px); height: min(73vh, 615px); }
+  .hl-mimi { width: min(120vw, 480px); height: min(90vh, 740px); }
   .hl-stage { min-height: 34vh; }   /* 小型機でもドック込みで1画面に収める（はみ出し→スクロール化を防ぐ） */
   .hl-left { width: 58vw; }
   .hl-prof-tx b { font-size: 11.5px; }
@@ -3705,6 +4202,147 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .story-row-t { display: block; font-size: 14px; font-weight: 800; color: var(--mist); }
 .story-row-s { display: block; font-size: 11.5px; color: var(--mist-soft); margin-top: 2px; }
 .story-row-ch { flex: none; font-size: 20px; color: var(--astone); }
+
+/* =========================================================================
+   異世界新聞「聖龍日報」（物語・章・相談・小イベント）。明朝＋クリーム紙＋罫線。
+   表示専用＝着順/オッズ/配当に非干渉。名前空間 .news-* / .news-clip-*
+   ========================================================================= */
+.news, .news-clip {
+  --nink: #2b2620; --nink2: #6a5f4c; --naccent: #9a2b22; --nrule: #322c22;
+  --npaper: #f1e7cd; --npaper2: #e7d9b6;
+  font-family: "Yu Mincho","YuMincho","Hiragino Mincho ProN","Hiragino Mincho Pro","HG明朝E","MS PMincho","MS Mincho",serif;
+}
+.news {
+  position: relative; overflow: hidden; color: var(--nink);
+  margin: 2px 0 10px; padding: 16px 15px 16px; border-radius: 5px; border: 1px solid #c9b88f;
+  background:
+    repeating-linear-gradient(0deg, rgba(120,96,60,0.045) 0 1px, transparent 1px 4px),
+    radial-gradient(135% 90% at 50% -12%, #f9f1da, var(--npaper) 58%, var(--npaper2));
+  box-shadow: 0 14px 34px -12px rgba(0,0,0,0.6), inset 0 0 0 2px #e6d6ad, inset 0 0 70px rgba(150,110,55,0.09);
+}
+.news::after {   /* 経年のシミ・ビネット（紙の風合い） */
+  content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .5;
+  background:
+    radial-gradient(70% 90% at 112% -4%, rgba(95,62,20,0.16), transparent 42%),
+    radial-gradient(60% 80% at -12% 104%, rgba(95,62,20,0.14), transparent 42%);
+}
+.news > * { position: relative; z-index: 1; }
+
+/* 題字（マストヘッド） */
+.news-mast { text-align: center; border-bottom: 4px double var(--nrule); padding-bottom: 8px; margin-bottom: 10px; }
+.news-mast-top { display: flex; justify-content: space-between; align-items: center; gap: 6px;
+  font-size: 9.5px; letter-spacing: .04em; color: var(--nink2); padding-bottom: 5px; }
+.news-mast-top > span:nth-child(2) { letter-spacing: .12em; }
+.news-title { display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: clamp(23px, 7vw, 31px); font-weight: 900; letter-spacing: .18em; line-height: 1.04;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4); border-top: 1px solid var(--nrule); padding-top: 6px; }
+.news-title .crest { font-size: .8em; filter: sepia(.5) saturate(.7); }
+.news-sub { font-size: 8.5px; letter-spacing: .4em; color: var(--nink2); margin-top: 4px; }
+.news-mast-rule { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; align-items: center;
+  font-size: 9.5px; color: var(--nink2); margin-top: 6px; }
+.news-mast-rule span:nth-child(even) { color: var(--naccent); font-size: 7px; }
+
+/* リード（発行のことば） */
+.news-lead { font-size: 12px; line-height: 1.85; color: var(--nink); text-align: justify; margin-bottom: 4px; }
+.news-dropcap { float: left; font-size: 38px; font-weight: 900; line-height: .82; padding: 3px 7px 0 0; color: var(--naccent); }
+
+/* 見出し罫（rubric） */
+.news-rubric { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; letter-spacing: .07em;
+  color: var(--nink); margin: 15px 0 7px; }
+.news-rubric::before { content: "◆"; color: var(--naccent); font-size: 11px; }
+.news-rubric::after { content: ""; flex: 1; height: 0; border-top: 2px solid var(--nrule); }
+.news-rub-n { font-size: 10px; font-weight: 700; color: var(--nink2); letter-spacing: .02em; }
+
+/* 連載記事（章一覧） */
+.news-arts { display: flex; flex-direction: column; }
+.news-art { display: flex; gap: 11px; align-items: flex-start; width: 100%; text-align: left;
+  font-family: inherit; color: var(--nink); background: none; border: 0; border-top: 1px solid rgba(43,38,32,0.28);
+  padding: 11px 2px; cursor: pointer; }
+.news-art:first-of-type { border-top: 0; }
+.news-art:active { background: rgba(120,90,40,0.09); }
+.news-art.locked { cursor: default; opacity: .82; }
+.news-art-consult { cursor: default; }
+.news-photo-s { flex: none; width: 60px; height: 60px; position: relative; overflow: hidden;
+  border: 1px solid var(--nink); background: #d8cba8; }
+.news-photo-s img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) sepia(.4) contrast(1.12) brightness(.97); }
+.news-photo-s .sym { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 26px; filter: grayscale(.35) sepia(.25); }
+.news-photo-s.locked { background: #cfc09c; }
+.news-photo-s::after {   /* ハーフトーン網点 */
+  content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .34;
+  background-image: radial-gradient(rgba(0,0,0,0.55) 0.5px, transparent 0.7px); background-size: 3px 3px; }
+.news-art-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.news-kicker { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; color: var(--naccent);
+  border-left: 3px solid var(--na, var(--naccent)); padding-left: 6px; }
+.news-head { font-size: 16px; font-weight: 900; line-height: 1.22; color: var(--nink); }
+.news-lead2 { font-size: 11px; line-height: 1.5; color: var(--nink2); }
+.news-quote { font-size: 11.5px; line-height: 1.6; color: var(--nink); margin-top: 3px; }
+.news-censor { font-family: monospace; letter-spacing: -1px; color: var(--nink2); }
+.news-art-go { flex: none; align-self: center; font-size: 16px; color: var(--naccent); }
+.news-art-seal { flex: none; align-self: center; font-size: 10px; font-weight: 900; color: var(--nink2);
+  border: 1.5px solid var(--nink2); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; transform: rotate(-8deg); }
+
+/* 號外コラム（小イベント briefs・2段組） */
+.news-briefs { column-count: 2; column-gap: 15px; column-rule: 1px solid rgba(43,38,32,0.32); margin-bottom: 2px; }
+.news-brief { break-inside: avoid; display: block; width: 100%; text-align: left; font-family: inherit; color: var(--nink);
+  background: none; border: 0; border-bottom: 1px dotted rgba(43,38,32,.45); padding: 8px 0; cursor: pointer; }
+.news-brief.unread { background: linear-gradient(90deg, rgba(154,43,34,0.07), transparent 70%); }
+.news-brief:active { background: rgba(120,90,40,0.1); }
+.news-brief-h { display: block; font-size: 12.5px; font-weight: 800; line-height: 1.32; color: var(--nink); }
+.news-brief-ic { margin-right: 2px; filter: sepia(.2); }
+.news-brief-b { display: block; font-size: 9.5px; color: var(--nink2); margin-top: 2px; }
+.news-stamp { display: inline-block; font-size: 8.5px; font-weight: 900; color: var(--naccent); letter-spacing: .04em;
+  border: 1.4px solid var(--naccent); border-radius: 2px; padding: 0 3px; margin-right: 4px; transform: rotate(-4deg); }
+.news-empty { font-size: 11px; color: var(--nink2); font-style: italic; padding: 4px 2px 6px; }
+
+/* 章を読む：特集一面 */
+.news-article .news-kicker-lg { display: inline-block; font-size: 11px; border-left: 0; padding: 0; margin: 4px 0 2px;
+  letter-spacing: .16em; text-align: center; width: 100%; }
+.news-headline { font-size: clamp(20px, 6.4vw, 26px); font-weight: 900; line-height: 1.16; letter-spacing: .03em;
+  text-align: center; color: var(--nink); margin: 1px 0 3px; }
+.news-subhead { text-align: center; font-size: 12px; color: var(--nink2); border-bottom: 1px solid var(--nrule);
+  padding-bottom: 8px; margin-bottom: 8px; }
+.news-byline { font-size: 10px; color: var(--nink2); letter-spacing: .03em; text-align: right; margin-bottom: 8px; }
+.news-photo { border: 1px solid var(--nink); margin: 4px 0 6px; cursor: pointer; background: #d8cba8; }
+.news-photo-img { position: relative; overflow: hidden; }
+.news-photo-img img { width: 100%; display: block; filter: grayscale(1) sepia(.38) contrast(1.08) brightness(.98); }
+.news-photo-img .sym { display: flex; align-items: center; justify-content: center; height: 158px; font-size: 66px; filter: grayscale(.3) sepia(.2); }
+.news-photo-img::after { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .3;
+  background-image: radial-gradient(rgba(0,0,0,0.5) 0.5px, transparent 0.7px); background-size: 3px 3px; }
+.news-photo-zoom { position: absolute; right: 6px; bottom: 6px; font-size: 9.5px; color: #f3ead4;
+  background: rgba(20,16,10,0.6); padding: 2px 6px; border-radius: 2px; }
+.news-cap { font-size: 10px; color: var(--nink2); padding: 4px 8px; border-top: 1px solid rgba(43,38,32,.3);
+  background: rgba(255,255,255,0.28); }
+.news-cap-tag { font-weight: 800; color: var(--naccent); margin-right: 6px; }
+.news-text { font-size: 14px; line-height: 1.95; text-align: justify; white-space: pre-line; color: var(--nink); margin-top: 8px; }
+.news-text::first-letter { font-size: 2.5em; font-weight: 900; line-height: .82; float: left; padding: 3px 7px 0 0; color: var(--naccent); }
+
+/* 発行欄（フッター） */
+.news-foot { margin-top: 15px; border-top: 4px double var(--nrule); padding-top: 10px; }
+.news-foot-pub { text-align: center; font-size: 9.5px; letter-spacing: .08em; color: var(--nink2); margin-bottom: 9px; }
+.news-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.news-btn { font-family: inherit; font-size: 12.5px; font-weight: 800; letter-spacing: .04em; color: var(--nink);
+  background: rgba(255,255,255,0.34); border: 1.5px solid var(--nink); border-radius: 3px; padding: 9px 15px; cursor: pointer; }
+.news-btn:active { background: var(--nink); color: var(--npaper); transform: translateY(1px); }
+.news-btn.prim { background: var(--naccent); color: #fbf3df; border-color: var(--naccent); }
+.news-btn.prim:active { background: #7c2019; }
+
+/* 號外切り抜きポップ（小イベント再読・.navpop を新聞スキンで上書き） */
+.navpop.news-clip { background: var(--npaper); border: 1px solid #c9b88f; border-radius: 5px; color: var(--nink);
+  padding: 16px 16px 14px; text-align: center;
+  box-shadow: 0 24px 60px -20px rgba(0,0,0,0.85), inset 0 0 0 2px #e6d6ad; }
+.news-clip-mast { display: flex; justify-content: space-between; align-items: center; font-size: 9px; letter-spacing: .08em;
+  color: var(--nink2); border-bottom: 3px double var(--nrule); padding-bottom: 6px; margin-bottom: 8px; }
+.news-clip-mast span:nth-child(2) { font-weight: 900; font-size: 12px; letter-spacing: .14em; color: var(--nink); }
+.news-clip-ic { font-size: 34px; line-height: 1.1; filter: sepia(.2); }
+.news-clip-head { font-size: 18px; font-weight: 900; letter-spacing: .03em; color: var(--nink); margin-top: 2px; }
+.news-clip-by { font-size: 10.5px; font-weight: 700; color: var(--naccent); margin-top: 3px; }
+.news-clip-body { text-align: justify; font-size: 13px; line-height: 1.9; color: var(--nink); margin-top: 9px;
+  border-top: 1px solid rgba(43,38,32,.3); border-bottom: 1px solid rgba(43,38,32,.3); padding: 10px 2px; }
+.news-clip .news-btns { margin-top: 14px; }
+
+/* 狭い端末：號外コラムは1段組に */
+@media (max-width: 380px) { .news-briefs { column-count: 1; } }
+
 /* phones: tighten so the whole home fits one screen without scrolling */
 @media (max-width: 480px) {
   .debug-toggle { display: none; }   /* dev-only; declutter the phone top bar */
@@ -4447,6 +5085,75 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scout-empty { font-size: 12.5px; color: #aebcc3; text-align: center; padding: 12px; line-height: 1.6; }
 
 /* =========================================================================
+   竜スカウト「発見＆交渉」（ロケ段階ハブ＋しぐさ読み合い・docs/SCOUT_NEGOTIATION_DESIGN.md）
+   ========================================================================= */
+/* ロケ一覧（段階開放＋マスク） */
+.sc-loc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+@media (max-width: 460px) { .sc-loc-grid { grid-template-columns: 1fr; } }
+.sc-loc { display: flex; flex-direction: column; gap: 3px; padding: 11px 12px; border-radius: 13px; text-align: left; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); color: #e9f1f4; transition: transform .08s, box-shadow .15s; }
+.sc-loc:not(.sc-loc--locked):active { transform: scale(.98); }
+.sc-loc:not(.sc-loc--locked):hover { box-shadow: 0 6px 18px rgba(0,0,0,.28); border-color: rgba(202,162,74,.5); }
+.sc-loc--locked { opacity: .6; cursor: default; }
+.sc-loc--done { border-color: rgba(120,200,140,.5); }
+.sc-loc-ic { font-size: 24px; }
+.sc-loc-bd { display: flex; align-items: center; gap: 7px; }
+.sc-loc-bd b { font-size: 14.5px; color: #fff4e0; }
+.sc-loc-tier { font-style: normal; font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: rgba(202,162,74,.2); color: #ffe6a8; }
+.sc-loc-mood { font-size: 11.5px; color: #b3c0c7; line-height: 1.4; }
+.sc-loc-cnt { font-size: 11px; color: #9fb0b8; } .sc-loc-cnt b { color: #ffe6a8; }
+.sc-loc--done .sc-loc-cnt { color: #bfe6c8; }
+.sc-loc-cost { font-style: normal; font-size: 10.5px; font-weight: 800; color: #ffe6a8; margin-left: auto; white-space: nowrap; }
+.sc-loc--poor { opacity: .62; }
+.sc-loc--poor .sc-loc-cost { color: #e2604a; }
+
+/* 出会い見出し */
+.sc-meet-head { display: flex; align-items: center; gap: 11px; padding: 4px 2px 10px; }
+.sc-meet-dot { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 3px rgba(255,255,255,.08); }
+.sc-meet-id b { font-size: 17px; color: #fff4e0; } .sc-meet-id small { display: block; font-size: 11.5px; color: #b3c0c7; }
+.sc-discover { font-size: 12.5px; color: #cfe0e6; background: var(--glass-2); border-radius: 11px; padding: 9px 12px; margin-bottom: 9px; line-height: 1.6; }
+.sc-discover b { color: #ffe6a8; }
+
+/* メーター */
+.sc-meters { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.sc-meter { display: flex; align-items: center; gap: 9px; }
+.sc-meter-l { font-size: 11.5px; font-weight: 800; color: #cfe0e6; flex: 0 0 64px; }
+.sc-meter-t { flex: 1 1 auto; height: 11px; border-radius: 999px; background: rgba(0,0,0,.28); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.35); }
+.sc-meter-t i { display: block; height: 100%; border-radius: 999px; transition: width .35s cubic-bezier(.4,1.3,.5,1); }
+.sc-trust .sc-meter-t i { background: linear-gradient(90deg,#5fc88a,#9be6b0); }
+.sc-wary .sc-meter-t i { background: linear-gradient(90deg,#e0a24a,#e2604a); }
+
+/* しぐさ表示 */
+.sc-gesture { background: linear-gradient(180deg, rgba(40,56,64,.55), rgba(24,36,42,.55)); border: 1px solid var(--glass-border);
+  border-radius: 14px; padding: 16px 15px; margin-bottom: 9px; text-align: center; }
+.sc-gesture-tx { font-size: 15.5px; line-height: 1.7; color: #f3ece0; font-weight: 600; }
+.sc-gesture-hint { margin-top: 8px; font-size: 12px; color: #8fa0a8; font-style: italic; }
+.sc-gesture-read { margin-top: 9px; font-size: 12.5px; color: #ffe6a8; line-height: 1.5; }
+.sc-gesture-read b { color: #fff; font-size: 14px; }
+.sc-react { font-size: 13px; color: #d7e4e9; text-align: center; padding: 7px 10px; margin-bottom: 9px;
+  background: rgba(255,230,168,.08); border-radius: 10px; line-height: 1.6; }
+
+/* 手札（交渉術） */
+.sc-hand-lbl { font-size: 11.5px; font-weight: 800; color: #9fb0b8; letter-spacing: .04em; margin: 2px 2px 6px; }
+.sc-hand { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 9px; }
+@media (max-width: 380px) { .sc-hand { grid-template-columns: 1fr; } }
+.sc-app { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; cursor: pointer;
+  padding: 9px 11px 9px 12px; border-radius: 11px; background: var(--glass-2); border: 1px solid var(--glass-border);
+  border-left: 4px solid #caa24a; color: #eaf1f4; transition: transform .07s, box-shadow .14s; }
+.sc-app:active { transform: scale(.97); }
+.sc-app:hover { box-shadow: 0 5px 14px rgba(0,0,0,.26); }
+.sc-app-ic { font-size: 17px; } .sc-app b { font-size: 13px; color: #fff4e0; } .sc-app small { font-size: 10.5px; color: #a7b6bd; line-height: 1.35; }
+
+/* 常設術（観察／ぱほぱほ／ポロ通訳） */
+.sc-extras { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.sc-extra { font-size: 12px; font-weight: 700; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); color: #dce8ec; }
+.sc-extra:active { transform: scale(.96); }
+.sc-extra:disabled { opacity: .4; cursor: default; }
+.sc-extra--paho { background: linear-gradient(180deg, rgba(232,185,78,.3), rgba(202,162,74,.22)); border-color: rgba(255,230,168,.5); color: #ffe6a8; }
+.sc-extra--poro { background: linear-gradient(180deg, rgba(154,106,208,.28), rgba(120,80,180,.2)); border-color: rgba(180,150,220,.5); color: #e7d8f5; }
+
+/* =========================================================================
    斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
    ========================================================================= */
 .rpg-arena2 { position:relative; width:100%; max-width:540px; margin:6px auto 8px; aspect-ratio:520/320;
@@ -4929,3 +5636,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-me .me-stat.mp .me-bar > span { background:linear-gradient(90deg,#48f,#6cf); }
 .rpg-me .me-stat.sp .me-bar > span { background:linear-gradient(90deg,#c89b3c,#ffd86a); }
 .rpg-me .me-stat.sp.full b { color:#ffe07a; }
+
+/* 接地シャドウ：足元の床に楕円の影を落として「背景にしっかり立っている」感を出す（ステッカー浮き対策）。
+   外側 .hl-mimi に付与＝表情フリップ/アイドル演出（内側）と分離して常に床に留まる。js/ui_home.js renderHome */
+.hl-mimi::before { content: ""; position: absolute; z-index: -1; left: 50%; bottom: 1.5%;
+  width: 42%; height: 30px; transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,.58), rgba(0,0,0,.33) 42%, rgba(0,0,0,0) 72%);
+  filter: blur(3px); pointer-events: none; }
