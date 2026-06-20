@@ -338,8 +338,9 @@ function mountVolumeFab() {
 function syncVolumeFab() {
   const fab = mountVolumeFab();
   const screen = state.ui && state.ui.screen;
-  fab.style.display = (screen === "home") ? "none" : "flex";
-  fab.style.bottom = (screen === "mall") ? "84px" : "";   // モールはフロート下部ナビ(.scm-bnav)の上に逃がす
+  // ホーム＝ナビに音量があり下部が密／モール＝没入ミニゲームで戦闘デッキやD-padと重なるため隠す
+  fab.style.display = (screen === "home" || screen === "mall") ? "none" : "flex";
+  fab.style.bottom = "";
 }
 
 // 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
