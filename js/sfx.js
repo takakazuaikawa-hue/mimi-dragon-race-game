@@ -28,6 +28,7 @@ var Sfx = (function () {
   var VOL_KEY = "mimi_sfxvol";
   var SFX_BASE = 0.42;          // チューニング済みの基準音量（=従来の master 値）
   var sfxLevel = 1;             // ユーザー音量 0..1（1.0=従来の音量）
+  var pr = 1;                   // ピッチ倍率（play の第2引数。1=従来どおり。連発音の単調さ回避用）
 
   // restore mute preference
   try { muted = localStorage.getItem(MUTE_KEY) === "1"; } catch (e) { muted = false; }
@@ -58,8 +59,8 @@ var Sfx = (function () {
       var o = ctx.createOscillator();
       var g = ctx.createGain();
       o.type = type || "sine";
-      o.frequency.setValueAtTime(freq, t0);
-      if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
+      o.frequency.setValueAtTime(freq * pr, t0);
+      if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo * pr, t0 + dur);
       var peak = (gain == null ? 0.3 : gain);
       g.gain.setValueAtTime(0.0001, t0);
       g.gain.exponentialRampToValueAtTime(peak, t0 + 0.012);
@@ -79,7 +80,7 @@ var Sfx = (function () {
       for (var i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
       var src = ctx.createBufferSource(); src.buffer = buf;
       var bp = ctx.createBiquadFilter(); bp.type = "bandpass";
-      bp.frequency.value = freq || 4000; bp.Q.value = 0.8;
+      bp.frequency.value = (freq || 4000) * pr; bp.Q.value = 0.8;
       var g = ctx.createGain(); g.gain.value = (gain == null ? 0.12 : gain);
       src.connect(bp); bp.connect(g); g.connect(master);
       src.start(t0); src.stop(t0 + dur + 0.02);
@@ -116,10 +117,11 @@ var Sfx = (function () {
 
   var C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5, E6 = 1318.5, G6 = 1568.0;
 
-  function play(name) {
+  function play(name, rate) {
     if (muted) return;
     if (!ensure()) return;
     resume();
+    pr = (rate > 0 ? rate : 1);             // 任意のピッチ倍率（連発音の単調さ回避）。既定1=従来どおり
     var t = ctx.currentTime + 0.01;
     try {
       switch (name) {
@@ -195,6 +197,7 @@ var Sfx = (function () {
           break;
       }
     } catch (e) {}
+    pr = 1;                                  // 次の呼び出しに持ち越さない（既定へ戻す）
   }
 
   // ---- sustained crowd roar (goal celebration) — loops until stopCrowd() ----

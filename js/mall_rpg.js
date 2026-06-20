@@ -67,7 +67,11 @@ function rpgToday() { try { return new Date().toISOString().slice(0, 10); } catc
 function rpgSave() { if (typeof saveGame === "function") saveGame(); }
 function rpgRnd(a, b) { return a + Math.random() * (b - a); }
 function rpgPick(a) { return a[Math.floor(Math.random() * a.length)]; }
-function rpgSfx(id) { try { if (window.Sfx) Sfx.play(id); } catch (e) {} }
+function rpgSfx(id, rate) { try { if (window.Sfx) Sfx.play(id, rate); } catch (e) {} }
+// 連発する戦闘音の単調さ回避＝毎回ピッチを±6%ゆらす
+function rpgSfxV(id) { rpgSfx(id, 0.94 + Math.random() * 0.12); }
+// ♿ アクセシビリティ：モーション控えめ設定なら画面シェイク/フラッシュを止める（数字・HP表示は残す）
+function rpgReduce() { try { return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } }
 // canvasの描画バッファを表示サイズ（×DPR）に追従させる＝縦型フレームを余白なく埋める
 function rpgFitCanvas(cv) {
   if (!cv || !cv.getBoundingClientRect) return;
@@ -464,8 +468,8 @@ const rpgFx = {
   banner(text, cls) { const n = document.createElement("div"); n.className = "rpg-fxbanner " + (cls || ""); n.textContent = text; this.layer().appendChild(n); setTimeout(() => n.remove(), 950); },
   turn(text, cls) { const n = document.createElement("div"); n.className = "rpg-fxturn " + (cls || ""); n.textContent = text; this.layer().appendChild(n); setTimeout(() => n.remove(), 850); },
   hit(elm) { if (!elm) return; elm.classList.remove("rpg-hit"); void elm.offsetWidth; elm.classList.add("rpg-hit"); },
-  shakeApp() { const a = document.getElementById("app"); if (!a) return; a.classList.remove("rpg-shake"); void a.offsetWidth; a.classList.add("rpg-shake"); setTimeout(() => a.classList.remove("rpg-shake"), 420); },
-  flash(cls) { const n = document.createElement("div"); n.className = "rpg-fxflash " + (cls || ""); this.layer().appendChild(n); setTimeout(() => n.remove(), 520); },
+  shakeApp() { if (rpgReduce()) return; const a = document.getElementById("app"); if (!a) return; a.classList.remove("rpg-shake"); void a.offsetWidth; a.classList.add("rpg-shake"); setTimeout(() => a.classList.remove("rpg-shake"), 420); },
+  flash(cls) { if (rpgReduce()) return; const n = document.createElement("div"); n.className = "rpg-fxflash " + (cls || ""); this.layer().appendChild(n); setTimeout(() => n.remove(), 520); },
   cover(cls, ms, cb) { const n = document.createElement("div"); n.className = "rpg-fxcover " + (cls || ""); this.layer().appendChild(n); if (cb) setTimeout(cb, ms * 0.45); setTimeout(() => n.remove(), ms); },
   // バトル突入トランジション：上下のバーが閉じて開く＋フラッシュ＋ラベルズーム（kind: enc/boss/rare）
   encounter(kind) {
@@ -651,10 +655,10 @@ function rpgUseSkill(id) {
         if (rpgCodexLearn(tgt.id, sk.el)) rpgBLog(`📖 ${tgt.ref.n}の弱点「${RPG_ELEM[sk.el]}」を見つけた！`, "good"); }
       else if (mult === 0.5) tag = " 耐性…";
       rpgBLog(`${RPG_ELEM_IC[sk.el]} ${sk.n}！ ${tgt.ref.n}に${dmg}ダメージ${tag}`, weakHit ? "good" : "");
-      rpgSfx(weakHit ? "win" : "tick");
+      rpgSfxV(weakHit ? "win" : "tick");
       rpgFx.spot(ep.x, ep.y, "-" + dmg, weakHit ? "weak" : (mult === 0.5 ? "resist" : "dmg"));
       if (weakHit) rpgFx.banner("WEAK!", "weak");
-      if (tgt.hp <= 0) { tgt.alive = false; tgt._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfx("coin"); rpgFx.spot(ep.x, ep.y - 34, tourist ? "満足♪" : "撃破！", "weak"); rpgFx.shakeApp();
+      if (tgt.hp <= 0) { tgt.alive = false; tgt._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfxV("coin"); rpgFx.spot(ep.x, ep.y - 34, tourist ? "満足♪" : "撃破！", "weak"); rpgFx.shakeApp();
         if (tgt.ref.nushi) { RPG._nushiBeat = RPG._nushiBeat || {}; RPG._nushiBeat[RPG.fi] = 1; rpgFx.banner("👑 主を討伐！", "victory"); rpgSfx("unlock"); rpgBLog(`👑 フロアの主「${tgt.ref.n}」を討伐！ ✨評判UP`, "win"); RPG.runMissions = (RPG.runMissions || 0) + 1; } }
       if ((b.combo || 0) >= 3) rpgFx.banner("COMBO ×" + b.combo, "more");
     }
@@ -756,7 +760,7 @@ function rpgEnemyStep(idx) {
       rpgBLog(`${e.ref.ic} ${e.ref.act || (e.ref.n + "の攻撃！")}${b.guard ? "（ガード）" : ""} ${dealt}ダメージ。`, "bad");
     }
     if (dealt > 0) {
-      b.combo = 0; rpgAddGauge(b, 15); const p = rpgPlayerPt(); rpgFx.spot(p.x, p.y, "-" + dealt, "pdmg"); rpgFx.flash("hurt"); rpgSfx("tick");
+      b.combo = 0; rpgAddGauge(b, 15); const p = rpgPlayerPt(); rpgFx.spot(p.x, p.y, "-" + dealt, "pdmg"); rpgFx.flash("hurt"); rpgSfxV("tick");
       // 低HP警告：25%以下に踏み込んだ瞬間に一度だけ「ピンチ！」
       const hpWas = d.hp + dealt;
       if (d.hp > 0 && d.hp <= d.maxhp * 0.25 && hpWas > d.maxhp * 0.25) { rpgFx.banner("⚠️ ピンチ！", "bad"); rpgFx.flash("hurt"); rpgSfx("alert"); }
@@ -805,7 +809,7 @@ function rpgUltimate() {
     const dmg = Math.max(1, Math.round((34 + rpgPlayerPow() * 1.4) * mult * rpgRnd(0.95, 1.1)));
     e.hp -= dmg;
     e._flash = (typeof performance !== "undefined" ? performance.now() : Date.now()); const ep2 = rpgEnemyPt(i); rpgFx.spot(ep2.x, ep2.y, "-" + dmg, "weak");
-    if (e.hp <= 0) { e.alive = false; e._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); const tourist = e.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${e.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfx("coin"); rpgFx.spot(ep2.x, ep2.y - 34, tourist ? "満足♪" : "撃破！", "weak"); }
+    if (e.hp <= 0) { e.alive = false; e._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); const tourist = e.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${e.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfxV("coin"); rpgFx.spot(ep2.x, ep2.y - 34, tourist ? "満足♪" : "撃破！", "weak"); }
   });
   rpgFx.shakeApp();
   RPG.busy = true; b.phase = "anim"; rpgSave();
@@ -1696,7 +1700,7 @@ function rpgDrawBattle(cv, t) {
   function mimiKnock() { if (!an || an.who !== "enemy") return [0, 0]; const cA = an.contactAt; if (now < cA) return [0, 0]; const e = now - cA, dur = (an.freeze || 70) + 200; if (e > dur) return [0, 0]; const u = e / dur, k = (an.knock || 12) * (1 - u) * Math.cos(u * 4); return [-k * 0.3, k * 0.3]; }
   // シェイク（着弾時・減衰）
   let shx = 0, shy = 0;
-  if (an) { const cA = an.contactAt; if (now >= cA && now < cA + 260) { const dec = Math.max(0, 1 - (now - cA) / 260), m = (an.shakeMag || 8) * dec; shx = (Math.random() * 2 - 1) * m; shy = (Math.random() * 2 - 1) * m; } }
+  if (an && !rpgReduce()) { const cA = an.contactAt; if (now >= cA && now < cA + 260) { const dec = Math.max(0, 1 - (now - cA) / 260), m = (an.shakeMag || 8) * dec; shx = (Math.random() * 2 - 1) * m; shy = (Math.random() * 2 - 1) * m; } }
   // ── 背景（固定・HD-2D風ジオラマ：暖色の砂石床×寒色の空海／遠景リゾート／前景ヤシ）
   const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
   const ellf = (x, y, rw, rh, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse ? ctx.ellipse(x, y, rw, rh, 0, 0, 7) : ctx.arc(x, y, rw, 0, 7); ctx.fill(); };
@@ -1745,6 +1749,7 @@ function rpgDrawBattle(cv, t) {
       ctx.save(); ctx.globalAlpha = alive ? intro : Math.max(0, 1 - du * 1.15);
       if (b.rare && alive) { const ga = ctx.createRadialGradient(ex, cy, 4, ex, cy, 42); ga.addColorStop(0, "rgba(255,220,120," + (0.55 * intro) + ")"); ga.addColorStop(1, "rgba(255,220,120,0)"); ctx.fillStyle = ga; ctx.beginPath(); ctx.arc(ex, cy, 42, 0, 7); ctx.fill(); }
       if (alive && e._flash && now - e._flash < 150) { ctx.shadowColor = "#fff"; ctx.shadowBlur = 22; }
+      if (alive && e._flash && now - e._flash < 200) { const u = (now - e._flash) / 200, sc = 1 + Math.sin(u * Math.PI) * 0.16; ctx.translate(ex, cy); ctx.scale(sc, sc); ctx.translate(-ex, -cy); }   // 被弾スカッシュ（命中がはっきり読める）
       if (dying) { const sc = 1 + du * 0.28; ctx.translate(ex, s.y + off[1] + riseY); ctx.scale(sc, sc); ctx.translate(-ex, -(s.y + off[1])); }
       if (tourist) {
         e._pal = e._pal || rpgTouristPal(e.id);
