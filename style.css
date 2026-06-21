@@ -4952,6 +4952,19 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-res-outfit { margin-top:8px; padding:10px 12px; border-radius:10px; background:linear-gradient(135deg,rgba(120,80,30,.5),rgba(90,60,20,.5)); color:#ffd98a; font-weight:700; }
 .rpg-res-outfit small { color:#e8d0a0; font-weight:400; }
 
+/* 📦 今回の冒険（ランサマリー台帳）：レース結果の gainLedger 相当 */
+.rpg-sum-sub { text-align:center; color:#cdbfe6; font-size:13px; margin:2px 0 4px; }
+.rpg-ledger .rpg-ledger-t { font-size:13px; font-weight:800; color:#ffe1a6; letter-spacing:.04em; margin:-2px 0 6px; }
+.rpg-led-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 4px; font-size:14.5px; border-bottom:1px solid rgba(255,255,255,.08); }
+.rpg-led-row:last-child { border-bottom:none; }
+.rpg-led-row > span { color:#e7dff5; }
+.rpg-led-row b { color:#ffd98a; font-size:17px; font-variant-numeric:tabular-nums; }
+.rpg-led-row.good b { color:#9fe6b0; }
+.rpg-led-row.lv b { color:#ffc46a; }
+.rpg-sum-next { text-align:center; margin:10px 0 4px; padding:9px 12px; border-radius:11px;
+  background:rgba(60,52,86,.45); border:1px solid rgba(160,130,210,.3); color:#e9deff; font-size:14px; }
+.rpg-sum-next b { color:#ffe07a; }
+
 /* =========================================================================
    🏝️ 島のリゾート演出（動くハブ背景＋各所のアニメ）
    ========================================================================= */
