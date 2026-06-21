@@ -20,7 +20,8 @@ function rpgData() {
     };
   }
   const d = p.rpg;
-  if (!d.items) d.items = { potion: 0, ether: 0 };
+  if (!d.items) d.items = { potion: 0, ether: 0, calm: 0 };
+  if (d.items.calm == null) d.items.calm = 0;   // 🔕 静けさのお香（しばらくエンカウントしない）
   if (!d.codex) d.codex = {};
   if (!d.skills) d.skills = ["atk"];
   if (!d.best) d.best = { lv: d.lv || 1 };
@@ -67,7 +68,8 @@ function rpgEndRun(quiet) {
 function rpgRunSnap() {
   const d = rpgData(), tot = rpgShopTotalOwned();
   return { gold: d.gold | 0, lv: d.lv | 0, exp: d.exp | 0, rep: d.rep | 0,
-    tickets: d.tickets | 0, shop: tot.o, outfits: ((state.player && state.player.outfitsWon) || []).length };
+    tickets: d.tickets | 0, shop: tot.o, calm: (d.items && d.items.calm) | 0,
+    outfits: ((state.player && state.player.outfitsWon) || []).length };
 }
 // つぎの目標（あと◯◯＝ゴールグラデーション）。ハブとサマリーで共通利用。
 function rpgNextGoalText() {
@@ -95,6 +97,8 @@ function rpgRunLedger() {
   if (shopD > 0) rows.push({ ic: "🛍️", label: "お買い物", val: `+${shopD}品（${tot.o}/${tot.t}）`, cls: "lv" });
   const outD = outfitsNow - (s.outfits || 0);
   if (outD > 0) rows.push({ ic: "👗", label: "衣装GET", val: `+${outD}着`, cls: "lv" });
+  const calmD = ((d.items && d.items.calm) | 0) - (s.calm || 0);
+  if (calmD > 0) rows.push({ ic: "🔕", label: "静けさのお香", val: `+${calmD}個` });
   const repD = (d.rep | 0) - (s.rep || 0);
   if (repD > 0) rows.push({ ic: "✨", label: "みがき", val: `+${repD}`, cls: "good" });
   const tkD = (d.tickets | 0) - (s.tickets || 0);
@@ -388,6 +392,32 @@ function rpgGoUp() {
 }
 function rpgLog(t, cls) { if (!RPG) return; RPG.log.unshift({ t, cls: cls || "" }); RPG.log = RPG.log.slice(0, 5); }
 
+// 🔕 静けさのお香：たくと一定歩数のあいだ魔物が寄ってこない（探索の小休止＝クリア報酬の主役）
+const RPG_CALM_STEPS = 12;
+function rpgUseCalm() {
+  const d = rpgData();
+  if (!RPG || (d.items.calm || 0) <= 0 || (RPG.calm || 0) > 0) return;
+  d.items.calm--; RPG.calm = RPG_CALM_STEPS;
+  rpgLog(`🔕 静けさのお香をたいた。${RPG_CALM_STEPS}歩のあいだ魔物が寄ってこない…`, "good");
+  rpgFx.banner("🔕 平和 " + RPG_CALM_STEPS + "歩", "victory");
+  rpgSfx("nav"); rpgSave(); renderMallRpg();
+}
+// 🏁 フロア踏破：階段に初到達した瞬間（この潜入で1回だけ）報酬を返す。タワーは対象外。
+function rpgFloorClear() {
+  if (!RPG || RPG.tower) return;
+  RPG._clearedFloors = RPG._clearedFloors || {};
+  if (RPG._clearedFloors[RPG.fi]) return;
+  RPG._clearedFloors[RPG.fi] = 1;
+  const d = rpgData();
+  const g = 30 + RPG.fi * 20;                                  // 踏破ボーナス（小・上階ほど増）
+  d.gold += g;
+  const drop = Math.random() < (0.34 + RPG.fi * 0.05);        // 🔕お香のドロップ（上階ほど出やすい）
+  if (drop) d.items.calm = (d.items.calm || 0) + 1;
+  rpgFx.banner(`🏁 ${RPG.fi + 1}F 踏破！`, "victory");
+  rpgLog(`🏁 ${rpgFloorMeta(RPG.fi).name} を踏破！ 🪙+${g}${drop ? "・🔕静けさのお香 ×1" : ""}`, "win");
+  rpgSfx("unlock"); rpgSave();
+}
+
 // ── 🌟 エンドレスタワー（屋上クリア後・どこまで上れるか＋プレスユアラック）
 function rpgStartTower() {
   RPG = {
@@ -459,12 +489,17 @@ function rpgForward(sign) {
   const here = rpgCell(nx, ny);
   if (here === "T") { rpgTreasure(nx, ny); return; }
   if (here === "U") {   // 階段＝自動で上らない。オートは一旦停止して「上る？残る？」を選ばせる
+    rpgFloorClear();    // 🏁 踏破（初回のみ報酬：ゴールド＋🔕お香）
     if (RPG.auto) { RPG.auto = false; if (RPG._autoT) { clearTimeout(RPG._autoT); RPG._autoT = null; } }
     rpgLog("🛗 階段に着いた。『上の階へ』で上れる（残ってお買い物・ミッションもOK）", "good"); rpgSfx("nav"); renderMallRpg(); return;
   }
   if (here === "E") { rpgReachExit(); return; }
   // ランダムエンカウント
-  if (RPG.grace > 0) RPG.grace--;
+  if ((RPG.calm || 0) > 0) {   // 🔕 静けさのお香：効果中は遭遇しない（grace も消費しない）
+    RPG.calm--;
+    if (RPG.calm === 0) rpgLog("🔕 お香の効き目が切れた。気をひきしめて…", "");
+  }
+  else if (RPG.grace > 0) RPG.grace--;
   else if (Math.random() < 0.22) {
     const fm = rpgFloorMeta(RPG.fi);   // 🐲 フロアの主（未討伐なら一定確率で出現）
     const isNushi = fm.nushi && !(RPG._nushiBeat && RPG._nushiBeat[RPG.fi]) && Math.random() < 0.2;
@@ -929,8 +964,10 @@ function rpgBattleWin() {
   let outfit = null;
   if (b.boss) {
     d.cleared = true;
+    d.items.calm = (d.items.calm || 0) + 2;   // 🔕 制覇のごほうび：静けさのお香（探索が一気にラクに）
     outfit = rpgGrantOutfit("r") || rpgGrantOutfit("c");
-    if (outfit) rpgBLog(`👑 屋上制覇！ ごほうびの衣装「${outfit.name}」を手に入れた！`, "win");
+    if (outfit) rpgBLog(`👑 屋上制覇！ ごほうびの衣装「${outfit.name}」と🔕静けさのお香×2を手に入れた！`, "win");
+    else rpgBLog(`👑 屋上制覇！ ごほうびに🔕静けさのお香×2を手に入れた！`, "win");
   } else if (Math.random() < 0.06) {
     outfit = rpgGrantOutfit("c");
     if (outfit) rpgBLog(`👑 魔物が衣装「${outfit.name}」を落とした！`, "win");
@@ -1001,11 +1038,10 @@ function rpgAfterLose() {
 function rpgRest() { const d = rpgData(); d.hp = d.maxhp; d.mp = d.maxmp; rpgSave(); renderMallRpg(); }
 function rpgBuy(kind) {
   const d = rpgData();
-  const price = kind === "potion" ? 20 : 30;
-  if (d.gold < price) return;
+  const price = { potion: 20, ether: 30, calm: 80 }[kind];
+  if (price == null || d.gold < price) return;
   d.gold -= price;
-  if (kind === "potion") d.items.potion = (d.items.potion || 0) + 1;
-  else d.items.ether = (d.items.ether || 0) + 1;
+  d.items[kind] = (d.items[kind] || 0) + 1;
   rpgSfx("unlock"); rpgSave();
   renderMallRpg();
 }
@@ -1194,6 +1230,16 @@ function rpgRenderHub(app) {
   // ── つぎの目標（あと◯◯：ゴールグラデーション）
   app.appendChild(el("div", "rpg-goal-line", rpgNextGoalText()));
 
+  // ── フロア帯（踏破の可視化：どこまで来たか／屋上まであと何フロアか）
+  const reached = d.cleared ? (RPG_FLOORS.length - 1) : (rec.floor || 0);
+  const strip = el("div", "rpg-floorstrip");
+  strip.innerHTML = RPG_FLOORS.map((f, i) => {
+    const top = i === RPG_FLOORS.length - 1, lab = top ? "🏯屋上" : (i + 1) + "F";
+    const cls = (d.cleared || i <= reached) ? "done" : (i === reached + 1 ? "now" : "");
+    return `<span class="fs-cell ${cls}">${lab}</span>`;
+  }).join("");
+  app.appendChild(strip);
+
   // ── ログボ（あれば主役のすぐ上にコンパクトに）
   if (d.daily !== rpgToday()) {
     const dl = el("button", "rpg-daily", "🎁 ログインボーナス（🎟️＋おまけ）を受け取る");
@@ -1258,7 +1304,7 @@ function rpgRenderHub(app) {
   // ── 🧰 おでかけ準備（道具屋＋休む・折りたたみ）
   const prep = el("details", "rpg-box rpg-sec");
   let ph = `<summary>🧰 おでかけ準備</summary><div class="rpg-shopgrid">`;
-  [["potion", "🧪 回復薬", "HP+40", 20], ["ether", "🔵 マナ水", "MP+20", 30]].forEach(([k, n, ds, price]) => {
+  [["potion", "🧪 回復薬", "HP+40", 20], ["ether", "🔵 マナ水", "MP+20", 30], ["calm", "🔕 静けさのお香", RPG_CALM_STEPS + "歩エンカ無し", 80]].forEach(([k, n, ds, price]) => {
     ph += `<button class="rpg-shopbtn${d.gold >= price ? "" : " off"}" data-buy="${k}"${d.gold < price ? " disabled" : ""}><b>${n}</b><small>${ds}</small><span class="cost">${price}G</span></button>`;
   });
   ph += `</div>`;
@@ -1302,6 +1348,7 @@ function rpgShowHelp() {
     `<p><b>🪙 ゴールド</b>：探索で稼ぐお金。お店の買い物・道具・10連ガチャに使う。</p>` +
     `<p><b>🎟️ おたから券</b>：ガチャ1回ぶん。ログボや探索で手に入る。</p>` +
     `<p><b>✨ みがき</b>：ぼうけんのたびにたまる成長ポイント。「💖自分磨き」で永久に強くなる（倒れても持ち帰る）。</p>` +
+    `<p><b>🔕 静けさのお香</b>：たくと<b>${RPG_CALM_STEPS}歩のあいだ魔物に遭わない</b>探索アイテム。<b>フロアを踏破（🛗階段に到達）すると手に入りやすく</b>、屋上制覇でもごほうび。お店（🧰おでかけ準備）でも買える。階段や宝までを安全に駆け抜けたい時に。</p>` +
     `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>` +
     `<hr><p><b>📦 今回の冒険</b>：モールを出る・気絶・制覇のたびに、そのぼうけんの成果（ゴールド収支・撃破・踏破フロア・お買い物・衣装・✨みがきなど）を1枚にまとめて表示。<b>倒れても“持ち帰った物”が見える</b>から、もぐるたびに前進してるのが分かるっ。</p>` +
     `<hr><p><b>🗓️ デイリーラン</b>：URLに <code>?daily</code> を付けて開くと、<b>その日だけの固定ダンジョン</b>（床の変形＋通路閉鎖が日替わり）で遊べます。<code>?daily=合言葉</code> を付ければ友達と<b>同じ構造</b>を共有できる（同じ合言葉＝同じ地形）。</p>`;
@@ -1385,6 +1432,7 @@ function rpgRenderExplore(app) {
       `<span class="rpg-chip mp">💧${d.mp}/${d.maxmp}</span>` +
       `<span class="rpg-chip">🪙${d.gold}</span>` +
       `<span class="rpg-chip">🧝Lv${d.lv}</span>` +
+      ((RPG.calm || 0) > 0 ? `<span class="rpg-chip calm">🔕 平和 ${RPG.calm}歩</span>` : "") +
     `</div>`;
   wrap.appendChild(head);
 
@@ -1427,8 +1475,12 @@ function rpgRenderExplore(app) {
     const enter = el("button", "rpg-movebtn wide shopenter" + (shopLeft > 0 ? " has" : ""), shopLeft > 0 ? `🛍️ お店に入る（未入手 ${shopLeft}品）` : "🛍️ お店に入る（コンプ済み）");
     enter.onclick = () => rpgOpenShop();
     ctx.appendChild(enter);
+  } else if ((RPG.calm || 0) === 0 && (d.items.calm || 0) > 0) {
+    const cb = el("button", "rpg-movebtn wide calm", `🔕 静けさのお香をたく ×${d.items.calm}（${RPG_CALM_STEPS}歩 エンカ無し）`);
+    cb.onclick = () => rpgUseCalm();
+    ctx.appendChild(cb);
   } else {
-    ctx.appendChild(el("div", "rpg-ctx-idle", "🔍 通路を進んでお店や階段をさがそう"));
+    ctx.appendChild(el("div", "rpg-ctx-idle", (RPG.calm || 0) > 0 ? `🔕 静けさのお香 効果中（あと ${RPG.calm}歩）` : "🔍 通路を進んでお店や階段をさがそう"));
   }
   dock.appendChild(ctx);
 
