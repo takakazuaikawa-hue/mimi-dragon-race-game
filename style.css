@@ -4869,6 +4869,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-good.owned .gprice { color:#9cf0b0; }
 .rpg-good.deal { border-color:rgba(255,120,120,.8); box-shadow:0 0 14px rgba(255,110,110,.4); }
 .rpg-good .deal-tag { position:absolute; top:-7px; right:-5px; background:#ff4d5e; color:#fff; font-size:10px; font-weight:800; padding:1px 6px; border-radius:999px; transform:rotate(6deg); }
+/* 💡おすすめ＝未所持の最安品（買う動機を1つに） */
+.rpg-good.rec { border-color:rgba(120,200,255,.75); box-shadow:0 0 12px rgba(90,180,255,.35); }
+.rpg-good .rec-tag { position:absolute; top:-7px; right:-5px; background:#4a9fe0; color:#fff; font-size:10px; font-weight:800; padding:1px 6px; border-radius:999px; transform:rotate(6deg); }
+.rpg-good .gprice .gsave { color:#7fe6a0; font-weight:800; font-size:12px; }
+.rpg-good .gprice .gover { color:#ff8a8a; font-weight:800; font-size:12px; }
+.rpg-shop-sub .sc.done { color:#9cf0b0; font-weight:800; }
 .good-acts { display:flex; gap:5px; margin-top:6px; width:100%; }
 .good-acts .gbuy, .good-acts .ghaggle { flex:1; padding:6px 4px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid transparent; }
 .good-acts .gbuy { background:linear-gradient(135deg,#d68a3c,#f0b35f); color:#fff; }

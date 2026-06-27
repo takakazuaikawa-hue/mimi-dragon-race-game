@@ -1154,7 +1154,8 @@ function rpgHaggle(id) {
   else if (r < 0.85) { mul = 1.0; msg = "うーん、これ以上はごめんなさいね？"; tag = "渋い顔…"; cls = "miss"; rpgSfx("tick"); }
   else               { mul = 1.1; msg = "あらあら、強気ですこと！ むしろ正規で、ね？"; tag = "ちょい高め…"; cls = "bad"; rpgSfx("tick"); }
   RPG._haggle[id] = { mul: mul }; RPG._shopMsg = msg;
-  rpgFx.banner(tag, cls);
+  const np = rpgItemPrice(it), sv = it.price - np;   // 浮いた額（マイナスなら強気で割高）を明示
+  rpgFx.banner(tag + (sv > 0 ? ` −${sv}G` : (sv < 0 ? ` +${-sv}G` : "")), cls);
   renderMallRpg();
 }
 function rpgBuyGoods(id) {
@@ -1162,10 +1163,25 @@ function rpgBuyGoods(id) {
   if (!it || rpgOwned(id)) return;
   const price = rpgItemPrice(it);
   if (d.gold < price) { rpgSfx("tick"); if (RPG) RPG._shopMsg = "あら、ゴールドが足りないみたい…"; renderMallRpg(); return; }
+  const save = Math.max(0, it.price - price);           // 値切り/セールで浮いた額（成功体験を明示）
   d.gold -= price; d.shop = d.shop || {}; d.shop[id] = true;
-  if (RPG) { RPG._shopMsg = "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${price}G で買った！`, "good"); }
-  rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！", "victory");
+  if (RPG) { RPG._shopMsg = save > 0 ? `お買い上げ♪ ${save}Gもお得でしたわね、ミミ様！` : "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${price}G で買った！${save > 0 ? `（−${save}G）` : ""}`, "good"); }
+  rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！" + (save > 0 ? ` −${save}G` : ""), "victory");
+  rpgShopFloorReward(RPG ? RPG.fi : 0);                  // 🎀 そのフロアの品を全部そろえたら一度きりのごほうび
   rpgSave(); renderMallRpg();
+}
+// 🎀 フロア・コンプ報酬：その階の品を全部そろえた瞬間（各階1回）に 🎟️＋✨ を返す（買い集めの達成感）
+function rpgShopFloorReward(fi) {
+  const d = rpgData(), arr = rpgShopFor(fi);
+  if (!arr.length || rpgShopOwnedN(arr) < arr.length) return;
+  d.shopDone = d.shopDone || {};
+  if (d.shopDone[fi]) return;
+  d.shopDone[fi] = true;
+  d.tickets = (d.tickets || 0) + 1; d.rep = (d.rep || 0) + 5;
+  const nm = rpgFloorMeta(fi).name.replace(/ .*/, "");
+  rpgFx.banner(`🎀 ${nm} お買い物マスター！`, "victory");
+  if (RPG) { RPG._shopMsg = `${nm}の品をぜんぶ！ さすがミミ様♪ ごほうびですわ`; rpgLog(`🎀 ${nm} コンプリート！ ごほうび 🎟️+1・✨+5`, "win"); }
+  setTimeout(() => rpgSfx("unlock"), 220);
 }
 
 // =========================================================================
@@ -1349,7 +1365,7 @@ function rpgShowHelp() {
     `<p><b>🎟️ おたから券</b>：ガチャ1回ぶん。ログボや探索で手に入る。</p>` +
     `<p><b>✨ みがき</b>：ぼうけんのたびにたまる成長ポイント。「💖自分磨き」で永久に強くなる（倒れても持ち帰る）。</p>` +
     `<p><b>🔕 静けさのお香</b>：たくと<b>${RPG_CALM_STEPS}歩のあいだ魔物に遭わない</b>探索アイテム。<b>フロアを踏破（🛗階段に到達）すると手に入りやすく</b>、屋上制覇でもごほうび。お店（🧰おでかけ準備）でも買える。階段や宝までを安全に駆け抜けたい時に。</p>` +
-    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>` +
+    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。未所持の最安品には<b>💡おすすめ</b>が付き、<b>その階の品を全部そろえると🎀お買い物マスター（🎟️+1・✨+5）</b>。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>` +
     `<hr><p><b>📦 今回の冒険</b>：モールを出る・気絶・制覇のたびに、そのぼうけんの成果（ゴールド収支・撃破・踏破フロア・お買い物・衣装・✨みがきなど）を1枚にまとめて表示。<b>倒れても“持ち帰った物”が見える</b>から、もぐるたびに前進してるのが分かるっ。</p>` +
     `<hr><p><b>🗓️ デイリーラン</b>：URLに <code>?daily</code> を付けて開くと、<b>その日だけの固定ダンジョン</b>（床の変形＋通路閉鎖が日替わり）で遊べます。<code>?daily=合言葉</code> を付ければ友達と<b>同じ構造</b>を共有できる（同じ合言葉＝同じ地形）。</p>`;
   if (typeof showInfoPopup === "function") showInfoPopup("もちもの＆あそびかた", html);
@@ -1370,20 +1386,26 @@ function rpgRenderShop(app) {
   app.appendChild(keep);
 
   const head = el("div", "rpg-shop-head");
+  const complete = own >= arr.length;
   head.innerHTML = `<div class="rpg-shop-t">🛍️ ${meta.name} のお店</div>` +
-    `<div class="rpg-shop-sub"><span>🪙 ${d.gold}G</span><span class="sc">そろえた ${own}/${arr.length}</span></div>`;
+    `<div class="rpg-shop-sub"><span>🪙 ${d.gold}G</span><span class="sc${complete ? " done" : ""}">${complete ? "✓ コンプ" : "そろえた"} ${own}/${arr.length}</span></div>`;
   app.appendChild(head);
+
+  // 💡おすすめ＝未所持の最安品（セール品以外）。買う動機を1つに絞る
+  const unowned = arr.filter(x => !rpgOwned(x.id) && !(RPG && RPG._dealId === x.id));
+  const recId = unowned.length ? unowned.reduce((a, b) => (b.price < a.price ? b : a), unowned[0]).id : null;
 
   const grid = el("div", "rpg-shopwall");
   arr.forEach(it => {
     const owned = rpgOwned(it.id), price = rpgItemPrice(it);
     const isDeal = RPG && RPG._dealId === it.id, haggled = RPG && RPG._haggle && RPG._haggle[it.id];
+    const isRec = it.id === recId, save = Math.max(0, it.price - price);
     const can = d.gold >= price, cat = RPG_SHOP_CAT[it.cat] || { ic: "🛍️" };
-    const card = el("div", "rpg-good" + (owned ? " owned" : can ? " ready" : " off") + (isDeal ? " deal" : ""));
-    let inner = (isDeal ? `<span class="deal-tag">🎉SALE</span>` : "") +
+    const card = el("div", "rpg-good" + (owned ? " owned" : can ? " ready" : " off") + (isDeal ? " deal" : "") + (isRec ? " rec" : ""));
+    let inner = (isDeal ? `<span class="deal-tag">🎉SALE</span>` : (isRec ? `<span class="rec-tag">💡おすすめ</span>` : "")) +
       `<span class="gic">${it.ic}</span><b>${it.n}</b><span class="gcat">${cat.ic}${cat.n}</span>`;
     if (owned) inner += `<span class="gprice owned">✓ 購入ずみ</span>`;
-    else inner += `<span class="gprice">🪙${price}${(isDeal || haggled) && price < it.price ? ` <s>${it.price}</s>` : ""}</span>`;
+    else inner += `<span class="gprice">🪙${price}${save > 0 ? ` <s>${it.price}</s> <span class="gsave">−${save}G</span>` : (price > it.price ? ` <span class="gover">+${price - it.price}G</span>` : "")}</span>`;
     card.innerHTML = inner;
     if (!owned) {
       const acts = el("div", "good-acts");
