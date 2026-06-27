@@ -1168,6 +1168,7 @@ function rpgBuyGoods(id) {
   if (RPG) { RPG._shopMsg = save > 0 ? `お買い上げ♪ ${save}Gもお得でしたわね、ミミ様！` : "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${price}G で買った！${save > 0 ? `（−${save}G）` : ""}`, "good"); }
   rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！" + (save > 0 ? ` −${save}G` : ""), "victory");
   rpgShopFloorReward(RPG ? RPG.fi : 0);                  // 🎀 そのフロアの品を全部そろえたら一度きりのごほうび
+  rpgGrandCompCheck();                                   // 👑 全48品コンプで記念衣装＋最上位称号
   rpgSave(); renderMallRpg();
 }
 // 🎀 フロア・コンプ報酬：その階の品を全部そろえた瞬間（各階1回）に 🎟️＋✨ を返す（買い集めの達成感）
@@ -1182,6 +1183,42 @@ function rpgShopFloorReward(fi) {
   rpgFx.banner(`🎀 ${nm} お買い物マスター！`, "victory");
   if (RPG) { RPG._shopMsg = `${nm}の品をぜんぶ！ さすがミミ様♪ ごほうびですわ`; rpgLog(`🎀 ${nm} コンプリート！ ごほうび 🎟️+1・✨+5`, "win"); }
   setTimeout(() => rpgSfx("unlock"), 220);
+}
+// 👑 グランドコンプ：全フロアの品(=48品)を制覇した瞬間（1回）に記念衣装＋大量ごほうび＋最上位称号。
+function rpgGrandCompCheck() {
+  const d = rpgData(), tot = rpgShopTotalOwned();
+  if (tot.o < tot.t || d.grandComp) return;
+  d.grandComp = true;
+  d.tickets = (d.tickets || 0) + 3; d.rep = (d.rep || 0) + 20;
+  const o = rpgGrantOutfit("l") || rpgGrantOutfit("r") || rpgGrantOutfit("c");   // 記念衣装（既存OUTFITSの上位帯から）
+  rpgFx.banner("👑 グランドコンプリート！", "victory");
+  if (RPG) { RPG._shopMsg = "ぜ、ぜんぶ…！ ミミ様こそ“モールの主”ですわ…！👑"; rpgLog(`👑 全${tot.t}品コンプ！ 称号「ドラゴンモールの主」＋🎟️×3・✨×20${o ? `・記念衣装「${o.name}」` : ""}`, "win"); }
+  setTimeout(() => rpgSfx("legendary"), 300);
+}
+// 📖 ずかんの収集状況（称号の判定に使う）
+function rpgCodexCount() {
+  const d = rpgData(), ids = RPG_TOURISTS.concat(RPG_MONSTERS_MINOR, RPG_KUNLUN, ["boss1"]);
+  let seen = 0; ids.forEach(id => { if (d.codex && d.codex[id]) seen++; });
+  return { seen: seen, total: ids.length };
+}
+// 🏅 称号（トロフィー）：既存の進行から導出（保存はマイルストン到達のみ）。あと◯◯のヒント付き。
+function rpgTitles() {
+  const d = rpgData(), rec = d.records || {}, topI = RPG_FLOORS.length - 1;
+  const tot = rpgShopTotalOwned(), cx = rpgCodexCount();
+  const anyFloorComp = !!(d.shopDone && Object.keys(d.shopDone).some(k => d.shopDone[k]));
+  return [
+    { ic: "🌿", n: "モール制覇者", got: !!d.cleared, hint: `屋上まで あと${Math.max(0, topI - (rec.floor || 0))}フロア` },
+    { ic: "🎀", n: "お買い物名人", got: anyFloorComp, hint: "どこか1フロアをコンプ" },
+    { ic: "👑", n: "ドラゴンモールの主", got: tot.o >= tot.t, hint: `全品まで あと${tot.t - tot.o}品` },
+    { ic: "🌟", n: "天空の登頂者", got: (rec.depth || 0) >= 10, hint: `タワー10層（いま${rec.depth || 0}層）` },
+    { ic: "📖", n: "すれちがい博士", got: cx.seen >= cx.total, hint: `ずかん あと${cx.total - cx.seen}体` },
+  ];
+}
+// いま名乗れる最上位の称号（ハブのチップ用・優先度＝主＞登頂者＞博士＞制覇者＞名人）
+function rpgTopTitle() {
+  const t = rpgTitles(), order = ["ドラゴンモールの主", "天空の登頂者", "すれちがい博士", "モール制覇者", "お買い物名人"];
+  for (const n of order) { const m = t.find(x => x.n === n && x.got); if (m) return m; }
+  return null;
 }
 
 // =========================================================================
@@ -1236,7 +1273,7 @@ function rpgRenderHub(app) {
   hero.appendChild(el("div", "rpg-hero-title", "🐲 崑崙ドラゴンモール大冒険"));
   const stat = el("div", "rpg-hero-stats");
   stat.innerHTML =
-    `<div class="rpg-st char">🧝 Lv<b>${d.lv}</b><span>❤️${d.hp}/${d.maxhp}</span><span>💧${d.mp}/${d.maxmp}</span>${d.cleared ? `<span class="cl">🌿制覇</span>` : ""}</div>` +
+    `<div class="rpg-st char">🧝 Lv<b>${d.lv}</b><span>❤️${d.hp}/${d.maxhp}</span><span>💧${d.mp}/${d.maxmp}</span>${(() => { const tt = rpgTopTitle(); return tt ? `<span class="cl title">${tt.ic}${tt.n}</span>` : (d.cleared ? `<span class="cl">🌿制覇</span>` : ""); })()}</div>` +
     `<div class="rpg-st wallet">🪙<b>${d.gold}</b><span class="tk">🎟️${d.tickets || 0}</span><span class="rep">✨${d.rep || 0}</span><button class="rpg-help" title="もちもの・あそびかた">？</button></div>`;
   hero.appendChild(stat);
   app.appendChild(hero);
@@ -1342,6 +1379,15 @@ function rpgRenderHub(app) {
   codex.innerHTML = `<summary>📖 ずかん（すれちがい）</summary><div class="rpg-codexlist">${rows}</div>`;
   app.appendChild(codex);
 
+  // ── 🏅 称号（折りたたみ・やり込みの頂点／あと◯◯のゴールグラデーション）
+  const titles = rpgTitles(), gotN = titles.filter(t => t.got).length;
+  const trd = el("details", "rpg-box rpg-sec");
+  trd.innerHTML = `<summary>🏅 称号 <span class="sec-r">${gotN}/${titles.length}</span></summary>` +
+    `<div class="rpg-titles">` +
+    titles.map(t => `<div class="rpg-title-row${t.got ? " got" : ""}"><span class="tt-ic">${t.got ? t.ic : "🔒"}</span><span class="tt-n">${t.n}</span><span class="tt-st">${t.got ? "✓ 獲得" : t.hint}</span></div>`).join("") +
+    `</div>`;
+  app.appendChild(trd);
+
   // ── 🏆 きろく（折りたたみ）
   const recd = el("details", "rpg-box rpg-sec");
   recd.innerHTML = `<summary>🏆 きろく</summary><div class="rpg-records">` +
@@ -1365,7 +1411,7 @@ function rpgShowHelp() {
     `<p><b>🎟️ おたから券</b>：ガチャ1回ぶん。ログボや探索で手に入る。</p>` +
     `<p><b>✨ みがき</b>：ぼうけんのたびにたまる成長ポイント。「💖自分磨き」で永久に強くなる（倒れても持ち帰る）。</p>` +
     `<p><b>🔕 静けさのお香</b>：たくと<b>${RPG_CALM_STEPS}歩のあいだ魔物に遭わない</b>探索アイテム。<b>フロアを踏破（🛗階段に到達）すると手に入りやすく</b>、屋上制覇でもごほうび。お店（🧰おでかけ準備）でも買える。階段や宝までを安全に駆け抜けたい時に。</p>` +
-    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。未所持の最安品には<b>💡おすすめ</b>が付き、<b>その階の品を全部そろえると🎀お買い物マスター（🎟️+1・✨+5）</b>。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>` +
+    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。未所持の最安品には<b>💡おすすめ</b>が付き、<b>その階の品を全部そろえると🎀お買い物マスター（🎟️+1・✨+5）</b>。<b>全フロアの品をコンプすると👑グランドコンプ</b>＝記念衣装＋最上位称号「ドラゴンモールの主」。集めた<b>🏅称号</b>はハブの「称号」で確認できる（あと◯◯も表示）。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>` +
     `<hr><p><b>📦 今回の冒険</b>：モールを出る・気絶・制覇のたびに、そのぼうけんの成果（ゴールド収支・撃破・踏破フロア・お買い物・衣装・✨みがきなど）を1枚にまとめて表示。<b>倒れても“持ち帰った物”が見える</b>から、もぐるたびに前進してるのが分かるっ。</p>` +
     `<hr><p><b>🗓️ デイリーラン</b>：URLに <code>?daily</code> を付けて開くと、<b>その日だけの固定ダンジョン</b>（床の変形＋通路閉鎖が日替わり）で遊べます。<code>?daily=合言葉</code> を付ければ友達と<b>同じ構造</b>を共有できる（同じ合言葉＝同じ地形）。</p>`;
   if (typeof showInfoPopup === "function") showInfoPopup("もちもの＆あそびかた", html);
