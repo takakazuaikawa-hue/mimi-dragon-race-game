@@ -712,6 +712,7 @@ function renderHome() {
     b.onclick = () => showNavConfirm(icon, label, desc, go);
     return b;
   };
+  if (typeof renderKonronMap === "function") rail.appendChild(navItem("🏝️", "観光マップ", "崑崙島の地図から。食べ歩き・買い物・レース・温泉・絶景・推し活へ。", () => renderKonronMap()));
   rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
   if (typeof renderMeals === "function") rail.appendChild(navItem("🍽️", "食事", "ミミの食べ歩きコレクション。食べて・当てて集めます。", () => renderMeals()));
   if (mallUnlocked()) {

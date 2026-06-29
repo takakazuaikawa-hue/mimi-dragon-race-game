@@ -5154,6 +5154,36 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sc-extra--poro { background: linear-gradient(180deg, rgba(154,106,208,.28), rgba(120,80,180,.2)); border-color: rgba(180,150,220,.5); color: #e7d8f5; }
 
 /* =========================================================================
+   崑崙島 観光マップ統合ハブ（stylized SVG＋7分類ピン・表示専用・設定の聖典=KONRON handoff）
+   ========================================================================= */
+.km-wrap { width: 100%; max-width: 560px; margin: 4px auto 8px; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.4); border: 1px solid var(--glass-border); background: #122a34; }
+.km-map { display: block; width: 100%; height: auto; }
+.km-pin { cursor: pointer; }
+.km-pin circle:nth-child(2) { transition: transform .12s; transform-box: fill-box; transform-origin: center; }
+.km-pin:hover circle:nth-child(2), .km-pin:focus circle:nth-child(2) { transform: scale(1.18); }
+.km-pin:focus { outline: none; }
+.km-pin--sel circle:nth-child(2) { transform: scale(1.28); stroke: #ffe6a8; stroke-width: 4; }
+/* 凡例 */
+.km-legend { display: flex; flex-wrap: wrap; gap: 5px 9px; justify-content: center; margin: 0 auto 9px; max-width: 560px; }
+.km-leg { font-size: 11px; color: #cfe0e6; display: inline-flex; align-items: center; gap: 4px; }
+.km-leg i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+/* 詳細パネル（写真スポットカード＋ポータル） */
+.km-panel { max-width: 560px; margin: 0 auto; min-height: 64px; background: var(--glass-2); border: 1px solid var(--glass-border);
+  border-left: 4px solid var(--kmc, #caa24a); border-radius: 12px; padding: 12px 14px; }
+.km-hint { font-size: 12.5px; color: #aebcc3; text-align: center; padding: 8px; }
+.km-card-head { display: flex; align-items: center; gap: 11px; margin-bottom: 7px; }
+.km-card-ic { font-size: 24px; }
+.km-card-id b { font-size: 15.5px; color: #fff4e0; } .km-card-id small { display: block; font-size: 11.5px; color: var(--kmc, #b3c0c7); font-weight: 700; }
+.km-card-line { font-size: 13px; color: #e7eef1; line-height: 1.65; margin-bottom: 6px; }
+.km-card-shoot { font-size: 11.5px; color: #aebcc3; line-height: 1.55; margin-bottom: 8px; }
+.km-card-photo { font-size: 12px; color: #bfe6c8; }
+.km-card-lock { font-size: 12.5px; color: #d7b48a; line-height: 1.6; } .km-card-lock b { color: #ffd9a0; }
+.km-go { display: inline-block; margin-top: 2px; padding: 9px 16px; border: none; border-radius: 10px; cursor: pointer;
+  font-weight: 800; font-size: 13px; color: #2a1d05; background: linear-gradient(180deg,#e8b94e,#caa24a); }
+.km-go:active { transform: scale(.97); }
+
+/* =========================================================================
    斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
    ========================================================================= */
 .rpg-arena2 { position:relative; width:100%; max-width:540px; margin:6px auto 8px; aspect-ratio:520/320;
