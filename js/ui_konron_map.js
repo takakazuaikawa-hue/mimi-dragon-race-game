@@ -53,7 +53,7 @@ const KONRON_AREAS = [
   { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina"] },
   { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods"] },
   { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
-  { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 41, my: 63, spots: ["uroko"] },
+  { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 46, my: 63, spots: ["uroko"] },
   { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis"] },
   { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 27, my: 81, spots: ["sena", "bangara"] },
   { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo"] }
@@ -71,8 +71,12 @@ function renderKonronMap() {
   state.ui.screen = "konron_map";
   _kmArea = null; _kmSpot = null;
   const app = beginScreen();
-  app.appendChild(el("h2", null, "🏝 崑崙島 観光マップ"));
-  app.appendChild(el("div", "as-hint2", "霧の火山島リゾート・崑崙島の全景。<b>エリア</b>をタップすると、その地区のスポットと各施設が見られます（表示専用＝レースの結果には影響しません）。"));
+  // 全景ヒーロー（A2＝実写級の島の空撮。タイトルを重ねる＝この島の“顔”）。無い環境ではonerrorで自然に消える。
+  const hero = el("div", "km-hero");
+  hero.innerHTML = `<img class="km-hero-img" src="images/konron/island_aerial.webp" alt="崑崙島 全景" decoding="async" onerror="this.closest('.km-hero').classList.add('km-hero--noimg')">` +
+    `<div class="km-hero-cap"><b>🏝 崑崙島 観光マップ</b><span>霧の火山島リゾート、崑崙島へようこそ</span></div>`;
+  app.appendChild(hero);
+  app.appendChild(el("div", "as-hint2", "<b>エリア</b>をタップすると、その地区の拡大マップ・スポット・各施設が見られます（表示専用＝レースの結果には影響しません）。"));
 
   // 公式マップ準拠ジオラマ ＋ 少数のエリアピン（よく離して配置＝重ならない・押しやすい）
   const stage = el("div", "km-stage");
@@ -117,6 +121,15 @@ function _kmMarkSel(stage) {
 
 function _kmAreaOf(spotId) { return KONRON_AREAS.find(a => a.spots.indexOf(spotId) >= 0); }
 
+// 拡大マップのバナー：エリアへ“進む”と、本マップ(ジオラマ)を該当エリアにズームして表示。
+// bespokeな専用絵 images/konron/area_<id>.webp があれば自動で全面に差し替わる（onerrorでズーム版にフォールバック）。
+function _kmZoomBanner(area) {
+  if (!area) return "";
+  return `<div class="km-zoom" style="background-image:url('images/konron/island_map.webp');background-position:${area.mx}% ${area.my}%">` +
+    `<img class="km-zoom-img" src="images/konron/area_${area.id}.webp" alt="" decoding="async" onload="this.classList.add('on')" onerror="this.remove()">` +
+    `<span class="km-zoom-tag">🔍 ${area.name}・拡大マップ</span></div>`;
+}
+
 function _kmRenderPanel() {
   const panel = document.getElementById("km-panel"); if (!panel) return;
 
@@ -127,7 +140,7 @@ function _kmRenderPanel() {
     const area = _kmAreaOf(_kmSpot);
     const open = _kmSpotOpen(s);
     panel.style.setProperty("--kmc", c.color);
-    let body = "";
+    let body = _kmZoomBanner(area);
     if (area && area.spots.length > 1) body += `<button class="km-areaback" data-back="1">← ${area.name}</button>`;
     body += `<div class="km-card-head"><span class="km-card-ic">${c.ic}</span>` +
       `<div class="km-card-id"><b>${s.name}</b><small>${c.name}${s.time && s.time !== "—" ? "・" + s.time : ""}</small></div></div>`;
@@ -156,7 +169,7 @@ function _kmRenderPanel() {
     const area = KONRON_AREAS.find(a => a.id === _kmArea);
     if (area) {
       panel.style.setProperty("--kmc", area.color);
-      let body = `<div class="km-area-head"><span class="km-card-ic">${area.ic}</span><b>${area.name}</b><small>タップでスポットへ</small></div><div class="km-chips">`;
+      let body = _kmZoomBanner(area) + `<div class="km-area-head"><span class="km-card-ic">${area.ic}</span><b>${area.name}</b><small>タップでスポットへ</small></div><div class="km-chips">`;
       area.spots.forEach(id => {
         const s = KONRON_SPOTS[id]; if (!s) return;
         const c = KM_CATS[s.cat] || KM_CATS.port;

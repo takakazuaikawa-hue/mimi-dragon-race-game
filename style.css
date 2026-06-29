@@ -5156,6 +5156,17 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* =========================================================================
    崑崙島 観光マップ統合ハブ（stylized SVG＋7分類ピン・表示専用・設定の聖典=KONRON handoff）
    ========================================================================= */
+.km-hero { position: relative; width: 100%; max-width: 600px; margin: 2px auto 9px; border-radius: 14px; overflow: hidden;
+  aspect-ratio: 16 / 6; background: #0d1b22; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+.km-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
+.km-hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(8,16,20,.74) 0%, rgba(8,16,20,.28) 46%, rgba(8,16,20,.06) 100%); }
+.km-hero-cap { position: absolute; left: 14px; bottom: 11px; z-index: 2; }
+.km-hero-cap b { display: block; font-size: 19px; color: #fff6e6; text-shadow: 0 2px 8px #000; }
+.km-hero-cap span { display: block; font-size: 11.5px; color: #cfe0e6; margin-top: 2px; text-shadow: 0 1px 4px #000; }
+.km-hero--noimg { aspect-ratio: auto; background: none; box-shadow: none; }
+.km-hero--noimg .km-hero-cap { position: static; padding: 2px 2px 0; }
+.km-hero--noimg::after { display: none; }
 .km-stage { position: relative; width: 100%; max-width: 600px; margin: 4px auto 8px; border-radius: 14px; overflow: hidden;
   box-shadow: 0 10px 30px rgba(0,0,0,.4); border: 1px solid var(--glass-border); line-height: 0; }
 .km-mapimg { display: block; width: 100%; height: auto; }
@@ -5196,6 +5207,14 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .km-go { display: inline-block; margin-top: 2px; padding: 9px 16px; border: none; border-radius: 10px; cursor: pointer;
   font-weight: 800; font-size: 13px; color: #2a1d05; background: linear-gradient(180deg,#e8b94e,#caa24a); }
 .km-go:active { transform: scale(.97); }
+/* エリア拡大マップ・バナー：本マップをエリアにズーム（bespoke絵 area_<id>.webp があれば全面差し替え） */
+.km-zoom { position: relative; width: 100%; aspect-ratio: 16 / 7; border-radius: 11px; overflow: hidden;
+  background-repeat: no-repeat; background-size: 280%; margin-bottom: 11px;
+  border: 1px solid rgba(255,255,255,.14); box-shadow: inset 0 0 26px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.32); }
+.km-zoom-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .35s; }
+.km-zoom-img.on { opacity: 1; }
+.km-zoom-tag { position: absolute; left: 8px; bottom: 8px; z-index: 2; font-size: 11px; font-weight: 800; color: #fff;
+  background: rgba(0,0,0,.52); padding: 3px 9px; border-radius: 999px; letter-spacing: .02em; }
 
 /* =========================================================================
    斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
