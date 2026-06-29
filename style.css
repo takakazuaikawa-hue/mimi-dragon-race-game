@@ -5159,13 +5159,25 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .km-stage { position: relative; width: 100%; max-width: 600px; margin: 4px auto 8px; border-radius: 14px; overflow: hidden;
   box-shadow: 0 10px 30px rgba(0,0,0,.4); border: 1px solid var(--glass-border); line-height: 0; }
 .km-mapimg { display: block; width: 100%; height: auto; }
-.km-pinbtn { position: absolute; transform: translate(-50%, -50%); width: 27px; height: 27px; padding: 0; border-radius: 50%;
-  border: 2.5px solid #fff; background: var(--pc, #caa24a); color: #fff; font-size: 14px; line-height: 1; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 7px rgba(0,0,0,.55); transition: transform .1s; }
-.km-pinbtn--small { width: 21px; height: 21px; font-size: 11px; border-width: 2px; }
-.km-pinbtn:hover, .km-pinbtn:focus { transform: translate(-50%, -50%) scale(1.28); z-index: 5; outline: none; }
-.km-pinbtn--sel { transform: translate(-50%, -50%) scale(1.32); border-color: #ffe6a8; box-shadow: 0 0 0 3px rgba(255,230,168,.55), 0 2px 7px rgba(0,0,0,.55); z-index: 6; }
-.km-pinbtn--locked { opacity: .6; }
+/* エリアピン（少数・よく離して配置・ラベル付き＝重ならない/押しやすい） */
+.km-areapin { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: none; padding: 4px; cursor: pointer; z-index: 2; }
+.km-areapin-dot { width: 40px; height: 40px; border-radius: 50%; border: 3px solid #fff; background: var(--pc, #caa24a);
+  display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 3px 10px rgba(0,0,0,.6); transition: transform .12s; }
+.km-areapin-lbl { font-size: 10.5px; font-weight: 800; color: #fff; text-shadow: 0 1px 3px #000, 0 0 6px #000; white-space: nowrap; line-height: 1; }
+.km-areapin:hover .km-areapin-dot, .km-areapin:focus .km-areapin-dot { transform: scale(1.16); }
+.km-areapin:focus { outline: none; }
+.km-areapin--sel .km-areapin-dot { transform: scale(1.22); border-color: #ffe6a8; box-shadow: 0 0 0 3px rgba(255,230,168,.55), 0 3px 10px rgba(0,0,0,.6); }
+/* エリア詳細＝スポットチップ一覧 */
+.km-area-head { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.km-area-head b { font-size: 15px; color: #fff4e0; } .km-area-head small { color: #9fb0b8; font-size: 11px; }
+.km-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.km-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 999px; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); border-left: 4px solid var(--cc, #caa24a); color: #eaf1f4; font-size: 12.5px; font-weight: 700; }
+.km-chip:active { transform: scale(.97); }
+.km-chip-ic { font-size: 14px; }
+.km-chip--locked { opacity: .55; }
+.km-areaback { background: none; border: none; color: var(--kmc, #caa24a); font-size: 12px; font-weight: 800; cursor: pointer; padding: 0 0 8px; }
 /* 凡例 */
 .km-legend { display: flex; flex-wrap: wrap; gap: 5px 9px; justify-content: center; margin: 0 auto 9px; max-width: 560px; }
 .km-leg { font-size: 11px; color: #cfe0e6; display: inline-flex; align-items: center; gap: 4px; }
