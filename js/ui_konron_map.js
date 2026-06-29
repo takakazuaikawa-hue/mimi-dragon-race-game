@@ -235,10 +235,10 @@ function renderKonronMap() {
 function renderKonronGuide() {
   state.ui.screen = "konron_guide";
   const app = beginScreen();
-  app.appendChild(el("h2", null, "📖 崑崙ガイドブック"));
+  app.classList.add("kt-page");
   let total = 0, open = 0;
   (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => c.entries.forEach(e => { total++; if (_kmTotal() >= (KM_TIER_AT[e.tier] || 0)) open++; }));
-  app.appendChild(el("div", "as-hint2", `崑崙島の歴史・文化・食・竜・地理を集める図鑑。総資産が増えると新しい項目が解放されます（表示専用＝レース結果には影響しません）。<b>${open} / ${total}</b> 解放。`));
+  app.appendChild(_ktSectionHead("📖 崑崙ガイドブック", `崑崙島の歴史・文化・食・竜・地理を集める図鑑。総資産が増えると解放（表示専用）。<b>${open} / ${total}</b> 解放。`));
   (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => {
     const sec = el("div", "kg-sec");
     let h = `<div class="kg-cat"><span class="kg-cat-ic">${c.ic}</span>${c.cat}</div>`;
@@ -254,7 +254,7 @@ function renderKonronGuide() {
     app.appendChild(sec);
   });
   const actions = el("div", "actions");
-  const back = el("button", null, "🏝 観光へ戻る"); back.onclick = () => renderKonronMap();
+  const back = el("button", "kt-back", "← 観光へ戻る"); back.onclick = () => renderKonronMap();
   actions.appendChild(back);
   app.appendChild(actions);
 }
@@ -264,7 +264,7 @@ function renderKonronGuide() {
 function renderKonronGallery() {
   state.ui.screen = "konron_gallery";
   const app = beginScreen();
-  app.appendChild(el("h2", null, "🖼 観光フォト・コレクション"));
+  app.classList.add("kt-page");
   const items = [];
   Object.keys(KONRON_SPOTS).forEach(id => {
     const s = KONRON_SPOTS[id]; const open = _kmSpotOpen(s);
@@ -272,7 +272,7 @@ function renderKonronGallery() {
     if (s.gourmet) items.push({ id: id, kind: "gourmet", label: s.name + "・グルメ", src: s.gourmet, open: open });
   });
   const total = items.length, got = items.filter(it => it.open).length;
-  app.appendChild(el("div", "as-hint2", `崑崙島で撮った景色＆ご当地グルメのコレクション。行ける場所が増えると集まります。タップで鑑賞＆SNS投稿（表示専用＝レース結果には影響しません）。<b>${got} / ${total}</b> 枚 収集。`));
+  app.appendChild(_ktSectionHead("🖼 フォトコレクション", `崑崙島で撮った景色＆ご当地グルメ。行ける場所が増えると集まる（タップで鑑賞＆SNS投稿）。<b>${got} / ${total}</b> 枚 収集。`));
   const grid = el("div", "kgal-grid");
   items.forEach(it => {
     const cell = el("button", "kgal-cell" + (it.open ? "" : " kgal-cell--locked"));
@@ -289,7 +289,7 @@ function renderKonronGallery() {
   });
   app.appendChild(grid);
   const actions = el("div", "actions");
-  const back = el("button", null, "🏝 観光へ戻る"); back.onclick = () => renderKonronMap();
+  const back = el("button", "kt-back", "← 観光へ戻る"); back.onclick = () => renderKonronMap();
   actions.appendChild(back);
   app.appendChild(actions);
 }

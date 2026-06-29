@@ -5380,6 +5380,18 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .kt-note { margin: 16px 20px 6px; font-size: 10px; color: #9a8f78; text-align: center; }
 .kt-back { display: block; margin: 8px auto 0; background: none; border: none; color: #6f6757; font-size: 13px; font-weight: 800; cursor: pointer; padding: 8px; }
 
+/* 図鑑・ガイドブックも観光(明色)テーマに合わせて統一（明→暗の段差を解消） */
+.kt-page .kgal-grid { padding: 4px 16px 8px; margin: 4px 0 0; }
+.kt-page .kgal-cell--locked { background-color: #ece4d3; border: 1px dashed #d6cab0; box-shadow: none; }
+.kt-page .kgal-q { color: rgba(43,38,32,.32); }
+.kt-page .kg-sec { margin: 0 16px 16px; max-width: none; }
+.kt-page .kg-cat { color: #23201b; }
+.kt-page .kg-entry { background: #fff; border: 1px solid #e9dfca; border-left: 3px solid #e0a82e; box-shadow: 0 2px 8px rgba(90,68,22,.05); }
+.kt-page .kg-entry b { color: #23201b; }
+.kt-page .kg-entry p { color: #5b5345; }
+.kt-page .kg-entry--locked { background: #f0e9da; border-left-color: #cdbf9f; opacity: .82; }
+.kt-page .kg-entry--locked b, .kt-page .kg-entry--locked p { color: #9a8f78; }
+
 /* =========================================================================
    斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
    ========================================================================= */
