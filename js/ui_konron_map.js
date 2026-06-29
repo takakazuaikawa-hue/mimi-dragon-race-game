@@ -28,10 +28,10 @@ const KM_TIER_AT = [0, 3000, 1000000, 100000000];
 
 // スポット（写真スポットカード＋ポータル）。位置は持たない＝エリアに属する。
 const KONRON_SPOTS = {
-  mistra:    { name: "ミストラ湾",       cat: "port", tier: 1, time: "朝〜夕", shoot: "湾の全景・港とアレドラウ山・朝霧の船影", line: "島に着いた瞬間、旅が始まる霧と光の玄関口。" },
+  mistra:    { name: "ミストラ湾",       cat: "port", tier: 1, time: "朝〜夕", photo: "images/konron/spots/mistra.webp", shoot: "湾の全景・港とアレドラウ山・朝霧の船影", line: "島に着いた瞬間、旅が始まる霧と光の玄関口。" },
   kirimina:  { name: "霧港",             cat: "port", tier: 1, time: "夕〜夜", photo: "images/konron/spots/kirimina.webp", gourmet: "images/konron/spots/kirimina_gourmet.webp", shoot: "提灯と漁船・港の屋台・干物と小舟", line: "潮の匂いと提灯の灯りが混ざる、崑崙島の生活の入口。" },
   market:    { name: "霧待ち市場",       cat: "food", tier: 0, portal: "renderMeals", time: "夜", photo: "images/konron/spots/market.webp", gourmet: "images/konron/spots/market_gourmet.webp", shoot: "屋台の湯気・竜まんじゅう・ファイヤマンゴーかき氷・ミストラソーダ", line: "勝っても負けても、まずここへ。崑崙島の夜は市場の湯気から。" },
-  ohzuba:    { name: "大翼通り",         cat: "port", tier: 1, time: "昼前", shoot: "レース場へ続く人波・推し竜旗・魔導掲示板", line: "港からレース場へ、島いちばん賑やかな大通り。" },
+  ohzuba:    { name: "大翼通り",         cat: "port", tier: 1, time: "昼前", photo: "images/konron/spots/ohzuba.webp", shoot: "レース場へ続く人波・推し竜旗・魔導掲示板", line: "港からレース場へ、島いちばん賑やかな大通り。" },
   mall:      { name: "崑崙ショッピングモール", cat: "shop", tier: 1, portal: "renderMall", time: "昼〜夜", photo: "images/konron/spots/mall.webp", gourmet: "images/konron/spots/mall_gourmet.webp", shoot: "公式推し竜ショップ・土産袋・ぬいぐるみ・フードコート", line: "レースの思い出は、袋いっぱいに持ち帰れる。島いちばんの買い物拠点。" },
   arcade:    { name: "ミストラ・ブランドアーケード", cat: "shop", tier: 2, portal: "renderMall", time: "夕〜夜", photo: "images/konron/spots/arcade.webp", gourmet: "images/konron/spots/arcade_gourmet.webp", shoot: "金色の照明・聖龍アクセサリー・高級土産袋", line: "勝った夜は、少しだけ背伸びしたくなる。" },
   donryu:    { name: "ドン竜キホーテ",   cat: "shop", tier: 2, portal: "renderMall", time: "深夜", shoot: "謎の推し竜グッズ・安売り衣装・変な土産", line: "なぜ買ったのか、明日の朝にはわからない。それも旅。" },
@@ -61,12 +61,15 @@ const KONRON_SPOTS = {
   // ── 市街地の新スポット（都会型リゾートの作りこみ・順次拡張／写る人物はシルエットで“場所が主役”） ──
   lounge:    { name: "ドラゴンベル・ラウンジ", cat: "food", tier: 2, time: "夜", photo: "images/konron/spots/lounge.webp", shoot: "屋上バー・湾の夜景・火山の灯り・サインドリンク", line: "レース前夜の高揚も、勝った夜の祝杯も。湾を見下ろす、島いちばん洒落た屋上ラウンジ。" },
   yosou:     { name: "予想屋小路", cat: "race", tier: 1, time: "レース前", photo: "images/konron/spots/yosou.webp", shoot: "ネオンのオッズ板・予想屋の屋台・出走表・推し竜ポスター", line: "勝負の前に、ひと相談。ネオンと熱気が渦巻く、予想屋たちの小路。" },
-  cafe:      { name: "ミストラ・テラスカフェ", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/cafe.webp", shoot: "海辺のテラス席・デザイナースイーツ・ラテアート・ターコイズの湾", line: "ターコイズの湾を眺めながらの一杯。最新リゾートの洗練が、いちばん香る場所。" }
+  cafe:      { name: "ミストラ・テラスカフェ", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/cafe.webp", shoot: "海辺のテラス席・デザイナースイーツ・ラテアート・ターコイズの湾", line: "ターコイズの湾を眺めながらの一杯。最新リゾートの洗練が、いちばん香る場所。" },
+  patisserie:{ name: "ミストラ・パティスリー", cat: "food", tier: 2, time: "昼〜夕", photo: "images/konron/spots/patisserie.webp", shoot: "宝石みたいなケーキの陳列・大理石とブラス・南国の花", line: "ガラスケースに並ぶ、宝石のようなスイーツ。海を望む、島いちばん上品な甘い時間。" },
+  gelato:    { name: "ファイヤマンゴー・ジェラテリア", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/gelato.webp", shoot: "色とりどりのジェラート・ワッフルコーン・テラゾーの床", line: "ファイヤマンゴーにパッションフルーツ。火山島の太陽を、ひとさじの冷たさで。" },
+  rooftoppool:{ name: "スカイ・インフィニティプール", cat: "stay", tier: 2, time: "夕", photo: "images/konron/spots/rooftoppool.webp", shoot: "湾と一体化する縁なしプール・カバナ・夕陽・火山", line: "水面の先に、湾と火山。空に溶けるような、最新リゾートの特等席。" }
 };
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
-  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe"] },
+  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool"] },
   { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina"] },
   { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods"] },
   { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
