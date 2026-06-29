@@ -130,6 +130,24 @@ function _kmZoomBanner(area) {
     `<span class="km-zoom-tag">🔍 ${area.name}・拡大マップ</span></div>`;
 }
 
+// スポットの“中身”（見どころ／名物／豆知識）。konron_content.js が未読込でも安全に空を返す。
+function _kmContentHtml(spotId) {
+  var c = (typeof konronContentOf === "function") ? konronContentOf(spotId) : null;
+  if (!c) return "";
+  var h = '<div class="km-content">';
+  if (c.midokoro && c.midokoro.length) {
+    h += '<div class="km-sec"><div class="km-sec-h">✦ 見どころ</div>';
+    c.midokoro.forEach(function (m) { h += '<div class="km-md">' + m + '</div>'; });
+    h += '</div>';
+  }
+  if (c.meibutsu) {
+    h += '<div class="km-meibutsu"><span class="km-mei-tag">名物</span><div class="km-mei-b"><b>' + c.meibutsu.name + '</b>' +
+      (c.meibutsu.note ? '<small>' + c.meibutsu.note + '</small>' : '') + '</div></div>';
+  }
+  if (c.trivia) h += '<div class="km-trivia">💡 <span>' + c.trivia + '</span></div>';
+  return h + '</div>';
+}
+
 function _kmRenderPanel() {
   const panel = document.getElementById("km-panel"); if (!panel) return;
 
@@ -149,6 +167,7 @@ function _kmRenderPanel() {
     } else {
       body += `<div class="km-card-line">${s.line}</div>`;
       if (s.shoot && s.shoot !== "—") body += `<div class="km-card-shoot">📸 撮れるもの：${s.shoot}</div>`;
+      body += _kmContentHtml(_kmSpot);   // 見どころ／名物／豆知識（作りこみ）
       if (s.portal && typeof window[s.portal] === "function") {
         const labelMap = { renderMeals: "🍢 食べ歩きへ", renderMall: "🛍️ ショッピングへ", renderRaceSelect: "🏁 レースへ", renderSns: "📣 SNSへ", renderScout: "🐉 竜スカウトへ" };
         body += `<button class="km-go" data-portal="${s.portal}">${labelMap[s.portal] || "▶ ひらく"}</button>`;
