@@ -57,12 +57,16 @@ const KONRON_SPOTS = {
   // ── 聖典37の追加施設（全施設網羅・順次拡張中／景色＋グルメの2枚体制） ──
   hotel:     { name: "ミストラ・ベイフロント／夕凪ホテル通り", cat: "stay", tier: 1, time: "夕〜夜", photo: "images/konron/spots/hotel.webp", shoot: "湾岸ホテル群・夕日デッキ・海沿いカフェ・観光船", line: "旅の余韻はここで。夕日と湾を望む、崑崙島のリゾートの顔。" },
   admin:     { name: "右翼通り・行政街", cat: "civic", tier: 1, time: "昼", photo: "images/konron/spots/admin.webp", shoot: "崑崙自治庁・公営聖龍レース局・立て直し窓口・救護病院", line: "島を回す“右の翼”。自治庁と公営レース局、そして負けても立ち直れる窓口が並ぶ。" },
-  mango:     { name: "ファイヤマンゴー火山果樹園", cat: "food", tier: 2, time: "昼", photo: "images/konron/spots/mango_orchard.webp", gourmet: "images/konron/spots/mango_gourmet.webp", shoot: "火山土の果樹園・真っ赤なファイヤマンゴー・収穫籠", line: "南岸内陸の火山土で育つ、燃えるように甘い島の名産。崑崙グルメの源。" }
+  mango:     { name: "ファイヤマンゴー火山果樹園", cat: "food", tier: 2, time: "昼", photo: "images/konron/spots/mango_orchard.webp", gourmet: "images/konron/spots/mango_gourmet.webp", shoot: "火山土の果樹園・真っ赤なファイヤマンゴー・収穫籠", line: "南岸内陸の火山土で育つ、燃えるように甘い島の名産。崑崙グルメの源。" },
+  // ── 市街地の新スポット（都会型リゾートの作りこみ・順次拡張／写る人物はシルエットで“場所が主役”） ──
+  lounge:    { name: "ドラゴンベル・ラウンジ", cat: "food", tier: 2, time: "夜", photo: "images/konron/spots/lounge.webp", shoot: "屋上バー・湾の夜景・火山の灯り・サインドリンク", line: "レース前夜の高揚も、勝った夜の祝杯も。湾を見下ろす、島いちばん洒落た屋上ラウンジ。" },
+  yosou:     { name: "予想屋小路", cat: "race", tier: 1, time: "レース前", photo: "images/konron/spots/yosou.webp", shoot: "ネオンのオッズ板・予想屋の屋台・出走表・推し竜ポスター", line: "勝負の前に、ひと相談。ネオンと熱気が渦巻く、予想屋たちの小路。" },
+  cafe:      { name: "ミストラ・テラスカフェ", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/cafe.webp", shoot: "海辺のテラス席・デザイナースイーツ・ラテアート・ターコイズの湾", line: "ターコイズの湾を眺めながらの一杯。最新リゾートの洗練が、いちばん香る場所。" }
 };
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
-  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi"] },
+  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe"] },
   { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina"] },
   { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods"] },
   { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
