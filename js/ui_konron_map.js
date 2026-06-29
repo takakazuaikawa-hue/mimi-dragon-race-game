@@ -18,7 +18,9 @@ const KM_CATS = {
   onsen: { name: "温泉",         ic: "♨️", color: "#36a892" },
   view:  { name: "絶景・自然",   ic: "🏞️", color: "#5cb35e" },
   oshi:  { name: "推し活・SNS",  ic: "📣", color: "#b069c8" },
-  okuchi:{ name: "奥地・秘境",   ic: "🌫️", color: "#8a7bb0" }
+  okuchi:{ name: "奥地・秘境",   ic: "🌫️", color: "#8a7bb0" },
+  stay:  { name: "宿泊・余韻",   ic: "🏨", color: "#c98a6a" },
+  civic: { name: "行政・施設",   ic: "🏛️", color: "#7d93a8" }
 };
 
 // 解放しきい値（総資産＝高水位。序章0／第2話3千／第4話100万／終章1億）。表示専用ゲート。
@@ -28,7 +30,7 @@ const KM_TIER_AT = [0, 3000, 1000000, 100000000];
 const KONRON_SPOTS = {
   mistra:    { name: "ミストラ湾",       cat: "port", tier: 1, time: "朝〜夕", shoot: "湾の全景・港とアレドラウ山・朝霧の船影", line: "島に着いた瞬間、旅が始まる霧と光の玄関口。" },
   kirimina:  { name: "霧港",             cat: "port", tier: 1, time: "夕〜夜", shoot: "提灯と漁船・港の屋台・干物と小舟", line: "潮の匂いと提灯の灯りが混ざる、崑崙島の生活の入口。" },
-  market:    { name: "霧待ち市場",       cat: "food", tier: 0, portal: "renderMeals", time: "夜", photo: "images/konron/spots/market.webp", shoot: "屋台の湯気・竜まんじゅう・ファイヤマンゴーかき氷・ミストラソーダ", line: "勝っても負けても、まずここへ。崑崙島の夜は市場の湯気から。" },
+  market:    { name: "霧待ち市場",       cat: "food", tier: 0, portal: "renderMeals", time: "夜", photo: "images/konron/spots/market.webp", gourmet: "images/konron/spots/market_gourmet.webp", shoot: "屋台の湯気・竜まんじゅう・ファイヤマンゴーかき氷・ミストラソーダ", line: "勝っても負けても、まずここへ。崑崙島の夜は市場の湯気から。" },
   ohzuba:    { name: "大翼通り",         cat: "port", tier: 1, time: "昼前", shoot: "レース場へ続く人波・推し竜旗・魔導掲示板", line: "港からレース場へ、島いちばん賑やかな大通り。" },
   mall:      { name: "崑崙ショッピングモール", cat: "shop", tier: 1, portal: "renderMall", time: "昼〜夜", shoot: "公式推し竜ショップ・土産袋・ぬいぐるみ・フードコート", line: "レースの思い出は、袋いっぱいに持ち帰れる。島いちばんの買い物拠点。" },
   arcade:    { name: "ミストラ・ブランドアーケード", cat: "shop", tier: 2, portal: "renderMall", time: "夕〜夜", shoot: "金色の照明・聖龍アクセサリー・高級土産袋", line: "勝った夜は、少しだけ背伸びしたくなる。" },
@@ -51,18 +53,22 @@ const KONRON_SPOTS = {
   susufuka:  { name: "スス深回廊",   cat: "okuchi", tier: 3, time: "—", shoot: "黒い岩の回廊・苔と燐光（遠景）", line: "火山の体内へ続く黒い回廊。奥から熱と、低い唸りが届く。踏み込む者は少ない。" },
   rondo:     { name: "ロンド元宮",   cat: "okuchi", tier: 3, time: "—", shoot: "沈んだ盆地の祭祀場跡・霧の参道（遠景）", line: "カルデラの底、ダコン湖のほとりに眠る最初の宮。竜と人が契りを交わした場所。" },
   gwaruga:   { name: "グワルガ北岸", cat: "okuchi", tier: 3, time: "—", shoot: "道なき荒岩海岸・砕ける波（遠景）", line: "島の北。道は無い。荒い岩と波だけが、人を寄せつけず在りつづける。" },
-  kyokai:    { name: "饗会の影",     cat: "okuchi", tier: 3, time: "—", shoot: "—", line: "島の裏でだけ囁かれる名。表の崑崙からは、その気配が時おり霧に混じるばかり。" }
+  kyokai:    { name: "饗会の影",     cat: "okuchi", tier: 3, time: "—", shoot: "—", line: "島の裏でだけ囁かれる名。表の崑崙からは、その気配が時おり霧に混じるばかり。" },
+  // ── 聖典37の追加施設（全施設網羅・順次拡張中／景色＋グルメの2枚体制） ──
+  hotel:     { name: "ミストラ・ベイフロント／夕凪ホテル通り", cat: "stay", tier: 1, time: "夕〜夜", photo: "images/konron/spots/hotel.webp", shoot: "湾岸ホテル群・夕日デッキ・海沿いカフェ・観光船", line: "旅の余韻はここで。夕日と湾を望む、崑崙島のリゾートの顔。" },
+  admin:     { name: "右翼通り・行政街", cat: "civic", tier: 1, time: "昼", photo: "images/konron/spots/admin.webp", shoot: "崑崙自治庁・公営聖龍レース局・立て直し窓口・救護病院", line: "島を回す“右の翼”。自治庁と公営レース局、そして負けても立ち直れる窓口が並ぶ。" },
+  mango:     { name: "ファイヤマンゴー火山果樹園", cat: "food", tier: 2, time: "昼", photo: "images/konron/spots/mango_orchard.webp", gourmet: "images/konron/spots/mango_gourmet.webp", shoot: "火山土の果樹園・真っ赤なファイヤマンゴー・収穫籠", line: "南岸内陸の火山土で育つ、燃えるように甘い島の名産。崑崙グルメの源。" }
 };
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
-  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "mall", "arcade", "donryu", "kachimeshi", "makemeshi"] },
+  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi"] },
   { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina"] },
   { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods"] },
   { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
   { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 46, my: 63, spots: ["uroko"] },
   { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis"] },
-  { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 27, my: 81, spots: ["sena", "bangara"] },
+  { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 27, my: 81, spots: ["sena", "bangara", "mango"] },
   { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo"] },
   { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 61, my: 27, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
 ];
@@ -192,13 +198,15 @@ function _kmSpotPhotoBanner(s) {
     `<span class="km-photo-tag">📸 タップで鑑賞・SNS投稿</span></button>`;
 }
 // フルスクリーンの写真ビューア（タップで拡大トグル＝じっくり鑑賞／SNS投稿／閉じる）。表示専用。
-function _kmOpenPhoto(spotId) {
-  const s = KONRON_SPOTS[spotId]; if (!s || !s.photo) return;
+function _kmPhotoOf(s, kind) { return (kind === "gourmet") ? s.gourmet : s.photo; }
+function _kmPhotoCap(s, kind) { return (kind === "gourmet") ? ("🍽 " + s.name + "のご当地グルメ") : (s.line || s.name); }
+function _kmOpenPhoto(spotId, kind) {
+  const s = KONRON_SPOTS[spotId]; const src = s && _kmPhotoOf(s, kind); if (!src) return;
   const ov = el("div", "km-viewer");
   ov.innerHTML =
     `<div class="km-viewer-bd"></div>` +
-    `<div class="km-viewer-stage"><img class="km-viewer-img" src="${s.photo}" alt="${s.name}"></div>` +
-    `<div class="km-viewer-cap"><b>${s.name}</b><span>${s.line || ""}</span></div>` +
+    `<div class="km-viewer-stage"><img class="km-viewer-img" src="${src}" alt="${s.name}"></div>` +
+    `<div class="km-viewer-cap"><b>${s.name}</b><span>${_kmPhotoCap(s, kind)}</span></div>` +
     `<div class="km-viewer-bar">` +
       `<button class="km-vbtn km-vbtn--sns" data-act="sns">📣 SNSに投稿</button>` +
       `<button class="km-vbtn" data-act="x">✕ 閉じる</button></div>`;
@@ -208,19 +216,19 @@ function _kmOpenPhoto(spotId) {
   const close = () => ov.remove();
   ov.querySelector(".km-viewer-bd").onclick = close;
   ov.querySelector('[data-act="x"]').onclick = close;
-  ov.querySelector('[data-act="sns"]').onclick = () => _kmSnsCompose(spotId);
+  ov.querySelector('[data-act="sns"]').onclick = () => _kmSnsCompose(spotId, kind);
 }
 // SNS（ぴょこったー）へコメント付きで投稿。sns.js の addMyPost(text,img) を使う＝タイムラインに流れる。
-function _kmSnsCompose(spotId) {
-  const s = KONRON_SPOTS[spotId]; if (!s) return;
+function _kmSnsCompose(spotId, kind) {
+  const s = KONRON_SPOTS[spotId]; const src = s && _kmPhotoOf(s, kind); if (!src) return;
   if (typeof addMyPost !== "function") { _kmToast("SNS機能が見つかりません"); return; }
-  const def = `${s.name}で一枚📸 ${s.line || ""}`.trim();
+  const def = (kind === "gourmet" ? `${s.name}でこれ食べた😋📸` : `${s.name}で一枚📸 ${s.line || ""}`).trim();
   const cm = el("div", "km-compose");
   cm.innerHTML =
     `<div class="km-compose-bd"></div>` +
     `<div class="km-compose-card">` +
       `<div class="km-compose-h">📣 ぴょこったーに投稿</div>` +
-      `<img class="km-compose-thumb" src="${s.photo}" alt="">` +
+      `<img class="km-compose-thumb" src="${src}" alt="">` +
       `<textarea class="km-compose-ta" maxlength="140" rows="3">${def}</textarea>` +
       `<div class="km-compose-bar"><button class="km-vbtn" data-act="cancel">やめる</button>` +
       `<button class="km-vbtn km-vbtn--sns" data-act="send">投稿する</button></div></div>`;
@@ -230,7 +238,7 @@ function _kmSnsCompose(spotId) {
   cm.querySelector('[data-act="cancel"]').onclick = close;
   cm.querySelector('[data-act="send"]').onclick = () => {
     const txt = (cm.querySelector(".km-compose-ta").value || "").trim() || def;
-    addMyPost(txt, s.photo);
+    addMyPost(txt, src);
     close();
     _kmToast("ぴょこったーに投稿しました！📣");
   };
@@ -278,6 +286,7 @@ function _kmRenderPanel() {
       body += `<div class="km-card-line">${s.line}</div>`;
       if (s.shoot && s.shoot !== "—") body += `<div class="km-card-shoot">📸 撮れるもの：${s.shoot}</div>`;
       body += _kmContentHtml(_kmSpot);   // 見どころ／名物／豆知識（作りこみ）
+      if (s.gourmet) body += `<button class="km-gourmet" data-gourmet="${s.id}"><img src="${s.gourmet}" alt="" decoding="async"><span>🍽 ご当地グルメ・タップで鑑賞／投稿</span></button>`;
       if (s.portal && typeof window[s.portal] === "function") {
         const labelMap = { renderMeals: "🍢 食べ歩きへ", renderMall: "🛍️ ショッピングへ", renderRaceSelect: "🏁 レースへ", renderSns: "📣 SNSへ", renderScout: "🐉 竜スカウトへ" };
         body += `<button class="km-go" data-portal="${s.portal}">${labelMap[s.portal] || "▶ ひらく"}</button>`;
@@ -291,7 +300,9 @@ function _kmRenderPanel() {
     const go = panel.querySelector(".km-go");
     if (go) go.onclick = () => { const fn = window[go.getAttribute("data-portal")]; if (typeof fn === "function") fn(); };
     const ph = panel.querySelector(".km-photo");
-    if (ph) ph.onclick = () => _kmOpenPhoto(ph.getAttribute("data-photo"));
+    if (ph) ph.onclick = () => _kmOpenPhoto(ph.getAttribute("data-photo"), "photo");
+    const gm = panel.querySelector(".km-gourmet");
+    if (gm) gm.onclick = () => _kmOpenPhoto(gm.getAttribute("data-gourmet"), "gourmet");
     return;
   }
 

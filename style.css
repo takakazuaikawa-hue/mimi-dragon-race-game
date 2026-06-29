@@ -5252,6 +5252,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .km-photo:active .km-photo-img { transform: scale(1.03); }
 .km-photo-tag { position: absolute; left: 8px; bottom: 8px; font-size: 11px; font-weight: 800; color: #fff;
   background: rgba(0,0,0,.55); padding: 3px 9px; border-radius: 999px; }
+.km-gourmet { position: relative; display: block; width: 100%; aspect-ratio: 16 / 7; border: none; padding: 0; cursor: pointer; margin-top: 10px;
+  border-radius: 11px; overflow: hidden; background: #1a120c; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.km-gourmet img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.km-gourmet span { position: absolute; left: 8px; bottom: 8px; font-size: 11px; font-weight: 800; color: #fff;
+  background: rgba(150,80,30,.72); padding: 3px 9px; border-radius: 999px; }
 .km-viewer, .km-compose { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .km-viewer-bd, .km-compose-bd { position: absolute; inset: 0; background: rgba(6,10,14,.92); }
 .km-viewer-stage { position: relative; z-index: 1; max-width: 96vw; max-height: 70vh; overflow: auto; border-radius: 10px; }
