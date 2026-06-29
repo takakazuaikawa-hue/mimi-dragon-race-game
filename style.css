@@ -5282,6 +5282,26 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 24px rgba(0,0,0,.5); transition: opacity .4s, transform .4s; }
 .km-toast--off { opacity: 0; transform: translateX(-50%) translateY(10px); }
 
+/* ⑤ 観光フォト・コレクション（図鑑グリッド・表示専用） */
+.kgal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 10px 0 4px; }
+.kgal-cell { position: relative; aspect-ratio: 1 / 1; border: none; padding: 0; cursor: pointer; border-radius: 12px;
+  overflow: hidden; background-size: cover; background-position: center; background-color: rgba(255,255,255,.05);
+  box-shadow: 0 4px 14px rgba(0,0,0,.32); transition: transform .18s; }
+.kgal-cell:active { transform: scale(.96); }
+.kgal-cell::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 52%, rgba(0,0,0,.62)); }
+.kgal-name { position: absolute; left: 7px; right: 7px; bottom: 6px; z-index: 1; font-size: 10.5px; font-weight: 800;
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); line-height: 1.2; text-align: left;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.kgal-badge { position: absolute; top: 6px; right: 6px; z-index: 1; font-size: 13px;
+  background: linear-gradient(180deg,#e8b94e,#caa24a); border-radius: 999px; width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.kgal-cell--locked { background: rgba(255,255,255,.045); border: 1px dashed rgba(255,255,255,.16); box-shadow: none; cursor: default; }
+.kgal-cell--locked::after { display: none; }
+.kgal-q { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+  font-size: 26px; font-weight: 800; color: rgba(255,255,255,.32); }
+@media (min-width: 560px) { .kgal-grid { grid-template-columns: repeat(4, 1fr); gap: 9px; } }
+
 /* =========================================================================
    斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
    ========================================================================= */

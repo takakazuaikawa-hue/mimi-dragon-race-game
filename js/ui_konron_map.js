@@ -141,6 +141,8 @@ function renderKonronMap() {
   const actions = el("div", "actions");
   const guide = el("button", null, "📖 崑崙ガイドブック"); guide.onclick = () => renderKonronGuide();
   actions.appendChild(guide);
+  const gal = el("button", null, "🖼 フォトコレクション"); gal.onclick = () => renderKonronGallery();
+  actions.appendChild(gal);
   const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(back);
   app.appendChild(actions);
@@ -168,6 +170,41 @@ function renderKonronGuide() {
     sec.innerHTML = h;
     app.appendChild(sec);
   });
+  const actions = el("div", "actions");
+  const back = el("button", null, "🏝 観光マップへ戻る"); back.onclick = () => renderKonronMap();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// ⑤ 観光フォト・コレクション（図鑑）：全スポットの景色＋グルメ写真をグリッド表示。
+// 解放済(=その場所に行ける)＝写真、未解放＝？。タップで鑑賞ビューア→SNS投稿。表示専用。
+function renderKonronGallery() {
+  state.ui.screen = "konron_gallery";
+  const app = beginScreen();
+  app.appendChild(el("h2", null, "🖼 観光フォト・コレクション"));
+  const items = [];
+  Object.keys(KONRON_SPOTS).forEach(id => {
+    const s = KONRON_SPOTS[id]; const open = _kmSpotOpen(s);
+    if (s.photo) items.push({ id: id, kind: "photo", label: s.name, src: s.photo, open: open });
+    if (s.gourmet) items.push({ id: id, kind: "gourmet", label: s.name + "・グルメ", src: s.gourmet, open: open });
+  });
+  const total = items.length, got = items.filter(it => it.open).length;
+  app.appendChild(el("div", "as-hint2", `崑崙島で撮った景色＆ご当地グルメのコレクション。行ける場所が増えると集まります。タップで鑑賞＆SNS投稿（表示専用＝レース結果には影響しません）。<b>${got} / ${total}</b> 枚 収集。`));
+  const grid = el("div", "kgal-grid");
+  items.forEach(it => {
+    const cell = el("button", "kgal-cell" + (it.open ? "" : " kgal-cell--locked"));
+    if (it.open) {
+      cell.style.backgroundImage = `url('${it.src}')`;
+      if (it.kind === "gourmet") cell.appendChild(el("span", "kgal-badge", "🍽"));
+      cell.appendChild(el("span", "kgal-name", it.label));
+      cell.setAttribute("data-id", it.id); cell.setAttribute("data-kind", it.kind);
+      cell.onclick = () => _kmOpenPhoto(cell.getAttribute("data-id"), cell.getAttribute("data-kind"));
+    } else {
+      cell.innerHTML = `<span class="kgal-q">？</span>`;
+    }
+    grid.appendChild(cell);
+  });
+  app.appendChild(grid);
   const actions = el("div", "actions");
   const back = el("button", null, "🏝 観光マップへ戻る"); back.onclick = () => renderKonronMap();
   actions.appendChild(back);
