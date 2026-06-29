@@ -181,7 +181,7 @@ function _kmAreaOf(spotId) { return KONRON_AREAS.find(a => a.spots.indexOf(spotI
 function _kmZoomBanner(area) {
   if (!area) return "";
   return `<div class="km-zoom" style="background-image:url('images/konron/island_map.webp');background-position:${area.mx}% ${area.my}%">` +
-    `<img class="km-zoom-img" src="images/konron/area_${area.id}.webp?v=4" alt="" decoding="async" onload="this.classList.add('on')" onerror="this.remove()">` +
+    `<img class="km-zoom-img" src="images/konron/area_${area.id}.webp?v=5" alt="" decoding="async" onload="this.classList.add('on')" onerror="this.remove()">` +
     `<span class="km-zoom-tag">🔍 ${area.name}・拡大マップ</span></div>`;
 }
 
