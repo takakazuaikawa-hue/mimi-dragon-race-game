@@ -28,7 +28,7 @@ const KM_TIER_AT = [0, 3000, 1000000, 100000000];
 const KONRON_SPOTS = {
   mistra:    { name: "ミストラ湾",       cat: "port", tier: 1, time: "朝〜夕", shoot: "湾の全景・港とアレドラウ山・朝霧の船影", line: "島に着いた瞬間、旅が始まる霧と光の玄関口。" },
   kirimina:  { name: "霧港",             cat: "port", tier: 1, time: "夕〜夜", shoot: "提灯と漁船・港の屋台・干物と小舟", line: "潮の匂いと提灯の灯りが混ざる、崑崙島の生活の入口。" },
-  market:    { name: "霧待ち市場",       cat: "food", tier: 0, portal: "renderMeals", time: "夜", shoot: "屋台の湯気・竜まんじゅう・ファイヤマンゴーかき氷・ミストラソーダ", line: "勝っても負けても、まずここへ。崑崙島の夜は市場の湯気から。" },
+  market:    { name: "霧待ち市場",       cat: "food", tier: 0, portal: "renderMeals", time: "夜", photo: "images/konron/spots/market.webp", shoot: "屋台の湯気・竜まんじゅう・ファイヤマンゴーかき氷・ミストラソーダ", line: "勝っても負けても、まずここへ。崑崙島の夜は市場の湯気から。" },
   ohzuba:    { name: "大翼通り",         cat: "port", tier: 1, time: "昼前", shoot: "レース場へ続く人波・推し竜旗・魔導掲示板", line: "港からレース場へ、島いちばん賑やかな大通り。" },
   mall:      { name: "崑崙ショッピングモール", cat: "shop", tier: 1, portal: "renderMall", time: "昼〜夜", shoot: "公式推し竜ショップ・土産袋・ぬいぐるみ・フードコート", line: "レースの思い出は、袋いっぱいに持ち帰れる。島いちばんの買い物拠点。" },
   arcade:    { name: "ミストラ・ブランドアーケード", cat: "shop", tier: 2, portal: "renderMall", time: "夕〜夜", shoot: "金色の照明・聖龍アクセサリー・高級土産袋", line: "勝った夜は、少しだけ背伸びしたくなる。" },
@@ -185,6 +185,61 @@ function _kmZoomBanner(area) {
     `<span class="km-zoom-tag">🔍 ${area.name}・拡大マップ</span></div>`;
 }
 
+// ── 観光フォト・コレクション：専用写真があれば「タップで鑑賞・SNS投稿」できるバナーに ──
+function _kmSpotPhotoBanner(s) {
+  return `<button class="km-photo" data-photo="${s.id}">` +
+    `<img class="km-photo-img" src="${s.photo}" alt="${s.name}" decoding="async">` +
+    `<span class="km-photo-tag">📸 タップで鑑賞・SNS投稿</span></button>`;
+}
+// フルスクリーンの写真ビューア（タップで拡大トグル＝じっくり鑑賞／SNS投稿／閉じる）。表示専用。
+function _kmOpenPhoto(spotId) {
+  const s = KONRON_SPOTS[spotId]; if (!s || !s.photo) return;
+  const ov = el("div", "km-viewer");
+  ov.innerHTML =
+    `<div class="km-viewer-bd"></div>` +
+    `<div class="km-viewer-stage"><img class="km-viewer-img" src="${s.photo}" alt="${s.name}"></div>` +
+    `<div class="km-viewer-cap"><b>${s.name}</b><span>${s.line || ""}</span></div>` +
+    `<div class="km-viewer-bar">` +
+      `<button class="km-vbtn km-vbtn--sns" data-act="sns">📣 SNSに投稿</button>` +
+      `<button class="km-vbtn" data-act="x">✕ 閉じる</button></div>`;
+  document.body.appendChild(ov);
+  const img = ov.querySelector(".km-viewer-img");
+  img.onclick = () => img.classList.toggle("km-zoomed");
+  const close = () => ov.remove();
+  ov.querySelector(".km-viewer-bd").onclick = close;
+  ov.querySelector('[data-act="x"]').onclick = close;
+  ov.querySelector('[data-act="sns"]').onclick = () => _kmSnsCompose(spotId);
+}
+// SNS（ぴょこったー）へコメント付きで投稿。sns.js の addMyPost(text,img) を使う＝タイムラインに流れる。
+function _kmSnsCompose(spotId) {
+  const s = KONRON_SPOTS[spotId]; if (!s) return;
+  if (typeof addMyPost !== "function") { _kmToast("SNS機能が見つかりません"); return; }
+  const def = `${s.name}で一枚📸 ${s.line || ""}`.trim();
+  const cm = el("div", "km-compose");
+  cm.innerHTML =
+    `<div class="km-compose-bd"></div>` +
+    `<div class="km-compose-card">` +
+      `<div class="km-compose-h">📣 ぴょこったーに投稿</div>` +
+      `<img class="km-compose-thumb" src="${s.photo}" alt="">` +
+      `<textarea class="km-compose-ta" maxlength="140" rows="3">${def}</textarea>` +
+      `<div class="km-compose-bar"><button class="km-vbtn" data-act="cancel">やめる</button>` +
+      `<button class="km-vbtn km-vbtn--sns" data-act="send">投稿する</button></div></div>`;
+  document.body.appendChild(cm);
+  const close = () => cm.remove();
+  cm.querySelector(".km-compose-bd").onclick = close;
+  cm.querySelector('[data-act="cancel"]').onclick = close;
+  cm.querySelector('[data-act="send"]').onclick = () => {
+    const txt = (cm.querySelector(".km-compose-ta").value || "").trim() || def;
+    addMyPost(txt, s.photo);
+    close();
+    _kmToast("ぴょこったーに投稿しました！📣");
+  };
+}
+function _kmToast(msg) {
+  const t = el("div", "km-toast", msg); document.body.appendChild(t);
+  setTimeout(() => { t.classList.add("km-toast--off"); setTimeout(() => t.remove(), 400); }, 1800);
+}
+
 // スポットの“中身”（見どころ／名物／豆知識）。konron_content.js が未読込でも安全に空を返す。
 function _kmContentHtml(spotId) {
   var c = (typeof konronContentOf === "function") ? konronContentOf(spotId) : null;
@@ -213,7 +268,7 @@ function _kmRenderPanel() {
     const area = _kmAreaOf(_kmSpot);
     const open = _kmSpotOpen(s);
     panel.style.setProperty("--kmc", c.color);
-    let body = _kmZoomBanner(area);
+    let body = (open && s.photo) ? _kmSpotPhotoBanner(s) : _kmZoomBanner(area);
     if (area && area.spots.length > 1) body += `<button class="km-areaback" data-back="1">← ${area.name}</button>`;
     body += `<div class="km-card-head"><span class="km-card-ic">${c.ic}</span>` +
       `<div class="km-card-id"><b>${s.name}</b><small>${c.name}${s.time && s.time !== "—" ? "・" + s.time : ""}</small></div></div>`;
@@ -235,6 +290,8 @@ function _kmRenderPanel() {
     if (bk) bk.onclick = () => { _kmSpot = null; _kmRenderPanel(); };
     const go = panel.querySelector(".km-go");
     if (go) go.onclick = () => { const fn = window[go.getAttribute("data-portal")]; if (typeof fn === "function") fn(); };
+    const ph = panel.querySelector(".km-photo");
+    if (ph) ph.onclick = () => _kmOpenPhoto(ph.getAttribute("data-photo"));
     return;
   }
 

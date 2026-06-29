@@ -5245,6 +5245,37 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .kg-entry--locked { border-left-color: #5c6670; opacity: .72; }
 .kg-entry--locked b { color: #9aa6ad; }
 .kg-entry--locked p { color: #93a0a7; }
+/* 観光フォト・コレクション：スポット写真バナー＋フルスクリーン鑑賞ビューア＋SNS投稿 */
+.km-photo { position: relative; display: block; width: 100%; aspect-ratio: 3 / 2; border: none; padding: 0; cursor: pointer;
+  border-radius: 11px; overflow: hidden; margin-bottom: 11px; background: #0d1b22; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25), 0 4px 14px rgba(0,0,0,.32); }
+.km-photo-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s; }
+.km-photo:active .km-photo-img { transform: scale(1.03); }
+.km-photo-tag { position: absolute; left: 8px; bottom: 8px; font-size: 11px; font-weight: 800; color: #fff;
+  background: rgba(0,0,0,.55); padding: 3px 9px; border-radius: 999px; }
+.km-viewer, .km-compose { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.km-viewer-bd, .km-compose-bd { position: absolute; inset: 0; background: rgba(6,10,14,.92); }
+.km-viewer-stage { position: relative; z-index: 1; max-width: 96vw; max-height: 70vh; overflow: auto; border-radius: 10px; }
+.km-viewer-img { max-width: 96vw; max-height: 70vh; object-fit: contain; display: block; cursor: zoom-in; border-radius: 10px; }
+.km-viewer-img.km-zoomed { max-width: none; max-height: none; width: 180%; cursor: zoom-out; }
+.km-viewer-cap { position: relative; z-index: 1; text-align: center; margin-top: 12px; max-width: 92vw; }
+.km-viewer-cap b { display: block; font-size: 16px; color: #fff6e6; }
+.km-viewer-cap span { display: block; font-size: 12px; color: #c3d0d6; margin-top: 3px; }
+.km-viewer-bar, .km-compose-bar { position: relative; z-index: 1; display: flex; gap: 10px; margin-top: 16px; }
+.km-vbtn { padding: 11px 18px; border: 1px solid rgba(255,255,255,.25); border-radius: 11px; cursor: pointer;
+  font-weight: 800; font-size: 13.5px; color: #e7eef1; background: rgba(255,255,255,.08); }
+.km-vbtn:active { transform: scale(.97); }
+.km-vbtn--sns { color: #2a1d05; border: none; background: linear-gradient(180deg,#e8b94e,#caa24a); }
+.km-compose-card { position: relative; z-index: 1; width: min(420px, 92vw); background: var(--glass-2, #16242c); border: 1px solid var(--glass-border, rgba(255,255,255,.14));
+  border-radius: 16px; padding: 16px; box-shadow: 0 16px 48px rgba(0,0,0,.5); }
+.km-compose-h { font-size: 15px; font-weight: 800; color: #fff6e6; margin-bottom: 11px; }
+.km-compose-thumb { width: 100%; aspect-ratio: 3/2; object-fit: cover; border-radius: 10px; margin-bottom: 10px; }
+.km-compose-ta { width: 100%; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--glass-border, rgba(255,255,255,.18));
+  background: rgba(0,0,0,.25); color: #fff; font-size: 13.5px; padding: 10px; resize: none; font-family: inherit; }
+.km-compose-bar { justify-content: flex-end; margin-top: 12px; }
+.km-toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); z-index: 240;
+  background: rgba(20,30,38,.95); color: #fff6e6; font-weight: 800; font-size: 13px; padding: 11px 18px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 24px rgba(0,0,0,.5); transition: opacity .4s, transform .4s; }
+.km-toast--off { opacity: 0; transform: translateX(-50%) translateY(10px); }
 
 /* =========================================================================
    斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
