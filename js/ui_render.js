@@ -46,7 +46,7 @@ function beginScreen() {
   const app = $("app");
   const screen = state.ui.screen;
   const prev = _prevScreen;
-  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart");
+  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page");   // 観光(.kt-page)の明色テーマを他画面へ漏らさない
   if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
   if (typeof syncVolumeFab === "function") syncVolumeFab();              // 🔊 全画面常設の音量ボタンを画面に合わせて表示/非表示
   var _scmBn = document.getElementById("scm-bnav-host"); if (_scmBn) _scmBn.remove();   // モールのフロート下部ナビ(body直下fixed)を毎遷移で外す（モールで再設置）

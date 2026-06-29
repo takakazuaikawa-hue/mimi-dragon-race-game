@@ -114,57 +114,113 @@ function _kmIslandNow() {
 let _kmArea = null;   // 選択中のエリアid
 let _kmSpot = null;   // 選択中のスポットid
 
+// ====== 観光（トラベル誌風デザイン：australia.com を参照）======================
+// 明るい編集デザイン：全景ヒーロー＋明朝の大見出し＋金のアクセント＋角丸の写真カード
+//   ＋カテゴリのタブ＋横スクロール。地図は暗いインセットの「地図モジュール」として同居。
+//   .kt-* は app(.kt-page) にスコープした明色テーマ。表示専用（着順/オッズ/配当に非干渉）。
+let _ktCat = "all";   // スポットのカテゴリタブ
+const KT_FEATURED = [ { id: "market", k: "夜市を、食べ歩く" }, { id: "sena", k: "白砂のビーチへ" }, { id: "mall", k: "都会のリゾートで買う" } ];
+
+function _ktImg(s) { return (s && (s.photo || s.gourmet)) || ""; }
+function _ktSectionHead(title, sub) { return el("div", "kt-head", `<h2 class="kt-h2">${title}</h2>` + (sub ? `<p class="kt-sub">${sub}</p>` : "")); }
+
+// スポット写真カード（角丸・写真・明朝の名前を下に重ねる）。タップで鑑賞ビューア。未解放は鍵。
+function _ktSpotCard(id, label, force) {
+  const s = KONRON_SPOTS[id]; if (!s) return null;
+  const open = (force || _kmSpotOpen(s)), c = KM_CATS[s.cat] || KM_CATS.port, img = _ktImg(s);
+  const card = el("button", "kt-card" + (open && img ? "" : " kt-card--lock"));
+  if (open && img) {
+    card.style.backgroundImage = `url('${img}')`;
+    card.innerHTML = `<span class="kt-card-cat">${c.ic} ${c.name}</span><span class="kt-card-nm">${label || s.name}</span>`;
+    card.onclick = () => _kmOpenPhoto(id, s.photo ? "photo" : "gourmet");
+  } else {
+    card.innerHTML = `<span class="kt-card-q">🔒</span><span class="kt-card-nm">${s.name}</span><span class="kt-card-cat">${_kmTierLabel(s.tier)}で解放</span>`;
+  }
+  return card;
+}
+
+// カテゴリのレール（横スクロール）を描き直す
+function _ktRenderRail() {
+  const rail = document.getElementById("kt-rail"); if (!rail) return;
+  rail.innerHTML = "";
+  Object.keys(KONRON_SPOTS).forEach(id => {
+    const s = KONRON_SPOTS[id];
+    if (!_ktImg(s)) return;                              // 写真のあるスポットだけ
+    if (_ktCat !== "all" && s.cat !== _ktCat) return;
+    const card = _ktSpotCard(id); if (card) rail.appendChild(card);
+  });
+  if (!rail.children.length) rail.innerHTML = `<div class="kt-rail-empty">このカテゴリの写真は準備中です。</div>`;
+}
+
 function renderKonronMap() {
   state.ui.screen = "konron_map";
-  _kmArea = null; _kmSpot = null;
+  _kmArea = null; _kmSpot = null; _ktCat = "all";
   const app = beginScreen();
-  // 全景ヒーロー（A2＝実写級の島の空撮。タイトルを重ねる＝この島の“顔”）。無い環境ではonerrorで自然に消える。
-  const hero = el("div", "km-hero");
-  hero.innerHTML = `<img class="km-hero-img" src="images/konron/island_aerial.webp" alt="崑崙島 全景" decoding="async" onerror="this.closest('.km-hero').classList.add('km-hero--noimg')">` +
-    `<div class="km-hero-cap"><b>🏝 崑崙島 観光マップ</b><span>霧の火山島リゾート、崑崙島へようこそ</span></div>`;
-  app.appendChild(hero);
-  app.appendChild(el("div", "as-hint2", "<b>エリア</b>をタップすると、その地区の拡大マップ・スポット・各施設が見られます（表示専用＝レースの結果には影響しません）。"));
-  // ②「いまの崑崙島」＝時刻・天候・賑わいの空気演出
-  var _now = _kmIslandNow();
-  app.appendChild(el("div", "km-now", `<span class="km-now-ic">${_now.ic}</span><div class="km-now-tx"><b>いまの崑崙島：${_now.k}・${_now.weather}</b><span>${_now.nigiwai}</span></div>`));
+  app.classList.add("kt-page");
 
-  // 公式マップ準拠ジオラマ ＋ 少数のエリアピン（よく離して配置＝重ならない・押しやすい）
+  // ① ヒーロー（全景＋明朝の大見出し＋金のアクセント）
+  const hero = el("div", "kt-hero");
+  hero.innerHTML =
+    `<img class="kt-hero-img" src="images/konron/island_aerial.webp" alt="崑崙島" decoding="async" onerror="this.closest('.kt-hero').classList.add('kt-hero--noimg')">` +
+    `<div class="kt-hero-grad"></div>` +
+    `<div class="kt-hero-tx"><span class="kt-kicker">📍 KONRON ISLAND ／ 崑崙島</span>` +
+      `<h1 class="kt-hero-h">島で、<span class="kt-gold">遊ぶ。</span></h1>` +
+      `<p class="kt-hero-sub">霧の火山に抱かれた、竜と亜人のリゾート。<br>あなたの“いちばん”を、写真で見つけよう。</p></div>`;
+  app.appendChild(hero);
+
+  // ②「いまの崑崙島」
+  const now = _kmIslandNow();
+  app.appendChild(el("div", "kt-now", `<span class="kt-now-ic">${now.ic}</span><span class="kt-now-tx"><b>いまの崑崙島 — ${now.k}・${now.weather}</b>${now.nigiwai}</span>`));
+
+  // ③ いちおしの過ごし方（大判カード）
+  app.appendChild(_ktSectionHead("いちおしの過ごし方", "まずは、この島の“いちばん”から。"));
+  const feat = el("div", "kt-feature");
+  KT_FEATURED.forEach(f => { const card = _ktSpotCard(f.id, f.k, true); if (card) feat.appendChild(card); });
+  app.appendChild(feat);
+
+  // ④ スポットでさがす（カテゴリのタブ＋横スクロール）
+  app.appendChild(_ktSectionHead("スポットでさがす", "カテゴリを選んで、写真でめぐる。"));
+  const tabs = el("div", "kt-tabs");
+  const cats = ["all"].concat(Object.keys(KM_CATS).filter(k => Object.keys(KONRON_SPOTS).some(id => KONRON_SPOTS[id].cat === k && _ktImg(KONRON_SPOTS[id]))));
+  cats.forEach(k => {
+    const t = el("button", "kt-tab" + (k === _ktCat ? " kt-tab--on" : ""), (k === "all") ? "✦ すべて" : (KM_CATS[k].ic + " " + KM_CATS[k].name));
+    t.onclick = () => { _ktCat = k; tabs.querySelectorAll(".kt-tab").forEach(x => x.classList.remove("kt-tab--on")); t.classList.add("kt-tab--on"); _ktRenderRail(); };
+    tabs.appendChild(t);
+  });
+  app.appendChild(tabs);
+  const rail = el("div", "kt-rail"); rail.id = "kt-rail"; app.appendChild(rail);
+  _ktRenderRail();
+
+  // ⑤ 地図でさがす（暗いインセットの地図モジュール）
+  app.appendChild(_ktSectionHead("地図でさがす", "エリアのピンから、その地区のスポットと施設へ。"));
+  const mapmod = el("div", "kt-mapmod");
   const stage = el("div", "km-stage");
-  stage.innerHTML = `<img class="km-mapimg" src="images/konron/island_map.webp" alt="崑崙島 観光ジオラマ地図（地形・道路整理図V3.3に準拠）" decoding="async">`;
+  stage.innerHTML = `<img class="km-mapimg" src="images/konron/island_map.webp" alt="崑崙島 観光ジオラマ地図" decoding="async">`;
   KONRON_AREAS.forEach(a => {
     const pin = el("button", "km-areapin", `<span class="km-areapin-dot">${a.ic}</span><span class="km-areapin-lbl">${a.name}</span>`);
-    pin.style.left = a.mx + "%"; pin.style.top = a.my + "%";
-    pin.style.setProperty("--pc", a.color);
+    pin.style.left = a.mx + "%"; pin.style.top = a.my + "%"; pin.style.setProperty("--pc", a.color);
     pin.setAttribute("data-area", a.id);
-    pin.onclick = () => {
-      _kmArea = a.id;
-      _kmSpot = (a.spots.length === 1) ? a.spots[0] : null;   // 単一スポットのエリアは直接そのスポットへ
-      _kmRenderPanel(); _kmMarkSel(stage);
-    };
+    pin.onclick = () => { _kmArea = a.id; _kmSpot = (a.spots.length === 1) ? a.spots[0] : null; _kmRenderPanel(); _kmMarkSel(stage); };
     stage.appendChild(pin);
   });
-  app.appendChild(stage);
-
-  // 凡例（7分類）
+  mapmod.appendChild(stage);
   const leg = el("div", "km-legend");
-  Object.keys(KM_CATS).forEach(k => {
-    const c = KM_CATS[k];
-    leg.appendChild(el("span", "km-leg", `<i style="background:${c.color}"></i>${c.ic} ${c.name}`));
-  });
-  app.appendChild(leg);
-
-  const panel = el("div", "km-panel"); panel.id = "km-panel";
-  app.appendChild(panel);
+  Object.keys(KM_CATS).forEach(k => { const c = KM_CATS[k]; leg.appendChild(el("span", "km-leg", `<i style="background:${c.color}"></i>${c.ic} ${c.name}`)); });
+  mapmod.appendChild(leg);
+  const panel = el("div", "km-panel"); panel.id = "km-panel"; mapmod.appendChild(panel);
+  app.appendChild(mapmod);
   _kmRenderPanel();
 
-  const actions = el("div", "actions");
-  const guide = el("button", null, "📖 崑崙ガイドブック"); guide.onclick = () => renderKonronGuide();
-  actions.appendChild(guide);
-  const gal = el("button", null, "🖼 フォトコレクション"); gal.onclick = () => renderKonronGallery();
-  actions.appendChild(gal);
-  const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
-  actions.appendChild(back);
-  app.appendChild(actions);
+  // ⑥ もっと楽しむ（ガイド／コレクション）＋戻る
+  app.appendChild(_ktSectionHead("もっと楽しむ", ""));
+  const more = el("div", "kt-more");
+  const g = el("button", "kt-more-card", `<span class="kt-more-ic">📖</span><b>崑崙ガイドブック</b><small>島の歴史・文化・食・竜・地理の図鑑</small>`); g.onclick = () => renderKonronGuide();
+  const gal = el("button", "kt-more-card", `<span class="kt-more-ic">🖼</span><b>フォトコレクション</b><small>撮った景色＆ご当地グルメを集める</small>`); gal.onclick = () => renderKonronGallery();
+  more.appendChild(g); more.appendChild(gal);
+  app.appendChild(more);
+  app.appendChild(el("div", "kt-note", "※「観光」は表示専用です（レースの着順・オッズ・配当には影響しません）。"));
+  const back = el("button", "kt-back", "← ホームへ戻る"); back.onclick = () => renderHome();
+  app.appendChild(back);
 }
 
 // ④ 崑崙ガイドブック（島の図鑑）：KONRON_GUIDE を分類表示。tier＝総資産で段階解放（未解放は？？？）。表示専用。
@@ -190,7 +246,7 @@ function renderKonronGuide() {
     app.appendChild(sec);
   });
   const actions = el("div", "actions");
-  const back = el("button", null, "🏝 観光マップへ戻る"); back.onclick = () => renderKonronMap();
+  const back = el("button", null, "🏝 観光へ戻る"); back.onclick = () => renderKonronMap();
   actions.appendChild(back);
   app.appendChild(actions);
 }
@@ -225,7 +281,7 @@ function renderKonronGallery() {
   });
   app.appendChild(grid);
   const actions = el("div", "actions");
-  const back = el("button", null, "🏝 観光マップへ戻る"); back.onclick = () => renderKonronMap();
+  const back = el("button", null, "🏝 観光へ戻る"); back.onclick = () => renderKonronMap();
   actions.appendChild(back);
   app.appendChild(actions);
 }

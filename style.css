@@ -5303,6 +5303,84 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @media (min-width: 560px) { .kgal-grid { grid-template-columns: repeat(4, 1fr); gap: 9px; } }
 
 /* =========================================================================
+   観光（トラベル誌風・australia.com 参照）：明色の編集デザイン。.kt-page にスコープ。
+   ========================================================================= */
+#app.kt-page { background-color: #f7f2ea !important; background-image: none !important; color: #2b2620; padding: 0 0 26px;
+  font-family: "Hiragino Sans","Yu Gothic","Meiryo",sans-serif; }
+/* 大見出し・カード名・セクション見出しは明朝で“編集デザイン”の品 */
+.kt-hero-h, .kt-h2, .kt-card-nm { font-family: "Yu Mincho","YuMincho","Hiragino Mincho ProN","Hiragino Mincho Pro","HG明朝E","MS PMincho",serif; }
+
+/* ① ヒーロー（全景写真＋明朝大見出し＋金のアクセント） */
+.kt-hero { position: relative; width: 100%; aspect-ratio: 4/5; max-height: 78vh; overflow: hidden; background: #14242c; }
+.kt-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 42%; }
+.kt-hero-grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(12,16,14,.82) 2%, rgba(12,16,14,.28) 40%, rgba(0,0,0,.10) 100%); }
+.kt-hero--noimg { aspect-ratio: auto; min-height: 240px; background: linear-gradient(135deg,#2a6b78,#15303a); }
+.kt-hero--noimg .kt-hero-img { display: none; }
+.kt-hero-tx { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; padding: 20px 20px 22px; }
+.kt-kicker { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .16em; color: #ffe7b0; text-shadow: 0 1px 6px rgba(0,0,0,.8); margin-bottom: 7px; }
+.kt-hero-h { margin: 0; font-size: 40px; line-height: 1.04; font-weight: 800; color: #fff; letter-spacing: .02em; text-shadow: 0 3px 20px rgba(0,0,0,.6); white-space: nowrap; }
+.kt-gold { color: #f3c64e; }
+.kt-hero-sub { margin: 11px 0 0; font-size: 13px; line-height: 1.7; color: #f1eadf; text-shadow: 0 1px 8px rgba(0,0,0,.75); max-width: 33em; }
+
+/* ②「いまの崑崙島」帯 */
+.kt-now { display: flex; align-items: center; gap: 10px; margin: 14px 18px 2px; padding: 10px 15px; border-radius: 999px;
+  background: #fff; border: 1px solid #e9dfca; box-shadow: 0 2px 9px rgba(90,68,22,.06); }
+.kt-now-ic { font-size: 20px; flex: none; }
+.kt-now-tx { font-size: 11.5px; color: #6a6253; line-height: 1.5; }
+.kt-now-tx b { display: block; font-size: 12.5px; color: #2b2620; }
+
+/* セクション見出し */
+.kt-head { margin: 26px 20px 12px; }
+.kt-h2 { margin: 0; font-size: 25px; font-weight: 800; color: #23201b; letter-spacing: .01em; }
+.kt-h2::after { content: ""; display: block; width: 44px; height: 3px; border-radius: 2px; background: #e0a82e; margin-top: 9px; }
+.kt-sub { margin: 8px 0 0; font-size: 12.5px; color: #6f6757; }
+
+/* 写真カード（角丸・写真・明朝の名前を下に重ねる） */
+.kt-card { position: relative; display: block; width: 100%; border: none; padding: 0; cursor: pointer; overflow: hidden; border-radius: 16px;
+  background-size: cover; background-position: center; background-color: #e7ddc9; box-shadow: 0 6px 18px rgba(60,45,15,.16); transition: transform .18s; }
+.kt-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0) 56%); }
+.kt-card:active { transform: scale(.985); }
+.kt-card-cat { position: absolute; top: 10px; left: 11px; z-index: 2; font-size: 10px; font-weight: 800; color: #fff; letter-spacing: .03em;
+  background: rgba(0,0,0,.34); padding: 3px 9px; border-radius: 999px; }
+.kt-card-nm { position: absolute; left: 13px; right: 13px; bottom: 12px; z-index: 2; font-size: 19px; font-weight: 800; color: #fff; line-height: 1.2; text-shadow: 0 2px 10px rgba(0,0,0,.75); }
+.kt-card--lock { background-color: #ece4d3; box-shadow: none; border: 1px dashed #d6cab0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.kt-card--lock::after { display: none; }
+.kt-card--lock .kt-card-nm, .kt-card--lock .kt-card-cat { position: static; color: #9a8f78; text-shadow: none; background: none; text-align: center; }
+.kt-card-q { font-size: 24px; }
+
+/* いちおし（大判3枚） */
+.kt-feature { display: grid; grid-template-columns: 1fr; gap: 13px; margin: 0 18px; }
+.kt-feature .kt-card { aspect-ratio: 16/10; }
+
+/* カテゴリのタブ */
+.kt-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 18px 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.kt-tabs::-webkit-scrollbar { display: none; }
+.kt-tab { flex: none; font-size: 12px; font-weight: 700; color: #6f6757; background: #fff; border: 1px solid #e3d9c5; border-radius: 999px; padding: 7px 13px; cursor: pointer; white-space: nowrap; }
+.kt-tab--on { color: #3a2c08; background: #f3c64e; border-color: #e0a82e; }
+
+/* スポットの横スクロール・レール */
+.kt-rail { display: flex; gap: 11px; overflow-x: auto; padding: 10px 18px 8px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.kt-rail::-webkit-scrollbar { display: none; }
+.kt-rail .kt-card { flex: none; width: 152px; aspect-ratio: 3/4; scroll-snap-align: start; }
+.kt-rail-empty { color: #8a8068; font-size: 12px; padding: 14px 4px; }
+
+/* 地図モジュール（暗いインセット） */
+.kt-mapmod { margin: 6px 14px 0; padding: 12px; border-radius: 18px; background: #16242c; }
+.kt-mapmod .km-stage { margin: 0 auto 8px; }
+.kt-mapmod .km-legend { margin: 0 auto 8px; }
+.kt-mapmod .km-panel { margin: 0 auto; }
+
+/* もっと楽しむ */
+.kt-more { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin: 0 18px; }
+.kt-more-card { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid #e9dfca; border-radius: 14px; padding: 14px; box-shadow: 0 3px 10px rgba(90,68,22,.06); }
+.kt-more-ic { font-size: 24px; }
+.kt-more-card b { font-size: 14px; color: #23201b; }
+.kt-more-card small { font-size: 10.5px; color: #7a7160; line-height: 1.45; }
+.kt-note { margin: 16px 20px 6px; font-size: 10px; color: #9a8f78; text-align: center; }
+.kt-back { display: block; margin: 8px auto 0; background: none; border: none; color: #6f6757; font-size: 13px; font-weight: 800; cursor: pointer; padding: 8px; }
+
+/* =========================================================================
    斜め視点バトル：固定レイアウト（ボタンがズレない）＋アイソメ・アリーナ
    ========================================================================= */
 .rpg-arena2 { position:relative; width:100%; max-width:540px; margin:6px auto 8px; aspect-ratio:520/320;

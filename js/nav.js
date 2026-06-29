@@ -40,7 +40,7 @@ var SCREEN_INDEX = [
   { no: 26, id: "sns",             label: "SNS(TL/手紙)",       group: "SNS" },
   { no: 27, id: "economy",         label: "島の経済",           group: "暮らし" },
   { no: 28, id: "collection_score", label: "コレクション(やり込み)", group: "暮らし" },
-  { no: 29, id: "konron_map",      label: "崑崙島 観光マップ",     group: "拠点" },
+  { no: 29, id: "konron_map",      label: "観光",                group: "拠点" },
   { no: 30, id: "konron_guide",    label: "崑崙ガイドブック(図鑑)", group: "拠点" },
   { no: 31, id: "konron_gallery",  label: "フォトコレクション(図鑑)", group: "拠点" }
 ];
