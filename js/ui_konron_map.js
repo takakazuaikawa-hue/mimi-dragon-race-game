@@ -70,19 +70,25 @@ const KONRON_SPOTS = {
   kissaten:  { name: "湾岸レトロ喫茶 みすと", cat: "food", tier: 1, time: "昼〜夕", photo: "images/konron/spots/kissaten.webp", gourmet: "images/konron/spots/kissaten_gourmet.webp", shoot: "瓶詰めかためプリン・クリームソーダ・オムライス・海の見える窓", line: "時間がとろりと止まる、海辺の古い喫茶。瓶プリンとクリームソーダで、ひと休み。" },
   backbistro:{ name: "看板のない路地裏ビストロ", cat: "food", tier: 2, time: "夜", photo: "images/konron/spots/backbistro.webp", gourmet: "images/konron/spots/backbistro_gourmet.webp", shoot: "灯りひとつの無銘の扉・蔦と石畳・小さな魔法文字・塩パスタ", line: "看板はない。扉の在処を知るのは、常連だけ。塩パスタが、ここの合言葉。" },
   ryoshimeshi:{ name: "漁師町のまかない食堂", cat: "food", tier: 2, time: "昼", photo: "images/konron/spots/ryoshimeshi.webp", gourmet: "images/konron/spots/ryoshimeshi_gourmet.webp", shoot: "大鍋のパエリア・漁網と浮き玉・獣人の漁師たち", line: "獣人の漁師が、獲れたてを大鍋へ。観光地図にない、いちばん旨い席。" },
-  hoshimi:   { name: "星見の展望台", cat: "view", tier: 3, time: "夜", photo: "images/konron/spots/hoshimi.webp", shoot: "満天の星・漂う精霊光・崖上のデッキ・遠い火山の灯り", line: "星と、揺れる精霊の光。崖の上のこの場所には、ときどき“天井”の気配がする。" }
+  hoshimi:   { name: "星見の展望台", cat: "view", tier: 3, time: "夜", photo: "images/konron/spots/hoshimi.webp", shoot: "満天の星・漂う精霊光・崖上のデッキ・遠い火山の灯り", line: "星と、揺れる精霊の光。崖の上のこの場所には、ときどき“天井”の気配がする。" },
+  // ── 第2波：賑わいの店＋名所（場外/縁日/漁港バル/渋茶/夜市） ──
+  jogai:     { name: "場外グルメ横丁", cat: "food", tier: 1, time: "夜", photo: "images/konron/spots/jogai.webp", gourmet: "images/konron/spots/jogai_gourmet.webp", shoot: "ドラゴンオッズ板・ラーメン屋台・散った的中券・獣人の客", line: "勝っても負けても、レース帰りはここ。湯気と提灯と、夜の屋台の灯り。" },
+  ennichi:   { name: "縁日・屋台広場", cat: "food", tier: 1, time: "夕〜夜", photo: "images/konron/spots/ennichi.webp", gourmet: "images/konron/spots/ennichi_gourmet.webp", shoot: "たこ焼き/綿あめ/イカ焼き・宙に浮かぶ祭り提灯・浴衣の亜人たち", line: "火山を背に、灯りが宙を舞う。獣人も人も浴衣で繰り出す、島の縁日。" },
+  quaybar:   { name: "船着き場のバル", cat: "food", tier: 2, time: "夕", photo: "images/konron/spots/quaybar.webp", gourmet: "images/konron/spots/quaybar_gourmet.webp", shoot: "樽テーブル・アヒージョの鉄鍋・夕陽と漁船・逆光の常連", line: "潮風と、逆光のシルエット。獲れたてをつまみに、漁師町の夕暮れで一杯。" },
+  oyakata:   { name: "親方の渋茶処", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/oyakata.webp", gourmet: "images/konron/spots/oyakata_gourmet.webp", shoot: "欠け湯呑みの渋茶・出走メモ・竜の旗・古い親方", line: "ぶっきらぼうな渋茶が一杯。竜を読む老親方の、路地裏の止まり木。" },
+  furununo:  { name: "夜市の古布屋", cat: "shop", tier: 2, time: "夜", photo: "images/konron/spots/furununo.webp", shoot: "藍染の古布・竜の祭祀布・お面・狐の店主", line: "灯りに浮かぶ古布の山。ほのかに光る祭祀布は、夜市のいちばん奥に眠る。" }
 };
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
-  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro"] },
+  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro", "oyakata", "furununo"] },
   { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina"] },
-  { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods"] },
+  { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods", "jogai", "ennichi"] },
   { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
   { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 46, my: 63, spots: ["uroko"] },
   { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis", "hoshimi"] },
   { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 27, my: 81, spots: ["sena", "bangara", "mango"] },
-  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo", "ryoshimeshi"] },
+  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo", "ryoshimeshi", "quaybar"] },
   { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 61, my: 27, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
 ];
 
