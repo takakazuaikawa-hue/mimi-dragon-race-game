@@ -17,7 +17,8 @@ const KM_CATS = {
   race:  { name: "レース観戦",   ic: "🏁", color: "#e2604a" },
   onsen: { name: "温泉",         ic: "♨️", color: "#36a892" },
   view:  { name: "絶景・自然",   ic: "🏞️", color: "#5cb35e" },
-  oshi:  { name: "推し活・SNS",  ic: "📣", color: "#b069c8" }
+  oshi:  { name: "推し活・SNS",  ic: "📣", color: "#b069c8" },
+  okuchi:{ name: "奥地・秘境",   ic: "🌫️", color: "#8a7bb0" }
 };
 
 // 解放しきい値（総資産＝高水位。序章0／第2話3千／第4話100万／終章1億）。表示専用ゲート。
@@ -44,7 +45,13 @@ const KONRON_SPOTS = {
   kibishis:  { name: "キビシス崖線",     cat: "view", tier: 2, time: "昼〜午後", shoot: "海へ落ちる崖・風の展望台・翼竜の遠い影", line: "空が近い。ここは翼のための場所。息を呑むスケール。" },
   sena:      { name: "サナ湾／セナ浜",   cat: "view", tier: 2, time: "昼", shoot: "白砂とラグーン・ミストラソーダ・ファイヤマンゴーアイス", line: "白砂と青い海、旅気分が一気に高まる開放的ビーチ。" },
   bangara:   { name: "バンガラ溶岩海岸", cat: "view", tier: 2, time: "夕方", shoot: "黒い溶岩と白波・遊歩道・アニキ岩礁遠景", line: "黒い溶岩と荒波がぶつかる、野性味むき出しの絶景海岸。" },
-  hoshiuo:   { name: "エサナ入江／ホシウオ村", cat: "port", tier: 2, time: "朝", shoot: "小舟・干物・魚箱・竜餌用の魚", line: "観光地の奥に、島の暮らしがある。素朴な漁村。" }
+  hoshiuo:   { name: "エサナ入江／ホシウオ村", cat: "port", tier: 2, time: "朝", shoot: "小舟・干物・魚箱・竜餌用の魚", line: "観光地の奥に、島の暮らしがある。素朴な漁村。" },
+  // ── 奥地・霧の彼方（聖典：簡単に入れない神秘＝終盤解放のteaser・遠景のみ・出しすぎない） ──
+  dadake:    { name: "ダダケ村",     cat: "okuchi", tier: 3, time: "—", shoot: "段々畑と古い竜小屋・無口な村人（遠景）", line: "市街と火山のあいだ、霧に隠れた古い村。地図には載るが、道はすぐ霧に消える。" },
+  susufuka:  { name: "スス深回廊",   cat: "okuchi", tier: 3, time: "—", shoot: "黒い岩の回廊・苔と燐光（遠景）", line: "火山の体内へ続く黒い回廊。奥から熱と、低い唸りが届く。踏み込む者は少ない。" },
+  rondo:     { name: "ロンド元宮",   cat: "okuchi", tier: 3, time: "—", shoot: "沈んだ盆地の祭祀場跡・霧の参道（遠景）", line: "カルデラの底、ダコン湖のほとりに眠る最初の宮。竜と人が契りを交わした場所。" },
+  gwaruga:   { name: "グワルガ北岸", cat: "okuchi", tier: 3, time: "—", shoot: "道なき荒岩海岸・砕ける波（遠景）", line: "島の北。道は無い。荒い岩と波だけが、人を寄せつけず在りつづける。" },
+  kyokai:    { name: "饗会の影",     cat: "okuchi", tier: 3, time: "—", shoot: "—", line: "島の裏でだけ囁かれる名。表の崑崙からは、その気配が時おり霧に混じるばかり。" }
 };
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
@@ -56,13 +63,28 @@ const KONRON_AREAS = [
   { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 46, my: 63, spots: ["uroko"] },
   { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis"] },
   { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 27, my: 81, spots: ["sena", "bangara"] },
-  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo"] }
+  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo"] },
+  { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 61, my: 27, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
 ];
 
 function konronMapUnlocked() { return true; }
 function _kmTotal() { return (state.player && state.player.totalAssets) || 0; }
 function _kmSpotOpen(s) { return _kmTotal() >= (KM_TIER_AT[(s && s.tier) || 0] || 0); }
 function _kmTierLabel(t) { return ["序盤", "中盤", "後半", "終盤"][t] || ""; }
+
+// ②「いまの崑崙島」＝時刻(実時計)・天候(日替わり・決定的)・賑わい。表示専用の空気演出。
+function _kmIslandNow() {
+  var d = new Date(), h = d.getHours();
+  var slot = (h < 5)  ? { k: "未明",   ic: "🌌", nigiwai: "奥地の竜だけが目覚める、静かな刻。" }
+           : (h < 10) ? { k: "朝",     ic: "🌅", nigiwai: "霧港に船が入り、市場が荷をひらく頃。" }
+           : (h < 15) ? { k: "昼",     ic: "☀️", nigiwai: "レース場がいちばん沸く、勝負の時間。" }
+           : (h < 18) ? { k: "夕暮れ", ic: "🌇", nigiwai: "勝ち負けの差が、灯りはじめる頃。" }
+           : (h < 22) ? { k: "宵",     ic: "🏮", nigiwai: "霧待ち市場の湯気と提灯が主役の刻。" }
+           :            { k: "夜",     ic: "🌙", nigiwai: "温泉郷の灯りだけが、湖面に揺れる。" };
+  var wx = ["快晴", "晴れときどき霧", "霧ふかし", "通り雨のち晴れ", "薄曇り", "夕焼け雲", "海風つよし"];
+  var doy = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return { k: slot.k, ic: slot.ic, weather: wx[doy % wx.length], nigiwai: slot.nigiwai };
+}
 
 let _kmArea = null;   // 選択中のエリアid
 let _kmSpot = null;   // 選択中のスポットid
@@ -77,6 +99,9 @@ function renderKonronMap() {
     `<div class="km-hero-cap"><b>🏝 崑崙島 観光マップ</b><span>霧の火山島リゾート、崑崙島へようこそ</span></div>`;
   app.appendChild(hero);
   app.appendChild(el("div", "as-hint2", "<b>エリア</b>をタップすると、その地区の拡大マップ・スポット・各施設が見られます（表示専用＝レースの結果には影響しません）。"));
+  // ②「いまの崑崙島」＝時刻・天候・賑わいの空気演出
+  var _now = _kmIslandNow();
+  app.appendChild(el("div", "km-now", `<span class="km-now-ic">${_now.ic}</span><div class="km-now-tx"><b>いまの崑崙島：${_now.k}・${_now.weather}</b><span>${_now.nigiwai}</span></div>`));
 
   // 公式マップ準拠ジオラマ ＋ 少数のエリアピン（よく離して配置＝重ならない・押しやすい）
   const stage = el("div", "km-stage");
@@ -108,7 +133,37 @@ function renderKonronMap() {
   _kmRenderPanel();
 
   const actions = el("div", "actions");
+  const guide = el("button", null, "📖 崑崙ガイドブック"); guide.onclick = () => renderKonronGuide();
+  actions.appendChild(guide);
   const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+
+// ④ 崑崙ガイドブック（島の図鑑）：KONRON_GUIDE を分類表示。tier＝総資産で段階解放（未解放は？？？）。表示専用。
+function renderKonronGuide() {
+  state.ui.screen = "konron_guide";
+  const app = beginScreen();
+  app.appendChild(el("h2", null, "📖 崑崙ガイドブック"));
+  let total = 0, open = 0;
+  (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => c.entries.forEach(e => { total++; if (_kmTotal() >= (KM_TIER_AT[e.tier] || 0)) open++; }));
+  app.appendChild(el("div", "as-hint2", `崑崙島の歴史・文化・食・竜・地理を集める図鑑。総資産が増えると新しい項目が解放されます（表示専用＝レース結果には影響しません）。<b>${open} / ${total}</b> 解放。`));
+  (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => {
+    const sec = el("div", "kg-sec");
+    let h = `<div class="kg-cat"><span class="kg-cat-ic">${c.ic}</span>${c.cat}</div>`;
+    c.entries.forEach(e => {
+      const unlocked = _kmTotal() >= (KM_TIER_AT[e.tier] || 0);
+      if (unlocked) {
+        h += `<div class="kg-entry"><b>${e.title}</b><p>${e.body}</p></div>`;
+      } else {
+        h += `<div class="kg-entry kg-entry--locked"><b>？？？</b><p>🔒 ${_kmTierLabel(e.tier)}で解放（総資産 ${(KM_TIER_AT[e.tier] || 0).toLocaleString("ja-JP")}）</p></div>`;
+      }
+    });
+    sec.innerHTML = h;
+    app.appendChild(sec);
+  });
+  const actions = el("div", "actions");
+  const back = el("button", null, "🏝 観光マップへ戻る"); back.onclick = () => renderKonronMap();
   actions.appendChild(back);
   app.appendChild(actions);
 }

@@ -40,7 +40,8 @@ var SCREEN_INDEX = [
   { no: 26, id: "sns",             label: "SNS(TL/手紙)",       group: "SNS" },
   { no: 27, id: "economy",         label: "島の経済",           group: "暮らし" },
   { no: 28, id: "collection_score", label: "コレクション(やり込み)", group: "暮らし" },
-  { no: 29, id: "konron_map",      label: "崑崙島 観光マップ",     group: "拠点" }
+  { no: 29, id: "konron_map",      label: "崑崙島 観光マップ",     group: "拠点" },
+  { no: 30, id: "konron_guide",    label: "崑崙ガイドブック(図鑑)", group: "拠点" }
 ];
 
 // 画面名 → 描画を呼ぶ thunk。呼び出し時に解決（全描画関数が定義済みの状態で動く）。
@@ -63,6 +64,7 @@ function screenMap() {
     economy:         function () { opt("renderEconomy", "renderAssets")(); },
     collection_score: function () { opt("renderCollectionScore", "renderAssets")(); },
     konron_map:      function () { opt("renderKonronMap", "renderHome")(); },
+    konron_guide:    function () { opt("renderKonronGuide", "renderKonronMap")(); },
     life_tree:       function () { opt("renderLifeTree", "renderAssets")(); },
     life_collection: function () { opt("renderLifeCollection", "renderAssets")(); },
     active_skills:   function () { opt("renderActiveSkills", "renderAssets")(); },
