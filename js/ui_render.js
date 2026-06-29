@@ -131,7 +131,7 @@ function renderTitle() {
     <div class="title-bg"></div>
     <div class="title-stars"></div>
     <div class="title-moon"></div>
-    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp", "") : ""}</div>
+    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp?v=jungle1", "") : ""}</div>
     <div class="title-inner">
       <div class="title-head">
         <h1 class="title-logo"><span class="tl-main">聖龍爆走録</span> <span class="tl-mimi">ミミ</span></h1>
