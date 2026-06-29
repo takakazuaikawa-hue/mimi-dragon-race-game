@@ -64,19 +64,25 @@ const KONRON_SPOTS = {
   cafe:      { name: "ミストラ・テラスカフェ", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/cafe.webp", shoot: "海辺のテラス席・デザイナースイーツ・ラテアート・ターコイズの湾", line: "ターコイズの湾を眺めながらの一杯。最新リゾートの洗練が、いちばん香る場所。" },
   patisserie:{ name: "ミストラ・パティスリー", cat: "food", tier: 2, time: "昼〜夕", photo: "images/konron/spots/patisserie.webp", shoot: "宝石みたいなケーキの陳列・大理石とブラス・南国の花", line: "ガラスケースに並ぶ、宝石のようなスイーツ。海を望む、島いちばん上品な甘い時間。" },
   gelato:    { name: "ファイヤマンゴー・ジェラテリア", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/gelato.webp", shoot: "色とりどりのジェラート・ワッフルコーン・テラゾーの床", line: "ファイヤマンゴーにパッションフルーツ。火山島の太陽を、ひとさじの冷たさで。" },
-  rooftoppool:{ name: "スカイ・インフィニティプール", cat: "stay", tier: 2, time: "夕", photo: "images/konron/spots/rooftoppool.webp", shoot: "湾と一体化する縁なしプール・カバナ・夕陽・火山", line: "水面の先に、湾と火山。空に溶けるような、最新リゾートの特等席。" }
+  rooftoppool:{ name: "スカイ・インフィニティプール", cat: "stay", tier: 2, time: "夕", photo: "images/konron/spots/rooftoppool.webp", shoot: "湾と一体化する縁なしプール・カバナ・夕陽・火山", line: "水面の先に、湾と火山。空に溶けるような、最新リゾートの特等席。" },
+  // ── 第1波：フレーバー由来の店＋名所（時々“魔法ファンタジー＆亜人文化”を実写で） ──
+  lavasteak: { name: "溶岩焼きステーキ・竜窯", cat: "food", tier: 2, time: "夜", photo: "images/konron/spots/lavasteak.webp", gourmet: "images/konron/spots/lavasteak_gourmet.webp", shoot: "真っ赤な溶岩石グリル・竜のかまど・島の岩塩・竜人の親方", line: "火山島の本気。溶岩石で一気に焼くステーキは、竜人の親方の十八番。" },
+  kissaten:  { name: "湾岸レトロ喫茶 みすと", cat: "food", tier: 1, time: "昼〜夕", photo: "images/konron/spots/kissaten.webp", gourmet: "images/konron/spots/kissaten_gourmet.webp", shoot: "瓶詰めかためプリン・クリームソーダ・オムライス・海の見える窓", line: "時間がとろりと止まる、海辺の古い喫茶。瓶プリンとクリームソーダで、ひと休み。" },
+  backbistro:{ name: "看板のない路地裏ビストロ", cat: "food", tier: 2, time: "夜", photo: "images/konron/spots/backbistro.webp", gourmet: "images/konron/spots/backbistro_gourmet.webp", shoot: "灯りひとつの無銘の扉・蔦と石畳・小さな魔法文字・塩パスタ", line: "看板はない。扉の在処を知るのは、常連だけ。塩パスタが、ここの合言葉。" },
+  ryoshimeshi:{ name: "漁師町のまかない食堂", cat: "food", tier: 2, time: "昼", photo: "images/konron/spots/ryoshimeshi.webp", gourmet: "images/konron/spots/ryoshimeshi_gourmet.webp", shoot: "大鍋のパエリア・漁網と浮き玉・獣人の漁師たち", line: "獣人の漁師が、獲れたてを大鍋へ。観光地図にない、いちばん旨い席。" },
+  hoshimi:   { name: "星見の展望台", cat: "view", tier: 3, time: "夜", photo: "images/konron/spots/hoshimi.webp", shoot: "満天の星・漂う精霊光・崖上のデッキ・遠い火山の灯り", line: "星と、揺れる精霊の光。崖の上のこの場所には、ときどき“天井”の気配がする。" }
 };
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
-  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool"] },
+  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro"] },
   { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina"] },
   { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods"] },
   { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
   { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 46, my: 63, spots: ["uroko"] },
-  { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis"] },
+  { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis", "hoshimi"] },
   { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 27, my: 81, spots: ["sena", "bangara", "mango"] },
-  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo"] },
+  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo", "ryoshimeshi"] },
   { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 61, my: 27, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
 ];
 
