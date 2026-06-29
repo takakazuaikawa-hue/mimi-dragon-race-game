@@ -34,11 +34,11 @@ const KONRON_SPOTS = {
   ohzuba:    { name: "大翼通り",         cat: "port", tier: 1, time: "昼前", photo: "images/konron/spots/ohzuba.webp", shoot: "レース場へ続く人波・推し竜旗・魔導掲示板", line: "港からレース場へ、島いちばん賑やかな大通り。" },
   mall:      { name: "崑崙ショッピングモール", cat: "shop", tier: 1, portal: "renderMall", time: "昼〜夜", photo: "images/konron/spots/mall.webp", gourmet: "images/konron/spots/mall_gourmet.webp", shoot: "公式推し竜ショップ・土産袋・ぬいぐるみ・フードコート", line: "レースの思い出は、袋いっぱいに持ち帰れる。島いちばんの買い物拠点。" },
   arcade:    { name: "ミストラ・ブランドアーケード", cat: "shop", tier: 2, portal: "renderMall", time: "夕〜夜", photo: "images/konron/spots/arcade.webp", gourmet: "images/konron/spots/arcade_gourmet.webp", shoot: "金色の照明・聖龍アクセサリー・高級土産袋", line: "勝った夜は、少しだけ背伸びしたくなる。" },
-  donryu:    { name: "ドン竜キホーテ",   cat: "shop", tier: 2, portal: "renderMall", time: "深夜", shoot: "謎の推し竜グッズ・安売り衣装・変な土産", line: "なぜ買ったのか、明日の朝にはわからない。それも旅。" },
+  donryu:    { name: "ドン竜キホーテ",   cat: "shop", tier: 2, portal: "renderMall", time: "深夜", photo: "images/konron/spots/donryu.webp", shoot: "謎の推し竜グッズ・安売り衣装・変な土産", line: "なぜ買ったのか、明日の朝にはわからない。それも旅。" },
   kachimeshi:{ name: "勝ち飯横丁",       cat: "food", tier: 1, portal: "renderMeals", time: "レース後", photo: "images/konron/spots/kachimeshi.webp", gourmet: "images/konron/spots/kachimeshi_gourmet.webp", shoot: "的中券と串焼き・祝勝皿・乾杯", line: "大勝ちじゃなくても今日は勝ち。ちょっとだけ豪華に。" },
   makemeshi: { name: "負け飯屋台",       cat: "food", tier: 0, portal: "renderMeals", time: "レース後〜夜", photo: "images/konron/spots/makemeshi.webp", gourmet: "images/konron/spots/makemeshi_gourmet.webp", shoot: "外れ券と大盛り飯・反省茶・負け麺", line: "負けても腹は減る。明日の勝負は、まず一杯の飯から。" },
   racecourse:{ name: "中央聖龍レース場", cat: "race", tier: 0, portal: "renderRaceSelect", time: "昼〜夕", photo: "images/konron/spots/racecourse.webp", shoot: "火山を背にした観戦席・推し竜旗・的中券", line: "火山の風を切って、聖龍が駆ける。崑崙島最大の熱狂。" },
-  tanryu:    { name: "単竜ひろば",       cat: "race", tier: 0, portal: "renderRaceSelect", time: "昼前", shoot: "初心者掲示板・番号札・はじめてのレース券", line: "まずは一着を選ぶ。旅の勝負はここから。" },
+  tanryu:    { name: "単竜ひろば",       cat: "race", tier: 0, portal: "renderRaceSelect", time: "昼前", photo: "images/konron/spots/tanryu.webp", shoot: "初心者掲示板・番号札・はじめてのレース券", line: "まずは一着を選ぶ。旅の勝負はここから。" },
   oshigoods: { name: "推し竜グッズ売り場", cat: "oshi", tier: 1, portal: "renderSns", time: "終日", photo: "images/konron/spots/oshigoods.webp", shoot: "推し竜旗・ぬいぐるみ・タオル・冠名グッズ", line: "レース体験を“自分の旅の記念品”に変える。" },
   ryusha:    { name: "竜舎林・竜スカウト", cat: "oshi", tier: 1, portal: "renderScout", time: "—", photo: "images/konron/spots/ryusha.webp", shoot: "—", line: "レース場の奥、竜たちの棲む森。野の竜と出会いにいく。" },
   dakon:     { name: "ダコン湖外縁",     cat: "view", tier: 3, time: "早朝", photo: "images/konron/spots/dakon.webp", shoot: "霧の湖面・火山影・静かな湖畔（遠景のみ）", line: "見えるけれど、踏み込みすぎてはいけない、島の奥に眠る神秘。" },
@@ -76,14 +76,22 @@ const KONRON_SPOTS = {
   ennichi:   { name: "縁日・屋台広場", cat: "food", tier: 1, time: "夕〜夜", photo: "images/konron/spots/ennichi.webp", gourmet: "images/konron/spots/ennichi_gourmet.webp", shoot: "たこ焼き/綿あめ/イカ焼き・宙に浮かぶ祭り提灯・浴衣の亜人たち", line: "火山を背に、灯りが宙を舞う。獣人も人も浴衣で繰り出す、島の縁日。" },
   quaybar:   { name: "船着き場のバル", cat: "food", tier: 2, time: "夕", photo: "images/konron/spots/quaybar.webp", gourmet: "images/konron/spots/quaybar_gourmet.webp", shoot: "樽テーブル・アヒージョの鉄鍋・夕陽と漁船・逆光の常連", line: "潮風と、逆光のシルエット。獲れたてをつまみに、漁師町の夕暮れで一杯。" },
   oyakata:   { name: "親方の渋茶処", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/oyakata.webp", gourmet: "images/konron/spots/oyakata_gourmet.webp", shoot: "欠け湯呑みの渋茶・出走メモ・竜の旗・古い親方", line: "ぶっきらぼうな渋茶が一杯。竜を読む老親方の、路地裏の止まり木。" },
-  furununo:  { name: "夜市の古布屋", cat: "shop", tier: 2, time: "夜", photo: "images/konron/spots/furununo.webp", shoot: "藍染の古布・竜の祭祀布・お面・狐の店主", line: "灯りに浮かぶ古布の山。ほのかに光る祭祀布は、夜市のいちばん奥に眠る。" }
+  furununo:  { name: "夜市の古布屋", cat: "shop", tier: 2, time: "夜", photo: "images/konron/spots/furununo.webp", shoot: "藍染の古布・竜の祭祀布・お面・狐の店主", line: "灯りに浮かぶ古布の山。ほのかに光る祭祀布は、夜市のいちばん奥に眠る。" },
+  // ── 第4波：要設計枠の新スポット（フレーバー/聖典由来・時々ファンタジー＆亜人） ──
+  left_wing: { name: "左翼・大学研究街", cat: "civic", tier: 2, time: "昼", photo: "images/konron/spots/left_wing.webp", shoot: "観光経済大学・Mizu研究室・オッズ解析の天文台・椰子並木", line: "大翼通りの“左の翼”。観光経済大学とオッズ解析が、勝負の裏側を支える頭脳街。" },
+  yokukatown:{ name: "翼下タウン", cat: "port", tier: 1, time: "夕", photo: "images/konron/spots/yokukatown.webp", shoot: "レース場直下の新興市場街・建設中の櫓・露店", line: "レース場の足下に湧いた、活気あふれる新興の街。今がいちばん面白い。" },
+  ushiome_dora:{ name: "潮目ドーラ", cat: "view", tier: 2, time: "早朝", photo: "images/konron/spots/ushiome_dora.webp", shoot: "ミストラ湾口の濃霧・霧の主の気配・入港待ちの舟", line: "湾の入口に居つく霧の主。晴れる一瞬を待って、船は港へ滑り込む。" },
+  lodge:     { name: "山小屋のまかない", cat: "food", tier: 2, time: "昼", photo: "images/konron/spots/lodge.webp", shoot: "高地の山小屋・干したきのこ・谷と滝の眺め・きのこリゾット", line: "雨の日ほど、きのこは香る。谷を見下ろす山小屋の、滋味深いまかない。" },
+  wagashi:   { name: "島の和菓子屋", cat: "food", tier: 2, time: "昼〜夕", photo: "images/konron/spots/wagashi.webp", shoot: "ガラスケースの島和菓子・カステラ・福の暖簾・南国の花", line: "南国の陽に、和の甘み。底にザラメを残す長崎カステラが、ここの看板。" },
+  amazake_chaya:{ name: "甘酒だんご茶屋", cat: "food", tier: 1, time: "レース前", photo: "images/konron/spots/amazake_chaya.webp", shoot: "番傘と提灯・三色だんごの炭火・甘酒・“必勝”の絵馬", line: "勝負の前に、甘酒で一服。三色だんごのゲン担ぎは、この島の必勝祈願。" },
+  backlot:   { name: "資材置き場・マスコットの隅", cat: "oshi", tier: 2, time: "—", photo: "images/konron/spots/backlot.webp", shoot: "レース場裏の木箱とブルーシート・雨上がりの水たまり・小さな寝床", line: "レース場の裏手、木箱の陰。島のマスコットが、ちいさく震えていた場所。" }
 };
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
-  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro", "oyakata", "furununo"] },
-  { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina"] },
-  { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods", "jogai", "ennichi"] },
+  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro", "oyakata", "furununo", "left_wing", "ushiome_dora", "wagashi"] },
+  { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina", "lodge"] },
+  { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods", "jogai", "ennichi", "yokukatown", "amazake_chaya", "backlot"] },
   { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
   { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 46, my: 63, spots: ["uroko"] },
   { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis", "hoshimi"] },
