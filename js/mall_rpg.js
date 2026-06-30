@@ -1746,30 +1746,73 @@ function rpgScene(ctx, env) {
   ctx.save(); ctx.globalAlpha = 0.5; let hz = ctx.createLinearGradient(0, cy - 18, 0, cy + 22); hz.addColorStop(0, "rgba(255,255,255,0)"); hz.addColorStop(0.5, dusk > 0.45 ? "rgba(255,220,190,0.5)" : "rgba(225,240,248,0.55)"); hz.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = hz; ctx.fillRect(0, cy - 22, W, 46); ctx.restore();
 }
 
-function rpgDrawView(cv, t) {
-  t = t || 0;
+// =========================================================================
+// 🎨 レンダラ差し替え点（シーム）── 3Dレンダリングへの移行を見据えた抽象化
+//   「シーン記述(何を)」= rpgBuildViewScene() … 純データ（canvas/ctx非依存）
+//   「描画手段(どう)」  = MallRender.backends[name](cv, scene, t)
+//   既定は "2d"（現行のHD-2Dキャンバス）。3D化時は別ファイルから
+//     window.MallRender.backends["3d"] = function(cv, scene, t){ ... };
+//     window.MALL_RENDERER = "3d";   // 実行時スイッチ（既存 RC_USE_RIG と同思想）
+//   未実装/失敗時は自動で "2d" にフォールバック（壊さない）。
+// =========================================================================
+// 一人称ダンジョンの「シーン記述」：前方に見えるもの＋フロアの色味/時間帯のみ。
+// 描画手段に依存しない純データなので、2D/3Dどちらのバックエンドからも同じものを描ける。
+function rpgBuildViewScene() {
+  const fl = rpgFloorMeta(RPG.fi) || {};
+  const dusk = fl.tower ? 0.2 : (fl.sky ? 1 : RPG.fi / Math.max(1, RPG_FLOORS.length - 1));
+  const maxD = 4, ahead = [];
+  for (let c = 1; c <= maxD; c++) {
+    const tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
+    if (rpgIsWall(rpgAhead(c, 0))) { ahead.push({ d: c, kind: "wall", closed: !!(RPG.closed && RPG.closed[tx + "," + ty]) }); break; }
+    const cch = rpgAhead(c, 0);
+    let kind = "floor";
+    if (cch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) kind = "treasure";
+    else if (cch === "U") kind = "stairs";
+    else if (cch === "E") kind = rpgData().cleared ? "exit" : "boss";
+    ahead.push({ d: c, kind: kind });
+    if (kind !== "floor") break;
+  }
+  return {
+    floor: RPG.fi, dir: RPG.dir, accent: fl.accent || [120, 160, 200],
+    sunset: !!fl.sky, dusk: dusk, openAir: !fl.tower, ahead: ahead,
+    cell: (d, l) => rpgAhead(d, l),   // 相対セル参照（2Dは側壁/店先に使用。3Dは ahead や RPG.map から幾何を組んでよい）
+  };
+}
+const MallRender = {
+  backends: {},
+  dungeon(cv, scene, t) {
+    const name = (typeof window !== "undefined" && window.MALL_RENDERER) || "2d";
+    const fn = this.backends[name] || this.backends["2d"];
+    try { fn(cv, scene, t); }
+    catch (e) { if (name !== "2d" && this.backends["2d"]) try { this.backends["2d"](cv, scene, t); } catch (e2) {} }
+  },
+};
+if (typeof window !== "undefined") window.MallRender = MallRender;   // 3Dバックエンドを外部ファイルから登録できるよう公開
+// 既定バックエンド：現行のHD-2Dキャンバス描画（rpgScene＋前方アイコン＋後処理）
+MallRender.backends["2d"] = function (cv, scene, t) {
   rpgFitCanvas(cv);                 // 表示枠いっぱいに描く（縦長フレームを埋める）
   const ctx = cv.getContext("2d");
   ctx.imageSmoothingEnabled = true;
-  const fl = rpgFloorMeta(RPG.fi) || {};
-  const dusk = fl.tower ? 0.2 : (fl.sky ? 1 : RPG.fi / Math.max(1, RPG_FLOORS.length - 1));
-  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: fl.accent || [120, 160, 200], sunset: !!fl.sky, dusk: dusk, openAir: !fl.tower, cell: (d, l) => rpgAhead(d, l) });
-  // 前方アイコン（宝箱/階段/ボス）＋ふわふわ
+  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: scene.accent, sunset: scene.sunset, dusk: scene.dusk, openAir: scene.openAir, cell: scene.cell });
+  // 前方アイコン（宝箱/階段/ボス/出口/閉鎖）＋ふわふわ
   const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46, maxD = 4, pp = 0.6, ph = t / 1000;
   const rt = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(pp, d); rt[d] = { t: cy - H * 0.5 * s, b: cy + H * 0.5 * s }; }
-  for (let c = 1; (!cv._noIcons) && c <= maxD; c++) {
-    if (rpgIsWall(rpgAhead(c, 0))) {
-      const bx = RPG.px + RPG_DV[RPG.dir][0] * c, by = RPG.py + RPG_DV[RPG.dir][1] * c;
-      if (RPG.closed && RPG.closed[bx + "," + by]) rpgDrawIcon(ctx, "🚧", rt[c], cx, (rt[c].t + rt[c].b) / 2);   // 🚧 閉鎖された通路
-      break;
+  if (!cv._noIcons) {
+    for (let i = 0; i < scene.ahead.length; i++) {
+      const a = scene.ahead[i], c = a.d, ym = (rt[c].t + rt[c].b) / 2, bob = Math.sin(ph * 2.2) * (rt[c].b - rt[c].t) * 0.03;
+      if (a.kind === "wall") { if (a.closed) rpgDrawIcon(ctx, "🚧", rt[c], cx, ym); break; }
+      if (a.kind === "treasure") { rpgDrawIcon(ctx, "📦", rt[c], cx, ym + bob); break; }
+      if (a.kind === "stairs") { rpgDrawIcon(ctx, "🛗", rt[c], cx, ym + bob); break; }
+      if (a.kind === "boss") { rpgDrawIcon(ctx, "🎡", rt[c], cx, ym + bob); break; }
+      if (a.kind === "exit") { rpgDrawIcon(ctx, "🚪", rt[c], cx, ym + bob); break; }
+      // floor は次の奥行きへ
     }
-    const cch = rpgAhead(c, 0), tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
-    const bob = Math.sin(ph * 2.2) * (rt[c].b - rt[c].t) * 0.03;
-    if (cch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) { rpgDrawIcon(ctx, "📦", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
-    if (cch === "U") { rpgDrawIcon(ctx, "🛗", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
-    if (cch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "🎡", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
   }
   rpgPostFx(cv, ctx);
+};
+// 一人称ビューの描画エントリ：シーンを組み立て、現在のレンダラに委譲（差し替え点）。
+function rpgDrawView(cv, t) {
+  MallRender.dungeon(cv, rpgBuildViewScene(), t || 0);
 }
 // HD-2D風 後処理：ブルーム＋被写界深度(ティルトシフト)＋ビネット（GPUフィルタ・非対応端末は自動スキップ）
 function rpgPostFx(cv, ctx) {
