@@ -36,6 +36,7 @@ html {
   text-size-adjust: 100%;
   touch-action: manipulation;
   overscroll-behavior: none;
+  background: var(--bg-world);   /* PC枠(§SCREEN_SIZE_RULES.md)＝bodyが9:16枠になった時、周囲(レターボックス)を埋める常設地 */
 }
 body {
   font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
@@ -1140,11 +1141,17 @@ button { transition: background .15s ease, transform .07s ease, box-shadow .15s 
 button:active:not(:disabled) { transform: translateY(1px) scale(.985); }
 
 /* Screen entrance — every render routes through beginScreen(), which sets
-   one of these classes on #app; its fresh children animate in on insertion. */
-#app.nav-fwd  > * { animation: scrInFwd .22s cubic-bezier(.22,.61,.36,1) both; }
-#app.nav-back > * { animation: scrInBack .22s cubic-bezier(.22,.61,.36,1) both; }
-#app.nav-same > * { animation: scrFade .14s ease both; }
-#app.nav-racestart > * { animation: scrRaceStart .34s cubic-bezier(.22,.61,.36,1) both; }
+   one of these classes on #app; its fresh children animate in on insertion.
+   fill-mode=backwards（not both）: applies the "from" state before start (no flash) but does
+   NOT pin a residual transform matrix after the animation ends. "both" was breaking
+   position:sticky descendants (§PC枠 #app内部スクロール化・2026-07)：Chromiumはtransformを
+   アニメーションした要素がforwardsで固定されると、終端値がtransform:noneでも
+   computed styleがmatrix(1,0,0,1,0,0)のまま残り、stickyの基準計算が壊れる。
+   backwardsなら終了後はアニメーションの影響が外れ、素のtransform:noneに戻ってstickyが正しく動く。 */
+#app.nav-fwd  > * { animation: scrInFwd .22s cubic-bezier(.22,.61,.36,1) backwards; }
+#app.nav-back > * { animation: scrInBack .22s cubic-bezier(.22,.61,.36,1) backwards; }
+#app.nav-same > * { animation: scrFade .14s ease backwards; }
+#app.nav-racestart > * { animation: scrRaceStart .34s cubic-bezier(.22,.61,.36,1) backwards; }
 
 /* translateX/Y + opacity only — no scale on the screen container, so
    canvas-backed screens (race_run) keep their measured width correct. */
@@ -1608,29 +1615,48 @@ table.entry-table {
   border: 1px solid var(--gold-line); border-radius: 14px; padding: 10px;
   margin-top: 10px; box-shadow: 0 -10px 28px -12px rgba(0,0,0,.9); backdrop-filter: blur(6px); }
 
-/* ===== PC/タブレット＝縦型ゲームフレーム（現代スマホ風・全画面共通） =====
+/* ===== PC/タブレット＝縦型ゲームフレーム（YouTube Shorts/TikTok同様・9:16アスペクト厳密固定） =====
+   ★数値の正本＝docs/SCREEN_SIZE_RULES.md（変更前に必ず読む）。
    画面幅で伸縮させない＝キャラ立ち位置/レイアウトがPCとスマホで完全に同一。
    閾値540px：471〜699pxの“どっちつかず帯”もフレーム化（中間幅対策）。
-   ワイド時の左右は「ぼかした世界観背景＋ヴィネット」で充填し、中央列を“端末”として見せる。
-   ホーム/タイトルは自前の全画面背景を持つのでアンビエント＆ガラス地は除外。 */
+   ★2026-07：real Shortsの「動画が再生される矩形は9:16に厳密固定」に合わせ、body自体を9:16アスペクト
+   固定の“端末”にする（横幅470pxは維持＝既存資産のvh基準表示との整合）。極端に縦長のPC窓では、bodyの
+   上下にも世界観アンビエントの余白（レターボックス）ができる＝Shorts本家がPCで動画を伸ばさず余白で
+   埋めるのと同じ発想。bodyに transform を持たせ“containing block”化することで、document.body に
+   直接 appendChild される十数箇所のモーダル/演出/音量ボタン等が、個別修正なしで自動的にこの枠内へ
+   収まる（position:fixed の基準がviewportからbody自身に変わるCSS標準の挙動を利用）。 */
 @media (min-width: 540px) {
-  /* 左右の余白を世界観アンビエント（ぼかし）で充填 */
-  body:not(.home-mode):not(.title-mode)::before {
+  html {
+    display: flex; align-items: center; justify-content: center;   /* bodyを画面の中央へ（横だけでなく縦も） */
+    min-height: 100dvh;
+  }
+  /* 世界観アンビエント（ぼかし＋ヴィネット）＝htmlの真の全画面に常設。以前は「ホーム/タイトルは自前の
+     全画面背景を持つので除外」だったが、今はホームの背景も body(枠)の内側に収まるため、枠の外側
+     （レターボックス＝左右だけでなく上下にも）を埋める役目としてhome/titleも含め常時表示。 */
+  html::before {
     content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background: url("images/home_bg.webp") center/cover no-repeat;
     filter: blur(36px) saturate(.8) brightness(.42); transform: scale(1.18); }
-  /* 中央へ視線を集めるヴィネット＋上部の締め */
-  body:not(.home-mode):not(.title-mode)::after {
+  html::after {
     content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background:
       radial-gradient(128% 86% at 50% 36%, rgba(10,15,18,0) 30%, rgba(8,12,15,.6) 100%),
       linear-gradient(180deg, rgba(8,12,15,.5), rgba(8,12,15,0) 18%); }
 
-  /* 中央列＝“端末”：角丸・金のヘアライン・柔らかい外側グロー（温かい火山の照り返し） */
-  body:not(.title-mode) #header { max-width: 470px; border-radius: 16px 16px 0 0; }
-  body:not(.title-mode) #app { max-width: 470px;
-    box-shadow: 0 0 0 1px rgba(230,178,74,.18), 0 34px 90px -36px rgba(0,0,0,.92), 0 0 130px -48px rgba(255,150,80,.14); }
-  /* 通常画面はガラス調サーフェスを敷き、アンビエント上でも内容を読みやすく */
+  /* body＝“端末”そのもの。9:16に厳密固定＋角丸/金のヘアライン/外側グロー＋全position:fixed子孫の
+     containing block（transform）＋内部はheader固定・appのみスクロール（H1のオーバーフロー対策を継承）。 */
+  body {
+    width: 100%; max-width: 470px; aspect-ratio: 9 / 16; margin: 0;
+    min-height: 0;   /* 基本ルールの min-height:100dvh を打ち消す＝これが無いとaspect-ratioが無視され縦長PC窓でbodyがviewport一杯に伸びてしまう（実測で発覚） */
+    position: relative; z-index: 1; overflow: hidden; transform: translateZ(0);
+    display: flex; flex-direction: column;
+    border-radius: 16px;
+    box-shadow: 0 0 0 1px rgba(230,178,74,.18), 0 34px 90px -36px rgba(0,0,0,.92), 0 0 130px -48px rgba(255,150,80,.14);
+  }
+  #header { flex: none; max-width: none; border-radius: 16px 16px 0 0; }
+  #app { flex: 1 1 auto; min-height: 0; max-width: none; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* 通常画面はガラス調サーフェスを敷き、アンビエント上でも内容を読みやすく（ホーム/タイトルは自前の
+     全画面演出があるのでガラス地は除外＝据え置き）。 */
   body:not(.home-mode):not(.title-mode) #app {
     background: linear-gradient(180deg, rgba(14,21,25,.66), rgba(9,14,17,.74));
     border-radius: 0 0 22px 22px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
@@ -2109,6 +2135,12 @@ body.home-mode #app { padding: 12px 12px 16px; }
    （内容が数px超えてもページが動かない。離脱時はクラスが外れて通常スクロールに戻る） */
 body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height: 100%;
   overflow: hidden; overscroll-behavior: none; }
+/* PC枠（§SCREEN_SIZE_RULES.md）：フレーム時はbody自身が9:16の“端末”なので、上のfixed/inset(=真の
+   viewport基準)を無効化し、枠のaspect-ratioで決まるサイズに委ねる（このルールは上のfixed指定より
+   後出＝クラス2つ同specificityの中で後勝ちして正しく上書きされる）。 */
+@media (min-width: 540px) {
+  body.home-mode, body.title-mode { position: relative; inset: auto; width: 100%; height: auto; overflow: hidden; }
+}
 
 /* ===== H1: 横向き(低い高さ)対策 =====
    縦持ち前提の全画面ノースクロールUIは横向きで下部(レース/ナビ/コメント)がクリップされ操作不能になる。
@@ -3609,6 +3641,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @keyframes hlKen { from { transform: translate(0,0) scale(1); } to { transform: translate(-1.6%,1.2%) scale(1.06); } }
 
 .hl { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - 30px); }   /* #header非表示前提＝ほぼ全画面（TikTok流のノースクロール） */
+@media (min-width: 540px) { .hl { min-height: calc(100% - 30px); } }   /* PC枠：100dvhでなく実際のbody(9:16枠)内#appの高さを基準に（§SCREEN_SIZE_RULES.md） */
 /* ホームのヘッダー＝“ちゃんとしたバー”として全幅デザイン（#appのpadding分だけ外へ広げる） */
 .hl-top { display: flex; align-items: center; gap: 7px; position: relative; z-index: 3; flex-wrap: wrap;
   margin: -12px -12px 0;

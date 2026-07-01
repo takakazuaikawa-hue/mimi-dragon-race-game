@@ -3,15 +3,16 @@
 監査(`docs/RESPONSIVE_AUDIT.md`)で見つけた問題を**二度と再発させない**ための規約とチェックリスト。
 新しい画面・演出・入力を足す前後に、ここを必ず通す。自動検出は **`js/devcheck.js`** の `responsiveSelfCheck()`（設定デバッグの「🩺自己診断」）。
 
-> 大前提：**縦型ポートレートは王道**（TikTok配信風＋大立ち絵）。横長化はしない。スマホ実機(<540px)が基準、PC/タブレットは中央縦枠。レース数値には触れない（[[race-math-immutable]]）。
+> 大前提：**縦型ポートレートは王道**（YouTube Shorts/TikTok配信風＋大立ち絵）。スマホは元から縦・**直す対象はPC（横長ディスプレイ）でどう見せるか**。レース数値には触れない（[[race-math-immutable]]）。
 
-## 🥇 標準ブレークポイント（新規はこれに寄せる・乱立させない）
+## 🥇 標準ブレークポイント（★正本は `docs/SCREEN_SIZE_RULES.md`＝数値はそこだけで定義。ここは要点の再掲のみ）
 | 区分 | 条件 | 役割 |
 |---|---|---|
-| 小スマホ | `max-width: 420px` | 余白/フォント微縮小 |
+| 小スマホ | `max-width: 420px` | 余白/フォント微縮小（フレーム境界ではない） |
 | スマホ基準 | `< 540px` | 全幅・フレーム無し（既定） |
-| 縦枠(PC/タブレット) | `min-width: 540px` | 470px中央縦枠＋左右アンビエント（`style.css` の該当`@media`） |
-| 横向き/低い高さ | `max-height: 680px` 等 | 縦に詰める・全画面ノースクロール厳禁 |
+| 縦型フレーム(PC/タブレット) | `min-width: 540px` | 470px中央縦枠＋左右アンビエント（`style.css` の該当`@media`）。幅だけで判定 |
+
+※スマホの横向き回転は想定対象外（事故防止の保険のみ既存＝低い高さでのスクロール解放＋タッチ端末への回転案内）。
 
 ## ✅ 出荷前チェックリスト（CSS/レイアウトを触ったら）
 1. **🩺自己診断を実行**（設定→デバッグ→🩺、または console で `responsiveSelfCheck()` / 全画面は `await responsiveSelfCheckAll()`）。`✅問題なし`を確認。
@@ -40,4 +41,4 @@
 3. **🩺自己診断を 360 / 740×360 / 1280 で実行**し `✅`。
 4. デプロイは git plumbing＋`index.html` の `?v=` 一括更新（[[deploy-method]]）。
 
-関連：[[responsive-pc-frame]]（方針と既知課題）／[[dev-workflow-fast-preview]]（?go=直接ジャンプ）。
+関連：**`docs/SCREEN_SIZE_RULES.md`（★数値の正本・YouTube Shorts準拠の設計思想）**／[[responsive-pc-frame]]（方針と既知課題）／[[dev-workflow-fast-preview]]（?go=直接ジャンプ）。

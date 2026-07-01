@@ -131,6 +131,21 @@ function renderStoryChapter(chId) {
   const ch = STORY_CHAPTERS.find(c => c.id === chId);
   recomputeAssets(state);
   if (!ch || state.player.totalAssets < storyUnlockAt(ch.id)) { renderStory(); return; }
+  // 読み飛ばしガード：手前に“解禁済みなのに未読”の話が残っていたら、先にそこから読んでもらう（順番厳守）。
+  //   ＝総資産だけで終章へ飛び、配信も体験しないまま結末のセリフを踏む断絶を防ぐ（表示のみ・レース数値に非干渉）。
+  if (typeof getStoryFlag === "function") {
+    var _order = ["1", "2", "3", "4", "5", "ED"], _i = _order.indexOf(chId);
+    for (var _k = 0; _k < _i; _k++) {
+      var _pid = _order[_k];
+      if (state.player.totalAssets < storyUnlockAt(_pid)) continue;   // まだ解禁前の話は飛ばして良い
+      if (!getStoryFlag("_chapter_intro_" + _pid)) {
+        if (typeof showInfoPopup === "function") showInfoPopup("📖 先に前のお話を",
+          `<div class="mm-row"><span class="mm-ic">📖</span><div><b>ちょっと待って！</b><small>いきなり結末まで飛ぶと、ミミが置いてけぼりで泣いちゃう。まずは手前のお話から、順番にどうぞ。</small></div></div>`);
+        renderStory();
+        return;
+      }
+    }
+  }
   state.ui.screen = "story_read";
   const cast = STORY_CAST[ch.cast];
   // ▼▼ 物語ロジック（不変・表示専用の演出トリガ）▼▼
