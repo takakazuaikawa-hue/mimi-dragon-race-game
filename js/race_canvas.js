@@ -923,8 +923,7 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   const img = e.cv || e.img, b = e.box;
   const H = Math.min(150, cw * 0.34), sc = H / b.h, W = b.w * sc;
   const inK = Math.min(1, rt / 0.22);
-  const out = rt > 1.25 ? Math.max(0, 1 - (rt - 1.25) / 0.3) : 1;
-  const a = inK * out;
+  const a = inK;   // ★出しっぱなし＝結果を見るまで勝者が生き続ける（フェードアウト廃止・ユーザー指定）
   if (a <= 0) return true;
   const now = performance.now() / 1000;
   ctx.save();
@@ -2914,17 +2913,19 @@ function startRaceCanvas(container, ctx) {
       // ★R8-W4：勝者ウィニングカット（HD-2D絵があれば rt 0〜1.55s に大写し・
       //   見出し/払戻プレートはカットの終盤 rt-1.35s から＝順に語る）。表示のみ。
       const hasCut = rcHasDragonSprite(winner.id);
-      if (hasCut) rcDrawWinnerCut(cctx, winner.id, cw / 2, ch * 0.58, rt, cw);
+      if (hasCut) rcDrawWinnerCut(cctx, winner.id, cw / 2, ch * 0.54, rt, cw);
       const rtd = hasCut ? Math.max(0, rt - 1.35) : rt;
       const _fc = (n) => (typeof fmtCoins === "function" ? fmtCoins(n) : String(n));
       cctx.save();
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      // headline fades in first
+      // headline fades in first（カット時は「1着〈名前〉」行を省略＝金リボンと重複するため）
       cctx.globalAlpha = Math.min(1, rtd / 0.22);
       cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 25px system-ui, sans-serif";
-      cctx.fillText("ゴールイン！", cw / 2, ch * 0.16);
-      cctx.fillStyle = "#fff"; cctx.font = "bold 15px system-ui, sans-serif";
-      cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.16 + 24);
+      cctx.fillText("ゴールイン！", cw / 2, ch * 0.14);
+      if (!hasCut) {
+        cctx.fillStyle = "#fff"; cctx.font = "bold 15px system-ui, sans-serif";
+        cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.14 + 24);
+      }
       cctx.globalAlpha = 1;
       // the reward plate pops in a beat later, showing the actual payout
       if (betResult) {
@@ -2942,7 +2943,8 @@ function startRaceCanvas(container, ctx) {
         const amount = hit ? ("＋" + _fc(betResult.payout) + " コイン")
           : ("−" + _fc(Math.abs(betResult.profit)) + " コイン");
         cctx.save();
-        cctx.translate(cw / 2, ch * 0.35);
+        // ★プレートは下段へ＝ウィニングカット（中央）の主役を邪魔しない（ユーザー指定）
+        cctx.translate(cw / 2, hasCut ? ch * 0.82 : ch * 0.35);
         cctx.scale(sc, sc);
         cctx.globalAlpha = Math.min(1, rp * 1.4);
         const pw = 252, ph = 70;
