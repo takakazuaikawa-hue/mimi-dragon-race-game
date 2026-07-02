@@ -82,6 +82,20 @@ function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.reg
 // ここは生画像の読込だけ——描画サイズへの焼き込み（ループ化クロスフェード込み）はプレイヤー側 bakePara()。
 // 3枚揃わない/読込失敗の地域は従来経路へ自動フォールバック。表示のみ・レース数値不変。
 var RC_PARA_SLUG = { "グランドクロック地域": "grandclock", "ルミナ地域": "lumina", "リングロッソ地域": "ringrosso", "カルデラ地域": "caldera", "ミストレイク地域": "mistlake", "ヴェント峡谷地域": "vento", "ノッテムーンライト地域": "notte", "ラパン祭典地域": "lapan" };
+// R8-W6: 地域の「大地」パレット（パララックス夜レースの地面＝緑ターフのカーペットをやめ、
+// 背景と同じ世界の野外の地面にする。g=縦グラデ3色 / lite・dark=材質斑 / fx=地域の光る粒）。
+// スタジアムだけは芝が正しいので夜芝。表示のみ・レース数値不変。
+var RC_PARA_GROUND = {
+  stadium:    { g: ["#1f2e1e", "#233522", "#182617"], lite: "#3a5238", dark: "#0e180e", fx: "#89b06a" },
+  grandclock: { g: ["#2a2417", "#332c1c", "#231e13"], lite: "#4a4028", dark: "#151109", fx: "#d8b26a" },
+  lumina:     { g: ["#131b2c", "#172134", "#0f1626"], lite: "#2a3a56", dark: "#080c16", fx: "#59c2e8" },
+  ringrosso:  { g: ["#2e1a12", "#382016", "#26150e"], lite: "#5a3420", dark: "#170c06", fx: "#e08a4a" },
+  mistlake:   { g: ["#192121", "#1e2a28", "#131b1b"], lite: "#324442", dark: "#0a1010", fx: "#9ad2c8" },
+  caldera:    { g: ["#1b1210", "#231511", "#130c0b"], lite: "#40241a", dark: "#0a0606", fx: "#ff7a33" },
+  vento:      { g: ["#231d15", "#2b2318", "#1b1611"], lite: "#4a3f2a", dark: "#100d08", fx: "#cabb90" },
+  notte:      { g: ["#191525", "#1f1a2f", "#130f1f"], lite: "#332b52", dark: "#0a0814", fx: "#8f7ae0" },
+  lapan:      { g: ["#251913", "#2d1f17", "#1d130e"], lite: "#523628", dark: "#140b07", fx: "#ffb35c" }
+};
 var _rcParaCache = {};
 function rcParaFor(race, onReady) {
   var slug = RC_PARA_SLUG[race && race.region] || "stadium";
@@ -908,6 +922,9 @@ const RC_SIZE_MUL = {
   enma: 1.09, hayao: 1.09, tenku: 1.09, gozan: 1.09, yugiri: 1.09, reppu: 1.09,   // tier6 祝祭級
   goka: 1.14, raiou: 1.14, souten: 1.14, fugaku: 1.14, yomi: 1.14                 // tier7 神格
 };
+// R8-W6 羽ばたき：翼はマスタールールで「背中の上・後方スイープの別シェイプ」＝bbox上部帯。
+// 翼根ラインの比率（上端から）。既定0.40・目視で崩れる竜はここに個別値を足す（表示のみ）。
+const RC_FLAP_CUT = {};
 function rcDrawDragonSprite(ctx, o) {
   const e = _rcDragonSprite(o.id);
   if (!e || !e.ok) { _rcEnsureRig(); return (RC_RIG ? rcDrawDragonRig : rcDrawDragonPixel)(ctx, o); }
@@ -931,7 +948,20 @@ function rcDrawDragonSprite(ctx, o) {
   // ★鼻先アンカー：タイムラインの位置(o.x)＝竜の鼻先に合わせて描く（右端=鼻がo.x）。
   //   ゴール演出はタイムライン時刻駆動なので、progress=1の瞬間に「1着の鼻先がゴール線上」になる
   //   ＝実レース中継と同じ「鼻先がゴールした時がゴール」（ユーザー指定）。体長差も物理どおり後ろへ伸びる。
-  ctx.drawImage(img, b.x, b.y, b.w, b.h, -w + 4, -h + 2, w, h);
+  // ★R8-W6 羽ばたき（素材追加なし・52頭対応）：翼根ラインで上下スライスし、上（翼帯）だけ
+  //   頭寄りヒンジで周期回転＝翼端(左)ほど大きく上下。体・頭は下スライスで静止＝顔と意匠は
+  //   ブレない。翼と背の間は元絵がほぼ透過なので継ぎ目は出ない。gait同期＝速いほど強く。
+  const cutK = RC_FLAP_CUT[o.id] != null ? RC_FLAP_CUT[o.id] : 0.40;
+  const srcCut = Math.max(2, Math.round(b.h * cutK));
+  const dstCut = srcCut * sc;
+  const amp = o.grounded ? 0.028 : (o.down ? 0.05 : 0.095);
+  const flap = Math.sin((o.gait || 0) * 1.35) * amp + amp * 0.22;   // 滑空基調＝上げ優位
+  const hgx = -w * 0.16, hgy = -h + 2 + dstCut;                     // ヒンジ＝翼根の頭寄り
+  ctx.save();
+  ctx.translate(hgx, hgy); ctx.rotate(flap); ctx.translate(-hgx, -hgy);
+  ctx.drawImage(img, b.x, b.y, b.w, srcCut, -w + 4, -h + 2, w, dstCut + 1);
+  ctx.restore();
+  ctx.drawImage(img, b.x, b.y + srcCut, b.w, b.h - srcCut, -w + 4, -h + 2 + dstCut, w, h - dstCut);
   ctx.restore();
 }
 // =========================================================================
@@ -1460,7 +1490,26 @@ function startRaceCanvas(container, ctx) {
         L.push(oc); dw.push(w); dh.push(s.dh);
         dy.push(s.anchor == null ? Math.min(0, (gtop + 10) - s.dh * 0.58) : s.anchor - s.dh);
       }
-      paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 0.9], haze: conf.haze };
+      // 大地の材質タイル（斑ノイズ・シードPRNG＝毎回同じ・横縦ラップで継ぎ目なし）。
+      // 世界固定スクロールで敷く＝「流れる大地」。fx色は地域の光る粒（熾火/蛍/星屑…）。
+      const gp = RC_PARA_GROUND[e.slug] || RC_PARA_GROUND.stadium;
+      const gt2 = document.createElement("canvas"); gt2.width = 128; gt2.height = 128;
+      const gx2 = gt2.getContext("2d");
+      let sd = 7;
+      const rnd = function () { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+      for (let i = 0; i < 230; i++) {
+        const rx = rnd() * 128, ry = rnd() * 128, rr = 0.6 + rnd() * 1.7, kk = rnd();
+        gx2.fillStyle = kk < 0.42 ? rcRgba(gp.lite, 0.10 + rnd() * 0.08)
+                      : kk < 0.92 ? rcRgba(gp.dark, 0.13 + rnd() * 0.10)
+                      : rcRgba(gp.fx, 0.11 + rnd() * 0.09);
+        const rw2 = rr * (1 + rnd()), rh2 = rr * 0.7;
+        for (let ox2 = -128; ox2 <= 128; ox2 += 128) for (let oy2 = -128; oy2 <= 128; oy2 += 128) {
+          if (rx + ox2 > -6 && rx + ox2 < 134 && ry + oy2 > -6 && ry + oy2 < 134) {
+            gx2.beginPath(); gx2.ellipse(rx + ox2, ry + oy2, rw2, rh2, 0, 0, 7); gx2.fill();
+          }
+        }
+      }
+      paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 0.9], haze: conf.haze, ground: gp, groundTile: gt2 };
     } catch (_) { paraBaked = null; }
   }
   function resize() {
@@ -2284,10 +2333,17 @@ function startRaceCanvas(container, ctx) {
     // --- track ground (themed turf) — the running ribbon CURVES through turns: its
     // top edge follows trackBendY(P). The fill runs from that curved top down to the
     // apron so there's never a gap when the ribbon arcs upward. ---
+    // R8-W6: パララックス夜レースは「地域の大地」＝緑ターフのカーペット廃止（モック準拠・
+    // 背景と同一世界の野外地面）。従来コース（朝昼・未納品地域）は今までどおり。
+    const gp = para && para.ground;
     const grd = cctx.createLinearGradient(0, g.top, 0, g.bottom);
-    grd.addColorStop(0,   rcMix(tb.a.ground[0], tb.b.ground[0], tb.t));
-    grd.addColorStop(0.5, rcMix(tb.a.ground[1], tb.b.ground[1], tb.t));
-    grd.addColorStop(1,   rcMix(tb.a.ground[2], tb.b.ground[2], tb.t));
+    if (gp) {
+      grd.addColorStop(0, gp.g[0]); grd.addColorStop(0.5, gp.g[1]); grd.addColorStop(1, gp.g[2]);
+    } else {
+      grd.addColorStop(0,   rcMix(tb.a.ground[0], tb.b.ground[0], tb.t));
+      grd.addColorStop(0.5, rcMix(tb.a.ground[1], tb.b.ground[1], tb.t));
+      grd.addColorStop(1,   rcMix(tb.a.ground[2], tb.b.ground[2], tb.t));
+    }
     const _turfPath = function () {
       cctx.beginPath();
       let first = true;
@@ -2300,9 +2356,39 @@ function startRaceCanvas(container, ctx) {
     _turfPath(); cctx.fillStyle = grd; cctx.fill();
     // groomed turf detail (two-tone mow bands + depth grade), clipped to the curved surface
     cctx.save(); _turfPath(); cctx.clip();
-    for (let i = 0; i < 8; i++) {
-      cctx.fillStyle = (i % 2 === 0) ? "rgba(255,255,255,0.030)" : "rgba(0,26,12,0.06)";
-      cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH + 0.5);
+    if (gp && para.groundTile) {
+      // R8-W6: 材質ノイズ（世界固定スクロール）＝大地が路面と同じ速度で流れる
+      const gt3 = para.groundTile, gsz = 128;
+      const gox = ((S.camL * SREF) % gsz + gsz) % gsz;
+      for (let ty = g.top - 26; ty < g.bottom + 24; ty += gsz)
+        for (let tx = -gox - gsz; tx < cw + gsz; tx += gsz)
+          cctx.drawImage(gt3, tx, ty);
+      // 赤白縁石：リボン上端のカーブに沿って世界固定の交互パターン（モックの署名・コース明示）
+      const segP = 0.012, kk0 = Math.floor((S.camL - 0.06) / segP);
+      const nSeg = Math.ceil((WINW + 0.12) / segP) + 1;
+      for (let k2 = 0; k2 <= nSeg; k2++) {
+        const P0 = (kk0 + k2) * segP, P1 = P0 + segP;
+        const cx0 = screenX(P0, WINW), cy0 = g.top + trackBendY(P0);
+        const cx1 = screenX(P1, WINW), cy1 = g.top + trackBendY(P1);
+        cctx.fillStyle = (((kk0 + k2) % 2) + 2) % 2 === 0 ? "rgba(206,58,62,0.88)" : "rgba(236,231,220,0.88)";
+        cctx.beginPath();
+        cctx.moveTo(cx0, cy0); cctx.lineTo(cx1, cy1); cctx.lineTo(cx1, cy1 + 4.5); cctx.lineTo(cx0, cy0 + 4.5);
+        cctx.closePath(); cctx.fill();
+      }
+      // 縁石の接地影
+      cctx.strokeStyle = "rgba(0,0,0,0.30)"; cctx.lineWidth = 2;
+      cctx.beginPath();
+      for (let k2 = 0; k2 <= nSeg; k2++) {
+        const P0 = (kk0 + k2) * segP;
+        const cx0 = screenX(P0, WINW), cy0 = g.top + trackBendY(P0) + 5.5;
+        if (k2 === 0) cctx.moveTo(cx0, cy0); else cctx.lineTo(cx0, cy0);
+      }
+      cctx.stroke();
+    } else {
+      for (let i = 0; i < 8; i++) {
+        cctx.fillStyle = (i % 2 === 0) ? "rgba(255,255,255,0.030)" : "rgba(0,26,12,0.06)";
+        cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH + 0.5);
+      }
     }
     // 路面フレック（小石/土）：世界座標に固定→カメラと一緒に流れる＝地面の速度感。
     // 世界indexの決定的ハッシュで配置（フレーム間でちらつかない）。
@@ -2313,7 +2399,8 @@ function startRaceCanvas(container, ctx) {
         const wi = k0 + k, P = wi * stepP;
         const hx = (((wi * 2654435761) >>> 0) % 10000) / 10000;
         const px = screenX(P, WINW), py = g.top + 2 + hx * (g.bottom - g.top - 4) + trackBendY(P);
-        cctx.fillStyle = hx > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,20,10,0.08)";
+        cctx.fillStyle = gp ? (hx > 0.5 ? rcRgba(gp.lite, 0.14) : rcRgba(gp.dark, 0.20))
+                            : (hx > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,20,10,0.08)");
         cctx.fillRect(px, py, hx > 0.75 ? 2 : 1.3, 1.2);
       }
     }
@@ -2326,7 +2413,7 @@ function startRaceCanvas(container, ctx) {
       const hh = (g.bottom - g.top) * 0.30, ww = hh * 0.55;
       cctx.save();
       cctx.lineWidth = 3; cctx.lineJoin = "round"; cctx.lineCap = "round";
-      cctx.strokeStyle = "rgba(255,214,120,0.09)";
+      cctx.strokeStyle = gp ? "rgba(255,214,120,0.16)" : "rgba(255,214,120,0.09)";   // 暗い大地では少し立てる（モック準拠）
       for (let k = 0; k <= nK; k++) {
         const P = (k0 + k) * stepP;
         const px = screenX(P, WINW), py = midY + trackBendY(P);
@@ -2341,21 +2428,20 @@ function startRaceCanvas(container, ctx) {
       ts.addColorStop(1,   "rgba(255,255,255,0.045)");
       cctx.fillStyle = ts; cctx.fillRect(0, g.top, cw, g.bottom - g.top);
     }
-    // R8-W1: 夜系パララックス時は地面も夜へ寄せる——明るいターフ原色が painted 峡谷/溶岩と
-    // 喧嘩しない（遠いほど濃い夜・手前は僅かに残す＝モックの地面トーン）。表示のみ。
+    // R8-W1/W6: パララックス時の空気遠近——大地は既に地域色なので、奥だけ軽く夜に沈める
     if (para) {
       const nt = cctx.createLinearGradient(0, g.top, 0, g.bottom);
-      nt.addColorStop(0,    "rgba(11,15,32,0.46)");
-      nt.addColorStop(0.55, "rgba(11,15,32,0.30)");
-      nt.addColorStop(1,    "rgba(9,11,26,0.22)");
+      nt.addColorStop(0,    "rgba(11,15,32,0.26)");
+      nt.addColorStop(0.5,  "rgba(11,15,32,0.10)");
+      nt.addColorStop(1,    "rgba(9,11,26,0.04)");
       cctx.fillStyle = nt; cctx.fillRect(-10, g.top - 30, cw + 20, (g.bottom - g.top) + 60);
     }
     cctx.restore();
     // theme surface treatment (fog veil / lava cracks / bridge planks)
     drawGroundOverlay(tb.keyA, g, WINW);
 
-    // lane stripes
-    cctx.strokeStyle = "rgba(255,255,255,0.06)";
+    // lane stripes（大地モードでは芝の白線らしさを消す＝ほぼ無に）
+    cctx.strokeStyle = gp ? "rgba(255,255,255,0.022)" : "rgba(255,255,255,0.06)";
     cctx.lineWidth = 1;
     const _cy = g.top + (g.bottom - g.top) * 0.5;
     for (let i = 1; i < 8; i++) {
