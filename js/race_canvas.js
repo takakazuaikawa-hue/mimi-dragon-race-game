@@ -868,6 +868,14 @@ function _rcDragonSprite(id) {
   return e;
 }
 function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok); }
+// 描画時の半身幅(px)＝鼻先アンカー(右端=タイムライン位置)から体の中心までの距離。
+// ラベル/バッジ/レティクル/ポップを「体の中心」に置くために使う（表示のみ）。
+function rcDragonSpriteHalfW(id, scale) {
+  const e = RC_DSPRITE[id];
+  if (!e || !e.ok || !e.box || !e.box.h) return 0;
+  const targetH = RC_DSP_H * (scale || 1) * (RC_SIZE_MUL[id] || 1);
+  return (e.box.w * (targetH / e.box.h)) / 2;
+}
 // 個体サイズ（表示のみ・設定＝小さい竜ポロは小さく／竜王級〜神格はわずかに大きく＝格の表現。
 // レース進行/着順/オッズには一切影響しない。基準1.0＝RC_DSP_H）。
 const RC_SIZE_MUL = {
@@ -2384,14 +2392,17 @@ function startRaceCanvas(container, ctx) {
       if (_popsOn && S.prevStand && x > cw * 0.06 && x < cw * 0.94) {
         const rkNow = standMap[dr.id], pv = S.prevStand[dr.id];
         const cd = S.popCd[dr.id] || 0;
+        // ポップも体の中心へ（鼻先アンカーのぶん左へ寄せる）
+        const _phw = rcHasDragonSprite(dr.id) ? rcDragonSpriteHalfW(dr.id, _RC_INRACE * laneDepth(dr)) : 0;
+        const px2 = x - _phw;
         if (pv && rkNow < pv && _popNow > cd) {
-          S.pops.push({ x: x - 12, y: y - 46 * laneDepth(dr), tx: "かわした！", c: "#8fe3ff", t0: _popNow });
+          S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "かわした！", c: "#8fe3ff", t0: _popNow });
           S.popCd[dr.id] = _popNow + 3.2;
         } else if (pv && rkNow - pv >= 2 && _popNow > cd) {
-          S.pops.push({ x: x, y: y - 46 * laneDepth(dr), tx: "！", c: "#ff6a5e", t0: _popNow });
+          S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "！", c: "#ff6a5e", t0: _popNow });
           S.popCd[dr.id] = _popNow + 3.2;
         } else if (intensity > 0.95 && ownU < 0.92 && _popNow > cd && Math.random() < 0.010) {
-          S.pops.push({ x: x - 8, y: y - 46 * laneDepth(dr), tx: "仕掛けた！", c: "#ffd34d", t0: _popNow });
+          S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "仕掛けた！", c: "#ffd34d", t0: _popNow });
           S.popCd[dr.id] = _popNow + 5.0;
         }
       }
@@ -2521,31 +2532,43 @@ function startRaceCanvas(container, ctx) {
       _rcEmitAccent(S, dragonDesign(dr.id), { x: dcx, y: spriteY, dep: dep, color: dr.color, intensity: intensity, grounded: S.entryT > 0, id: dr.id });
 
       if (!rcHasDragonSprite(dr.id)) rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);   // 3D絵は自前の表情を持つので漫符overlayは出さない
-      // bet reticle (player's pick)
+      // ★ラベル類のアンカー＝体の中心（鼻先アンカー化でスプライトはdcxの左に伸びるため、
+      //   dcxのままだと名札/バッジ/レティクルが鼻先＝体の右へズレて不自然＝ユーザー指摘）。
+      const _hw2 = rcHasDragonSprite(dr.id) ? rcDragonSpriteHalfW(dr.id, sprScale) : 0;
+      const bodyCx = dcx - _hw2;
+      // bet reticle (player's pick) — 体の中心へ
       if (betSet.has(dr.id)) {
         cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;
-        cctx.beginPath(); cctx.arc(dcx, spriteY - 4, 26 * dep, 0, Math.PI * 2); cctx.stroke();
+        cctx.beginPath(); cctx.arc(bodyCx, spriteY - 4, Math.max(24 * dep, _hw2 * 0.9), 0, Math.PI * 2); cctx.stroke();
       }
-      // rank badge (live standing) — モック準拠の丸数字。金=賭けた竜／青=1番人気／白=その他
+      // rank badge (live standing) — 丸数字。★賭け竜＝金の塗りつぶし＋濃文字（縁だけだと見えにくい＝ユーザー指摘）
       const rk = standMap[dr.id] || dr.rank;
+      const isBet = betSet.has(dr.id);
       const tagY = y - 36 * dep;
-      const rr2 = 9.5 * dep;
-      const bcol = betSet.has(dr.id) ? "#ffd34d" : (popRank[dr.id] === 1 ? "#7fd1ff" : "rgba(255,255,255,0.78)");
-      cctx.beginPath(); cctx.arc(dcx, tagY, rr2, 0, Math.PI * 2);
-      cctx.fillStyle = "rgba(8,10,20,0.74)"; cctx.fill();
-      cctx.lineWidth = 2; cctx.strokeStyle = bcol; cctx.stroke();
-      cctx.font = "bold " + Math.round(11.5 * dep) + "px system-ui, sans-serif";
+      const rr2 = (isBet ? 10.5 : 9.5) * dep;
+      cctx.beginPath(); cctx.arc(bodyCx, tagY, rr2, 0, Math.PI * 2);
+      cctx.fillStyle = isBet ? "#ffd34d" : "rgba(8,10,20,0.74)"; cctx.fill();
+      cctx.lineWidth = 2;
+      cctx.strokeStyle = isBet ? "#fff3c4" : (popRank[dr.id] === 1 ? "#7fd1ff" : "rgba(255,255,255,0.78)");
+      cctx.stroke();
+      cctx.font = "bold " + Math.round((isBet ? 12.5 : 11.5) * dep) + "px system-ui, sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillStyle = betSet.has(dr.id) ? "#ffd34d" : "#ffffff";
-      cctx.fillText(rk, dcx, tagY + 0.5);
+      cctx.fillStyle = isBet ? "#211503" : "#ffffff";
+      cctx.fillText(rk, bodyCx, tagY + 0.5);
       cctx.textBaseline = "alphabetic";
-      // name plate under the dragon
+      // name plate under the dragon — ピル型プレート（ストローク文字より自然・賭け竜は金縁）
       const nm = commentaryName(dr.id);
       cctx.font = "10px system-ui, sans-serif";
-      cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.8)";
-      cctx.strokeText(nm, dcx, baseY + 22);
-      cctx.fillStyle = "rgba(255,255,255,0.95)";
-      cctx.fillText(nm, dcx, baseY + 22);
+      const nw = cctx.measureText(nm).width;
+      const plw = nw + 12, plh = 14, plx = bodyCx - plw / 2, ply = baseY + 12;
+      cctx.beginPath();
+      if (cctx.roundRect) cctx.roundRect(plx, ply, plw, plh, 7); else cctx.rect(plx, ply, plw, plh);
+      cctx.fillStyle = "rgba(8,10,20,0.66)"; cctx.fill();
+      if (isBet) { cctx.lineWidth = 1.2; cctx.strokeStyle = "rgba(255,211,77,0.9)"; cctx.stroke(); }
+      cctx.textAlign = "center"; cctx.textBaseline = "middle";
+      cctx.fillStyle = isBet ? "#ffe9b0" : "rgba(255,255,255,0.94)";
+      cctx.fillText(nm, bodyCx, ply + plh / 2 + 0.5);
+      cctx.textBaseline = "alphabetic";
       // off-screen-behind indicator
       if (offLeft) {
         cctx.fillStyle = "rgba(255,255,255,0.6)";
