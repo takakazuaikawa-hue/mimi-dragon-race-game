@@ -1052,6 +1052,14 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   font-size: 15px; font-weight: 700; color: #fff0c8;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
+/* R8-W3 実況の「絶叫」＝山場ワードを含む最新行（金・大きめ・一瞬ポップ）。表示のみ */
+.rc-telop .lines .line.is-latest.is-hot {
+  font-size: 17px; font-weight: 900; color: #ffd97a;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 14px rgba(255,190,90,0.35);
+  animation: telopHot .28s cubic-bezier(.2,.9,.3,1.2) backwards;
+}
+@keyframes telopHot { from { transform: scale(.92); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .rc-telop .lines .line.is-latest.is-hot { animation: none; } }
 .rc-telop .lines .line-prev {
   opacity: 0.42; font-size: 12px; line-height: 1.5; color: #d8c08a;
 }

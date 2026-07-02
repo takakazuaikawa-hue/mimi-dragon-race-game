@@ -1430,11 +1430,14 @@ function startRaceCanvas(container, ctx) {
     }
   }
   const shownLines = [];
+  // R8-W3 実況の強弱：山場ワードを含む最新行は「絶叫」スタイル（金・大きめ）＝表示のみ
+  const TELOP_HOT = /先頭|差し切|抜け出|かわし|接戦|並ん|仕掛け|伸び|ゴール|突き放|猛追|一気|捕らえ/;
   function renderTelop() {
     linesEl.innerHTML = "";
     shownLines.slice(-3).forEach((line, i, arr) => {
       const d = document.createElement("div");
-      d.className = i === arr.length - 1 ? "line is-latest" : "line-prev";
+      const latest = i === arr.length - 1;
+      d.className = latest ? ("line is-latest" + (TELOP_HOT.test(line) ? " is-hot" : "")) : "line-prev";
       d.textContent = line;
       linesEl.appendChild(d);
     });
@@ -2375,6 +2378,19 @@ function startRaceCanvas(container, ctx) {
     S.pops = S.pops || []; S.popCd = S.popCd || {};
     const _popNow = performance.now() / 1000;
     const _popsOn = S.entryT <= 0 && S.preT <= 0 && !S.finished && S.tau > 0.03;
+    // R8-W3 観客の反応SE（表示/音のみ）：先頭交代で歓声（7sクールダウン）・最終直線入りで一度どよめく
+    if (_popsOn && window.Sfx) {
+      const _lead = standings[0];
+      if (S._lastLead && _lead !== S._lastLead && _popNow > (S._leadCheerCd || 0)) {
+        try { Sfx.play("cheer", 0.96 + Math.random() * 0.08); } catch (e) {}
+        S._leadCheerCd = _popNow + 7;
+      }
+      S._lastLead = _lead;
+      if (!S._fsCheered) {
+        const _lp = timeline.progressAt(_lead, S.tau);
+        if (_lp > 0.82) { S._fsCheered = true; try { Sfx.play("cheer", 1.05); } catch (e) {} }
+      }
+    }
 
     const drawList = [...dragons].sort((a, b) => laneOf[b.id] - laneOf[a.id]);
     for (const dr of drawList) {
@@ -2398,6 +2414,7 @@ function startRaceCanvas(container, ctx) {
         if (pv && rkNow < pv && _popNow > cd) {
           S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "かわした！", c: "#8fe3ff", t0: _popNow });
           S.popCd[dr.id] = _popNow + 3.2;
+          if (betSet.has(dr.id) && window.Sfx) { try { Sfx.play("tick", 1.2); } catch (e) {} }   // 自分の竜のUPだけ小さく鳴る
         } else if (pv && rkNow - pv >= 2 && _popNow > cd) {
           S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "！", c: "#ff6a5e", t0: _popNow });
           S.popCd[dr.id] = _popNow + 3.2;
