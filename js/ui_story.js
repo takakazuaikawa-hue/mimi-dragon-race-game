@@ -66,6 +66,28 @@ function renderStory() {
   });
   news.appendChild(arts);
 
+  // ★特別號＝クリア後の送り出し（B3解消・docs/GAME_FLOW_REDESIGN.md §3）。ED到達後のみ掲載。
+  //   物語の側から「次はこれで遊べる」を記事として案内する（表示専用・goto導線のみ）。
+  if (typeof STORY_EXTRA_ISSUE !== "undefined" && state.epilogue && state.epilogue.edFlag) {
+    news.appendChild(_newsRubric("特別號 ・ クリア後の島"));
+    const ex = el("div", "news-lead");
+    ex.textContent = STORY_EXTRA_ISSUE.lead;
+    news.appendChild(ex);
+    const exArts = el("div", "news-arts");
+    STORY_EXTRA_ISSUE.articles.forEach(a => {
+      const art = el("button", "news-art");
+      art.innerHTML =
+        `<span class="news-photo-s"><span class="sym">${a.icon}</span></span>` +
+        `<span class="news-art-tx"><span class="news-kicker">クリア後</span>` +
+          `<span class="news-head">${a.title}</span><span class="news-lead2">${a.body}</span></span>` +
+        `<span class="news-art-go">▸</span>`;
+      art.onclick = () => { if (typeof goto === "function") goto(a.go); };
+      exArts.appendChild(art);
+    });
+    news.appendChild(exArts);
+    news.appendChild(el("div", "news-quote", STORY_EXTRA_ISSUE.quote));
+  }
+
   // 號外コラム（小イベント＝短い挿話・進行で解放・再読可）。js/data_story_events.js
   if (typeof storyEvents === "function") {
     const evs = storyEvents();
@@ -171,12 +193,14 @@ function renderStoryChapter(chId) {
   const issue = (state.player.completedRaces || 0) + 1;
   news.appendChild(_newsMast(`第 ${issue} 號`, ch.id === "ED" ? "最終一面" : "特集一面"));
 
-  // 大見出し
+  // 大見出し＝記事の芸（headline・2026-07全面再執筆）。旧タイトルは肩の subhead に降ろす。
   const kicker = cast ? cast.tag : (ch.id === "ED" ? "最終回" : "特報");
   news.appendChild(el("div", "news-kicker news-kicker-lg", kicker));
-  news.appendChild(el("div", "news-headline", chapterDisplayTitle(ch)));
-  if (ch.id !== "ED") news.appendChild(el("div", "news-subhead", ch.title));
+  news.appendChild(el("div", "news-headline", ch.headline || chapterDisplayTitle(ch)));
+  news.appendChild(el("div", "news-subhead", ch.title));
   if (cast) news.appendChild(el("div", "news-byline", `寄稿：${cast.name}（${cast.tag}）　◆　授けるもの＝${cast.gives}`));
+  // リード＝旧「一文・件。」スタイルの継承枠（本文の前に太らせず1段で）
+  if (ch.lead) news.appendChild(el("div", "news-lead", ch.lead));
 
   // 本紙写真（ハーフトーン枠・タップで全画面）
   const photo = el("div", "news-photo viewable");
