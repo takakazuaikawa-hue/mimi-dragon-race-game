@@ -45,8 +45,9 @@
     var ctx = cv.getContext("2d");
     var W = cv.width, H = cv.height, cx = W / 2, cy = H * VY, u = W / 470;   // u=DPR込みの寸法単位
     var ac = scene.accent || [120, 160, 200];
-    var bright = "rgba(" + clamp(ac[0] + 70, 0, 255) + "," + clamp(ac[1] + 70, 0, 255) + "," + clamp(ac[2] + 80, 0, 255) + ",";
-    var lineW = 1.5 * u, blur = 9 * u;
+    // ネオン強め：加算量UP＋発光(shadowBlur)/線幅を太らせ、暗い部屋の中で管が光っているように見せる
+    var bright = "rgba(" + clamp(ac[0] + 112, 0, 255) + "," + clamp(ac[1] + 112, 0, 255) + "," + clamp(ac[2] + 124, 0, 255) + ",";
+    var lineW = 2.1 * u, blur = 15 * u;
 
     // ── 背景＝黒い部屋。床/天井をうっすらグラデ、消失点に微かな発光。
     ctx.clearRect(0, 0, W, H);
@@ -61,7 +62,7 @@
     sky.addColorStop(1, "rgba(" + (ac[0] * 0.10 | 0) + "," + (ac[1] * 0.12 | 0) + "," + (ac[2] * 0.16 | 0) + ",1)");
     ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
     var glow = ctx.createRadialGradient(cx, cy, 2 * u, cx, cy, H * 0.5);
-    glow.addColorStop(0, bright + "0.18)"); glow.addColorStop(1, "rgba(0,0,0,0)");
+    glow.addColorStop(0, bright + "0.32)"); glow.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
 
     // ── どこまで奥に壁があるか（前方の最初の壁＝行き止まり）
@@ -73,22 +74,23 @@
       var fo = opening(W, H, cx, cy, stop), k = 0.14 * Math.pow(0.74, stop);
       fillQuad(ctx, [[fo.l, fo.t], [fo.r, fo.t], [fo.r, fo.b], [fo.l, fo.b]],
         "rgb(" + (ac[0] * k | 0) + "," + (ac[1] * k | 0) + "," + (ac[2] * k | 0) + ")");
-      neon(ctx, [[[fo.l, fo.t], [fo.r, fo.t]], [[fo.r, fo.t], [fo.r, fo.b]], [[fo.r, fo.b], [fo.l, fo.b]], [[fo.l, fo.b], [fo.l, fo.t]]], bright + "0.8)", lineW, blur);
+      neon(ctx, [[[fo.l, fo.t], [fo.r, fo.t]], [[fo.r, fo.t], [fo.r, fo.b]], [[fo.r, fo.b], [fo.l, fo.b]], [[fo.l, fo.b], [fo.l, fo.t]]], bright + "0.95)", lineW * 1.15, blur * 1.2);
     }
 
     // ── 床/天井の奥行きライン（消失点へ集まる回廊の格子＝ブラックルームの骨格）
     var depthN = hitFront ? stop : MAXD;
     for (var z = 1; z <= depthN; z++) {
-      var o = opening(W, H, cx, cy, z), a = 0.5 * Math.pow(0.7, z - 1);
-      neon(ctx, [[[o.l, o.b], [o.r, o.b]]], bright + (a * 0.9).toFixed(3) + ")", 1.1 * u, 6 * u);   // 床ライン
-      neon(ctx, [[[o.l, o.t], [o.r, o.t]]], bright + (a * 0.5).toFixed(3) + ")", 1.0 * u, 5 * u);   // 天井ライン
+      // 減衰カーブを緩め、奥の方まで管の光が届くように（ネオン強め）
+      var o = opening(W, H, cx, cy, z), a = 0.62 * Math.pow(0.8, z - 1);
+      neon(ctx, [[[o.l, o.b], [o.r, o.b]]], bright + (a * 1.0).toFixed(3) + ")", 1.5 * u, 9 * u);   // 床ライン
+      neon(ctx, [[[o.l, o.t], [o.r, o.t]]], bright + (a * 0.62).toFixed(3) + ")", 1.4 * u, 8 * u);  // 天井ライン
     }
     // 四隅から消失点へ伸びる稜線
     var o0 = opening(W, H, cx, cy, 0), oE = opening(W, H, cx, cy, depthN);
     neon(ctx, [
       [[o0.l, o0.b], [oE.l, oE.b]], [[o0.r, o0.b], [oE.r, oE.b]],
       [[o0.l, o0.t], [oE.l, oE.t]], [[o0.r, o0.t], [oE.r, oE.t]],
-    ], bright + "0.4)", 1.1 * u, 6 * u);
+    ], bright + "0.58)", 1.5 * u, 9 * u);
 
     // ── 側壁（左右）：手前0..stop-1 セル。壁のある側だけ台形で塞ぐ（無い側＝横道の暗がり）。
     for (var dd = 0; dd < (hitFront ? stop : MAXD); dd++) {
@@ -97,11 +99,11 @@
       var wallCol = "rgb(" + (ac[0] * kk | 0) + "," + (ac[1] * kk | 0) + "," + (ac[2] * kk | 0) + ")";
       if (isWall(scene.cell(dd, -1))) {
         fillQuad(ctx, [[nO.l, nO.t], [fO.l, fO.t], [fO.l, fO.b], [nO.l, nO.b]], wallCol);
-        neon(ctx, [[[nO.l, nO.t], [fO.l, fO.t]], [[fO.l, fO.b], [nO.l, nO.b]], [[fO.l, fO.t], [fO.l, fO.b]]], bright + (0.6 * Math.pow(0.82, dd)).toFixed(3) + ")", lineW, blur);
+        neon(ctx, [[[nO.l, nO.t], [fO.l, fO.t]], [[fO.l, fO.b], [nO.l, nO.b]], [[fO.l, fO.t], [fO.l, fO.b]]], bright + (0.78 * Math.pow(0.86, dd)).toFixed(3) + ")", lineW, blur);
       }
       if (isWall(scene.cell(dd, 1))) {
         fillQuad(ctx, [[nO.r, nO.t], [fO.r, fO.t], [fO.r, fO.b], [nO.r, nO.b]], wallCol);
-        neon(ctx, [[[nO.r, nO.t], [fO.r, fO.t]], [[fO.r, fO.b], [nO.r, nO.b]], [[fO.r, fO.t], [fO.r, fO.b]]], bright + (0.6 * Math.pow(0.82, dd)).toFixed(3) + ")", lineW, blur);
+        neon(ctx, [[[nO.r, nO.t], [fO.r, fO.t]], [[fO.r, fO.b], [nO.r, nO.b]], [[fO.r, fO.t], [fO.r, fO.b]]], bright + (0.78 * Math.pow(0.86, dd)).toFixed(3) + ")", lineW, blur);
       }
     }
 
@@ -113,7 +115,7 @@
         if (it.kind === "wall") { if (it.closed) ic = "🚧"; else break; }
         if (!ic) continue;
         var io = opening(W, H, cx, cy, it.d), bob = Math.sin((t || 0) / 1000 * 2.2) * (io.b - io.t) * 0.03;
-        ctx.save(); ctx.shadowColor = bright + "0.9)"; ctx.shadowBlur = 16 * u;
+        ctx.save(); ctx.shadowColor = bright + "1)"; ctx.shadowBlur = 24 * u;
         if (typeof rpgDrawIcon === "function") rpgDrawIcon(ctx, ic, { t: io.t + bob, b: io.b + bob }, cx, cy);
         ctx.restore();
         break;
@@ -121,8 +123,8 @@
     }
 
     // ── ビネット（縁を締めて没入）
-    var vg = ctx.createRadialGradient(cx, cy, H * 0.34, cx, cy, H * 0.95);
-    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.55)");
+    var vg = ctx.createRadialGradient(cx, cy, H * 0.30, cx, cy, H * 0.95);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.64)");
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   }
 

@@ -46,7 +46,7 @@ function beginScreen() {
   const app = $("app");
   const screen = state.ui.screen;
   const prev = _prevScreen;
-  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart");
+  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page");   // 観光(.kt-page)の明色テーマを他画面へ漏らさない
   if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
   if (typeof syncVolumeFab === "function") syncVolumeFab();              // 🔊 全画面常設の音量ボタンを画面に合わせて表示/非表示
   var _scmBn = document.getElementById("scm-bnav-host"); if (_scmBn) _scmBn.remove();   // モールのフロート下部ナビ(body直下fixed)を毎遷移で外す（モールで再設置）
@@ -79,9 +79,14 @@ function beginScreen() {
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
     race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
-    life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story"
+    sns: "home", konron_map: "home",   // SNSは戻る導線が無かった／観光は自前バックが画面下＝上部stickyを補う
+    life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story",
+    konron_guide: "konron_map", konron_gallery: "konron_map"
   };
-  const BACK_TGT = { home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory } };
+  const BACK_TGT = {
+    home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory },
+    konron_map: { l: "← 観光", f: (typeof renderKonronMap === "function" ? renderKonronMap : renderHome) }
+  };
   const bt = BACK_TGT[TOP_BACK[screen]];
   if (bt) {
     const tb = el("div", "topback");
@@ -131,7 +136,7 @@ function renderTitle() {
     <div class="title-bg"></div>
     <div class="title-stars"></div>
     <div class="title-moon"></div>
-    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp", "") : ""}</div>
+    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp?v=orig1", "") : ""}</div>
     <div class="title-inner">
       <div class="title-head">
         <h1 class="title-logo"><span class="tl-main">聖龍爆走録</span> <span class="tl-mimi">ミミ</span></h1>
@@ -794,6 +799,14 @@ function renderSettings() {
     `<div class="set-vil-stats"><span>💛 救済 <b>${fmtCoins(rescue)}</b></span>` +
       `<span>🎰 賭金 <b>×${villMult}</b></span>` +
       `<span>🐉 解放竜 <b>${(v.unlockedDragonIds || []).length}/${dn}</b></span></div>`));
+  // 竜の村フル画面への導線（設定のカードだけだと施設ロードマップに辿り着けなかった＝孤立解消）
+  if (typeof renderVillage === "function") {
+    const vilWrap = el("div", "set-data");
+    const vilOpen = el("button", "secondary", "🏘️ 竜の村をくわしく見る");
+    vilOpen.onclick = () => renderVillage();
+    vilWrap.appendChild(vilOpen);
+    app.appendChild(vilWrap);
+  }
 
   // 予想入門・ヘルプ（ホームのナビから移設＝ここから開く）
   if (typeof renderHelp === "function") {
@@ -2363,6 +2376,8 @@ function settleRace() {
   if (!state.player.flags) state.player.flags = {};
   c.firstHitEver = !!betResult.hit && !state.player.flags.everHit;
   if (betResult.hit) state.player.flags.everHit = true;
+  // 目標「ワイド／複勝を当てる」＝“単勝の外”の的中で立てる（表示専用フラグ・レース数値に非干渉）
+  if (betResult.hit && c.bet.type !== "win") state.player.flags.firstWideHit = true;
   if (betResult.hit) {
     state.player.streak = prevStreak + 1;
     if (state.player.streak > (state.player.bestStreak || 0)) state.player.bestStreak = state.player.streak;

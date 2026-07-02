@@ -86,9 +86,13 @@ function _dailyMissionText() {
   const m = p.dailyM;
   const r = Math.min(1, (p.completedRaces || 0) - m.races0);
   const w = Math.min(1, (p.wins || 0) - m.wins0);
-  const c = Math.min(1, m.cmt || 0);
   const mk = (v, label) => (v ? "✓" : "") + label + ` ${v}/1`;
-  return `きょうのミッション　${mk(r, "出走")}・${mk(w, "単勝")}・${mk(c, "💬")}` + (r + w + c >= 3 ? "　🎉コンプ！" : "");
+  // 💬コメントは配信モード限定＝静かモードでは項目を出さない（永久0/1の“詰み日課”に見えるのを防ぐ）。
+  const live = (typeof broadcastOn === "function") && broadcastOn();
+  const items = [mk(r, "出走"), mk(w, "単勝")];
+  let done = r + w, need = 2;
+  if (live) { const c = Math.min(1, m.cmt || 0); items.push(mk(c, "💬コメント")); done += c; need = 3; }
+  return `きょうのミッション　${items.join("・")}` + (done >= need ? "　🎉コンプ！" : "");
 }
 
 function renderHome() {
@@ -113,18 +117,16 @@ function renderHome() {
   const total = p.totalAssets || 0;
   const nextT = (typeof nextAssetThreshold === "function") ? nextAssetThreshold(total) : null;
   const fillPct = nextT ? Math.max(5, Math.min(100, total / nextT * 100)) : 100;
-  let stageLabel = "";
-  try { const st = (typeof lifeStageFor === "function" && state.assets) ? lifeStageFor(state.assets.unlockedLifeStages) : null; stageLabel = (st && (st.label || st.name || st.title)) || ""; } catch (e) {}
-  let nearest = null;
-  try { const goals = (typeof nextGoals === "function") ? nextGoals(state) : []; nearest = goals[0] || null; } catch (e) {}
 
   // ===== TikTokライブ風ホーム =====================================
   // コンセプト：ミミの“配信”を見ている画面。背景ぶち抜き（全画面）＋大立ち絵＋
   // ライブ演出（LIVEバッジ/視聴者数/流れるコメント/ハート）。すべて表示専用 ——
   // レース数値・進行・経済には一切干渉しない。ホーム離脱でタイマー/演出は自動停止。
-  let goalLine = nearest ? `${nearest.icon} ${nearest.label}　${nearest.sub}`
-    : (stageLabel ? "暮らし：" + stageLabel : "");
-  if (nextT) goalLine += (goalLine ? "　" : "") + "（次まで " + fmtCoins(Math.max(0, nextT - total)) + "）";
+  // ★2026-07：旧「📌ピン」（nextGoals()＝ランク進捗/暮らし段階の別系統）は撤去。
+  //   🎯目標チップ（goals.js の GOALS＝rankUp/oneRoom 等を含む一本化された優先度付きシステム）と
+  //   完全に内容が重複しており、「次にやること」を2つの別チップで同時に主張する“進捗表示の重複”
+  //   （リサーチ済＝hierarchy collapse）になっていたため。nextGoals()自体は結果画面(recap)の
+  //   「次の目標」表示で今も使うので関数は残す＝ホームでの呼び出しだけ削除。
   let eqTitle = "";
   try {
     const _eq = p.equippedTitle;
@@ -138,19 +140,24 @@ function renderHome() {
   // 追加方法：images/homebg/<id>_day.webp / <id>_night.webp を置き、HOME_BGS に1行追加するだけ。
   // floor = 画像内の「床の接地ライン」位置（上端からの比率）。ミミの足元がこのラインに合うよう
   // 背景の縦位置を自動調整する（±4%の遊びの範囲・cover縦余白を利用。仕様は docs/HOME_BG_SPEC.md）。
+  // focusX＝画像内の「見せたい横位置」（左端0〜右端1・実測）。縦持ちの狭い横幅では cover の
+  //   既定(中央50%)だと構図の主役（右1/3の火山）が画面外へ丸ごと消えることが多い＝背景が画面サイズと
+  //   合っていない問題の本体。object-position で「その横位置を優先して見せる」よう静的に補正する。
   const HOME_BGS = [
     // floorDay/floorNight＝床の接地ライン（上端からの比率・実測）。無ければ floor。
     // 屋外ロケ（日替わりローテーション）。images/homebg/<id>_{day,night}.webp。
-    { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.74, floorNight: 0.74 },
-    { id: "beach",   day: "images/homebg/beach_day.webp",   night: "images/homebg/beach_night.webp",   floorDay: 0.64, floorNight: 0.64 },
-    { id: "market",  day: "images/homebg/market_day.webp",  night: "images/homebg/market_night.webp",  floorDay: 0.62, floorNight: 0.60 },
-    { id: "onsen",   day: "images/homebg/onsen_day.webp",   night: "images/homebg/onsen_night.webp",   floorDay: 0.73, floorNight: 0.72 },
-    { id: "stable",  day: "images/homebg/stable_day.webp",  night: "images/homebg/stable_night.webp",  floorDay: 0.60, floorNight: 0.60 },
-    { id: "mall",    day: "images/homebg/mall_day.webp",    night: "images/homebg/mall_night.webp",    floorDay: 0.64, floorNight: 0.63 },
+    { id: "balcony", day: "images/homebg/balcony_day.webp", night: "images/homebg/balcony_night.webp", floorDay: 0.74, floorNight: 0.74, focusX: 0.77 },
+    { id: "beach",   day: "images/homebg/beach_day.webp",   night: "images/homebg/beach_night.webp",   floorDay: 0.64, floorNight: 0.64, focusX: 0.80 },
+    { id: "market",  day: "images/homebg/market_day.webp",  night: "images/homebg/market_night.webp",  floorDay: 0.62, floorNight: 0.60, focusX: 0.71 },
+    { id: "onsen",   day: "images/homebg/onsen_day.webp",   night: "images/homebg/onsen_night.webp",   floorDay: 0.73, floorNight: 0.72, focusX: 0.79 },
+    { id: "stable",  day: "images/homebg/stable_day.webp",  night: "images/homebg/stable_night.webp",  floorDay: 0.60, floorNight: 0.60, focusX: 0.78 },
+    { id: "mall",    day: "images/homebg/mall_day.webp",    night: "images/homebg/mall_night.webp",    floorDay: 0.64, floorNight: 0.63, focusX: 0.71 },
     // 自宅＝進行度（総資産レベル0..5）で豪華な部屋へ引っ越し。images/homebg/myroom_t<lvl>_{day,night}.webp。
     { id: "myroom", myroom: true },
   ];
   const MYROOM_FLOORS = [0.63, 0.63, 0.63, 0.66, 0.72, 0.64];   // t0..t5（実測）
+  const MYROOM_FOCUS_X = 0.80;   // 自宅は窓越しの火山がさらに右寄り（実測t0/t3の平均目安）
+  const FOCUS_X_DEFAULT = 0.76;  // 未実測フォールバック画像用
   // ★縦構図の背景（全景が縦に収まる）。横16:9は縦持ちで左右が大きく落ち全景が見えない＝背景が生かせない問題への対応。
   //   当面デモとして常時表示。photoreal縦版を images/homebg/island_portrait_{day,night}.webp で差し替え可
   //   （docs/HOME_BG_SPEC.md「縦構図」節の仕様/プロンプト）。PORTRAIT_DEMO=false で従来の横ロケ・ローテに戻る。
@@ -169,23 +176,26 @@ function renderHome() {
     const outdoor = HOME_BGS.filter(b => !b.myroom);
     const set = PORTRAIT_DEMO ? ISLAND_PORTRAIT
       : (dayIdx % 2 === 0 && myroomEntry) ? myroomEntry : outdoor[(dayIdx >> 1) % outdoor.length];
-    let floorUsed, chain;
+    let floorUsed, focusUsed, chain;
     if (set.myroom) {
       // 自宅：現在の総資産レベルの部屋→無ければ下の段→最後はバルコニー/旧背景へ
       const lvl = Math.min(5, (typeof assetLevelOf === "function") ? assetLevelOf(state.player.totalAssets || 0) : 0);
       const tiers = k => { const a = []; for (let t = lvl; t >= 0; t--) a.push(`images/homebg/myroom_t${t}_${k}.webp`); return a; };
       floorUsed = MYROOM_FLOORS[lvl] || 0.74;
+      focusUsed = MYROOM_FOCUS_X;
       chain = night
         ? [...tiers("night"), "images/homebg/balcony_night.webp", "images/home_bg.webp", "images/racebg/fire.webp"]
         : [...tiers("day"), "images/homebg/balcony_day.webp", "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
     } else {
       floorUsed = (night ? set.floorNight : set.floorDay) || set.floor || 0.74;
+      focusUsed = set.focusX || FOCUS_X_DEFAULT;
       chain = night
         ? [set.night, "images/home_bg.webp", "images/racebg/fire.webp"]
         : [set.day, set.night, "images/home_bg_day.webp", "images/home_bg.webp", "images/racebg/fire.webp"];
     }
     const im = bg.querySelector(".hl-bg-img");
     if (set.portrait) im.classList.add("portrait");   // 縦構図＝素直なcover（接地はSVG側のfloorで設計）
+    else im.style.objectPosition = (focusUsed * 100).toFixed(0) + "% 50%";   // 横位置の再フレーミング（画面幅が狭くても主役を切らない）
     let i = 0;
     im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
     // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±6vh内でだけ動かす）
@@ -390,9 +400,9 @@ function renderHome() {
   emb.innerHTML = "<span></span><span></span><span></span><span></span><span></span><span></span><span></span>";
   stage.appendChild(emb);
 
-  // 左下カラム：📌ピン留め（次の目標）＋📋デイリーミッション（ライブ告知風・表示のみ）＋流れるコメント
+  // 左下カラム：📋デイリーミッション（ライブ告知風・表示のみ）＋流れるコメント
+  //   （📌旧ランク進捗ピンは撤去＝🎯目標チップと内容重複のため。§2026-07）
   const left = el("div", "hl-left");
-  if (goalLine) left.appendChild(el("div", "hl-pin", "📌 " + goalLine));
   left.appendChild(el("div", "hl-pin hl-missions", "📋 " + _dailyMissionText()));
   const cms = el("div", "hl-comments");
   left.appendChild(cms);
@@ -521,11 +531,15 @@ function renderHome() {
     } catch (e) {}
     _addCm(_CMN[Math.floor(Math.random() * _CMN.length)], _CMC[Math.floor(Math.random() * _CMC.length)], _CMT[Math.floor(Math.random() * _CMT.length)]);
   }
-  _randCm(); setTimeout(_randCm, 900);
-  window._hlTimers.push(setInterval(() => {
-    if (state.ui.screen !== "home") return;
-    if (Math.random() < 0.7) _randCm();
-  }, 3300));
+  // ★流れる視聴者コメントは配信モードのみ（スマホ購入＝SNS解放より前は出さない）。
+  //   静かモードはミミの独り言(_banter)と背景・目標だけ＝“配信”はまだ始まっていない、という状態を守る。
+  if (broadcast) {
+    _randCm(); setTimeout(_randCm, 900);
+    window._hlTimers.push(setInterval(() => {
+      if (state.ui.screen !== "home") return;
+      if (Math.random() < 0.7) _randCm();
+    }, 3300));
+  }
 
   function _heart(x, y, ch) {
     if (!broadcast) return;   // ★ハート(いいね)は配信モードのみ＝全発生をここで一括ゲート（独り言/タップ反応は別途維持）
@@ -712,6 +726,7 @@ function renderHome() {
     b.onclick = () => showNavConfirm(icon, label, desc, go);
     return b;
   };
+  if (typeof renderKonronMap === "function") rail.appendChild(navItem("🏝️", "観光", "崑崙島を写真でめぐる。食べ歩き・買い物・レース・温泉・絶景・推し活へ。", () => renderKonronMap()));
   rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
   if (typeof renderMeals === "function") rail.appendChild(navItem("🍽️", "食事", "ミミの食べ歩きコレクション。食べて・当てて集めます。", () => renderMeals()));
   if (mallUnlocked()) {

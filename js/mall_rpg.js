@@ -497,7 +497,7 @@ function rpgForward(sign) {
   // ランダムエンカウント
   if ((RPG.calm || 0) > 0) {   // 🔕 静けさのお香：効果中は遭遇しない（grace も消費しない）
     RPG.calm--;
-    if (RPG.calm === 0) rpgLog("🔕 お香の効き目が切れた。気をひきしめて…", "");
+    if (RPG.calm === 0) rpgLog("🔕 お香の効き目が切れた。気をひきしめて。", "");
   }
   else if (RPG.grace > 0) RPG.grace--;
   else if (Math.random() < 0.22) {
