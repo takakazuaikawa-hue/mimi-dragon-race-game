@@ -103,14 +103,17 @@ function renderHome() {
   const p = state.player;
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   // daily login reward — checked once per session, shown just after home paints
+  // ★D4解消（FTUE保護）：初出走前は文脈のない報酬ポップを出さない＝初回導線（→レースへ）に集中させる。
   let _doGreet = false;   // 挨拶はVNではなく“配信の吹き出し”で（大立ち絵と二重にしない）
-  if (!window._mimiLoginChecked) {
+  if (!window._mimiLoginChecked && (p.completedRaces || 0) >= 1) {
     window._mimiLoginChecked = true;
     try {
       const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
       if (_lb) setTimeout(() => showLoginBonus(_lb), 420);
       else _doGreet = true;
     } catch (e) {}
+  } else if (!window._mimiLoginChecked) {
+    window._mimiLoginChecked = true; _doGreet = true;   // 新規：ログボは出さないが挨拶の吹き出しは出す
   }
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
   const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : 0;

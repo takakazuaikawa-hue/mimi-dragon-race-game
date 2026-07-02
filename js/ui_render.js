@@ -79,6 +79,7 @@ function beginScreen() {
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
     race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
+    poro_gourmet: "home",   // クリア後ミニゲームも迷子にしない（mall_rpgはラン中断防止のため意図的に無し＝race_runと同じ例外）
     sns: "home", konron_map: "home",   // SNSは戻る導線が無かった／観光は自前バックが画面下＝上部stickyを補う
     life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story",
     konron_guide: "konron_map", konron_gallery: "konron_map"
