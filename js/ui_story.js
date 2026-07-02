@@ -244,6 +244,11 @@ function renderConsult() {
   news.appendChild(lead);
 
   news.appendChild(_newsRubric("論説委員 ・ 寄稿者名簿"));
+  // C5解消：各顧問の「機能としての効果」を1行明記（特に神眼1.1倍の在り処＝レース詳細画面）。
+  const CONSULT_EFFECT = {
+    celestia: "🔮 効果：レース詳細の「1着を聞く」＝その竜の単勝・複勝が最低1.1倍で確実（答えは知れ渡り配当は縮む・使うかは任意）",
+    _default: "📖 効果：予想の視点を授ける読みもの（レース結果への介入なし）"
+  };
   const arts = el("div", "news-arts");
   Object.keys(STORY_CAST).forEach(k => {
     const c = STORY_CAST[k];
@@ -257,7 +262,8 @@ function renderConsult() {
       ? photo + `<span class="news-art-tx"><span class="news-kicker">${c.tag}</span>` +
           `<span class="news-head">${c.name}</span>` +
           `<span class="news-lead2">${c.focus}　／　授けるもの＝${c.gives}</span>` +
-          `<span class="news-quote">「${c.consult}」</span></span>`
+          `<span class="news-quote">「${c.consult}」</span>` +
+          `<span class="news-lead2">${CONSULT_EFFECT[k] || CONSULT_EFFECT._default}</span></span>`
       : photo + `<span class="news-art-tx"><span class="news-kicker">？？？</span>` +
           `<span class="news-head"><span class="news-censor">■■■■</span></span>` +
           `<span class="news-lead2">総資産 ${fmtCoins(castUnlockAt(k))} にて初登場</span></span>`;

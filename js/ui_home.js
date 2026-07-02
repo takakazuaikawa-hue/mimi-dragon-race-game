@@ -395,6 +395,11 @@ function renderHome() {
       goalBtn.innerHTML = _html;
       if (_onclick) goalBtn.onclick = _onclick;
       stage.appendChild(goalBtn);
+      // C4解消：☄️メーターチップの“ホーム初出”時に一度だけ自動説明（従来は島の経済画面でしか出なかった）。
+      //   500ms＝progressionCheckOnHome(700ms)より先に出す→1到着1モーダルルールで解放通知側が譲る。
+      if (_cls.indexOf("hl-goal--ep") >= 0 && typeof maybeShowMeterHelpFirstTime === "function") {
+        setTimeout(() => { try { if (state.ui.screen === "home") maybeShowMeterHelpFirstTime(); } catch (e) {} }, 500);
+      }
     }
   }
 

@@ -48,39 +48,45 @@ utils → data_*（純データ）→ state → *_engine（純ロジック）→
 
 ---
 
-## 3. 画面一覧（`nav.js SCREEN_INDEX` と一致・全25画面）
+## 3. 画面一覧（`nav.js SCREEN_INDEX` と一致・全31画面・2026-07更新=E5解消）
 
 `state.ui.screen` の値＝画面ID。**`?go=<id>` でURL直接起動／設定デバッグの「🧭画面ジャンプ」で番号ジャンプ／`goto("<id>")` で随時遷移**。
 
 | # | id | 画面 | 描画関数（ファイル） |
 |---|---|---|---|
 | 1 | title | タイトル | renderTitle (ui_render) |
-| 2 | home | ホーム(配信) | renderHome (ui_render) |
+| 2 | home | ホーム(静か⇄配信・進行で変身) | renderHome (ui_home) |
 | 3 | race_select | レース選択 | renderRaceSelect |
 | 4 | race_detail | レース詳細/賭け | renderRaceDetail(race) |
 | 5 | race_run | レース実況 | renderRaceRun→race_canvas |
 | 6 | result | 結果 | renderResult |
 | 7 | analysis | 分析 | renderAnalysis |
-| 8 | assets | 暮らしと資産 | renderAssets |
+| 8 | assets | 暮らしと資産 | renderAssets (ui_assets) |
 | 9 | life_tree | くらしツリー | renderLifeTree |
 | 10 | life_collection | 暮らしコレクション | renderLifeCollection |
-| 11 | active_skills | 習い事 | renderActiveSkills |
-| 12 | meals | 食事(みみしんぼ) | renderMeals (ui_render+meals) |
-| 13 | mall | モール(着替え) | renderMall |
-| 14 | mall_rpg | お買い物ダンジョン | renderMallRpg (mall_rpg) |
+| 11 | active_skills | 習い事 | renderActiveSkills (ui_assets) |
+| 12 | meals | 食事(みみしんぼ) | renderMeals (ui_meta+meals) |
+| 13 | mall | モール(着替え・station SQUARE風) | renderMall (ui_mall) |
+| 14 | mall_rpg | お買い物ダンジョン＋タワー | renderMallRpg (mall_rpg/ui_mall_rpg) |
 | 15 | village | 村 | renderVillage |
 | 16 | collection | 図鑑 | renderCollection |
 | 17 | stable | 龍舎 | renderStable (poro) |
-| 18 | scout | 竜スカウト | renderScout (poro) |
+| 18 | scout | 竜スカウト(発見＆交渉) | renderScout (ui_scout) |
 | 19 | poro_gourmet | ポロのグルメレース | renderPoroGourmet (poro_gourmet) |
-| 20 | story | 物語(一覧) | renderStory |
-| 21 | story_read | 物語(各話) | renderStoryChapter(id) |
-| 22 | consult | 相談(顧問) | renderConsult |
+| 20 | story | 物語(聖龍日報・一面) | renderStory (ui_story) |
+| 21 | story_read | 物語(特集一面＝各話) | renderStoryChapter(id) (ui_story) |
+| 22 | consult | 相談(顧問・論説面) | renderConsult (ui_story) |
 | 23 | goals | 目標(クエスト) | renderGoals (ui_render+goals) |
-| 24 | help | 予想入門 | renderHelp（設定→「予想入門をひらく」へ移設） |
+| 24 | help | 予想入門 | renderHelp（設定から開く） |
 | 25 | settings | 設定 | renderSettings |
-| 26 | timeline | タイムライン(SNS) | renderTimeline (ui_sns) |
-| 27 | fanletters | ファンレター(SNS) | renderFanletters (ui_sns) |
+| 26 | sns | SNS(タイムライン+ファンレター・タブ統合) | renderSns (ui_sns) |
+| 27 | economy | 島の経済 | renderEconomy (ui_economy) |
+| 28 | collection_score | コレクション(やり込み得点) | renderCollectionScore (ui_collection_score) |
+| 29 | konron_map | 観光(崑崙マップ) | renderKonronMap (ui_konron_map) |
+| 30 | konron_guide | 崑崙ガイドブック(図鑑) | renderKonronGuide (ui_konron_map) |
+| 31 | konron_gallery | フォトコレクション(図鑑) | renderKonronGallery (ui_konron_map) |
+
+※進行ゲート/解放通知の正本＝`js/progression.js`（UNLOCKSレジストリ・docs/GAME_FLOW_REDESIGN.md §1）。
 
 ---
 

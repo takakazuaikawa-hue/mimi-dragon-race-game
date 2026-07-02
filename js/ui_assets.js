@@ -101,6 +101,8 @@ function renderActiveSkills() {
   const as = state.player.activeSkills;
   const app = beginScreen();
   app.appendChild(el("h2", null, "習い事（アクティブスキル）"));
+  // C7解消：この画面の目的と称号の関係を1行で明示（無説明で放置されない）。
+  app.appendChild(el("div", "as-hint2", "「通う」を選ぶほど上達していく、ミミの暮らしの記録。極めると<b>称号</b>を獲得＝ホーム左上のプロフィール（🏅▾）で付け替えられます。コイン・総資産・レース結果には影響しません。"));
 
   const titles = ACTIVE_SKILLS.filter(s => (as[s.id] || 0) >= s.levels.length).length;
   app.appendChild(el("div", "as-hint2",
