@@ -76,6 +76,29 @@ function rcBgForSlug(slug, fbSlug, onReady) {
   return e.ok ? e.img : null;
 }
 function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.region] || "stadium", "stadium", onReady); }
+
+// ===== R8-W1: 3層パララックス背景 v2（images/racebg_v2/<slug>_L1..L3.webp）=====
+// 夜系（夕/黄昏/夜）のレースで一枚絵ベースに代わり、遠景/中景/近景帯を別レートで流す。
+// ここは生画像の読込だけ——描画サイズへの焼き込み（ループ化クロスフェード込み）はプレイヤー側 bakePara()。
+// 3枚揃わない/読込失敗の地域は従来経路へ自動フォールバック。表示のみ・レース数値不変。
+var RC_PARA_SLUG = { "グランドクロック地域": "grandclock", "ルミナ地域": "lumina", "リングロッソ地域": "ringrosso", "カルデラ地域": "caldera", "ミストレイク地域": "mistlake", "ヴェント峡谷地域": "vento", "ノッテムーンライト地域": "notte", "ラパン祭典地域": "lapan" };
+var _rcParaCache = {};
+function rcParaFor(race, onReady) {
+  var slug = RC_PARA_SLUG[race && race.region] || "stadium";
+  var e = _rcParaCache[slug];
+  if (!e) {
+    e = _rcParaCache[slug] = { slug: slug, ok: false, fail: false, n: 0, imgs: [], cbs: [] };
+    ["L1", "L2", "L3"].forEach(function (k, i) {
+      var im = new Image();
+      im.onload = function () { if (++e.n === 3 && !e.fail) { e.ok = true; e.cbs.splice(0).forEach(function (f) { try { f(); } catch (_) {} }); } };
+      im.onerror = function () { e.fail = true; e.cbs.length = 0; };
+      im.src = "images/racebg_v2/" + slug + "_" + k + ".webp";
+      e.imgs[i] = im;
+    });
+  }
+  if (!e.ok && !e.fail && onReady) e.cbs.push(onReady);
+  return e;
+}
 function rcRenderSkyBase(x, W, H, time, bgImg) {
   var c = RC_SKY_CONF[time] || RC_SKY_CONF.night;
   var hor = H * RC_SKY_HOR, sc = W / 1536;
@@ -1384,6 +1407,62 @@ function startRaceCanvas(container, ctx) {
       skyBase = oc;
     } catch (e) { skyBase = null; }
   }
+  // R8-W1: パララックス3層を「描画サイズの焼き済みタイル」にする。
+  // ・毎フレーム1600px級を縮小せず小タイルをwrap描画（速度）・セットあたり<1MB（メモリ）
+  // ・左端Bpxへ右端をαランプで重ねる＝タイル境界がC0連続の完全ループ（継ぎ目ゼロ）
+  // ・時間帯トーンは焼き込み（遠景ほど濃く＝空気遠近）。夜系レースのみ・失敗時 null=従来経路。
+  let paraBaked = null;
+  function bakePara() {
+    paraBaked = null;
+    if (!cw || !ch) return;
+    const t = rcRaceTime(race);
+    if (!(t === "sunset" || t === "dusk" || t === "night")) return;   // 朝/昼は従来の昼絵
+    const e = rcParaFor(race, function () { if (document.contains(canvas)) bakePara(); });
+    if (!e || !e.ok) return;
+    try {
+      const gtop = ch * 0.34;                                          // trackGeom().top と同値
+      const conf = RC_SKY_CONF[t] || RC_SKY_CONF.night;
+      const spec = [
+        { dh: ch * 0.85, anchor: null,                tone: 0.55 },    // L1 遠景（地平線58%を路面上端へ）
+        { dh: ch * 0.60, anchor: gtop + ch * 0.08,    tone: 0.35 },    // L2 中景
+        { dh: ch * 0.30, anchor: gtop + 6,            tone: 0.22 },    // L3 近景帯（縁石が路面上端に接する）
+      ];
+      const L = [], dw = [], dh = [], dy = [];
+      const px = Math.min(2, dpr || 1);                                // 焼き解像度（dpr>2は2で十分）
+      for (let i = 0; i < 3; i++) {
+        const img = e.imgs[i], s = spec[i];
+        const w = Math.max(64, img.naturalWidth * (s.dh / img.naturalHeight));
+        const oc = document.createElement("canvas");
+        oc.width = Math.max(1, Math.round(w * px)); oc.height = Math.max(1, Math.round(s.dh * px));
+        const c2 = oc.getContext("2d");
+        c2.drawImage(img, 0, 0, oc.width, oc.height);
+        // ループ化クロスフェード：原画右端のB相当を左端へ αランプ(左1→右0) で重ねる
+        const B = Math.max(24, Math.round(oc.width * 0.09));
+        const strip = document.createElement("canvas");
+        strip.width = B; strip.height = oc.height;
+        const sc2 = strip.getContext("2d");
+        const swSrc = img.naturalWidth * (B / oc.width);
+        sc2.drawImage(img, img.naturalWidth - swSrc, 0, swSrc, img.naturalHeight, 0, 0, B, oc.height);
+        sc2.globalCompositeOperation = "destination-in";
+        const gr = sc2.createLinearGradient(0, 0, B, 0);
+        gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+        sc2.fillStyle = gr; sc2.fillRect(0, 0, B, oc.height);
+        c2.drawImage(strip, 0, 0);
+        // 時間帯トーン（soft-light・遠景ほど濃く）＋夕/黄昏は僅かな明度リフト
+        c2.save();
+        c2.globalCompositeOperation = "soft-light"; c2.globalAlpha = s.tone;
+        const tg = c2.createLinearGradient(0, 0, 0, oc.height);
+        conf.sky.forEach(function (sv) { tg.addColorStop(sv[0], sv[1]); });
+        c2.fillStyle = tg; c2.fillRect(0, 0, oc.width, oc.height);
+        const lift = t === "sunset" ? 0.10 : t === "dusk" ? 0.05 : 0;
+        if (lift > 0 && i === 0) { c2.globalCompositeOperation = "screen"; c2.globalAlpha = 1; c2.fillStyle = rcRgba(conf.haze, lift); c2.fillRect(0, 0, oc.width, oc.height); }
+        c2.restore();
+        L.push(oc); dw.push(w); dh.push(s.dh);
+        dy.push(s.anchor == null ? Math.min(0, (gtop + 10) - s.dh * 0.58) : s.anchor - s.dh);
+      }
+      paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 0.9], haze: conf.haze };
+    } catch (_) { paraBaked = null; }
+  }
   function resize() {
     const parent = canvas.parentElement;
     if (!parent) return;          // canvas が DOM から外れている — リサイズをスキップ
@@ -1397,6 +1476,7 @@ function startRaceCanvas(container, ctx) {
     canvas.height = Math.round(ch * dpr);
     cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     buildSkyBase();
+    bakePara();
   }
   const onResize = () => { resize(); draw(); };
   window.addEventListener("resize", onResize);
@@ -1436,6 +1516,8 @@ function startRaceCanvas(container, ctx) {
     preT: 3.0,          // pre-start 3-2-1 countdown (holds τ at the gate)
     goFlash: 0,         // "GO！" burst after the countdown
     zoomBump: 0,        // extra push-in impulse from overtakes / close battles
+    photoT: 0,          // R8-W1: フォトフィニッシュ静止1拍の残り秒（>0の間 世界を止める・表示のみ）
+    photoUsed: false,   // 1着の鼻先ゴールで一度だけ発火
     prevStand: null,    // {id: place} last frame, for overtake detection
     cheerT: 1.2,        // throttle for cheer-your-pick callouts
     battleT: 0,         // throttle for 接戦！ callouts
@@ -2083,8 +2165,26 @@ function startRaceCanvas(container, ctx) {
     // terrain now shows its own dedicated backdrop so the course reads at a glance.
     const stadium = (tb.keyA === "straight");
 
-    // --- sky: painted time-of-day base (combine) OR the themed procedural sky ---
-    if (skyBase) {
+    // --- sky: R8-W1 3層パララックス（夜系＆納品地域）→ 一枚絵ベース → プロシージャル ---
+    const para = paraBaked;
+    if (para) {
+      // L1 遠景×0.15 → L2 中景×0.45 → L3 近景帯×0.9（レール旗0.9と同平面＝柵が近景の地面に立つ）。
+      // タイルは焼き込みで完全ループ＝境界の継ぎ目なし。カメラが進むほど層の速度差で奥行きが出る。
+      for (let li = 0; li < 3; li++) {
+        const ox = S.camL * SREF * para.rate[li];
+        const dwl = para.dw[li], dhl = para.dh[li], dyl = para.dy[li], tile = para.L[li];
+        for (let k = Math.floor(ox / dwl); k * dwl - ox < cw; k++) {
+          cctx.drawImage(tile, k * dwl - ox, dyl, dwl, dhl);
+        }
+      }
+      // 地平の靄：層と路面の境目を馴染ませる（skyBase版の hb と同役割）
+      const gt = g.top;
+      const hb = cctx.createLinearGradient(0, gt - 34, 0, gt + 12);
+      hb.addColorStop(0, rcRgba(para.haze, 0));
+      hb.addColorStop(0.75, rcRgba(para.haze, 0.20));
+      hb.addColorStop(1, rcRgba(para.haze, 0.38));
+      cctx.fillStyle = hb; cctx.fillRect(0, gt - 34, cw, 46);
+    } else if (skyBase) {
       // far backdrop incl. sun/moon, clouds, distant ridges, 聖龍門 & grandstand, haze
       cctx.drawImage(skyBase, 0, 0, cw, ch);
     } else {
@@ -2102,8 +2202,11 @@ function startRaceCanvas(container, ctx) {
     }
 
     // distant terrain identity (volcano / clouds / hills / canyon / pylons)
-    drawThemeBackdrop(tb.keyA, g, 1);
-    if (tb.keyB !== tb.keyA) drawThemeBackdrop(tb.keyB, g, tb.t);
+    // （パララックス絵が地形の個性を担っている時はスキップ＝描き足しのつぎはぎ防止）
+    if (!para) {
+      drawThemeBackdrop(tb.keyA, g, 1);
+      if (tb.keyB !== tb.keyA) drawThemeBackdrop(tb.keyB, g, tb.t);
+    }
 
     // stadium dressing (skyline + clock tower + crowd) only on ground courses
     // (skipped when the painted base is active — it already has 聖龍門 + grandstand)
@@ -2237,6 +2340,15 @@ function startRaceCanvas(container, ctx) {
       ts.addColorStop(0.4, "rgba(0,0,0,0)");
       ts.addColorStop(1,   "rgba(255,255,255,0.045)");
       cctx.fillStyle = ts; cctx.fillRect(0, g.top, cw, g.bottom - g.top);
+    }
+    // R8-W1: 夜系パララックス時は地面も夜へ寄せる——明るいターフ原色が painted 峡谷/溶岩と
+    // 喧嘩しない（遠いほど濃い夜・手前は僅かに残す＝モックの地面トーン）。表示のみ。
+    if (para) {
+      const nt = cctx.createLinearGradient(0, g.top, 0, g.bottom);
+      nt.addColorStop(0,    "rgba(11,15,32,0.46)");
+      nt.addColorStop(0.55, "rgba(11,15,32,0.30)");
+      nt.addColorStop(1,    "rgba(9,11,26,0.22)");
+      cctx.fillStyle = nt; cctx.fillRect(-10, g.top - 30, cw + 20, (g.bottom - g.top) + 60);
     }
     cctx.restore();
     // theme surface treatment (fog veil / lava cracks / bridge planks)
@@ -2833,6 +2945,30 @@ function startRaceCanvas(container, ctx) {
       cctx.restore(); cctx.globalAlpha = 1;
     }
 
+    // --- R8-W1: フォトフィニッシュの1拍 — 白バウンス＋ゴール線ハイライト＋(きわどい時)ラベル ---
+    if (S.photoT > 0) {
+      const pk = clamp(S.photoT / 0.62, 0, 1);
+      cctx.fillStyle = "rgba(255,255,255," + (0.34 * pk * pk).toFixed(3) + ")";
+      cctx.fillRect(0, 0, cw, ch);
+      const pgx = clamp(screenX(1, S._winw || 0.3), -20, cw + 20);
+      cctx.fillStyle = "rgba(255,255,255," + (0.75 * pk).toFixed(3) + ")";
+      cctx.fillRect(pgx - 1, 0, 2, ch);
+      if (timeline.photoFinish) {
+        cctx.save();
+        cctx.font = "800 13px system-ui, sans-serif";
+        cctx.textAlign = "center"; cctx.textBaseline = "middle";
+        const pw = cctx.measureText("📸 写真判定").width + 22;
+        cctx.fillStyle = "rgba(14,18,34,0.78)";
+        cctx.beginPath();
+        if (cctx.roundRect) cctx.roundRect(cw / 2 - pw / 2, ch * 0.20 - 12, pw, 24, 12); else cctx.rect(cw / 2 - pw / 2, ch * 0.20 - 12, pw, 24);
+        cctx.fill();
+        cctx.strokeStyle = "rgba(255,255,255,0.55)"; cctx.lineWidth = 1; cctx.stroke();
+        cctx.fillStyle = "#fff";
+        cctx.fillText("📸 写真判定", cw / 2, ch * 0.20 + 1);
+        cctx.restore();
+      }
+    }
+
     // --- phase-entry banner (slides in from the side, holds, slides out) ---
     // --- terrain sign: an anime-style CUT-IN — a slanted banner that SLAMS in from the
     // left (speed lines + impact flash) as the leader enters a section, then snaps out.
@@ -3068,6 +3204,10 @@ function startRaceCanvas(container, ctx) {
     const ov = document.getElementById("event-overlay");
     if (ov && !ov.classList.contains("hidden")) return;
 
+    // R8-W1: フォトフィニッシュ静止1拍 — 1着の鼻先がゴールに触れた瞬間、世界ごと止める
+    // （τ/歩様/粒子すべて凍結＝写真。描画は続くのでフラッシュだけが減衰する。表示のみ）
+    if (S.photoT > 0) { S.photoT -= dt; if (S.photoT > 0) return; S.photoT = 0; }
+
     // --- entrance: parade the field in from the side before the countdown ---
     if (S.entryT > 0) {
       S.entryT -= dt * S.speed;
@@ -3167,6 +3307,12 @@ function startRaceCanvas(container, ctx) {
           S.shake = Math.max(S.shake, 5);
           spawnSpark(gx, y, "#ffffff");
           addFloat(cw / 2, ch * 0.34, timeline.photoFinish ? "きわどい！" : "テープを切った！", "#fff");
+          // R8-W1: 鼻先がゴールした瞬間＝フォトフィニッシュ静止1拍（表示のみ・着順は確定済）
+          if (!S.photoUsed) {
+            S.photoUsed = true;
+            S.photoT = timeline.photoFinish ? 0.62 : 0.38;   // きわどい時は長め＋「写真判定」ラベル
+            if (window.Sfx) Sfx.play("tick", 0.55);           // シャッターの一打
+          }
         }
       }
     }
