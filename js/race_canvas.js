@@ -2153,6 +2153,23 @@ function startRaceCanvas(container, ctx) {
         cctx.fillRect(px, py, hx > 0.75 ? 2 : 1.3, 1.2);
       }
     }
+    // 進行方向シェブロン（R8-W2・モック準拠）：路面に薄い「>」を世界固定で等間隔＝
+    // 走る向きと路面の速度感を常時示す（表示のみ）。
+    {
+      const stepP = 0.05, k0 = Math.floor((S.camL - 0.08) / stepP);
+      const nK = Math.ceil((WINW + 0.16) / stepP);
+      const midY = (g.top + g.bottom) / 2;
+      const hh = (g.bottom - g.top) * 0.30, ww = hh * 0.55;
+      cctx.save();
+      cctx.lineWidth = 3; cctx.lineJoin = "round"; cctx.lineCap = "round";
+      cctx.strokeStyle = "rgba(255,214,120,0.09)";
+      for (let k = 0; k <= nK; k++) {
+        const P = (k0 + k) * stepP;
+        const px = screenX(P, WINW), py = midY + trackBendY(P);
+        cctx.beginPath(); cctx.moveTo(px - ww, py - hh); cctx.lineTo(px, py); cctx.lineTo(px - ww, py + hh); cctx.stroke();
+      }
+      cctx.restore();
+    }
     {
       const ts = cctx.createLinearGradient(0, g.top, 0, g.bottom);
       ts.addColorStop(0,   "rgba(0,0,0,0.16)");
@@ -2345,6 +2362,12 @@ function startRaceCanvas(container, ctx) {
     const standings = timeline.standingsAt(S.tau);
     const standMap = {}; standings.forEach((id, i) => { standMap[id] = i + 1; });
 
+    // ★世界内イベントポップ（R8-W2・表示のみ）＝順位変動/スパートをその竜の頭上で祝う
+    //   （モックの「かわした！」）。レース中のみ・竜ごとクールダウンで騒がしさを抑制。
+    S.pops = S.pops || []; S.popCd = S.popCd || {};
+    const _popNow = performance.now() / 1000;
+    const _popsOn = S.entryT <= 0 && S.preT <= 0 && !S.finished && S.tau > 0.03;
+
     const drawList = [...dragons].sort((a, b) => laneOf[b.id] - laneOf[a.id]);
     for (const dr of drawList) {
       const P = timeline.progressAt(dr.id, S.tau);
@@ -2357,6 +2380,21 @@ function startRaceCanvas(container, ctx) {
       const baseY = laneY(dr, g);
       const bob = Math.sin(S.gait[dr.id]) * (1.6 + intensity);
       const y = baseY + bob;
+      // 順位変動の検知→ポップ生成（standingsはタイムライン由来＝表示のみ・数値非干渉）
+      if (_popsOn && S.prevStand && x > cw * 0.06 && x < cw * 0.94) {
+        const rkNow = standMap[dr.id], pv = S.prevStand[dr.id];
+        const cd = S.popCd[dr.id] || 0;
+        if (pv && rkNow < pv && _popNow > cd) {
+          S.pops.push({ x: x - 12, y: y - 46 * laneDepth(dr), tx: "かわした！", c: "#8fe3ff", t0: _popNow });
+          S.popCd[dr.id] = _popNow + 3.2;
+        } else if (pv && rkNow - pv >= 2 && _popNow > cd) {
+          S.pops.push({ x: x, y: y - 46 * laneDepth(dr), tx: "！", c: "#ff6a5e", t0: _popNow });
+          S.popCd[dr.id] = _popNow + 3.2;
+        } else if (intensity > 0.95 && ownU < 0.92 && _popNow > cd && Math.random() < 0.010) {
+          S.pops.push({ x: x - 8, y: y - 46 * laneDepth(dr), tx: "仕掛けた！", c: "#ffd34d", t0: _popNow });
+          S.popCd[dr.id] = _popNow + 5.0;
+        }
+      }
 
       const offLeft = x < cw * 0.04;
       const drawX = clamp(x, cw * 0.05, cw * 0.97);
@@ -2488,15 +2526,19 @@ function startRaceCanvas(container, ctx) {
         cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;
         cctx.beginPath(); cctx.arc(dcx, spriteY - 4, 26 * dep, 0, Math.PI * 2); cctx.stroke();
       }
-      // rank tag (live standing) — dark halo for legibility on turf
+      // rank badge (live standing) — モック準拠の丸数字。金=賭けた竜／青=1番人気／白=その他
       const rk = standMap[dr.id] || dr.rank;
-      const tagY = y - 30 * dep;
-      cctx.font = "bold 13px system-ui, sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
-      cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.85)";
-      cctx.strokeText(rk, dcx, tagY);
-      cctx.fillStyle = betSet.has(dr.id) ? "#ffd34d" : (popRank[dr.id] === 1 ? "#7fd1ff" : "#ffffff");
-      cctx.fillText(rk, dcx, tagY);
+      const tagY = y - 36 * dep;
+      const rr2 = 9.5 * dep;
+      const bcol = betSet.has(dr.id) ? "#ffd34d" : (popRank[dr.id] === 1 ? "#7fd1ff" : "rgba(255,255,255,0.78)");
+      cctx.beginPath(); cctx.arc(dcx, tagY, rr2, 0, Math.PI * 2);
+      cctx.fillStyle = "rgba(8,10,20,0.74)"; cctx.fill();
+      cctx.lineWidth = 2; cctx.strokeStyle = bcol; cctx.stroke();
+      cctx.font = "bold " + Math.round(11.5 * dep) + "px system-ui, sans-serif";
+      cctx.textAlign = "center"; cctx.textBaseline = "middle";
+      cctx.fillStyle = betSet.has(dr.id) ? "#ffd34d" : "#ffffff";
+      cctx.fillText(rk, dcx, tagY + 0.5);
+      cctx.textBaseline = "alphabetic";
       // name plate under the dragon
       const nm = commentaryName(dr.id);
       cctx.font = "10px system-ui, sans-serif";
@@ -2511,6 +2553,26 @@ function startRaceCanvas(container, ctx) {
         cctx.fillText("◀", cw * 0.03, y);
       }
       cctx.globalAlpha = _prevAlpha;             // end per-dragon edge fade
+    }
+    if (_popsOn) S.prevStand = standMap;         // 次フレームの順位変動検知用スナップショット
+
+    // イベントポップ描画（0.95s＝ポップイン→浮き上がり→フェード。世界座標＝竜と一緒に流れる）
+    if (S.pops.length) {
+      for (let i = S.pops.length - 1; i >= 0; i--) {
+        const p = S.pops[i], a = (_popNow - p.t0) / 0.95;
+        if (a >= 1) { S.pops.splice(i, 1); continue; }
+        const inK = Math.min(1, a / 0.14), rise = 26 * a;
+        const al = a < 0.75 ? 1 : 1 - (a - 0.75) / 0.25;
+        cctx.save();
+        cctx.translate(p.x, p.y - rise);
+        cctx.scale(0.6 + 0.4 * inK, 0.6 + 0.4 * inK);
+        cctx.font = "bold 15px system-ui, sans-serif";
+        cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
+        cctx.globalAlpha = al;
+        cctx.lineWidth = 4; cctx.strokeStyle = "rgba(8,10,20,0.9)"; cctx.strokeText(p.tx, 0, 0);
+        cctx.fillStyle = p.c; cctx.fillText(p.tx, 0, 0);
+        cctx.restore();
+      }
     }
 
     // (world-space dust / ambient particles are drawn BEFORE the dragon loop now,
