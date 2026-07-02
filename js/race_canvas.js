@@ -821,7 +821,7 @@ function rcDrawDragonRig(ctx, o) {
 // 純粋に表示のみ — 画面の着順は raceResult と一致したまま（数値非干渉）。
 // =========================================================================
 const RC_DSPRITE = Object.create(null);
-const RC_DSP_H = 62;                 // 画面上の竜の基準高さ(px)＝grid竜と概ね同等。scaleで奥行き調整
+const RC_DSP_H = 46;                 // 画面上の竜の基準高さ(px)。62→46＝「画面を大きく取り竜は小さく」（ユーザー指定・モック準拠）。scaleで奥行き調整
 function _rcDragonSprite(id) {
   if (!id) return null;
   let e = RC_DSPRITE[id];
@@ -868,12 +868,21 @@ function _rcDragonSprite(id) {
   return e;
 }
 function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok); }
+// 個体サイズ（表示のみ・設定＝小さい竜ポロは小さく／竜王級〜神格はわずかに大きく＝格の表現。
+// レース進行/着順/オッズには一切影響しない。基準1.0＝RC_DSP_H）。
+const RC_SIZE_MUL = {
+  poro: 0.68,                                             // 泣き虫の子竜＝設定どおり小さく（ユーザー指摘）
+  chiri: 0.84, tsumuji: 0.88, kogane: 0.94, susu: 0.94, nagi: 0.94, goro: 0.94,   // tier1-2＝若竜は少し小柄
+  guren: 1.05, raijin: 1.05, sora: 1.05, banju: 1.05, gekka: 1.05, senpu: 1.05,   // tier5 竜王級
+  enma: 1.09, hayao: 1.09, tenku: 1.09, gozan: 1.09, yugiri: 1.09, reppu: 1.09,   // tier6 祝祭級
+  goka: 1.14, raiou: 1.14, souten: 1.14, fugaku: 1.14, yomi: 1.14                 // tier7 神格
+};
 function rcDrawDragonSprite(ctx, o) {
   const e = _rcDragonSprite(o.id);
   if (!e || !e.ok) { _rcEnsureRig(); return (RC_RIG ? rcDrawDragonRig : rcDrawDragonPixel)(ctx, o); }
   const img = e.cv || e.img, b = e.box;   // キー抜き済みcanvas優先（グレー背景素材の透過版）
   const px = (o.scale || 1) * RC_DRG.px;
-  const targetH = RC_DSP_H * (o.scale || 1);                 // 体の高さで正規化（竜ごとの余白差を吸収）
+  const targetH = RC_DSP_H * (o.scale || 1) * (RC_SIZE_MUL[o.id] || 1);   // 体の高さで正規化＋個体サイズ
   const sc = targetH / b.h, w = b.w * sc, h = b.h * sc;
   const bob = o.grounded ? Math.abs(Math.sin(o.gait || 0)) * 0.6 : Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);
   ctx.save();
@@ -888,7 +897,10 @@ function rcDrawDragonSprite(ctx, o) {
     const ng = ctx.createRadialGradient(0, -h * 0.45, 2, 0, -h * 0.45, rr); ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.6)); ng.addColorStop(0.6, rcRgba(gc, 0.14)); ng.addColorStop(1, rcRgba(gc, 0));
     ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -h * 0.45, rr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(img, b.x, b.y, b.w, b.h, -w / 2, -h + 2, w, h);   // bbox を足元基準(o.y)・水平中央に
+  // ★鼻先アンカー：タイムラインの位置(o.x)＝竜の鼻先に合わせて描く（右端=鼻がo.x）。
+  //   ゴール演出はタイムライン時刻駆動なので、progress=1の瞬間に「1着の鼻先がゴール線上」になる
+  //   ＝実レース中継と同じ「鼻先がゴールした時がゴール」（ユーザー指定）。体長差も物理どおり後ろへ伸びる。
+  ctx.drawImage(img, b.x, b.y, b.w, b.h, -w + 4, -h + 2, w, h);
   ctx.restore();
 }
 function rcDrawDragon(ctx, o) {
