@@ -911,6 +911,57 @@ function rcDrawDragonSprite(ctx, o) {
   ctx.drawImage(img, b.x, b.y, b.w, b.h, -w + 4, -h + 2, w, h);
   ctx.restore();
 }
+// =========================================================================
+// R8-W4 勝者ウィニングカット（表示のみ）：ゴール確定直後、勝者のHD-2D絵を大写しで
+// 「生きて」見せる。Live2Dリグはマスコット画像専用（4パーツ座標がrig.json固定）で
+// 52頭の多様な体型には適合しないため、キー抜き済みスプライトを縦ストリップに割り、
+// 頭（右）を支点に尾へ向かって進行波でうねらせる＝全頭対応・フィッティング不要。
+// =========================================================================
+function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
+  const e = RC_DSPRITE[id];
+  if (!e || !e.ok || !e.box) return false;
+  const img = e.cv || e.img, b = e.box;
+  const H = Math.min(150, cw * 0.34), sc = H / b.h, W = b.w * sc;
+  const inK = Math.min(1, rt / 0.22);
+  const out = rt > 1.25 ? Math.max(0, 1 - (rt - 1.25) / 0.3) : 1;
+  const a = inK * out;
+  if (a <= 0) return true;
+  const now = performance.now() / 1000;
+  ctx.save();
+  ctx.globalAlpha = a;
+  // 背後の金グロー（お立ち台の照明）
+  const gy = baseY - H * 0.45;
+  const gr = ctx.createRadialGradient(cx, gy, 4, cx, gy, H * 0.95);
+  gr.addColorStop(0, "rgba(255,214,110,0.32)"); gr.addColorStop(1, "rgba(255,214,110,0)");
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, gy, H * 0.95, 0, Math.PI * 2); ctx.fill();
+  // 本体＝ストリップ進行波（頭=右は安定・尾=左ほど大きくうねる）＋軽い呼吸ボブ
+  const pop = 0.86 + 0.14 * inK;
+  const breathe = Math.sin(now * 2.2) * 2;
+  ctx.translate(cx, baseY + breathe); ctx.scale(pop, pop);
+  const N = 16, sw = b.w / N, dw = W / N;
+  for (let i = 0; i < N; i++) {
+    const tailK = 1 - i / (N - 1);                                   // 1=尾(左端)・0=頭(右端)
+    const dy = Math.sin(now * 5.4 - i * 0.5) * 3.8 * (0.15 + tailK * 0.95);
+    ctx.drawImage(img, b.x + i * sw, b.y, sw, b.h, -W / 2 + i * dw - 0.5, -H + dy, dw + 1, H);
+  }
+  ctx.restore();
+  // 金リボン「🏆 1着」
+  ctx.save();
+  ctx.globalAlpha = a;
+  const nm = (typeof commentaryName === "function") ? commentaryName(id) : id;
+  const label = "🏆 1着　" + nm;
+  ctx.font = "bold 16px system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const tw = ctx.measureText(label).width, rw = tw + 34, rh = 26, ry = baseY + 14;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cx - rw / 2, ry, rw, rh, 13); else ctx.rect(cx - rw / 2, ry, rw, rh);
+  const rg = ctx.createLinearGradient(0, ry, 0, ry + rh);
+  rg.addColorStop(0, "#ffd465"); rg.addColorStop(1, "#e2a22e");
+  ctx.fillStyle = rg; ctx.fill();
+  ctx.fillStyle = "#2a1d05"; ctx.fillText(label, cx, ry + rh / 2 + 0.5);
+  ctx.restore();
+  return true;
+}
 function rcDrawDragon(ctx, o) {
   if (typeof window !== 'undefined' && window.RC_USE_RIG === false) return rcDrawDragonPixel(ctx, o);
   if (o.id && rcHasDragonSprite(o.id)) return rcDrawDragonSprite(ctx, o);   // 3D絵が用意済み＝最優先（表示専用）
@@ -2860,11 +2911,16 @@ function startRaceCanvas(container, ctx) {
     if (S.finished) {
       const winner = timeline.crossings[0];
       const rt = S.rewardT || 0;
+      // ★R8-W4：勝者ウィニングカット（HD-2D絵があれば rt 0〜1.55s に大写し・
+      //   見出し/払戻プレートはカットの終盤 rt-1.35s から＝順に語る）。表示のみ。
+      const hasCut = rcHasDragonSprite(winner.id);
+      if (hasCut) rcDrawWinnerCut(cctx, winner.id, cw / 2, ch * 0.58, rt, cw);
+      const rtd = hasCut ? Math.max(0, rt - 1.35) : rt;
       const _fc = (n) => (typeof fmtCoins === "function" ? fmtCoins(n) : String(n));
       cctx.save();
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
       // headline fades in first
-      cctx.globalAlpha = Math.min(1, rt / 0.22);
+      cctx.globalAlpha = Math.min(1, rtd / 0.22);
       cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 25px system-ui, sans-serif";
       cctx.fillText("ゴールイン！", cw / 2, ch * 0.16);
       cctx.fillStyle = "#fff"; cctx.font = "bold 15px system-ui, sans-serif";
@@ -2872,7 +2928,7 @@ function startRaceCanvas(container, ctx) {
       cctx.globalAlpha = 1;
       // the reward plate pops in a beat later, showing the actual payout
       if (betResult) {
-        const rp = Math.max(0, Math.min(1, (rt - 0.18) / 0.4));
+        const rp = Math.max(0, Math.min(1, (rtd - 0.18) / 0.4));
         const ease = 1 - Math.pow(1 - rp, 3);
         const overshoot = rp < 1 ? Math.sin(rp * Math.PI) * 0.08 : 0;
         const sc = 0.62 + 0.38 * ease + overshoot;
