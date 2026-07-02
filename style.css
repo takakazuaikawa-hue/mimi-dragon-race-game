@@ -1114,7 +1114,7 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 /* 一般的なスマホ＆PC両対応：内容を一定幅のゲームフレームに収め、PCでは中央寄せ。
    これでレースcanvasのアスペクト(≈1.82:1)がスマホ/PCで一致し、横長すぎる崩れを防ぐ。
    タイトルだけは body.title-mode で全画面化（下の §タイトル 参照）。 */
-#app { padding: 20px; max-width: 720px; margin: 0 auto; }
+#app { padding: 20px; max-width: 720px; margin: 0 auto; --pad-x: 20px; --pad-t: 20px; --pad-b: 20px; }   /* --pad-*＝full-bleed要素(.bd-head/.bd-slip等)が負マージンで参照 */
 
 h2 { color: #ffd870; border-bottom: 1px solid #604040; padding-bottom: 6px; }
 h3 { color: #ffc850; margin-top: 16px; }
@@ -1960,7 +1960,7 @@ table.entry-table {
  * =========================================================== */
 @media (max-width: 680px) {
   html { -webkit-text-size-adjust: 100%; }   /* stop iOS font auto-zoom */
-  #app { padding: 12px 10px; }
+  #app { padding: 12px 10px; --pad-x: 10px; --pad-t: 12px; --pad-b: 12px; }
 
   /* header: single slim row — brand ellipsises on the left, currency/rank pills stay right */
   #header { padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); gap: 8px; }
@@ -1996,7 +1996,7 @@ table.entry-table {
 }
 
 @media (max-width: 420px) {
-  #app { padding: 10px 8px; }
+  #app { padding: 10px 8px; --pad-x: 8px; --pad-t: 10px; --pad-b: 10px; }
   #header h1 { font-size: 14px; }
   .header-info { gap: 8px 12px; }
   /* keep tap targets usable while fitting more per row */
@@ -5933,3 +5933,115 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   width: 42%; height: 30px; transform: translateX(-50%);
   background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,.58), rgba(0,0,0,.33) 42%, rgba(0,0,0,0) 72%);
   filter: blur(3px); pointer-events: none; }
+
+/* =========================================================================
+   賭け画面リデザイン（2026-07・A骨格＋C演出＝docs/RESEARCH_BETTING_UX.md）
+   上=bd-head(sticky) / 中=bd-tabs＋出走カード / 下=bd-slip(sticky・親指ゾーン)。
+   表示のみ＝オッズ/払戻の数値はエンジン値そのまま。名前空間 .bd-* .slip .tix
+   ========================================================================= */
+.bd-head { position: sticky; top: calc(var(--pad-t, 20px) * -1); z-index: 20;
+  margin: calc(var(--pad-t, 20px) * -1) calc(var(--pad-x, 20px) * -1) 10px;
+  padding: calc(var(--pad-t, 20px) + 4px) 14px 10px;
+  background: linear-gradient(135deg, var(--region-from, #1d2a33), var(--region-to, #10181e));
+  border-bottom: 2px solid var(--region-accent, var(--gold-line));
+  box-shadow: 0 8px 22px -12px rgba(0,0,0,.85); }
+.bd-head-top { display: flex; align-items: center; gap: 9px; }
+.bd-back { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,.22);
+  background: rgba(0,0,0,.3); color: #fff; font-size: 16px; cursor: pointer; }
+.bd-title { min-width: 0; }
+.bd-title b { display: block; font-size: 16.5px; color: #fff6e6; line-height: 1.25; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.bd-sub { display: block; font-size: 10.5px; color: rgba(255,246,230,.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.bd-chip { font-size: 10.5px; font-weight: 800; color: #ffe9c4; padding: 3px 9px; border-radius: 999px;
+  background: rgba(0,0,0,.32); border: 1px solid rgba(255,214,120,.35); }
+.bd-course { margin-top: 7px; font-size: 10.5px; color: rgba(255,246,230,.85); letter-spacing: .01em; }
+.bd-sake { margin: 0 0 8px; }
+
+/* 賭式タブ＝大きく・現在形が一目 */
+.bet-tabs.bd-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 8px;
+  margin: 0 0 10px; background: rgba(10,14,18,.92); border-radius: 14px; border: 1px solid var(--glass-border);
+  backdrop-filter: blur(6px); }
+.bet-tabs.bd-tabs button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px;
+  border-radius: 10px; border: 1px solid transparent; background: rgba(255,255,255,.05); color: var(--mist-soft);
+  font-size: 14px; font-weight: 900; cursor: pointer; }
+.bet-tabs.bd-tabs button small { font-size: 8.5px; font-weight: 700; opacity: .8; }
+.bet-tabs.bd-tabs button.active { background: linear-gradient(180deg, rgba(232,185,78,.28), rgba(202,162,74,.16));
+  border-color: rgba(255,214,120,.6); color: #ffe9c4; box-shadow: 0 0 14px -4px rgba(255,190,90,.45); }
+
+/* 出走カード：枠色バー（勝負服相当）＋オッズ切替フラッシュ（B案拝借・演出のみ） */
+.bet-pick-card { position: relative; border-left: 5px solid var(--waku, #caa24a); }
+.bp-odds b.flash { animation: bdOddsFlash .55s ease; }
+@keyframes bdOddsFlash { 0% { color: #ffd966; text-shadow: 0 0 10px rgba(255,190,90,.8); } 100% { } }
+
+/* 常設ベットスリップ（sticky bottom・親指ゾーン） */
+.bd-slip { position: sticky; bottom: calc(var(--pad-b, 20px) * -1); z-index: 22;
+  margin: 12px calc(var(--pad-x, 20px) * -1) calc(var(--pad-b, 20px) * -1);
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(16,20,26,.97), rgba(10,13,17,.99));
+  border-top: 2px solid var(--gold-line); box-shadow: 0 -12px 30px -14px rgba(0,0,0,.95); }
+.bd-slip .bet-sel-sum { display: flex; align-items: center; gap: 7px; min-height: 20px; margin-bottom: 6px;
+  font-size: 12px; color: var(--mist); }
+.bss-tix { font-size: 14px; }
+.bss-nm { font-size: 13.5px; color: #fff2d5; }
+.bss-odds { margin-left: auto; font-size: 11px; color: #ffce8a; }
+.bss-odds b { font-size: 15px; }
+.slip-wager { display: flex; align-items: center; gap: 7px; }
+.slip-wager .wager-amount { flex: 1 1 auto; display: flex; align-items: baseline; justify-content: center; gap: 4px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--glass-border); border-radius: 10px; padding: 5px 8px; }
+.slip-wager .wager-big { width: 100%; max-width: 130px; background: none; border: none; color: #ffe9c4;
+  font-size: 20px; font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
+.slip-wager .wager-big:focus { outline: none; }
+.slip-wager .wager-unit { font-size: 10px; color: var(--mist-soft); }
+.slip-wager .wager-step { flex: none; width: 38px; height: 38px; border-radius: 10px; font-size: 18px; font-weight: 900;
+  border: 1px solid var(--glass-border); background: rgba(255,255,255,.07); color: var(--mist); cursor: pointer; }
+.slip-wager .wager-quick { display: flex; gap: 5px; }
+.slip-wager .wchip { display: flex; flex-direction: column; align-items: center; padding: 3px 8px; border-radius: 9px;
+  border: 1px solid var(--glass-border); background: rgba(255,255,255,.05); color: var(--mist-soft); cursor: pointer; }
+.slip-wager .wchip .wchip-amt { font-size: 10px; font-weight: 800; color: var(--mist); }
+.slip-wager .wchip .wchip-sub { font-size: 8.5px; }
+.slip-wager .wchip.chosen { border-color: rgba(255,214,120,.6); background: rgba(232,185,78,.18); }
+.bd-slip .payout-box { margin: 8px 0 0; padding: 7px 10px; border-radius: 11px; background: rgba(255,255,255,.04);
+  border: 1px solid var(--glass-border); }
+.bd-slip .payout-box.valid { border-color: rgba(120,200,140,.4); }
+.bd-slip .payout-box.invalid { border-color: rgba(226,96,74,.55); }
+.po-hero { display: flex; align-items: baseline; justify-content: space-between; }
+.po-hero .pl-k { font-size: 10.5px; color: var(--mist-soft); }
+.po-hero .pl-v { font-size: 22px; font-weight: 900; color: #7be0b0; font-variant-numeric: tabular-nums; }
+.po-hero .pl-v small { font-size: 10px; font-weight: 700; margin-left: 3px; color: var(--mist-soft); }
+.po-sub { display: flex; justify-content: space-between; margin-top: 2px; font-size: 9.5px; }
+.po-sub .po-profit { color: #9ad9b0; }
+.po-sub .po-loss { color: #e8a09a; }
+.bd-slip .po-hint { font-size: 11px; color: var(--mist-soft); text-align: center; padding: 3px 0; }
+.slip-actions { margin-top: 8px; }
+.slip-actions #bet-confirm { width: 100%; padding: 12px; border: none; border-radius: 12px; cursor: pointer;
+  font-size: 15.5px; font-weight: 900; color: #2a1d05;
+  background: linear-gradient(180deg, #ffd465, #e8a934); box-shadow: 0 6px 18px -6px rgba(232,169,52,.6); }
+.slip-actions #bet-confirm:disabled { filter: grayscale(.75); opacity: .55; cursor: default; box-shadow: none; }
+.bd-slip .slip-note { margin-top: 6px; font-size: 9.5px; text-align: center; color: var(--astone); border: none; padding: 0; }
+
+/* 🎫 投票券（確認モーダル内・C演出） */
+.tix { display: flex; border-radius: 10px; overflow: hidden; color: #2b2620; text-align: left;
+  box-shadow: 0 14px 34px -12px rgba(0,0,0,.7), inset 0 0 0 2px #e2d3ac;
+  background: repeating-linear-gradient(0deg, rgba(120,96,60,.05) 0 1px, transparent 1px 4px), #f4ead2;
+  transition: transform .38s ease, opacity .38s ease; }
+.tix-main { flex: 1 1 auto; padding: 11px 12px; min-width: 0; }
+.tix-head { display: flex; justify-content: space-between; font-size: 8.5px; letter-spacing: .08em; color: #6a5f4c;
+  border-bottom: 1px solid rgba(43,38,32,.35); padding-bottom: 4px; }
+.tix-race { font-size: 13.5px; font-weight: 900; margin-top: 6px; }
+.tix-sel { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 15px; }
+.tix-type { font-size: 10px; font-weight: 900; color: #9a2b22; border: 1.5px solid #9a2b22; border-radius: 3px; padding: 1px 5px; }
+.tix-rows { display: flex; gap: 12px; margin-top: 8px; border-top: 1px dashed rgba(43,38,32,.4); padding-top: 7px; }
+.tix-row { display: flex; flex-direction: column; }
+.tix-row small { font-size: 8.5px; color: #6a5f4c; }
+.tix-row b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.tix-row.tix-pay b { color: #9a2b22; font-size: 15px; }
+.tix-stub { flex: none; width: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border-left: 2px dashed rgba(43,38,32,.5); background: rgba(154,43,34,.08); padding: 8px 4px;
+  transition: transform .38s ease, opacity .38s ease; }
+.tix-stub span { font-size: 8px; letter-spacing: .2em; color: #6a5f4c; writing-mode: vertical-rl; }
+.tix-stub b { font-size: 10px; color: #9a2b22; }
+.tix-stub i { font-style: normal; font-size: 12px; font-weight: 900; }
+.tix.tear { transform: rotate(-2deg) translateY(2px); }
+.tix.tear .tix-stub { transform: translate(18px, -14px) rotate(14deg); opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .tix, .tix-stub { transition: none; } }
+.bcf-q { text-align: center; font-size: 12px; color: var(--mist-soft); margin-top: 10px; }
