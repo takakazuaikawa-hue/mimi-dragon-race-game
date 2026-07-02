@@ -34,21 +34,30 @@ const state = {
     streak: 0, bestStreak: 0,
     lastLoginDay: null, loginStreak: 0,   // §37 daily login reward
     brokeCount: 0,   // 終章伏線：0円落ち込み（無心）の回数。3回超で「知らないお姉さん」登場（js/epilogue_engine.js）
+    // ★フラグ台帳（E1一本化・正本=docs/GAME_FLOW_REDESIGN.md §2）：
+    //   ここ（player.flags）＝「自動の統計マイルストーン」専用。直接代入で set する。
+    //   物語・解放の進行フラグの正本は setStoryFlag/getStoryFlag（village.storyFlags に保存）＝
+    //   _chapter_intro_*・metMakura・phoneBought・poroFound・dragonScout/StableUnlocked・
+    //   gameCleared・poroGourmetRaceUnlocked・celestiaStrangerSeen・_unlocked_<id>（解放通知済み）等。
+    //   ※下の poro系〜gameCleared 等の重複キーは旧設計の名残＝実運用は storyFlags 側（getStoryFlag が両読み）。
+    //   　削除せず false のまま温存（将来の統計用に予約）。このリストは resetGame() と常に一致させること。
     flags: {
       seenFirstRaceTutorial: false,
       seenFirstWideTutorial: false,
       reachedCoins_10000: false,
       reachedCoins_100000000: false,
-      firstWideHit: false,
+      everHit: false,              // 初的中（📖図鑑の解放条件・settleRace で set）
+      firstWideHit: false,         // 単勝以外の初的中（目標「ワイド/複勝を当てる」）
       firstRankUp: false,
-      // 泣き虫竜ポロ（相棒・表示専用メタ）。第4章で発見→鑑定→龍舎/スカウト解放（js/poro.js）。
+      mallIntroSeen: false,        // サケの開店祝いVN再生済み（ゲート条件ではない）
+      // ▼旧設計の名残（実運用は storyFlags 側）＝予約。
       poroFound: false,
       poroAppraisalStarted: false,
       poroAppraisalCompleted: false,
       poroConfirmedNotSacredDragon: false,
       dragonScoutUnlocked: false,
       dragonStableUnlocked: false,
-      metMakura: false,            // 第4話「マクラと推し竜文化」到達で図鑑解放（js/poro.js dexUnlocked）
+      metMakura: false,
       gameCleared: false,
       poroGourmetRaceUnlocked: false
     },
@@ -187,10 +196,13 @@ function resetGame() {
     streak: 0, bestStreak: 0,
     lastLoginDay: null, loginStreak: 0,   // §37 daily login reward
     brokeCount: 0,   // 終章伏線：0円落ち込み（無心）の回数。3回超で「知らないお姉さん」登場（js/epilogue_engine.js）
-    flags: {
+    flags: {   // ★初期定義（上の台帳コメント）と同一リストに揃える（E1）
       seenFirstRaceTutorial:false, seenFirstWideTutorial:false,
       reachedCoins_10000:false, reachedCoins_100000000:false,
-      firstWideHit:false, firstRankUp:false
+      everHit:false, firstWideHit:false, firstRankUp:false, mallIntroSeen:false,
+      poroFound:false, poroAppraisalStarted:false, poroAppraisalCompleted:false,
+      poroConfirmedNotSacredDragon:false, dragonScoutUnlocked:false, dragonStableUnlocked:false,
+      metMakura:false, gameCleared:false, poroGourmetRaceUnlocked:false
     },
     village: {
       level: 1, name: "泣き虫ドラゴン村", rescueCoinBase: 300,

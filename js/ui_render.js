@@ -228,9 +228,36 @@ function showTitleSwitcher() {
 // 🛍️ モール解放判定：レースで初めて的中すると解放（flags.everHit）。既存セーブ救済として
 // 単勝勝利歴・衣装の購入/入手歴・着替え歴があれば解放済み扱い（巻き戻さない）。表示専用。
 function mallUnlocked() {
-  // ★第2話「ミズの分析」を読むと開放（総資産3千で第2話が解禁→読む）。docs/PROGRESSION_DESIGN.md。
-  const p = state.player || {}; const f = p.flags || {};
-  return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2")) || !!f.mallIntroSeen;
+  // ★第2話「ミズの分析」を読むと開放＝単一条件（E3解消・docs/GAME_FLOW_REDESIGN.md §1）。
+  //   mallIntroSeen は「サケの衣装ギフトVNを再生済み」の印としてだけ使う（ゲート条件ではない）。
+  return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2"));
+}
+
+// 🛍️ モール開通のお祝いVN（サケが使い方を解説→『ジャングルバニー』贈与→着替えお披露目）。
+// 呼び出し＝モール初訪問時（ui_mall.js）。ホームではVNを出さない鉄則があるため、
+// ホーム側は cut-in（progression.js）→「今すぐ見る▸」→ここ、の順で繋ぐ。表示メタのみ・コイン非消費。
+function playMallIntroVN() {
+  const f = state.player.flags || (state.player.flags = {});
+  if (f.mallIntroSeen || !window.Dialogue) return false;
+  f.mallIntroSeen = true;
+  Dialogue.play([
+    ["sake", "オッズの読み方、覚えてきたな。……ところでミミ、いつまでそのボロを着てるつもりだ？"],
+    ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
+    ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ここがそのモールだ。稼いだコインで好きに選べ。試着は自由、着替えは無料だ。"],
+    ["sake", "それと、開店祝いだ。『ジャングルバニー』──葉っぱと馬券で武装した、お前の勝負服第一号だ。受け取れ。", "happy"]
+  ]).then(() => {
+    try {
+      if (!state.player.outfitsWon) state.player.outfitsWon = [];
+      if (state.player.outfitsWon.indexOf("jungle") < 0 && !outfitOwned(outfitById("jungle"))) state.player.outfitsWon.push("jungle");
+      if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
+      if (typeof saveGame === "function") saveGame();
+      try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+      Dialogue.play([["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"]]);
+      if (typeof rerenderCurrent === "function") rerenderCurrent();
+    } catch (e) {}
+  });
+  if (typeof saveGame === "function") saveGame();
+  return true;
 }
 
 // 📱 配信モード判定：スマホ購入（第4話マクラ後）で配信ホーム化＝LIVE/視聴者/フォロワー/コメント入力/ハート/
@@ -3001,30 +3028,8 @@ function renderResult() {
     c.resultHooksRan = true;
   }
 
-  // 🛍️ モール解放イベント（初的中・一度きり）：サケが使い方を解説→『ジャングルバニー』を贈与→
-  // ミミがその場で着替えて happy 立ち絵で登場（2段構成）。表示メタのみ・コイン非消費。
-  if (c.firstHitEver && !(state.player.flags || {}).mallIntroSeen && !c._mallIntroPlayed && window.Dialogue) {
-    c._mallIntroPlayed = true;
-    setTimeout(() => {
-      Dialogue.play([
-        ["sake", "初勝利、見事だったぞ。……ところでミミ、いつまでそのボロを着てるつもりだ？"],
-        ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
-        ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ホームに🛍️モールを開けておいた。稼いだコインで好きに選べ。試着は自由、着替えは無料だ。"],
-        ["sake", "それと、初勝利の祝いだ。『ジャングルバニー』──葉っぱと馬券で武装した、お前の勝負服第一号だ。受け取れ。", "happy"]
-      ]).then(() => {
-        try {
-          state.player.flags.mallIntroSeen = true;
-          if (!state.player.outfitsWon) state.player.outfitsWon = [];
-          if (state.player.outfitsWon.indexOf("jungle") < 0 && !outfitOwned(outfitById("jungle"))) state.player.outfitsWon.push("jungle");
-          if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
-          if (typeof saveGame === "function") saveGame();
-          try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
-          // 着替え後の立ち絵（現在衣装=jungle）で登場
-          Dialogue.play([["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"]]);
-        } catch (e) {}
-      });
-    }, 600);
-  }
+  // 🛍️ モール解放＝第2話既読ゲート（E3解消）。初的中のお祝いは📖図鑑cut-in（progression.js）が担い、
+  // サケの衣装ギフトVNはモール初訪問時（ui_mall.js → playMallIntroVN）へ移設した（2026-07）。
 
   // 🐲 泣き虫竜ポロ 発見イベント：序盤の「2勝目（単勝）」で出会う（第4章開放=総資産100万より前。
   // ポロは第3・4章の一枚絵に既に登場するため、それより前に加入させる）。完了で龍舎/スカウト解放。

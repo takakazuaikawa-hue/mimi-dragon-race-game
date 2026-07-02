@@ -720,46 +720,71 @@ function renderHome() {
   raceBtn.onclick = () => renderRaceSelect();
   dock.appendChild(raceBtn);
 
+  // ★ナビ＝常時10枠固定（docs/GAME_FLOW_REDESIGN.md §1・D1/D3/A4解消）。
+  //   出入りで枠数が変わらない＝配信化してもレイアウトがガタつかない。ロック表現は2種だけ：
+  //   ・条件明示ロック＝実アイコン＋🔒ラベル＋タップで解放条件（観光/モール/図鑑）
+  //   ・？？？ミステリー枠＝サプライズ性が価値のもの（龍舎=ポロ・SNS=配信変身）
   const rail = el("div", "hl-rail");
   const navItem = (icon, label, desc, go) => {
     const b = el("button", "hl-item", `<span class="ic">${icon}</span><span class="lb">${label}</span>`);
     b.onclick = () => showNavConfirm(icon, label, desc, go);
     return b;
   };
-  if (typeof renderKonronMap === "function") rail.appendChild(navItem("🏝️", "観光", "崑崙島を写真でめぐる。食べ歩き・買い物・レース・温泉・絶景・推し活へ。", () => renderKonronMap()));
+  const lockedItem = (icon, label, title, teaserHtml) => {
+    const b = el("button", "hl-item locked", `<span class="ic">${icon}</span><span class="lb">🔒${label}</span>`);
+    b.onclick = () => showInfoPopup(title,
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>${teaserHtml}</small></div></div>`);
+    return b;
+  };
+  const mysteryItem = () => {
+    const b = el("button", "hl-item locked", `<span class="ic">❔</span><span class="lb">？？？</span>`);
+    b.onclick = () => showInfoPopup("❔ ？？？",
+      `<div class="mm-row"><span class="mm-ic">❔</span><div><b>ひみつ</b><small>島で暮らしていれば、いつか出会えます。</small></div></div>`);
+    return b;
+  };
+  // 1 観光（初勝利で解放・条件明示）
+  rail.appendChild((typeof konronMapUnlocked === "function" && konronMapUnlocked())
+    ? navItem("🏝️", "観光", "崑崙島を写真でめぐる。食べ歩き・買い物・レース・温泉・絶景・推し活へ。", () => renderKonronMap())
+    : lockedItem("🏝️", "観光", "🏝️ 観光", "レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます。"));
+  // 2 暮らし／3 食事（常設）
   rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
-  if (typeof renderMeals === "function") rail.appendChild(navItem("🍽️", "食事", "ミミの食べ歩きコレクション。食べて・当てて集めます。", () => renderMeals()));
-  if (mallUnlocked()) {
-    rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
-  } else {
-    // 第2話「ミズの分析」を読むと開放（progression再設計）
-    const lockedMall = el("button", "hl-item locked", `<span class="ic">🔒</span><span class="lb">モール</span>`);
-    lockedMall.onclick = () => showInfoPopup("🛍️ ショッピングモール",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話「ミズの分析」</u>を読むと開放されます（総資産3千で第2話が解禁）。</small></div></div>`);
-    rail.appendChild(lockedMall);
-  }
-  // 竜まわりナビ：龍舎(ポロ発見=2勝)が解放済みなら🐲龍舎（図鑑・竜スカウトは龍舎の中の導線に集約）。
-  // 図鑑は「第4話＝マクラと推し竜文化」に会ってから解放（ユーザー指定）。龍舎前にマクラに会った稀ケースの
-  // みここで図鑑を単独ナビに。アイコンは🐲（🏠暮らしと重複回避）。
-  if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
-    rail.appendChild(navItem("🐲", "龍舎", "ポロと出会った竜たちの拠点。なでて仲良く＋竜スカウト＋（図鑑）。", () => renderStable()));
-  } else if (typeof dexUnlocked === "function" && dexUnlocked()) {
-    rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
-  }
+  rail.appendChild(navItem("🍽️", "食事", "ミミの食べ歩きコレクション。食べて・当てて集めます。", () => renderMeals()));
+  // 4 モール（第2話で解放・条件明示）
+  rail.appendChild(mallUnlocked()
+    ? navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall())
+    : lockedItem("🛍️", "モール", "🛍️ ショッピングモール", "<u>第2話「ミズの分析」</u>を読むと開放されます（総資産3千で第2話が解禁）。"));
+  // 5 龍舎（ポロ発見＝サプライズ→？？？枠）
+  rail.appendChild((typeof poroStableUnlocked === "function" && poroStableUnlocked())
+    ? navItem("🐲", "龍舎", "ポロと出会った竜たちの拠点。なでて仲良く＋竜スカウト＋（図鑑）。", () => renderStable())
+    : mysteryItem());
+  // 6 図鑑（初的中で解放・条件明示・解放後は常設の独立枠＝龍舎に吸収して消さない）
+  rail.appendChild((typeof dexUnlocked === "function" && dexUnlocked())
+    ? navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection())
+    : lockedItem("📖", "図鑑", "📖 図鑑", "レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。"));
+  // 7 物語（常設）
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  // 📱 SNS＝タイムライン＋ファンレター。★配信モード（スマホ購入後）のみ＝それまではSNSナビを出さない。
+  // 8 SNS（スマホ購入＝配信変身のサプライズ→？？？枠）
   if (broadcast && typeof renderSns === "function") {
     const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
     rail.appendChild(navItem("📱", "SNS", unread ? `島の投稿＋ファンレター（未読 ${unread} 通）。` : "島のみんなの投稿とファンレター。", () => renderSns()));
+  } else {
+    rail.appendChild(mysteryItem());
   }
+  // 9 設定／10 シェア（常設）
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
-  // 列数を“実際の項目数”に追従させ、右に空きセル（隙間）ができるのを防ぐ。8以下は1行、9以上は2行に均等割り。
+  // 10枠固定＝5列×2行で不変（枠数が変わらないのでレイアウトも不変）。
   const _rn = rail.children.length;
   rail.style.gridTemplateColumns = "repeat(" + (_rn <= 8 ? _rn : Math.ceil(_rn / 2)) + ", 1fr)";
   dock.appendChild(rail);
   wrap.appendChild(dock);
 
   app.appendChild(wrap);
+
+  // 🔓 解放お祝いチェック（progression.js・ホーム到着1回につきモーダル1件まで）。
+  //   FTUE保護＝初出走前は何も出さない（最初の5分は核ループに集中させる・リサーチ①）。
+  if (typeof progressionCheckOnHome === "function" && (p.completedRaces || 0) >= 1) {
+    setTimeout(() => { try { if (state.ui.screen === "home") progressionCheckOnHome(); } catch (e) {} }, 700);
+  }
 }
 

@@ -100,7 +100,9 @@ const KONRON_AREAS = [
   { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 61, my: 27, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
 ];
 
-function konronMapUnlocked() { return true; }
+// ★観光は「初勝利」で解放（進行組み込み・ユーザー確定 2026-07・docs/GAME_FLOW_REDESIGN.md §1）。
+//   序盤3目標（出走→的中→勝利）の締めのご褒美として島が開く。ロックは条件明示（ホームの🔒枠）。
+function konronMapUnlocked() { return ((state.player && state.player.wins) || 0) >= 1; }
 function _kmTotal() { return (state.player && state.player.totalAssets) || 0; }
 function _kmSpotOpen(s) { return _kmTotal() >= (KM_TIER_AT[(s && s.tier) || 0] || 0); }
 function _kmTierLabel(t) { return ["序盤", "中盤", "後半", "終盤"][t] || ""; }
@@ -161,6 +163,12 @@ function _ktRenderRail() {
 }
 
 function renderKonronMap() {
+  if (!konronMapUnlocked()) {   // 解放前は入口で案内（?go=直行や旧導線でも迷子にしない）
+    renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ 観光",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "konron_map";
   _kmArea = null; _kmSpot = null; _ktCat = "all";
   const app = beginScreen();
