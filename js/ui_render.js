@@ -272,6 +272,11 @@ function broadcastOn() {
 // ★表示専用＝レース着順/オッズ/配当には非干渉（コインの支払いは衣装購入と同じメタ消費）。docs/PROGRESSION_DESIGN.md
 function buyPhoneAndGoLive() {
   if (typeof getStoryFlag === "function" && getStoryFlag("phoneBought")) return;
+  // 実行中ガード：VN再生中に🎯チップを再タップすると購入VNが直列に二重で積まれる（実測）。
+  // 30秒で自動解除＝VNを途中離脱（＝購入不成立）してもCTAが死なない。
+  if (window._phoneBuying) return;
+  window._phoneBuying = true;
+  setTimeout(function () { window._phoneBuying = false; }, 30000);
   var _finish = function () {
     var p = state.player; var cost = 3000;
     if ((p.coins || 0) >= cost) p.coins = p.coins - cost;   // 買えるなら支払い／足りなければマクラが立て替え

@@ -68,7 +68,11 @@ function renderStory() {
 
   // ★特別號＝クリア後の送り出し（B3解消・docs/GAME_FLOW_REDESIGN.md §3）。ED到達後のみ掲載。
   //   物語の側から「次はこれで遊べる」を記事として案内する（表示専用・goto導線のみ）。
-  if (typeof STORY_EXTRA_ISSUE !== "undefined" && state.epilogue && state.epilogue.edFlag) {
+  // edFlagの実体は state.player.epilogue（epilogue_engine.js epData()）＝ state.epilogue ではない
+  // （誤パス参照だと実EDで特別號が出ない＝QAで自分が偽パスを作って自己合格していた反省込み）。
+  const _edReached = (typeof epData === "function") ? !!epData().edFlag
+    : !!(state.player && state.player.epilogue && state.player.epilogue.edFlag);
+  if (typeof STORY_EXTRA_ISSUE !== "undefined" && _edReached) {
     news.appendChild(_newsRubric("特別號 ・ クリア後の島"));
     const ex = el("div", "news-lead");
     ex.textContent = STORY_EXTRA_ISSUE.lead;
