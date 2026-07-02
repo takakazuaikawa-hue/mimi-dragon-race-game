@@ -75,7 +75,7 @@ function rcBgForSlug(slug, fbSlug, onReady) {
   if (!e.ok && onReady) e.cbs.push(onReady);
   return e.ok ? e.img : null;
 }
-function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.region] || "fire", "fire", onReady); }
+function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.region] || "stadium", "stadium", onReady); }
 function rcRenderSkyBase(x, W, H, time, bgImg) {
   var c = RC_SKY_CONF[time] || RC_SKY_CONF.night;
   var hor = H * RC_SKY_HOR, sc = W / 1536;
@@ -484,6 +484,79 @@ function _rcBuildFor(color) {
   }
   return b;
 }
+// =========================================================================
+// Signature ACCENT trail (意匠 design.accent) — each dragon continuously sheds a
+// faint world-space particle behind it that matches its design: ember/firegold for
+// fire types, spark for the electric speedsters, wind streaks for wing-closers,
+// sparkle for the starlight dragon, snow for the ice tank, mist for the fog mystic,
+// tear for the crybaby, sleep bubbles for the sleepy cloud — so a field of 8 reads
+// as 8 distinct characters at a glance. Emits into the existing S.particles, drawn
+// BEHIND the dragons. Purely cosmetic — never touches progress / odds / payouts.
+// =========================================================================
+const _RC_ACCENT_RATE = {   // seconds between emits (smaller = denser); 'none' = no trail
+  ember: 0.085, firegold: 0.07, spark: 0.10, wind: 0.13,
+  sparkle: 0.16, snow: 0.16, mist: 0.14, tear: 0.34, sleep: 0.5
+};
+function _rcMakeAccent(kind, x, y, dep, color, aura) {
+  const r = Math.random;
+  const p = { acc: true, kind: kind, x: x, y: y, vx: -18 * dep, vy: 0, size: 1.6 * dep, life: 1, max: 0.7, color: color || '#fff' };
+  switch (kind) {
+    case 'ember':    p.vx -= 6 * dep;  p.vy = -16 * dep - r() * 10 * dep; p.size = (1.3 + r() * 0.9) * dep; p.max = 0.6 + r() * 0.3; break;
+    case 'firegold': p.vy = -18 * dep - r() * 12 * dep; p.size = (1.4 + r() * 1.0) * dep; p.color = aura || '#ffcf52'; p.max = 0.55 + r() * 0.3; p.spark = r() < 0.3; break;
+    case 'spark':    p.vx = -30 * dep - r() * 20 * dep; p.vy = (r() - 0.5) * 26 * dep; p.size = (1.0 + r() * 0.7) * dep; p.max = 0.28 + r() * 0.16; p.color = _rcLighten(color || '#cfe6ff', 0.32); break;
+    case 'wind':     p.vx = -34 * dep; p.vy = (r() - 0.5) * 6 * dep; p.size = (7 + r() * 6) * dep; p.max = 0.5 + r() * 0.3; p.color = _rcLighten(color || '#cfe6ff', 0.4); break;   // size = streak length
+    case 'sparkle':  p.vx = -10 * dep; p.vy = (r() - 0.5) * 12 * dep; p.size = (1.7 + r() * 1.3) * dep; p.max = 0.6 + r() * 0.4; p.color = aura || _rcLighten(color || '#fff', 0.42); break;
+    case 'snow':     p.vx = -10 * dep + (r() - 0.5) * 8 * dep; p.vy = 12 * dep + r() * 8 * dep; p.size = (1.2 + r() * 1.0) * dep; p.max = 0.9 + r() * 0.5; p.color = '#eaf6ff'; break;
+    case 'mist':     p.vx = -14 * dep; p.vy = -4 * dep; p.size = (6 + r() * 6) * dep; p.max = 0.7 + r() * 0.5; p.color = '#cdd9e6'; break;
+    case 'tear':     p.vx = -12 * dep; p.vy = 10 * dep; p.size = (1.3 + r() * 0.7) * dep; p.max = 0.6 + r() * 0.3; p.color = '#aee0ff'; break;
+    case 'sleep':    p.vx = -6 * dep;  p.vy = -14 * dep - r() * 6 * dep; p.size = (2.2 + r() * 1.4) * dep; p.max = 1.0 + r() * 0.6; p.color = '#dfeaff'; break;
+  }
+  return p;
+}
+function _rcEmitAccent(S, design, o) {
+  if (!design) return;
+  const kind = design.accent;
+  if (!kind || kind === 'none' || o.grounded) return;          // austere dragons (gando) + walk-in: no trail
+  const base = _RC_ACCENT_RATE[kind]; if (!base) return;
+  const iv = base * (1.35 - clamp(o.intensity || 0, 0, 1) * 0.6);   // denser when surging
+  const now = performance.now() / 1000;
+  S.accT = S.accT || {};
+  if (now - (S.accT[o.id] || 0) < iv) return;
+  S.accT[o.id] = now;
+  const dep = o.dep || 1;
+  const rx = o.x - 9 * dep + (Math.random() - 0.5) * 6 * dep;
+  const ry = o.y - 8 * dep + (Math.random() - 0.5) * 7 * dep;
+  S.particles.push(_rcMakeAccent(kind, rx, ry, dep, o.color, design.aura));
+}
+function _rcDrawAccent(ctx, p, a) {
+  const k = p.kind;
+  if (k === 'wind') {                                  // pale speed streak
+    ctx.strokeStyle = rcRgba(p.color || '#cfe6ff', 0.26 * a); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.size, p.y); ctx.stroke(); return;
+  }
+  if (k === 'mist') {                                  // soft low-alpha puff
+    ctx.fillStyle = rcRgba(p.color || '#cdd9e6', 0.12 * a);
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.2 + (1 - a)), 0, Math.PI * 2); ctx.fill(); return;
+  }
+  if (k === 'spark') {                                 // quick electric tick
+    ctx.strokeStyle = rcRgba(p.color || '#fff', 0.9 * a); ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 3, p.y - 1.6); ctx.stroke(); return;
+  }
+  if (k === 'sparkle' || (k === 'firegold' && p.spark)) {   // 4-point twinkle
+    rcSparkle(ctx, p.x, p.y, p.size * 1.8, rcRgba(p.color || '#fff', 0.92 * a)); return;
+  }
+  if (k === 'ember' || k === 'firegold') {             // warm rising spark
+    ctx.fillStyle = k === 'firegold' ? rcRgba(p.color || '#ffcf52', 0.92 * a)
+                                     : 'rgba(255,' + (150 + Math.floor(80 * a)) + ',80,' + (0.85 * a) + ')';
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); return;
+  }
+  if (k === 'sleep') {                                 // drifting bubble (hollow)
+    ctx.strokeStyle = rcRgba(p.color || '#dfeaff', 0.5 * a); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.stroke(); return;
+  }
+  ctx.fillStyle = rcRgba(p.color || '#fff', (k === 'tear' ? 0.85 : 0.72) * a);   // snow / tear / default soft dot
+  ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+}
 function rcDrawDragonPixel(ctx, o) {
   if (!RC_DRAGON_FRAMES) return;   // trace not ready yet (a few ms at startup)
   let fi;
@@ -513,10 +586,11 @@ function rcDrawDragonPixel(ctx, o) {
   ctx.translate(0, -bob * pxc * 0.9);
   // soft luminous halo — keeps the eye-catching "pop" without washing out the colours
   {
-    ctx.save(); ctx.globalAlpha = 0.22;
-    const gc = rcShade(o.color || '#888', 46), r = 14 * pxc;
+    const _au = o.design && o.design.aura;                          // 意匠オーラ色（伝説竜）＞ 既定の映えハロー
+    ctx.save(); ctx.globalAlpha = _au ? 0.34 : 0.22;
+    const gc = _au || rcShade(o.color || '#888', 46), r = (_au ? 17 : 14) * pxc;
     const ng = ctx.createRadialGradient(0, -pxc, 2, 0, -pxc, r);
-    ng.addColorStop(0, rcRgba(gc, 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.15)); ng.addColorStop(1, rcRgba(gc, 0));
+    ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.16)); ng.addColorStop(1, rcRgba(gc, 0));
     ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -pxc, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
   if (o.glow > 0) {
@@ -686,6 +760,8 @@ function _rcDrawRigPart(ctx, p, color, o) {
   ctx.save();
   ctx.translate(p.pivot.x, p.pivot.y);
   if (p.role === 'wing') {
+    const ws = o.design && o.design.wingSize;                                                // 意匠の翼サイズ（鳳凰=大/岩鱗=小）。ピボット=翼根なので根元固定で伸縮。footprintは不変＝表示専用。
+    if (ws && ws !== 1) { const k = 1 + (ws - 1) * 0.7; ctx.scale(k, k); }                    // 過剰を抑えた等比スケール
     _rcBendStrips(ctx, img, bx, by, g, 0.20, (bend && bend.rootEdge) || 'right');           // 羽ばたき（先端しなり）
   } else if (p.role === 'tail') {
     _rcBendStrips(ctx, img, bx, by, g * 0.7 + 0.8, 0.11, (bend && bend.rootEdge) || 'right'); // 尾のしなり
@@ -704,7 +780,8 @@ function _rcDrawRigPart(ctx, p, color, o) {
     // 自然なまばたきを時々（gait位相で全頭ばらける）
     const blink = Math.sin(g * 0.9 + (p.pivot.x % 7));
     if (blink > 0.97) syE *= 0.15;
-    ctx.translate(dx, 0); ctx.scale(1, syE); ctx.drawImage(img, bx, by);
+    const es = Math.max(0.6, Math.min(1.45, (o.design && o.design.eye) || 1));               // 意匠の目サイズ（泣き虫=大/眠雲=小）。ピボット中心で等比＝目中心(_eyeC)不変＝漫符位置はズレない。
+    ctx.translate(dx, 0); ctx.scale(es, syE * es); ctx.drawImage(img, bx, by);
   } else {
     ctx.drawImage(img, bx, by);
   }
@@ -726,8 +803,8 @@ function rcDrawDragonRig(ctx, o) {
   ctx.rotate(-(o.lean || 0) * 0.06 + (o.bank || 0) * 0.10);
   if (o.squash && o.squash !== 1) { const sq = Math.max(0.7, Math.min(1.3, o.squash)); ctx.scale(2 - sq, sq); }
   ctx.translate(0, -bob * px * 0.9);
-  { ctx.save(); ctx.globalAlpha = 0.22; const gc = rcShade(o.color || '#888', 46), rr = 14 * px;   // グリッド竜と同じ“映え”ハロー
-    const ng = ctx.createRadialGradient(0, -px, 2, 0, -px, rr); ng.addColorStop(0, rcRgba(gc, 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.15)); ng.addColorStop(1, rcRgba(gc, 0));
+  { const _au = o.design && o.design.aura; ctx.save(); ctx.globalAlpha = _au ? 0.34 : 0.22; const gc = _au || rcShade(o.color || '#888', 46), rr = (_au ? 17 : 14) * px;   // 意匠オーラ色（伝説竜）＞ 既定の映えハロー
+    const ng = ctx.createRadialGradient(0, -px, 2, 0, -px, rr); ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.16)); ng.addColorStop(1, rcRgba(gc, 0));
     ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -px, rr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   ctx.scale(sx, sy);
   ctx.translate(-ax, -ay);
@@ -735,8 +812,89 @@ function rcDrawDragonRig(ctx, o) {
   for (let i = 0; i < parts.length; i++) { const p = parts[i]; if (p._img) _rcDrawRigPart(ctx, p, o.color, o); }
   ctx.restore();
 }
+// =========================================================================
+// 3D-render dragon sprites (mimi_dragon_3d_spec_pack v1.0 — 表示専用).
+// 各竜に images/dragons/<id>.webp（allrounder基準を最優先参照に忠実リカラーした
+// 3Dレンダリング風スプライト・マスターリストの意匠準拠）を用意し、グリッド/リグ竜の
+// 代わりに描く。上下動/リーン/バンク/スカッシュ/スピンの体の動きは流用し、署名トレイル
+// と伝説オーラはそのまま重なる。読込中・未配置は静かに従来描画へフォールバック。
+// 純粋に表示のみ — 画面の着順は raceResult と一致したまま（数値非干渉）。
+// =========================================================================
+const RC_DSPRITE = Object.create(null);
+const RC_DSP_H = 62;                 // 画面上の竜の基準高さ(px)＝grid竜と概ね同等。scaleで奥行き調整
+function _rcDragonSprite(id) {
+  if (!id) return null;
+  let e = RC_DSPRITE[id];
+  if (!e) {
+    e = RC_DSPRITE[id] = { img: new Image(), ok: false, bad: false, box: null };
+    e.img.onload = function () {
+      try {
+        // ①グレー無地背景をキー抜き（HD-2D納品は中性グレー背景＝四隅からflood-fillで“繋がった背景だけ”
+        //   透過。体内の灰色＝フガクの鉄岩装甲などは連結していないので残る）②被写体bboxを算出。
+        const W = e.img.naturalWidth, H = e.img.naturalHeight;
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const x = c.getContext('2d'); x.drawImage(e.img, 0, 0);
+        const im = x.getImageData(0, 0, W, H), d = im.data;
+        if (d[3] > 200) {                      // 角が不透明＝グレー背景素材→キー抜き（既透過素材はスキップ）
+          const cr = d[0], cg = d[1], cb = d[2], TOL2 = 34 * 34;
+          const stack = [0, W - 1, (H - 1) * W, (H - 1) * W + W - 1];
+          const seen = new Uint8Array(W * H);
+          while (stack.length) {
+            const i = stack.pop();
+            if (seen[i]) continue; seen[i] = 1;
+            const q = i * 4;
+            if (d[q + 3] === 0) continue;
+            const dr = d[q] - cr, dg = d[q + 1] - cg, db = d[q + 2] - cb;
+            if (dr * dr + dg * dg + db * db > TOL2) continue;
+            d[q + 3] = 0;
+            const xx = i % W;
+            if (xx > 0) stack.push(i - 1); if (xx < W - 1) stack.push(i + 1);
+            if (i >= W) stack.push(i - W); if (i < (H - 1) * W) stack.push(i + W);
+          }
+          x.putImageData(im, 0, 0);
+          e.cv = c;                            // 以後はキー抜き済みcanvasを描画ソースに
+        }
+        let minx = W, miny = H, maxx = 0, maxy = 0, found = false;
+        for (let yy = 0; yy < H; yy += 2) for (let xx = 0; xx < W; xx += 2) {
+          if (d[(yy * W + xx) * 4 + 3] > 24) { found = true; if (xx < minx) minx = xx; if (xx > maxx) maxx = xx; if (yy < miny) miny = yy; if (yy > maxy) maxy = yy; }
+        }
+        e.box = found ? { x: minx, y: miny, w: Math.max(1, maxx - minx), h: Math.max(1, maxy - miny) } : { x: 0, y: 0, w: W, h: H };
+      } catch (_) { e.box = { x: 0, y: 0, w: e.img.naturalWidth, h: e.img.naturalHeight }; }
+      e.ok = true;
+    };
+    e.img.onerror = function () { e.bad = true; };          // 無ければ従来描画へ（数値・表示とも安全）
+    e.img.src = 'images/dragons/' + id + '.png?v=1';
+  }
+  return e;
+}
+function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok); }
+function rcDrawDragonSprite(ctx, o) {
+  const e = _rcDragonSprite(o.id);
+  if (!e || !e.ok) { _rcEnsureRig(); return (RC_RIG ? rcDrawDragonRig : rcDrawDragonPixel)(ctx, o); }
+  const img = e.cv || e.img, b = e.box;   // キー抜き済みcanvas優先（グレー背景素材の透過版）
+  const px = (o.scale || 1) * RC_DRG.px;
+  const targetH = RC_DSP_H * (o.scale || 1);                 // 体の高さで正規化（竜ごとの余白差を吸収）
+  const sc = targetH / b.h, w = b.w * sc, h = b.h * sc;
+  const bob = o.grounded ? Math.abs(Math.sin(o.gait || 0)) * 0.6 : Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);
+  ctx.save();
+  ctx.translate(o.x, o.y);
+  if (o.spin) ctx.rotate(o.spin);
+  if (o.tumble) ctx.rotate(o.tumble);
+  ctx.rotate(-(o.lean || 0) * 0.05 + (o.bank || 0) * 0.10);
+  if (o.squash && o.squash !== 1) { const sq = Math.max(0.7, Math.min(1.3, o.squash)); ctx.scale(2 - sq, sq); }
+  ctx.translate(0, -bob * px * 0.9);
+  // 映え／伝説オーラ（グリッド竜と同じ意図）
+  { const _au = o.design && o.design.aura; ctx.save(); ctx.globalAlpha = _au ? 0.34 : 0.20; const gc = _au || rcShade(o.color || '#888', 46), rr = (_au ? 0.62 : 0.5) * Math.max(w, h);
+    const ng = ctx.createRadialGradient(0, -h * 0.45, 2, 0, -h * 0.45, rr); ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.6)); ng.addColorStop(0.6, rcRgba(gc, 0.14)); ng.addColorStop(1, rcRgba(gc, 0));
+    ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -h * 0.45, rr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, b.x, b.y, b.w, b.h, -w / 2, -h + 2, w, h);   // bbox を足元基準(o.y)・水平中央に
+  ctx.restore();
+}
 function rcDrawDragon(ctx, o) {
   if (typeof window !== 'undefined' && window.RC_USE_RIG === false) return rcDrawDragonPixel(ctx, o);
+  if (o.id && rcHasDragonSprite(o.id)) return rcDrawDragonSprite(ctx, o);   // 3D絵が用意済み＝最優先（表示専用）
+  if (o.id) _rcDragonSprite(o.id);                                          // 先読みkick（次フレームから3D絵に）
   if (RC_RIG) return rcDrawDragonRig(ctx, o);
   _rcEnsureRig();
   return rcDrawDragonPixel(ctx, o);   // ロード完了までグリッド竜で繋ぐ
@@ -2152,6 +2310,7 @@ function startRaceCanvas(container, ctx) {
     for (const p of S.particles) {
       if (p.scr) continue;
       const a = clamp(p.life, 0, 1);
+      if (p.acc) { _rcDrawAccent(cctx, p, a); continue; }
       if (p.kind === "dust") {
         cctx.fillStyle = `rgba(184,174,154,${0.42 * a})`;
         cctx.beginPath(); cctx.arc(p.x, p.y, p.size * (1 + (1 - a)), 0, Math.PI * 2); cctx.fill();
@@ -2302,15 +2461,16 @@ function startRaceCanvas(container, ctx) {
         _mood = st.m;
       }
       rcDrawDragon(cctx, {
-        x: dcx, y: spriteY, scale: sprScale,
+        x: dcx, y: spriteY, scale: sprScale, id: dr.id,
         color: dr.color, style: dr.style, design: dragonDesign(dr.id),
         tint: (S._cmap || (S._cmap = (typeof rcDistinctColors === 'function' ? rcDistinctColors(dragons) : {})))[dr.id],
         gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6, mood: _mood,
         lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
         bank: bank, spread: spread, spin: beh.spin, squash: beh.squash, grounded: S.entryT > 0
       });
+      _rcEmitAccent(S, dragonDesign(dr.id), { x: dcx, y: spriteY, dep: dep, color: dr.color, intensity: intensity, grounded: S.entryT > 0, id: dr.id });
 
-      rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);
+      if (!rcHasDragonSprite(dr.id)) rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);   // 3D絵は自前の表情を持つので漫符overlayは出さない
       // bet reticle (player's pick)
       if (betSet.has(dr.id)) {
         cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;
@@ -2681,6 +2841,10 @@ function startRaceCanvas(container, ctx) {
         p.vy += 26 * dt;                       // gentle fall
         p.vx += Math.sin((p.rot || 0) * 2) * 18 * dt; // flutter sway
         p.rot = (p.rot || 0) + (p.vr || 0) * dt;
+      } else if (p.acc) {
+        if (p.kind === 'snow' || p.kind === 'tear') p.vy += 16 * pdt;        // 落ちる
+        else if (p.kind === 'ember' || p.kind === 'firegold' || p.kind === 'sleep') p.vy -= 10 * pdt;  // 昇る
+        p.vx *= (1 - 0.7 * pdt);                                             // 尾を引いて減速
       } else if (!p.amb) { p.vy += 60 * pdt; }
       else if (p.kind === "ember") { p.vy -= 9 * pdt; }
       p.life -= pdt / p.max;
