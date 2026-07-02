@@ -82,12 +82,22 @@ YouTube Shorts/TikTok が横長環境（PCブラウザ）でどう振る舞う�
 
 - 背景の横位置補正：`js/ui_home.js` `HOME_BGS` の `focusX` ＋ `im.style.objectPosition`（本書§1）。
 - 背景の縦位置補正（既存）：`js/ui_home.js` `calibrate()`（`floorUsed`・`docs/HOME_BG_SPEC.md`）。
-- **PCフレーム（9:16厳密固定・2026-07実装）**：`style.css` `@media (min-width: 540px)`。
+- **PCフレーム（9:16厳密固定＋fit-height・2026-07実装）**：`style.css` `@media (min-width: 540px)`。
   - `html`＝`display:flex;align-items:center;justify-content:center`（bodyを縦横中央へ）＋`::before/::after`が世界観アンビエント（レターボックス全体を埋める・home/title含め常時）。
-  - `body`＝`max-width:470px;aspect-ratio:9/16;overflow:hidden;transform:translateZ(0)`（＝**containing block化**。`document.body.appendChild`で追加される十数箇所のモーダル/演出/音量ボタン等が、個別修正なしで自動的にこの枠内へ収まる）。`min-height:0`で基本ルールの`min-height:100dvh`を打ち消す（無いとaspect-ratioが無視される＝実測で発覚した罠）。
-  - `#header`＝`flex:none`（固定）／`#app`＝`flex:1 1 auto;overflow-y:auto`（内部だけスクロール）。
+  - `body`＝`max-width: min(470px, calc(100dvh * 9 / 16));aspect-ratio:9/16;overflow:hidden;transform:translateZ(0)`。
+    **★fit-height**：枠の高さがウィンドウ実高さを超える場合は本物のShorts同様“端末ごと縮む”＝低いノートPC窓でも
+    ページスクロールが出ない（実測：1280×800→450×800／1366×768→432×768、いずれもスクロール0・縦横中央）。
+    縦長窓では470×836にキャップし上下レターボックス（700×2000→上582px）。旧「既知の残課題（低い窓で数十pxスクロール）」はこれで解消。
+    （＝**containing block化**。`document.body.appendChild`のモーダル/演出/音量ボタン等が個別修正なしで枠内へ収まる）。
+    `min-height:0`で基本ルールの`min-height:100dvh`を打ち消す（無いとaspect-ratioが無視される＝実測で発覚した罠）。
+  - `#header`＝`flex:none;max-width:100%`／`#app`＝`flex:1 1 auto;overflow-y:auto;max-width:100%`（内部だけスクロール）。
+    **★max-widthをnoneにしない**：noneだと横カルーセル等の固有幅で#appが数千pxに膨張し中身が右へ切れて見える
+    （観光`.kt-rail`で実測7523px）。`100%`＝枠幅にクランプし、広い子は各自の`overflow-x`で内部スクロールに収まる。
   - **既知の副作用と対処**：画面遷移アニメーション（`#app.nav-fwd > *`等）が`transform`を`fill-mode:both`で残すと、`position:sticky`な子要素（`.rs-ctrl`等）の基準計算が壊れる（Chromium系の既知の癖）。`both`→`backwards`に変更して解消済み。
-  - **既知の残課題**：`body`のアスペクト固定値(470×836px)が実ウィンドウ高さを超える場合（例1280×800）、ページ全体が数十px分スクロール可能になる（クリップではなくスクロールなので操作は可能・自己診断も✅）。
+  - **計測の作法（devcheck）**：入場アニメ(translateX)の途中で測ると全画面が“右に+18px あふれ”に見える誤検出が出る。
+    さらにバックグラウンドタブではCSSアニメ/rAFがスロットルされ「待っても終わらない」。よって
+    `responsiveSelfCheckAll` は**finiteアニメを`finish()`で終端へ強制送りしてから測る**（rAF不使用）。
+  - **検証済みマトリクス（2026-07-02・全27画面✅）**：320×700／390×844／1280×800／1366×768／700×2000。
 - 運用チェックリスト：`docs/RESPONSIVE_GUARDRAILS.md`。
 
 ## 5. 新しい背景画像を追加する時のチェック

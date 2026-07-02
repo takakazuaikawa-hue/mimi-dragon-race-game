@@ -1646,15 +1646,21 @@ table.entry-table {
   /* body＝“端末”そのもの。9:16に厳密固定＋角丸/金のヘアライン/外側グロー＋全position:fixed子孫の
      containing block（transform）＋内部はheader固定・appのみスクロール（H1のオーバーフロー対策を継承）。 */
   body {
-    width: 100%; max-width: 470px; aspect-ratio: 9 / 16; margin: 0;
+    /* ★fit-height（2026-07・ユーザー「画面の崩れ」指摘の根本対応）：枠の高さ(幅×16/9)が
+       ウィンドウ実高さを超える場合、本物のShorts同様“端末ごと縮んで”収める＝
+       幅 = min(470px, 100dvh×9/16)。これで低いノートPC窓(768/800px高)でも
+       ページスクロールが出ない（旧「既知の残課題」の解消・§SCREEN_SIZE_RULES.md）。 */
+    width: 100%; max-width: min(470px, calc(100dvh * 9 / 16)); aspect-ratio: 9 / 16; margin: 0;
     min-height: 0;   /* 基本ルールの min-height:100dvh を打ち消す＝これが無いとaspect-ratioが無視され縦長PC窓でbodyがviewport一杯に伸びてしまう（実測で発覚） */
     position: relative; z-index: 1; overflow: hidden; transform: translateZ(0);
     display: flex; flex-direction: column;
     border-radius: 16px;
     box-shadow: 0 0 0 1px rgba(230,178,74,.18), 0 34px 90px -36px rgba(0,0,0,.92), 0 0 130px -48px rgba(255,150,80,.14);
   }
-  #header { flex: none; max-width: none; border-radius: 16px 16px 0 0; }
-  #app { flex: 1 1 auto; min-height: 0; max-width: none; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* max-width:100%＝bodyの枠幅にクランプ（noneだと横カルーセル等の固有幅で#appが数千pxに膨張し、
+     中身が右へ切れて見える＝観光kt-railで実測7523px。100%でどの画面も枠内スクロールに収まる）。 */
+  #header { flex: none; max-width: 100%; border-radius: 16px 16px 0 0; }
+  #app { flex: 1 1 auto; min-height: 0; max-width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   /* 通常画面はガラス調サーフェスを敷き、アンビエント上でも内容を読みやすく（ホーム/タイトルは自前の
      全画面演出があるのでガラス地は除外＝据え置き）。 */
   body:not(.home-mode):not(.title-mode) #app {
