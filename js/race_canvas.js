@@ -1557,6 +1557,7 @@ function startRaceCanvas(container, ctx) {
     zoomBump: 0,        // extra push-in impulse from overtakes / close battles
     photoT: 0,          // R8-W1: フォトフィニッシュ静止1拍の残り秒（>0の間 世界を止める・表示のみ）
     photoUsed: false,   // 1着の鼻先ゴールで一度だけ発火
+    flyIn: 0,           // R8-W6d: GOからの秒数——地面スタート→各飛行高度へ舞い上がる演出用（表示のみ）
     prevStand: null,    // {id: place} last frame, for overtake detection
     cheerT: 1.2,        // throttle for cheer-your-pick callouts
     battleT: 0,         // throttle for 接戦！ callouts
@@ -2454,18 +2455,23 @@ function startRaceCanvas(container, ctx) {
       }
       cctx.stroke();
     };
-    cctx.strokeStyle = "rgba(0,0,0,0.16)"; cctx.lineWidth = 3;    railLine(g.top, 3.5);     // shadow under the far rail
-    cctx.strokeStyle = "rgba(244,248,255,0.72)"; cctx.lineWidth = 2.5; railLine(g.top, 1.5); // far rail (white)
-    cctx.strokeStyle = "rgba(220,230,245,0.26)"; cctx.lineWidth = 1.5; railLine(g.bottom, -1); // near rail (subtle)
-
-    // roadside props for the current terrain (torches, turn flags, rocks, …)
-    drawProps(g, WINW);
+    // （パララックス野外ではレール/プロップとも描かない＝空中に柵や旗が浮く不自然を排除。
+    //   道具立ては絵の中のもの＋接地したゲートだけ・ユーザー指摘）
+    if (!para) {
+      cctx.strokeStyle = "rgba(0,0,0,0.16)"; cctx.lineWidth = 3;    railLine(g.top, 3.5);     // shadow under the far rail
+      cctx.strokeStyle = "rgba(244,248,255,0.72)"; cctx.lineWidth = 2.5; railLine(g.top, 1.5); // far rail (white)
+      cctx.strokeStyle = "rgba(220,230,245,0.26)"; cctx.lineWidth = 1.5; railLine(g.bottom, -1); // near rail (subtle)
+      // roadside props for the current terrain (torches, turn flags, rocks, …)
+      drawProps(g, WINW);
+    }
 
     // --- finish gate (when in view) ---
+    // パララックス野外では「地面から立つ塔門」にする（空中に浮かせない・ユーザー指摘）。
     const goalX = screenX(1, WINW);
+    const gateBot = para ? ch * 0.95 : g.bottom;
     if (goalX < cw + 40 && goalX > -40) {
       // checkered band
-      const bw = 9, rows = 10, rh = (g.bottom - g.top) / rows;
+      const bw = 9, rows = para ? 14 : 10, rh = (gateBot - g.top) / rows;
       for (let r = 0; r < rows; r++) {
         cctx.fillStyle = (r % 2 === 0) ? "#f4f4f4" : "#1c2030";
         cctx.fillRect(goalX - bw, g.top + r * rh, bw, rh);
@@ -2474,8 +2480,10 @@ function startRaceCanvas(container, ctx) {
       }
       // posts + banner
       cctx.fillStyle = "#c9b27a";
-      cctx.fillRect(goalX - bw - 4, g.top - 22, 4, g.bottom - g.top + 22);
-      cctx.fillRect(goalX + bw, g.top - 22, 4, g.bottom - g.top + 22);
+      cctx.fillRect(goalX - bw - 4, g.top - 22, 4, gateBot - g.top + 22);
+      cctx.fillRect(goalX + bw, g.top - 22, 4, gateBot - g.top + 22);
+      // 接地影（地面に立っている感）
+      if (para) { cctx.fillStyle = "rgba(0,0,0,0.35)"; cctx.beginPath(); cctx.ellipse(goalX, gateBot + 2, bw * 2.4, 3.4, 0, 0, Math.PI * 2); cctx.fill(); }
       cctx.fillStyle = "#b23b3b";
       cctx.fillRect(goalX - bw - 4, g.top - 22, bw * 2 + 8, 16);
       cctx.fillStyle = "#fff";
@@ -2486,14 +2494,14 @@ function startRaceCanvas(container, ctx) {
       if (!S.tapeBroken) {
         cctx.strokeStyle = "rgba(255,255,255,0.85)";
         cctx.lineWidth = 2;
-        cctx.beginPath(); cctx.moveTo(goalX, g.top); cctx.lineTo(goalX, g.bottom); cctx.stroke();
+        cctx.beginPath(); cctx.moveTo(goalX, g.top); cctx.lineTo(goalX, gateBot); cctx.stroke();
       }
     }
 
     // --- start gate (gantry at the start line) — grows grander with rank; recedes as the field pulls away ---
     const startGX = screenX(0, WINW);
     if (startGX > -90 && startGX < cw + 40 && (S.entryT > 0 || S.preT > 0 || S.tau < 0.06)) {
-      const rh = rankHype, gt = g.top, gb = g.bottom;
+      const rh = rankHype, gt = g.top, gb = para ? ch * 0.95 : g.bottom;   // 野外は地面まで＝接地した門
       const archH = 22 + rh * 30, postW = 4 + rh * 2, bw = 7;
       const postCol = rh > 0.66 ? "#e8c860" : rh > 0.33 ? "#c9b27a" : "#8a8f9e";
       const bannerCol = rh > 0.66 ? "#cf9a1e" : rh > 0.33 ? "#a85f33" : "#3a4a6a";
@@ -2603,7 +2611,21 @@ function startRaceCanvas(container, ctx) {
       const ownU = Math.min(1, S.tau / dr.finishTau);
 
       let x = screenX(Pvis, WINW);
-      const baseY = laneY(dr, g);
+      let baseY = laneY(dr, g);
+      // R8-W6d: 野外（パララックス）では全員「地面」からスタート——入場/カウントダウン中は
+      // 画面下端の大地に整列し、GOの瞬間に竜ごとの遅れでぎゅーんと各飛行高度へ舞い上がって
+      // ばらける（easeOutBack＝勢い＋ちょい行き過ぎ→すっと収まる）。表示のみ・進行/着順不変。
+      if (para) {
+        const ln = laneOf[dr.id] || 0;
+        const groundY = ch * 0.88 + (ln % 3) * 3 - 3;                       // 地面の整列（±3pxで前後感）
+        const dl = ln * 0.055 + ((((ln + 3) * 2654435761) >>> 0) % 100) / 100 * 0.16;
+        const k = clamp((S.flyIn - dl) / 1.05, 0, 1);
+        const c1 = 1.25, c3 = c1 + 1;
+        const eb = k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+        baseY = groundY + (baseY - groundY) * eb;
+        // 地上ではスターティンググリッド＝斜め後ろへずらして並ぶ（団子回避）。離陸で0へ収束。
+        x -= Math.max(0, 1 - eb) * (ln * 15 + 4);
+      }
       const bob = Math.sin(S.gait[dr.id]) * (1.6 + intensity);
       const y = baseY + bob;
       // 順位変動の検知→ポップ生成（standingsはタイムライン由来＝表示のみ・数値非干渉）
@@ -3295,6 +3317,9 @@ function startRaceCanvas(container, ctx) {
       }
       return;   // the field stays on the line until "GO！"
     }
+
+    // R8-W6d: GOからの経過秒（地面→飛行高度への舞い上がりイージング用・表示のみ）
+    if (S.flyIn < 3) S.flyIn += dt * S.speed;
 
     // --- run-through / pull-up: once the winner crosses, advance the global run-out
     // timer and every crossed dragon's coast clock (visProgress reads these to carry
