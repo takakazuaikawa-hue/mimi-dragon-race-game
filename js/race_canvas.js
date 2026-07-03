@@ -896,6 +896,22 @@ function _rcDragonSprite(id) {
           if (d[(yy * W + xx) * 4 + 3] > 24) { found = true; if (xx < minx) minx = xx; if (xx > maxx) maxx = xx; if (yy < miny) miny = yy; if (yy > maxy) maxy = yy; }
         }
         e.box = found ? { x: minx, y: miny, w: Math.max(1, maxx - minx), h: Math.max(1, maxy - miny) } : { x: 0, y: 0, w: W, h: H };
+        // ★翼根ギャップ自動検出（R8-W6b）：翼はマスタールールで「背中の上の別シェイプ」＝翼の下面と
+        // 背の間に透過の隙間がある。背中領域(x=5..62%・頭は除外)で不透明画素が最少の行を探し、
+        // そこを羽ばたきのスライス線にする＝竜ごとに正しい位置で割れずに動く。隙間が無い竜
+        // （翼と背が接した意匠）は flapClean=false → 振幅を大きく落として破綻を防ぐ。
+        if (found) {
+          const bx = e.box.x, by = e.box.y, bw = e.box.w, bh = e.box.h;
+          const gx0 = Math.round(bx + bw * 0.05), gx1 = Math.round(bx + bw * 0.62);
+          let bestY = Math.round(by + bh * 0.40), bestC = 1e9;
+          for (let yy = Math.round(by + bh * 0.20); yy <= Math.round(by + bh * 0.58); yy++) {
+            let cnt = 0;
+            for (let xx = gx0; xx <= gx1; xx += 2) if (d[(yy * W + xx) * 4 + 3] > 24) cnt++;
+            if (cnt < bestC) { bestC = cnt; bestY = yy; }
+          }
+          e.flapK = (bestY - by) / bh;
+          e.flapClean = bestC <= Math.ceil(((gx1 - gx0) / 2) * 0.12);   // 交差12%未満＝クリーンな隙間
+        }
       } catch (_) { e.box = { x: 0, y: 0, w: e.img.naturalWidth, h: e.img.naturalHeight }; }
       e.ok = true;
     };
@@ -951,10 +967,11 @@ function rcDrawDragonSprite(ctx, o) {
   // ★R8-W6 羽ばたき（素材追加なし・52頭対応）：翼根ラインで上下スライスし、上（翼帯）だけ
   //   頭寄りヒンジで周期回転＝翼端(左)ほど大きく上下。体・頭は下スライスで静止＝顔と意匠は
   //   ブレない。翼と背の間は元絵がほぼ透過なので継ぎ目は出ない。gait同期＝速いほど強く。
-  const cutK = RC_FLAP_CUT[o.id] != null ? RC_FLAP_CUT[o.id] : 0.40;
+  const cutK = RC_FLAP_CUT[o.id] != null ? RC_FLAP_CUT[o.id] : (e.flapK != null ? e.flapK : 0.40);
   const srcCut = Math.max(2, Math.round(b.h * cutK));
   const dstCut = srcCut * sc;
-  const amp = o.grounded ? 0.028 : (o.down ? 0.05 : 0.095);
+  const clean = RC_FLAP_CUT[o.id] != null ? true : (e.flapClean !== false);   // 隙間の無い意匠は控えめに＝背中が割れない
+  const amp = (o.grounded ? 0.028 : (o.down ? 0.05 : 0.095)) * (clean ? 1 : 0.30);
   const flap = Math.sin((o.gait || 0) * 1.35) * amp + amp * 0.22;   // 滑空基調＝上げ優位
   const hgx = -w * 0.16, hgy = -h + 2 + dstCut;                     // ヒンジ＝翼根の頭寄り
   ctx.save();
@@ -992,8 +1009,9 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   ctx.translate(cx, baseY + breathe); ctx.scale(pop, pop);
   const N = 16, sw = b.w / N, dw = W / N;
   for (let i = 0; i < N; i++) {
-    const tailK = 1 - i / (N - 1);                                   // 1=尾(左端)・0=頭(右端)
-    const dy = Math.sin(now * 5.4 - i * 0.5) * 3.8 * (0.15 + tailK * 0.95);
+    // ★頭側38%は完全静止（顔がぐにゃぐにゃしない・ユーザー指摘）。波は尾側だけを走る。
+    const tailK = Math.max(0, (1 - i / (N - 1)) - 0.38) / 0.62;      // 1=尾端 … 0=頭側38%全域
+    const dy = tailK <= 0 ? 0 : Math.sin(now * 4.6 - i * 0.5) * 3.4 * tailK;
     ctx.drawImage(img, b.x + i * sw, b.y, sw, b.h, -W / 2 + i * dw - 0.5, -H + dy, dw + 1, H);
   }
   ctx.restore();
@@ -1420,6 +1438,9 @@ function startRaceCanvas(container, ctx) {
 
   // ---- responsive canvas sizing (devicePixelRatio aware) ----
   let cw = 0, ch = 0, dpr = 1;
+  // R8-W6b: パララックス時はトラック帯を圧縮して絵の世界を見せる（62%→50%・ユーザー指摘
+  // 「せっかくの背景が見えない」）。従来コースは0.34のまま。trackGeom と bakePara の単一ソース。
+  const RC_TRACK_TOP_PARA = 0.47, RC_TRACK_TOP_BASE = 0.34;
   let skyBase = null;            // offscreen time-of-day far-backdrop, rebuilt on resize
   function buildSkyBase() {
     if (!cw || !ch) { skyBase = null; return; }
@@ -1450,7 +1471,7 @@ function startRaceCanvas(container, ctx) {
     const e = rcParaFor(race, function () { if (document.contains(canvas)) bakePara(); });
     if (!e || !e.ok) return;
     try {
-      const gtop = ch * 0.34;                                          // trackGeom().top と同値
+      const gtop = ch * RC_TRACK_TOP_PARA;                             // para時の trackGeom().top と同値
       const conf = RC_SKY_CONF[t] || RC_SKY_CONF.night;
       const spec = [
         { dh: ch * 0.85, anchor: null,                tone: 0.55 },    // L1 遠景（地平線58%を路面上端へ）
@@ -1764,7 +1785,8 @@ function startRaceCanvas(container, ctx) {
 
   // ---- layout helpers ----
   function trackGeom() {
-    const top = ch * 0.34, bottom = ch * 0.965;
+    // パララックス時＝帯を圧縮して絵の世界（L1/L2/L3）を見せる。竜はモック同様に密に重なる。
+    const top = ch * (paraBaked ? RC_TRACK_TOP_PARA : RC_TRACK_TOP_BASE), bottom = ch * 0.965;
     return { top, bottom, laneH: (bottom - top) / 8 };
   }
 
@@ -2338,7 +2360,12 @@ function startRaceCanvas(container, ctx) {
     const gp = para && para.ground;
     const grd = cctx.createLinearGradient(0, g.top, 0, g.bottom);
     if (gp) {
-      grd.addColorStop(0, gp.g[0]); grd.addColorStop(0.5, gp.g[1]); grd.addColorStop(1, gp.g[2]);
+      // 地域の大地×「いま走っている区間」のテーマ色を28%ブレンド＝草原/溶岩/湖畔…と
+      // 進むにつれ大地の色味も移ろう（以前の区間演出の復活・無機質対策）。
+      const MIXK = 0.28;
+      grd.addColorStop(0,   rcMix(gp.g[0], rcMix(tb.a.ground[0], tb.b.ground[0], tb.t), MIXK));
+      grd.addColorStop(0.5, rcMix(gp.g[1], rcMix(tb.a.ground[1], tb.b.ground[1], tb.t), MIXK));
+      grd.addColorStop(1,   rcMix(gp.g[2], rcMix(tb.a.ground[2], tb.b.ground[2], tb.t), MIXK));
     } else {
       grd.addColorStop(0,   rcMix(tb.a.ground[0], tb.b.ground[0], tb.t));
       grd.addColorStop(0.5, rcMix(tb.a.ground[1], tb.b.ground[1], tb.t));
@@ -2882,6 +2909,25 @@ function startRaceCanvas(container, ctx) {
     if (tb.keyB !== tb.keyA) {
       const washB = rcTerrainInfo(tb.keyB).tint;
       if (washB) { cctx.save(); cctx.globalAlpha = tb.t; cctx.fillStyle = washB; cctx.fillRect(0, 0, cw, ch); cctx.restore(); }
+    }
+
+    // --- R8-W6b: 近景シルエット帯（パララックス時・無機質対策）——画面最下端を岩や草の
+    // 影が最速×1.3で流れる＝疾走感と奥行き。決定的ハッシュ配置・下端16px内＝竜は隠さない。 ---
+    if (para && !S.finished) {
+      const fgScroll = S.camL * SREF * 1.3;
+      const stepFg = 34;
+      cctx.fillStyle = "rgba(6,7,14,0.88)";
+      for (let k = Math.floor(fgScroll / stepFg) - 1; k * stepFg - fgScroll < cw + stepFg; k++) {
+        const hxx = (((k * 2654435761) >>> 0) % 1000) / 1000;
+        if (hxx < 0.30) continue;                                    // 3割は空白＝疎らに
+        const bx2 = k * stepFg - fgScroll + hxx * 14;
+        const bw2 = 12 + hxx * 30, bh2 = 5 + hxx * 12;
+        cctx.beginPath();
+        cctx.moveTo(bx2 - bw2 / 2, ch + 1);
+        cctx.quadraticCurveTo(bx2 - bw2 * 0.18, ch - bh2 - (hxx > 0.72 ? 5 : 0), bx2 + bw2 * 0.14, ch - bh2 * 0.55);
+        cctx.quadraticCurveTo(bx2 + bw2 * 0.4, ch - bh2 * 0.2, bx2 + bw2 / 2, ch + 1);
+        cctx.closePath(); cctx.fill();
+      }
     }
 
     // --- final-straight drama vignette (darkens the corners, pulls the eye in) ---
