@@ -82,6 +82,8 @@ function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.reg
 // ここは生画像の読込だけ——描画サイズへの焼き込み（ループ化クロスフェード込み）はプレイヤー側 bakePara()。
 // 3枚揃わない/読込失敗の地域は従来経路へ自動フォールバック。表示のみ・レース数値不変。
 var RC_PARA_SLUG = { "グランドクロック地域": "grandclock", "ルミナ地域": "lumina", "リングロッソ地域": "ringrosso", "カルデラ地域": "caldera", "ミストレイク地域": "mistlake", "ヴェント峡谷地域": "vento", "ノッテムーンライト地域": "notte", "ラパン祭典地域": "lapan" };
+// R8-W7: 地域の「光の粒」色（加算発光の漂うモート＝熾火/蛍/星屑/提灯の火の粉…・表示のみ）
+var RC_PARA_MOTE = { stadium: "#ffe9a8", grandclock: "#ffd98a", lumina: "#7cd8ff", ringrosso: "#ff9a6a", mistlake: "#9ad2c8", caldera: "#ff9a4d", vento: "#e8d9a8", notte: "#a98fe8", lapan: "#ffb35c" };
 var _rcParaCache = {};
 function rcParaFor(race, onReady) {
   var slug = RC_PARA_SLUG[race && race.region] || "stadium";
@@ -989,6 +991,34 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   const gr = ctx.createRadialGradient(cx, gy, 4, cx, gy, H * 0.95);
   gr.addColorStop(0, "rgba(255,214,110,0.32)"); gr.addColorStop(1, "rgba(255,214,110,0)");
   ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, gy, H * 0.95, 0, Math.PI * 2); ctx.fill();
+  // R8-W7: 神々しい回る後光（加算光条・HD-2Dのブルーム）——勝者の背後でゆっくり回る
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a * 0.5;
+  ctx.translate(cx, gy);
+  const _rot = now * 0.22;
+  for (let ri = 0; ri < 10; ri++) {
+    const an = _rot + ri * (Math.PI * 2 / 10);
+    const len = H * (1.02 + 0.10 * Math.sin(now * 1.7 + ri));
+    const rg2 = ctx.createLinearGradient(0, 0, Math.cos(an) * len, Math.sin(an) * len);
+    rg2.addColorStop(0, "rgba(255,224,140,0.30)"); rg2.addColorStop(1, "rgba(255,224,140,0)");
+    ctx.fillStyle = rg2;
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(an - 0.075) * len, Math.sin(an - 0.075) * len);
+    ctx.lineTo(Math.cos(an + 0.075) * len, Math.sin(an + 0.075) * len);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  // 漂い昇る光の粒（状態レス・sin駆動＝出しっぱなしでも一生きらめく）
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a;
+  for (let si = 0; si < 7; si++) {
+    const ph = now * (0.5 + (si % 3) * 0.17) + si * 1.9;
+    const sxp = cx + Math.sin(ph) * (W * 0.55 + si * 5);
+    const syp = baseY - ((ph * 15) % (H * 1.05)) + Math.sin(ph * 2.3) * 4;
+    const tw2 = 0.5 + 0.5 * Math.sin(now * 3 + si * 2.1);
+    ctx.fillStyle = "rgba(255,232,160," + (0.30 + 0.45 * tw2).toFixed(2) + ")";
+    ctx.beginPath(); ctx.arc(sxp, syp, 1.2 + tw2 * 1.4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
   // 本体＝ストリップ進行波（頭=右は安定・尾=左ほど大きくうねる）＋軽い呼吸ボブ
   const pop = 0.86 + 0.14 * inK;
   const breathe = Math.sin(now * 2.2) * 2;
@@ -2466,10 +2496,30 @@ function startRaceCanvas(container, ctx) {
     }
 
     // --- finish gate (when in view) ---
-    // パララックス野外では「地面から立つ塔門」にする（空中に浮かせない・ユーザー指摘）。
+    // パララックス野外では「地面から立つ塔門」（浮かせない）。柱は円柱シェーディング＋
+    // 頂きに発光オーブ＝HD-2Dのチープさ対策（ユーザー指摘「ポールが安っぽい」）。
+    const drawPost3D = function (px, py0, py1, w2, base) {
+      const pg2 = cctx.createLinearGradient(px, 0, px + w2, 0);
+      pg2.addColorStop(0, rcShade(base, -34)); pg2.addColorStop(0.32, rcShade(base, 42));
+      pg2.addColorStop(0.55, rcShade(base, 6)); pg2.addColorStop(1, rcShade(base, -48));
+      cctx.fillStyle = pg2; cctx.fillRect(px, py0, w2, py1 - py0);
+      cctx.fillStyle = rcRgba(rcShade(base, 60), 0.9);                      // 金の柱頭リング
+      cctx.fillRect(px - 1, py0, w2 + 2, 2.5);
+    };
+    const drawOrb = function (px, py, r, col) {                             // 発光オーブ（ブルーム）
+      const t2 = performance.now() / 1000, pl = 0.72 + 0.28 * Math.sin(t2 * 2.6 + px * 0.1);
+      cctx.save(); cctx.globalCompositeOperation = "lighter";
+      const og = cctx.createRadialGradient(px, py, 0, px, py, r * 3.6);
+      og.addColorStop(0, rcRgba(col, 0.7 * pl)); og.addColorStop(0.4, rcRgba(col, 0.2 * pl)); og.addColorStop(1, rcRgba(col, 0));
+      cctx.fillStyle = og; cctx.beginPath(); cctx.arc(px, py, r * 3.6, 0, Math.PI * 2); cctx.fill();
+      cctx.restore();
+      cctx.fillStyle = "#fff8e4"; cctx.beginPath(); cctx.arc(px, py, r, 0, Math.PI * 2); cctx.fill();
+    };
     const goalX = screenX(1, WINW);
     const gateBot = para ? ch * 0.95 : g.bottom;
     if (goalX < cw + 40 && goalX > -40) {
+      // 接地影（地面に立っている感）
+      if (para) { cctx.fillStyle = "rgba(0,0,0,0.35)"; cctx.beginPath(); cctx.ellipse(goalX, gateBot + 2, 21.6, 3.4, 0, 0, Math.PI * 2); cctx.fill(); }
       // checkered band
       const bw = 9, rows = para ? 14 : 10, rh = (gateBot - g.top) / rows;
       for (let r = 0; r < rows; r++) {
@@ -2478,14 +2528,18 @@ function startRaceCanvas(container, ctx) {
         cctx.fillStyle = (r % 2 === 0) ? "#1c2030" : "#f4f4f4";
         cctx.fillRect(goalX, g.top + r * rh, bw, rh);
       }
-      // posts + banner
-      cctx.fillStyle = "#c9b27a";
-      cctx.fillRect(goalX - bw - 4, g.top - 22, 4, gateBot - g.top + 22);
-      cctx.fillRect(goalX + bw, g.top - 22, 4, gateBot - g.top + 22);
-      // 接地影（地面に立っている感）
-      if (para) { cctx.fillStyle = "rgba(0,0,0,0.35)"; cctx.beginPath(); cctx.ellipse(goalX, gateBot + 2, bw * 2.4, 3.4, 0, 0, Math.PI * 2); cctx.fill(); }
-      cctx.fillStyle = "#b23b3b";
-      cctx.fillRect(goalX - bw - 4, g.top - 22, bw * 2 + 8, 16);
+      // posts（円柱シェーディング）＋ 発光オーブ ＋ グラデ幕＋金トリム
+      drawPost3D(goalX - bw - 5, g.top - 22, gateBot, 5, "#c9b27a");
+      drawPost3D(goalX + bw, g.top - 22, gateBot, 5, "#c9b27a");
+      drawOrb(goalX - bw - 2.5, g.top - 25, 2.4, "#ffd34d");
+      drawOrb(goalX + bw + 2.5, g.top - 25, 2.4, "#ffd34d");
+      const bg2 = cctx.createLinearGradient(0, g.top - 22, 0, g.top - 6);
+      bg2.addColorStop(0, "#d4544e"); bg2.addColorStop(1, "#8e2a28");
+      cctx.fillStyle = bg2;
+      cctx.fillRect(goalX - bw - 5, g.top - 22, bw * 2 + 10, 16);
+      cctx.fillStyle = "#ffe9a8";
+      cctx.fillRect(goalX - bw - 5, g.top - 22, bw * 2 + 10, 1.5);
+      cctx.fillRect(goalX - bw - 5, g.top - 7.5, bw * 2 + 10, 1.5);
       cctx.fillStyle = "#fff";
       cctx.font = "bold 11px system-ui, sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
@@ -2495,6 +2549,18 @@ function startRaceCanvas(container, ctx) {
         cctx.strokeStyle = "rgba(255,255,255,0.85)";
         cctx.lineWidth = 2;
         cctx.beginPath(); cctx.moveTo(goalX, g.top); cctx.lineTo(goalX, gateBot); cctx.stroke();
+      }
+      // 最終直線＝ゲートが呼ぶように輝く（接近で強く脈打つ・HD-2D発光）
+      if (para && !S.finished) {
+        const gk = clamp((leaderP - 0.84) / 0.14, 0, 1);
+        if (gk > 0) {
+          const t3 = performance.now() / 1000, pl3 = 0.7 + 0.3 * Math.sin(t3 * 3.2);
+          cctx.save(); cctx.globalCompositeOperation = "lighter"; cctx.globalAlpha = gk * 0.45 * pl3;
+          const gg2 = cctx.createRadialGradient(goalX, (g.top + gateBot) / 2, 6, goalX, (g.top + gateBot) / 2, 95);
+          gg2.addColorStop(0, "rgba(255,226,140,0.55)"); gg2.addColorStop(1, "rgba(255,226,140,0)");
+          cctx.fillStyle = gg2; cctx.fillRect(goalX - 100, g.top - 30, 200, gateBot - g.top + 60);
+          cctx.restore();
+        }
       }
     }
 
@@ -2514,8 +2580,15 @@ function startRaceCanvas(container, ctx) {
       }
       const rows = 12, rhh = (gb - gt) / rows;                          // start band
       for (let r = 0; r < rows; r++) { cctx.fillStyle = (r % 2 === 0) ? "rgba(235,240,255,0.45)" : "rgba(40,46,70,0.45)"; cctx.fillRect(startGX - bw, gt + r * rhh, bw * 2, rhh); }
-      cctx.fillStyle = postCol; cctx.fillRect(spanL, gt - archH, postW, (gb - gt) + archH); cctx.fillRect(startGX + bw, gt - archH, postW, (gb - gt) + archH);
-      cctx.fillStyle = bannerCol; cctx.fillRect(spanL, gt - archH, spanW, bannerH);
+      // 接地影＋円柱シェーディング柱＋頂きの発光オーブ（HD-2D・チープさ対策）
+      if (para) { cctx.fillStyle = "rgba(0,0,0,0.32)"; cctx.beginPath(); cctx.ellipse(startGX, gb + 2, spanW * 0.72, 3.2, 0, 0, Math.PI * 2); cctx.fill(); }
+      drawPost3D(spanL, gt - archH, gb, postW, postCol);
+      drawPost3D(startGX + bw, gt - archH, gb, postW, postCol);
+      drawOrb(spanL + postW / 2, gt - archH - 3, 2.2, rh > 0.5 ? "#ffd34d" : "#9fc4ff");
+      drawOrb(startGX + bw + postW / 2, gt - archH - 3, 2.2, rh > 0.5 ? "#ffd34d" : "#9fc4ff");
+      const sb2 = cctx.createLinearGradient(0, gt - archH, 0, gt - archH + bannerH);
+      sb2.addColorStop(0, rcShade(bannerCol, 26)); sb2.addColorStop(1, rcShade(bannerCol, -26));
+      cctx.fillStyle = sb2; cctx.fillRect(spanL, gt - archH, spanW, bannerH);
       if (rh > 0.33) { cctx.fillStyle = "#ffe9a8"; cctx.fillRect(spanL, gt - archH, spanW, 2); cctx.fillRect(spanL, gt - archH + bannerH - 2, spanW, 2); }
       cctx.fillStyle = "#fff"; cctx.font = "bold " + (9 + rh * 3).toFixed(0) + "px system-ui, sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle"; cctx.fillText("START", startGX, gt - archH + bannerH / 2);
@@ -2617,14 +2690,33 @@ function startRaceCanvas(container, ctx) {
       // ばらける（easeOutBack＝勢い＋ちょい行き過ぎ→すっと収まる）。表示のみ・進行/着順不変。
       if (para) {
         const ln = laneOf[dr.id] || 0;
-        const groundY = ch * 0.88 + (ln % 3) * 3 - 3;                       // 地面の整列（±3pxで前後感）
+        const groundY = ch * 0.88 + (ln % 2) * 5 - 2;                       // 2列の前後感で整然と
         const dl = ln * 0.055 + ((((ln + 3) * 2654435761) >>> 0) % 100) / 100 * 0.16;
         const k = clamp((S.flyIn - dl) / 1.05, 0, 1);
         const c1 = 1.25, c3 = c1 + 1;
         const eb = k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+        // 離陸の一瞬＝光の礫＋巻き上がる砂塵（HD-2Dの「発光の瞬間」）
+        const prevEb = (S._launchEb && S._launchEb[dr.id]) || 0;
+        if (prevEb <= 0 && eb > 0) {
+          spawnDust(x - 10, groundY + 10, 3, 1.1);
+          spawnSpark(x - 6, groundY + 2, "#ffe9a8");
+        }
+        (S._launchEb = S._launchEb || {})[dr.id] = eb;
         baseY = groundY + (baseY - groundY) * eb;
-        // 地上ではスターティンググリッド＝斜め後ろへずらして並ぶ（団子回避）。離陸で0へ収束。
-        x -= Math.max(0, 1 - eb) * (ln * 15 + 4);
+        // 地上ではスターティンググリッド＝斜め後ろへ広めにずらして並ぶ（団子回避）。離陸で0へ収束。
+        x -= Math.max(0, 1 - eb) * (ln * 18 + 4);
+        // 地上の待機中だけ、たまに感情エモート（眠雲竜💤・泣き虫💧・火竜🔥・他♪✨＝愛らしさ）
+        if (eb <= 0 && (S.entryT > 0 || S.preT > 0)) {
+          const nw2 = performance.now() / 1000;
+          if (nw2 > (S.popCd[dr.id] || 0)) {
+            S.popCd[dr.id] = nw2 + 2.3 + ((ln * 37) % 10) / 6;
+            if (Math.random() < 0.5) {
+              const em = dr.id === "momu" ? "💤" : dr.id === "poro" ? "💧"
+                : ({ susu: 1, hibana: 1, benio: 1, shaku: 1, guren: 1, enma: 1, gouka: 1, phenix: 1 }[dr.id] ? "🔥" : (ln % 2 ? "♪" : "✨"));
+              S.pops.push({ x: x - 8, y: groundY - 40, tx: em, c: "#ffffff", t0: nw2, sz: 13 });
+            }
+          }
+        }
       }
       const bob = Math.sin(S.gait[dr.id]) * (1.6 + intensity);
       const y = baseY + bob;
@@ -2637,13 +2729,16 @@ function startRaceCanvas(container, ctx) {
         const px2 = x - _phw;
         if (pv && rkNow < pv && _popNow > cd) {
           S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "かわした！", c: "#8fe3ff", t0: _popNow });
+          S.pops.push({ x: px2 + 16, y: y - 60 * laneDepth(dr), tx: "✨", c: "#fff", t0: _popNow + 0.08, sz: 13 });   // 得意げの煌めき
           S.popCd[dr.id] = _popNow + 3.2;
           if (betSet.has(dr.id) && window.Sfx) { try { Sfx.play("tick", 1.2); } catch (e) {} }   // 自分の竜のUPだけ小さく鳴る
         } else if (pv && rkNow - pv >= 2 && _popNow > cd) {
           S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "！", c: "#ff6a5e", t0: _popNow });
+          S.pops.push({ x: px2 + 14, y: y - 58 * laneDepth(dr), tx: "💦", c: "#fff", t0: _popNow + 0.08, sz: 13 });   // 抜かれた焦り
           S.popCd[dr.id] = _popNow + 3.2;
         } else if (intensity > 0.95 && ownU < 0.92 && _popNow > cd && Math.random() < 0.010) {
           S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "仕掛けた！", c: "#ffd34d", t0: _popNow });
+          S.pops.push({ x: px2 + 16, y: y - 60 * laneDepth(dr), tx: "🔥", c: "#fff", t0: _popNow + 0.08, sz: 13 });   // 闘志
           S.popCd[dr.id] = _popNow + 5.0;
         }
       }
@@ -2792,6 +2887,10 @@ function startRaceCanvas(container, ctx) {
       //   識別の主役は竜のスプライト自身・ラベルは「読みたい時に読める」薄さに。
       const rk = standMap[dr.id] || dr.rank;
       const isBet = betSet.has(dr.id);
+      // 地上整列中はラベルを出さない（スタートのごちゃごちゃ解消・ユーザー指摘）。
+      // 賭け竜だけは常時＝自分の竜は見失わない。離陸(6割上昇)で全員分が戻る。
+      const _lEb = para ? ((S._launchEb && S._launchEb[dr.id] != null) ? S._launchEb[dr.id] : 1) : 1;
+      if (_lEb > 0.6 || isBet) {
       const tagY = y - 34 * dep;
       const rr2 = (isBet ? 9 : 8) * dep;
       cctx.beginPath(); cctx.arc(bodyCx, tagY, rr2, 0, Math.PI * 2);
@@ -2817,6 +2916,7 @@ function startRaceCanvas(container, ctx) {
       cctx.fillStyle = isBet ? "rgba(255,233,176,0.85)" : "rgba(255,255,255,0.68)";
       cctx.fillText(nm, bodyCx, ply + plh / 2 + 0.5);
       cctx.textBaseline = "alphabetic";
+      }   // ← ラベル表示ゲート（_lEb）
       // off-screen-behind indicator
       if (offLeft) {
         cctx.fillStyle = "rgba(255,255,255,0.6)";
@@ -2837,7 +2937,7 @@ function startRaceCanvas(container, ctx) {
         cctx.save();
         cctx.translate(p.x, p.y - rise);
         cctx.scale(0.6 + 0.4 * inK, 0.6 + 0.4 * inK);
-        cctx.font = "bold 15px system-ui, sans-serif";
+        cctx.font = "bold " + (p.sz || 15) + "px system-ui, sans-serif";
         cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
         cctx.globalAlpha = al;
         cctx.lineWidth = 4; cctx.strokeStyle = "rgba(8,10,20,0.9)"; cctx.strokeText(p.tx, 0, 0);
@@ -2858,6 +2958,26 @@ function startRaceCanvas(container, ctx) {
     if (tb.keyB !== tb.keyA) {
       const washB = rcTerrainInfo(tb.keyB).tint;
       if (washB) { cctx.save(); cctx.globalAlpha = tb.t; cctx.fillStyle = washB; cctx.fillRect(0, 0, cw, ch); cctx.restore(); }
+    }
+
+    // --- R8-W7: HD-2Dの光の粒（地域色・加算発光）——夜の空気に漂う熾火/蛍/星屑。
+    // 決定的な軌道（ハッシュ＋sin）＝ちらつかず、ゆっくり明滅しながら世界と逆方向に流れる。 ---
+    if (para && !S.finished) {
+      const mc = RC_PARA_MOTE[para.slug] || "#ffe9a8";
+      const tm = performance.now() / 1000;
+      cctx.save(); cctx.globalCompositeOperation = "lighter";
+      for (let mi = 0; mi < 14; mi++) {
+        const sp2 = 0.35 + (mi % 4) * 0.16;
+        const mx = ((mi * 137.7 - (S.camL * SREF) * 0.35 * sp2 + tm * 6 * sp2) % (cw + 40) + (cw + 40)) % (cw + 40) - 20;
+        const my = ch * (0.16 + ((mi * 83) % 62) / 100) + Math.sin(tm * (0.7 + sp2) + mi * 2.4) * 9;
+        const pl2 = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(tm * (1.3 + sp2) + mi));
+        const mg = cctx.createRadialGradient(mx, my, 0, mx, my, 5.5);
+        mg.addColorStop(0, rcRgba(mc, 0.45 * pl2)); mg.addColorStop(1, rcRgba(mc, 0));
+        cctx.fillStyle = mg; cctx.beginPath(); cctx.arc(mx, my, 5.5, 0, Math.PI * 2); cctx.fill();
+        cctx.fillStyle = rcRgba("#ffffff", 0.45 * pl2);
+        cctx.beginPath(); cctx.arc(mx, my, 1.05, 0, Math.PI * 2); cctx.fill();
+      }
+      cctx.restore();
     }
 
     // --- R8-W6b: 近景シルエット帯（パララックス時・無機質対策）——画面最下端を岩や草の
@@ -3411,6 +3531,7 @@ function startRaceCanvas(container, ctx) {
           S.shake = Math.max(S.shake, 2.5);
           const gp = trackGeom(); const y = laneY(dr, gp) - 18;
           addFloat(screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3), y, "つまずいた！", "#ff9a8a");
+          S.pops.push({ x: screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3) + 14, y: y - 14, tx: "💫", c: "#fff", t0: performance.now() / 1000, sz: 13 });   // 目回し
         }
         if (ev.type === "surge" && prevU < ev.u && ownU >= ev.u && dr.rank <= 4) {
           ev._shouted = true;
