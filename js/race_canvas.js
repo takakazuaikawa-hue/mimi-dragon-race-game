@@ -1222,6 +1222,23 @@ function startRaceCanvas(container, ctx) {
   const laneOf = {};
   laneOrder.forEach((dr, i) => { laneOf[dr.id] = i; });
 
+  // R8-W9: フライバイ用の「野生竜」を先読み——出走8頭以外の図鑑竜からレース決定的に1頭。
+  // モック準拠＝隊列の上空を大きな竜が悠々と横切る（観客側の世界にも竜が生きている）。
+  // スプライト未ロード/ロースター無しなら演出を静かにスキップ。表示のみ・レース数値不変。
+  const _flybyId = (function () {
+    try {
+      const inF = new Set(dragons.map(d => d.id));
+      const roster = (typeof DRAGONS !== "undefined" && DRAGONS.map)
+        ? DRAGONS.map(d => d.id).filter(id => id && !inF.has(id)) : [];
+      if (!roster.length) return null;
+      let h = 0; const s = String((race && (race.id || race.cup)) || "r") + String((race && race.number) || 0);
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+      const id = roster[h % roster.length];
+      _rcDragonSprite(id);                     // 入場中に読み込んでおく
+      return id;
+    } catch (e) { return null; }
+  })();
+
   // popularity / bet lookups
   const popRank = {};
   (oddsResult.oddsData || []).forEach(o => { popRank[o.dragonId] = o.popularityRank; });
@@ -1607,6 +1624,9 @@ function startRaceCanvas(container, ctx) {
     photoT: 0,          // R8-W1: フォトフィニッシュ静止1拍の残り秒（>0の間 世界を止める・表示のみ）
     photoUsed: false,   // 1着の鼻先ゴールで一度だけ発火
     flyIn: 0,           // R8-W6d: GOからの秒数——地面スタート→各飛行高度へ舞い上がる演出用（表示のみ）
+    lowSpec: false,     // R8-W5: 低速機の自動縮退（パララックス2層・ポップ2件・ストリーク半減）
+    flyby: null,        // R8-W9: 野生竜フライバイ {t, id}（モックの上空を横切る大竜・表示のみ）
+    flybyDone: false,
     prevStand: null,    // {id: place} last frame, for overtake detection
     cheerT: 1.2,        // throttle for cheer-your-pick callouts
     battleT: 0,         // throttle for 接戦！ callouts
@@ -2262,6 +2282,7 @@ function startRaceCanvas(container, ctx) {
       // L1 遠景×0.15 → L2 中景×0.45 → L3 近景帯×0.9（レール旗0.9と同平面＝柵が近景の地面に立つ）。
       // タイルは焼き込みで完全ループ＝境界の継ぎ目なし。カメラが進むほど層の速度差で奥行きが出る。
       for (let li = 0; li < 3; li++) {
+        if (S.lowSpec && li === 1) continue;                    // R8-W5: 低速機はL2を省き2層に縮退
         const ox = S.camL * SREF * para.rate[li];
         const dwl = para.dw[li], dhl = para.dh[li], dyl = para.dy[li], tile = para.L[li];
         for (let k = Math.floor(ox / dwl); k * dwl - ox < cw; k++) {
@@ -2477,6 +2498,7 @@ function startRaceCanvas(container, ctx) {
       // The near (lower) lanes get longer, brighter, faster streaks so the running
       // surface really tears past the screen — this is the dominant speed cue.
       for (let li = 0; li < 8; li++) {
+        if (S.lowSpec && (li % 2)) continue;  // R8-W5: 低速機はストリーク半減
         const depth = li / 7;                 // 0 = far/top, 1 = near/bottom
         const sy = g.top + (li + 0.5) * g.laneH;
         const len = 40 + depth * 56;          // near streaks much longer
@@ -2949,6 +2971,7 @@ function startRaceCanvas(container, ctx) {
     if (_popsOn) S.prevStand = standMap;         // 次フレームの順位変動検知用スナップショット
 
     // イベントポップ描画（0.95s＝ポップイン→浮き上がり→フェード。世界座標＝竜と一緒に流れる）
+    if (S.lowSpec && S.pops.length > 2) S.pops.splice(0, S.pops.length - 2);   // R8-W5: 同時2件まで
     if (S.pops.length) {
       for (let i = S.pops.length - 1; i >= 0; i--) {
         const p = S.pops[i], a = (_popNow - p.t0) / 0.95;
@@ -2986,8 +3009,9 @@ function startRaceCanvas(container, ctx) {
     if (para && !S.finished) {
       const mc = RC_PARA_MOTE[para.slug] || "#ffe9a8";
       const tm = performance.now() / 1000;
+      const nMote = S.lowSpec ? 6 : 14;                        // R8-W5: 低速機は粒を減らす
       cctx.save(); cctx.globalCompositeOperation = "lighter";
-      for (let mi = 0; mi < 14; mi++) {
+      for (let mi = 0; mi < nMote; mi++) {
         const sp2 = 0.35 + (mi % 4) * 0.16;
         const mx = ((mi * 137.7 - (S.camL * SREF) * 0.35 * sp2 + tm * 6 * sp2) % (cw + 40) + (cw + 40)) % (cw + 40) - 20;
         const my = ch * (0.16 + ((mi * 83) % 62) / 100) + Math.sin(tm * (0.7 + sp2) + mi * 2.4) * 9;
@@ -2998,6 +3022,18 @@ function startRaceCanvas(container, ctx) {
         cctx.fillStyle = rcRgba("#ffffff", 0.45 * pl2);
         cctx.beginPath(); cctx.arc(mx, my, 1.05, 0, Math.PI * 2); cctx.fill();
       }
+      cctx.restore();
+    }
+
+    // --- R8-W9: 野生竜フライバイ——隊列の上空を大きな竜が悠々と横切る（モック署名）。
+    // HD-2Dスプライト＋羽ばたきスライス流用＝画風統一。フェードin/out・表示のみ。 ---
+    if (S.flyby && rcHasDragonSprite(S.flyby.id)) {
+      const ft = S.flyby.t, fdur = 3.2;
+      const fx2 = -150 + (cw + 320) * clamp(ft / fdur, 0, 1);
+      const fy2 = ch * 0.14 + Math.sin(ft * 1.9) * 7;
+      cctx.save();
+      cctx.globalAlpha = clamp(Math.min(ft / 0.35, (fdur - ft) / 0.35), 0, 1);
+      rcDrawDragonSprite(cctx, { id: S.flyby.id, x: fx2, y: fy2, scale: 1.5, gait: ft * 9, color: "#9fd8ff", dep: 1, lean: 0.35 });
       cctx.restore();
     }
 
@@ -3405,6 +3441,8 @@ function startRaceCanvas(container, ctx) {
     // "GO！" flash + overtake push-in impulse fade
     if (S.goFlash > 0) S.goFlash = Math.max(0, S.goFlash - dt);
     if (S.zoomBump > 0) S.zoomBump = Math.max(0, S.zoomBump - dt * 0.22);
+    // R8-W9: フライバイは常時進行（ゴール後でも自然に飛び去る）
+    if (S.flyby) { S.flyby.t += dt; if (S.flyby.t > 3.2) S.flyby = null; }
     // phase-entry banner ages out (animates even while paused so it can clear)
     if (S.banner) { S.banner.t += dt; if (S.banner.t >= S.banner.max) S.banner = null; }
     if (S.terrainSign) { S.terrainSign.t += dt; if (S.terrainSign.t >= S.terrainSign.max) S.terrainSign = null; }
@@ -3461,6 +3499,12 @@ function startRaceCanvas(container, ctx) {
 
     // R8-W6d: GOからの経過秒（地面→飛行高度への舞い上がりイージング用・表示のみ）
     if (S.flyIn < 3) S.flyIn += dt * S.speed;
+
+    // R8-W9: 野生竜フライバイの発火——序盤バナーが捌けた頃に一度だけ（読込済のときのみ）
+    if (!S.flyby && !S.flybyDone && S.tau > 0.2 && _flybyId && rcHasDragonSprite(_flybyId)) {
+      S.flybyDone = true;
+      S.flyby = { t: 0, id: _flybyId };
+    }
 
     // --- run-through / pull-up: once the winner crosses, advance the global run-out
     // timer and every crossed dragon's coast clock (visProgress reads these to carry
@@ -3682,6 +3726,18 @@ function startRaceCanvas(container, ctx) {
     if (!RC_ACTIVE || RC_ACTIVE.id !== loopId) return;        // superseded
     if (state.ui.screen !== "race_run") { stopRacePlayer(); return; }
     const dt = Math.min(0.05, (now - (S.last || now)) / 1000);
+    // R8-W5: 低速機の自動検知——実フレーム間隔の移動平均が40ms超（<25fps）を2秒続けたら
+    // 縮退モードに固定（レース中は戻さない＝ちらつき防止）。タブ復帰等の巨大間隔は無視。
+    // window.__rcLowSpec = true で強制（デバッグ用レバー・表示のみ）。
+    const rawMs = now - (S.last || now);
+    if (!S.lowSpec) {
+      if (window.__rcLowSpec) S.lowSpec = true;
+      else if (S.last && rawMs > 0 && rawMs < 500) {
+        S._fpsAvg = S._fpsAvg == null ? rawMs : S._fpsAvg * 0.9 + rawMs * 0.1;
+        if (S._fpsAvg > 40) { S._slowT = (S._slowT || 0) + rawMs; if (S._slowT > 2000) S.lowSpec = true; }
+        else S._slowT = 0;
+      }
+    }
     S.last = now;
     update(dt);
     draw();
