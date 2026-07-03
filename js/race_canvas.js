@@ -1222,23 +1222,6 @@ function startRaceCanvas(container, ctx) {
   const laneOf = {};
   laneOrder.forEach((dr, i) => { laneOf[dr.id] = i; });
 
-  // R8-W9: フライバイ用の「野生竜」を先読み——出走8頭以外の図鑑竜からレース決定的に1頭。
-  // モック準拠＝隊列の上空を大きな竜が悠々と横切る（観客側の世界にも竜が生きている）。
-  // スプライト未ロード/ロースター無しなら演出を静かにスキップ。表示のみ・レース数値不変。
-  const _flybyId = (function () {
-    try {
-      const inF = new Set(dragons.map(d => d.id));
-      const roster = (typeof DRAGONS !== "undefined" && DRAGONS.map)
-        ? DRAGONS.map(d => d.id).filter(id => id && !inF.has(id)) : [];
-      if (!roster.length) return null;
-      let h = 0; const s = String((race && (race.id || race.cup)) || "r") + String((race && race.number) || 0);
-      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-      const id = roster[h % roster.length];
-      _rcDragonSprite(id);                     // 入場中に読み込んでおく
-      return id;
-    } catch (e) { return null; }
-  })();
-
   // popularity / bet lookups
   const popRank = {};
   (oddsResult.oddsData || []).forEach(o => { popRank[o.dragonId] = o.popularityRank; });
@@ -1625,8 +1608,6 @@ function startRaceCanvas(container, ctx) {
     photoUsed: false,   // 1着の鼻先ゴールで一度だけ発火
     flyIn: 0,           // R8-W6d: GOからの秒数——地面スタート→各飛行高度へ舞い上がる演出用（表示のみ）
     lowSpec: false,     // R8-W5: 低速機の自動縮退（パララックス2層・ポップ2件・ストリーク半減）
-    flyby: null,        // R8-W9: 野生竜フライバイ {t, id}（モックの上空を横切る大竜・表示のみ）
-    flybyDone: false,
     prevStand: null,    // {id: place} last frame, for overtake detection
     cheerT: 1.2,        // throttle for cheer-your-pick callouts
     battleT: 0,         // throttle for 接戦！ callouts
@@ -3025,18 +3006,6 @@ function startRaceCanvas(container, ctx) {
       cctx.restore();
     }
 
-    // --- R8-W9: 野生竜フライバイ——隊列の上空を大きな竜が悠々と横切る（モック署名）。
-    // HD-2Dスプライト＋羽ばたきスライス流用＝画風統一。フェードin/out・表示のみ。 ---
-    if (S.flyby && rcHasDragonSprite(S.flyby.id)) {
-      const ft = S.flyby.t, fdur = 3.2;
-      const fx2 = -150 + (cw + 320) * clamp(ft / fdur, 0, 1);
-      const fy2 = ch * 0.14 + Math.sin(ft * 1.9) * 7;
-      cctx.save();
-      cctx.globalAlpha = clamp(Math.min(ft / 0.35, (fdur - ft) / 0.35), 0, 1);
-      rcDrawDragonSprite(cctx, { id: S.flyby.id, x: fx2, y: fy2, scale: 1.5, gait: ft * 9, color: "#9fd8ff", dep: 1, lean: 0.35 });
-      cctx.restore();
-    }
-
     // --- R8-W6b: 近景シルエット帯（パララックス時・無機質対策）——画面最下端を岩や草の
     // 影が最速×1.3で流れる＝疾走感と奥行き。決定的ハッシュ配置・下端16px内＝竜は隠さない。 ---
     if (para && !S.finished) {
@@ -3441,8 +3410,6 @@ function startRaceCanvas(container, ctx) {
     // "GO！" flash + overtake push-in impulse fade
     if (S.goFlash > 0) S.goFlash = Math.max(0, S.goFlash - dt);
     if (S.zoomBump > 0) S.zoomBump = Math.max(0, S.zoomBump - dt * 0.22);
-    // R8-W9: フライバイは常時進行（ゴール後でも自然に飛び去る）
-    if (S.flyby) { S.flyby.t += dt; if (S.flyby.t > 3.2) S.flyby = null; }
     // phase-entry banner ages out (animates even while paused so it can clear)
     if (S.banner) { S.banner.t += dt; if (S.banner.t >= S.banner.max) S.banner = null; }
     if (S.terrainSign) { S.terrainSign.t += dt; if (S.terrainSign.t >= S.terrainSign.max) S.terrainSign = null; }
@@ -3499,12 +3466,6 @@ function startRaceCanvas(container, ctx) {
 
     // R8-W6d: GOからの経過秒（地面→飛行高度への舞い上がりイージング用・表示のみ）
     if (S.flyIn < 3) S.flyIn += dt * S.speed;
-
-    // R8-W9: 野生竜フライバイの発火——序盤バナーが捌けた頃に一度だけ（読込済のときのみ）
-    if (!S.flyby && !S.flybyDone && S.tau > 0.2 && _flybyId && rcHasDragonSprite(_flybyId)) {
-      S.flybyDone = true;
-      S.flyby = { t: 0, id: _flybyId };
-    }
 
     // --- run-through / pull-up: once the winner crosses, advance the global run-out
     // timer and every crossed dragon's coast clock (visProgress reads these to carry
