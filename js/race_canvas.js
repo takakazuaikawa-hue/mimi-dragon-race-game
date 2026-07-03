@@ -82,20 +82,6 @@ function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.reg
 // ここは生画像の読込だけ——描画サイズへの焼き込み（ループ化クロスフェード込み）はプレイヤー側 bakePara()。
 // 3枚揃わない/読込失敗の地域は従来経路へ自動フォールバック。表示のみ・レース数値不変。
 var RC_PARA_SLUG = { "グランドクロック地域": "grandclock", "ルミナ地域": "lumina", "リングロッソ地域": "ringrosso", "カルデラ地域": "caldera", "ミストレイク地域": "mistlake", "ヴェント峡谷地域": "vento", "ノッテムーンライト地域": "notte", "ラパン祭典地域": "lapan" };
-// R8-W6: 地域の「大地」パレット（パララックス夜レースの地面＝緑ターフのカーペットをやめ、
-// 背景と同じ世界の野外の地面にする。g=縦グラデ3色 / lite・dark=材質斑 / fx=地域の光る粒）。
-// スタジアムだけは芝が正しいので夜芝。表示のみ・レース数値不変。
-var RC_PARA_GROUND = {
-  stadium:    { g: ["#1f2e1e", "#233522", "#182617"], lite: "#3a5238", dark: "#0e180e", fx: "#89b06a" },
-  grandclock: { g: ["#2a2417", "#332c1c", "#231e13"], lite: "#4a4028", dark: "#151109", fx: "#d8b26a" },
-  lumina:     { g: ["#131b2c", "#172134", "#0f1626"], lite: "#2a3a56", dark: "#080c16", fx: "#59c2e8" },
-  ringrosso:  { g: ["#2e1a12", "#382016", "#26150e"], lite: "#5a3420", dark: "#170c06", fx: "#e08a4a" },
-  mistlake:   { g: ["#192121", "#1e2a28", "#131b1b"], lite: "#324442", dark: "#0a1010", fx: "#9ad2c8" },
-  caldera:    { g: ["#1b1210", "#231511", "#130c0b"], lite: "#40241a", dark: "#0a0606", fx: "#ff7a33" },
-  vento:      { g: ["#231d15", "#2b2318", "#1b1611"], lite: "#4a3f2a", dark: "#100d08", fx: "#cabb90" },
-  notte:      { g: ["#191525", "#1f1a2f", "#130f1f"], lite: "#332b52", dark: "#0a0814", fx: "#8f7ae0" },
-  lapan:      { g: ["#251913", "#2d1f17", "#1d130e"], lite: "#523628", dark: "#140b07", fx: "#ffb35c" }
-};
 var _rcParaCache = {};
 function rcParaFor(race, onReady) {
   var slug = RC_PARA_SLUG[race && race.region] || "stadium";
@@ -1438,9 +1424,9 @@ function startRaceCanvas(container, ctx) {
 
   // ---- responsive canvas sizing (devicePixelRatio aware) ----
   let cw = 0, ch = 0, dpr = 1;
-  // R8-W6b: パララックス時はトラック帯を圧縮して絵の世界を見せる（62%→50%・ユーザー指摘
-  // 「せっかくの背景が見えない」）。従来コースは0.34のまま。trackGeom と bakePara の単一ソース。
-  const RC_TRACK_TOP_PARA = 0.47, RC_TRACK_TOP_BASE = 0.34;
+  // R8-W6c: パララックス時はコース帯そのものが無い＝竜の飛行帯は「絵の世界」いっぱいに
+  // 広げる（モック準拠：後方竜は山を背に高く・先頭は手前の道の上を低く飛ぶ）。
+  const RC_TRACK_TOP_PARA = 0.30, RC_TRACK_BOT_PARA = 0.92, RC_TRACK_TOP_BASE = 0.34;
   let skyBase = null;            // offscreen time-of-day far-backdrop, rebuilt on resize
   function buildSkyBase() {
     if (!cw || !ch) { skyBase = null; return; }
@@ -1471,12 +1457,14 @@ function startRaceCanvas(container, ctx) {
     const e = rcParaFor(race, function () { if (document.contains(canvas)) bakePara(); });
     if (!e || !e.ok) return;
     try {
-      const gtop = ch * RC_TRACK_TOP_PARA;                             // para時の trackGeom().top と同値
       const conf = RC_SKY_CONF[t] || RC_SKY_CONF.night;
+      // ★モック準拠レイアウト（R8-W6c）：コースの帯を描かず「絵の世界そのもの」が路面。
+      //   L1=全画面カバー（空〜地面まで絵が描く）／L2=地平線まわりの中景／
+      //   L3=画面下端の最近景帯（×1.0＝竜と同じ路面速度＝これが事実上の地面）。
       const spec = [
-        { dh: ch * 0.85, anchor: null,                tone: 0.55 },    // L1 遠景（地平線58%を路面上端へ）
-        { dh: ch * 0.60, anchor: gtop + ch * 0.08,    tone: 0.35 },    // L2 中景
-        { dh: ch * 0.30, anchor: gtop + 6,            tone: 0.22 },    // L3 近景帯（縁石が路面上端に接する）
+        { dh: ch,        anchor: null,      tone: 0.55 },   // L1 全画面
+        { dh: ch * 0.62, anchor: ch * 0.80, tone: 0.35 },   // L2 中景（下端=画面80%）
+        { dh: ch * 0.34, anchor: ch + 2,    tone: 0.20 },   // L3 最近景（下端=画面下端）
       ];
       const L = [], dw = [], dh = [], dy = [];
       const px = Math.min(2, dpr || 1);                                // 焼き解像度（dpr>2は2で十分）
@@ -1509,28 +1497,9 @@ function startRaceCanvas(container, ctx) {
         if (lift > 0 && i === 0) { c2.globalCompositeOperation = "screen"; c2.globalAlpha = 1; c2.fillStyle = rcRgba(conf.haze, lift); c2.fillRect(0, 0, oc.width, oc.height); }
         c2.restore();
         L.push(oc); dw.push(w); dh.push(s.dh);
-        dy.push(s.anchor == null ? Math.min(0, (gtop + 10) - s.dh * 0.58) : s.anchor - s.dh);
+        dy.push(s.anchor == null ? 0 : s.anchor - s.dh);
       }
-      // 大地の材質タイル（斑ノイズ・シードPRNG＝毎回同じ・横縦ラップで継ぎ目なし）。
-      // 世界固定スクロールで敷く＝「流れる大地」。fx色は地域の光る粒（熾火/蛍/星屑…）。
-      const gp = RC_PARA_GROUND[e.slug] || RC_PARA_GROUND.stadium;
-      const gt2 = document.createElement("canvas"); gt2.width = 128; gt2.height = 128;
-      const gx2 = gt2.getContext("2d");
-      let sd = 7;
-      const rnd = function () { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
-      for (let i = 0; i < 230; i++) {
-        const rx = rnd() * 128, ry = rnd() * 128, rr = 0.6 + rnd() * 1.7, kk = rnd();
-        gx2.fillStyle = kk < 0.42 ? rcRgba(gp.lite, 0.10 + rnd() * 0.08)
-                      : kk < 0.92 ? rcRgba(gp.dark, 0.13 + rnd() * 0.10)
-                      : rcRgba(gp.fx, 0.11 + rnd() * 0.09);
-        const rw2 = rr * (1 + rnd()), rh2 = rr * 0.7;
-        for (let ox2 = -128; ox2 <= 128; ox2 += 128) for (let oy2 = -128; oy2 <= 128; oy2 += 128) {
-          if (rx + ox2 > -6 && rx + ox2 < 134 && ry + oy2 > -6 && ry + oy2 < 134) {
-            gx2.beginPath(); gx2.ellipse(rx + ox2, ry + oy2, rw2, rh2, 0, 0, 7); gx2.fill();
-          }
-        }
-      }
-      paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 0.9], haze: conf.haze, ground: gp, groundTile: gt2 };
+      paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 1.0], haze: conf.haze };
     } catch (_) { paraBaked = null; }
   }
   function resize() {
@@ -1785,8 +1754,9 @@ function startRaceCanvas(container, ctx) {
 
   // ---- layout helpers ----
   function trackGeom() {
-    // パララックス時＝帯を圧縮して絵の世界（L1/L2/L3）を見せる。竜はモック同様に密に重なる。
-    const top = ch * (paraBaked ? RC_TRACK_TOP_PARA : RC_TRACK_TOP_BASE), bottom = ch * 0.965;
+    // パララックス時＝飛行帯を絵の世界いっぱいに（コース帯は存在しない・モック準拠）。
+    const top = ch * (paraBaked ? RC_TRACK_TOP_PARA : RC_TRACK_TOP_BASE);
+    const bottom = ch * (paraBaked ? RC_TRACK_BOT_PARA : 0.965);
     return { top, bottom, laneH: (bottom - top) / 8 };
   }
 
@@ -2248,13 +2218,13 @@ function startRaceCanvas(container, ctx) {
           cctx.drawImage(tile, k * dwl - ox, dyl, dwl, dhl);
         }
       }
-      // 地平の靄：層と路面の境目を馴染ませる（skyBase版の hb と同役割）
-      const gt = g.top;
-      const hb = cctx.createLinearGradient(0, gt - 34, 0, gt + 12);
+      // 地平の靄：絵の地平線（L1の約58%）に薄く敷いて層同士を馴染ませる
+      const hzY = ch * 0.58;
+      const hb = cctx.createLinearGradient(0, hzY - 30, 0, hzY + 22);
       hb.addColorStop(0, rcRgba(para.haze, 0));
-      hb.addColorStop(0.75, rcRgba(para.haze, 0.20));
-      hb.addColorStop(1, rcRgba(para.haze, 0.38));
-      cctx.fillStyle = hb; cctx.fillRect(0, gt - 34, cw, 46);
+      hb.addColorStop(0.6, rcRgba(para.haze, 0.16));
+      hb.addColorStop(1, rcRgba(para.haze, 0));
+      cctx.fillStyle = hb; cctx.fillRect(0, hzY - 30, cw, 52);
     } else if (skyBase) {
       // far backdrop incl. sun/moon, clouds, distant ridges, 聖龍門 & grandstand, haze
       cctx.drawImage(skyBase, 0, 0, cw, ch);
@@ -2322,7 +2292,8 @@ function startRaceCanvas(container, ctx) {
     // backdrop) so "the flags in back" clearly convey speed. Each flag's colour is
     // keyed to its world index (not the frame), so colours never flicker — seamless.
     // Stops naturally when the camera stops (start gate / after finish).
-    {
+    // （パララックス野外では柵ごと出さない＝モックに無い競技場備品。聖龍スタジアムのみ残す）
+    if (!para || para.slug === "stadium") {
       const pGap = 30, pScroll = S.camL * SREF * 0.9;   // ~ground rate (slight parallax) → moves WITH the scene
       const pcols = ["#ff6b8a", "#ffd34d", "#5ad1ff", "#9b8cff", "#7CFFB2"];
       const nC = pcols.length, first = Math.floor(pScroll / pGap), railY = g.top - 8;
@@ -2355,22 +2326,14 @@ function startRaceCanvas(container, ctx) {
     // --- track ground (themed turf) — the running ribbon CURVES through turns: its
     // top edge follows trackBendY(P). The fill runs from that curved top down to the
     // apron so there's never a gap when the ribbon arcs upward. ---
-    // R8-W6: パララックス夜レースは「地域の大地」＝緑ターフのカーペット廃止（モック準拠・
-    // 背景と同一世界の野外地面）。従来コース（朝昼・未納品地域）は今までどおり。
-    const gp = para && para.ground;
+    // R8-W6c: パララックス時はコースの帯を一切描かない＝「絵の世界そのもの」が路面（モック
+    // 準拠・ユーザー指定「モック通りコースを無くす」）。竜は絵の上を飛び、方向シェブロン等の
+    // 記号だけを世界に重ねる。従来コース（朝昼・未納品地域）は !para 側で完全温存。
+    if (!para) {
     const grd = cctx.createLinearGradient(0, g.top, 0, g.bottom);
-    if (gp) {
-      // 地域の大地×「いま走っている区間」のテーマ色を28%ブレンド＝草原/溶岩/湖畔…と
-      // 進むにつれ大地の色味も移ろう（以前の区間演出の復活・無機質対策）。
-      const MIXK = 0.28;
-      grd.addColorStop(0,   rcMix(gp.g[0], rcMix(tb.a.ground[0], tb.b.ground[0], tb.t), MIXK));
-      grd.addColorStop(0.5, rcMix(gp.g[1], rcMix(tb.a.ground[1], tb.b.ground[1], tb.t), MIXK));
-      grd.addColorStop(1,   rcMix(gp.g[2], rcMix(tb.a.ground[2], tb.b.ground[2], tb.t), MIXK));
-    } else {
-      grd.addColorStop(0,   rcMix(tb.a.ground[0], tb.b.ground[0], tb.t));
-      grd.addColorStop(0.5, rcMix(tb.a.ground[1], tb.b.ground[1], tb.t));
-      grd.addColorStop(1,   rcMix(tb.a.ground[2], tb.b.ground[2], tb.t));
-    }
+    grd.addColorStop(0,   rcMix(tb.a.ground[0], tb.b.ground[0], tb.t));
+    grd.addColorStop(0.5, rcMix(tb.a.ground[1], tb.b.ground[1], tb.t));
+    grd.addColorStop(1,   rcMix(tb.a.ground[2], tb.b.ground[2], tb.t));
     const _turfPath = function () {
       cctx.beginPath();
       let first = true;
@@ -2383,39 +2346,9 @@ function startRaceCanvas(container, ctx) {
     _turfPath(); cctx.fillStyle = grd; cctx.fill();
     // groomed turf detail (two-tone mow bands + depth grade), clipped to the curved surface
     cctx.save(); _turfPath(); cctx.clip();
-    if (gp && para.groundTile) {
-      // R8-W6: 材質ノイズ（世界固定スクロール）＝大地が路面と同じ速度で流れる
-      const gt3 = para.groundTile, gsz = 128;
-      const gox = ((S.camL * SREF) % gsz + gsz) % gsz;
-      for (let ty = g.top - 26; ty < g.bottom + 24; ty += gsz)
-        for (let tx = -gox - gsz; tx < cw + gsz; tx += gsz)
-          cctx.drawImage(gt3, tx, ty);
-      // 赤白縁石：リボン上端のカーブに沿って世界固定の交互パターン（モックの署名・コース明示）
-      const segP = 0.012, kk0 = Math.floor((S.camL - 0.06) / segP);
-      const nSeg = Math.ceil((WINW + 0.12) / segP) + 1;
-      for (let k2 = 0; k2 <= nSeg; k2++) {
-        const P0 = (kk0 + k2) * segP, P1 = P0 + segP;
-        const cx0 = screenX(P0, WINW), cy0 = g.top + trackBendY(P0);
-        const cx1 = screenX(P1, WINW), cy1 = g.top + trackBendY(P1);
-        cctx.fillStyle = (((kk0 + k2) % 2) + 2) % 2 === 0 ? "rgba(206,58,62,0.88)" : "rgba(236,231,220,0.88)";
-        cctx.beginPath();
-        cctx.moveTo(cx0, cy0); cctx.lineTo(cx1, cy1); cctx.lineTo(cx1, cy1 + 4.5); cctx.lineTo(cx0, cy0 + 4.5);
-        cctx.closePath(); cctx.fill();
-      }
-      // 縁石の接地影
-      cctx.strokeStyle = "rgba(0,0,0,0.30)"; cctx.lineWidth = 2;
-      cctx.beginPath();
-      for (let k2 = 0; k2 <= nSeg; k2++) {
-        const P0 = (kk0 + k2) * segP;
-        const cx0 = screenX(P0, WINW), cy0 = g.top + trackBendY(P0) + 5.5;
-        if (k2 === 0) cctx.moveTo(cx0, cy0); else cctx.lineTo(cx0, cy0);
-      }
-      cctx.stroke();
-    } else {
-      for (let i = 0; i < 8; i++) {
-        cctx.fillStyle = (i % 2 === 0) ? "rgba(255,255,255,0.030)" : "rgba(0,26,12,0.06)";
-        cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH + 0.5);
-      }
+    for (let i = 0; i < 8; i++) {
+      cctx.fillStyle = (i % 2 === 0) ? "rgba(255,255,255,0.030)" : "rgba(0,26,12,0.06)";
+      cctx.fillRect(0, g.top + i * g.laneH, cw, g.laneH + 0.5);
     }
     // 路面フレック（小石/土）：世界座標に固定→カメラと一緒に流れる＝地面の速度感。
     // 世界indexの決定的ハッシュで配置（フレーム間でちらつかない）。
@@ -2426,27 +2359,9 @@ function startRaceCanvas(container, ctx) {
         const wi = k0 + k, P = wi * stepP;
         const hx = (((wi * 2654435761) >>> 0) % 10000) / 10000;
         const px = screenX(P, WINW), py = g.top + 2 + hx * (g.bottom - g.top - 4) + trackBendY(P);
-        cctx.fillStyle = gp ? (hx > 0.5 ? rcRgba(gp.lite, 0.14) : rcRgba(gp.dark, 0.20))
-                            : (hx > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,20,10,0.08)");
+        cctx.fillStyle = hx > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,20,10,0.08)";
         cctx.fillRect(px, py, hx > 0.75 ? 2 : 1.3, 1.2);
       }
-    }
-    // 進行方向シェブロン（R8-W2・モック準拠）：路面に薄い「>」を世界固定で等間隔＝
-    // 走る向きと路面の速度感を常時示す（表示のみ）。
-    {
-      const stepP = 0.05, k0 = Math.floor((S.camL - 0.08) / stepP);
-      const nK = Math.ceil((WINW + 0.16) / stepP);
-      const midY = (g.top + g.bottom) / 2;
-      const hh = (g.bottom - g.top) * 0.30, ww = hh * 0.55;
-      cctx.save();
-      cctx.lineWidth = 3; cctx.lineJoin = "round"; cctx.lineCap = "round";
-      cctx.strokeStyle = gp ? "rgba(255,214,120,0.16)" : "rgba(255,214,120,0.09)";   // 暗い大地では少し立てる（モック準拠）
-      for (let k = 0; k <= nK; k++) {
-        const P = (k0 + k) * stepP;
-        const px = screenX(P, WINW), py = midY + trackBendY(P);
-        cctx.beginPath(); cctx.moveTo(px - ww, py - hh); cctx.lineTo(px, py); cctx.lineTo(px - ww, py + hh); cctx.stroke();
-      }
-      cctx.restore();
     }
     {
       const ts = cctx.createLinearGradient(0, g.top, 0, g.bottom);
@@ -2455,20 +2370,32 @@ function startRaceCanvas(container, ctx) {
       ts.addColorStop(1,   "rgba(255,255,255,0.045)");
       cctx.fillStyle = ts; cctx.fillRect(0, g.top, cw, g.bottom - g.top);
     }
-    // R8-W1/W6: パララックス時の空気遠近——大地は既に地域色なので、奥だけ軽く夜に沈める
-    if (para) {
-      const nt = cctx.createLinearGradient(0, g.top, 0, g.bottom);
-      nt.addColorStop(0,    "rgba(11,15,32,0.26)");
-      nt.addColorStop(0.5,  "rgba(11,15,32,0.10)");
-      nt.addColorStop(1,    "rgba(9,11,26,0.04)");
-      cctx.fillStyle = nt; cctx.fillRect(-10, g.top - 30, cw + 20, (g.bottom - g.top) + 60);
-    }
     cctx.restore();
-    // theme surface treatment (fog veil / lava cracks / bridge planks)
-    drawGroundOverlay(tb.keyA, g, WINW);
+    }   // ← !para（従来コースの帯描画ここまで。パララックス時は絵の世界が路面＝何も描かない）
 
-    // lane stripes（大地モードでは芝の白線らしさを消す＝ほぼ無に）
-    cctx.strokeStyle = gp ? "rgba(255,255,255,0.022)" : "rgba(255,255,255,0.06)";
+    // 進行方向シェブロン（R8-W2・モック準拠）：路面に薄い「>」を世界固定で等間隔＝
+    // 走る向きと速度感を常時示す（両モード共通・表示のみ）。
+    {
+      const stepP = 0.05, k0 = Math.floor((S.camL - 0.08) / stepP);
+      const nK = Math.ceil((WINW + 0.16) / stepP);
+      const midY = (g.top + g.bottom) / 2;
+      const hh = (g.bottom - g.top) * 0.30, ww = hh * 0.55;
+      cctx.save();
+      cctx.lineWidth = 3; cctx.lineJoin = "round"; cctx.lineCap = "round";
+      cctx.strokeStyle = para ? "rgba(255,214,120,0.15)" : "rgba(255,214,120,0.09)";   // 絵の上では少し立てる（モック準拠）
+      for (let k = 0; k <= nK; k++) {
+        const P = (k0 + k) * stepP;
+        const px = screenX(P, WINW), py = midY + trackBendY(P);
+        cctx.beginPath(); cctx.moveTo(px - ww, py - hh); cctx.lineTo(px, py); cctx.lineTo(px - ww, py + hh); cctx.stroke();
+      }
+      cctx.restore();
+    }
+    // theme surface treatment (fog veil / lava cracks / bridge planks)
+    // （パララックス時はスキップ＝絵の路面に手続き模様を重ねない）
+    if (!para) drawGroundOverlay(tb.keyA, g, WINW);
+
+    // lane stripes（パララックス時は無し＝絵の世界にレーン白線は存在しない）
+    cctx.strokeStyle = para ? "rgba(0,0,0,0)" : "rgba(255,255,255,0.06)";
     cctx.lineWidth = 1;
     const _cy = g.top + (g.bottom - g.top) * 0.5;
     for (let i = 1; i < 8; i++) {
