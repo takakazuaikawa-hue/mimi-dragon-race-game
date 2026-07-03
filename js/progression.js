@@ -55,6 +55,51 @@ function _scoutLocOpen(id) {
     (typeof scoutLocationUnlocked === "function") && scoutLocationUnlocked(id); } catch (e) { return false; }
 }
 
+// ===== 暮らし×物語 結線（正本 docs/KURASHI_STORY_WEAVE.md）=====
+// kurashiChapter()＝現在章（既読済み最大章。ED後=6）。暮らし各画面が「いま何話か」で
+// 声やお題を変えるための共通ヘルパ（表示のみ・レース数値不変）。
+function kurashiChapter() {
+  try {
+    if (state.player && state.player.epilogue && state.player.epilogue.edFlag) return 6;
+    for (let n = 5; n >= 1; n--) if (getStoryFlag("_chapter_intro_" + n)) return n;
+  } catch (e) {}
+  return 1;
+}
+// 暮らし還流台帳：暮らしの行動（育てる/引っ越す/食べる/習う）に物語側が反応する。
+// 形は UNLOCKS の toast と同じ（1到着1件・_unlocked_フラグで一度きり・表示のみ）。
+const KURASHI_WATCH = [
+  { id: "k_tree5", tier: "toast",
+    cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 5; },
+    notifyBody: "🌱 くらしツリーが5節目。スミカ「暮らしが根を張ってきたね。聖龍日報の文化面が取材したいって」" },
+  { id: "k_tree15", tier: "toast",
+    cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 15; },
+    notifyBody: "🌳 くらしツリーが15節目！　スミカ「もう立派な木。……あんた、島の暮らしの見本になってるよ」" },
+  { id: "k_tree30", tier: "toast",
+    cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 30; },
+    notifyBody: "🌳 くらしツリーが30節目！！　枝の先まで灯りがともる。日報いわく「島でいちばん豊かな木」。" },
+  // 暮らし向上＝LIFE_TIERS（総資産の生活段位）到達。島の経済の景気ティアと同じ物差し。
+  { id: "k_tier2", tier: "toast",
+    cond: function () { return typeof LIFE_TIERS !== "undefined" && ((state.player && state.player.totalAssets) || 0) >= LIFE_TIERS[2].min; },
+    notifyBody: "🏠 暮らしが「" + (typeof LIFE_TIERS !== "undefined" ? LIFE_TIERS[2].name : "慎ましい暮らし") + "」に！　聖龍日報・暮らし面「あの新人、屋根のある暮らしへ」。" },
+  { id: "k_tier3", tier: "toast",
+    cond: function () { return typeof LIFE_TIERS !== "undefined" && LIFE_TIERS[3] && ((state.player && state.player.totalAssets) || 0) >= LIFE_TIERS[3].min; },
+    notifyBody: "🏡 暮らしがまた一段上がりました。日報いわく「崑崙の丘に、竜の見える家」。ご近所さんが増えました。" },
+  { id: "k_meals10", tier: "toast",
+    cond: function () { return Object.keys((state.player && state.player.meals) || {}).length >= 10; },
+    notifyBody: "🍽️ 食べ歩き10品目！　グルメ面「みみしんぼ」外伝が載りました。屋台のおやじが照れてます。" },
+  { id: "k_meals25", tier: "toast",
+    cond: function () { return Object.keys((state.player && state.player.meals) || {}).length >= 25; },
+    notifyBody: "🍽️ 食べ歩き25品！　グルメ面いわく「この島の味を、彼女はぜんぶ知っている」。" },
+  { id: "k_skillmax", tier: "toast",
+    cond: function () {
+      try {
+        const as = (state.player && state.player.activeSkills) || {};
+        return typeof ACTIVE_SKILLS !== "undefined" && ACTIVE_SKILLS.some(function (s) { return (as[s.id] || 0) >= s.levels.length; });
+      } catch (e) { return false; }
+    },
+    notifyBody: "🎫 習い事をひとつ極めました！　師範が目を細めています。「もう教えることはない……いや、まだあるか」" }
+];
+
 // 解放判定（台帳経由の単一入口）。未知idは false。
 function unlockOpen(id) {
   const u = UNLOCKS.find(function (x) { return x.id === id; });
@@ -70,7 +115,7 @@ function progressionCheckOnHome() {
   try {
     if (document.querySelector(".navpop-ov")) return;   // 既に何かのモーダルが出ていたら譲る（1到着1件ルール）
     let cutinDone = false;
-    for (const u of UNLOCKS) {
+    for (const u of UNLOCKS.concat(KURASHI_WATCH)) {
       if (_unlockNotified(u.id)) continue;
       let open = false; try { open = !!u.cond(); } catch (e) {}
       if (!open) continue;
