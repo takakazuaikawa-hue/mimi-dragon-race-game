@@ -543,15 +543,19 @@ function _rcEmitAccent(S, design, o) {
   const kind = design.accent;
   if (!kind || kind === 'none' || o.grounded) return;          // austere dragons (gando) + walk-in: no trail
   const base = _RC_ACCENT_RATE[kind]; if (!base) return;
-  const iv = base * (1.35 - clamp(o.intensity || 0, 0, 1) * 0.6);   // denser when surging
+  const iv = base * (1.1 - clamp(o.intensity || 0, 0, 1) * 0.62);   // 少し密に＝署名が「見える」量（表示のみ）
   const now = performance.now() / 1000;
   S.accT = S.accT || {};
   if (now - (S.accT[o.id] || 0) < iv) return;
   S.accT[o.id] = now;
   const dep = o.dep || 1;
-  const rx = o.x - 9 * dep + (Math.random() - 0.5) * 6 * dep;
-  const ry = o.y - 8 * dep + (Math.random() - 0.5) * 7 * dep;
+  // ★出る位置のこだわり：署名は「尾の後ろ」から吐き出す（鼻先アンカーなので体は左へ伸びる）。
+  //   炎尾竜は尾の炎から火の粉、雷竜は尾端から稲妻——体に重ならず、走った軌跡に残る。
+  const tw = o.tailW || 18 * dep;
+  const rx = o.x - tw * (0.94 + Math.random() * 0.28);
+  const ry = o.y - 10 * dep + (Math.random() - 0.5) * 6 * dep;
   S.particles.push(_rcMakeAccent(kind, rx, ry, dep, o.color, design.aura));
+  if ((o.intensity || 0) > 0.85) S.particles.push(_rcMakeAccent(kind, rx - 5 * dep, ry + 3, dep, o.color, design.aura));   // 全力時は二重に
 }
 function _rcDrawAccent(ctx, p, a) {
   const k = p.kind;
@@ -563,17 +567,32 @@ function _rcDrawAccent(ctx, p, a) {
     ctx.fillStyle = rcRgba(p.color || '#cdd9e6', 0.12 * a);
     ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.2 + (1 - a)), 0, Math.PI * 2); ctx.fill(); return;
   }
-  if (k === 'spark') {                                 // quick electric tick
-    ctx.strokeStyle = rcRgba(p.color || '#fff', 0.9 * a); ctx.lineWidth = 1.3;
-    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 3, p.y - 1.6); ctx.stroke(); return;
+  if (k === 'spark') {                                 // ⚡稲妻：ジグザグ＋加算グロー（雷竜の署名）
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const sc2 = p.color || '#9fd8ff';
+    const g2 = ctx.createRadialGradient(p.x - p.size, p.y, 0, p.x - p.size, p.y, p.size * 4);
+    g2.addColorStop(0, rcRgba(sc2, 0.45 * a)); g2.addColorStop(1, rcRgba(sc2, 0));
+    ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(p.x - p.size, p.y, p.size * 4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rcRgba('#eaf7ff', 0.95 * a); ctx.lineWidth = 1.4; ctx.lineJoin = 'miter';
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - p.size * 1.6, p.y + p.size * 0.9);
+    ctx.lineTo(p.x - p.size * 2.5, p.y - p.size * 0.5);
+    ctx.stroke();
+    ctx.restore(); return;
   }
   if (k === 'sparkle' || (k === 'firegold' && p.spark)) {   // 4-point twinkle
     rcSparkle(ctx, p.x, p.y, p.size * 1.8, rcRgba(p.color || '#fff', 0.92 * a)); return;
   }
-  if (k === 'ember' || k === 'firegold') {             // warm rising spark
-    ctx.fillStyle = k === 'firegold' ? rcRgba(p.color || '#ffcf52', 0.92 * a)
-                                     : 'rgba(255,' + (150 + Math.floor(80 * a)) + ',80,' + (0.85 * a) + ')';
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); return;
+  if (k === 'ember' || k === 'firegold') {             // 🔥火の粉：加算グロー付き（炎竜の署名・HD-2Dブルーム）
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const fc = k === 'firegold' ? (p.color || '#ffcf52') : '#ff9a50';
+    const gg3 = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3.1);
+    gg3.addColorStop(0, rcRgba(fc, 0.5 * a)); gg3.addColorStop(1, rcRgba(fc, 0));
+    ctx.fillStyle = gg3; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 3.1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = k === 'firegold' ? rcRgba(fc, 0.95 * a)
+                                     : 'rgba(255,' + (150 + Math.floor(80 * a)) + ',80,' + (0.9 * a) + ')';
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); return;
   }
   if (k === 'sleep') {                                 // drifting bubble (hollow)
     ctx.strokeStyle = rcRgba(p.color || '#dfeaff', 0.5 * a); ctx.lineWidth = 1;
@@ -2464,7 +2483,8 @@ function startRaceCanvas(container, ctx) {
         const gap = 38 + depth * 16;          // denser → more streaks tear past
         const mul = 1.2 + depth * 0.55;       // near streaks blur a touch faster than the ground
         const h = depth > 0.6 ? 3 : 2;        // near streaks thicker
-        const a = (0.14 + depth * 0.16).toFixed(3);
+        // 絵の世界の上では白線はごく薄い風のスジに（ユーザー指摘「横線をもう少し薄く」）
+        const a = ((para ? 0.045 : 0.14) + depth * (para ? 0.05 : 0.16)).toFixed(3);
         cctx.fillStyle = "rgba(255,255,255," + a + ")";
         // scroll keyed to the REAL ground rate (× small blur factor) so streaks read
         // as motion blur ON the track — not objects flying past on another plane.
@@ -2880,7 +2900,8 @@ function startRaceCanvas(container, ctx) {
         lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
         bank: bank, spread: spread, spin: beh.spin, squash: beh.squash, grounded: S.entryT > 0
       });
-      _rcEmitAccent(S, dragonDesign(dr.id), { x: dcx, y: spriteY, dep: dep, color: dr.color, intensity: intensity, grounded: S.entryT > 0, id: dr.id });
+      _rcEmitAccent(S, dragonDesign(dr.id), { x: dcx, y: spriteY, dep: dep, color: dr.color, intensity: intensity, grounded: S.entryT > 0, id: dr.id,
+        tailW: rcHasDragonSprite(dr.id) ? rcDragonSpriteHalfW(dr.id, _RC_INRACE * laneDepth(dr)) * 2 : 18 });   // 署名は尾の後ろから（位置のこだわり）
 
       if (!rcHasDragonSprite(dr.id)) rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);   // 3D絵は自前の表情を持つので漫符overlayは出さない
       // rank badge — ★没入感優先＝控えめな半透明（ユーザー指摘）。賭け竜だけ淡い金塗り。
@@ -3695,23 +3716,8 @@ function startRaceCanvas(container, ctx) {
       logEl.style.display = S.showLog ? "" : "none";
       if (S.showLog) renderLog();
     }, { secondary: true }));
-    // ミュート切替（レース中もいつでも）。SE・歓声＋BGMをまとめて消音／復帰。
-    const muteOn = !!(window.Sfx && Sfx.isMuted && Sfx.isMuted());
-    const muteBtn = makeBtn(muteOn ? "🔇" : "🔊", () => {
-      if (!window.Sfx) return;
-      const nowMuted = !Sfx.isMuted();
-      Sfx.setMuted(nowMuted);                          // SE・歓声ループを停止＋設定を保存
-      if (nowMuted) {
-        if (window.RaceBgm) RaceBgm.setMuted(true);    // BGMも止める
-      } else {
-        if (!S.finished && S.preT <= 0 && window.RaceBgm) RaceBgm.start();   // 進行中ならBGM再開
-        else if (S.finished && Sfx.startCrowd) Sfx.startCrowd();             // ゴール後なら歓声を鳴らし直す
-      }
-      renderControls();                                // アイコン更新
-    }, { secondary: true });
-    muteBtn.classList.add("rc-mute");
-    muteBtn.setAttribute("aria-label", muteOn ? "ミュート解除" : "ミュート");
-    controlsEl.appendChild(muteBtn);
+    // 音声操作は全画面共通の🔊FAB（右下）へ一本化——ボタン二重のUX混乱を解消（ユーザー指摘）。
+    // ミュート/音量は showVolumePanel が担い、BGM復帰は RaceBgm.setMuted(false) が面倒を見る。
     if (S.finished) {
       controlsEl.appendChild(makeBtn("結果を見る", () => { stopRacePlayer(); if (typeof renderResult === "function") renderResult(); }));
     }

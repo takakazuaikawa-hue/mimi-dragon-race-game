@@ -37,6 +37,10 @@ var RaceBgm = (function () {
   var bgmLevel = 1;             // ユーザー音量 0..1（1.0=従来）
   try { var _bv = parseFloat(localStorage.getItem(VOL_KEY)); if (_bv >= 0 && _bv <= 1) bgmLevel = _bv; } catch (e) {}
   var lastIdx = -1;   // 直前と同じ曲を避けて選ぶ
+  // 「いま何を鳴らしている/鳴らすべきか」の意図。ミュート中に start()/playFile() されても
+  // ここに残るので、ミュート解除時に正しく復帰できる（旧実装は解除時に何もせず
+  // 「一度消すと二度と鳴らない」バグだった）。stop()/fadeOut() で消える。
+  var pending = null;   // null | {kind:'race'} | {kind:'file', path:string}
 
   function isMuted() {
     try {
@@ -56,6 +60,7 @@ var RaceBgm = (function () {
   }
 
   function stop() {
+    pending = null;                 // 意図ごと止める（画面離脱・明示停止）
     if (audio) {
       try { audio.pause(); audio.src = ""; audio.load(); } catch (e) {}
       audio = null;
@@ -64,6 +69,7 @@ var RaceBgm = (function () {
 
   // ゴール時：音量をなめらかに絞ってから停止（歓声に重ねてフェードアウト）。
   function fadeOut(ms) {
+    pending = null;               // フェード終了後に勝手に復帰しない
     if (!audio) return;
     var a = audio;
     audio = null;                 // 次レースが新規 start できるよう即デタッチ
@@ -79,6 +85,7 @@ var RaceBgm = (function () {
 
   function start() {
     stop();
+    pending = { kind: "race" };          // ミュート中でも「レースBGMを鳴らすべき」を覚える
     if (isMuted()) return;
     var idx = pickIndex();
     if (idx < 0) return;                 // 曲が未設置 → 無音の no-op
@@ -93,8 +100,21 @@ var RaceBgm = (function () {
     } catch (e) { audio = null; }
   }
 
-  // ミュート時は即停止（レース中にミュートされても止まるように）。
-  function setMuted(m) { if (m) stop(); }
+  // ミュート＝一時停止（曲と再生位置は保持）／解除＝その場で再開。
+  // 再生中でなければ pending の意図（レースBGM/指定ファイル）から復帰する。
+  // 旧実装（mute=破棄・解除=何もしない）は「一度消すとBGMが二度と鳴らない」バグ。
+  function setMuted(m) {
+    if (m) {
+      if (audio) { try { audio.pause(); } catch (e) {} }
+    } else {
+      if (audio) {
+        try { audio.volume = BGM_BASE * bgmLevel; var p = audio.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+      } else if (pending) {
+        if (pending.kind === "file" && pending.path) playFile(pending.path);
+        else start();
+      }
+    }
+  }
 
   // ユーザー音量 0..1。再生中の audio へ即反映＋localStorage 保存（表示専用）。
   function setVolume(v) {
@@ -108,6 +128,7 @@ var RaceBgm = (function () {
   // audio を共有するので、音量スライダー(setVolume)・ミュート(setMuted)・停止(stop/fadeOut)がそのまま効く。
   function playFile(relPath) {
     stop();
+    pending = { kind: "file", path: relPath };   // ミュート中でも意図を覚える→解除で復帰
     if (isMuted()) return;
     try {
       var parts = String(relPath).split("/");

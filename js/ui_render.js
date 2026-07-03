@@ -357,6 +357,7 @@ function showVolumePanel() {
     box.querySelector(".vol-mute-lb").textContent = m ? "🔇 ミュート中" : "🔊 サウンド ON";
     if (!m && window.Sfx && Sfx.play) Sfx.play("click");
     syncMuted();
+    if (typeof mountVolumeFab === "function") mountVolumeFab();   // FABアイコンも即同期
   };
 }
 // 🔊 グローバル常設の音量ボタン（全画面で同じ位置＝既存作品の作法／consistent placement）。
@@ -369,6 +370,8 @@ function mountVolumeFab() {
     fab.onclick = (e) => { e.stopPropagation(); if (typeof showVolumePanel === "function") showVolumePanel(); };
     document.body.appendChild(fab);
   }
+  // アイコンは常にミュート状態を映す（🔇のまま🔊表示…の食い違いを防ぐ）
+  fab.textContent = (window.Sfx && Sfx.isMuted && Sfx.isMuted()) ? "🔇" : "🔊";
   return fab;
 }
 // 画面に応じて表示/非表示（beginScreen から毎遷移で呼ぶ）。ホームはナビに⚙️設定（🎚音量）があり
@@ -3273,10 +3276,8 @@ function pickAdvisorReaction(ps, c) {
 function buildResultHero(ps, tier, c) {
   const info = RESULT_TIER[tier] || RESULT_TIER[0];
   const hit = !!ps.hit;
-  const muteIc = (window.Sfx && Sfx.isMuted()) ? "🔇" : "🔊";
   const hero = el("div", "rs-hero rs-" + info.cls);
   hero.innerHTML =
-    `<button class="rs-mute" title="サウンド切替">${muteIc}</button>` +
     `<div class="rs-confetti" aria-hidden="true"></div>` +
     `<div class="rs-stamp">${info.word}</div>` +
     (hit
@@ -3289,16 +3290,7 @@ function buildResultHero(ps, tier, c) {
       `　・　所持 <b>${fmtCoins(state.player.coins)}</b></div>` +
     `<div class="rs-streak" id="rs-streak">${streakLineHtml(c && c.streakInfo)}</div>`;
 
-  const mb = hero.querySelector(".rs-mute");
-  if (mb) mb.onclick = (e) => {
-    e.stopPropagation();
-    if (window.Sfx) {
-      Sfx.setMuted(!Sfx.isMuted());
-      if (window.RaceBgm) RaceBgm.setMuted(Sfx.isMuted());
-      mb.textContent = Sfx.isMuted() ? "🔇" : "🔊";
-      if (!Sfx.isMuted()) Sfx.play("click");
-    }
-  };
+  // （音声操作は全画面共通の🔊FABへ一本化＝rs-mute ボタンは撤去・ユーザー指摘のUX整理）
 
   // Celebrate exactly once per race; on later re-renders (tab switches) just
   // show the final number statically.
