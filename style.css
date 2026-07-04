@@ -6064,3 +6064,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .news-clip .nc-quote { margin-top: 7px; font-size: 11px; line-height: 1.6;
   border-left: 3px solid #b5a888; padding-left: 8px; color: #4a4438; }
 .news-clip .nc-by { margin-top: 5px; font-size: 10px; text-align: right; color: #7a725e; }
+
+/* ===== K3-A2 スミカの宿題（くらしツリーの章連動お題・表示のみ） ===== */
+.sh-box { border-left: 3px solid #b08fd0; }
+.sh-box .sh-t { font-weight: 800; font-size: 13px; }
+.sh-box .sh-t small { color: var(--mist-soft); font-weight: 600; margin-left: 6px; }
+.sh-box .sh-note { font-size: 11.5px; color: var(--mist-soft); margin: 4px 0 6px; line-height: 1.6; }
+.sh-box .sh-row { font-size: 12px; padding: 2.5px 0; }
+.sh-box .sh-row.ok { color: #7CFFB2; }
+.sh-box .sh-row i { font-style: normal; font-size: 10.5px; color: var(--mist-soft); }

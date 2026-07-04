@@ -197,6 +197,14 @@ function showSkillTitleCutin(skill) {
 // 専用画面：くらしスキルツリー（枝タブ＋星座チェーン＋振り直し）
 // 直近に解放したノード（点灯ポップ演出を一度だけ再生するためのフラグ）
 let _ltJustUnlocked = null;
+// K3-A2（docs/KURASHI_STORY_WEAVE.md A2）：スミカの宿題＝章連動の推奨チェックリスト。
+// b=LIFE_BRANCHES のインデックス・n=目標節数。達成表示のみ・報酬なし（表示専用メタ）。
+const SUMIKA_HOMEWORK = {
+  3: { note: "まずは食と住から。倒れない暮らしが、いい予想を作るんです。", items: [{ b: 0, n: 2 }, { b: 1, n: 2 }] },
+  4: { note: "配信の時代ですから。装いと遊びにも、少しだけ投資を。", items: [{ b: 2, n: 3 }, { b: 4, n: 3 }] },
+  5: { note: "ここまで来たら、全部の枝を。暮らしの厚みが、島の底力になります。", items: [{ b: 0, n: 4 }, { b: 3, n: 4 }, { b: 5, n: 4 }] },
+  6: { note: "……もう宿題はありません。あなたの暮らしが、みんなのお手本です。", items: [] }
+};
 function renderLifeTree() {
   state.ui.screen = "life_tree";
   recomputeAssets(state);
@@ -204,6 +212,25 @@ function renderLifeTree() {
   const app = beginScreen();   // 上部に「← 暮らし」が付く
   app.appendChild(el("h2", null, "くらしスキルツリー"));
   app.appendChild(el("div", "as-hint2", `暮らしP ◇<b>${st.available}</b> 残り ／ 解放 ${st.unlockedCount}/${st.totalNodes}　<span class="as-hint">レースで総資産が増える＝暮らしPが貯まる</span>`));
+
+  // ── スミカの宿題（章連動・表示のみ）──
+  try {
+    const ch = Math.min(Math.max((typeof kurashiChapter === "function") ? kurashiChapter() : 3, 3), 6);
+    const hw = SUMIKA_HOMEWORK[ch];
+    if (hw) {
+      const rows = hw.items.map(it => {
+        const b = LIFE_BRANCHES[it.b]; if (!b) return "";
+        const pr = lifeBranchProgress(b.id);
+        const ok = pr.done >= it.n;
+        return `<div class="sh-row${ok ? " ok" : ""}"><span>${ok ? "☑" : "☐"}</span> ${b.icon} ${b.name}の枝を ${it.n} 節まで <i>（いま ${pr.done}）</i></div>`;
+      }).join("");
+      const box = el("div", "card sh-box");
+      box.innerHTML =
+        `<div class="sh-t">🏘️ スミカの宿題 <small>${ch >= 6 ? "クリア後" : "第" + ch + "話"}</small></div>` +
+        `<div class="sh-note">「${hw.note}」</div>` + rows;
+      app.appendChild(box);
+    }
+  } catch (e) {}
 
   if (!_lifeTab || !LIFE_TREE[_lifeTab]) {
     _lifeTab = LIFE_BRANCHES[0].id;
