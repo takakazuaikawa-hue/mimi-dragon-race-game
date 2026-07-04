@@ -2162,9 +2162,12 @@ function rpgEnemyVisual(id, emoji, disp, cls) {
 function rpgMiniMap() {
   const wrap = el("div", "rpg-mini");
   const cell = 14;
+  // 高DPR端末でぼやけないよう、CSS表示サイズ(76px固定)は変えずに内部解像度だけdpr倍する
+  const dpr = Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
   const cv = el("canvas");
-  cv.width = RPG.w * cell; cv.height = RPG.h * cell;
+  cv.width = RPG.w * cell * dpr; cv.height = RPG.h * cell * dpr;
   const ctx = cv.getContext("2d");
+  ctx.scale(dpr, dpr);   // 以降は従来どおり cell 単位の論理座標で描ける
   // 床/壁/未踏のベース塗り（探索済みは永続表示）
   for (let y = 0; y < RPG.h; y++) for (let x = 0; x < RPG.w; x++) {
     const seen = RPG.explored[x + "," + y];
