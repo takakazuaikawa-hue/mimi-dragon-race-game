@@ -2007,7 +2007,11 @@ function rpgDrawBattle(cv, t) {
       if (tourist) {
         e._pal = e._pal || rpgTouristPal(e.id);
         rpgDrawTourist(ctx, ex, s.y + off[1] - bob * 0.5, 62 * (0.5 + 0.5 * intro), e._pal, e.ref.ic);
-      } else { ctx.font = ((b.boss ? 70 : 48) * (0.45 + 0.55 * intro)) + "px serif"; ctx.fillText(e.ref.ic, ex, cy); }
+      } else {
+        const sz = (b.boss ? 70 : 48) * (0.45 + 0.55 * intro), art = rpgEnemyArt(e.id);
+        if (art) ctx.drawImage(art, ex - sz / 2, cy - sz / 2, sz, sz);
+        else { ctx.font = sz + "px serif"; ctx.fillText(e.ref.ic, ex, cy); }
+      }
       ctx.shadowBlur = 0; ctx.restore();
     }
     // ── 撃破の余韻（ポップ＋舞い上がるきらめき／ハート＝観光客は満足、モンスターは砕け散る）
@@ -2134,6 +2138,16 @@ function rpgMimiArt() {
   if (!RPG_ART_MIMI) return null;
   if (!_rpgMimiImg) { _rpgMimiImg = new Image(); _rpgMimiImg.src = "images/rpg/mimi.webp"; }
   return (_rpgMimiImg.complete && _rpgMimiImg.naturalWidth) ? _rpgMimiImg : null;
+}
+// 敵アートのcanvas描画（rpgMimiArt()と同じ方式：Image().complete/naturalWidthで判定）。
+// 戦闘シーンは単一canvasへの直描きのため、DOM要素を返すrpgEnemyVisual()はここでは使わず、
+// 同じ画像パスをcanvas用に直接キャッシュ・drawImageする（RPG_ART_ENEMIES未登録なら読みに行かない＝404を出さない）。
+const _rpgEnemyArtCache = {};
+function rpgEnemyArt(id) {
+  if (RPG_ART_ENEMIES.indexOf(id) < 0) return null;
+  let img = _rpgEnemyArtCache[id];
+  if (!img) { img = _rpgEnemyArtCache[id] = new Image(); img.src = "images/rpg/enemies/" + id + ".webp"; }
+  return (img.complete && img.naturalWidth) ? img : null;
 }
 function rpgEnemyVisual(id, emoji, disp, cls) {
   if (RPG_ART_ENEMIES.indexOf(id) < 0) return rpgMakeSprite(emoji, disp, cls);
