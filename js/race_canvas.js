@@ -85,11 +85,15 @@ var RC_PARA_SLUG = { "グランドクロック地域": "grandclock", "ルミナ�
 // R8-W7: 地域の「光の粒」色（加算発光の漂うモート＝熾火/蛍/星屑/提灯の火の粉…・表示のみ）
 var RC_PARA_MOTE = { stadium: "#ffe9a8", grandclock: "#ffd98a", lumina: "#7cd8ff", ringrosso: "#ff9a6a", mistlake: "#9ad2c8", caldera: "#ff9a4d", vento: "#e8d9a8", notte: "#a98fe8", lapan: "#ffb35c" };
 var _rcParaCache = {};
-function rcParaFor(race, onReady, suffix) {
-  // suffix="_day"＝朝昼セット（docs/CODEX_RACE_SCENE_DAY_BRIEF.md）。e.slug は常にベース地域名
-  // （旗ゲート/光の粒の色引きが時間帯に依存しないように）。未納品は fail→従来経路へ。
+// ゲーム時間帯→納品フォルダ（images/racebg_v2_time/<dir>/・5時間帯×9地域×3層=135枚検品済）。
+// 納品の evening=夕焼け（明るく赤い）・dusk=黄昏（暗い紫）＝画素実測で対応を決定。
+var RC_TIME_DIR = { morning: "morning", day: "noon", sunset: "evening", dusk: "dusk", night: "night" };
+function rcParaFor(race, onReady, timeDir) {
+  // e.slug は常にベース地域名（旗ゲート/光の粒の色引きが時間帯に依存しないように）。
+  // 読込失敗は fail→従来経路（一枚絵/プロシージャル）へ自動フォールバック。
   var base = RC_PARA_SLUG[race && race.region] || "stadium";
-  var key = base + (suffix || "");
+  var dir = timeDir || "night";
+  var key = dir + "/" + base;
   var e = _rcParaCache[key];
   if (!e) {
     e = _rcParaCache[key] = { slug: base, ok: false, fail: false, n: 0, imgs: [], cbs: [] };
@@ -97,7 +101,7 @@ function rcParaFor(race, onReady, suffix) {
       var im = new Image();
       im.onload = function () { if (++e.n === 3 && !e.fail) { e.ok = true; e.cbs.splice(0).forEach(function (f) { try { f(); } catch (_) {} }); } };
       im.onerror = function () { e.fail = true; e.cbs.length = 0; };
-      im.src = "images/racebg_v2/" + key + "_" + k + ".webp";
+      im.src = "images/racebg_v2_time/" + key + "_" + k + ".webp";
       e.imgs[i] = im;
     });
   }
@@ -1505,10 +1509,8 @@ function startRaceCanvas(container, ctx) {
     paraBaked = null;
     if (!cw || !ch) return;
     const t = rcRaceTime(race);
-    // 夜系＝既存セット／朝昼＝ _day セット（docs/CODEX_RACE_SCENE_DAY_BRIEF.md・未納品なら
-    // fail→従来の昼絵へ自動フォールバック＝納品だけで全レースがパララックス化）。
-    const sfx = (t === "sunset" || t === "dusk" || t === "night") ? "" : "_day";
-    const e = rcParaFor(race, function () { if (document.contains(canvas)) bakePara(); }, sfx);
+    // 全時間帯パララックス（racebg_v2_time 納品済）。失敗時は従来経路へ自動フォールバック。
+    const e = rcParaFor(race, function () { if (document.contains(canvas)) bakePara(); }, RC_TIME_DIR[t] || "night");
     if (!e || !e.ok) return;
     try {
       const conf = RC_SKY_CONF[t] || RC_SKY_CONF.night;
