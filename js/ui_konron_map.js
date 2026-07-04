@@ -394,6 +394,21 @@ function _kmContentHtml(spotId) {
   return h + '</div>';
 }
 
+// K3-A3: 章→舞台スポットの対応（表示のみ）。[章配列, 日報風キャプション]
+const KM_STAMP = {
+  tanryu:     [[1], "第1話——すべては、はじめての一枚の券から。"],
+  makemeshi:  [[1], "第1話——負けた夜の一杯が、再起の出発点だった。"],
+  market:     [[2], "第2話——ミズの言う“市場のほんとう”は、この湯気の中に。"],
+  mall:       [[2], "第2話——開店祝いはサケから。ミミ、はじめての衣装選び。"],
+  kachimeshi: [[3], "第3話——暮らしが根を張りはじめた頃、祝いの串はここで。"],
+  ryusha:     [[3], "第3話——泣き虫の子竜と出会った、竜たちの森。"],
+  oshigoods:  [[4], "第4話——配信の時代。推しの旗が、観客席を埋めていく。"],
+  uroko:      [[4], "第4話——バズった夜は、湯けむりでクールダウン。"],
+  kibishis:   [[5], "終章——空がいちばん近い場所で、彼女は“天井”を見上げた。"],
+  dakon:      [[5], "終章——島の奥に眠るものが、静かに目を覚ます。"],
+  racecourse: [[6], "そして今日も——聖龍が駆け、島は笑う。"]
+};
+
 function _kmRenderPanel() {
   const panel = document.getElementById("km-panel"); if (!panel) return;
 
@@ -403,6 +418,8 @@ function _kmRenderPanel() {
     const c = KM_CATS[s.cat] || KM_CATS.port;
     const area = _kmAreaOf(_kmSpot);
     const open = _kmSpotOpen(s);
+    // K3-A3（docs/KURASHI_STORY_WEAVE.md A3）：「いまの話の舞台」章スタンプ。
+    // 現章がそのスポットの舞台なら日報風バッジを出す（表示のみ・KONRON_SPOTS本体は不変）。
     // K2（暮らし還流）：写真を見た記録＝表示専用メタ。還流台帳 k_spots8/k_spots20 と
     // 日報の文化面小イベントがこのカウントに反応する（docs/KURASHI_STORY_WEAVE.md B）。
     if (open && s.photo) {
@@ -417,6 +434,14 @@ function _kmRenderPanel() {
     if (area && area.spots.length > 1) body += `<button class="km-areaback" data-back="1">← ${area.name}</button>`;
     body += `<div class="km-card-head"><span class="km-card-ic">${c.ic}</span>` +
       `<div class="km-card-id"><b>${s.name}</b><small>${c.name}${s.time && s.time !== "—" ? "・" + s.time : ""}</small></div></div>`;
+    // K3-A3: 「いまの話の舞台」章スタンプ（現章が舞台のスポットだけ・表示のみ）
+    try {
+      const chNow = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
+      const stamp = KM_STAMP[_kmSpot];
+      if (open && stamp && stamp[0].indexOf(chNow) >= 0) {
+        body += `<div class="km-stamp">📰 いまの話の舞台<span>${stamp[1]}</span></div>`;
+      }
+    } catch (e) {}
     if (!open) {
       body += `<div class="km-card-lock">🔒 まだ行けない場所（<b>${_kmTierLabel(s.tier)}</b>で解放）。総資産 ${KM_TIER_AT[s.tier].toLocaleString("ja-JP")} で開放。</div>`;
     } else {

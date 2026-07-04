@@ -6073,3 +6073,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sh-box .sh-row { font-size: 12px; padding: 2.5px 0; }
 .sh-box .sh-row.ok { color: #7CFFB2; }
 .sh-box .sh-row i { font-style: normal; font-size: 10.5px; color: var(--mist-soft); }
+
+/* ===== K3-A3 観光「いまの話の舞台」章スタンプ（表示のみ） ===== */
+.km-stamp { margin: 6px 0 2px; padding: 6px 9px; border: 1px dashed #c9b27a; border-radius: 6px;
+  font-size: 11px; font-weight: 800; color: #ffd98a; background: rgba(201,178,122,.08); }
+.km-stamp span { display: block; margin-top: 2px; font-weight: 500; font-size: 10.5px;
+  color: var(--mist-soft); line-height: 1.55; }
