@@ -6079,3 +6079,27 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   font-size: 11px; font-weight: 800; color: #ffd98a; background: rgba(201,178,122,.08); }
 .km-stamp span { display: block; margin-top: 2px; font-weight: 500; font-size: 10.5px;
   color: var(--mist-soft); line-height: 1.55; }
+
+/* ===== K3-A4 師範制（習い事×物語・表示のみ） ===== */
+.shihan-board { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 12px; }
+.shihan-chip { display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto; gap: 2px 9px;
+  align-items: center; padding: 9px 10px; border-radius: 10px;
+  background: linear-gradient(160deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+  border: 1px solid rgba(255,255,255,.10); border-left: 3px solid var(--shc, #888); }
+.shihan-chip .shihan-crest { grid-row: 1 / span 2; width: 40px; height: 40px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.14), rgba(0,0,0,.28));
+  border: 1.5px solid var(--shc, #888); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative; }
+.shihan-chip .shihan-crest img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.shihan-chip .shihan-crest i { font-style: normal; font-size: 19px; }
+.shihan-chip .shihan-id b { display: block; font-size: 12px; }
+.shihan-chip .shihan-id small { font-size: 10px; color: var(--mist-soft); }
+.shihan-chip .shihan-word { grid-column: 2; font-size: 9.5px; color: var(--mist-soft);
+  line-height: 1.45; font-style: italic; }
+.shihan-chip.kaiden { border-color: #e2b455; border-left-color: #ffd34d;
+  background: linear-gradient(160deg, rgba(255,211,77,.10), rgba(255,211,77,.02)); }
+.shihan-chip.kaiden .shihan-id small { color: #ffd98a; font-weight: 800; }
+.shihan-chip.unmet { opacity: .55; filter: saturate(.4); }
+.askill-shihan { display: inline-block; margin-top: 2px; font-size: 9.5px; font-weight: 700;
+  color: var(--shc, #aaa); }
+.askill-shihan.unmet { color: var(--mist-soft); opacity: .7; }
