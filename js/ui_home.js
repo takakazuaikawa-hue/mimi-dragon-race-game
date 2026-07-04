@@ -283,6 +283,12 @@ function renderHome() {
     };
     sysDd.appendChild(ddFs);
   }
+  // H1: 設定/シェアをヘッダー⋯へ常設（配信モードのタブバー統合の受け皿・静かモードでも便利）
+  const ddSet = el("button", null, "⚙️ 設定");
+  ddSet.onclick = () => { sysDd.classList.add("hidden"); renderSettings(); };
+  const ddShare = el("button", null, "📣 友達にシェア");
+  ddShare.onclick = () => { sysDd.classList.add("hidden"); shareGameInfo(); };
+  sysDd.appendChild(ddSet); sysDd.appendChild(ddShare);
   const ddReset = el("button", null, "🔄 データをリセット");
   ddReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
   sysDd.appendChild(ddTitle); sysDd.appendChild(ddReset);
@@ -732,6 +738,37 @@ function renderHome() {
   //   出入りで枠数が変わらない＝配信化してもレイアウトがガタつかない。ロック表現は2種だけ：
   //   ・条件明示ロック＝実アイコン＋🔒ラベル＋タップで解放条件（観光/モール/図鑑）
   //   ・？？？ミステリー枠＝サプライズ性が価値のもの（龍舎=ポロ・SNS=配信変身）
+  if (broadcast) {
+    // ★H1（docs/HOME_COMMERCIAL_REDESIGN.md・A案=本物のTikTok Live再現）：配信モードは
+    // ガラスの固定5タブ。統合＝食事/モール/龍舎→🏝島（観光ハブ内ポータル）・物語→🌳暮らしハブ・
+    // シェア/設定→ヘッダー⋯。タブは即遷移（確認ポップなし＝商業アプリの作法）。
+    // ロックは🔒＋タップで条件明示（解放の見せ場は維持）。静かモードは従来の10枠のまま。
+    const bar = el("div", "tik-bar");
+    const tikTab = (icon, label, go, opts) => {
+      opts = opts || {};
+      const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));
+      b.innerHTML = `<span class="ic">${icon}</span><span class="lb">${label}</span>` + (opts.dot ? `<i class="dot"></i>` : "");
+      b.onclick = go;
+      return b;
+    };
+    if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
+      bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap()));
+    } else {
+      bar.appendChild(tikTab("🏝️", "島", () => showInfoPopup("🏝️ 島",
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true }));
+    }
+    bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets()));
+    bar.appendChild(tikTab("🐲", "レース", () => renderRaceSelect(), { center: true }));
+    if (typeof dexUnlocked === "function" && dexUnlocked()) {
+      bar.appendChild(tikTab("📖", "図鑑", () => renderCollection()));
+    } else {
+      bar.appendChild(tikTab("📖", "図鑑", () => showInfoPopup("📖 図鑑",
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。</small></div></div>`), { locked: true }));
+    }
+    const _unreadL = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
+    bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0 }));
+    dock.appendChild(bar);
+  } else {
   const rail = el("div", "hl-rail");
   const navItem = (icon, label, desc, go) => {
     const b = el("button", "hl-item", `<span class="ic">${icon}</span><span class="lb">${label}</span>`);
@@ -771,13 +808,8 @@ function renderHome() {
     : lockedItem("📖", "図鑑", "📖 図鑑", "レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。"));
   // 7 物語（常設）
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  // 8 SNS（スマホ購入＝配信変身のサプライズ→？？？枠）
-  if (broadcast && typeof renderSns === "function") {
-    const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
-    rail.appendChild(navItem("📱", "SNS", unread ? `島の投稿＋ファンレター（未読 ${unread} 通）。` : "島のみんなの投稿とファンレター。", () => renderSns()));
-  } else {
-    rail.appendChild(mysteryItem());
-  }
+  // 8 SNS（スマホ購入前＝？？？枠）
+  rail.appendChild(mysteryItem());
   // 9 設定／10 シェア（常設）
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
@@ -785,6 +817,7 @@ function renderHome() {
   const _rn = rail.children.length;
   rail.style.gridTemplateColumns = "repeat(" + (_rn <= 8 ? _rn : Math.ceil(_rn / 2)) + ", 1fr)";
   dock.appendChild(rail);
+  }
   wrap.appendChild(dock);
 
   app.appendChild(wrap);

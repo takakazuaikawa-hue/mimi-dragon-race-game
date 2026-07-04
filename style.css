@@ -3870,11 +3870,17 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .meal-card:active { transform: translateY(1px); }
 .meal-card-ic { font-size: 24px; flex: none; width: 30px; text-align: center; filter: grayscale(.9) opacity(.55); }
 .meal-card.got .meal-card-ic { filter: none; }
+.meal-card-thumb { flex: none; width: 54px; height: 40px; border-radius: 7px; overflow: hidden;
+  background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(0,0,0,.16); }
+.meal-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .meal-card-nm { font-size: 12.5px; font-weight: 700; color: var(--mist-soft); line-height: 1.25; }
 .meal-card.got .meal-card-nm { color: var(--mist); }
 
 .meal-pop { max-width: 360px; text-align: center; }
+.meal-pop-photo { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; border-radius: 12px; margin-bottom: 8px;
+  border: 1px solid rgba(255,255,255,.14); box-shadow: 0 10px 28px rgba(0,0,0,.24); }
 .meal-pop-ic { font-size: 52px; line-height: 1; margin-bottom: 2px; }
+.meal-pop-ic--over { font-size: 28px; margin: -42px 0 10px; filter: drop-shadow(0 2px 5px rgba(0,0,0,.75)); }
 .meal-prompt { font-size: 13px; color: var(--mist-soft); margin: 10px 0; }
 .meal-react { font-size: 14.5px; font-weight: 800; line-height: 1.7; color: #ffe7a8; margin: 12px 4px; }
 .meal-react.meal-hit { color: #ffd36a; }
@@ -6110,3 +6116,28 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .news-clip .nc-men { height: 18px; width: auto; }
 .news-men { height: 18px; width: auto; vertical-align: middle; margin-right: 6px; }
 .news-men--h2 { height: 20px; margin-left: 4px; }
+
+/* ===== H1 TikTok Live風タブバー（配信ホームのみ・A案） ===== */
+.tik-bar { display: grid; grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr; gap: 4px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); margin-top: 8px;
+  background: rgba(14, 16, 30, .66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.10); border-radius: 18px;
+  box-shadow: 0 -6px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06); }
+.tik-tab { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 7px 2px 6px; background: none; border: none; border-radius: 12px; color: #dfe4f2;
+  transition: transform .12s ease, background .12s ease; }
+.tik-tab:active { transform: scale(.92); background: rgba(255,255,255,.06); }
+.tik-tab .ic { font-size: 21px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
+.tik-tab .lb { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; }
+.tik-tab.center { margin-top: -14px; background: linear-gradient(160deg, #ffd465, #e2a22e);
+  color: #2a1d05; border-radius: 16px; box-shadow: 0 6px 16px rgba(226,162,46,.42), inset 0 1px 0 rgba(255,255,255,.5); }
+.tik-tab.center .ic { font-size: 24px; filter: none; }
+.tik-tab.center .lb { font-weight: 900; }
+.tik-tab.center:active { transform: scale(.94); }
+.tik-tab.locked { opacity: .5; filter: saturate(.35); }
+.tik-tab.locked .lb::before { content: "🔒"; font-size: 8px; margin-right: 1px; }
+.tik-tab .dot { position: absolute; top: 5px; right: 22%; width: 8px; height: 8px; border-radius: 50%;
+  background: #ff4d5e; border: 1.5px solid rgba(14,16,30,.9); }
+/* ヒーロー下端のグラデスクリム＝コメント/入力の可読性（TikTokの作法） */
+.hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34%;
+  background: linear-gradient(to top, rgba(6,8,16,.55), rgba(6,8,16,0)); pointer-events: none; }
