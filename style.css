@@ -4873,6 +4873,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   background:linear-gradient(135deg,#ffe17a,#ffb84d); border:none; border-radius:14px; cursor:pointer;
   box-shadow:0 0 18px rgba(255,200,80,.5); animation:rpgpulse 1.6s ease-in-out infinite; }
 @keyframes rpgpulse { 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.18); } }
+/* rpgpulseを使う残りの箇所（.scmr-fs-cell.now/.rpg-hpbar.low/.rpg-act.ult.fullは近傍で個別対応済み）を一括で無効化 */
+@media (prefers-reduced-motion: reduce) {
+  .rpg-chip.calm, .rpg-chip.goal.done, .rpg-start.rpg-next, .rpg-floorstrip .fs-cell.now, .rpg-daily,
+  .rpg-ctl-shop.has, .rpg-chip.gacha, .rpg-auto.on, .rpg-start.tower,
+  .rpg-movebtn.stairs, .rpg-movebtn.shopenter.has, .rpg-actbtn.shop.has, .rpg-shop-hint.has { animation:none; }
+}
 /* ガチャ */
 .rpg-box.gacha-box { background:linear-gradient(180deg,rgba(60,30,72,.85),rgba(34,20,46,.9)); border-color:rgba(200,120,220,.4); }
 .rpg-gacha-rates { font-size:10px; color:#cbb0e0; font-weight:400; margin-left:6px; }
