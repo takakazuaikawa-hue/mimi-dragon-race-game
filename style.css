@@ -2349,7 +2349,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sns-toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* ===== ショッピングモール「MIMI MALL」＝station SQUARE風ライト・ポータル（js/ui_mall.js） ===== */
-.scm { --scm-org: #ef8200; --scm-ink: #3f3a36; --scm-sub: #8a8178; --scm-line: #ececec;
+.scm { --scm-org: #ef8200; --scm-ink: #3f3a36; --scm-sub: #6e6760; --scm-line: #ececec;
   background: #fff; color: var(--scm-ink); border-radius: 14px; overflow: hidden; margin: -2px 0 0;
   border: 1px solid #e6e6e6; box-shadow: 0 18px 40px -24px rgba(0,0,0,.5); font-feature-settings: "palt"; }
 .scm-ico { width: 1em; height: 1em; display: block; }
