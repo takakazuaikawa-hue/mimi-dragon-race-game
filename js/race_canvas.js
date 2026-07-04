@@ -85,16 +85,19 @@ var RC_PARA_SLUG = { "グランドクロック地域": "grandclock", "ルミナ�
 // R8-W7: 地域の「光の粒」色（加算発光の漂うモート＝熾火/蛍/星屑/提灯の火の粉…・表示のみ）
 var RC_PARA_MOTE = { stadium: "#ffe9a8", grandclock: "#ffd98a", lumina: "#7cd8ff", ringrosso: "#ff9a6a", mistlake: "#9ad2c8", caldera: "#ff9a4d", vento: "#e8d9a8", notte: "#a98fe8", lapan: "#ffb35c" };
 var _rcParaCache = {};
-function rcParaFor(race, onReady) {
-  var slug = RC_PARA_SLUG[race && race.region] || "stadium";
-  var e = _rcParaCache[slug];
+function rcParaFor(race, onReady, suffix) {
+  // suffix="_day"＝朝昼セット（docs/CODEX_RACE_SCENE_DAY_BRIEF.md）。e.slug は常にベース地域名
+  // （旗ゲート/光の粒の色引きが時間帯に依存しないように）。未納品は fail→従来経路へ。
+  var base = RC_PARA_SLUG[race && race.region] || "stadium";
+  var key = base + (suffix || "");
+  var e = _rcParaCache[key];
   if (!e) {
-    e = _rcParaCache[slug] = { slug: slug, ok: false, fail: false, n: 0, imgs: [], cbs: [] };
+    e = _rcParaCache[key] = { slug: base, ok: false, fail: false, n: 0, imgs: [], cbs: [] };
     ["L1", "L2", "L3"].forEach(function (k, i) {
       var im = new Image();
       im.onload = function () { if (++e.n === 3 && !e.fail) { e.ok = true; e.cbs.splice(0).forEach(function (f) { try { f(); } catch (_) {} }); } };
       im.onerror = function () { e.fail = true; e.cbs.length = 0; };
-      im.src = "images/racebg_v2/" + slug + "_" + k + ".webp";
+      im.src = "images/racebg_v2/" + key + "_" + k + ".webp";
       e.imgs[i] = im;
     });
   }
@@ -1502,8 +1505,10 @@ function startRaceCanvas(container, ctx) {
     paraBaked = null;
     if (!cw || !ch) return;
     const t = rcRaceTime(race);
-    if (!(t === "sunset" || t === "dusk" || t === "night")) return;   // 朝/昼は従来の昼絵
-    const e = rcParaFor(race, function () { if (document.contains(canvas)) bakePara(); });
+    // 夜系＝既存セット／朝昼＝ _day セット（docs/CODEX_RACE_SCENE_DAY_BRIEF.md・未納品なら
+    // fail→従来の昼絵へ自動フォールバック＝納品だけで全レースがパララックス化）。
+    const sfx = (t === "sunset" || t === "dusk" || t === "night") ? "" : "_day";
+    const e = rcParaFor(race, function () { if (document.contains(canvas)) bakePara(); }, sfx);
     if (!e || !e.ok) return;
     try {
       const conf = RC_SKY_CONF[t] || RC_SKY_CONF.night;
