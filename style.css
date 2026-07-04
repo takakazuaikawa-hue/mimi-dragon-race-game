@@ -6177,3 +6177,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-giftbtn:active { transform: scale(.88); }
 .hl-likebtn { transition: transform .12s ease; }
 .hl-likebtn:active { transform: scale(.88); }
+
+/* ===== H3磨き3：遷移フェード・VIP入場・❤️跳ね ===== */
+#app { transition: opacity .13s ease; }
+#app.scr-fade { opacity: 0; }
+.hl-cm.vipjoin { background: linear-gradient(90deg, rgba(255,211,77,.38), rgba(255,150,80,.24));
+  border: 1px solid rgba(255,214,120,.55); box-shadow: 0 2px 12px rgba(255,190,90,.25);
+  font-weight: 800; }
+.hl-likebtn.bump b { display: inline-block; animation: likeBump .32s cubic-bezier(.2,1.6,.4,1); }
+@keyframes likeBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  #app { transition: none; }
+  .hl-likebtn.bump b { animation: none; }
+}

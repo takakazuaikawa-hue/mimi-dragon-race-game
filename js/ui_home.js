@@ -585,14 +585,27 @@ function renderHome() {
     if (r.width) _heart(r.width * (0.84 + Math.random() * 0.1), r.height * (0.55 + Math.random() * 0.3));
   }, 3800));
 
-  // 入場通知（TikTokの "joined" 風・表示専用）：ときどき誰かが遊びに来る
-  function _joinCm() {
+  // 入場通知（TikTokの "joined" 風・表示専用）：ときどき誰かが遊びに来る。
+  // まれにVIPが金の入場バナー＋⭐バーストで来る＝配信の「おっ」という瞬間（表示のみ）。
+  const _VIPS = ["👑 推し竜団長", "🐉 竜好きの長老", "💎 島いちの太客", "🎤 マクラ（お忍び）"];
+  function _joinCm(vip) {
+    if (vip) {
+      const vnm = _VIPS[Math.floor(Math.random() * _VIPS.length)];
+      _addCm(vnm, "#ffd34d", " が入場しました！", "join vipjoin");
+      if (!_reduce) {
+        const r = stage.getBoundingClientRect();
+        if (r.width) for (let i = 0; i < 5; i++) ((d) => setTimeout(() => {
+          if (state.ui.screen === "home") _heart(r.width * (0.2 + Math.random() * 0.6), r.height * (0.38 + Math.random() * 0.38), "⭐");
+        }, d))(i * 110);
+      }
+      return;
+    }
     const nm = _CMN[Math.floor(Math.random() * _CMN.length)];
     _addCm("🌟" + nm, "#b9a0ff", " が遊びにきた！", "join");
   }
   if (broadcast) window._hlTimers.push(setInterval(() => {   // ★入場通知は配信モードのみ
     if (state.ui.screen !== "home") return;
-    if (Math.random() < 0.4) _joinCm();
+    if (Math.random() < 0.4) _joinCm(Math.random() < 0.12);
   }, 9500));
 
   // ギフト演出（投げ銭ごっこ・完全に表示専用＝コインは1枚も動かない）：
@@ -720,6 +733,7 @@ function renderHome() {
   const _setLike = () => { const b = likeBtn.querySelector("b"); if (b) b.textContent = _fmtL(_likes); };
   likeBtn.onclick = () => {
     _likes += 1; _setLike();
+    likeBtn.classList.remove("bump"); void likeBtn.offsetWidth; likeBtn.classList.add("bump");   // 数字がポンと跳ねる
     if (!_reduce) { const r = stage.getBoundingClientRect(); if (r.width) for (let i = 0; i < 2; i++) _heart(r.width * (0.78 + Math.random() * 0.16), r.height * (0.55 + Math.random() * 0.3)); }
     if (Math.random() < 0.07) mimiSay("いいね、ありがとっ！");
   };
@@ -736,8 +750,19 @@ function renderHome() {
   // コメント/いいねバーだけが常設フロート層＝出入りが無いのでミミの立ち位置も固定ドックも不動（ユーザー指摘）。
   if (actionFloat.children.length) wrap.appendChild(actionFloat);
 
+  // H3磨き3：タブ/CTA押下→130msのフェードで次画面へ（遷移の連続性＝ガタつかせない）。
+  // reduced-motion時と静かモードは即遷移のまま。表示のみ。
+  const _tikGo = (fn) => {
+    const appEl = document.getElementById("app");
+    const reduce = (typeof matchMedia === "function") && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!appEl || !broadcast || reduce) { fn(); return; }
+    appEl.classList.add("scr-fade");
+    setTimeout(() => {
+      try { fn(); } finally { requestAnimationFrame(() => appEl.classList.remove("scr-fade")); }
+    }, 130);
+  };
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
-  raceBtn.onclick = () => renderRaceSelect();
+  raceBtn.onclick = () => _tikGo(() => renderRaceSelect());
   dock.appendChild(raceBtn);
 
   // ★ナビ＝常時10枠固定（docs/GAME_FLOW_REDESIGN.md §1・D1/D3/A4解消）。
@@ -755,7 +780,7 @@ function renderHome() {
       opts = opts || {};
       const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));
       b.innerHTML = `<span class="ic">${icon}</span><span class="lb">${label}</span>` + (opts.dot ? `<i class="dot"></i>` : "");
-      b.onclick = go;
+      b.onclick = opts.locked ? go : () => _tikGo(go);   // 遷移はフェード・ロックのポップは即時
       return b;
     };
     if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
