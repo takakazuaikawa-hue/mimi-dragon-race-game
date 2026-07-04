@@ -6141,3 +6141,30 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ヒーロー下端のグラデスクリム＝コメント/入力の可読性（TikTokの作法） */
 .hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34%;
   background: linear-gradient(to top, rgba(6,8,16,.55), rgba(6,8,16,0)); pointer-events: none; }
+
+/* ===== H2/H3 磨き（配信モード .hl.tik 限定・TikTok Live忠実） ===== */
+/* 🎯目標チップ＝📌ピン留めコメント風（すりガラス＋アクセント縁） */
+.hl.tik .hl-goal { background: rgba(10, 12, 24, .58); backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.14);
+  border-left: 3px solid #ff4d8a; border-radius: 12px; }
+.hl.tik .hl-goal .hl-goal-k::before { content: "📌 "; }
+/* ミッションピン＝同じピン言語で統一 */
+.hl.tik .hl-pin.hl-missions { background: rgba(10, 12, 24, .52); backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.12); border-radius: 999px; }
+/* ギフト行＝TikTokのギフトバナー（桃→金のグラデ・ほんのり発光） */
+.hl.tik .hl-cm.gift { background: linear-gradient(90deg, rgba(255,77,138,.34), rgba(255,206,110,.26));
+  border: 1px solid rgba(255,180,140,.35); box-shadow: 0 2px 10px rgba(255,110,140,.18); }
+/* タブバー＝ホーム到着時にすっと浮上（1回だけ） */
+.hl.tik .tik-bar { animation: tikbarIn .42s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes tikbarIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+/* 金CTA＝4秒ごとに光が走る（商業の「押して」の合図・控えめ） */
+.hl.tik .hl-race { position: relative; overflow: hidden; }
+.hl.tik .hl-race::after { content: ""; position: absolute; top: -30%; bottom: -30%; width: 34px;
+  left: -60px; transform: rotate(18deg);
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.55), rgba(255,255,255,0));
+  animation: ctaShine 4.2s ease-in-out infinite; pointer-events: none; }
+@keyframes ctaShine { 0%, 72% { left: -60px; } 88%, 100% { left: 130%; } }
+@media (prefers-reduced-motion: reduce) {
+  .hl.tik .tik-bar { animation: none; }
+  .hl.tik .hl-race::after { display: none; }
+}
