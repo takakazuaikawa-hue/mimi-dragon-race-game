@@ -2488,6 +2488,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scmr-goal { margin: 14px 15px 0; padding: 11px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #7a4a1c;
   background: linear-gradient(180deg,#fff6e9,#ffe7d4); border: 1px solid #f3d3a6; }
 .scmr-goal b { color: var(--scm-org); }
+/* フロア帯（踏破の可視化）：mall_rpg.js版 .rpg-floorstrip の .scm意匠版。done=到達済み／now=次の目標 */
+.scmr-floorstrip { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 10px 15px 0; }
+.scmr-fs-cell { font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 8px; letter-spacing: .02em;
+  background: #f1ece4; border: 1px solid var(--scm-line); color: #b0a89c; }
+.scmr-fs-cell.done { background: #e8f5ec; border-color: #bfe6cc; color: #2e9e6b; }
+.scmr-fs-cell.now { background: #fff3e4; border-color: #f0c089; color: #a4502f; box-shadow: 0 0 8px rgba(239,130,0,.25); animation: rpgpulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .scmr-fs-cell.now { animation: none; } }
 .scmr-daily { display: block; width: calc(100% - 30px); margin: 11px 15px 0; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #fff; cursor: pointer;
   background: linear-gradient(180deg,#ffb14e,#ef8a1e); border: none; box-shadow: 0 8px 18px -10px rgba(239,130,0,.7); animation: snsPop .3s ease both; }
 .scmr-cta { display: flex; align-items: center; gap: 12px; width: calc(100% - 30px); margin: 13px 15px 0; padding: 15px 15px; border-radius: 16px; cursor: pointer; text-align: left;
@@ -2536,6 +2543,17 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scmr-rest { display: block; width: calc(100% - 28px); margin: 0 14px 14px; padding: 11px; border-radius: 11px; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(180deg,#7cc0a0,#4ea886); border: none; }
 .scmr-codex { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 4px; }
 .scmr-codexrow { display: flex; justify-content: space-between; font-size: 12px; color: var(--scm-ink); padding: 4px 0; border-top: 1px dashed #eee; }
+/* 🏅 称号（トロフィー）：mall_rpg.js版 .rpg-titles の .scm意匠版。got=獲得済み／未獲得は「あと◯◯」ヒント */
+.scmr-titles { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+.scmr-title-row { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 10px; background: #fbf7f0; border: 1px solid var(--scm-line); }
+.scmr-title-row.got { background: #eef8f1; border-color: #bfe6cc; }
+.scmr-title-row .tt-ic { font-size: 17px; line-height: 1; }
+.scmr-title-row .tt-n { font-weight: 800; color: var(--scm-ink); font-size: 12.5px; }
+.scmr-title-row.got .tt-n { color: #2e9e6b; }
+.scmr-title-row .tt-st { margin-left: auto; font-size: 10.5px; color: var(--scm-sub); }
+.scmr-title-row.got .tt-st { color: #2e9e6b; font-weight: 700; }
+/* ヒーロー行の最上位称号チップ（.scmr-clear流用・称号ありは title 修飾） */
+.scmr-clear.title { padding: 1px 8px; border-radius: 999px; font-size: 10.5px; background: #fff3e4; border: 1px solid #f0c089; color: #a4502f; }
 .scmr-records { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 14px; }
 .scmr-rec { background: #fbf7f0; border: 1px solid var(--scm-line); border-radius: 10px; padding: 9px 11px; }
 .scmr-rec small { display: block; font-size: 10.5px; color: var(--scm-sub); } .scmr-rec b { font-size: 16px; color: var(--scm-ink); font-variant-numeric: tabular-nums; }
