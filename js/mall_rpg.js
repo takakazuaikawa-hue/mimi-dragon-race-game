@@ -30,6 +30,7 @@ function rpgData() {
   if (d.records.depth == null) d.records.depth = 0;
   if (d.daily == null) d.daily = "";                 // 最終ログボ受取日
   if (d.rep == null) d.rep = 0;                       // ✨みがき（自分磨きの資源）
+  if (d.tutSeen == null) d.tutSeen = false;           // 初回の操作ガイド（rpgFx.tutorial）を出したか
   if (!d.up) d.up = {};                               // 自分磨きレベル
   if (!d.shop) d.shop = {};                           // 🛍️ ショッピング・コレクション（買った品）
   return d;
@@ -302,7 +303,15 @@ function rpgStartRun() {
   const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`👛 やりくり上手で +${sg}G で出発！`, "good"); }   // 👛やりくり上手（自分磨き）
   rpgLog("🏝️ リゾート探検へ！ ▲で進む・↰↱で向き（▶でオートにも切替）", "good");
   rpgFx.floorCard(RPG_FLOORS[0].name, rpgGoalCardSub(RPG_FLOORS[0]), RPG_FLOORS[0].accent);
+  rpgMaybeShowTutorial();
   renderMallRpg();
+}
+// 初回の冒険だけ、フロアカードの余韻が明けたタイミングで操作ガイドをそっと表示（2回目以降は出ない）
+function rpgMaybeShowTutorial() {
+  const d = rpgData();
+  if (d.tutSeen) return;
+  d.tutSeen = true; rpgSave();
+  setTimeout(() => rpgFx.tutorial("💡 ▲で進む・↰↱で向きを変える。🛗階段で次の階へ、🛍️お店の前で入店できるよ！"), 2500);
 }
 // 🗓️ デイリーラン：合言葉（既定＝今日の日付）で“床の変形＋通路閉鎖”が端末をまたいで同一になる固定ダンジョン。
 // 入口は競合中のハブを避け、URL ?daily=YYYYMMDD（値なし＝今日）と window.rpgStartDaily(seed) から起動。
@@ -321,6 +330,7 @@ function rpgStartDaily(seedStr) {
   const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`👛 やりくり上手で +${sg}G で出発！`, "good"); }
   rpgLog(`🗓️ デイリーラン（合言葉「${s}」）開始！ 同じ合言葉なら誰でも同じ構造`, "good");
   rpgFx.floorCard(RPG_FLOORS[0].name, "🗓️ DAILY " + s, RPG_FLOORS[0].accent);
+  rpgMaybeShowTutorial();
   renderMallRpg();
 }
 if (typeof window !== "undefined") window.rpgStartDaily = rpgStartDaily;
@@ -638,6 +648,13 @@ const rpgFx = {
     this.layer().appendChild(n);
     if (cb) setTimeout(cb, 850);
     setTimeout(() => n.remove(), 2300);
+  },
+  // 初回だけ操作ガイドをそっと出す（？を能動的にタップしなくても一度は目に入るように・オンボーディング3点セット）
+  tutorial(text) {
+    if (document.getElementById("rpg-tut-toast")) return;   // 二重表示防止
+    const n = document.createElement("div"); n.id = "rpg-tut-toast"; n.className = "rpg-tut-toast"; n.textContent = text;
+    this.layer().appendChild(n);
+    setTimeout(() => n.remove(), 5200);
   },
 
 };

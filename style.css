@@ -4773,6 +4773,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-fxbanner.bad { color:#ff9ab0; font-size:32px; }
 .rpg-fxbanner.down { color:#ff7a92; font-size:44px; }
 @keyframes rpgban { 0%{ opacity:0; transform:translateX(-50%) scale(.4) rotate(-4deg); } 22%{ opacity:1; transform:translateX(-50%) scale(1.12) rotate(0); } 72%{ opacity:1; } 100%{ opacity:0; transform:translateX(-50%) scale(1); } }
+/* 初回だけの操作ガイド（情報を持つ演出＝reduced-motion時も内容は消さず、フェードだけ止めて即表示） */
+.rpg-tut-toast { position:fixed; left:50%; top:16%; transform:translateX(-50%); z-index:99999; max-width:82%;
+  padding:11px 16px; border-radius:14px; font-size:13px; font-weight:700; line-height:1.55; text-align:center; color:#fff4d6;
+  background:linear-gradient(135deg, rgba(58,42,86,.95), rgba(38,28,58,.97)); border:1px solid rgba(200,170,255,.4);
+  box-shadow:0 8px 24px rgba(0,0,0,.45); animation:rpgtut 5.2s ease-out forwards; }
+@keyframes rpgtut { 0%{ opacity:0; transform:translateX(-50%) translateY(-8px); } 8%{ opacity:1; transform:translateX(-50%) translateY(0); } 90%{ opacity:1; } 100%{ opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .rpg-tut-toast { animation:none; opacity:1; transform:translateX(-50%); } }
 .rpg-fxflash { position:fixed; inset:0; pointer-events:none; }
 .rpg-fxflash.hurt { background:radial-gradient(ellipse at center, rgba(255,40,70,0) 40%, rgba(255,30,60,.5) 100%); animation:rpgflash .5s ease-out forwards; }
 .rpg-fxflash.heal { background:radial-gradient(ellipse at center, rgba(120,255,150,.25) 0%, rgba(120,255,150,0) 70%); animation:rpgflash .5s ease-out forwards; }
