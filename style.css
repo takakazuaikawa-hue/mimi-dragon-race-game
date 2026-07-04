@@ -5870,42 +5870,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 }
 
 /* =========================================================================
-   ⚔️ バトルUIリニューアル：大きなHP／ワンタップ・アクションデッキ／タイミングバー／パチスロ調
+   ⚔️ バトルUI：ワンタップ・アクションデッキ／パチスロ調
    ========================================================================= */
 /* パチスロ調ネオン枠 */
 .rpg-battle .rpg-bt-arena { box-shadow:inset 0 0 0 2px rgba(255,210,120,.45), 0 0 20px rgba(255,180,90,.25); }
 .rpg-bt-panel { background:linear-gradient(180deg, rgba(34,26,52,.96), rgba(14,10,24,.98)); border:1px solid rgba(255,200,110,.25); box-shadow:0 -6px 22px rgba(0,0,0,.4); }
-
-/* 大きく読みやすいHP */
-.rpg-bhud2 { display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
-.rpg-hp2 { padding:7px 11px; border-radius:13px; background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.08); }
-.rpg-hp2.low { border-color:rgba(255,80,110,.6); animation:rpgpulse .8s ease-in-out infinite; }
-.hp2-top { display:flex; align-items:center; gap:8px; }
-.hp2-name { font-size:14px; font-weight:800; color:#f3ecff; }
-.hp2-val { margin-left:auto; font-size:28px; font-weight:900; color:#9fe6b0; font-variant-numeric:tabular-nums; line-height:1; }
-.rpg-hp2.low .hp2-val { color:#ff8aa0; }
-.hp2-val i { font-size:14px; font-weight:700; color:#9a90b4; font-style:normal; }
-.hp2-bar { height:14px; margin-top:5px; border-radius:8px; background:rgba(0,0,0,.45); overflow:hidden; }
-.hp2-bar > span { display:block; height:100%; border-radius:8px; background:linear-gradient(90deg,#39d46a,#7af0a0); transition:width .3s ease; }
-.rpg-hp2.low .hp2-bar > span { background:linear-gradient(90deg,#e2384f,#ff7a92); }
-.rpg-mpsp { display:flex; gap:8px; }
-.mpsp { flex:1; display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:10px; background:rgba(0,0,0,.25); font-size:12px; }
-.mpsp i { font-style:normal; font-size:10px; color:#b9a8d4; width:18px; }
-.mpsp b { color:#e9e0f5; font-variant-numeric:tabular-nums; font-size:12px; min-width:52px; text-align:right; }
-.mpsp-bar { flex:1; height:9px; border-radius:5px; background:rgba(0,0,0,.4); overflow:hidden; }
-.mpsp.mp .mpsp-bar > span { display:block; height:100%; background:linear-gradient(90deg,#48f,#6cf); }
-.mpsp.sp .mpsp-bar > span { display:block; height:100%; background:linear-gradient(90deg,#c89b3c,#ffd86a); }
-.mpsp.sp.full { animation:rpgpulse 1s ease-in-out infinite; }
-.mpsp.sp.full b { color:#ffe07a; }
-
-/* ⏱ タイミングバー */
-.rpg-beat { position:relative; height:16px; margin:4px 0 7px; border-radius:9px; overflow:hidden;
-  background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.15); }
-.beat-zone { position:absolute; top:0; bottom:0; }
-.beat-zone.good { left:29%; width:42%; background:rgba(255,214,90,.28); }
-.beat-zone.just { left:42.5%; width:15%; background:rgba(90,240,150,.55); box-shadow:0 0 10px rgba(90,240,150,.6); }
-.beat-mk { position:absolute; top:-2px; bottom:-2px; left:50%; width:4px; margin-left:-2px; border-radius:2px; background:#fff; box-shadow:0 0 9px #fff; }
-.beat-lb { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:rgba(255,255,255,.78); pointer-events:none; letter-spacing:.02em; }
 
 /* ── アクションデッキ（ワンタップ・色分け・ジューシー） */
 .rpg-deck { display:flex; flex-direction:column; gap:8px; min-height:186px; justify-content:flex-start; }
@@ -5940,11 +5909,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-act.ult.full .act-ic { font-size:26px; } .rpg-act.ult.full .act-n { font-size:15px; color:#3a2706; } .rpg-act.ult.full .act-sub { color:#5a3f10; }
 .rpg-wait { grid-column:1/-1; text-align:center; color:#b9a8d4; padding:18px; font-size:20px; letter-spacing:6px; }
 
-/* JUST/GOOD バナー */
-.rpg-fxbanner.just { color:#7dffa6; font-size:48px; text-shadow:0 0 20px rgba(90,255,150,.7); }
-.rpg-fxbanner.good { color:#ffe45e; font-size:38px; }
-
-@media (prefers-reduced-motion: reduce) { .rpg-act.ult.full, .mpsp.sp.full, .rpg-hp2.low { animation:none; } }
+@media (prefers-reduced-motion: reduce) { .rpg-act.ult.full { animation:none; } }
 
 /* 🤖 オートバトル切替 */
 .rpg-autobtn { width:100%; min-height:46px; margin:2px 0 8px; padding:11px; border-radius:13px; cursor:pointer; font-size:14px; font-weight:800;
@@ -5984,7 +5949,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-me .me-bar > span { display:block; height:100%; }
 .rpg-me .me-stat.hp { flex:1 1 100%; }
 .rpg-me .me-stat.hp .me-bar { flex:1; width:auto; height:12px; }
-.rpg-me .me-stat.hp b { font-size:15px; color:#9fe6b0; min-width:64px; text-align:right; }
+.rpg-me .me-stat.hp b { font-size:20px; color:#9fe6b0; min-width:64px; text-align:right; }
 .rpg-me .me-stat.hp.low b { color:#ff8aa0; }
 .rpg-me .me-stat.hp .me-bar > span { background:linear-gradient(90deg,#39d46a,#7af0a0); }
 .rpg-me .me-stat.hp.low .me-bar > span { background:linear-gradient(90deg,#e2384f,#ff7a92); }
