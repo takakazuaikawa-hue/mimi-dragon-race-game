@@ -65,7 +65,10 @@ function renderEconomy() {
     const art = KURASHI_ECON_ARTICLES[ch] || KURASHI_ECON_ARTICLES[1];
     const clip = el("div", "card news-clip");
     clip.innerHTML =
-      `<div class="nc-mast"><span>聖龍日報｜経済面</span><span class="nc-date">${ch >= 6 ? "復興期" : "第" + ch + "期"}</span></div>` +
+      `<div class="nc-mast"><span class="nc-mast-art">` +
+        `<img class="nc-daiji" src="images/kurashi/shinbun_daiji.webp" alt="聖龍日報" onerror="this.parentNode.innerHTML='聖龍日報｜経済面'">` +
+        `<img class="nc-men" src="images/kurashi/men_keizai.webp" alt="経済面" onerror="this.remove()">` +
+      `</span><span class="nc-date">${ch >= 6 ? "復興期" : "第" + ch + "期"}</span></div>` +
       `<div class="nc-head">${art.head}</div>` +
       `<div class="nc-lead">${art.lead(total)}</div>` +
       `<div class="nc-quote">${art.quote}</div>` +

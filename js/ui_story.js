@@ -96,7 +96,7 @@ function renderStory() {
   if (typeof storyEvents === "function") {
     const evs = storyEvents();
     const st = (typeof storyEventsStats === "function") ? storyEventsStats() : { got: evs.length, total: evs.length, unread: 0 };
-    news.appendChild(_newsRubric(`號外コラム ・ 島の小話 <span class="news-rub-n">${st.got}／${st.total}${st.unread ? `・速報 ${st.unread}` : ""}</span>`));
+    news.appendChild(_newsRubric(`<img class="news-men" src="images/kurashi/men_bunka.webp" alt="文化面" onerror="this.remove()">號外コラム ・ 島の小話 <span class="news-rub-n">${st.got}／${st.total}${st.unread ? `・速報 ${st.unread}` : ""}</span>`));
     if (!evs.length) {
       news.appendChild(el("div", "news-empty", "——続報を待て。物語を進めると、小さな記事が舞い込む。"));
     } else {

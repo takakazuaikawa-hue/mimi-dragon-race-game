@@ -6103,3 +6103,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .askill-shihan { display: inline-block; margin-top: 2px; font-size: 9.5px; font-weight: 700;
   color: var(--shc, #aaa); }
 .askill-shihan.unmet { color: var(--mist-soft); opacity: .7; }
+
+/* ===== 聖龍日報 題字＋面札（CODEX納品・K3-A1格上げ） ===== */
+.news-clip .nc-mast-art { display: flex; align-items: center; gap: 8px; }
+.news-clip .nc-daiji { height: 22px; width: auto; }
+.news-clip .nc-men { height: 18px; width: auto; }
+.news-men { height: 18px; width: auto; vertical-align: middle; margin-right: 6px; }
+.news-men--h2 { height: 20px; margin-left: 4px; }

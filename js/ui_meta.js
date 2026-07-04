@@ -48,7 +48,7 @@ let _mealTab = null;
 function renderMeals() {
   state.ui.screen = "meals";
   const app = beginScreen();
-  app.appendChild(el("h2", null, "🍽️ 食事 ― みみの食べ歩き"));
+  app.appendChild(el("h2", null, `🍽️ 食事 ― みみの食べ歩き <img class="news-men news-men--h2" src="images/kurashi/men_gurume.webp" alt="グルメ面" onerror="this.remove()">`));
   const all = (typeof mealStatsAll === "function") ? mealStatsAll() : { got: 0, total: 0 };
   const ob = el("div", "goals-bar");
   ob.innerHTML = `<i style="width:${all.total ? Math.round(all.got / all.total * 100) : 0}%"></i><b>${all.got} / ${all.total} 品</b>`;
