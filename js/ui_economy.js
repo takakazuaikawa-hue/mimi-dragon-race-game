@@ -24,6 +24,29 @@ function _ecoTierOf(total) {
 }
 function _ecoNum(n) { n = Math.floor(n || 0); return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
 
+// ── K3-A1（docs/KURASHI_STORY_WEAVE.md A1）：聖龍日報「経済面」の章連動リード記事。
+// いま何話か（kurashiChapter）で紙面の顔が変わる＝島の経済が物語の一部になる。表示のみ。
+const KURASHI_ECON_ARTICLES = {
+  1: { head: "賭場に、新しい灯", by: "経済面・編集部",
+       lead: (total) => `異世界より来訪の予想家ミミ氏、中央聖龍レース場で始動。市場はなお様子見だが、場外の人出は微増。総資産 ${fmtCoins(total)} からの再起を、島は静かに見守っている。`,
+       quote: "サケ・ウダダ氏（賭場親方）「気配は悪くねえ。それだけだ」" },
+  2: { head: "オッズは“願望の影”——分析予想の時代へ", by: "市況・ミズ",
+       lead: (total) => `ミミ氏の台頭で場内に「根拠ある予想」の風。人気順に流されぬ買い方が広がり、賭場の取引はより厚く。島の総資産は ${fmtCoins(total)} 水準に。`,
+       quote: "ミズ氏（両替商）「市場は嘘をつくの。奥の“ほんとう”を見た人から、豊かになる」" },
+  3: { head: "暮らしに、根を張る", by: "暮らし面・合同",
+       lead: (total) => `勝ち負けの外側に「暮らし」を育てる動きが広がる。くらしツリー、生活資産——負けた夜にも人生は続く、が合言葉。島の経済圏は ${fmtCoins(total)} へ。`,
+       quote: "スミカ・ラグナ氏（村官吏）「村の夜が、明るくなりました。数字より、それが答えです」" },
+  4: { head: "配信経済圏、島を回す", by: "実況・マクラ寄稿",
+       lead: (total) => `ミミ氏の配信が観客の形を変えた。画面の向こうの声援が場内の熱へ、熱が屋台と土産物へ。配信発の経済が島を巡り、総資産 ${fmtCoins(total)}。`,
+       quote: "マクラ氏（実況）「レースは走る者と、見る者で出来てる。今この島は、世界一の観客席だ」" },
+  5: { head: "“天井”に備える——避難基金、始動", by: "経済面・編集部",
+       lead: (total) => `世界の天井、淘汰の理。にわかに信じ難い話に、島は備えを選んだ。賭場の灯りを守る基金が発足。原資は島の総資産 ${fmtCoins(total)}——ミミ氏の再起そのものだ。`,
+       quote: "観測者セレスティア氏「面白い。理に、抗うつもりなのね」" },
+  6: { head: "復興景気、続く——灯りは消えなかった", by: "経済面・編集部",
+       lead: (total) => `あの夜を越えて、島の経済は最高水準 ${fmtCoins(total)} で推移。市場・縁日・温泉郷いずれも人出は過去最高。復興の中心に、いつもの配信の灯がある。`,
+       quote: "島民談「勝っても負けても、あの子の『ぱほぱほ』で一日が終わる。それが崑崙の平和よ」" }
+};
+
 function renderEconomy() {
   state.ui.screen = "economy";
   if (typeof recomputeAssets === "function") recomputeAssets(state);
@@ -35,6 +58,20 @@ function renderEconomy() {
   const _q = _h2.querySelector(".info-q"); if (_q) _q.onclick = () => { if (typeof showMoneyMap === "function") showMoneyMap(); };
   app.appendChild(_h2);
   app.appendChild(el("div", "as-hint2", "ミミの再起が、島の景気を回している。賭場の灯りが大きくなるほど、島は栄える。"));
+
+  // ── 聖龍日報「経済面」リード記事（章連動・K3-A1・表示のみ）──
+  try {
+    const ch = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
+    const art = KURASHI_ECON_ARTICLES[ch] || KURASHI_ECON_ARTICLES[1];
+    const clip = el("div", "card news-clip");
+    clip.innerHTML =
+      `<div class="nc-mast"><span>聖龍日報｜経済面</span><span class="nc-date">${ch >= 6 ? "復興期" : "第" + ch + "期"}</span></div>` +
+      `<div class="nc-head">${art.head}</div>` +
+      `<div class="nc-lead">${art.lead(total)}</div>` +
+      `<div class="nc-quote">${art.quote}</div>` +
+      `<div class="nc-by">（${art.by}）</div>`;
+    app.appendChild(clip);
+  } catch (e) {}
 
   // ── 終章：絶滅メーター本体（終章中のみ・ホームから移設した詳細＋説明）──
   if (typeof epilogueOn === "function" && epilogueOn()) {

@@ -6053,3 +6053,14 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .tix.tear .tix-stub { transform: translate(18px, -14px) rotate(14deg); opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .tix, .tix-stub { transition: none; } }
 .bcf-q { text-align: center; font-size: 12px; color: var(--mist-soft); margin-top: 10px; }
+
+/* ===== K3-A1 聖龍日報・経済面クリップ（暮らし×物語＝物語画面と同じ紙の言語） ===== */
+.news-clip { font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  background: #f4efe4; color: #2a2620; border: 1px solid #c9c0ab; border-radius: 6px; }
+.news-clip .nc-mast { font-size: 10px; letter-spacing: .16em; color: #4a4438;
+  border-bottom: 2px solid #2a2620; padding-bottom: 3px; display: flex; justify-content: space-between; }
+.news-clip .nc-head { font-weight: 800; font-size: 15.5px; margin: 7px 0 4px; line-height: 1.35; }
+.news-clip .nc-lead { font-size: 11.5px; line-height: 1.75; }
+.news-clip .nc-quote { margin-top: 7px; font-size: 11px; line-height: 1.6;
+  border-left: 3px solid #b5a888; padding-left: 8px; color: #4a4438; }
+.news-clip .nc-by { margin-top: 5px; font-size: 10px; text-align: right; color: #7a725e; }
