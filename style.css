@@ -4940,7 +4940,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-good .gprice .gover { color:#ff8a8a; font-weight:800; font-size:12px; }
 .rpg-shop-sub .sc.done { color:#9cf0b0; font-weight:800; }
 .good-acts { display:flex; gap:5px; margin-top:6px; width:100%; }
-.good-acts .gbuy, .good-acts .ghaggle { flex:1; padding:6px 4px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid transparent; }
+.good-acts .gbuy, .good-acts .ghaggle { flex:1; min-height:44px; padding:8px 4px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid transparent;
+  display:flex; align-items:center; justify-content:center; }
 .good-acts .gbuy { background:linear-gradient(135deg,#d68a3c,#f0b35f); color:#fff; }
 .good-acts .gbuy.off { opacity:.45; }
 .good-acts .ghaggle { background:rgba(255,255,255,.12); color:#ffe7c8; border-color:rgba(255,210,160,.4); }
