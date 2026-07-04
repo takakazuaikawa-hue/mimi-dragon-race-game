@@ -707,6 +707,12 @@ function renderHome() {
     if (!qr.classList.contains("hidden")) _qrT = setTimeout(() => qr.classList.add("hidden"), 7000);
   };
   cmbar.appendChild(cmInput);
+  // 🎁ギフト：視聴者が投げるギフト演出を自分でも起こせる（TikTokの入力行＝[コメント][🎁][❤️]。
+  // 投げ銭ごっこ＝表示専用・コインは1枚も動かない）
+  const giftBtn = el("button", "hl-giftbtn", "🎁");
+  giftBtn.title = "ギフトを投げる（ごっこ・無料）";
+  giftBtn.onclick = () => { try { _giftCm(); } catch (e) {} };
+  cmbar.appendChild(giftBtn);
   // ❤️いいね：タップでカウント＋ハート噴出。自動でもじわじわ増える（ライブ感・表示専用）
   let _likes = 1200 + Math.floor(_viewers * 6) + p.completedRaces * 15;
   const _fmtL = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");

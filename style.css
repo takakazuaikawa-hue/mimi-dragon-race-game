@@ -6168,3 +6168,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .hl.tik .tik-bar { animation: none; }
   .hl.tik .hl-race::after { display: none; }
 }
+
+/* ===== H3磨き2：🎁ギフトボタン＋❤️押下ポップ（配信入力行＝TikTokの[コメント][🎁][❤️]） ===== */
+.hl-giftbtn { flex: 0 0 auto; min-width: 44px; height: 38px; border-radius: 999px;
+  background: linear-gradient(160deg, rgba(255,77,138,.28), rgba(255,206,110,.22));
+  border: 1px solid rgba(255,170,150,.4); font-size: 18px; line-height: 1;
+  transition: transform .12s ease; }
+.hl-giftbtn:active { transform: scale(.88); }
+.hl-likebtn { transition: transform .12s ease; }
+.hl-likebtn:active { transform: scale(.88); }
