@@ -150,7 +150,14 @@ var SNS_POSTS = [
   { id: "p_celestia", ic: "🌌", name: "セレスティア", handle: "@celestia_sky", base: 666,
     text: "……面白い灯りね。消えそうで、消えない。あなたの“視る目”、わたしが見定めてあげる。", unlock: function () { return _snsFlag("celestiaStrangerSeen"); } },
   { id: "p_thanks", ic: "🐰", name: "ミミ", handle: "@mimi_yosou", base: 888,
-    text: "いつも見てくれて、ほんとにありがとう。わたし、この世界に来てよかった。…これからも、いっしょに当てようね！", unlock: function () { return _snsRaces() >= 10; } }
+    text: "いつも見てくれて、ほんとにありがとう。わたし、この世界に来てよかった。…これからも、いっしょに当てようね！", unlock: function () { return _snsRaces() >= 10; } },
+  // ── 暮らし還流（docs/KURASHI_STORY_WEAVE.md B）──
+  { id: "p_walker", ic: "📷", name: "聖龍日報・文化面", handle: "@seiryu_bunka", base: 121,
+    text: "本日の「島を歩く人」——予想家ミミ。レースのない日、彼女は島のどこかを歩いている。市場の湯気の中に、崖の風の中に。",
+    unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; } },
+  { id: "p_gourmet", ic: "🍜", name: "屋台のおやじ", handle: "@yatai_oyaji", base: 96,
+    text: "また来たよ、あの子。うちの新作、いちばんうまそうに食うんだ。……悪い気はしねえ。（グルメ面『みみしんぼ』連載中）",
+    unlock: function () { return Object.keys(((typeof state !== "undefined" && state.player) || {}).meals || {}).length >= 10; } }
 ];
 
 // =========================================================================
@@ -208,6 +215,13 @@ var FAN_LETTERS = [
   { id: "l_mizu", ic: "💧", from: "ミズ", subject: "あなたへ、ひとつだけ",
     body: "ミミ。\n市場は嘘をつくわ。人気も、オッズも、ぜんぶ“誰かの願望”の影。\nでも、あなたの目は、その奥の“ほんとう”を見ようとする。\n…その目を、曇らせないで。あはん、わたしの数少ない、お気に入りなんだから。",
     unlock: function () { return _snsMaxCoins() >= 5000000; } },
+  // ── 暮らし還流（docs/KURASHI_STORY_WEAVE.md B）──
+  { id: "l_shihan", ic: "🎫", from: "習い事の師範より", subject: "免許皆伝につき",
+    body: "ミミ殿。\nよくぞ、ここまで続けられた。才ではない。あなたは、休まなかっただけだ。\nそれが才よりも尊いことを、わたしは長い師範生活で知っている。\nもう教えることはない。……いや、ひとつだけ。\n極めた者ほど、基本に戻りなさい。竜を見て、飯を食い、よく眠ること。\n免許皆伝、おめでとう。",
+    unlock: function () { try { var as = ((typeof state !== "undefined" && state.player) || {}).activeSkills || {}; return typeof ACTIVE_SKILLS !== "undefined" && ACTIVE_SKILLS.some(function (s) { return (as[s.id] || 0) >= s.levels.length; }); } catch (e) { return false; } } },
+  { id: "l_walker", ic: "📷", from: "写真館のばあばより", subject: "あんたの歩いた道",
+    body: "ミミちゃんへ。\nうちの店の前を、あんたが何度も通るのを見てたよ。市場も、崖も、温泉も。\n島の人間でも、そんなに歩く子はいない。\nあんたが見てくれた景色はね、みんな、誰かのふるさとなんだ。\nありがとうね。今度、寄っていきな。いちばんいい笑顔を、一枚撮ってあげる。",
+    unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 20; } },
   { id: "l_celestia", ic: "🌌", from: "セレスティア", subject: "天井の、その先へ",
     body: "ちっぽけな予想家へ。\nこの世界には“天井”がある。価値の届かぬものは、淘汰される。\n——だけど、あなたは。その理に、まっすぐ抗ってみせた。\n面白い。あなたの物語の結末、最後まで見届けてあげる。",
     unlock: function () { return _snsFlag("celestiaStrangerSeen"); } }

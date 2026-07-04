@@ -90,6 +90,12 @@ const KURASHI_WATCH = [
   { id: "k_meals25", tier: "toast",
     cond: function () { return Object.keys((state.player && state.player.meals) || {}).length >= 25; },
     notifyBody: "🍽️ 食べ歩き25品！　グルメ面いわく「この島の味を、彼女はぜんぶ知っている」。" },
+  { id: "k_spots8", tier: "toast",
+    cond: function () { return Object.keys(((state.player || {}).kurashi || {}).spotsSeen || {}).length >= 8; },
+    notifyBody: "📷 島の写真を8か所ぶん見ました。日報の文化面「島を歩く人」欄にミミの名前が載っています。" },
+  { id: "k_spots20", tier: "toast",
+    cond: function () { return Object.keys(((state.player || {}).kurashi || {}).spotsSeen || {}).length >= 20; },
+    notifyBody: "📷 島の写真20か所！　文化面いわく「観光案内より詳しい配信者」。ファンレターも届いています。" },
   { id: "k_skillmax", tier: "toast",
     cond: function () {
       try {

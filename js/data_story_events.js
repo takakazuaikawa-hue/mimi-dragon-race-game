@@ -47,7 +47,27 @@ var STORY_EVENTS = [
     body: "「いい声、出てたか？」\n実況のマクラが、汗だくでマイクを置く。\n「おれはな、竜が好きで好きでたまらん。だから、画面の前のキミにも、この熱を届けたいんだ」\n熱い。暑苦しいくらい。…でも、この島のレースがこんなに楽しいのは、きっと、この人のおかげでもある。" },
   { id: "se_celestia_shadow", ic: "🌌", who: "セレスティア", color: "#9a6ad0",
     title: "天井の影", unlock: function () { return _seFlag("celestiaStrangerSeen"); },
-    body: "夜の展望台に、見知らぬお姉さんが立っていた。\n「この世界には“天井”がある。価値の届かぬものは、淘汰される——それが、理」\n星を映した瞳が、まっすぐにわたしを見た。\n「でも、あなたは。その理に、抗ってみせるのかしら。……面白い。見ていてあげる」\nぞくっとした。…でも、なぜか、目をそらせなかった。" }
+    body: "夜の展望台に、見知らぬお姉さんが立っていた。\n「この世界には“天井”がある。価値の届かぬものは、淘汰される——それが、理」\n星を映した瞳が、まっすぐにわたしを見た。\n「でも、あなたは。その理に、抗ってみせるのかしら。……面白い。見ていてあげる」\nぞくっとした。…でも、なぜか、目をそらせなかった。" },
+
+  // ── 暮らし還流（docs/KURASHI_STORY_WEAVE.md B）：暮らしの行動に日報が反応する ──
+  { id: "se_tree_interview", ic: "🌳", who: "スミカ・ラグナ", color: "#b08fd0",
+    title: "文化面の取材", unlock: function () { return Object.keys(((typeof state !== "undefined" && state.lifeTree) || {}).unlocked || {}).length >= 15; },
+    body: "「ミミ様。日報の記者が、その……ツリーを、見たいと」\nスミカが申し訳なさそうに連れてきたのは、文化面の記者さん。\nわたしのくらしツリーをしばらく眺めて、ひとこと。「暮らしって、育つんですね」\n翌朝の文化面の見出しは『負けた夜にも、人生は続く』。\n……ちょっと泣いた。" },
+  { id: "se_moveup", ic: "🏡", who: "ミミ", color: "#e58fb0",
+    title: "引っ越しの日", unlock: function () { return typeof LIFE_TIERS !== "undefined" && _seAssets() >= LIFE_TIERS[2].min; },
+    body: "段ボール、みっつ。わたしの全財産は、意外と軽い。\n新しい部屋は、窓から竜の飛ぶ空が見える。\nスミカが「カーテンはこれ」と譲らず、ポロが箱をひとつ運んで力尽きた。\n夜、まっさらな床に寝転んで思う。\n——借金まみれだったわたしが、屋根の心配をしなくていい。それって、すごいことだ。" },
+  { id: "se_gourmet_gaiden", ic: "🍜", who: "ミミ", color: "#e58fb0",
+    title: "みみしんぼ・外伝", unlock: function () { return Object.keys(((typeof state !== "undefined" && state.player) || {}).meals || {}).length >= 10; },
+    body: "グルメ面の隅に、小さな連載が始まった。『みみしんぼ』。\n「うまいものは、勝った日のためにあるんじゃない。明日も走るためにある」\n……これ、わたしが屋台で言ったやつだ。おやじさん、載せたな！？\n恥ずかしい。でも、切り抜いて、部屋に貼った。" },
+  { id: "se_island_walker", ic: "📷", who: "ミミ", color: "#e58fb0",
+    title: "島を歩く人", unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; },
+    body: "文化面の投稿欄「島を歩く人」に、わたしの名前があった。\n『あの配信者、レースのない日は島のあちこちにいる。市場で、崖の上で、温泉街で』\n……見られてた。\nでも、いいんだ。この島は、歩くたびに好きになる。それを知ってる人が、また増えた。" },
+  { id: "se_shihan_day", ic: "🎫", who: "サケ・ウダダ", color: "#c9a24a",
+    title: "師範の日", unlock: function () {
+      try { var as = ((typeof state !== "undefined" && state.player) || {}).activeSkills || {};
+        return typeof ACTIVE_SKILLS !== "undefined" && ACTIVE_SKILLS.some(function (s) { return (as[s.id] || 0) >= s.levels.length; }); } catch (e) { return false; }
+    },
+    body: "「……もう、教えることはねえな」\n習い事の師範が、湯呑みを置いて、ぽつり。\n「いや。ひとつだけある。極めたやつほど、基本に戻れ。竜を見ろ。飯を食え。よく寝ろ」\nそれ、最初の日に言われたやつだ。\n一周まわって、同じ言葉が、ぜんぜん違う重さで届く。" }
 ];
 
 // ── 進捗（表示専用メタ）：既読を記録するだけ ──

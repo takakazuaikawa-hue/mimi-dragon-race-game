@@ -403,6 +403,15 @@ function _kmRenderPanel() {
     const c = KM_CATS[s.cat] || KM_CATS.port;
     const area = _kmAreaOf(_kmSpot);
     const open = _kmSpotOpen(s);
+    // K2（暮らし還流）：写真を見た記録＝表示専用メタ。還流台帳 k_spots8/k_spots20 と
+    // 日報の文化面小イベントがこのカウントに反応する（docs/KURASHI_STORY_WEAVE.md B）。
+    if (open && s.photo) {
+      try {
+        const kz = state.player.kurashi || (state.player.kurashi = {});
+        const seen = kz.spotsSeen || (kz.spotsSeen = {});
+        if (!seen[_kmSpot]) { seen[_kmSpot] = 1; if (typeof saveGame === "function") saveGame(); }
+      } catch (e) {}
+    }
     panel.style.setProperty("--kmc", c.color);
     let body = (open && s.photo) ? _kmSpotPhotoBanner(s) : _kmZoomBanner(area);
     if (area && area.spots.length > 1) body += `<button class="km-areaback" data-back="1">← ${area.name}</button>`;
