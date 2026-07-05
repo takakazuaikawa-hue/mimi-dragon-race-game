@@ -6313,3 +6313,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .nx-chip .nx-tx b { display: block; font-size: 12.5px; }
 .nx-chip .nx-tx small { font-size: 10.5px; color: var(--mist-soft); }
 .nx-chip .nx-go { margin-left: auto; color: #ffd98a; font-weight: 900; }
+
+/* ===== E1：🍖おなかピル（ホームヘッダー・HUNGER_ECONOMY_DESIGN） ===== */
+.hl-hunger { flex: 0 0 auto; display: flex; align-items: center; gap: 3px; padding: 5px 9px;
+  border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.16);
+  font-size: 12px; }
+.hl-hunger b { font-size: 12.5px; }
+.hl-hunger.low { background: rgba(255,80,80,.16); border-color: rgba(255,110,110,.5); color: #ffb9b9; }

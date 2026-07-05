@@ -2460,10 +2460,22 @@ function showBetConfirm() {
   no.onclick = () => { closeBetConfirm(); };
   const yes = document.createElement("button"); yes.textContent = "🎫 千切って出走"; yes.className = "bcf-go";
   yes.onclick = () => {
+    // E1（docs/HUNGER_ECONOMY_DESIGN.md）：おなかが空っぽなら出走できない（表示ゲートのみ・
+    // レース数値不変・FTUE=最初の3レースは素通し）。ごはんへ誘導して中止。
+    if (typeof hungerCanRace === "function" && !hungerCanRace()) {
+      closeBetConfirm();
+      if (typeof showInfoPopup === "function") showInfoPopup("🍖 おなかがすいて走れない…",
+        `<div class="mm-row"><span class="mm-ic">🍽</span><div><b>ごはんを食べよう</b><small>ホームの🍽ごはんへ。ハズレた日は1品「店のおごり」が出ます。</small></div></div>`);
+      return;
+    }
     const t = document.getElementById("tix-card");
     yes.disabled = true; no.disabled = true;
     if (t) { t.classList.add("tear"); try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} }
-    setTimeout(() => { closeBetConfirm(); onConfirmBet(true); }, t ? 420 : 0);
+    setTimeout(() => {
+      closeBetConfirm();
+      if (typeof hungerSpendRace === "function") try { hungerSpendRace(); } catch (e) {}   // 出走＝おなか−25
+      onConfirmBet(true);
+    }, t ? 420 : 0);
   };
   actions.appendChild(no); actions.appendChild(yes);
   closeBtn.parentNode.appendChild(actions);

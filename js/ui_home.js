@@ -256,6 +256,16 @@ function renderHome() {
   money.onclick = () => renderAssets();
   top.appendChild(money);
 
+  // E1（docs/HUNGER_ECONOMY_DESIGN.md）：🍖おなかピル。出走で減り・ごはんで回復。
+  // 25以下で赤＝「食べないと走れない」の予告。タップで🍽ごはんへ。
+  if (typeof hungerGet === "function") {
+    const _hg = hungerGet();
+    const hpill = el("button", "hl-hunger" + (_hg <= 25 ? " low" : ""), `🍖<b>${_hg}</b>`);
+    hpill.title = "おなか（出走で減る・ごはんで回復）";
+    hpill.onclick = () => renderMeals();
+    top.appendChild(hpill);
+  }
+
   // （相棒ドラゴンのヘッダーボタンは不要のため撤去：ユーザー指定。竜canvasのループも起動しなくなる）
 
   // 🔊 音量＝ホームはBGMが鳴るので、深いメニューに潜らず“すぐ”調整できるよう上部に常設（1タップでパネル）。
