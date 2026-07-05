@@ -69,6 +69,67 @@ function _hBrokeLine() {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// ── E2：習い事の月謝（基準単価×2）＝「通う」1回の費用（HUNGER_ECONOMY §3）。習い事に振り直しは
+//    無いので毎回の実費。UI（ui_assets.js renderActiveSkills）から呼ぶ。払えたら true。──
+function lessonFee() { return hungerBaseUnit() * 2; }
+function tryPayLesson(skillName) {
+  const fee = lessonFee();
+  if ((state.player.coins || 0) < fee) {
+    if (typeof showInfoPopup === "function") showInfoPopup("🎫 月謝が足りない…",
+      `<div class="mm-row"><span class="mm-ic">💸</span><div><b>${fee.toLocaleString("ja-JP")} コイン 必要（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）</b>` +
+      `<small>${_hBrokeLine()}　レースで稼いでから、また通おう。</small></div></div>`);
+    return false;
+  }
+  state.player.coins -= fee;
+  if (typeof updateHeader === "function") try { updateHeader(); } catch (e) {}
+  _hToast("🎫 −" + fee.toLocaleString("ja-JP") + " コイン　" + (skillName || "習い事") + "に通った");
+  return true;
+}
+
+// ── E2：くらしツリー ノード初回解放にコイン（基準単価×P費）＝「新しい暮らしを覚える一度きりの
+//    出費」。振り直し後の再取得は無料（P振り分けの実験は自由・お金の二重取り防止）。──
+function lifeNodePrice(node) { return hungerBaseUnit() * ((node && node.cost) || 1); }
+function lifeNodeBought(node) { try { return !!(state.lifeTree && state.lifeTree.bought && state.lifeTree.bought[node.nodeId]); } catch (e) { return false; } }
+(function () {
+  if (typeof unlockLifeNode !== "function") return;
+  const _origUnlock = unlockLifeNode;
+  unlockLifeNode = function (node) {
+    try {
+      const lt = state.lifeTree || (state.lifeTree = { unlocked: {} });
+      const bought = lt.bought || (lt.bought = {});
+      if (node && !bought[node.nodeId] && typeof lifeNodeState === "function" && lifeNodeState(node) === "ready") {
+        const price = lifeNodePrice(node);
+        if ((state.player.coins || 0) < price) {
+          if (typeof showInfoPopup === "function") showInfoPopup("🌳 暮らしにもお金がかかる",
+            `<div class="mm-row"><span class="mm-ic">💸</span><div><b>${price.toLocaleString("ja-JP")} コイン 必要（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）</b>` +
+            `<small>${_hBrokeLine()}　レースで稼いでから、また育てよう。</small></div></div>`);
+          return { ok: false, broke: true };
+        }
+        const r = _origUnlock(node);
+        if (r.ok) {
+          state.player.coins -= price;
+          bought[node.nodeId] = 1;
+          if (typeof updateHeader === "function") try { updateHeader(); } catch (e) {}
+          _hToast("🌳 −" + price.toLocaleString("ja-JP") + " コイン　「" + (node.title || "暮らし") + "」を身につけた");
+          if (typeof saveGame === "function") try { saveGame(); } catch (e) {}
+        }
+        return r;
+      }
+    } catch (e) {}
+    return _origUnlock(node);   // 既購入ノードの再取得＝無料（振り直し後の実験）
+  };
+})();
+(function () {
+  if (typeof respecLifeTree !== "function") return;
+  const _origRespec = respecLifeTree;
+  respecLifeTree = function () {
+    const keep = (state.lifeTree && state.lifeTree.bought) || {};   // 支払い履歴は残す
+    _origRespec();
+    state.lifeTree.bought = keep;
+    if (typeof saveGame === "function") try { saveGame(); } catch (e) {}
+  };
+})();
+
 // ── eatMeal 後勝ちラップ：初回実食に課金＋満腹回復。再読/既食は無料のまま ──
 (function () {
   if (typeof eatMeal !== "function") return;

@@ -206,8 +206,11 @@ function renderActiveSkills() {
         : (lv > 0 ? s.levels[lv - 1] : "まだ通っていない。")}</div>` +
       (!maxed ? `<div class="askill-next"><span>次</span>${s.levels[lv]}</div>` : "");
     if (!maxed) {
-      const go = el("button", "askill-go", lv > 0 ? "また通う ▶" : "通ってみる ▶");
+      // E2：月謝制（基準単価×2）。払えたら1回通う。価格をボタンに明示。
+      const _fee = (typeof lessonFee === "function") ? lessonFee() : 0;
+      const go = el("button", "askill-go", (lv > 0 ? "また通う" : "通ってみる") + `　🪙${_fee.toLocaleString("ja-JP")}`);
       go.onclick = () => {
+        if (typeof tryPayLesson === "function" && !tryPayLesson(s.name)) return;   // 月謝が払えなければ通えない
         const nv = Math.min((as[s.id] || 0) + 1, max);
         as[s.id] = nv;
         if (typeof saveGame === "function") saveGame();
@@ -345,11 +348,15 @@ function renderLifeTree() {
     } else {
       desc = node.desc;
     }
+    // E2：初回解放にコイン（基準単価×P費）。振り直し後の再取得（既購入）は◇Pのみ＝無料。
+    const _bought = (typeof lifeNodeBought === "function") && lifeNodeBought(node);
+    const _coin = (typeof lifeNodePrice === "function") ? lifeNodePrice(node) : 0;
+    const _coinTag = (!_bought && _coin) ? ` 🪙${_coin.toLocaleString("ja-JP")}` : "";
     let right;
     if (stt === "unlocked")      right = `<span class="lt-node-cost done">✓</span>`;
-    else if (stt === "ready")    right = `<button class="lt-buy">振り分け<b>◇${node.cost}</b></button>`;
+    else if (stt === "ready")    right = `<button class="lt-buy">振り分け<b>◇${node.cost}${_coinTag}</b></button>`;
     else if (stt === "nopoints") right = `<span class="lt-node-cost short">◇${node.cost}<small>P不足</small></span>`;
-    else                         right = `<span class="lt-node-cost lock">◇${node.cost}</span>`;
+    else                         right = `<span class="lt-node-cost lock">◇${node.cost}${_coinTag}</span>`;
     const row = el("div", "lt-node " + stt + cz,
       `<div class="lt-node-rail"><div class="lt-node-dot">${dot}</div></div>` +
       `<div class="lt-node-body"><div class="lt-node-title">${node.title}</div>` +
