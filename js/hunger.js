@@ -48,6 +48,27 @@ function hungerFreeMealOk() {
 
 function _hToast(msg) { try { if (typeof _showUnlockToast === "function") _showUnlockToast(msg); } catch (e) {} }
 
+// ── 値札に怯むミミの一言（章別の暮らしアーク＝HUNGER_ECONOMY_DESIGN §5・テキストの声） ──
+// 段位1=どん底の哀愁コメディ／2=庶民の背伸び／3以上=いい暮らしのうっかり。追加はここに1行。
+var HUNGER_BROKE_LINES = {
+  1: ["うっ……ゼロがひとつ多い。み、水でいいや。水はタダだし。",
+      "（値札を三度見して、そっと店を出た）",
+      "お腹の音、実況みたいに大きい。……はずかしい。",
+      "いつか絶対食べる。ノートの『いつかリスト』に書いた。"],
+  2: ["これが庶民の壁……！ でも今日の壁は、明日の目標。",
+      "は、半分だけ……は売ってないですよね。ですよね〜。",
+      "店員さんの笑顔がまぶしい。「またのご来店を」……うん、また来る。絶対。"],
+  3: ["あれ、足りない。……観光で使いすぎたな！ 楽しかったからいいけど！",
+      "明日の私が稼ぐので、今日の私は我慢です。これぞ計画性。",
+      "ふっ、大人には「あえて頼まない」という選択肢があるのです。（強がり）"]
+};
+function _hBrokeLine() {
+  const u = hungerBaseUnit();
+  const k = u >= 2000 ? 3 : u >= 300 ? 2 : 1;
+  const arr = HUNGER_BROKE_LINES[k] || HUNGER_BROKE_LINES[1];
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 // ── eatMeal 後勝ちラップ：初回実食に課金＋満腹回復。再読/既食は無料のまま ──
 (function () {
   if (typeof eatMeal !== "function") return;
@@ -64,8 +85,9 @@ function _hToast(msg) { try { if (typeof _showUnlockToast === "function") _showU
           const price = mealPrice(m);
           if ((state.player.coins || 0) < price) {
             if (typeof showInfoPopup === "function") showInfoPopup("🍽 持ち合わせが足りない…",
-              `<div class="mm-row"><span class="mm-ic">💸</span><div><b>${price.toLocaleString("ja-JP")} コイン 必要</b>` +
-              `<small>レースで稼ぐか、安い屋台から。ハズレた日は1品「店のおごり」が出ます。</small></div></div>`);
+              `<div class="mm-row"><span class="mm-ic">💸</span><div><b>${price.toLocaleString("ja-JP")} コイン 必要（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）</b>` +
+              `<small>${_hBrokeLine()}</small></div></div>` +
+              `<div class="mm-row"><span class="mm-ic">💡</span><div><small>レースで稼ぐか、安い屋台から。ハズレた日は1品「店のおごり」が出ます。</small></div></div>`);
             return;   // 食べない＝収集も満腹も進まない（ゲートは出走のみ・ここは「買えない」だけ）
           }
           state.player.coins -= price;
