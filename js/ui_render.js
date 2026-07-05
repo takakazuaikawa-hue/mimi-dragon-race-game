@@ -3081,8 +3081,13 @@ function drawRecapScreen() {
   } catch (e) {}
 
   // --- Tab bar ---
+  // E4：1章は分析/次のヒントを伏せる（勘レース）。現タブが伏せ対象なら結果へ戻す（保険）。
+  const _anaOn = (typeof analysisUnlocked !== "function") || analysisUnlocked();
+  const _hidden = t => !_anaOn && (t === "analysis" || t === "hints");
+  if (_hidden(c.recapTab)) c.recapTab = "result";
   const bar = el("div", "recap-tabs");
   RECAP_TABS.forEach(t => {
+    if (_hidden(t.id)) return;
     const b = el("button", "recap-tab" + (c.recapTab === t.id ? " active" : ""), t.label);
     b.onclick = () => showRecapTab(t.id);
     bar.appendChild(b);
@@ -3111,8 +3116,10 @@ function drawRecapScreen() {
   const actions = el("div", "actions");
   const home2 = el("button", "secondary", "ホーム"); home2.onclick = renderHome;
   actions.appendChild(home2);
-  const detail = el("button", "secondary", "詳しい分析"); detail.onclick = renderAnalysis;
-  actions.appendChild(detail);
+  if (_anaOn) {   // E4：詳しい分析は2章解禁（1章は勘レース）
+    const detail = el("button", "secondary", "詳しい分析"); detail.onclick = renderAnalysis;
+    actions.appendChild(detail);
+  }
   const next = el("button", null, "次のレースへ ▶"); next.onclick = renderRaceSelect;
   actions.appendChild(next);
   app.appendChild(actions);
@@ -3590,6 +3597,20 @@ function showShareFallback(text, title) {
 
 function renderAnalysis() {
   state.ui.screen = "analysis";
+  // E4：1章は“勘レース”。分析予想は第2話「ミズの分析」で解禁（表示ゲート・数値不変）。
+  if (typeof analysisUnlocked === "function" && !analysisUnlocked()) {
+    const app0 = beginScreen();
+    app0.appendChild(el("h2", null, "レース後分析"));
+    app0.appendChild(el("div", "card",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ「分析」はできません</b>` +
+      `<small>いまはカンだけが頼りのミミ。<u>第2話「ミズの分析」</u>を読むと、オッズの読み方・妙味・次のヒントが手に入ります（総資産3千で第2話が解禁）。</small></div></div>` +
+      `<div class="mm-row"><span class="mm-ic">🐰</span><div><small>ミミ「ぶ、分析……？　なにそれおいしいの……？　いまはカン！　カンで勝負だよっ！（震え声）」</small></div></div>`));
+    const acts = el("div", "actions");
+    const bk = el("button", "secondary", "◀ 結果へ戻る"); bk.onclick = () => renderResult();
+    acts.appendChild(bk);
+    app0.appendChild(acts);
+    return;
+  }
   const c = state.current;
   const analysis = buildAnalysis(c.race, c.raceResult, c.oddsResult, c.betResult, c.broadcast);
   const app = beginScreen();

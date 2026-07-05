@@ -93,7 +93,17 @@ function renderAssets() {
   ent.appendChild(entry("🎫", "習い事（アクティブスキル）", `称号 ${skTitles} / ${ACTIVE_SKILLS.length} 獲得 ・ ミミの暮らしの記録`, skTitles >= ACTIVE_SKILLS.length ? "コンプ!" : "", () => renderActiveSkills()));
   ent.appendChild(entry("📖", "物語", `${unlockedCh} / ${STORY_CHAPTERS.length} 話 解放`, "", () => renderStory()));
   // 相談（顧問）はホームのナビから移設＝暮らしハブに配置（予想の視点をもらう・任意）。
-  if (typeof renderConsult === "function") ent.appendChild(entry("💬", "相談（顧問）", "サケ・ミズ・スミカから、予想の視点をもらいます。", "", () => renderConsult()));
+  // E4：予想の相談も第2話「ミズの分析」で解禁（1章は勘レース）。表示ゲートのみ・数値不変。
+  if (typeof renderConsult === "function") {
+    if (typeof analysisUnlocked === "function" && !analysisUnlocked()) {
+      ent.appendChild(entry("🔒", "相談（顧問）", "第2話「ミズの分析」を読むと、予想の相談ができます。", "", () => {
+        if (typeof showInfoPopup === "function") showInfoPopup("💬 相談（顧問）",
+          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ相談できません</b><small><u>第2話「ミズの分析」</u>を読むと、サケ・ミズ・スミカに予想の視点をもらえます（総資産3千で第2話が解禁）。いまはカンで勝負！</small></div></div>`);
+      }));
+    } else {
+      ent.appendChild(entry("💬", "相談（顧問）", "サケ・ミズ・スミカから、予想の視点をもらいます。", "", () => renderConsult()));
+    }
+  }
   app.appendChild(ent);
 
   const actions = el("div", "actions");

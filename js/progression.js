@@ -65,6 +65,12 @@ function kurashiChapter() {
   } catch (e) {}
   return 1;
 }
+// E4（docs/HUNGER_ECONOMY_DESIGN.md §5・GAME_EXPERIENCE_DESIGN 2章）：分析・予想は第2話
+// 「ミズの分析」で解禁。1章は“勘レース”＝分析タブ/詳しい分析/相談を伏せ、負けて覚える手触りに。
+// 表示ゲートのみ＝レースの着順/オッズ/配当/FinalPower は不変（賭け画面の人気/オッズは常時表示）。
+function analysisUnlocked() {
+  try { return typeof getStoryFlag === "function" && !!getStoryFlag("_chapter_intro_2"); } catch (e) { return false; }
+}
 // 暮らし還流台帳：暮らしの行動（育てる/引っ越す/食べる/習う）に物語側が反応する。
 // 形は UNLOCKS の toast と同じ（1到着1件・_unlocked_フラグで一度きり・表示のみ）。
 const KURASHI_WATCH = [
