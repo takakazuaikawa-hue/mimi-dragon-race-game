@@ -20,7 +20,8 @@ function rpgData() {
     };
   }
   const d = p.rpg;
-  if (!d.items) d.items = { potion: 0, ether: 0 };
+  if (!d.items) d.items = { potion: 0, ether: 0, calm: 0 };
+  if (d.items.calm == null) d.items.calm = 0;   // 🔕 静けさのお香（しばらくエンカウントしない）
   if (!d.codex) d.codex = {};
   if (!d.skills) d.skills = ["atk"];
   if (!d.best) d.best = { lv: d.lv || 1 };
@@ -29,6 +30,7 @@ function rpgData() {
   if (d.records.depth == null) d.records.depth = 0;
   if (d.daily == null) d.daily = "";                 // 最終ログボ受取日
   if (d.rep == null) d.rep = 0;                       // ✨みがき（自分磨きの資源）
+  if (d.tutSeen == null) d.tutSeen = false;           // 初回の操作ガイド（rpgFx.tutorial）を出したか
   if (!d.up) d.up = {};                               // 自分磨きレベル
   if (!d.shop) d.shop = {};                           // 🛍️ ショッピング・コレクション（買った品）
   return d;
@@ -54,14 +56,65 @@ function rpgBuyUp(id) {
   rpgSfx("unlock"); rpgFx.banner("💖 自分磨き！ " + def.n, "levelup"); rpgSave(); renderMallRpg();
 }
 // 探索の成果 → ⭐に変換してバンク（leave／気絶／タワー降りのすべてで必ず前進）
-function rpgEndRun() {
+function rpgEndRun(quiet) {
   if (!RPG) return 0;
   const d = rpgData();
   const floors = RPG.tower ? (RPG.depth || 1) : ((RPG.fi || 0) + 1);
   const rep = Math.max(1, floors * 2 + (RPG.runKills || 0) + (RPG.runMissions || 0) * 3 + (RPG.tower ? floors : 0));
   d.rep = (d.rep || 0) + rep; rpgSave();
-  rpgFx.banner("✨ みがき +" + rep, "victory");
+  if (!quiet) rpgFx.banner("✨ みがき +" + rep, "victory");   // サマリー画面に出すときは二重表示を避ける
   return rep;
+}
+// 📦 ランの成果サマリー：開始時スナップショットとの差分で「今回の冒険」を一覧化（憲法§3）。
+function rpgRunSnap() {
+  const d = rpgData(), tot = rpgShopTotalOwned();
+  return { gold: d.gold | 0, lv: d.lv | 0, exp: d.exp | 0, rep: d.rep | 0,
+    tickets: d.tickets | 0, shop: tot.o, calm: (d.items && d.items.calm) | 0,
+    outfits: ((state.player && state.player.outfitsWon) || []).length };
+}
+// つぎの目標（あと◯◯＝ゴールグラデーション）。ハブとサマリーで共通利用。
+function rpgNextGoalText() {
+  const d = rpgData(), rec = d.records || {}, topI = RPG_FLOORS.length - 1, tot = rpgShopTotalOwned();
+  if (!d.cleared) { const bf = rec.floor || 0; return bf < topI ? `🎯 屋上をめざそう：あと <b>${topI - bf}</b> フロアで制覇！` : `🎯 屋上のボスを倒せば制覇！`; }
+  if (tot.o < tot.t) return `🛍️ ショッピング・コンプまで あと <b>${tot.t - tot.o}</b> 品！`;
+  return `🌟 エンドレスタワー 最深 <b>${rec.depth || 0}</b> 層を更新しよう！`;
+}
+// スナップショット差分→台帳の行（増えたものだけ名前を付けて返す）
+function rpgRunLedger() {
+  const d = rpgData(), s = RPG.snap || {}, tot = rpgShopTotalOwned();
+  const outfitsNow = ((state.player && state.player.outfitsWon) || []).length;
+  const rows = [];
+  const goldD = (d.gold | 0) - (s.gold || 0);
+  rows.push({ ic: "🪙", label: "ゴールド収支", val: (goldD >= 0 ? "+" : "") + goldD + "G", cls: goldD >= 0 ? "good" : "" });
+  const lvD = (d.lv | 0) - (s.lv || 0);
+  if (lvD > 0) rows.push({ ic: "⬆️", label: "レベルアップ", val: `Lv${s.lv}→${d.lv}`, cls: "lv" });
+  if (RPG.runKills) rows.push({ ic: "⚔️", label: "魔物を撃破", val: `${RPG.runKills}体` });
+  const floors = RPG.tower ? (RPG.depth || 1) : ((RPG._maxFi != null ? RPG._maxFi : (RPG.fi || 0)) + 1);
+  rows.push({ ic: "🏁", label: RPG.tower ? "のぼった高さ" : "踏破フロア", val: RPG.tower ? `${floors}層` : `${floors}/${RPG_FLOORS.length}F` });
+  if (RPG.runMissions) rows.push({ ic: "🎯", label: "ミッション達成", val: `${RPG.runMissions}件` });
+  const chests = Object.keys(RPG.collected || {}).length;
+  if (chests) rows.push({ ic: "📦", label: "宝箱を開けた", val: `${chests}個` });
+  const shopD = tot.o - (s.shop || 0);
+  if (shopD > 0) rows.push({ ic: "🛍️", label: "お買い物", val: `+${shopD}品（${tot.o}/${tot.t}）`, cls: "lv" });
+  const outD = outfitsNow - (s.outfits || 0);
+  if (outD > 0) rows.push({ ic: "👗", label: "衣装GET", val: `+${outD}着`, cls: "lv" });
+  const calmD = ((d.items && d.items.calm) | 0) - (s.calm || 0);
+  if (calmD > 0) rows.push({ ic: "🔕", label: "静けさのお香", val: `+${calmD}個` });
+  const repD = (d.rep | 0) - (s.rep || 0);
+  if (repD > 0) rows.push({ ic: "✨", label: "みがき", val: `+${repD}`, cls: "good" });
+  const tkD = (d.tickets | 0) - (s.tickets || 0);
+  if (tkD > 0) rows.push({ ic: "🎟️", label: "おたから券", val: `+${tkD}枚` });
+  return rows;
+}
+// ランの締め（退場／気絶／出口クリア共通）：⭐をバンクし、📦サマリー画面へ。
+function rpgFinishRun(reason) {
+  if (!RPG) { renderMallRpg(); return; }
+  if (RPG._autoT) { clearTimeout(RPG._autoT); RPG._autoT = null; RPG.auto = false; }
+  rpgEndRun(true);
+  RPG.summary = { reason: reason, rows: rpgRunLedger(), next: rpgNextGoalText(), cleared: !!rpgData().cleared };
+  RPG.mode = "summary"; RPG.battle = null; RPG.busy = false;
+  rpgSfx(reason === "lost" ? "nav" : "unlock");
+  renderMallRpg();
 }
 function rpgToday() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return "x"; } }
 function rpgSave() { if (typeof saveGame === "function") saveGame(); }
@@ -243,13 +296,22 @@ function rpgStartRun() {
     mode: "explore", steps: 0, grace: 1,
     explored: {}, collected: {},
     log: [], battle: null, flash: null, auto: false,
-    runKills: 0, runMissions: 0,
+    runKills: 0, runMissions: 0, _maxFi: 0,
   };
+  RPG.snap = rpgRunSnap();   // 📦今回の冒険サマリー用の開始時スナップショット
   rpgLoadFloor(0);
   const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`👛 やりくり上手で +${sg}G で出発！`, "good"); }   // 👛やりくり上手（自分磨き）
   rpgLog("🏝️ リゾート探検へ！ ▲で進む・↰↱で向き（▶でオートにも切替）", "good");
   rpgFx.floorCard(RPG_FLOORS[0].name, rpgGoalCardSub(RPG_FLOORS[0]), RPG_FLOORS[0].accent);
+  rpgMaybeShowTutorial();
   renderMallRpg();
+}
+// 初回の冒険だけ、フロアカードの余韻が明けたタイミングで操作ガイドをそっと表示（2回目以降は出ない）
+function rpgMaybeShowTutorial() {
+  const d = rpgData();
+  if (d.tutSeen) return;
+  d.tutSeen = true; rpgSave();
+  setTimeout(() => rpgFx.tutorial("💡 ▲で進む・↰↱で向きを変える。🛗階段で次の階へ、🛍️お店の前で入店できるよ！"), 2500);
 }
 // 🗓️ デイリーラン：合言葉（既定＝今日の日付）で“床の変形＋通路閉鎖”が端末をまたいで同一になる固定ダンジョン。
 // 入口は競合中のハブを避け、URL ?daily=YYYYMMDD（値なし＝今日）と window.rpgStartDaily(seed) から起動。
@@ -260,13 +322,15 @@ function rpgStartDaily(seedStr) {
     mode: "explore", steps: 0, grace: 1,
     explored: {}, collected: {},
     log: [], battle: null, flash: null, auto: false,
-    runKills: 0, runMissions: 0,
+    runKills: 0, runMissions: 0, _maxFi: 0,
     daily: true, seed: rpgHashStr(s), seedStr: s,
   };
+  RPG.snap = rpgRunSnap();
   rpgLoadFloor(0);
   const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`👛 やりくり上手で +${sg}G で出発！`, "good"); }
   rpgLog(`🗓️ デイリーラン（合言葉「${s}」）開始！ 同じ合言葉なら誰でも同じ構造`, "good");
   rpgFx.floorCard(RPG_FLOORS[0].name, "🗓️ DAILY " + s, RPG_FLOORS[0].accent);
+  rpgMaybeShowTutorial();
   renderMallRpg();
 }
 if (typeof window !== "undefined") window.rpgStartDaily = rpgStartDaily;
@@ -291,6 +355,7 @@ function rpgLoadFloor(i) {
   const s0 = rpgShopFor(i), nleft = s0.length - rpgShopOwnedN(s0);
   if (nleft > 0) rpgLog(`🛍️ お店に ${s0[0].ic}${s0[0].n} など${nleft}品！「お店」ボタンでお買い物♪`, "good");
   if (!RPG.tower && (d.best.floor == null || i > d.best.floor)) { d.best.floor = i; rpgSave(); }
+  if (!RPG.tower && (RPG._maxFi == null || i > RPG._maxFi)) RPG._maxFi = i;   // 📦サマリーの踏破フロア数
 }
 // ミッション表示用テキスト（HUDチップ／フロアカード）
 function rpgGoalUnit(t) { return t === "explore" ? "%" : (t === "gold" ? "G" : ""); }
@@ -337,14 +402,41 @@ function rpgGoUp() {
 }
 function rpgLog(t, cls) { if (!RPG) return; RPG.log.unshift({ t, cls: cls || "" }); RPG.log = RPG.log.slice(0, 5); }
 
+// 🔕 静けさのお香：たくと一定歩数のあいだ魔物が寄ってこない（探索の小休止＝クリア報酬の主役）
+const RPG_CALM_STEPS = 12;
+function rpgUseCalm() {
+  const d = rpgData();
+  if (!RPG || (d.items.calm || 0) <= 0 || (RPG.calm || 0) > 0) return;
+  d.items.calm--; RPG.calm = RPG_CALM_STEPS;
+  rpgLog(`🔕 静けさのお香をたいた。${RPG_CALM_STEPS}歩のあいだ魔物が寄ってこない…`, "good");
+  rpgFx.banner("🔕 平和 " + RPG_CALM_STEPS + "歩", "victory");
+  rpgSfx("nav"); rpgSave(); renderMallRpg();
+}
+// 🏁 フロア踏破：階段に初到達した瞬間（この潜入で1回だけ）報酬を返す。タワーは対象外。
+function rpgFloorClear() {
+  if (!RPG || RPG.tower) return;
+  RPG._clearedFloors = RPG._clearedFloors || {};
+  if (RPG._clearedFloors[RPG.fi]) return;
+  RPG._clearedFloors[RPG.fi] = 1;
+  const d = rpgData();
+  const g = 30 + RPG.fi * 20;                                  // 踏破ボーナス（小・上階ほど増）
+  d.gold += g;
+  const drop = Math.random() < (0.34 + RPG.fi * 0.05);        // 🔕お香のドロップ（上階ほど出やすい）
+  if (drop) d.items.calm = (d.items.calm || 0) + 1;
+  rpgFx.banner(`🏁 ${RPG.fi + 1}F 踏破！`, "victory");
+  rpgLog(`🏁 ${rpgFloorMeta(RPG.fi).name} を踏破！ 🪙+${g}${drop ? "・🔕静けさのお香 ×1" : ""}`, "win");
+  rpgSfx("unlock"); rpgSave();
+}
+
 // ── 🌟 エンドレスタワー（屋上クリア後・どこまで上れるか＋プレスユアラック）
 function rpgStartTower() {
   RPG = {
     fi: RPG_FLOORS.length, map: [], w: 9, h: 9, px: 1, py: 1, dir: 1,
     mode: "explore", steps: 0, grace: 1, explored: {}, collected: {},
     log: [], battle: null, flash: null, tower: true, depth: 1, towerLuck: 0.2, auto: false,
-    runKills: 0, runMissions: 0,
+    runKills: 0, runMissions: 0, _maxFi: 0,
   };
+  RPG.snap = rpgRunSnap();
   rpgLoadFloor(RPG_FLOORS.length);
   rpgLog("🌟 エンドレスタワーに挑戦！ どこまで上れる？", "good");
   renderMallRpg();
@@ -407,16 +499,27 @@ function rpgForward(sign) {
   const here = rpgCell(nx, ny);
   if (here === "T") { rpgTreasure(nx, ny); return; }
   if (here === "U") {   // 階段＝自動で上らない。オートは一旦停止して「上る？残る？」を選ばせる
+    rpgFloorClear();    // 🏁 踏破（初回のみ報酬：ゴールド＋🔕お香）
     if (RPG.auto) { RPG.auto = false; if (RPG._autoT) { clearTimeout(RPG._autoT); RPG._autoT = null; } }
     rpgLog("🛗 階段に着いた。『上の階へ』で上れる（残ってお買い物・ミッションもOK）", "good"); rpgSfx("nav"); renderMallRpg(); return;
   }
   if (here === "E") { rpgReachExit(); return; }
   // ランダムエンカウント
-  if (RPG.grace > 0) RPG.grace--;
+  if ((RPG.calm || 0) > 0) {   // 🔕 静けさのお香：効果中は遭遇しない（grace も消費しない）
+    RPG.calm--;
+    if (RPG.calm === 0) rpgLog("🔕 お香の効き目が切れた。気をひきしめて。", "");
+  }
+  else if (RPG.grace > 0) RPG.grace--;
   else if (Math.random() < 0.22) {
     const fm = rpgFloorMeta(RPG.fi);   // 🐲 フロアの主（未討伐なら一定確率で出現）
-    if (fm.nushi && !(RPG._nushiBeat && RPG._nushiBeat[RPG.fi]) && Math.random() < 0.2) rpgEncounter("nushi");
-    else rpgEncounter();
+    const isNushi = fm.nushi && !(RPG._nushiBeat && RPG._nushiBeat[RPG.fi]) && Math.random() < 0.2;
+    RPG.busy = true;                   // 予兆の一拍は操作/オート歩行を止める（戦闘開始で解除）
+    renderMallRpg();                   // 踏み込んだ一歩を先に見せてから予兆を出す
+    rpgFx.telegraph(isNushi ? "nushi" : "enc", () => {
+      if (!RPG) return;
+      if (RPG.mode !== "explore") { RPG.busy = false; return; }   // 画面を離れていたら戦闘は出さずロック解除
+      if (isNushi) rpgEncounter("nushi"); else rpgEncounter();
+    });
     return;
   }
   renderMallRpg();
@@ -484,7 +587,7 @@ function rpgTreasure(x, y) {
 function rpgReachExit() {
   const d = rpgData();
   if (!d.cleared) { rpgEncounter(true); return; }   // 初回はボス戦
-  RPG.mode = "result"; renderMallRpg();
+  rpgFinishRun("exit");                              // 制覇後の出口＝📦今回の冒険サマリーへ
 }
 
 // =========================================================================
@@ -509,6 +612,16 @@ const rpgFx = {
     n.querySelector(".enc-label").textContent = label;
     this.layer().appendChild(n);
     setTimeout(() => n.remove(), 1050);
+  },
+  // バトル予兆：踏み込んだ瞬間に画面の縁が“ドクッ”と脈打ち、身構える一拍をつくる（突然の即死戦の理不尽さを和らげる）
+  // reduced-motion時は視覚演出を出さず、ほぼ間を置かずに戦闘へ。kind: enc/nushi/boss
+  telegraph(kind, cb) {
+    rpgSfx("alert", kind === "nushi" ? 0.72 : 0.82);   // 予兆＝低めの“遠い警告”（接敵時の通常ピッチ＝一撃と差別化）
+    if (rpgReduce()) { setTimeout(cb, 120); return; }
+    const n = document.createElement("div"); n.className = "rpg-tele " + (kind || "enc");
+    this.layer().appendChild(n);
+    setTimeout(() => n.remove(), 620);
+    setTimeout(cb, 470);
   },
   // 敵の名前カットイン：突入後にアイコン＋名前が左右から“ポンポン”と飛び込む（敵に目が向くように）
   cutins(refs, boss) {
@@ -535,6 +648,13 @@ const rpgFx = {
     this.layer().appendChild(n);
     if (cb) setTimeout(cb, 850);
     setTimeout(() => n.remove(), 2300);
+  },
+  // 初回だけ操作ガイドをそっと出す（？を能動的にタップしなくても一度は目に入るように・オンボーディング3点セット）
+  tutorial(text) {
+    if (document.getElementById("rpg-tut-toast")) return;   // 二重表示防止
+    const n = document.createElement("div"); n.id = "rpg-tut-toast"; n.className = "rpg-tut-toast"; n.textContent = text;
+    this.layer().appendChild(n);
+    setTimeout(() => n.remove(), 5200);
   },
 
 };
@@ -861,8 +981,10 @@ function rpgBattleWin() {
   let outfit = null;
   if (b.boss) {
     d.cleared = true;
+    d.items.calm = (d.items.calm || 0) + 2;   // 🔕 制覇のごほうび：静けさのお香（探索が一気にラクに）
     outfit = rpgGrantOutfit("r") || rpgGrantOutfit("c");
-    if (outfit) rpgBLog(`👑 屋上制覇！ ごほうびの衣装「${outfit.name}」を手に入れた！`, "win");
+    if (outfit) rpgBLog(`👑 屋上制覇！ ごほうびの衣装「${outfit.name}」と🔕静けさのお香×2を手に入れた！`, "win");
+    else rpgBLog(`👑 屋上制覇！ ごほうびに🔕静けさのお香×2を手に入れた！`, "win");
   } else if (Math.random() < 0.06) {
     outfit = rpgGrantOutfit("c");
     if (outfit) rpgBLog(`👑 魔物が衣装「${outfit.name}」を落とした！`, "win");
@@ -924,9 +1046,7 @@ function rpgAfterWin() {
 function rpgAfterLose() {
   const d = rpgData();
   d.hp = Math.max(1, Math.floor(d.maxhp * 0.5));   // ソフト：気絶して入口へ（罰は軽め）
-  rpgEndRun();   // 倒れても⭐は持ち帰る（失敗も前進）
-  RPG = null; rpgSave();
-  renderMallRpg();
+  rpgFinishRun("lost");   // 倒れても📦今回の成果を見せる（持ち帰った物を可視化）
 }
 
 // =========================================================================
@@ -935,11 +1055,10 @@ function rpgAfterLose() {
 function rpgRest() { const d = rpgData(); d.hp = d.maxhp; d.mp = d.maxmp; rpgSave(); renderMallRpg(); }
 function rpgBuy(kind) {
   const d = rpgData();
-  const price = kind === "potion" ? 20 : 30;
-  if (d.gold < price) return;
+  const price = { potion: 20, ether: 30, calm: 80 }[kind];
+  if (price == null || d.gold < price) return;
   d.gold -= price;
-  if (kind === "potion") d.items.potion = (d.items.potion || 0) + 1;
-  else d.items.ether = (d.items.ether || 0) + 1;
+  d.items[kind] = (d.items[kind] || 0) + 1;
   rpgSfx("unlock"); rpgSave();
   renderMallRpg();
 }
@@ -1052,7 +1171,8 @@ function rpgHaggle(id) {
   else if (r < 0.85) { mul = 1.0; msg = "うーん、これ以上はごめんなさいね？"; tag = "渋い顔…"; cls = "miss"; rpgSfx("tick"); }
   else               { mul = 1.1; msg = "あらあら、強気ですこと！ むしろ正規で、ね？"; tag = "ちょい高め…"; cls = "bad"; rpgSfx("tick"); }
   RPG._haggle[id] = { mul: mul }; RPG._shopMsg = msg;
-  rpgFx.banner(tag, cls);
+  const np = rpgItemPrice(it), sv = it.price - np;   // 浮いた額（マイナスなら強気で割高）を明示
+  rpgFx.banner(tag + (sv > 0 ? ` −${sv}G` : (sv < 0 ? ` +${-sv}G` : "")), cls);
   renderMallRpg();
 }
 function rpgBuyGoods(id) {
@@ -1060,10 +1180,62 @@ function rpgBuyGoods(id) {
   if (!it || rpgOwned(id)) return;
   const price = rpgItemPrice(it);
   if (d.gold < price) { rpgSfx("tick"); if (RPG) RPG._shopMsg = "あら、ゴールドが足りないみたい…"; renderMallRpg(); return; }
+  const save = Math.max(0, it.price - price);           // 値切り/セールで浮いた額（成功体験を明示）
   d.gold -= price; d.shop = d.shop || {}; d.shop[id] = true;
-  if (RPG) { RPG._shopMsg = "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${price}G で買った！`, "good"); }
-  rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！", "victory");
+  if (RPG) { RPG._shopMsg = save > 0 ? `お買い上げ♪ ${save}Gもお得でしたわね、ミミ様！` : "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${price}G で買った！${save > 0 ? `（−${save}G）` : ""}`, "good"); }
+  rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！" + (save > 0 ? ` −${save}G` : ""), "victory");
+  rpgShopFloorReward(RPG ? RPG.fi : 0);                  // 🎀 そのフロアの品を全部そろえたら一度きりのごほうび
+  rpgGrandCompCheck();                                   // 👑 全48品コンプで記念衣装＋最上位称号
   rpgSave(); renderMallRpg();
+}
+// 🎀 フロア・コンプ報酬：その階の品を全部そろえた瞬間（各階1回）に 🎟️＋✨ を返す（買い集めの達成感）
+function rpgShopFloorReward(fi) {
+  const d = rpgData(), arr = rpgShopFor(fi);
+  if (!arr.length || rpgShopOwnedN(arr) < arr.length) return;
+  d.shopDone = d.shopDone || {};
+  if (d.shopDone[fi]) return;
+  d.shopDone[fi] = true;
+  d.tickets = (d.tickets || 0) + 1; d.rep = (d.rep || 0) + 5;
+  const nm = rpgFloorMeta(fi).name.replace(/ .*/, "");
+  rpgFx.banner(`🎀 ${nm} お買い物マスター！`, "victory");
+  if (RPG) { RPG._shopMsg = `${nm}の品をぜんぶ！ さすがミミ様♪ ごほうびですわ`; rpgLog(`🎀 ${nm} コンプリート！ ごほうび 🎟️+1・✨+5`, "win"); }
+  setTimeout(() => rpgSfx("unlock"), 220);
+}
+// 👑 グランドコンプ：全フロアの品(=48品)を制覇した瞬間（1回）に記念衣装＋大量ごほうび＋最上位称号。
+function rpgGrandCompCheck() {
+  const d = rpgData(), tot = rpgShopTotalOwned();
+  if (tot.o < tot.t || d.grandComp) return;
+  d.grandComp = true;
+  d.tickets = (d.tickets || 0) + 3; d.rep = (d.rep || 0) + 20;
+  const o = rpgGrantOutfit("l") || rpgGrantOutfit("r") || rpgGrantOutfit("c");   // 記念衣装（既存OUTFITSの上位帯から）
+  rpgFx.banner("👑 グランドコンプリート！", "victory");
+  if (RPG) { RPG._shopMsg = "ぜ、ぜんぶ…！ ミミ様こそ“モールの主”ですわ…！👑"; rpgLog(`👑 全${tot.t}品コンプ！ 称号「ドラゴンモールの主」＋🎟️×3・✨×20${o ? `・記念衣装「${o.name}」` : ""}`, "win"); }
+  setTimeout(() => rpgSfx("legendary"), 300);
+}
+// 📖 ずかんの収集状況（称号の判定に使う）
+function rpgCodexCount() {
+  const d = rpgData(), ids = RPG_TOURISTS.concat(RPG_MONSTERS_MINOR, RPG_KUNLUN, ["boss1"]);
+  let seen = 0; ids.forEach(id => { if (d.codex && d.codex[id]) seen++; });
+  return { seen: seen, total: ids.length };
+}
+// 🏅 称号（トロフィー）：既存の進行から導出（保存はマイルストン到達のみ）。あと◯◯のヒント付き。
+function rpgTitles() {
+  const d = rpgData(), rec = d.records || {}, topI = RPG_FLOORS.length - 1;
+  const tot = rpgShopTotalOwned(), cx = rpgCodexCount();
+  const anyFloorComp = !!(d.shopDone && Object.keys(d.shopDone).some(k => d.shopDone[k]));
+  return [
+    { ic: "🌿", n: "モール制覇者", got: !!d.cleared, hint: `屋上まで あと${Math.max(0, topI - (rec.floor || 0))}フロア` },
+    { ic: "🎀", n: "お買い物名人", got: anyFloorComp, hint: "どこか1フロアをコンプ" },
+    { ic: "👑", n: "ドラゴンモールの主", got: tot.o >= tot.t, hint: `全品まで あと${tot.t - tot.o}品` },
+    { ic: "🌟", n: "天空の登頂者", got: (rec.depth || 0) >= 10, hint: `タワー10層（いま${rec.depth || 0}層）` },
+    { ic: "📖", n: "すれちがい博士", got: cx.seen >= cx.total, hint: `ずかん あと${cx.total - cx.seen}体` },
+  ];
+}
+// いま名乗れる最上位の称号（ハブのチップ用・優先度＝主＞登頂者＞博士＞制覇者＞名人）
+function rpgTopTitle() {
+  const t = rpgTitles(), order = ["ドラゴンモールの主", "天空の登頂者", "すれちがい博士", "モール制覇者", "お買い物名人"];
+  for (const n of order) { const m = t.find(x => x.n === n && x.got); if (m) return m; }
+  return null;
 }
 
 // =========================================================================
@@ -1094,6 +1266,7 @@ function renderMallRpg(flash) {
   if (RPG && RPG.mode === "won") return rpgRenderWon(app);
   if (RPG && RPG.mode === "lost") return rpgRenderLost(app);
   if (RPG && RPG.mode === "result") return rpgRenderResult(app);
+  if (RPG && RPG.mode === "summary") return rpgRenderSummary(app);
   return rpgRenderHub(app);
 }
 
@@ -1117,7 +1290,7 @@ function rpgRenderHub(app) {
   hero.appendChild(el("div", "rpg-hero-title", "🐲 崑崙ドラゴンモール大冒険"));
   const stat = el("div", "rpg-hero-stats");
   stat.innerHTML =
-    `<div class="rpg-st char">🧝 Lv<b>${d.lv}</b><span>❤️${d.hp}/${d.maxhp}</span><span>💧${d.mp}/${d.maxmp}</span>${d.cleared ? `<span class="cl">🌿制覇</span>` : ""}</div>` +
+    `<div class="rpg-st char">🧝 Lv<b>${d.lv}</b><span>❤️${d.hp}/${d.maxhp}</span><span>💧${d.mp}/${d.maxmp}</span>${(() => { const tt = rpgTopTitle(); return tt ? `<span class="cl title">${tt.ic}${tt.n}</span>` : (d.cleared ? `<span class="cl">🌿制覇</span>` : ""); })()}</div>` +
     `<div class="rpg-st wallet">🪙<b>${d.gold}</b><span class="tk">🎟️${d.tickets || 0}</span><span class="rep">✨${d.rep || 0}</span><button class="rpg-help" title="もちもの・あそびかた">？</button></div>`;
   hero.appendChild(stat);
   app.appendChild(hero);
@@ -1125,16 +1298,17 @@ function rpgRenderHub(app) {
   if (helpBtn) helpBtn.onclick = () => rpgShowHelp();
 
   // ── つぎの目標（あと◯◯：ゴールグラデーション）
-  let goal;
-  if (!d.cleared) {
-    const bf = rec.floor || 0;
-    goal = bf < topI ? `🎯 屋上をめざそう：あと <b>${topI - bf}</b> フロアで制覇！` : `🎯 屋上のボスを倒せば制覇！`;
-  } else if (tot.o < tot.t) {
-    goal = `🛍️ ショッピング・コンプまで あと <b>${tot.t - tot.o}</b> 品！`;
-  } else {
-    goal = `🌟 エンドレスタワー 最深 <b>${rec.depth || 0}</b> 層を更新しよう！`;
-  }
-  app.appendChild(el("div", "rpg-goal-line", goal));
+  app.appendChild(el("div", "rpg-goal-line", rpgNextGoalText()));
+
+  // ── フロア帯（踏破の可視化：どこまで来たか／屋上まであと何フロアか）
+  const reached = d.cleared ? (RPG_FLOORS.length - 1) : (rec.floor || 0);
+  const strip = el("div", "rpg-floorstrip");
+  strip.innerHTML = RPG_FLOORS.map((f, i) => {
+    const top = i === RPG_FLOORS.length - 1, lab = top ? "🏯屋上" : (i + 1) + "F";
+    const cls = (d.cleared || i <= reached) ? "done" : (i === reached + 1 ? "now" : "");
+    return `<span class="fs-cell ${cls}">${lab}</span>`;
+  }).join("");
+  app.appendChild(strip);
 
   // ── ログボ（あれば主役のすぐ上にコンパクトに）
   if (d.daily !== rpgToday()) {
@@ -1200,7 +1374,7 @@ function rpgRenderHub(app) {
   // ── 🧰 おでかけ準備（道具屋＋休む・折りたたみ）
   const prep = el("details", "rpg-box rpg-sec");
   let ph = `<summary>🧰 おでかけ準備</summary><div class="rpg-shopgrid">`;
-  [["potion", "🧪 回復薬", "HP+40", 20], ["ether", "🔵 マナ水", "MP+20", 30]].forEach(([k, n, ds, price]) => {
+  [["potion", "🧪 回復薬", "HP+40", 20], ["ether", "🔵 マナ水", "MP+20", 30], ["calm", "🔕 静けさのお香", RPG_CALM_STEPS + "歩エンカ無し", 80]].forEach(([k, n, ds, price]) => {
     ph += `<button class="rpg-shopbtn${d.gold >= price ? "" : " off"}" data-buy="${k}"${d.gold < price ? " disabled" : ""}><b>${n}</b><small>${ds}</small><span class="cost">${price}G</span></button>`;
   });
   ph += `</div>`;
@@ -1221,6 +1395,15 @@ function rpgRenderHub(app) {
   });
   codex.innerHTML = `<summary>📖 ずかん（すれちがい）</summary><div class="rpg-codexlist">${rows}</div>`;
   app.appendChild(codex);
+
+  // ── 🏅 称号（折りたたみ・やり込みの頂点／あと◯◯のゴールグラデーション）
+  const titles = rpgTitles(), gotN = titles.filter(t => t.got).length;
+  const trd = el("details", "rpg-box rpg-sec");
+  trd.innerHTML = `<summary>🏅 称号 <span class="sec-r">${gotN}/${titles.length}</span></summary>` +
+    `<div class="rpg-titles">` +
+    titles.map(t => `<div class="rpg-title-row${t.got ? " got" : ""}"><span class="tt-ic">${t.got ? t.ic : "🔒"}</span><span class="tt-n">${t.n}</span><span class="tt-st">${t.got ? "✓ 獲得" : t.hint}</span></div>`).join("") +
+    `</div>`;
+  app.appendChild(trd);
 
   // ── 🏆 きろく（折りたたみ）
   const recd = el("details", "rpg-box rpg-sec");
@@ -1244,7 +1427,9 @@ function rpgShowHelp() {
     `<p><b>🪙 ゴールド</b>：探索で稼ぐお金。お店の買い物・道具・10連ガチャに使う。</p>` +
     `<p><b>🎟️ おたから券</b>：ガチャ1回ぶん。ログボや探索で手に入る。</p>` +
     `<p><b>✨ みがき</b>：ぼうけんのたびにたまる成長ポイント。「💖自分磨き」で永久に強くなる（倒れても持ち帰る）。</p>` +
-    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>` +
+    `<p><b>🔕 静けさのお香</b>：たくと<b>${RPG_CALM_STEPS}歩のあいだ魔物に遭わない</b>探索アイテム。<b>フロアを踏破（🛗階段に到達）すると手に入りやすく</b>、屋上制覇でもごほうび。お店（🧰おでかけ準備）でも買える。階段や宝までを安全に駆け抜けたい時に。</p>` +
+    `<hr><p>ここは<b>崑崙島のドラゴンモール</b>（ハワイの巨大オープンエア・モールがモデル）。<b>全7階＋屋上</b>に、龍鱗ビーチ→雲海プール→🍱崑崙グルメ横丁→海竜→💎龍玉ラグジュアリー大通り→🏬崑崙百貨店→🎪龍神フェスステージ…と続く。各フロア限定の品（着る👗・飾る🪴・集める🐚・食べ歩き🍧）を集めよう。通路を進んで<b>お店の前に立つと「🛍️お店に入る」</b>が出る（値切りやセールも）。未所持の最安品には<b>💡おすすめ</b>が付き、<b>その階の品を全部そろえると🎀お買い物マスター（🎟️+1・✨+5）</b>。<b>全フロアの品をコンプすると👑グランドコンプ</b>＝記念衣装＋最上位称号「ドラゴンモールの主」。集めた<b>🏅称号</b>はハブの「称号」で確認できる（あと◯◯も表示）。<b>🛗階段</b>に着いたら「上の階へ」で上れる（残ってお買い物もOK）。観光客や👾と戦うときは<b>弱点(${RPG_ELEM_IC.fire}火/${RPG_ELEM_IC.ice}氷/${RPG_ELEM_IC.elec}電/${RPG_ELEM_IC.force}力)</b>を突くと「もう1回！」。倒れても持ち物はそのまま。</p>` +
+    `<hr><p><b>📦 今回の冒険</b>：モールを出る・気絶・制覇のたびに、そのぼうけんの成果（ゴールド収支・撃破・踏破フロア・お買い物・衣装・✨みがきなど）を1枚にまとめて表示。<b>倒れても“持ち帰った物”が見える</b>から、もぐるたびに前進してるのが分かるっ。</p>` +
     `<hr><p><b>🗓️ デイリーラン</b>：URLに <code>?daily</code> を付けて開くと、<b>その日だけの固定ダンジョン</b>（床の変形＋通路閉鎖が日替わり）で遊べます。<code>?daily=合言葉</code> を付ければ友達と<b>同じ構造</b>を共有できる（同じ合言葉＝同じ地形）。</p>`;
   if (typeof showInfoPopup === "function") showInfoPopup("もちもの＆あそびかた", html);
 }
@@ -1264,20 +1449,26 @@ function rpgRenderShop(app) {
   app.appendChild(keep);
 
   const head = el("div", "rpg-shop-head");
+  const complete = own >= arr.length;
   head.innerHTML = `<div class="rpg-shop-t">🛍️ ${meta.name} のお店</div>` +
-    `<div class="rpg-shop-sub"><span>🪙 ${d.gold}G</span><span class="sc">そろえた ${own}/${arr.length}</span></div>`;
+    `<div class="rpg-shop-sub"><span>🪙 ${d.gold}G</span><span class="sc${complete ? " done" : ""}">${complete ? "✓ コンプ" : "そろえた"} ${own}/${arr.length}</span></div>`;
   app.appendChild(head);
+
+  // 💡おすすめ＝未所持の最安品（セール品以外）。買う動機を1つに絞る
+  const unowned = arr.filter(x => !rpgOwned(x.id) && !(RPG && RPG._dealId === x.id));
+  const recId = unowned.length ? unowned.reduce((a, b) => (b.price < a.price ? b : a), unowned[0]).id : null;
 
   const grid = el("div", "rpg-shopwall");
   arr.forEach(it => {
     const owned = rpgOwned(it.id), price = rpgItemPrice(it);
     const isDeal = RPG && RPG._dealId === it.id, haggled = RPG && RPG._haggle && RPG._haggle[it.id];
+    const isRec = it.id === recId, save = Math.max(0, it.price - price);
     const can = d.gold >= price, cat = RPG_SHOP_CAT[it.cat] || { ic: "🛍️" };
-    const card = el("div", "rpg-good" + (owned ? " owned" : can ? " ready" : " off") + (isDeal ? " deal" : ""));
-    let inner = (isDeal ? `<span class="deal-tag">🎉SALE</span>` : "") +
+    const card = el("div", "rpg-good" + (owned ? " owned" : can ? " ready" : " off") + (isDeal ? " deal" : "") + (isRec ? " rec" : ""));
+    let inner = (isDeal ? `<span class="deal-tag">🎉SALE</span>` : (isRec ? `<span class="rec-tag">💡おすすめ</span>` : "")) +
       `<span class="gic">${it.ic}</span><b>${it.n}</b><span class="gcat">${cat.ic}${cat.n}</span>`;
     if (owned) inner += `<span class="gprice owned">✓ 購入ずみ</span>`;
-    else inner += `<span class="gprice">🪙${price}${(isDeal || haggled) && price < it.price ? ` <s>${it.price}</s>` : ""}</span>`;
+    else inner += `<span class="gprice">🪙${price}${save > 0 ? ` <s>${it.price}</s> <span class="gsave">−${save}G</span>` : (price > it.price ? ` <span class="gover">+${price - it.price}G</span>` : "")}</span>`;
     card.innerHTML = inner;
     if (!owned) {
       const acts = el("div", "good-acts");
@@ -1327,6 +1518,7 @@ function rpgRenderExplore(app) {
       `<span class="rpg-chip mp">💧${d.mp}/${d.maxmp}</span>` +
       `<span class="rpg-chip">🪙${d.gold}</span>` +
       `<span class="rpg-chip">🧝Lv${d.lv}</span>` +
+      ((RPG.calm || 0) > 0 ? `<span class="rpg-chip calm">🔕 平和 ${RPG.calm}歩</span>` : "") +
     `</div>`;
   const _hq = head.querySelector(".rpg-runhelp");
   if (_hq) _hq.onclick = () => rpgShowHelp();
@@ -1371,8 +1563,12 @@ function rpgRenderExplore(app) {
     const enter = el("button", "rpg-movebtn wide shopenter" + (shopLeft > 0 ? " has" : ""), shopLeft > 0 ? `🛍️ お店に入る（未入手 ${shopLeft}品）` : "🛍️ お店に入る（コンプ済み）");
     enter.onclick = () => rpgOpenShop();
     ctx.appendChild(enter);
+  } else if ((RPG.calm || 0) === 0 && (d.items.calm || 0) > 0) {
+    const cb = el("button", "rpg-movebtn wide calm", `🔕 静けさのお香をたく ×${d.items.calm}（${RPG_CALM_STEPS}歩 エンカ無し）`);
+    cb.onclick = () => rpgUseCalm();
+    ctx.appendChild(cb);
   } else {
-    ctx.appendChild(el("div", "rpg-ctx-idle", "🔍 通路を進んでお店や階段をさがそう"));
+    ctx.appendChild(el("div", "rpg-ctx-idle", (RPG.calm || 0) > 0 ? `🔕 静けさのお香 効果中（あと ${RPG.calm}歩）` : "🔍 通路を進んでお店や階段をさがそう"));
   }
   dock.appendChild(ctx);
 
@@ -1383,7 +1579,7 @@ function rpgRenderExplore(app) {
   auto.onclick = () => rpgToggleAuto();
   dock.appendChild(auto);
   const leave = el("button", "rpg-actbtn leave wide", "🏠 モールを出る");
-  leave.onclick = () => { if (RPG && RPG._autoT) clearTimeout(RPG._autoT); rpgEndRun(); RPG = null; renderMallRpg(); };
+  leave.onclick = () => rpgFinishRun("leave");
   dock.appendChild(leave);
 
   wrap.appendChild(dock);
@@ -1570,30 +1766,73 @@ function rpgScene(ctx, env) {
   ctx.save(); ctx.globalAlpha = 0.5; let hz = ctx.createLinearGradient(0, cy - 18, 0, cy + 22); hz.addColorStop(0, "rgba(255,255,255,0)"); hz.addColorStop(0.5, dusk > 0.45 ? "rgba(255,220,190,0.5)" : "rgba(225,240,248,0.55)"); hz.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = hz; ctx.fillRect(0, cy - 22, W, 46); ctx.restore();
 }
 
-function rpgDrawView(cv, t) {
-  t = t || 0;
+// =========================================================================
+// 🎨 レンダラ差し替え点（シーム）── 3Dレンダリングへの移行を見据えた抽象化
+//   「シーン記述(何を)」= rpgBuildViewScene() … 純データ（canvas/ctx非依存）
+//   「描画手段(どう)」  = MallRender.backends[name](cv, scene, t)
+//   既定は "2d"（現行のHD-2Dキャンバス）。3D化時は別ファイルから
+//     window.MallRender.backends["3d"] = function(cv, scene, t){ ... };
+//     window.MALL_RENDERER = "3d";   // 実行時スイッチ（既存 RC_USE_RIG と同思想）
+//   未実装/失敗時は自動で "2d" にフォールバック（壊さない）。
+// =========================================================================
+// 一人称ダンジョンの「シーン記述」：前方に見えるもの＋フロアの色味/時間帯のみ。
+// 描画手段に依存しない純データなので、2D/3Dどちらのバックエンドからも同じものを描ける。
+function rpgBuildViewScene() {
+  const fl = rpgFloorMeta(RPG.fi) || {};
+  const dusk = fl.tower ? 0.2 : (fl.sky ? 1 : RPG.fi / Math.max(1, RPG_FLOORS.length - 1));
+  const maxD = 4, ahead = [];
+  for (let c = 1; c <= maxD; c++) {
+    const tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
+    if (rpgIsWall(rpgAhead(c, 0))) { ahead.push({ d: c, kind: "wall", closed: !!(RPG.closed && RPG.closed[tx + "," + ty]) }); break; }
+    const cch = rpgAhead(c, 0);
+    let kind = "floor";
+    if (cch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) kind = "treasure";
+    else if (cch === "U") kind = "stairs";
+    else if (cch === "E") kind = rpgData().cleared ? "exit" : "boss";
+    ahead.push({ d: c, kind: kind });
+    if (kind !== "floor") break;
+  }
+  return {
+    floor: RPG.fi, dir: RPG.dir, accent: fl.accent || [120, 160, 200],
+    sunset: !!fl.sky, dusk: dusk, openAir: !fl.tower, ahead: ahead,
+    cell: (d, l) => rpgAhead(d, l),   // 相対セル参照（2Dは側壁/店先に使用。3Dは ahead や RPG.map から幾何を組んでよい）
+  };
+}
+const MallRender = {
+  backends: {},
+  dungeon(cv, scene, t) {
+    const name = (typeof window !== "undefined" && window.MALL_RENDERER) || "2d";
+    const fn = this.backends[name] || this.backends["2d"];
+    try { fn(cv, scene, t); }
+    catch (e) { if (name !== "2d" && this.backends["2d"]) try { this.backends["2d"](cv, scene, t); } catch (e2) {} }
+  },
+};
+if (typeof window !== "undefined") window.MallRender = MallRender;   // 3Dバックエンドを外部ファイルから登録できるよう公開
+// 既定バックエンド：現行のHD-2Dキャンバス描画（rpgScene＋前方アイコン＋後処理）
+MallRender.backends["2d"] = function (cv, scene, t) {
   rpgFitCanvas(cv);                 // 表示枠いっぱいに描く（縦長フレームを埋める）
   const ctx = cv.getContext("2d");
   ctx.imageSmoothingEnabled = true;
-  const fl = rpgFloorMeta(RPG.fi) || {};
-  const dusk = fl.tower ? 0.2 : (fl.sky ? 1 : RPG.fi / Math.max(1, RPG_FLOORS.length - 1));
-  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: fl.accent || [120, 160, 200], sunset: !!fl.sky, dusk: dusk, openAir: !fl.tower, cell: (d, l) => rpgAhead(d, l) });
-  // 前方アイコン（宝箱/階段/ボス）＋ふわふわ
+  rpgScene(ctx, { W: cv.width, H: cv.height, t: t, accent: scene.accent, sunset: scene.sunset, dusk: scene.dusk, openAir: scene.openAir, cell: scene.cell });
+  // 前方アイコン（宝箱/階段/ボス/出口/閉鎖）＋ふわふわ
   const W = cv.width, H = cv.height, cx = W / 2, cy = H * 0.46, maxD = 4, pp = 0.6, ph = t / 1000;
   const rt = []; for (let d = 0; d <= maxD; d++) { const s = Math.pow(pp, d); rt[d] = { t: cy - H * 0.5 * s, b: cy + H * 0.5 * s }; }
-  for (let c = 1; (!cv._noIcons) && c <= maxD; c++) {
-    if (rpgIsWall(rpgAhead(c, 0))) {
-      const bx = RPG.px + RPG_DV[RPG.dir][0] * c, by = RPG.py + RPG_DV[RPG.dir][1] * c;
-      if (RPG.closed && RPG.closed[bx + "," + by]) rpgDrawIcon(ctx, "🚧", rt[c], cx, (rt[c].t + rt[c].b) / 2);   // 🚧 閉鎖された通路
-      break;
+  if (!cv._noIcons) {
+    for (let i = 0; i < scene.ahead.length; i++) {
+      const a = scene.ahead[i], c = a.d, ym = (rt[c].t + rt[c].b) / 2, bob = Math.sin(ph * 2.2) * (rt[c].b - rt[c].t) * 0.03;
+      if (a.kind === "wall") { if (a.closed) rpgDrawIcon(ctx, "🚧", rt[c], cx, ym); break; }
+      if (a.kind === "treasure") { rpgDrawIcon(ctx, "📦", rt[c], cx, ym + bob); break; }
+      if (a.kind === "stairs") { rpgDrawIcon(ctx, "🛗", rt[c], cx, ym + bob); break; }
+      if (a.kind === "boss") { rpgDrawIcon(ctx, "🎡", rt[c], cx, ym + bob); break; }
+      if (a.kind === "exit") { rpgDrawIcon(ctx, "🚪", rt[c], cx, ym + bob); break; }
+      // floor は次の奥行きへ
     }
-    const cch = rpgAhead(c, 0), tx = RPG.px + RPG_DV[RPG.dir][0] * c, ty = RPG.py + RPG_DV[RPG.dir][1] * c;
-    const bob = Math.sin(ph * 2.2) * (rt[c].b - rt[c].t) * 0.03;
-    if (cch === "T" && !RPG.collected[RPG.fi + ":" + tx + "," + ty]) { rpgDrawIcon(ctx, "📦", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
-    if (cch === "U") { rpgDrawIcon(ctx, "🛗", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
-    if (cch === "E") { rpgDrawIcon(ctx, rpgData().cleared ? "🚪" : "🎡", rt[c], cx, (rt[c].t + rt[c].b) / 2 + bob); break; }
   }
   rpgPostFx(cv, ctx);
+};
+// 一人称ビューの描画エントリ：シーンを組み立て、現在のレンダラに委譲（差し替え点）。
+function rpgDrawView(cv, t) {
+  MallRender.dungeon(cv, rpgBuildViewScene(), t || 0);
 }
 // HD-2D風 後処理：ブルーム＋被写界深度(ティルトシフト)＋ビネット（GPUフィルタ・非対応端末は自動スキップ）
 function rpgPostFx(cv, ctx) {
@@ -1788,7 +2027,11 @@ function rpgDrawBattle(cv, t) {
       if (tourist) {
         e._pal = e._pal || rpgTouristPal(e.id);
         rpgDrawTourist(ctx, ex, s.y + off[1] - bob * 0.5, 62 * (0.5 + 0.5 * intro), e._pal, e.ref.ic);
-      } else { ctx.font = ((b.boss ? 70 : 48) * (0.45 + 0.55 * intro)) + "px serif"; ctx.fillText(e.ref.ic, ex, cy); }
+      } else {
+        const sz = (b.boss ? 70 : 48) * (0.45 + 0.55 * intro), art = rpgEnemyArt(e.id);
+        if (art) ctx.drawImage(art, ex - sz / 2, cy - sz / 2, sz, sz);
+        else { ctx.font = sz + "px serif"; ctx.fillText(e.ref.ic, ex, cy); }
+      }
       ctx.shadowBlur = 0; ctx.restore();
     }
     // ── 撃破の余韻（ポップ＋舞い上がるきらめき／ハート＝観光客は満足、モンスターは砕け散る）
@@ -1916,6 +2159,16 @@ function rpgMimiArt() {
   if (!_rpgMimiImg) { _rpgMimiImg = new Image(); _rpgMimiImg.src = "images/rpg/mimi.webp"; }
   return (_rpgMimiImg.complete && _rpgMimiImg.naturalWidth) ? _rpgMimiImg : null;
 }
+// 敵アートのcanvas描画（rpgMimiArt()と同じ方式：Image().complete/naturalWidthで判定）。
+// 戦闘シーンは単一canvasへの直描きのため、DOM要素を返すrpgEnemyVisual()はここでは使わず、
+// 同じ画像パスをcanvas用に直接キャッシュ・drawImageする（RPG_ART_ENEMIES未登録なら読みに行かない＝404を出さない）。
+const _rpgEnemyArtCache = {};
+function rpgEnemyArt(id) {
+  if (RPG_ART_ENEMIES.indexOf(id) < 0) return null;
+  let img = _rpgEnemyArtCache[id];
+  if (!img) { img = _rpgEnemyArtCache[id] = new Image(); img.src = "images/rpg/enemies/" + id + ".webp"; }
+  return (img.complete && img.naturalWidth) ? img : null;
+}
 function rpgEnemyVisual(id, emoji, disp, cls) {
   if (RPG_ART_ENEMIES.indexOf(id) < 0) return rpgMakeSprite(emoji, disp, cls);
   const img = document.createElement("img");
@@ -1929,18 +2182,52 @@ function rpgEnemyVisual(id, emoji, disp, cls) {
 function rpgMiniMap() {
   const wrap = el("div", "rpg-mini");
   const cell = 14;
+  // 高DPR端末でぼやけないよう、CSS表示サイズ(76px固定)は変えずに内部解像度だけdpr倍する
+  const dpr = Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
   const cv = el("canvas");
-  cv.width = RPG.w * cell; cv.height = RPG.h * cell;
+  cv.width = RPG.w * cell * dpr; cv.height = RPG.h * cell * dpr;
   const ctx = cv.getContext("2d");
+  ctx.scale(dpr, dpr);   // 以降は従来どおり cell 単位の論理座標で描ける
+  // 床/壁/未踏のベース塗り（探索済みは永続表示）
   for (let y = 0; y < RPG.h; y++) for (let x = 0; x < RPG.w; x++) {
     const seen = RPG.explored[x + "," + y];
     const c = rpgCell(x, y);
-    ctx.fillStyle = !seen ? "#322a46" : (c === "#" ? "#5a4d72" : (c === "E" ? "#7ad07a" : (c === "T" ? "#d0a060" : "#9a8fc0")));
+    // 階段=青／出口=緑／宝=金（開封済は暗色）／床=薄紫。未踏は暗く沈める。
+    let col = "#9a8fc0";
+    if (c === "#") col = "#5a4d72";
+    else if (c === "U") col = "#5aa6e0";
+    else if (c === "E") col = "#7ad07a";
+    else if (c === "T") col = RPG.collected[RPG.fi + ":" + x + "," + y] ? "#6b5a44" : "#e0b450";
+    ctx.fillStyle = !seen ? "#322a46" : col;
     ctx.fillRect(x * cell, y * cell, cell - 1, cell - 1);
   }
-  // プレイヤー
+  // 目印アイコン（探索済みセルのみ・canvas直描きで小さくても潰れない）
+  for (let y = 0; y < RPG.h; y++) for (let x = 0; x < RPG.w; x++) {
+    if (!RPG.explored[x + "," + y]) continue;
+    const c = rpgCell(x, y), cx = x * cell + (cell - 1) / 2, cy = y * cell + (cell - 1) / 2;
+    if (c === "U") {                                   // 階段＝上向きシェブロン（昇り口）
+      ctx.strokeStyle = "#eaf4ff"; ctx.lineWidth = 1.4; ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx - 3.2, cy + 1.6); ctx.lineTo(cx, cy - 1.8); ctx.lineTo(cx + 3.2, cy + 1.6);
+      ctx.stroke();
+    } else if (c === "T") {                             // 宝＝菱形（未開封=金の塗り／開封済=細い枠だけ）
+      const opened = RPG.collected[RPG.fi + ":" + x + "," + y];
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 3.2); ctx.lineTo(cx + 3.2, cy); ctx.lineTo(cx, cy + 3.2); ctx.lineTo(cx - 3.2, cy);
+      ctx.closePath();
+      if (opened) { ctx.strokeStyle = "rgba(220,200,170,.5)"; ctx.lineWidth = 1; ctx.stroke(); }
+      else { ctx.fillStyle = "#fff1c4"; ctx.fill(); }
+    } else if (c === "E") {                             // 出口＝ドアの白枠
+      ctx.strokeStyle = "#eafff0"; ctx.lineWidth = 1.3;
+      ctx.strokeRect(cx - 3, cy - 3.4, 6, 6.8);
+    }
+  }
+  // 現在地リング（自分の位置を一目で）
+  const px = RPG.px * cell + (cell - 1) / 2, py = RPG.py * cell + (cell - 1) / 2, f = RPG_DV[RPG.dir];
+  ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.stroke();
+  // プレイヤー（向き矢印）
   ctx.fillStyle = "#ff5fa2";
-  const px = RPG.px * cell + cell / 2, py = RPG.py * cell + cell / 2, f = RPG_DV[RPG.dir];
   ctx.beginPath();
   ctx.moveTo(px + f[0] * 5, py + f[1] * 5);
   ctx.lineTo(px - f[1] * 4 - f[0] * 3, py + f[0] * 4 - f[1] * 3);
@@ -2130,6 +2417,22 @@ function rpgRenderResult(app) {
   app.appendChild(el("h2", null, "🚪 迷宮をあとにした"));
   app.appendChild(el("div", "rpg-resbox good", "またいつでももぐれる。お疲れさま！"));
   const cont = el("button", "rpg-start", "← 入口へ");
+  cont.onclick = () => { RPG = null; renderMallRpg(); };
+  app.appendChild(cont);
+}
+// ── 📦 今回の冒険（ランサマリー台帳：退場／気絶／制覇クリア共通・憲法§3）
+function rpgRenderSummary(app) {
+  const sm = RPG.summary || { rows: [], next: "" };
+  const lost = sm.reason === "lost";
+  const conquered = sm.reason === "exit" && sm.cleared;
+  app.appendChild(el("h2", "rpg-won-h", conquered ? "🏆 モール制覇！" : (lost ? "💫 冒険おわり" : "🏁 冒険おわり")));
+  app.appendChild(el("div", "rpg-sum-sub", lost ? "倒れちゃったけど、ちゃんと持ち帰ったよ！" : "おつかれさま！ 今回の成果はこちら"));
+  const box = el("div", "rpg-resbox good rpg-ledger");
+  box.innerHTML = `<div class="rpg-ledger-t">📦 今回の冒険</div>` +
+    (sm.rows || []).map((r, i) => `<div class="rpg-led-row rpg-rev ${r.cls || ""}" style="animation-delay:${(0.15 + i * 0.1).toFixed(2)}s"><span>${r.ic} ${r.label}</span><b>${r.val}</b></div>`).join("");
+  app.appendChild(box);
+  app.appendChild(el("div", "rpg-sum-next", sm.next || ""));
+  const cont = el("button", "rpg-start rpg-next", "← 入口へ");
   cont.onclick = () => { RPG = null; renderMallRpg(); };
   app.appendChild(cont);
 }

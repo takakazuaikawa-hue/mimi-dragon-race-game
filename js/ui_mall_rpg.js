@@ -29,7 +29,7 @@ function rpgRenderHub(app) {
   const hpPct = Math.max(0, Math.min(100, Math.round((d.hp / Math.max(1, d.maxhp)) * 100)));
   const mpPct = Math.max(0, Math.min(100, Math.round((d.mp / Math.max(1, d.maxmp)) * 100)));
   stat.innerHTML =
-    `<div class="scmr-char"><span class="scmr-av">🧝</span><div class="scmr-lvl"><b>Lv ${d.lv}</b>${d.cleared ? `<span class="scmr-clear">🌿制覇</span>` : ""}</div></div>` +
+    `<div class="scmr-char"><span class="scmr-av">🧝</span><div class="scmr-lvl"><b>Lv ${d.lv}</b>${(() => { const tt = rpgTopTitle(); return tt ? `<span class="scmr-clear title">${tt.ic}${tt.n}</span>` : (d.cleared ? `<span class="scmr-clear">🌿制覇</span>` : ""); })()}</div></div>` +
     `<div class="scmr-bars">` +
       `<div class="scmr-bar"><span class="scmr-bk">❤️ HP</span><span class="scmr-bt"><i style="width:${hpPct}%"></i></span><span class="scmr-bv">${d.hp}/${d.maxhp}</span></div>` +
       `<div class="scmr-bar mp"><span class="scmr-bk">💧 MP</span><span class="scmr-bt"><i style="width:${mpPct}%"></i></span><span class="scmr-bv">${d.mp}/${d.maxmp}</span></div>` +
@@ -48,6 +48,16 @@ function rpgRenderHub(app) {
     goal = `エンドレスタワー 最深 <b>${rec.depth || 0}</b> 層を更新しよう！`;
   }
   scm.appendChild(el("div", "scmr-goal", `🎯 ${goal}`));
+
+  // ── フロア帯（踏破の可視化：mall_rpg.js版rpgRenderHubと同じロジックを.scm意匠で表示）──
+  const reached = d.cleared ? (RPG_FLOORS.length - 1) : (rec.floor || 0);
+  const strip = el("div", "scmr-floorstrip");
+  strip.innerHTML = RPG_FLOORS.map((f, i) => {
+    const top = i === RPG_FLOORS.length - 1, lab = top ? "🏯屋上" : (i + 1) + "F";
+    const cls = (d.cleared || i <= reached) ? "done" : (i === reached + 1 ? "now" : "");
+    return `<span class="scmr-fs-cell ${cls}">${lab}</span>`;
+  }).join("");
+  scm.appendChild(strip);
 
   // ── ログインボーナス ──
   if (d.daily !== rpgToday()) {
@@ -134,6 +144,15 @@ function rpgRenderHub(app) {
   });
   codex.innerHTML = `<summary>📖 ずかん（すれちがい）</summary><div class="scmr-codex">${rows}</div>`;
   scm.appendChild(codex);
+
+  // ── 🏅 称号（やり込みの頂点。mall_rpg.js版のrpgTitles/rpgTopTitleロジックをそのまま流用・見た目だけ.scm意匠）──
+  const titles = rpgTitles(), gotN = titles.filter(t => t.got).length;
+  const trd = el("details", "scmr-acc");
+  trd.innerHTML = `<summary>🏅 称号 <span class="scmr-acc-r">${gotN}/${titles.length}</span></summary>` +
+    `<div class="scmr-titles">` +
+    titles.map(t => `<div class="scmr-title-row${t.got ? " got" : ""}"><span class="tt-ic">${t.got ? t.ic : "🔒"}</span><span class="tt-n">${t.n}</span><span class="tt-st">${t.got ? "✓ 獲得" : t.hint}</span></div>`).join("") +
+    `</div>`;
+  scm.appendChild(trd);
 
   // ── 🏆 きろく ──
   const recd = el("details", "scmr-acc");
