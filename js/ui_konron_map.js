@@ -255,6 +255,8 @@ function renderKonronMap() {
   more.appendChild(g); more.appendChild(gal);
   app.appendChild(more);
   app.appendChild(el("div", "kt-note", "※「観光」は表示専用です（レースの着順・オッズ・配当には影響しません）。"));
+  // M2：島の一日ループの出口（観光→次のレース／SNS未読）。docs/GAME_EXPERIENCE_DESIGN §3。
+  try { const _nx = (typeof nextSuggestRow === "function") && nextSuggestRow("konron"); if (_nx) app.appendChild(_nx); } catch (e) {}
   const back = el("button", "kt-back", "← ホームへ戻る"); back.onclick = () => renderHome();
   app.appendChild(back);
 }

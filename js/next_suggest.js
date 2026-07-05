@@ -24,7 +24,25 @@ var NEXT_SUGGEST = [
   { at: "result", weight: 60, icon: "📸", label: "今日の一枚を見にいく", sub: "観光の日替わりフォトミッション",
     cond: function (ctx) {
       try { return typeof _kmPhotoMission === "function" && konronMapUnlocked() && (function () { const id = _kmPhotoMission(); return id && !_kmPmDone(id); })(); } catch (e) { return false; }
-    }, go: function () { renderKonronMap(); } }
+    }, go: function () { renderKonronMap(); } },
+
+  // ── 食事のあと（M2）：島の一日ループの続き ──
+  { at: "meals", weight: 90, icon: "📸", label: "今日の一枚を見にいく", sub: "腹ごしらえのあとは、島さんぽ",
+    cond: function () { try { return typeof _kmPhotoMission === "function" && konronMapUnlocked() && (function () { const id = _kmPhotoMission(); return id && !_kmPmDone(id); })(); } catch (e) { return false; } },
+    go: function () { renderKonronMap(); } },
+  { at: "meals", weight: 70, icon: "🐲", label: "次のレースへ", sub: "おなかも満ちた。さあ勝負",
+    cond: function () { return typeof hungerCanRace !== "function" || hungerCanRace(); }, go: function () { renderRaceSelect(); } },
+
+  // ── 観光のあと（M2）──
+  { at: "konron", weight: 85, icon: "📱", label: "SNSに反応が来てる", sub: "配信のファンレターが未読",
+    cond: function () { try { return typeof broadcastOn === "function" && broadcastOn() && typeof snsUnreadLetters === "function" && snsUnreadLetters() > 0; } catch (e) { return false; } },
+    go: function () { renderSns(); } },
+  { at: "konron", weight: 70, icon: "🐲", label: "次のレースへ", sub: "島を満喫したら、また競竜場へ",
+    cond: function () { return typeof hungerCanRace !== "function" || hungerCanRace(); }, go: function () { renderRaceSelect(); } },
+
+  // ── SNSのあと（M2）：一日の締め ──
+  { at: "sns", weight: 90, icon: "🌙", label: "ホームへ（配信締め）", sub: "今日もおつかれさま。また明日",
+    cond: function () { return true; }, go: function () { renderHome(); } }
 ];
 
 // 区切り画面用の提案行を生成（無ければ null＝何も出さない）。

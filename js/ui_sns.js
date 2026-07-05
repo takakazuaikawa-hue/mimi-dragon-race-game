@@ -54,6 +54,9 @@ function renderSns(tab) {
   ig.appendChild(nav);
 
   app.appendChild(ig);
+  // M2：一日の締め（SNS→ホームへ）。docs/GAME_EXPERIENCE_DESIGN §3。IG風画面に明示的な戻りが
+  // 無いので、ループ結線と「配信を閉じる」出口を兼ねる。
+  try { const _nx = (typeof nextSuggestRow === "function") && nextSuggestRow("sns"); if (_nx) app.appendChild(_nx); } catch (e) {}
 }
 
 // =========================== 🏠 フィード ===========================
