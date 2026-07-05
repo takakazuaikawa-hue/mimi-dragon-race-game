@@ -3089,6 +3089,12 @@ function drawRecapScreen() {
   }[c.recapTab] || recapTabResult)(body, recap, c);
   app.appendChild(body);
 
+  // 次の一手（docs/GAME_EXPERIENCE_DESIGN.md §3・M1）：勝ち飯/負け飯＝「結果→島時間」の結線。
+  // 提案チップ1〜2個だけ・押しつけない（下の従来ボタンは常に有効）。表示専用。
+  const _nx = (typeof nextSuggestRow === "function")
+    ? nextSuggestRow("result", { hit: !!(c.betResult && c.betResult.hit) }) : null;
+  if (_nx) app.appendChild(_nx);
+
   // --- Persistent actions（導線：ホーム／詳しい分析＝副、次のレース＝主CTA） ---
   const actions = el("div", "actions");
   const home2 = el("button", "secondary", "ホーム"); home2.onclick = renderHome;

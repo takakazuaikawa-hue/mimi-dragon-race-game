@@ -6300,3 +6300,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .km-area-prog.comp { color: #ffd98a; font-weight: 800; }
 .km-chip--seen .km-chip-st { font-size: 9px; margin-left: 3px; opacity: .8; }
 @media (prefers-reduced-motion: reduce) { .km-pmhit, .km-areacomp { animation: none; } }
+
+/* ===== M1：次の一手チップ（島の一日ループの結線・GAME_EXPERIENCE_DESIGN §3） ===== */
+.nx-row { margin: 10px 0 2px; }
+.nx-row .nx-k { font-size: 10px; letter-spacing: .12em; color: var(--mist-soft); margin-bottom: 5px; }
+.nx-chip { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  margin-bottom: 6px; padding: 9px 12px; border-radius: 12px;
+  background: linear-gradient(120deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.14); transition: transform .12s ease, background .12s ease; }
+.nx-chip:active { transform: scale(.985); background: rgba(255,255,255,.09); }
+.nx-chip .nx-ic { font-size: 19px; }
+.nx-chip .nx-tx b { display: block; font-size: 12.5px; }
+.nx-chip .nx-tx small { font-size: 10.5px; color: var(--mist-soft); }
+.nx-chip .nx-go { margin-left: auto; color: #ffd98a; font-weight: 900; }
