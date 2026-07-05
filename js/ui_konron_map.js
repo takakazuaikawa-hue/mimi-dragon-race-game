@@ -207,6 +207,26 @@ function renderKonronMap() {
   const rail = el("div", "kt-rail"); rail.id = "kt-rail"; app.appendChild(rail);
   _ktRenderRail();
 
+  // H5: 日替わりフォトミッション「今日の一枚」（表示専用・タップで対象スポットへ）
+  try {
+    const _pmId = _kmPhotoMission();
+    if (_pmId && KONRON_SPOTS[_pmId]) {
+      const _pmDone2 = _kmPmDone(_pmId);
+      const _pmArea = _kmAreaOf(_pmId);
+      const strip = el("button", "km-pm" + (_pmDone2 ? " done" : ""));
+      strip.innerHTML = `<span class="km-pm-ic">${_pmDone2 ? "✅" : "📸"}</span>` +
+        `<span class="km-pm-tx"><b>今日の一枚：${KONRON_SPOTS[_pmId].name}</b>` +
+        `<small>${_pmDone2 ? "撮影ずみ！ また明日、別の一枚。" : (_pmArea ? _pmArea.ic + " " + _pmArea.name + "エリア ・ 見に行くと達成" : "見に行くと達成")}</small></span>` +
+        `<span class="km-pm-go">${_pmDone2 ? "" : "▸"}</span>`;
+      strip.onclick = () => {
+        _kmArea = _pmArea ? _pmArea.id : null; _kmSpot = _pmId; _kmRenderPanel();
+        const p = document.getElementById("km-panel");
+        if (p) { try { p.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} }
+      };
+      app.appendChild(strip);
+    }
+  } catch (e) {}
+
   // ⑤ 地図でさがす（暗いインセットの地図モジュール）
   app.appendChild(_ktSectionHead("地図でさがす", "エリアのピンから、その地区のスポットと施設へ。"));
   const mapmod = el("div", "kt-mapmod");
@@ -409,6 +429,29 @@ const KM_STAMP = {
   racecourse: [[6], "そして今日も——聖龍が駆け、島は笑う。"]
 };
 
+// ===== H5: 観光の遊び化第2弾（表示専用・docs/KURASHI_STORY_WEAVE.md の台帳 spotsSeen を使う）=====
+// 日替わりフォトミッション「今日の一枚」＝日付で決定的に1スポット（開放済＆写真あり）。
+function _kmDayKey() { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+function _kmPhotoMission() {
+  try {
+    const ids = Object.keys(KONRON_SPOTS).filter(id => KONRON_SPOTS[id].photo && _kmSpotOpen(KONRON_SPOTS[id]));
+    if (!ids.length) return null;
+    let h = (_kmDayKey() * 48271) % 2147483647;
+    return ids[h % ids.length];
+  } catch (e) { return null; }
+}
+function _kmPmDone(id) {
+  try { const kz = (state.player || {}).kurashi || {}; return kz.pmDay === _kmDayKey() && kz.pmSpot === id; } catch (e) { return false; }
+}
+// エリアの写真スポット進捗（seen/total）。total=0のエリアは対象外。
+function _kmAreaProg(area) {
+  try {
+    const seen = ((state.player || {}).kurashi || {}).spotsSeen || {};
+    const ids = area.spots.filter(id => KONRON_SPOTS[id] && KONRON_SPOTS[id].photo);
+    return { got: ids.filter(id => seen[id]).length, total: ids.length };
+  } catch (e) { return { got: 0, total: 0 }; }
+}
+
 function _kmRenderPanel() {
   const panel = document.getElementById("km-panel"); if (!panel) return;
 
@@ -422,12 +465,18 @@ function _kmRenderPanel() {
     // 現章がそのスポットの舞台なら日報風バッジを出す（表示のみ・KONRON_SPOTS本体は不変）。
     // K2（暮らし還流）：写真を見た記録＝表示専用メタ。還流台帳 k_spots8/k_spots20 と
     // 日報の文化面小イベントがこのカウントに反応する（docs/KURASHI_STORY_WEAVE.md B）。
-    let _stampNew = false;   // H4: 初訪問＝スタンプ押印演出（観光を「集める遊び」に）
+    let _stampNew = false, _pmJust = false, _areaComp = null;   // H4/H5: 押印・今日の一枚・エリア制覇
     if (open && s.photo) {
       try {
         const kz = state.player.kurashi || (state.player.kurashi = {});
         const seen = kz.spotsSeen || (kz.spotsSeen = {});
-        if (!seen[_kmSpot]) { seen[_kmSpot] = 1; _stampNew = true; if (typeof saveGame === "function") saveGame(); }
+        if (!seen[_kmSpot]) {
+          seen[_kmSpot] = 1; _stampNew = true;
+          const ar = _kmAreaOf(_kmSpot);   // このスタンプでエリアの写真スポットが揃った＝制覇！
+          if (ar) { const pr = _kmAreaProg(ar); if (pr.total > 0 && pr.got === pr.total) _areaComp = ar; }
+        }
+        if (_kmPhotoMission() === _kmSpot && !_kmPmDone(_kmSpot)) { kz.pmDay = _kmDayKey(); kz.pmSpot = _kmSpot; _pmJust = true; }
+        if (_stampNew || _pmJust) { if (typeof saveGame === "function") saveGame(); }
       } catch (e) {}
     }
     panel.style.setProperty("--kmc", c.color);
@@ -454,6 +503,9 @@ function _kmRenderPanel() {
           `<span class="km-rally-seal">📷</span>` +
           `<span class="km-rally-t">${_stampNew ? "スタンプを押した！" : "スタンプ済み"}</span>` +
           `<b>${_seenN} / ${_totalN}</b></div>`;
+        // H5: 今日の一枚 達成＆エリア制覇のバナー（どちらも一度きりの瞬間演出）
+        if (_pmJust) body += `<div class="km-pmhit">📸 今日の一枚、いただき！</div>`;
+        if (_areaComp) body += `<div class="km-areacomp">🏆 ${_areaComp.ic} ${_areaComp.name}エリア、制覇！<span>島の写真帳に「制覇の証」が刻まれた。</span></div>`;
       }
     } catch (e) {}
     if (!open) {
@@ -487,13 +539,22 @@ function _kmRenderPanel() {
     const area = KONRON_AREAS.find(a => a.id === _kmArea);
     if (area) {
       panel.style.setProperty("--kmc", area.color);
-      let body = _kmZoomBanner(area) + `<div class="km-area-head"><span class="km-card-ic">${area.ic}</span><b>${area.name}</b><small>タップでスポットへ</small></div><div class="km-chips">`;
+      // H5: エリア進捗（写真スポットのスタンプ数）＋制覇の証
+      const _apr = _kmAreaProg(area);
+      const _acomp = _apr.total > 0 && _apr.got === _apr.total;
+      let body = _kmZoomBanner(area) + `<div class="km-area-head"><span class="km-card-ic">${area.ic}</span><b>${area.name}</b>` +
+        (_apr.total > 0
+          ? `<small class="km-area-prog${_acomp ? " comp" : ""}">${_acomp ? "🏆 制覇の証" : "📷 " + _apr.got + "/" + _apr.total}</small>`
+          : `<small>タップでスポットへ</small>`) +
+        `</div><div class="km-chips">`;
+      const _seenMap = ((state.player || {}).kurashi || {}).spotsSeen || {};
       area.spots.forEach(id => {
         const s = KONRON_SPOTS[id]; if (!s) return;
         const c = KM_CATS[s.cat] || KM_CATS.port;
         const open = _kmSpotOpen(s);
-        body += `<button class="km-chip${open ? "" : " km-chip--locked"}" data-spot="${id}" style="--cc:${c.color}">` +
-          `<span class="km-chip-ic">${open ? c.ic : "🔒"}</span>${s.name}</button>`;
+        const _stamped = open && s.photo && _seenMap[id];
+        body += `<button class="km-chip${open ? "" : " km-chip--locked"}${_stamped ? " km-chip--seen" : ""}" data-spot="${id}" style="--cc:${c.color}">` +
+          `<span class="km-chip-ic">${open ? c.ic : "🔒"}</span>${s.name}${_stamped ? `<span class="km-chip-st">📷</span>` : ""}</button>`;
       });
       body += `</div>`;
       panel.innerHTML = body;

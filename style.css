@@ -6276,3 +6276,27 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @keyframes rallyStamp { 0% { transform: scale(2.6) rotate(-14deg); opacity: 0; }
   55% { transform: scale(.92) rotate(3deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
 @media (prefers-reduced-motion: reduce) { .km-rally.new .km-rally-seal { animation: none; } }
+
+/* ===== H5：日替わりフォトミッション＋エリア制覇（観光の遊び化第2弾・表示専用） ===== */
+.km-pm { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  margin: 8px 0 2px; padding: 10px 12px; border-radius: 12px;
+  background: linear-gradient(120deg, rgba(255,77,138,.14), rgba(255,206,110,.10));
+  border: 1px solid rgba(255,170,150,.35); transition: transform .12s ease; }
+.km-pm:active { transform: scale(.985); }
+.km-pm .km-pm-ic { font-size: 20px; }
+.km-pm .km-pm-tx b { display: block; font-size: 12.5px; }
+.km-pm .km-pm-tx small { font-size: 10.5px; color: var(--mist-soft); }
+.km-pm .km-pm-go { margin-left: auto; color: #ffd98a; font-weight: 900; }
+.km-pm.done { background: rgba(124,255,178,.07); border-color: rgba(124,255,178,.3); opacity: .85; }
+.km-pmhit { margin: 5px 0 2px; padding: 7px 10px; border-radius: 8px; font-size: 12px; font-weight: 800;
+  color: #ffd9ec; background: linear-gradient(90deg, rgba(255,77,138,.30), rgba(255,206,110,.18));
+  border: 1px solid rgba(255,150,190,.45); animation: pmhitIn .45s cubic-bezier(.2,1.6,.4,1) both; }
+.km-areacomp { margin: 5px 0 2px; padding: 9px 11px; border-radius: 8px; font-size: 12.5px; font-weight: 900;
+  color: #2a1d05; background: linear-gradient(160deg, #ffd465, #e2a22e);
+  box-shadow: 0 4px 14px rgba(226,162,46,.4); animation: pmhitIn .5s cubic-bezier(.2,1.6,.4,1) both; }
+.km-areacomp span { display: block; font-size: 10px; font-weight: 600; color: #4a3510; margin-top: 2px; }
+@keyframes pmhitIn { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.04); } 100% { transform: scale(1); opacity: 1; } }
+.km-area-prog { color: var(--mist-soft); }
+.km-area-prog.comp { color: #ffd98a; font-weight: 800; }
+.km-chip--seen .km-chip-st { font-size: 9px; margin-left: 3px; opacity: .8; }
+@media (prefers-reduced-motion: reduce) { .km-pmhit, .km-areacomp { animation: none; } }
