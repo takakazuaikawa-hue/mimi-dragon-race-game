@@ -791,12 +791,9 @@ function renderHome() {
     }
     bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets()));
     bar.appendChild(tikTab("🐲", "レース", () => renderRaceSelect(), { center: true }));
-    if (typeof dexUnlocked === "function" && dexUnlocked()) {
-      bar.appendChild(tikTab("📖", "図鑑", () => renderCollection()));
-    } else {
-      bar.appendChild(tikTab("📖", "図鑑", () => showInfoPopup("📖 図鑑",
-        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。</small></div></div>`), { locked: true }));
-    }
+    // 🍽ごはん＝毎レース後の勝ち飯/負け飯ループ（高頻度）を1タップに（ユーザー指摘「ご飯導線」）。
+    // 図鑑は龍舎・暮らしコレクション経由の3導線があるためタブから外した。
+    bar.appendChild(tikTab("🍽️", "ごはん", () => renderMeals()));
     const _unreadL = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
     bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0 }));
     dock.appendChild(bar);

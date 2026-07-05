@@ -49,11 +49,11 @@ const KONRON_SPOTS = {
   bangara:   { name: "バンガラ溶岩海岸", cat: "view", tier: 2, time: "夕方", photo: "images/konron/spots/bangara.webp", shoot: "黒い溶岩と白波・遊歩道・アニキ岩礁遠景", line: "黒い溶岩と荒波がぶつかる、野性味むき出しの絶景海岸。" },
   hoshiuo:   { name: "エサナ入江／ホシウオ村", cat: "port", tier: 2, time: "朝", photo: "images/konron/spots/hoshiuo.webp", shoot: "小舟・干物・魚箱・竜餌用の魚", line: "観光地の奥に、島の暮らしがある。素朴な漁村。" },
   // ── 奥地・霧の彼方（聖典：簡単に入れない神秘＝終盤解放のteaser・遠景のみ・出しすぎない） ──
-  dadake:    { name: "ダダケ村",     cat: "okuchi", tier: 3, time: "—", shoot: "段々畑と古い竜小屋・無口な村人（遠景）", line: "市街と火山のあいだ、霧に隠れた古い村。地図には載るが、道はすぐ霧に消える。" },
-  susufuka:  { name: "スス深回廊",   cat: "okuchi", tier: 3, time: "—", shoot: "黒い岩の回廊・苔と燐光（遠景）", line: "火山の体内へ続く黒い回廊。奥から熱と、低い唸りが届く。踏み込む者は少ない。" },
-  rondo:     { name: "ロンド元宮",   cat: "okuchi", tier: 3, time: "—", shoot: "沈んだ盆地の祭祀場跡・霧の参道（遠景）", line: "カルデラの底、ダコン湖のほとりに眠る最初の宮。竜と人が契りを交わした場所。" },
-  gwaruga:   { name: "グワルガ北岸", cat: "okuchi", tier: 3, time: "—", shoot: "道なき荒岩海岸・砕ける波（遠景）", line: "島の北。道は無い。荒い岩と波だけが、人を寄せつけず在りつづける。" },
-  kyokai:    { name: "饗会の影",     cat: "okuchi", tier: 3, time: "—", shoot: "—", line: "島の裏でだけ囁かれる名。表の崑崙からは、その気配が時おり霧に混じるばかり。" },
+  dadake:    { name: "ダダケ村",     cat: "okuchi", tier: 3, time: "—", photo: "images/konron/spots/dadake.webp", shoot: "段々畑と古い竜小屋・無口な村人（遠景）", line: "市街と火山のあいだ、霧に隠れた古い村。地図には載るが、道はすぐ霧に消える。" },
+  susufuka:  { name: "スス深回廊",   cat: "okuchi", tier: 3, time: "—", photo: "images/konron/spots/susufuka.webp", shoot: "黒い岩の回廊・苔と燐光（遠景）", line: "火山の体内へ続く黒い回廊。奥から熱と、低い唸りが届く。踏み込む者は少ない。" },
+  rondo:     { name: "ロンド元宮",   cat: "okuchi", tier: 3, time: "—", photo: "images/konron/spots/rondo.webp", shoot: "沈んだ盆地の祭祀場跡・霧の参道（遠景）", line: "カルデラの底、ダコン湖のほとりに眠る最初の宮。竜と人が契りを交わした場所。" },
+  gwaruga:   { name: "グワルガ北岸", cat: "okuchi", tier: 3, time: "—", photo: "images/konron/spots/gwaruga.webp", shoot: "道なき荒岩海岸・砕ける波（遠景）", line: "島の北。道は無い。荒い岩と波だけが、人を寄せつけず在りつづける。" },
+  kyokai:    { name: "饗会の影",     cat: "okuchi", tier: 3, time: "—", photo: "images/konron/spots/kyokai.webp", shoot: "表の島と霧の奥を分ける石門・古い灯り（遠景）", line: "島の裏でだけ囁かれる名。表の崑崙からは、その気配が時おり霧に混じるばかり。" },
   // ── 聖典37の追加施設（全施設網羅・順次拡張中／景色＋グルメの2枚体制） ──
   hotel:     { name: "ミストラ・ベイフロント／夕凪ホテル通り", cat: "stay", tier: 1, time: "夕〜夜", photo: "images/konron/spots/hotel.webp", shoot: "湾岸ホテル群・夕日デッキ・海沿いカフェ・観光船", line: "旅の余韻はここで。夕日と湾を望む、崑崙島のリゾートの顔。" },
   admin:     { name: "右翼通り・行政街", cat: "civic", tier: 1, time: "昼", photo: "images/konron/spots/admin.webp", shoot: "崑崙自治庁・公営聖龍レース局・立て直し窓口・救護病院", line: "島を回す“右の翼”。自治庁と公営レース局、そして負けても立ち直れる窓口が並ぶ。" },
@@ -422,11 +422,12 @@ function _kmRenderPanel() {
     // 現章がそのスポットの舞台なら日報風バッジを出す（表示のみ・KONRON_SPOTS本体は不変）。
     // K2（暮らし還流）：写真を見た記録＝表示専用メタ。還流台帳 k_spots8/k_spots20 と
     // 日報の文化面小イベントがこのカウントに反応する（docs/KURASHI_STORY_WEAVE.md B）。
+    let _stampNew = false;   // H4: 初訪問＝スタンプ押印演出（観光を「集める遊び」に）
     if (open && s.photo) {
       try {
         const kz = state.player.kurashi || (state.player.kurashi = {});
         const seen = kz.spotsSeen || (kz.spotsSeen = {});
-        if (!seen[_kmSpot]) { seen[_kmSpot] = 1; if (typeof saveGame === "function") saveGame(); }
+        if (!seen[_kmSpot]) { seen[_kmSpot] = 1; _stampNew = true; if (typeof saveGame === "function") saveGame(); }
       } catch (e) {}
     }
     panel.style.setProperty("--kmc", c.color);
@@ -440,6 +441,19 @@ function _kmRenderPanel() {
       const stamp = KM_STAMP[_kmSpot];
       if (open && stamp && stamp[0].indexOf(chNow) >= 0) {
         body += `<div class="km-stamp">📰 いまの話の舞台<span>${stamp[1]}</span></div>`;
+      }
+    } catch (e) {}
+    // H4: 観光スタンプラリー（表示専用・spotsSeen＝K2の還流台帳と同じ台帳を使う）。
+    // 初訪問はドンと押印演出＋通し番号＝「写真を見る」が「島を集める」遊びになる。
+    try {
+      if (open && s.photo) {
+        const _seen = ((state.player || {}).kurashi || {}).spotsSeen || {};
+        const _seenN = Object.keys(_seen).length;
+        const _totalN = Object.keys(KONRON_SPOTS).filter(k => KONRON_SPOTS[k].photo).length;
+        body += `<div class="km-rally${_stampNew ? " new" : ""}">` +
+          `<span class="km-rally-seal">📷</span>` +
+          `<span class="km-rally-t">${_stampNew ? "スタンプを押した！" : "スタンプ済み"}</span>` +
+          `<b>${_seenN} / ${_totalN}</b></div>`;
       }
     } catch (e) {}
     if (!open) {
