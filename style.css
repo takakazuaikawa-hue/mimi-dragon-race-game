@@ -1052,6 +1052,14 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   font-size: 15px; font-weight: 700; color: #fff0c8;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
+/* R8-W3 実況の「絶叫」＝山場ワードを含む最新行（金・大きめ・一瞬ポップ）。表示のみ */
+.rc-telop .lines .line.is-latest.is-hot {
+  font-size: 17px; font-weight: 900; color: #ffd97a;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 0 14px rgba(255,190,90,0.35);
+  animation: telopHot .28s cubic-bezier(.2,.9,.3,1.2) backwards;
+}
+@keyframes telopHot { from { transform: scale(.92); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .rc-telop .lines .line.is-latest.is-hot { animation: none; } }
 .rc-telop .lines .line-prev {
   opacity: 0.42; font-size: 12px; line-height: 1.5; color: #d8c08a;
 }
@@ -1114,7 +1122,7 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 /* 一般的なスマホ＆PC両対応：内容を一定幅のゲームフレームに収め、PCでは中央寄せ。
    これでレースcanvasのアスペクト(≈1.82:1)がスマホ/PCで一致し、横長すぎる崩れを防ぐ。
    タイトルだけは body.title-mode で全画面化（下の §タイトル 参照）。 */
-#app { padding: 20px; max-width: 720px; margin: 0 auto; }
+#app { padding: 20px; max-width: 720px; margin: 0 auto; --pad-x: 20px; --pad-t: 20px; --pad-b: 20px; }   /* --pad-*＝full-bleed要素(.bd-head/.bd-slip等)が負マージンで参照 */
 
 h2 { color: #ffd870; border-bottom: 1px solid #604040; padding-bottom: 6px; }
 h3 { color: #ffc850; margin-top: 16px; }
@@ -1646,15 +1654,21 @@ table.entry-table {
   /* body＝“端末”そのもの。9:16に厳密固定＋角丸/金のヘアライン/外側グロー＋全position:fixed子孫の
      containing block（transform）＋内部はheader固定・appのみスクロール（H1のオーバーフロー対策を継承）。 */
   body {
-    width: 100%; max-width: 470px; aspect-ratio: 9 / 16; margin: 0;
+    /* ★fit-height（2026-07・ユーザー「画面の崩れ」指摘の根本対応）：枠の高さ(幅×16/9)が
+       ウィンドウ実高さを超える場合、本物のShorts同様“端末ごと縮んで”収める＝
+       幅 = min(470px, 100dvh×9/16)。これで低いノートPC窓(768/800px高)でも
+       ページスクロールが出ない（旧「既知の残課題」の解消・§SCREEN_SIZE_RULES.md）。 */
+    width: 100%; max-width: min(470px, calc(100dvh * 9 / 16)); aspect-ratio: 9 / 16; margin: 0;
     min-height: 0;   /* 基本ルールの min-height:100dvh を打ち消す＝これが無いとaspect-ratioが無視され縦長PC窓でbodyがviewport一杯に伸びてしまう（実測で発覚） */
     position: relative; z-index: 1; overflow: hidden; transform: translateZ(0);
     display: flex; flex-direction: column;
     border-radius: 16px;
     box-shadow: 0 0 0 1px rgba(230,178,74,.18), 0 34px 90px -36px rgba(0,0,0,.92), 0 0 130px -48px rgba(255,150,80,.14);
   }
-  #header { flex: none; max-width: none; border-radius: 16px 16px 0 0; }
-  #app { flex: 1 1 auto; min-height: 0; max-width: none; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* max-width:100%＝bodyの枠幅にクランプ（noneだと横カルーセル等の固有幅で#appが数千pxに膨張し、
+     中身が右へ切れて見える＝観光kt-railで実測7523px。100%でどの画面も枠内スクロールに収まる）。 */
+  #header { flex: none; max-width: 100%; border-radius: 16px 16px 0 0; }
+  #app { flex: 1 1 auto; min-height: 0; max-width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   /* 通常画面はガラス調サーフェスを敷き、アンビエント上でも内容を読みやすく（ホーム/タイトルは自前の
      全画面演出があるのでガラス地は除外＝据え置き）。 */
   body:not(.home-mode):not(.title-mode) #app {
@@ -1954,7 +1968,7 @@ table.entry-table {
  * =========================================================== */
 @media (max-width: 680px) {
   html { -webkit-text-size-adjust: 100%; }   /* stop iOS font auto-zoom */
-  #app { padding: 12px 10px; }
+  #app { padding: 12px 10px; --pad-x: 10px; --pad-t: 12px; --pad-b: 12px; }
 
   /* header: single slim row — brand ellipsises on the left, currency/rank pills stay right */
   #header { padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); gap: 8px; }
@@ -1990,7 +2004,7 @@ table.entry-table {
 }
 
 @media (max-width: 420px) {
-  #app { padding: 10px 8px; }
+  #app { padding: 10px 8px; --pad-x: 8px; --pad-t: 10px; --pad-b: 10px; }
   #header h1 { font-size: 14px; }
   .header-info { gap: 8px 12px; }
   /* keep tap targets usable while fitting more per row */
@@ -3874,11 +3888,17 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .meal-card:active { transform: translateY(1px); }
 .meal-card-ic { font-size: 24px; flex: none; width: 30px; text-align: center; filter: grayscale(.9) opacity(.55); }
 .meal-card.got .meal-card-ic { filter: none; }
+.meal-card-thumb { flex: none; width: 54px; height: 40px; border-radius: 7px; overflow: hidden;
+  background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(0,0,0,.16); }
+.meal-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .meal-card-nm { font-size: 12.5px; font-weight: 700; color: var(--mist-soft); line-height: 1.25; }
 .meal-card.got .meal-card-nm { color: var(--mist); }
 
 .meal-pop { max-width: 360px; text-align: center; }
+.meal-pop-photo { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; border-radius: 12px; margin-bottom: 8px;
+  border: 1px solid rgba(255,255,255,.14); box-shadow: 0 10px 28px rgba(0,0,0,.24); }
 .meal-pop-ic { font-size: 52px; line-height: 1; margin-bottom: 2px; }
+.meal-pop-ic--over { font-size: 28px; margin: -42px 0 10px; filter: drop-shadow(0 2px 5px rgba(0,0,0,.75)); }
 .meal-prompt { font-size: 13px; color: var(--mist-soft); margin: 10px 0; }
 .meal-react { font-size: 14.5px; font-weight: 800; line-height: 1.7; color: #ffe7a8; margin: 12px 4px; }
 .meal-react.meal-hit { color: #ffd36a; }
@@ -3998,6 +4018,18 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-item .lb { font-size: 9.5px; color: var(--mist-soft); }
 .hl-item.locked { opacity: .55; }
 .hl-item.locked .ic { filter: grayscale(1); }
+
+/* 🔓 解放toast（progression.js）＝下部にすっと出て消える帯。モーダルではない・タップで即消し。
+   PC枠では body が containing block なので自動的に枠内へ収まる（§SCREEN_SIZE_RULES.md）。 */
+.unlock-toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 140;
+  max-width: min(92%, 420px); padding: 10px 16px; border-radius: 999px; cursor: pointer;
+  font-size: 12.5px; font-weight: 700; color: #fff4e0; text-align: center; line-height: 1.5;
+  background: linear-gradient(180deg, rgba(54,38,10,.96), rgba(34,24,8,.96));
+  border: 1px solid rgba(255,214,120,.55); box-shadow: 0 10px 30px -10px rgba(0,0,0,.8), 0 0 18px -4px rgba(255,190,90,.35);
+  animation: unlockToastIn .3s cubic-bezier(.22,.61,.36,1) backwards; }
+.unlock-toast.out { opacity: 0; transform: translateX(-50%) translateY(8px); transition: opacity .35s, transform .35s; }
+@keyframes unlockToastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } }
+@media (prefers-reduced-motion: reduce) { .unlock-toast { animation: none; } }
 @media (max-width: 560px) {
   /* ナビを1行8列に圧縮（ドックを薄く＝ミミの領域を確保） */
   .hl-rail { grid-template-columns: repeat(8, 1fr); gap: 4px; }
@@ -5978,3 +6010,246 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   width: 42%; height: 30px; transform: translateX(-50%);
   background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,.58), rgba(0,0,0,.33) 42%, rgba(0,0,0,0) 72%);
   filter: blur(3px); pointer-events: none; }
+
+/* =========================================================================
+   賭け画面リデザイン（2026-07・A骨格＋C演出＝docs/RESEARCH_BETTING_UX.md）
+   上=bd-head(sticky) / 中=bd-tabs＋出走カード / 下=bd-slip(sticky・親指ゾーン)。
+   表示のみ＝オッズ/払戻の数値はエンジン値そのまま。名前空間 .bd-* .slip .tix
+   ========================================================================= */
+.bd-head { position: sticky; top: calc(var(--pad-t, 20px) * -1); z-index: 20;
+  margin: calc(var(--pad-t, 20px) * -1) calc(var(--pad-x, 20px) * -1) 10px;
+  padding: calc(var(--pad-t, 20px) + 4px) 14px 10px;
+  background: linear-gradient(135deg, var(--region-from, #1d2a33), var(--region-to, #10181e));
+  border-bottom: 2px solid var(--region-accent, var(--gold-line));
+  box-shadow: 0 8px 22px -12px rgba(0,0,0,.85); }
+.bd-head-top { display: flex; align-items: center; gap: 9px; }
+.bd-back { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,.22);
+  background: rgba(0,0,0,.3); color: #fff; font-size: 16px; cursor: pointer; }
+.bd-title { min-width: 0; }
+.bd-title b { display: block; font-size: 16.5px; color: #fff6e6; line-height: 1.25; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.bd-sub { display: block; font-size: 10.5px; color: rgba(255,246,230,.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.bd-chip { font-size: 10.5px; font-weight: 800; color: #ffe9c4; padding: 3px 9px; border-radius: 999px;
+  background: rgba(0,0,0,.32); border: 1px solid rgba(255,214,120,.35); }
+.bd-course { margin-top: 7px; font-size: 10.5px; color: rgba(255,246,230,.85); letter-spacing: .01em; }
+.bd-sake { margin: 0 0 8px; }
+
+/* 賭式タブ＝大きく・現在形が一目 */
+.bet-tabs.bd-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 8px;
+  margin: 0 0 10px; background: rgba(10,14,18,.92); border-radius: 14px; border: 1px solid var(--glass-border);
+  backdrop-filter: blur(6px); }
+.bet-tabs.bd-tabs button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px;
+  border-radius: 10px; border: 1px solid transparent; background: rgba(255,255,255,.05); color: var(--mist-soft);
+  font-size: 14px; font-weight: 900; cursor: pointer; }
+.bet-tabs.bd-tabs button small { font-size: 8.5px; font-weight: 700; opacity: .8; }
+.bet-tabs.bd-tabs button.active { background: linear-gradient(180deg, rgba(232,185,78,.28), rgba(202,162,74,.16));
+  border-color: rgba(255,214,120,.6); color: #ffe9c4; box-shadow: 0 0 14px -4px rgba(255,190,90,.45); }
+
+/* 出走カード：枠色バー（勝負服相当）＋オッズ切替フラッシュ（B案拝借・演出のみ） */
+.bet-pick-card { position: relative; border-left: 5px solid var(--waku, #caa24a); }
+.bp-odds b.flash { animation: bdOddsFlash .55s ease; }
+@keyframes bdOddsFlash { 0% { color: #ffd966; text-shadow: 0 0 10px rgba(255,190,90,.8); } 100% { } }
+
+/* 常設ベットスリップ（sticky bottom・親指ゾーン） */
+.bd-slip { position: sticky; bottom: calc(var(--pad-b, 20px) * -1); z-index: 22;
+  margin: 12px calc(var(--pad-x, 20px) * -1) calc(var(--pad-b, 20px) * -1);
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(16,20,26,.97), rgba(10,13,17,.99));
+  border-top: 2px solid var(--gold-line); box-shadow: 0 -12px 30px -14px rgba(0,0,0,.95); }
+.bd-slip .bet-sel-sum { display: flex; align-items: center; gap: 7px; min-height: 20px; margin-bottom: 6px;
+  font-size: 12px; color: var(--mist); }
+.bss-tix { font-size: 14px; }
+.bss-nm { font-size: 13.5px; color: #fff2d5; }
+.bss-odds { margin-left: auto; font-size: 11px; color: #ffce8a; }
+.bss-odds b { font-size: 15px; }
+.slip-wager { display: flex; align-items: center; gap: 7px; }
+.slip-wager .wager-amount { flex: 1 1 auto; display: flex; align-items: baseline; justify-content: center; gap: 4px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--glass-border); border-radius: 10px; padding: 5px 8px; }
+.slip-wager .wager-big { width: 100%; max-width: 130px; background: none; border: none; color: #ffe9c4;
+  font-size: 20px; font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
+.slip-wager .wager-big:focus { outline: none; }
+.slip-wager .wager-unit { font-size: 10px; color: var(--mist-soft); }
+.slip-wager .wager-step { flex: none; width: 38px; height: 38px; border-radius: 10px; font-size: 18px; font-weight: 900;
+  border: 1px solid var(--glass-border); background: rgba(255,255,255,.07); color: var(--mist); cursor: pointer; }
+.slip-wager .wager-quick { display: flex; gap: 5px; }
+.slip-wager .wchip { display: flex; flex-direction: column; align-items: center; padding: 3px 8px; border-radius: 9px;
+  border: 1px solid var(--glass-border); background: rgba(255,255,255,.05); color: var(--mist-soft); cursor: pointer; }
+.slip-wager .wchip .wchip-amt { font-size: 10px; font-weight: 800; color: var(--mist); }
+.slip-wager .wchip .wchip-sub { font-size: 8.5px; }
+.slip-wager .wchip.chosen { border-color: rgba(255,214,120,.6); background: rgba(232,185,78,.18); }
+.bd-slip .payout-box { margin: 8px 0 0; padding: 7px 10px; border-radius: 11px; background: rgba(255,255,255,.04);
+  border: 1px solid var(--glass-border); }
+.bd-slip .payout-box.valid { border-color: rgba(120,200,140,.4); }
+.bd-slip .payout-box.invalid { border-color: rgba(226,96,74,.55); }
+.po-hero { display: flex; align-items: baseline; justify-content: space-between; }
+.po-hero .pl-k { font-size: 10.5px; color: var(--mist-soft); }
+.po-hero .pl-v { font-size: 22px; font-weight: 900; color: #7be0b0; font-variant-numeric: tabular-nums; }
+.po-hero .pl-v small { font-size: 10px; font-weight: 700; margin-left: 3px; color: var(--mist-soft); }
+.po-sub { display: flex; justify-content: space-between; margin-top: 2px; font-size: 9.5px; }
+.po-sub .po-profit { color: #9ad9b0; }
+.po-sub .po-loss { color: #e8a09a; }
+.bd-slip .po-hint { font-size: 11px; color: var(--mist-soft); text-align: center; padding: 3px 0; }
+.slip-actions { margin-top: 8px; }
+.slip-actions #bet-confirm { width: 100%; padding: 12px; border: none; border-radius: 12px; cursor: pointer;
+  font-size: 15.5px; font-weight: 900; color: #2a1d05;
+  background: linear-gradient(180deg, #ffd465, #e8a934); box-shadow: 0 6px 18px -6px rgba(232,169,52,.6); }
+.slip-actions #bet-confirm:disabled { filter: grayscale(.75); opacity: .55; cursor: default; box-shadow: none; }
+.bd-slip .slip-note { margin-top: 6px; font-size: 9.5px; text-align: center; color: var(--astone); border: none; padding: 0; }
+
+/* 🎫 投票券（確認モーダル内・C演出） */
+.tix { display: flex; border-radius: 10px; overflow: hidden; color: #2b2620; text-align: left;
+  box-shadow: 0 14px 34px -12px rgba(0,0,0,.7), inset 0 0 0 2px #e2d3ac;
+  background: repeating-linear-gradient(0deg, rgba(120,96,60,.05) 0 1px, transparent 1px 4px), #f4ead2;
+  transition: transform .38s ease, opacity .38s ease; }
+.tix-main { flex: 1 1 auto; padding: 11px 12px; min-width: 0; }
+.tix-head { display: flex; justify-content: space-between; font-size: 8.5px; letter-spacing: .08em; color: #6a5f4c;
+  border-bottom: 1px solid rgba(43,38,32,.35); padding-bottom: 4px; }
+.tix-race { font-size: 13.5px; font-weight: 900; margin-top: 6px; }
+.tix-sel { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 15px; }
+.tix-type { font-size: 10px; font-weight: 900; color: #9a2b22; border: 1.5px solid #9a2b22; border-radius: 3px; padding: 1px 5px; }
+.tix-rows { display: flex; gap: 12px; margin-top: 8px; border-top: 1px dashed rgba(43,38,32,.4); padding-top: 7px; }
+.tix-row { display: flex; flex-direction: column; }
+.tix-row small { font-size: 8.5px; color: #6a5f4c; }
+.tix-row b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.tix-row.tix-pay b { color: #9a2b22; font-size: 15px; }
+.tix-stub { flex: none; width: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border-left: 2px dashed rgba(43,38,32,.5); background: rgba(154,43,34,.08); padding: 8px 4px;
+  transition: transform .38s ease, opacity .38s ease; }
+.tix-stub span { font-size: 8px; letter-spacing: .2em; color: #6a5f4c; writing-mode: vertical-rl; }
+.tix-stub b { font-size: 10px; color: #9a2b22; }
+.tix-stub i { font-style: normal; font-size: 12px; font-weight: 900; }
+.tix.tear { transform: rotate(-2deg) translateY(2px); }
+.tix.tear .tix-stub { transform: translate(18px, -14px) rotate(14deg); opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .tix, .tix-stub { transition: none; } }
+.bcf-q { text-align: center; font-size: 12px; color: var(--mist-soft); margin-top: 10px; }
+
+/* ===== K3-A1 聖龍日報・経済面クリップ（暮らし×物語＝物語画面と同じ紙の言語） ===== */
+.news-clip { font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  background: #f4efe4; color: #2a2620; border: 1px solid #c9c0ab; border-radius: 6px; }
+.news-clip .nc-mast { font-size: 10px; letter-spacing: .16em; color: #4a4438;
+  border-bottom: 2px solid #2a2620; padding-bottom: 3px; display: flex; justify-content: space-between; }
+.news-clip .nc-head { font-weight: 800; font-size: 15.5px; margin: 7px 0 4px; line-height: 1.35; }
+.news-clip .nc-lead { font-size: 11.5px; line-height: 1.75; }
+.news-clip .nc-quote { margin-top: 7px; font-size: 11px; line-height: 1.6;
+  border-left: 3px solid #b5a888; padding-left: 8px; color: #4a4438; }
+.news-clip .nc-by { margin-top: 5px; font-size: 10px; text-align: right; color: #7a725e; }
+
+/* ===== K3-A2 スミカの宿題（くらしツリーの章連動お題・表示のみ） ===== */
+.sh-box { border-left: 3px solid #b08fd0; }
+.sh-box .sh-t { font-weight: 800; font-size: 13px; }
+.sh-box .sh-t small { color: var(--mist-soft); font-weight: 600; margin-left: 6px; }
+.sh-box .sh-note { font-size: 11.5px; color: var(--mist-soft); margin: 4px 0 6px; line-height: 1.6; }
+.sh-box .sh-row { font-size: 12px; padding: 2.5px 0; }
+.sh-box .sh-row.ok { color: #7CFFB2; }
+.sh-box .sh-row i { font-style: normal; font-size: 10.5px; color: var(--mist-soft); }
+
+/* ===== K3-A3 観光「いまの話の舞台」章スタンプ（表示のみ） ===== */
+.km-stamp { margin: 6px 0 2px; padding: 6px 9px; border: 1px dashed #c9b27a; border-radius: 6px;
+  font-size: 11px; font-weight: 800; color: #ffd98a; background: rgba(201,178,122,.08); }
+.km-stamp span { display: block; margin-top: 2px; font-weight: 500; font-size: 10.5px;
+  color: var(--mist-soft); line-height: 1.55; }
+
+/* ===== K3-A4 師範制（習い事×物語・表示のみ） ===== */
+.shihan-board { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 12px; }
+.shihan-chip { display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto; gap: 2px 9px;
+  align-items: center; padding: 9px 10px; border-radius: 10px;
+  background: linear-gradient(160deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+  border: 1px solid rgba(255,255,255,.10); border-left: 3px solid var(--shc, #888); }
+.shihan-chip .shihan-crest { grid-row: 1 / span 2; width: 40px; height: 40px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.14), rgba(0,0,0,.28));
+  border: 1.5px solid var(--shc, #888); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative; }
+.shihan-chip .shihan-crest img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.shihan-chip .shihan-crest i { font-style: normal; font-size: 19px; }
+.shihan-chip .shihan-id b { display: block; font-size: 12px; }
+.shihan-chip .shihan-id small { font-size: 10px; color: var(--mist-soft); }
+.shihan-chip .shihan-word { grid-column: 2; font-size: 9.5px; color: var(--mist-soft);
+  line-height: 1.45; font-style: italic; }
+.shihan-chip.kaiden { border-color: #e2b455; border-left-color: #ffd34d;
+  background: linear-gradient(160deg, rgba(255,211,77,.10), rgba(255,211,77,.02)); }
+.shihan-chip.kaiden .shihan-id small { color: #ffd98a; font-weight: 800; }
+.shihan-chip.unmet { opacity: .55; filter: saturate(.4); }
+.askill-shihan { display: inline-block; margin-top: 2px; font-size: 9.5px; font-weight: 700;
+  color: var(--shc, #aaa); }
+.askill-shihan.unmet { color: var(--mist-soft); opacity: .7; }
+
+/* ===== 聖龍日報 題字＋面札（CODEX納品・K3-A1格上げ） ===== */
+.news-clip .nc-mast-art { display: flex; align-items: center; gap: 8px; }
+.news-clip .nc-daiji { height: 22px; width: auto; }
+.news-clip .nc-men { height: 18px; width: auto; }
+.news-men { height: 18px; width: auto; vertical-align: middle; margin-right: 6px; }
+.news-men--h2 { height: 20px; margin-left: 4px; }
+
+/* ===== H1 TikTok Live風タブバー（配信ホームのみ・A案） ===== */
+.tik-bar { display: grid; grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr; gap: 4px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); margin-top: 8px;
+  background: rgba(14, 16, 30, .66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.10); border-radius: 18px;
+  box-shadow: 0 -6px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06); }
+.tik-tab { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 7px 2px 6px; background: none; border: none; border-radius: 12px; color: #dfe4f2;
+  transition: transform .12s ease, background .12s ease; }
+.tik-tab:active { transform: scale(.92); background: rgba(255,255,255,.06); }
+.tik-tab .ic { font-size: 21px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
+.tik-tab .lb { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; }
+.tik-tab.center { margin-top: -14px; background: linear-gradient(160deg, #ffd465, #e2a22e);
+  color: #2a1d05; border-radius: 16px; box-shadow: 0 6px 16px rgba(226,162,46,.42), inset 0 1px 0 rgba(255,255,255,.5); }
+.tik-tab.center .ic { font-size: 24px; filter: none; }
+.tik-tab.center .lb { font-weight: 900; }
+.tik-tab.center:active { transform: scale(.94); }
+.tik-tab.locked { opacity: .5; filter: saturate(.35); }
+.tik-tab.locked .lb::before { content: "🔒"; font-size: 8px; margin-right: 1px; }
+.tik-tab .dot { position: absolute; top: 5px; right: 22%; width: 8px; height: 8px; border-radius: 50%;
+  background: #ff4d5e; border: 1.5px solid rgba(14,16,30,.9); }
+/* ヒーロー下端のグラデスクリム＝コメント/入力の可読性（TikTokの作法） */
+.hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34%;
+  background: linear-gradient(to top, rgba(6,8,16,.55), rgba(6,8,16,0)); pointer-events: none; }
+
+/* ===== H2/H3 磨き（配信モード .hl.tik 限定・TikTok Live忠実） ===== */
+/* 🎯目標チップ＝📌ピン留めコメント風（すりガラス＋アクセント縁） */
+.hl.tik .hl-goal { background: rgba(10, 12, 24, .58); backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.14);
+  border-left: 3px solid #ff4d8a; border-radius: 12px; }
+.hl.tik .hl-goal .hl-goal-k::before { content: "📌 "; }
+/* ミッションピン＝同じピン言語で統一 */
+.hl.tik .hl-pin.hl-missions { background: rgba(10, 12, 24, .52); backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.12); border-radius: 999px; }
+/* ギフト行＝TikTokのギフトバナー（桃→金のグラデ・ほんのり発光） */
+.hl.tik .hl-cm.gift { background: linear-gradient(90deg, rgba(255,77,138,.34), rgba(255,206,110,.26));
+  border: 1px solid rgba(255,180,140,.35); box-shadow: 0 2px 10px rgba(255,110,140,.18); }
+/* タブバー＝ホーム到着時にすっと浮上（1回だけ） */
+.hl.tik .tik-bar { animation: tikbarIn .42s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes tikbarIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+/* 金CTA＝4秒ごとに光が走る（商業の「押して」の合図・控えめ） */
+.hl.tik .hl-race { position: relative; overflow: hidden; }
+.hl.tik .hl-race::after { content: ""; position: absolute; top: -30%; bottom: -30%; width: 34px;
+  left: -60px; transform: rotate(18deg);
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.55), rgba(255,255,255,0));
+  animation: ctaShine 4.2s ease-in-out infinite; pointer-events: none; }
+@keyframes ctaShine { 0%, 72% { left: -60px; } 88%, 100% { left: 130%; } }
+@media (prefers-reduced-motion: reduce) {
+  .hl.tik .tik-bar { animation: none; }
+  .hl.tik .hl-race::after { display: none; }
+}
+
+/* ===== H3磨き2：🎁ギフトボタン＋❤️押下ポップ（配信入力行＝TikTokの[コメント][🎁][❤️]） ===== */
+.hl-giftbtn { flex: 0 0 auto; min-width: 44px; height: 38px; border-radius: 999px;
+  background: linear-gradient(160deg, rgba(255,77,138,.28), rgba(255,206,110,.22));
+  border: 1px solid rgba(255,170,150,.4); font-size: 18px; line-height: 1;
+  transition: transform .12s ease; }
+.hl-giftbtn:active { transform: scale(.88); }
+.hl-likebtn { transition: transform .12s ease; }
+.hl-likebtn:active { transform: scale(.88); }
+
+/* ===== H3磨き3：遷移フェード・VIP入場・❤️跳ね ===== */
+#app { transition: opacity .13s ease; }
+#app.scr-fade { opacity: 0; }
+.hl-cm.vipjoin { background: linear-gradient(90deg, rgba(255,211,77,.38), rgba(255,150,80,.24));
+  border: 1px solid rgba(255,214,120,.55); box-shadow: 0 2px 12px rgba(255,190,90,.25);
+  font-weight: 800; }
+.hl-likebtn.bump b { display: inline-block; animation: likeBump .32s cubic-bezier(.2,1.6,.4,1); }
+@keyframes likeBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  #app { transition: none; }
+  .hl-likebtn.bump b { animation: none; }
+}

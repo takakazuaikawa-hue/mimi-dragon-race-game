@@ -79,6 +79,7 @@ function beginScreen() {
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
     race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
+    poro_gourmet: "home",   // クリア後ミニゲームも迷子にしない（mall_rpgはラン中断防止のため意図的に無し＝race_runと同じ例外）
     sns: "home", konron_map: "home",   // SNSは戻る導線が無かった／観光は自前バックが画面下＝上部stickyを補う
     life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story",
     konron_guide: "konron_map", konron_gallery: "konron_map"
@@ -228,9 +229,36 @@ function showTitleSwitcher() {
 // 🛍️ モール解放判定：レースで初めて的中すると解放（flags.everHit）。既存セーブ救済として
 // 単勝勝利歴・衣装の購入/入手歴・着替え歴があれば解放済み扱い（巻き戻さない）。表示専用。
 function mallUnlocked() {
-  // ★第2話「ミズの分析」を読むと開放（総資産3千で第2話が解禁→読む）。docs/PROGRESSION_DESIGN.md。
-  const p = state.player || {}; const f = p.flags || {};
-  return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2")) || !!f.mallIntroSeen;
+  // ★第2話「ミズの分析」を読むと開放＝単一条件（E3解消・docs/GAME_FLOW_REDESIGN.md §1）。
+  //   mallIntroSeen は「サケの衣装ギフトVNを再生済み」の印としてだけ使う（ゲート条件ではない）。
+  return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2"));
+}
+
+// 🛍️ モール開通のお祝いVN（サケが使い方を解説→『ジャングルバニー』贈与→着替えお披露目）。
+// 呼び出し＝モール初訪問時（ui_mall.js）。ホームではVNを出さない鉄則があるため、
+// ホーム側は cut-in（progression.js）→「今すぐ見る▸」→ここ、の順で繋ぐ。表示メタのみ・コイン非消費。
+function playMallIntroVN() {
+  const f = state.player.flags || (state.player.flags = {});
+  if (f.mallIntroSeen || !window.Dialogue) return false;
+  f.mallIntroSeen = true;
+  Dialogue.play([
+    ["sake", "オッズの読み方、覚えてきたな。……ところでミミ、いつまでそのボロを着てるつもりだ？"],
+    ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
+    ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ここがそのモールだ。稼いだコインで好きに選べ。試着は自由、着替えは無料だ。"],
+    ["sake", "それと、開店祝いだ。『ジャングルバニー』──葉っぱと馬券で武装した、お前の勝負服第一号だ。受け取れ。", "happy"]
+  ]).then(() => {
+    try {
+      if (!state.player.outfitsWon) state.player.outfitsWon = [];
+      if (state.player.outfitsWon.indexOf("jungle") < 0 && !outfitOwned(outfitById("jungle"))) state.player.outfitsWon.push("jungle");
+      if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
+      if (typeof saveGame === "function") saveGame();
+      try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+      Dialogue.play([["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"]]);
+      if (typeof rerenderCurrent === "function") rerenderCurrent();
+    } catch (e) {}
+  });
+  if (typeof saveGame === "function") saveGame();
+  return true;
 }
 
 // 📱 配信モード判定：スマホ購入（第4話マクラ後）で配信ホーム化＝LIVE/視聴者/フォロワー/コメント入力/ハート/
@@ -244,6 +272,11 @@ function broadcastOn() {
 // ★表示専用＝レース着順/オッズ/配当には非干渉（コインの支払いは衣装購入と同じメタ消費）。docs/PROGRESSION_DESIGN.md
 function buyPhoneAndGoLive() {
   if (typeof getStoryFlag === "function" && getStoryFlag("phoneBought")) return;
+  // 実行中ガード：VN再生中に🎯チップを再タップすると購入VNが直列に二重で積まれる（実測）。
+  // 30秒で自動解除＝VNを途中離脱（＝購入不成立）してもCTAが死なない。
+  if (window._phoneBuying) return;
+  window._phoneBuying = true;
+  setTimeout(function () { window._phoneBuying = false; }, 30000);
   var _finish = function () {
     var p = state.player; var cost = 3000;
     if ((p.coins || 0) >= cost) p.coins = p.coins - cost;   // 買えるなら支払い／足りなければマクラが立て替え
@@ -324,6 +357,7 @@ function showVolumePanel() {
     box.querySelector(".vol-mute-lb").textContent = m ? "🔇 ミュート中" : "🔊 サウンド ON";
     if (!m && window.Sfx && Sfx.play) Sfx.play("click");
     syncMuted();
+    if (typeof mountVolumeFab === "function") mountVolumeFab();   // FABアイコンも即同期
   };
 }
 // 🔊 グローバル常設の音量ボタン（全画面で同じ位置＝既存作品の作法／consistent placement）。
@@ -336,6 +370,8 @@ function mountVolumeFab() {
     fab.onclick = (e) => { e.stopPropagation(); if (typeof showVolumePanel === "function") showVolumePanel(); };
     document.body.appendChild(fab);
   }
+  // アイコンは常にミュート状態を映す（🔇のまま🔊表示…の食い違いを防ぐ）
+  fab.textContent = (window.Sfx && Sfx.isMuted && Sfx.isMuted()) ? "🔇" : "🔊";
   return fab;
 }
 // 画面に応じて表示/非表示（beginScreen から毎遷移で呼ぶ）。ホームはナビに⚙️設定（🎚音量）があり
@@ -1143,6 +1179,8 @@ function renderHelp() {
   state.ui.screen = "help";
   const app = beginScreen();
   app.appendChild(el("h2", null, "予想入門"));
+  // E4解消：島の話し言葉（単竜/複竜/ワイド竜）と帳面の正式表記（単勝/複勝/ワイド）の対応をここで一度だけ明示。
+  app.appendChild(el("div", "as-hint2", "島のみんなは賭式を <b>単竜（＝単勝・1着を当てる）／複竜（＝複勝・3着以内）／ワイド竜（＝ワイド・2頭とも3着以内）</b>と呼びます。呼び名がちがうだけで、中身は同じです。"));
 
   // オンボーディング方針：説明は既定で閉じる（読みたい時だけ開く）。🆕/✓で初見かどうか一目で分かり、
   // 開いた項目は既読として保存される。
@@ -1587,48 +1625,34 @@ function renderRaceDetail(race) {
   runEventHooks("afterDragonPreview", { race, tags: tense ? ["tense_race"] : [] });
 
   const app = beginScreen();
-  app.appendChild(el("h2", null, raceFullName(race)));
-
-  // Race info card with region theme (§11 §23)
-  const info = el("div", "card race-detail-card");
-  const theme = REGION_THEME[race.region];
-  if (theme) {
-    info.setAttribute("data-region", race.region);
-    info.style.setProperty("--region-from", theme.from);
-    info.style.setProperty("--region-to", theme.to);
-    info.style.setProperty("--region-accent", theme.accent);
-  }
-  info.innerHTML = `
-    <div>
-      <div><b>ランク:</b> Rank ${race.rank} (${RANKS[race.rank].label})</div>
-      <div><b>距離:</b> ${DISTANCE[race.distance].label}</div>
-      <div><b>天候:</b> ${WEATHERS[race.weather].label}</div>
-      <div><b>最大賭金:</b> ${fmtCoins(RANKS[race.rank].maxWager)}</div>
-    </div>
-    <div>
-      <div><b>序盤:</b> ${getSection("early",race.early).label}</div>
-      <div><b>中盤:</b> ${getSection("mid",race.mid).label}</div>
-      <div><b>終盤:</b> ${getSection("late",race.late).label}</div>
-      <div class="condition-line">${race.purpose}</div>
-    </div>
-  `;
   // Popularity-sorted entries — shared by the pick cards and the dragon-info table.
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
   const betCap = RANKS[race.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1.0);
 
-  // ===== レース条件は常時表示（折りたたまない）。サケの現場眼を一言添える。 =====
-  const condWrap = el("div", "race-conditions-always");
-  const _sakeV = advVoiceHeader("sake"); if (_sakeV) condWrap.appendChild(_sakeV);
-  condWrap.appendChild(info);
-  app.appendChild(condWrap);
-
-  // ===== Advisor hub — character "marks" up top, each opening ONE focused panel
-  // below. Nothing opens until the player taps a face (progressive disclosure);
-  // each lens lives where its mentor would give it:
-  //   ミズ＝分析予想 ／ マクラ＝竜の力と試走 ／ スミカ＝賭け金の目安 ／ セレスティア＝神眼。
-  // (レース条件は上に常時表示。) Core handicapping info is ALWAYS reachable; meeting an
-  // advisor only adds their voice. Mizu's analysis & Celestia's reveal stay gated. =====
-  app.appendChild(buildAdvisorHub());
+  // ===== ★賭け画面リデザイン（2026-07・A骨格＋C演出＝docs/RESEARCH_BETTING_UX.md）＝
+  // 「上=レース情報(sticky) / 中=賭式タブ＋出走カード / 下=常設ベットスリップ(sticky・親指ゾーン)」。
+  // 数値エンジン(simulateMarket/betOdds/validateBet/runRace)は不変＝表示/UX層のみ。 =====
+  const theme = REGION_THEME[race.region];
+  const head = el("div", "bd-head");
+  if (theme) {
+    head.style.setProperty("--region-from", theme.from);
+    head.style.setProperty("--region-to", theme.to);
+    head.style.setProperty("--region-accent", theme.accent);
+  }
+  head.innerHTML = `
+    <div class="bd-head-top">
+      <button class="bd-back" id="back-race-select" type="button" aria-label="レース選択へ戻る">←</button>
+      <div class="bd-title"><b>${raceFullName(race)}</b><span class="bd-sub">${race.purpose || ""}</span></div>
+    </div>
+    <div class="bd-chips">
+      <span class="bd-chip">🏅 R${race.rank} ${RANKS[race.rank].label}</span>
+      <span class="bd-chip">📏 ${DISTANCE[race.distance].label}</span>
+      <span class="bd-chip">${WEATHERS[race.weather].label}</span>
+    </div>
+    <div class="bd-course">序盤 ${getSection("early", race.early).label} ▸ 中盤 ${getSection("mid", race.mid).label} ▸ 終盤 ${getSection("late", race.late).label}</div>`;
+  app.appendChild(head);
+  const _sakeV = advVoiceHeader("sake");
+  if (_sakeV) { _sakeV.classList.add("bd-sake"); app.appendChild(_sakeV); }
 
   // -- advisor voice line, shown atop a panel once that advisor has been met --
   function advVoiceHeader(key) {
@@ -1798,20 +1822,16 @@ function renderRaceDetail(race) {
     return wrap;
   }
 
-  // ===== Betting panel — placed FIRST so the primary action needs no scrolling.
-  // Selection is a grid of tappable dragon cards that fold the key handicapping
-  // info (人気・脚質・単/複オッズ・印・近走) into the very thing you tap, so the
-  // player reads-and-picks in one place instead of cross-referencing a dropdown.
-  app.appendChild(el("h3", null, "賭けパネル"));
-  // Wager bounds for the tap/drag stake controls (no number-typing required).
+  // ===== Betting panel — 賭式タブ＋出走カード（読む場所＝選ぶ場所）。
+  // 2段ステップは廃止＝下部の常設スリップ（親指ゾーン）に賭金・払戻・出走を集約。
   const effMax = Math.max(1, Math.floor(Math.min(betCap, state.player.coins)));
   const wagerInit = Math.max(1, Math.min((_consultActive && state.current.bet && state.current.bet.wager) || Math.min(100, effMax), effMax));
-  const panel = el("div", "card bet-panel");
+  const panel = el("div", "bet-panel bd-list");
   panel.innerHTML = `
-    <div class="bet-tabs">
-      <button data-type="win" class="active">単竜<small>1着</small></button>
-      <button data-type="place">複竜<small>3着以内</small></button>
-      <button data-type="wide">ワイド竜<small>2頭が3着以内</small></button>
+    <div class="bet-tabs bd-tabs">
+      <button data-type="win" class="active">単勝<small>1着をあてる</small></button>
+      <button data-type="place">複勝<small>3着以内</small></button>
+      <button data-type="wide">ワイド<small>2頭とも3着内</small></button>
     </div>
     <div class="bet-pick">
       <div class="bet-pick-head">
@@ -1820,33 +1840,27 @@ function renderRaceDetail(race) {
       </div>
       <div class="bet-pick-grid" id="bet-pick-grid"></div>
     </div>
-    <div class="bet-step1" id="bet-step1">
-      <button id="bet-start" class="bet-start-btn" disabled>🐉 この本命で賭ける</button>
-      <button id="back-race-select" class="secondary">戻る</button>
-    </div>
-    <div class="bet-step2" id="bet-step2" style="display:none">
-      <div class="bet-sel-sum" id="bet-sel-sum"></div>
-      <div class="wager-box">
-        <div class="wager-head">
-          <span class="wager-label">賭金</span>
-          <span class="wager-amount"><input id="wager" class="wager-big" type="text" inputmode="numeric" value="${wagerInit}"><span class="wager-unit">コイン</span></span>
-        </div>
-        <div class="wager-slider-row">
-          <button class="wager-step" id="wager-minus" type="button" aria-label="減らす">−</button>
-          <input id="wager-slider" class="wager-slider" type="range" min="1" max="${effMax}" step="1" value="${wagerInit}">
-          <button class="wager-step" id="wager-plus" type="button" aria-label="増やす">＋</button>
-        </div>
-        <div class="wager-quick" id="wager-chips"></div>
-      </div>
-      <div class="payout-box empty" id="expected-payout"><div class="po-hint">賭金を選ぶと払戻が表示されます</div></div>
-      <div class="actions">
-        <button id="bet-confirm" disabled>この内容で出走</button>
-        <button id="bet-cancel" class="secondary">やめる</button>
-      </div>
-    </div>
-    <div class="condition-line">所持: ${fmtCoins(state.player.coins)}コイン ／ 上限賭金: ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
   `;
   app.appendChild(panel);
+
+  // 深掘り（ミズ分析/出走表/財政/神眼）は出走カードの下＝進行はスリップだけで完結する。
+  app.appendChild(buildAdvisorHub());
+
+  // ===== 常設ベットスリップ（sticky bottom・研究②tap-to-slip＋クイック賭金＋払戻ヒーロー） =====
+  const slip = el("div", "bd-slip");
+  slip.innerHTML = `
+    <div class="bet-sel-sum" id="bet-sel-sum"></div>
+    <div class="slip-wager">
+      <button class="wager-step" id="wager-minus" type="button" aria-label="減らす">−</button>
+      <span class="wager-amount"><input id="wager" class="wager-big" type="text" inputmode="numeric" value="${wagerInit}"><span class="wager-unit">コイン</span></span>
+      <button class="wager-step" id="wager-plus" type="button" aria-label="増やす">＋</button>
+      <span class="wager-quick" id="wager-chips"></span>
+    </div>
+    <div class="payout-box empty" id="expected-payout"><div class="po-hint">本命と賭金を選ぶと払戻が出ます</div></div>
+    <div class="slip-actions"><button id="bet-confirm" type="button" disabled>🎫 投票券を切る</button></div>
+    <div class="condition-line slip-note">所持 ${fmtCoins(state.player.coins)} ／ この一戦の上限 ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
+  `;
+  app.appendChild(slip);
 
   // ---- tappable dragon selection (replaces the sel-a/sel-b dropdowns) ----
   // Preserve the in-progress pick across a Celestia consult re-render — otherwise
@@ -1878,25 +1892,6 @@ function renderRaceDetail(race) {
     });
     $("pick-instruction").textContent = pickInstruction(type);
     $("pick-count").textContent = `${sel.length} / ${max}`;
-    const complete = sel.length === max;
-    const startBtn = $("bet-start");
-    if (startBtn) {
-      startBtn.disabled = !complete;
-      // CTAに選択内容を反映＝「誰に賭けるか」を押す瞬間まで見失わせない
-      if (complete) {
-        const nm = id => { const d = DRAGONS.find(x => x.id === id); return d ? d.name : ""; };
-        if (type === "wide") {
-          startBtn.innerHTML = `🐉 <b>${nm(sel[0])}</b> ＋ <b>${nm(sel[1])}</b> で賭ける ▶`;
-        } else {
-          const o = sorted.find(x => x.dragonId === sel[0]);
-          const oddsTx = o ? (type === "place" ? `複${o.placeOdds.toFixed(1)}倍` : `単${o.winOdds.toFixed(1)}倍`) : "";
-          startBtn.innerHTML = `🐉 <b>${nm(sel[0])}</b> に賭ける${oddsTx ? `（${oddsTx}）` : ""} ▶`;
-        }
-      } else {
-        startBtn.textContent = "🐉 この本命で賭ける";
-      }
-    }
-    if (!complete) showBetStep(1);   // pick broke → fold the wager step back away
   }
 
   function togglePick(id) {
@@ -1915,6 +1910,7 @@ function renderRaceDetail(race) {
     const card = el("button", "bet-pick-card");
     card.type = "button";
     card.dataset.id = d.id;
+    card.style.setProperty("--waku", dragonColor(d));   // 枠色バー＝竜のアイデンティティ（勝負服相当）
     card.innerHTML = `
       <span class="bp-order" style="display:none"></span>
       <span class="bp-pop p${rk <= 3 ? rk : ""}">${rk}<small>人気</small></span>
@@ -1942,39 +1938,25 @@ function renderRaceDetail(race) {
       const max = maxSelFor(btn.dataset.type);
       if (state.current.betSel.length > max) state.current.betSel = state.current.betSel.slice(0, max);
       runEventHooks("beforeBet", { race, bet: state.current.bet });
-      showBetStep(1);
       renderPickState();
       updateExpected();
+      // オッズ変動フラッシュ（B案から拝借・表示演出のみ）＝賭式切替で参照オッズが変わる瞬間を光らせる
+      pickGrid.querySelectorAll(".bp-odds b").forEach(o => { o.classList.remove("flash"); void o.offsetWidth; o.classList.add("flash"); });
     };
   });
-  // Two-step bet: pick → 賭ける (commit) → wager + 出走/やめる. Keeps the wager UI
-  // hidden until the player has decided to bet, so the panel reads cleanly.
-  function showBetStep(n) {
-    const s1 = $("bet-step1"), s2 = $("bet-step2");
-    if (s1) s1.style.display = n === 1 ? "" : "none";
-    if (s2) s2.style.display = n === 2 ? "" : "none";
-  }
-  // ---- Stake controls: slider + −/+ stepper + fraction chips. Tap or drag to set
-  // the wager — no number-typing needed. The field stays editable for power users
-  // but is NEVER auto-focused, so the mobile keyboard no longer pops up on every bet. ----
+  // ---- Stake controls: −/+ stepper + fraction chips（スリップ内・キーボード不要）。 ----
   const stepAmt = betStepSize(effMax);
   const wagerCur = () => { const n = parseInt(String($("wager").value || "").replace(/[^0-9]/g, ""), 10); return Number.isNaN(n) ? 0 : n; };
   function setWager(v) {
     v = Math.round(v); if (Number.isNaN(v)) v = 0;
     v = Math.max(1, Math.min(v, effMax));
     const w = $("wager"); if (w) w.value = v;
-    const sl = $("wager-slider"); if (sl) sl.value = v;
     const cg = $("wager-chips"); if (cg) cg.querySelectorAll(".wchip").forEach(c => c.classList.toggle("chosen", +c.dataset.amt === v));
     updateExpected();
   }
-  $("wager-slider").oninput = () => setWager(+$("wager-slider").value);
   $("wager-minus").onclick = () => setWager(wagerCur() - stepAmt);
   $("wager-plus").onclick = () => setWager(wagerCur() + stepAmt);
-  $("wager").oninput = () => {                         // optional manual typing
-    const n = wagerCur(); const sl = $("wager-slider");
-    if (sl && n >= 1) sl.value = Math.min(n, effMax);
-    updateExpected();
-  };
+  $("wager").oninput = () => updateExpected();          // optional manual typing
   $("wager").onblur = () => setWager(wagerCur());       // clamp once they finish typing
   const chipsEl = $("wager-chips");
   [{ l: "¼", a: Math.round(effMax * 0.25) }, { l: "½", a: Math.round(effMax * 0.5) }, { l: "最大", a: effMax }].forEach(c => {
@@ -1986,10 +1968,10 @@ function renderRaceDetail(race) {
     chipsEl.appendChild(chip);
   });
 
-  $("bet-confirm").onclick = onConfirmBet;
+  // ※ onclickに直接渡すとclickイベントが skipDialog 扱いになり確認（投票券）を飛ばして即出走する
+  //   （潜在バグが常設スリップ化で顕在化＝ラッパで明示的に引数なし呼び出し）。
+  $("bet-confirm").onclick = () => onConfirmBet();
   $("back-race-select").onclick = renderRaceSelect;
-  $("bet-start").onclick = () => { showBetStep(2); setWager(wagerCur()); };
-  $("bet-cancel").onclick = () => showBetStep(1);
 
   renderPickState();
   updateExpected();   // initial payout hint + confirm-disabled state
@@ -2278,24 +2260,16 @@ function updateExpected() {
   // ステップ2でも「誰に・どの賭式で」を常時表示（賭金をいじっている間に本命を見失わない）
   const ss = $("bet-sel-sum");
   if (ss) {
-    const tL = { win: "単竜", place: "複竜", wide: "ワイド竜" }[type] || type;
+    const tL = { win: "単勝", place: "複勝", wide: "ワイド" }[type] || type;
     const nm = id => { const d = DRAGONS.find(x => x.id === id); return d ? d.name : ""; };
     ss.innerHTML =
-      `<span class="bss-k">本命</span><b class="bss-nm">${nm(a)}${type === "wide" ? " ＋ " + nm(b) : ""}</b>` +
-      `<span class="bss-odds">${tL} ${odds.toFixed(1)}倍</span>` +
-      `<button type="button" class="bss-edit" id="bet-edit">変更</button>`;
-    const be = ss.querySelector("#bet-edit");
-    if (be) be.onclick = () => {
-      const s1 = $("bet-step1"), s2 = $("bet-step2");
-      if (s1) s1.style.display = ""; if (s2) s2.style.display = "none";
-    };
+      `<span class="bss-tix">🎫</span><b class="bss-nm">${nm(a)}${type === "wide" ? " ＋ " + nm(b) : ""}</b>` +
+      `<span class="bss-odds">${tL} <b>${odds.toFixed(1)}</b>倍</span>`;
   }
-  // リスクとリターンを常に対で見せる（ハズレ時の損失も明示）
+  // 払戻をヒーロー数字に（リスク＝ハズレ時も対で明示）
   box.innerHTML =
-    `<div class="po-line"><span class="pl-k">オッズ</span><span class="pl-v">${odds.toFixed(1)} 倍</span></div>` +
-    `<div class="po-line"><span class="pl-k">的中時払戻</span><span class="pl-v">${fmtCoins(payout)} コイン</span></div>` +
-    `<div class="po-line po-profit"><span class="pl-k">利益（上乗せ）</span><span class="pl-v">+${fmtCoins(payout - c.bet.wager)}</span></div>` +
-    `<div class="po-line po-loss"><span class="pl-k">ハズレ時</span><span class="pl-v">−${fmtCoins(c.bet.wager)}</span></div>`;
+    `<div class="po-hero"><span class="pl-k">的中時払戻</span><span class="pl-v">${fmtCoins(payout)}<small>コイン</small></span></div>` +
+    `<div class="po-sub"><span class="po-profit">利益 +${fmtCoins(payout - c.bet.wager)}</span><span class="po-loss">ハズレ時 −${fmtCoins(c.bet.wager)}</span></div>`;
   if (confirmBtn) confirmBtn.disabled = false;
 }
 
@@ -2452,19 +2426,29 @@ function settleRace() {
 // §07 §13 Bet confirmation modal.
 function showBetConfirm() {
   const c = state.current;
-  const typeLabel = { win:"単竜", place:"複竜", wide:"ワイド竜" }[c.bet.type];
-  const sel = c.bet.selections.map(id => DRAGONS.find(d => d.id === id).name).join(" + ");
+  const typeLabel = { win: "単勝", place: "複勝", wide: "ワイド" }[c.bet.type];
+  const sel = c.bet.selections.map(id => DRAGONS.find(d => d.id === id).name).join(" ＋ ");
   const odds = betOdds(c.bet, c.oddsResult);
   const payout = Math.floor(c.bet.wager * odds);
   const overlay = document.getElementById("event-overlay");
-  document.getElementById("event-speaker").textContent = "賭けの確認";
+  // ★投票券モチーフ（C演出）：半券つきチケット→「千切って出走」。表示のみ＝数値は betOdds のまま。
+  const serial = `No.${String(c.race.id || "R").replace(/[^a-z0-9]/gi, "").slice(-6).toUpperCase()}-${String((state.player.completedRaces || 0) + 1).padStart(4, "0")}`;
+  document.getElementById("event-speaker").textContent = "🎫 聖龍レース投票券";
   document.getElementById("event-text").innerHTML =
-    `<div class="bcf-row"><span class="k">賭式</span><b>${typeLabel}</b></div>` +
-    `<div class="bcf-row"><span class="k">選択</span><b>${sel}</b></div>` +
-    `<div class="bcf-row"><span class="k">賭金</span><b>${fmtCoins(c.bet.wager)} コイン</b></div>` +
-    `<div class="bcf-row"><span class="k">オッズ</span><b>${odds.toFixed(1)} 倍</b></div>` +
-    `<div class="bcf-pay">的中時払戻 <b>${fmtCoins(payout)}</b> コイン</div>` +
-    `<div class="bcf-q">この賭けで出走しますか？</div>`;
+    `<div class="tix" id="tix-card">` +
+      `<div class="tix-main">` +
+        `<div class="tix-head"><span class="tix-brand">聖龍競竜会 公認</span><span class="tix-serial">${serial}</span></div>` +
+        `<div class="tix-race">${raceFullName(c.race)}</div>` +
+        `<div class="tix-sel"><span class="tix-type">${typeLabel}</span><b>${sel}</b></div>` +
+        `<div class="tix-rows">` +
+          `<span class="tix-row"><small>賭金</small><b>${fmtCoins(c.bet.wager)}</b></span>` +
+          `<span class="tix-row"><small>オッズ</small><b>${odds.toFixed(1)}倍</b></span>` +
+          `<span class="tix-row tix-pay"><small>的中払戻</small><b>${fmtCoins(payout)}</b></span>` +
+        `</div>` +
+      `</div>` +
+      `<div class="tix-stub"><span>半券</span><b>${typeLabel}</b><i>${odds.toFixed(1)}</i></div>` +
+    `</div>` +
+    `<div class="bcf-q">千切ると、出走が確定します。</div>`;
   // Swap close button for two buttons（出走＝主ボタン／やめる＝副）
   const closeBtn = document.getElementById("event-close");
   closeBtn.style.display = "none";
@@ -2474,8 +2458,13 @@ function showBetConfirm() {
   actions.id = "bet-confirm-actions";
   const no = document.createElement("button"); no.textContent = "やめる"; no.className = "secondary";
   no.onclick = () => { closeBetConfirm(); };
-  const yes = document.createElement("button"); yes.textContent = "🐉 出走する"; yes.className = "bcf-go";
-  yes.onclick = () => { closeBetConfirm(); onConfirmBet(true); };
+  const yes = document.createElement("button"); yes.textContent = "🎫 千切って出走"; yes.className = "bcf-go";
+  yes.onclick = () => {
+    const t = document.getElementById("tix-card");
+    yes.disabled = true; no.disabled = true;
+    if (t) { t.classList.add("tear"); try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} }
+    setTimeout(() => { closeBetConfirm(); onConfirmBet(true); }, t ? 420 : 0);
+  };
   actions.appendChild(no); actions.appendChild(yes);
   closeBtn.parentNode.appendChild(actions);
   overlay.classList.remove("hidden");
@@ -3002,30 +2991,8 @@ function renderResult() {
     c.resultHooksRan = true;
   }
 
-  // 🛍️ モール解放イベント（初的中・一度きり）：サケが使い方を解説→『ジャングルバニー』を贈与→
-  // ミミがその場で着替えて happy 立ち絵で登場（2段構成）。表示メタのみ・コイン非消費。
-  if (c.firstHitEver && !(state.player.flags || {}).mallIntroSeen && !c._mallIntroPlayed && window.Dialogue) {
-    c._mallIntroPlayed = true;
-    setTimeout(() => {
-      Dialogue.play([
-        ["sake", "初勝利、見事だったぞ。……ところでミミ、いつまでそのボロを着てるつもりだ？"],
-        ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
-        ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ホームに🛍️モールを開けておいた。稼いだコインで好きに選べ。試着は自由、着替えは無料だ。"],
-        ["sake", "それと、初勝利の祝いだ。『ジャングルバニー』──葉っぱと馬券で武装した、お前の勝負服第一号だ。受け取れ。", "happy"]
-      ]).then(() => {
-        try {
-          state.player.flags.mallIntroSeen = true;
-          if (!state.player.outfitsWon) state.player.outfitsWon = [];
-          if (state.player.outfitsWon.indexOf("jungle") < 0 && !outfitOwned(outfitById("jungle"))) state.player.outfitsWon.push("jungle");
-          if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
-          if (typeof saveGame === "function") saveGame();
-          try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
-          // 着替え後の立ち絵（現在衣装=jungle）で登場
-          Dialogue.play([["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"]]);
-        } catch (e) {}
-      });
-    }, 600);
-  }
+  // 🛍️ モール解放＝第2話既読ゲート（E3解消）。初的中のお祝いは📖図鑑cut-in（progression.js）が担い、
+  // サケの衣装ギフトVNはモール初訪問時（ui_mall.js → playMallIntroVN）へ移設した（2026-07）。
 
   // 🐲 泣き虫竜ポロ 発見イベント：序盤の「2勝目（単勝）」で出会う（第4章開放=総資産100万より前。
   // ポロは第3・4章の一枚絵に既に登場するため、それより前に加入させる）。完了で龍舎/スカウト解放。
@@ -3310,10 +3277,8 @@ function pickAdvisorReaction(ps, c) {
 function buildResultHero(ps, tier, c) {
   const info = RESULT_TIER[tier] || RESULT_TIER[0];
   const hit = !!ps.hit;
-  const muteIc = (window.Sfx && Sfx.isMuted()) ? "🔇" : "🔊";
   const hero = el("div", "rs-hero rs-" + info.cls);
   hero.innerHTML =
-    `<button class="rs-mute" title="サウンド切替">${muteIc}</button>` +
     `<div class="rs-confetti" aria-hidden="true"></div>` +
     `<div class="rs-stamp">${info.word}</div>` +
     (hit
@@ -3326,16 +3291,7 @@ function buildResultHero(ps, tier, c) {
       `　・　所持 <b>${fmtCoins(state.player.coins)}</b></div>` +
     `<div class="rs-streak" id="rs-streak">${streakLineHtml(c && c.streakInfo)}</div>`;
 
-  const mb = hero.querySelector(".rs-mute");
-  if (mb) mb.onclick = (e) => {
-    e.stopPropagation();
-    if (window.Sfx) {
-      Sfx.setMuted(!Sfx.isMuted());
-      if (window.RaceBgm) RaceBgm.setMuted(Sfx.isMuted());
-      mb.textContent = Sfx.isMuted() ? "🔇" : "🔊";
-      if (!Sfx.isMuted()) Sfx.play("click");
-    }
-  };
+  // （音声操作は全画面共通の🔊FABへ一本化＝rs-mute ボタンは撤去・ユーザー指摘のUX整理）
 
   // Celebrate exactly once per race; on later re-renders (tab switches) just
   // show the final number statically.

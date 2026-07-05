@@ -100,7 +100,9 @@ const KONRON_AREAS = [
   { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 61, my: 27, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
 ];
 
-function konronMapUnlocked() { return true; }
+// ★観光は「初勝利」で解放（進行組み込み・ユーザー確定 2026-07・docs/GAME_FLOW_REDESIGN.md §1）。
+//   序盤3目標（出走→的中→勝利）の締めのご褒美として島が開く。ロックは条件明示（ホームの🔒枠）。
+function konronMapUnlocked() { return ((state.player && state.player.wins) || 0) >= 1; }
 function _kmTotal() { return (state.player && state.player.totalAssets) || 0; }
 function _kmSpotOpen(s) { return _kmTotal() >= (KM_TIER_AT[(s && s.tier) || 0] || 0); }
 function _kmTierLabel(t) { return ["序盤", "中盤", "後半", "終盤"][t] || ""; }
@@ -161,6 +163,12 @@ function _ktRenderRail() {
 }
 
 function renderKonronMap() {
+  if (!konronMapUnlocked()) {   // 解放前は入口で案内（?go=直行や旧導線でも迷子にしない）
+    renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ 観光",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "konron_map";
   _kmArea = null; _kmSpot = null; _ktCat = "all";
   const app = beginScreen();
@@ -386,6 +394,21 @@ function _kmContentHtml(spotId) {
   return h + '</div>';
 }
 
+// K3-A3: 章→舞台スポットの対応（表示のみ）。[章配列, 日報風キャプション]
+const KM_STAMP = {
+  tanryu:     [[1], "第1話——すべては、はじめての一枚の券から。"],
+  makemeshi:  [[1], "第1話——負けた夜の一杯が、再起の出発点だった。"],
+  market:     [[2], "第2話——ミズの言う“市場のほんとう”は、この湯気の中に。"],
+  mall:       [[2], "第2話——開店祝いはサケから。ミミ、はじめての衣装選び。"],
+  kachimeshi: [[3], "第3話——暮らしが根を張りはじめた頃、祝いの串はここで。"],
+  ryusha:     [[3], "第3話——泣き虫の子竜と出会った、竜たちの森。"],
+  oshigoods:  [[4], "第4話——配信の時代。推しの旗が、観客席を埋めていく。"],
+  uroko:      [[4], "第4話——バズった夜は、湯けむりでクールダウン。"],
+  kibishis:   [[5], "終章——空がいちばん近い場所で、彼女は“天井”を見上げた。"],
+  dakon:      [[5], "終章——島の奥に眠るものが、静かに目を覚ます。"],
+  racecourse: [[6], "そして今日も——聖龍が駆け、島は笑う。"]
+};
+
 function _kmRenderPanel() {
   const panel = document.getElementById("km-panel"); if (!panel) return;
 
@@ -395,11 +418,30 @@ function _kmRenderPanel() {
     const c = KM_CATS[s.cat] || KM_CATS.port;
     const area = _kmAreaOf(_kmSpot);
     const open = _kmSpotOpen(s);
+    // K3-A3（docs/KURASHI_STORY_WEAVE.md A3）：「いまの話の舞台」章スタンプ。
+    // 現章がそのスポットの舞台なら日報風バッジを出す（表示のみ・KONRON_SPOTS本体は不変）。
+    // K2（暮らし還流）：写真を見た記録＝表示専用メタ。還流台帳 k_spots8/k_spots20 と
+    // 日報の文化面小イベントがこのカウントに反応する（docs/KURASHI_STORY_WEAVE.md B）。
+    if (open && s.photo) {
+      try {
+        const kz = state.player.kurashi || (state.player.kurashi = {});
+        const seen = kz.spotsSeen || (kz.spotsSeen = {});
+        if (!seen[_kmSpot]) { seen[_kmSpot] = 1; if (typeof saveGame === "function") saveGame(); }
+      } catch (e) {}
+    }
     panel.style.setProperty("--kmc", c.color);
     let body = (open && s.photo) ? _kmSpotPhotoBanner(s) : _kmZoomBanner(area);
     if (area && area.spots.length > 1) body += `<button class="km-areaback" data-back="1">← ${area.name}</button>`;
     body += `<div class="km-card-head"><span class="km-card-ic">${c.ic}</span>` +
       `<div class="km-card-id"><b>${s.name}</b><small>${c.name}${s.time && s.time !== "—" ? "・" + s.time : ""}</small></div></div>`;
+    // K3-A3: 「いまの話の舞台」章スタンプ（現章が舞台のスポットだけ・表示のみ）
+    try {
+      const chNow = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
+      const stamp = KM_STAMP[_kmSpot];
+      if (open && stamp && stamp[0].indexOf(chNow) >= 0) {
+        body += `<div class="km-stamp">📰 いまの話の舞台<span>${stamp[1]}</span></div>`;
+      }
+    } catch (e) {}
     if (!open) {
       body += `<div class="km-card-lock">🔒 まだ行けない場所（<b>${_kmTierLabel(s.tier)}</b>で解放）。総資産 ${KM_TIER_AT[s.tier].toLocaleString("ja-JP")} で開放。</div>`;
     } else {

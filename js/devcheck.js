@@ -115,10 +115,23 @@
       var cur = curScreen();
       var ids = SCREEN_INDEX.map(function (s) { return s.id || s; }).filter(function (id) { return !skip[id]; });
       var i = 0;
+      // ★入場アニメ(translateX)の途中を測ると全画面が“右に18pxあふれ”に見える誤検出が出る（実測で確認）。
+      //   さらにバックグラウンドタブではCSSアニメがスロットルされ「待っても終わらない」ため、
+      //   待つのではなく finite アニメを終端へ強制送り（finish()）してから測る＝環境非依存の確定測定。
+      function afterAnims(cb) {
+        setTimeout(function () {
+          try {
+            document.getElementById("app").getAnimations({ subtree: true }).forEach(function (a) {
+              try { if ((a.effect.getTiming().iterations || 1) !== Infinity) a.finish(); } catch (e) {}
+            });
+          } catch (e) {}
+          setTimeout(cb, 60);   // rAFはバックグラウンドタブで止まる＝使わない（finish()後のスタイル反映は同期）
+        }, 120);
+      }
       (function step() {
         if (i >= ids.length) { try { goto(cur); } catch (e) {} resolve(aggregate(report)); return; }
         try { goto(ids[i]); } catch (e) {}
-        setTimeout(function () { report.screens.push(perScreen(ids[i])); i++; step(); }, 300);
+        afterAnims(function () { report.screens.push(perScreen(ids[i])); i++; step(); });
       })();
     });
   }

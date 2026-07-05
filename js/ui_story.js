@@ -66,11 +66,37 @@ function renderStory() {
   });
   news.appendChild(arts);
 
+  // ★特別號＝クリア後の送り出し（B3解消・docs/GAME_FLOW_REDESIGN.md §3）。ED到達後のみ掲載。
+  //   物語の側から「次はこれで遊べる」を記事として案内する（表示専用・goto導線のみ）。
+  // edFlagの実体は state.player.epilogue（epilogue_engine.js epData()）＝ state.epilogue ではない
+  // （誤パス参照だと実EDで特別號が出ない＝QAで自分が偽パスを作って自己合格していた反省込み）。
+  const _edReached = (typeof epData === "function") ? !!epData().edFlag
+    : !!(state.player && state.player.epilogue && state.player.epilogue.edFlag);
+  if (typeof STORY_EXTRA_ISSUE !== "undefined" && _edReached) {
+    news.appendChild(_newsRubric("特別號 ・ クリア後の島"));
+    const ex = el("div", "news-lead");
+    ex.textContent = STORY_EXTRA_ISSUE.lead;
+    news.appendChild(ex);
+    const exArts = el("div", "news-arts");
+    STORY_EXTRA_ISSUE.articles.forEach(a => {
+      const art = el("button", "news-art");
+      art.innerHTML =
+        `<span class="news-photo-s"><span class="sym">${a.icon}</span></span>` +
+        `<span class="news-art-tx"><span class="news-kicker">クリア後</span>` +
+          `<span class="news-head">${a.title}</span><span class="news-lead2">${a.body}</span></span>` +
+        `<span class="news-art-go">▸</span>`;
+      art.onclick = () => { if (typeof goto === "function") goto(a.go); };
+      exArts.appendChild(art);
+    });
+    news.appendChild(exArts);
+    news.appendChild(el("div", "news-quote", STORY_EXTRA_ISSUE.quote));
+  }
+
   // 號外コラム（小イベント＝短い挿話・進行で解放・再読可）。js/data_story_events.js
   if (typeof storyEvents === "function") {
     const evs = storyEvents();
     const st = (typeof storyEventsStats === "function") ? storyEventsStats() : { got: evs.length, total: evs.length, unread: 0 };
-    news.appendChild(_newsRubric(`號外コラム ・ 島の小話 <span class="news-rub-n">${st.got}／${st.total}${st.unread ? `・速報 ${st.unread}` : ""}</span>`));
+    news.appendChild(_newsRubric(`<img class="news-men" src="images/kurashi/men_bunka.webp" alt="文化面" onerror="this.remove()">號外コラム ・ 島の小話 <span class="news-rub-n">${st.got}／${st.total}${st.unread ? `・速報 ${st.unread}` : ""}</span>`));
     if (!evs.length) {
       news.appendChild(el("div", "news-empty", "——続報を待て。物語を進めると、小さな記事が舞い込む。"));
     } else {
@@ -171,12 +197,14 @@ function renderStoryChapter(chId) {
   const issue = (state.player.completedRaces || 0) + 1;
   news.appendChild(_newsMast(`第 ${issue} 號`, ch.id === "ED" ? "最終一面" : "特集一面"));
 
-  // 大見出し
+  // 大見出し＝記事の芸（headline・2026-07全面再執筆）。旧タイトルは肩の subhead に降ろす。
   const kicker = cast ? cast.tag : (ch.id === "ED" ? "最終回" : "特報");
   news.appendChild(el("div", "news-kicker news-kicker-lg", kicker));
-  news.appendChild(el("div", "news-headline", chapterDisplayTitle(ch)));
-  if (ch.id !== "ED") news.appendChild(el("div", "news-subhead", ch.title));
+  news.appendChild(el("div", "news-headline", ch.headline || chapterDisplayTitle(ch)));
+  news.appendChild(el("div", "news-subhead", ch.title));
   if (cast) news.appendChild(el("div", "news-byline", `寄稿：${cast.name}（${cast.tag}）　◆　授けるもの＝${cast.gives}`));
+  // リード＝旧「一文・件。」スタイルの継承枠（本文の前に太らせず1段で）
+  if (ch.lead) news.appendChild(el("div", "news-lead", ch.lead));
 
   // 本紙写真（ハーフトーン枠・タップで全画面）
   const photo = el("div", "news-photo viewable");
@@ -220,6 +248,11 @@ function renderConsult() {
   news.appendChild(lead);
 
   news.appendChild(_newsRubric("論説委員 ・ 寄稿者名簿"));
+  // C5解消：各顧問の「機能としての効果」を1行明記（特に神眼1.1倍の在り処＝レース詳細画面）。
+  const CONSULT_EFFECT = {
+    celestia: "🔮 効果：レース詳細の「1着を聞く」＝その竜の単勝・複勝が最低1.1倍で確実（答えは知れ渡り配当は縮む・使うかは任意）",
+    _default: "📖 効果：予想の視点を授ける読みもの（レース結果への介入なし）"
+  };
   const arts = el("div", "news-arts");
   Object.keys(STORY_CAST).forEach(k => {
     const c = STORY_CAST[k];
@@ -233,7 +266,8 @@ function renderConsult() {
       ? photo + `<span class="news-art-tx"><span class="news-kicker">${c.tag}</span>` +
           `<span class="news-head">${c.name}</span>` +
           `<span class="news-lead2">${c.focus}　／　授けるもの＝${c.gives}</span>` +
-          `<span class="news-quote">「${c.consult}」</span></span>`
+          `<span class="news-quote">「${c.consult}」</span>` +
+          `<span class="news-lead2">${CONSULT_EFFECT[k] || CONSULT_EFFECT._default}</span></span>`
       : photo + `<span class="news-art-tx"><span class="news-kicker">？？？</span>` +
           `<span class="news-head"><span class="news-censor">■■■■</span></span>` +
           `<span class="news-lead2">総資産 ${fmtCoins(castUnlockAt(k))} にて初登場</span></span>`;

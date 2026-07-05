@@ -103,14 +103,17 @@ function renderHome() {
   const p = state.player;
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   // daily login reward — checked once per session, shown just after home paints
+  // ★D4解消（FTUE保護）：初出走前は文脈のない報酬ポップを出さない＝初回導線（→レースへ）に集中させる。
   let _doGreet = false;   // 挨拶はVNではなく“配信の吹き出し”で（大立ち絵と二重にしない）
-  if (!window._mimiLoginChecked) {
+  if (!window._mimiLoginChecked && (p.completedRaces || 0) >= 1) {
     window._mimiLoginChecked = true;
     try {
       const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
       if (_lb) setTimeout(() => showLoginBonus(_lb), 420);
       else _doGreet = true;
     } catch (e) {}
+  } else if (!window._mimiLoginChecked) {
+    window._mimiLoginChecked = true; _doGreet = true;   // 新規：ログボは出さないが挨拶の吹き出しは出す
   }
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
   const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : 0;
@@ -280,6 +283,12 @@ function renderHome() {
     };
     sysDd.appendChild(ddFs);
   }
+  // H1: 設定/シェアをヘッダー⋯へ常設（配信モードのタブバー統合の受け皿・静かモードでも便利）
+  const ddSet = el("button", null, "⚙️ 設定");
+  ddSet.onclick = () => { sysDd.classList.add("hidden"); renderSettings(); };
+  const ddShare = el("button", null, "📣 友達にシェア");
+  ddShare.onclick = () => { sysDd.classList.add("hidden"); shareGameInfo(); };
+  sysDd.appendChild(ddSet); sysDd.appendChild(ddShare);
   const ddReset = el("button", null, "🔄 データをリセット");
   ddReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
   sysDd.appendChild(ddTitle); sysDd.appendChild(ddReset);
@@ -392,6 +401,11 @@ function renderHome() {
       goalBtn.innerHTML = _html;
       if (_onclick) goalBtn.onclick = _onclick;
       stage.appendChild(goalBtn);
+      // C4解消：☄️メーターチップの“ホーム初出”時に一度だけ自動説明（従来は島の経済画面でしか出なかった）。
+      //   500ms＝progressionCheckOnHome(700ms)より先に出す→1到着1モーダルルールで解放通知側が譲る。
+      if (_cls.indexOf("hl-goal--ep") >= 0 && typeof maybeShowMeterHelpFirstTime === "function") {
+        setTimeout(() => { try { if (state.ui.screen === "home") maybeShowMeterHelpFirstTime(); } catch (e) {} }, 500);
+      }
     }
   }
 
@@ -571,14 +585,27 @@ function renderHome() {
     if (r.width) _heart(r.width * (0.84 + Math.random() * 0.1), r.height * (0.55 + Math.random() * 0.3));
   }, 3800));
 
-  // 入場通知（TikTokの "joined" 風・表示専用）：ときどき誰かが遊びに来る
-  function _joinCm() {
+  // 入場通知（TikTokの "joined" 風・表示専用）：ときどき誰かが遊びに来る。
+  // まれにVIPが金の入場バナー＋⭐バーストで来る＝配信の「おっ」という瞬間（表示のみ）。
+  const _VIPS = ["👑 推し竜団長", "🐉 竜好きの長老", "💎 島いちの太客", "🎤 マクラ（お忍び）"];
+  function _joinCm(vip) {
+    if (vip) {
+      const vnm = _VIPS[Math.floor(Math.random() * _VIPS.length)];
+      _addCm(vnm, "#ffd34d", " が入場しました！", "join vipjoin");
+      if (!_reduce) {
+        const r = stage.getBoundingClientRect();
+        if (r.width) for (let i = 0; i < 5; i++) ((d) => setTimeout(() => {
+          if (state.ui.screen === "home") _heart(r.width * (0.2 + Math.random() * 0.6), r.height * (0.38 + Math.random() * 0.38), "⭐");
+        }, d))(i * 110);
+      }
+      return;
+    }
     const nm = _CMN[Math.floor(Math.random() * _CMN.length)];
     _addCm("🌟" + nm, "#b9a0ff", " が遊びにきた！", "join");
   }
   if (broadcast) window._hlTimers.push(setInterval(() => {   // ★入場通知は配信モードのみ
     if (state.ui.screen !== "home") return;
-    if (Math.random() < 0.4) _joinCm();
+    if (Math.random() < 0.4) _joinCm(Math.random() < 0.12);
   }, 9500));
 
   // ギフト演出（投げ銭ごっこ・完全に表示専用＝コインは1枚も動かない）：
@@ -693,6 +720,12 @@ function renderHome() {
     if (!qr.classList.contains("hidden")) _qrT = setTimeout(() => qr.classList.add("hidden"), 7000);
   };
   cmbar.appendChild(cmInput);
+  // 🎁ギフト：視聴者が投げるギフト演出を自分でも起こせる（TikTokの入力行＝[コメント][🎁][❤️]。
+  // 投げ銭ごっこ＝表示専用・コインは1枚も動かない）
+  const giftBtn = el("button", "hl-giftbtn", "🎁");
+  giftBtn.title = "ギフトを投げる（ごっこ・無料）";
+  giftBtn.onclick = () => { try { _giftCm(); } catch (e) {} };
+  cmbar.appendChild(giftBtn);
   // ❤️いいね：タップでカウント＋ハート噴出。自動でもじわじわ増える（ライブ感・表示専用）
   let _likes = 1200 + Math.floor(_viewers * 6) + p.completedRaces * 15;
   const _fmtL = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
@@ -700,6 +733,7 @@ function renderHome() {
   const _setLike = () => { const b = likeBtn.querySelector("b"); if (b) b.textContent = _fmtL(_likes); };
   likeBtn.onclick = () => {
     _likes += 1; _setLike();
+    likeBtn.classList.remove("bump"); void likeBtn.offsetWidth; likeBtn.classList.add("bump");   // 数字がポンと跳ねる
     if (!_reduce) { const r = stage.getBoundingClientRect(); if (r.width) for (let i = 0; i < 2; i++) _heart(r.width * (0.78 + Math.random() * 0.16), r.height * (0.55 + Math.random() * 0.3)); }
     if (Math.random() < 0.07) mimiSay("いいね、ありがとっ！");
   };
@@ -716,50 +750,114 @@ function renderHome() {
   // コメント/いいねバーだけが常設フロート層＝出入りが無いのでミミの立ち位置も固定ドックも不動（ユーザー指摘）。
   if (actionFloat.children.length) wrap.appendChild(actionFloat);
 
+  // H3磨き3：タブ/CTA押下→130msのフェードで次画面へ（遷移の連続性＝ガタつかせない）。
+  // reduced-motion時と静かモードは即遷移のまま。表示のみ。
+  const _tikGo = (fn) => {
+    const appEl = document.getElementById("app");
+    const reduce = (typeof matchMedia === "function") && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!appEl || !broadcast || reduce) { fn(); return; }
+    appEl.classList.add("scr-fade");
+    setTimeout(() => {
+      try { fn(); } finally { requestAnimationFrame(() => appEl.classList.remove("scr-fade")); }
+    }, 130);
+  };
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
-  raceBtn.onclick = () => renderRaceSelect();
+  raceBtn.onclick = () => _tikGo(() => renderRaceSelect());
   dock.appendChild(raceBtn);
 
+  // ★ナビ＝常時10枠固定（docs/GAME_FLOW_REDESIGN.md §1・D1/D3/A4解消）。
+  //   出入りで枠数が変わらない＝配信化してもレイアウトがガタつかない。ロック表現は2種だけ：
+  //   ・条件明示ロック＝実アイコン＋🔒ラベル＋タップで解放条件（観光/モール/図鑑）
+  //   ・？？？ミステリー枠＝サプライズ性が価値のもの（龍舎=ポロ・SNS=配信変身）
+  if (broadcast) {
+    wrap.classList.add("tik");   // H2/H3磨きのスコープ（配信モードだけTikTok意匠を適用）
+    // ★H1（docs/HOME_COMMERCIAL_REDESIGN.md・A案=本物のTikTok Live再現）：配信モードは
+    // ガラスの固定5タブ。統合＝食事/モール/龍舎→🏝島（観光ハブ内ポータル）・物語→🌳暮らしハブ・
+    // シェア/設定→ヘッダー⋯。タブは即遷移（確認ポップなし＝商業アプリの作法）。
+    // ロックは🔒＋タップで条件明示（解放の見せ場は維持）。静かモードは従来の10枠のまま。
+    const bar = el("div", "tik-bar");
+    const tikTab = (icon, label, go, opts) => {
+      opts = opts || {};
+      const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));
+      b.innerHTML = `<span class="ic">${icon}</span><span class="lb">${label}</span>` + (opts.dot ? `<i class="dot"></i>` : "");
+      b.onclick = opts.locked ? go : () => _tikGo(go);   // 遷移はフェード・ロックのポップは即時
+      return b;
+    };
+    if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
+      bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap()));
+    } else {
+      bar.appendChild(tikTab("🏝️", "島", () => showInfoPopup("🏝️ 島",
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true }));
+    }
+    bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets()));
+    bar.appendChild(tikTab("🐲", "レース", () => renderRaceSelect(), { center: true }));
+    if (typeof dexUnlocked === "function" && dexUnlocked()) {
+      bar.appendChild(tikTab("📖", "図鑑", () => renderCollection()));
+    } else {
+      bar.appendChild(tikTab("📖", "図鑑", () => showInfoPopup("📖 図鑑",
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。</small></div></div>`), { locked: true }));
+    }
+    const _unreadL = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
+    bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0 }));
+    dock.appendChild(bar);
+  } else {
   const rail = el("div", "hl-rail");
   const navItem = (icon, label, desc, go) => {
     const b = el("button", "hl-item", `<span class="ic">${icon}</span><span class="lb">${label}</span>`);
     b.onclick = () => showNavConfirm(icon, label, desc, go);
     return b;
   };
-  if (typeof renderKonronMap === "function") rail.appendChild(navItem("🏝️", "観光", "崑崙島を写真でめぐる。食べ歩き・買い物・レース・温泉・絶景・推し活へ。", () => renderKonronMap()));
+  const lockedItem = (icon, label, title, teaserHtml) => {
+    const b = el("button", "hl-item locked", `<span class="ic">${icon}</span><span class="lb">🔒${label}</span>`);
+    b.onclick = () => showInfoPopup(title,
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>${teaserHtml}</small></div></div>`);
+    return b;
+  };
+  const mysteryItem = () => {
+    const b = el("button", "hl-item locked", `<span class="ic">❔</span><span class="lb">？？？</span>`);
+    b.onclick = () => showInfoPopup("❔ ？？？",
+      `<div class="mm-row"><span class="mm-ic">❔</span><div><b>ひみつ</b><small>島で暮らしていれば、いつか出会えます。</small></div></div>`);
+    return b;
+  };
+  // 1 観光（初勝利で解放・条件明示）
+  rail.appendChild((typeof konronMapUnlocked === "function" && konronMapUnlocked())
+    ? navItem("🏝️", "観光", "崑崙島を写真でめぐる。食べ歩き・買い物・レース・温泉・絶景・推し活へ。", () => renderKonronMap())
+    : lockedItem("🏝️", "観光", "🏝️ 観光", "レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます。"));
+  // 2 暮らし／3 食事（常設）
   rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
-  if (typeof renderMeals === "function") rail.appendChild(navItem("🍽️", "食事", "ミミの食べ歩きコレクション。食べて・当てて集めます。", () => renderMeals()));
-  if (mallUnlocked()) {
-    rail.appendChild(navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall()));
-  } else {
-    // 第2話「ミズの分析」を読むと開放（progression再設計）
-    const lockedMall = el("button", "hl-item locked", `<span class="ic">🔒</span><span class="lb">モール</span>`);
-    lockedMall.onclick = () => showInfoPopup("🛍️ ショッピングモール",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話「ミズの分析」</u>を読むと開放されます（総資産3千で第2話が解禁）。</small></div></div>`);
-    rail.appendChild(lockedMall);
-  }
-  // 竜まわりナビ：龍舎(ポロ発見=2勝)が解放済みなら🐲龍舎（図鑑・竜スカウトは龍舎の中の導線に集約）。
-  // 図鑑は「第4話＝マクラと推し竜文化」に会ってから解放（ユーザー指定）。龍舎前にマクラに会った稀ケースの
-  // みここで図鑑を単独ナビに。アイコンは🐲（🏠暮らしと重複回避）。
-  if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
-    rail.appendChild(navItem("🐲", "龍舎", "ポロと出会った竜たちの拠点。なでて仲良く＋竜スカウト＋（図鑑）。", () => renderStable()));
-  } else if (typeof dexUnlocked === "function" && dexUnlocked()) {
-    rail.appendChild(navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection()));
-  }
+  rail.appendChild(navItem("🍽️", "食事", "ミミの食べ歩きコレクション。食べて・当てて集めます。", () => renderMeals()));
+  // 4 モール（第2話で解放・条件明示）
+  rail.appendChild(mallUnlocked()
+    ? navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall())
+    : lockedItem("🛍️", "モール", "🛍️ ショッピングモール", "<u>第2話「ミズの分析」</u>を読むと開放されます（総資産3千で第2話が解禁）。"));
+  // 5 龍舎（ポロ発見＝サプライズ→？？？枠）
+  rail.appendChild((typeof poroStableUnlocked === "function" && poroStableUnlocked())
+    ? navItem("🐲", "龍舎", "ポロと出会った竜たちの拠点。なでて仲良く＋竜スカウト＋（図鑑）。", () => renderStable())
+    : mysteryItem());
+  // 6 図鑑（初的中で解放・条件明示・解放後は常設の独立枠＝龍舎に吸収して消さない）
+  rail.appendChild((typeof dexUnlocked === "function" && dexUnlocked())
+    ? navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection())
+    : lockedItem("📖", "図鑑", "📖 図鑑", "レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。"));
+  // 7 物語（常設）
   rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  // 📱 SNS＝タイムライン＋ファンレター。★配信モード（スマホ購入後）のみ＝それまではSNSナビを出さない。
-  if (broadcast && typeof renderSns === "function") {
-    const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
-    rail.appendChild(navItem("📱", "SNS", unread ? `島の投稿＋ファンレター（未読 ${unread} 通）。` : "島のみんなの投稿とファンレター。", () => renderSns()));
-  }
+  // 8 SNS（スマホ購入前＝？？？枠）
+  rail.appendChild(mysteryItem());
+  // 9 設定／10 シェア（常設）
   rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
   rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
-  // 列数を“実際の項目数”に追従させ、右に空きセル（隙間）ができるのを防ぐ。8以下は1行、9以上は2行に均等割り。
+  // 10枠固定＝5列×2行で不変（枠数が変わらないのでレイアウトも不変）。
   const _rn = rail.children.length;
   rail.style.gridTemplateColumns = "repeat(" + (_rn <= 8 ? _rn : Math.ceil(_rn / 2)) + ", 1fr)";
   dock.appendChild(rail);
+  }
   wrap.appendChild(dock);
 
   app.appendChild(wrap);
+
+  // 🔓 解放お祝いチェック（progression.js・ホーム到着1回につきモーダル1件まで）。
+  //   FTUE保護＝初出走前は何も出さない（最初の5分は核ループに集中させる・リサーチ①）。
+  if (typeof progressionCheckOnHome === "function" && (p.completedRaces || 0) >= 1) {
+    setTimeout(() => { try { if (state.ui.screen === "home") progressionCheckOnHome(); } catch (e) {} }, 700);
+  }
 }
 

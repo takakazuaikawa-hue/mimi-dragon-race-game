@@ -36,11 +36,15 @@ function renderMall() {
   if (typeof mallUnlocked === "function" && !mallUnlocked()) {
     renderHome();
     if (typeof showInfoPopup === "function") showInfoPopup("🛍️ ショッピングモール",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると解放されます。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話「ミズの分析」</u>を読むと解放されます（総資産3千で第2話が解禁）。</small></div></div>`);
     return;
   }
   state.ui.screen = "mall";
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();
+  // 初訪問＝サケの開店祝いVN（衣装ギフト）。ホームではVNを出さない鉄則のためここで再生（1回だけ）。
+  if (typeof playMallIntroVN === "function" && !(state.player.flags || {}).mallIntroSeen) {
+    setTimeout(() => { try { playMallIntroVN(); } catch (e) {} }, 500);
+  }
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   const app = beginScreen();                 // 上部にゲーム共通の「← ホーム」
   const scm = el("div", "scm");              // ライト・ポータル本体

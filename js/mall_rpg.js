@@ -1505,12 +1505,13 @@ function rpgRenderExplore(app) {
   rpgGoalSync();   // gold/踏破型のミッション進捗を反映
   const wrap = el("div", "rpg-explore");
 
-  // 上段HUD：いる場所＋🎯目標／バイタル
+  // 上段HUD：いる場所＋🎯目標＋？ヘルプ／バイタル（C6解消＝ラン中でもルールを確認できる恒常？）
   const head = el("div", "rpg-runhead2");
   head.innerHTML =
     `<div class="rh-top">` +
       `<span class="rpg-chip win">${RPG.tower ? "🌟" : "🏬"} ${rpgFloorMeta(RPG.fi).name}</span>` +
       (RPG.goal ? `<span class="rpg-chip goal${RPG.goal.done ? " done" : ""}">${RPG.goal.done ? "✅ " + RPG.goal.label : rpgGoalChip(RPG.goal)}</span>` : "") +
+      `<button class="rpg-chip rpg-runhelp" title="あそびかた">？</button>` +
     `</div>` +
     `<div class="rh-vit">` +
       `<span class="rpg-chip hp">❤️${d.hp}/${d.maxhp}</span>` +
@@ -1519,6 +1520,8 @@ function rpgRenderExplore(app) {
       `<span class="rpg-chip">🧝Lv${d.lv}</span>` +
       ((RPG.calm || 0) > 0 ? `<span class="rpg-chip calm">🔕 平和 ${RPG.calm}歩</span>` : "") +
     `</div>`;
+  const _hq = head.querySelector(".rpg-runhelp");
+  if (_hq) _hq.onclick = () => rpgShowHelp();
   wrap.appendChild(head);
 
   // 没入ステージ：一人称ビュー＋ミニマップ＆ログ。タップで“見えているお店”に入る

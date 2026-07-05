@@ -75,7 +75,39 @@ function rcBgForSlug(slug, fbSlug, onReady) {
   if (!e.ok && onReady) e.cbs.push(onReady);
   return e.ok ? e.img : null;
 }
-function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.region] || "fire", "fire", onReady); }
+function rcBgFor(race, onReady) { return rcBgForSlug(RC_BG_SLUG[race && race.region] || "stadium", "stadium", onReady); }
+
+// ===== R8-W1: 3層パララックス背景 v2（images/racebg_v2/<slug>_L1..L3.webp）=====
+// 夜系（夕/黄昏/夜）のレースで一枚絵ベースに代わり、遠景/中景/近景帯を別レートで流す。
+// ここは生画像の読込だけ——描画サイズへの焼き込み（ループ化クロスフェード込み）はプレイヤー側 bakePara()。
+// 3枚揃わない/読込失敗の地域は従来経路へ自動フォールバック。表示のみ・レース数値不変。
+var RC_PARA_SLUG = { "グランドクロック地域": "grandclock", "ルミナ地域": "lumina", "リングロッソ地域": "ringrosso", "カルデラ地域": "caldera", "ミストレイク地域": "mistlake", "ヴェント峡谷地域": "vento", "ノッテムーンライト地域": "notte", "ラパン祭典地域": "lapan" };
+// R8-W7: 地域の「光の粒」色（加算発光の漂うモート＝熾火/蛍/星屑/提灯の火の粉…・表示のみ）
+var RC_PARA_MOTE = { stadium: "#ffe9a8", grandclock: "#ffd98a", lumina: "#7cd8ff", ringrosso: "#ff9a6a", mistlake: "#9ad2c8", caldera: "#ff9a4d", vento: "#e8d9a8", notte: "#a98fe8", lapan: "#ffb35c" };
+var _rcParaCache = {};
+// ゲーム時間帯→納品フォルダ（images/racebg_v2_time/<dir>/・5時間帯×9地域×3層=135枚検品済）。
+// 納品の evening=夕焼け（明るく赤い）・dusk=黄昏（暗い紫）＝画素実測で対応を決定。
+var RC_TIME_DIR = { morning: "morning", day: "noon", sunset: "evening", dusk: "dusk", night: "night" };
+function rcParaFor(race, onReady, timeDir) {
+  // e.slug は常にベース地域名（旗ゲート/光の粒の色引きが時間帯に依存しないように）。
+  // 読込失敗は fail→従来経路（一枚絵/プロシージャル）へ自動フォールバック。
+  var base = RC_PARA_SLUG[race && race.region] || "stadium";
+  var dir = timeDir || "night";
+  var key = dir + "/" + base;
+  var e = _rcParaCache[key];
+  if (!e) {
+    e = _rcParaCache[key] = { slug: base, ok: false, fail: false, n: 0, imgs: [], cbs: [] };
+    ["L1", "L2", "L3"].forEach(function (k, i) {
+      var im = new Image();
+      im.onload = function () { if (++e.n === 3 && !e.fail) { e.ok = true; e.cbs.splice(0).forEach(function (f) { try { f(); } catch (_) {} }); } };
+      im.onerror = function () { e.fail = true; e.cbs.length = 0; };
+      im.src = "images/racebg_v2_time/" + key + "_" + k + ".webp";
+      e.imgs[i] = im;
+    });
+  }
+  if (!e.ok && !e.fail && onReady) e.cbs.push(onReady);
+  return e;
+}
 function rcRenderSkyBase(x, W, H, time, bgImg) {
   var c = RC_SKY_CONF[time] || RC_SKY_CONF.night;
   var hor = H * RC_SKY_HOR, sc = W / 1536;
@@ -484,6 +516,98 @@ function _rcBuildFor(color) {
   }
   return b;
 }
+// =========================================================================
+// Signature ACCENT trail (意匠 design.accent) — each dragon continuously sheds a
+// faint world-space particle behind it that matches its design: ember/firegold for
+// fire types, spark for the electric speedsters, wind streaks for wing-closers,
+// sparkle for the starlight dragon, snow for the ice tank, mist for the fog mystic,
+// tear for the crybaby, sleep bubbles for the sleepy cloud — so a field of 8 reads
+// as 8 distinct characters at a glance. Emits into the existing S.particles, drawn
+// BEHIND the dragons. Purely cosmetic — never touches progress / odds / payouts.
+// =========================================================================
+const _RC_ACCENT_RATE = {   // seconds between emits (smaller = denser); 'none' = no trail
+  ember: 0.085, firegold: 0.07, spark: 0.10, wind: 0.13,
+  sparkle: 0.16, snow: 0.16, mist: 0.14, tear: 0.34, sleep: 0.5
+};
+function _rcMakeAccent(kind, x, y, dep, color, aura) {
+  const r = Math.random;
+  const p = { acc: true, kind: kind, x: x, y: y, vx: -18 * dep, vy: 0, size: 1.6 * dep, life: 1, max: 0.7, color: color || '#fff' };
+  switch (kind) {
+    case 'ember':    p.vx -= 6 * dep;  p.vy = -16 * dep - r() * 10 * dep; p.size = (1.3 + r() * 0.9) * dep; p.max = 0.6 + r() * 0.3; break;
+    case 'firegold': p.vy = -18 * dep - r() * 12 * dep; p.size = (1.4 + r() * 1.0) * dep; p.color = aura || '#ffcf52'; p.max = 0.55 + r() * 0.3; p.spark = r() < 0.3; break;
+    case 'spark':    p.vx = -30 * dep - r() * 20 * dep; p.vy = (r() - 0.5) * 26 * dep; p.size = (1.0 + r() * 0.7) * dep; p.max = 0.28 + r() * 0.16; p.color = _rcLighten(color || '#cfe6ff', 0.32); break;
+    case 'wind':     p.vx = -34 * dep; p.vy = (r() - 0.5) * 6 * dep; p.size = (7 + r() * 6) * dep; p.max = 0.5 + r() * 0.3; p.color = _rcLighten(color || '#cfe6ff', 0.4); break;   // size = streak length
+    case 'sparkle':  p.vx = -10 * dep; p.vy = (r() - 0.5) * 12 * dep; p.size = (1.7 + r() * 1.3) * dep; p.max = 0.6 + r() * 0.4; p.color = aura || _rcLighten(color || '#fff', 0.42); break;
+    case 'snow':     p.vx = -10 * dep + (r() - 0.5) * 8 * dep; p.vy = 12 * dep + r() * 8 * dep; p.size = (1.2 + r() * 1.0) * dep; p.max = 0.9 + r() * 0.5; p.color = '#eaf6ff'; break;
+    case 'mist':     p.vx = -14 * dep; p.vy = -4 * dep; p.size = (6 + r() * 6) * dep; p.max = 0.7 + r() * 0.5; p.color = '#cdd9e6'; break;
+    case 'tear':     p.vx = -12 * dep; p.vy = 10 * dep; p.size = (1.3 + r() * 0.7) * dep; p.max = 0.6 + r() * 0.3; p.color = '#aee0ff'; break;
+    case 'sleep':    p.vx = -6 * dep;  p.vy = -14 * dep - r() * 6 * dep; p.size = (2.2 + r() * 1.4) * dep; p.max = 1.0 + r() * 0.6; p.color = '#dfeaff'; break;
+  }
+  return p;
+}
+function _rcEmitAccent(S, design, o) {
+  if (!design) return;
+  const kind = design.accent;
+  if (!kind || kind === 'none' || o.grounded) return;          // austere dragons (gando) + walk-in: no trail
+  const base = _RC_ACCENT_RATE[kind]; if (!base) return;
+  const iv = base * (1.1 - clamp(o.intensity || 0, 0, 1) * 0.62);   // 少し密に＝署名が「見える」量（表示のみ）
+  const now = performance.now() / 1000;
+  S.accT = S.accT || {};
+  if (now - (S.accT[o.id] || 0) < iv) return;
+  S.accT[o.id] = now;
+  const dep = o.dep || 1;
+  // ★出る位置のこだわり：署名は「尾の後ろ」から吐き出す（鼻先アンカーなので体は左へ伸びる）。
+  //   炎尾竜は尾の炎から火の粉、雷竜は尾端から稲妻——体に重ならず、走った軌跡に残る。
+  const tw = o.tailW || 18 * dep;
+  const rx = o.x - tw * (0.94 + Math.random() * 0.28);
+  const ry = o.y - 10 * dep + (Math.random() - 0.5) * 6 * dep;
+  S.particles.push(_rcMakeAccent(kind, rx, ry, dep, o.color, design.aura));
+  if ((o.intensity || 0) > 0.85) S.particles.push(_rcMakeAccent(kind, rx - 5 * dep, ry + 3, dep, o.color, design.aura));   // 全力時は二重に
+}
+function _rcDrawAccent(ctx, p, a) {
+  const k = p.kind;
+  if (k === 'wind') {                                  // pale speed streak
+    ctx.strokeStyle = rcRgba(p.color || '#cfe6ff', 0.26 * a); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.size, p.y); ctx.stroke(); return;
+  }
+  if (k === 'mist') {                                  // soft low-alpha puff
+    ctx.fillStyle = rcRgba(p.color || '#cdd9e6', 0.12 * a);
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.2 + (1 - a)), 0, Math.PI * 2); ctx.fill(); return;
+  }
+  if (k === 'spark') {                                 // ⚡稲妻：ジグザグ＋加算グロー（雷竜の署名）
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const sc2 = p.color || '#9fd8ff';
+    const g2 = ctx.createRadialGradient(p.x - p.size, p.y, 0, p.x - p.size, p.y, p.size * 4);
+    g2.addColorStop(0, rcRgba(sc2, 0.45 * a)); g2.addColorStop(1, rcRgba(sc2, 0));
+    ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(p.x - p.size, p.y, p.size * 4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rcRgba('#eaf7ff', 0.95 * a); ctx.lineWidth = 1.4; ctx.lineJoin = 'miter';
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - p.size * 1.6, p.y + p.size * 0.9);
+    ctx.lineTo(p.x - p.size * 2.5, p.y - p.size * 0.5);
+    ctx.stroke();
+    ctx.restore(); return;
+  }
+  if (k === 'sparkle' || (k === 'firegold' && p.spark)) {   // 4-point twinkle
+    rcSparkle(ctx, p.x, p.y, p.size * 1.8, rcRgba(p.color || '#fff', 0.92 * a)); return;
+  }
+  if (k === 'ember' || k === 'firegold') {             // 🔥火の粉：加算グロー付き（炎竜の署名・HD-2Dブルーム）
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const fc = k === 'firegold' ? (p.color || '#ffcf52') : '#ff9a50';
+    const gg3 = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3.1);
+    gg3.addColorStop(0, rcRgba(fc, 0.5 * a)); gg3.addColorStop(1, rcRgba(fc, 0));
+    ctx.fillStyle = gg3; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 3.1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = k === 'firegold' ? rcRgba(fc, 0.95 * a)
+                                     : 'rgba(255,' + (150 + Math.floor(80 * a)) + ',80,' + (0.9 * a) + ')';
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); return;
+  }
+  if (k === 'sleep') {                                 // drifting bubble (hollow)
+    ctx.strokeStyle = rcRgba(p.color || '#dfeaff', 0.5 * a); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.stroke(); return;
+  }
+  ctx.fillStyle = rcRgba(p.color || '#fff', (k === 'tear' ? 0.85 : 0.72) * a);   // snow / tear / default soft dot
+  ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+}
 function rcDrawDragonPixel(ctx, o) {
   if (!RC_DRAGON_FRAMES) return;   // trace not ready yet (a few ms at startup)
   let fi;
@@ -513,10 +637,11 @@ function rcDrawDragonPixel(ctx, o) {
   ctx.translate(0, -bob * pxc * 0.9);
   // soft luminous halo — keeps the eye-catching "pop" without washing out the colours
   {
-    ctx.save(); ctx.globalAlpha = 0.22;
-    const gc = rcShade(o.color || '#888', 46), r = 14 * pxc;
+    const _au = o.design && o.design.aura;                          // 意匠オーラ色（伝説竜）＞ 既定の映えハロー
+    ctx.save(); ctx.globalAlpha = _au ? 0.34 : 0.22;
+    const gc = _au || rcShade(o.color || '#888', 46), r = (_au ? 17 : 14) * pxc;
     const ng = ctx.createRadialGradient(0, -pxc, 2, 0, -pxc, r);
-    ng.addColorStop(0, rcRgba(gc, 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.15)); ng.addColorStop(1, rcRgba(gc, 0));
+    ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.16)); ng.addColorStop(1, rcRgba(gc, 0));
     ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -pxc, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
   if (o.glow > 0) {
@@ -686,6 +811,8 @@ function _rcDrawRigPart(ctx, p, color, o) {
   ctx.save();
   ctx.translate(p.pivot.x, p.pivot.y);
   if (p.role === 'wing') {
+    const ws = o.design && o.design.wingSize;                                                // 意匠の翼サイズ（鳳凰=大/岩鱗=小）。ピボット=翼根なので根元固定で伸縮。footprintは不変＝表示専用。
+    if (ws && ws !== 1) { const k = 1 + (ws - 1) * 0.7; ctx.scale(k, k); }                    // 過剰を抑えた等比スケール
     _rcBendStrips(ctx, img, bx, by, g, 0.20, (bend && bend.rootEdge) || 'right');           // 羽ばたき（先端しなり）
   } else if (p.role === 'tail') {
     _rcBendStrips(ctx, img, bx, by, g * 0.7 + 0.8, 0.11, (bend && bend.rootEdge) || 'right'); // 尾のしなり
@@ -704,7 +831,8 @@ function _rcDrawRigPart(ctx, p, color, o) {
     // 自然なまばたきを時々（gait位相で全頭ばらける）
     const blink = Math.sin(g * 0.9 + (p.pivot.x % 7));
     if (blink > 0.97) syE *= 0.15;
-    ctx.translate(dx, 0); ctx.scale(1, syE); ctx.drawImage(img, bx, by);
+    const es = Math.max(0.6, Math.min(1.45, (o.design && o.design.eye) || 1));               // 意匠の目サイズ（泣き虫=大/眠雲=小）。ピボット中心で等比＝目中心(_eyeC)不変＝漫符位置はズレない。
+    ctx.translate(dx, 0); ctx.scale(es, syE * es); ctx.drawImage(img, bx, by);
   } else {
     ctx.drawImage(img, bx, by);
   }
@@ -726,8 +854,8 @@ function rcDrawDragonRig(ctx, o) {
   ctx.rotate(-(o.lean || 0) * 0.06 + (o.bank || 0) * 0.10);
   if (o.squash && o.squash !== 1) { const sq = Math.max(0.7, Math.min(1.3, o.squash)); ctx.scale(2 - sq, sq); }
   ctx.translate(0, -bob * px * 0.9);
-  { ctx.save(); ctx.globalAlpha = 0.22; const gc = rcShade(o.color || '#888', 46), rr = 14 * px;   // グリッド竜と同じ“映え”ハロー
-    const ng = ctx.createRadialGradient(0, -px, 2, 0, -px, rr); ng.addColorStop(0, rcRgba(gc, 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.15)); ng.addColorStop(1, rcRgba(gc, 0));
+  { const _au = o.design && o.design.aura; ctx.save(); ctx.globalAlpha = _au ? 0.34 : 0.22; const gc = _au || rcShade(o.color || '#888', 46), rr = (_au ? 17 : 14) * px;   // 意匠オーラ色（伝説竜）＞ 既定の映えハロー
+    const ng = ctx.createRadialGradient(0, -px, 2, 0, -px, rr); ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.7)); ng.addColorStop(0.6, rcRgba(gc, 0.16)); ng.addColorStop(1, rcRgba(gc, 0));
     ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -px, rr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   ctx.scale(sx, sy);
   ctx.translate(-ax, -ay);
@@ -735,8 +863,221 @@ function rcDrawDragonRig(ctx, o) {
   for (let i = 0; i < parts.length; i++) { const p = parts[i]; if (p._img) _rcDrawRigPart(ctx, p, o.color, o); }
   ctx.restore();
 }
+// =========================================================================
+// 3D-render dragon sprites (mimi_dragon_3d_spec_pack v1.0 — 表示専用).
+// 各竜に images/dragons/<id>.webp（allrounder基準を最優先参照に忠実リカラーした
+// 3Dレンダリング風スプライト・マスターリストの意匠準拠）を用意し、グリッド/リグ竜の
+// 代わりに描く。上下動/リーン/バンク/スカッシュ/スピンの体の動きは流用し、署名トレイル
+// と伝説オーラはそのまま重なる。読込中・未配置は静かに従来描画へフォールバック。
+// 純粋に表示のみ — 画面の着順は raceResult と一致したまま（数値非干渉）。
+// =========================================================================
+const RC_DSPRITE = Object.create(null);
+const RC_DSP_H = 46;                 // 画面上の竜の基準高さ(px)。62→46＝「画面を大きく取り竜は小さく」（ユーザー指定・モック準拠）。scaleで奥行き調整
+function _rcDragonSprite(id) {
+  if (!id) return null;
+  let e = RC_DSPRITE[id];
+  if (!e) {
+    e = RC_DSPRITE[id] = { img: new Image(), ok: false, bad: false, box: null };
+    e.img.onload = function () {
+      try {
+        // ①グレー無地背景をキー抜き（HD-2D納品は中性グレー背景＝四隅からflood-fillで“繋がった背景だけ”
+        //   透過。体内の灰色＝フガクの鉄岩装甲などは連結していないので残る）②被写体bboxを算出。
+        const W = e.img.naturalWidth, H = e.img.naturalHeight;
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const x = c.getContext('2d'); x.drawImage(e.img, 0, 0);
+        const im = x.getImageData(0, 0, W, H), d = im.data;
+        if (d[3] > 200) {                      // 角が不透明＝グレー背景素材→キー抜き（既透過素材はスキップ）
+          const cr = d[0], cg = d[1], cb = d[2], TOL2 = 34 * 34;
+          const stack = [0, W - 1, (H - 1) * W, (H - 1) * W + W - 1];
+          const seen = new Uint8Array(W * H);
+          while (stack.length) {
+            const i = stack.pop();
+            if (seen[i]) continue; seen[i] = 1;
+            const q = i * 4;
+            if (d[q + 3] === 0) continue;
+            const dr = d[q] - cr, dg = d[q + 1] - cg, db = d[q + 2] - cb;
+            if (dr * dr + dg * dg + db * db > TOL2) continue;
+            d[q + 3] = 0;
+            const xx = i % W;
+            if (xx > 0) stack.push(i - 1); if (xx < W - 1) stack.push(i + 1);
+            if (i >= W) stack.push(i - W); if (i < (H - 1) * W) stack.push(i + W);
+          }
+          x.putImageData(im, 0, 0);
+          e.cv = c;                            // 以後はキー抜き済みcanvasを描画ソースに
+        }
+        let minx = W, miny = H, maxx = 0, maxy = 0, found = false;
+        for (let yy = 0; yy < H; yy += 2) for (let xx = 0; xx < W; xx += 2) {
+          if (d[(yy * W + xx) * 4 + 3] > 24) { found = true; if (xx < minx) minx = xx; if (xx > maxx) maxx = xx; if (yy < miny) miny = yy; if (yy > maxy) maxy = yy; }
+        }
+        e.box = found ? { x: minx, y: miny, w: Math.max(1, maxx - minx), h: Math.max(1, maxy - miny) } : { x: 0, y: 0, w: W, h: H };
+        // ★翼根ギャップ自動検出（R8-W6b）：翼はマスタールールで「背中の上の別シェイプ」＝翼の下面と
+        // 背の間に透過の隙間がある。背中領域(x=5..62%・頭は除外)で不透明画素が最少の行を探し、
+        // そこを羽ばたきのスライス線にする＝竜ごとに正しい位置で割れずに動く。隙間が無い竜
+        // （翼と背が接した意匠）は flapClean=false → 振幅を大きく落として破綻を防ぐ。
+        if (found) {
+          const bx = e.box.x, by = e.box.y, bw = e.box.w, bh = e.box.h;
+          const gx0 = Math.round(bx + bw * 0.05), gx1 = Math.round(bx + bw * 0.62);
+          let bestY = Math.round(by + bh * 0.40), bestC = 1e9;
+          for (let yy = Math.round(by + bh * 0.20); yy <= Math.round(by + bh * 0.58); yy++) {
+            let cnt = 0;
+            for (let xx = gx0; xx <= gx1; xx += 2) if (d[(yy * W + xx) * 4 + 3] > 24) cnt++;
+            if (cnt < bestC) { bestC = cnt; bestY = yy; }
+          }
+          e.flapK = (bestY - by) / bh;
+          e.flapClean = bestC <= Math.ceil(((gx1 - gx0) / 2) * 0.12);   // 交差12%未満＝クリーンな隙間
+        }
+      } catch (_) { e.box = { x: 0, y: 0, w: e.img.naturalWidth, h: e.img.naturalHeight }; }
+      e.ok = true;
+    };
+    e.img.onerror = function () { e.bad = true; };          // 無ければ従来描画へ（数値・表示とも安全）
+    e.img.src = 'images/dragons/' + id + '.png?v=1';
+  }
+  return e;
+}
+function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok); }
+// 描画時の半身幅(px)＝鼻先アンカー(右端=タイムライン位置)から体の中心までの距離。
+// ラベル/バッジ/レティクル/ポップを「体の中心」に置くために使う（表示のみ）。
+function rcDragonSpriteHalfW(id, scale) {
+  const e = RC_DSPRITE[id];
+  if (!e || !e.ok || !e.box || !e.box.h) return 0;
+  const targetH = RC_DSP_H * (scale || 1) * (RC_SIZE_MUL[id] || 1);
+  return (e.box.w * (targetH / e.box.h)) / 2;
+}
+// 個体サイズ（表示のみ・設定＝小さい竜ポロは小さく／竜王級〜神格はわずかに大きく＝格の表現。
+// レース進行/着順/オッズには一切影響しない。基準1.0＝RC_DSP_H）。
+const RC_SIZE_MUL = {
+  poro: 0.68,                                             // 泣き虫の子竜＝設定どおり小さく（ユーザー指摘）
+  chiri: 0.84, tsumuji: 0.88, kogane: 0.94, susu: 0.94, nagi: 0.94, goro: 0.94,   // tier1-2＝若竜は少し小柄
+  guren: 1.05, raijin: 1.05, sora: 1.05, banju: 1.05, gekka: 1.05, senpu: 1.05,   // tier5 竜王級
+  enma: 1.09, hayao: 1.09, tenku: 1.09, gozan: 1.09, yugiri: 1.09, reppu: 1.09,   // tier6 祝祭級
+  goka: 1.14, raiou: 1.14, souten: 1.14, fugaku: 1.14, yomi: 1.14                 // tier7 神格
+};
+// R8-W6 羽ばたき：翼はマスタールールで「背中の上・後方スイープの別シェイプ」＝bbox上部帯。
+// 翼根ラインの比率（上端から）。既定0.40・目視で崩れる竜はここに個別値を足す（表示のみ）。
+const RC_FLAP_CUT = {};
+function rcDrawDragonSprite(ctx, o) {
+  const e = _rcDragonSprite(o.id);
+  if (!e || !e.ok) { _rcEnsureRig(); return (RC_RIG ? rcDrawDragonRig : rcDrawDragonPixel)(ctx, o); }
+  const img = e.cv || e.img, b = e.box;   // キー抜き済みcanvas優先（グレー背景素材の透過版）
+  const px = (o.scale || 1) * RC_DRG.px;
+  const targetH = RC_DSP_H * (o.scale || 1) * (RC_SIZE_MUL[o.id] || 1);   // 体の高さで正規化＋個体サイズ
+  const sc = targetH / b.h, w = b.w * sc, h = b.h * sc;
+  const bob = o.grounded ? Math.abs(Math.sin(o.gait || 0)) * 0.6 : Math.sin((o.gait || 0) * 0.7) * (o.down ? 0.4 : 1);
+  ctx.save();
+  ctx.translate(o.x, o.y);
+  if (o.spin) ctx.rotate(o.spin);
+  if (o.tumble) ctx.rotate(o.tumble);
+  ctx.rotate(-(o.lean || 0) * 0.05 + (o.bank || 0) * 0.10);
+  if (o.squash && o.squash !== 1) { const sq = Math.max(0.7, Math.min(1.3, o.squash)); ctx.scale(2 - sq, sq); }
+  ctx.translate(0, -bob * px * 0.9);
+  // 映え／伝説オーラ（グリッド竜と同じ意図）
+  { const _au = o.design && o.design.aura; ctx.save(); ctx.globalAlpha = _au ? 0.34 : 0.20; const gc = _au || rcShade(o.color || '#888', 46), rr = (_au ? 0.62 : 0.5) * Math.max(w, h);
+    const ng = ctx.createRadialGradient(0, -h * 0.45, 2, 0, -h * 0.45, rr); ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.6)); ng.addColorStop(0.6, rcRgba(gc, 0.14)); ng.addColorStop(1, rcRgba(gc, 0));
+    ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -h * 0.45, rr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  ctx.imageSmoothingEnabled = true;
+  // ★鼻先アンカー：タイムラインの位置(o.x)＝竜の鼻先に合わせて描く（右端=鼻がo.x）。
+  //   ゴール演出はタイムライン時刻駆動なので、progress=1の瞬間に「1着の鼻先がゴール線上」になる
+  //   ＝実レース中継と同じ「鼻先がゴールした時がゴール」（ユーザー指定）。体長差も物理どおり後ろへ伸びる。
+  // ★R8-W6 羽ばたき（素材追加なし・52頭対応）：翼根ラインで上下スライスし、上（翼帯）だけ
+  //   頭寄りヒンジで周期回転＝翼端(左)ほど大きく上下。体・頭は下スライスで静止＝顔と意匠は
+  //   ブレない。翼と背の間は元絵がほぼ透過なので継ぎ目は出ない。gait同期＝速いほど強く。
+  const cutK = RC_FLAP_CUT[o.id] != null ? RC_FLAP_CUT[o.id] : (e.flapK != null ? e.flapK : 0.40);
+  const srcCut = Math.max(2, Math.round(b.h * cutK));
+  const dstCut = srcCut * sc;
+  const clean = RC_FLAP_CUT[o.id] != null ? true : (e.flapClean !== false);   // 隙間の無い意匠は控えめに＝背中が割れない
+  const amp = (o.grounded ? 0.028 : (o.down ? 0.05 : 0.095)) * (clean ? 1 : 0.30);
+  const flap = Math.sin((o.gait || 0) * 1.35) * amp + amp * 0.22;   // 滑空基調＝上げ優位
+  const hgx = -w * 0.16, hgy = -h + 2 + dstCut;                     // ヒンジ＝翼根の頭寄り
+  ctx.save();
+  ctx.translate(hgx, hgy); ctx.rotate(flap); ctx.translate(-hgx, -hgy);
+  ctx.drawImage(img, b.x, b.y, b.w, srcCut, -w + 4, -h + 2, w, dstCut + 1);
+  ctx.restore();
+  ctx.drawImage(img, b.x, b.y + srcCut, b.w, b.h - srcCut, -w + 4, -h + 2 + dstCut, w, h - dstCut);
+  ctx.restore();
+}
+// =========================================================================
+// R8-W4 勝者ウィニングカット（表示のみ）：ゴール確定直後、勝者のHD-2D絵を大写しで
+// 「生きて」見せる。Live2Dリグはマスコット画像専用（4パーツ座標がrig.json固定）で
+// 52頭の多様な体型には適合しないため、キー抜き済みスプライトを縦ストリップに割り、
+// 頭（右）を支点に尾へ向かって進行波でうねらせる＝全頭対応・フィッティング不要。
+// =========================================================================
+function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
+  const e = RC_DSPRITE[id];
+  if (!e || !e.ok || !e.box) return false;
+  const img = e.cv || e.img, b = e.box;
+  const H = Math.min(150, cw * 0.34), sc = H / b.h, W = b.w * sc;
+  const inK = Math.min(1, rt / 0.22);
+  const a = inK;   // ★出しっぱなし＝結果を見るまで勝者が生き続ける（フェードアウト廃止・ユーザー指定）
+  if (a <= 0) return true;
+  const now = performance.now() / 1000;
+  ctx.save();
+  ctx.globalAlpha = a;
+  // 背後の金グロー（お立ち台の照明）
+  const gy = baseY - H * 0.45;
+  const gr = ctx.createRadialGradient(cx, gy, 4, cx, gy, H * 0.95);
+  gr.addColorStop(0, "rgba(255,214,110,0.32)"); gr.addColorStop(1, "rgba(255,214,110,0)");
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, gy, H * 0.95, 0, Math.PI * 2); ctx.fill();
+  // R8-W7: 神々しい回る後光（加算光条・HD-2Dのブルーム）——勝者の背後でゆっくり回る
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a * 0.5;
+  ctx.translate(cx, gy);
+  const _rot = now * 0.22;
+  for (let ri = 0; ri < 10; ri++) {
+    const an = _rot + ri * (Math.PI * 2 / 10);
+    const len = H * (1.02 + 0.10 * Math.sin(now * 1.7 + ri));
+    const rg2 = ctx.createLinearGradient(0, 0, Math.cos(an) * len, Math.sin(an) * len);
+    rg2.addColorStop(0, "rgba(255,224,140,0.30)"); rg2.addColorStop(1, "rgba(255,224,140,0)");
+    ctx.fillStyle = rg2;
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(an - 0.075) * len, Math.sin(an - 0.075) * len);
+    ctx.lineTo(Math.cos(an + 0.075) * len, Math.sin(an + 0.075) * len);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  // 漂い昇る光の粒（状態レス・sin駆動＝出しっぱなしでも一生きらめく）
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a;
+  for (let si = 0; si < 7; si++) {
+    const ph = now * (0.5 + (si % 3) * 0.17) + si * 1.9;
+    const sxp = cx + Math.sin(ph) * (W * 0.55 + si * 5);
+    const syp = baseY - ((ph * 15) % (H * 1.05)) + Math.sin(ph * 2.3) * 4;
+    const tw2 = 0.5 + 0.5 * Math.sin(now * 3 + si * 2.1);
+    ctx.fillStyle = "rgba(255,232,160," + (0.30 + 0.45 * tw2).toFixed(2) + ")";
+    ctx.beginPath(); ctx.arc(sxp, syp, 1.2 + tw2 * 1.4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  // 本体＝ストリップ進行波（頭=右は安定・尾=左ほど大きくうねる）＋軽い呼吸ボブ
+  const pop = 0.86 + 0.14 * inK;
+  const breathe = Math.sin(now * 2.2) * 2;
+  ctx.translate(cx, baseY + breathe); ctx.scale(pop, pop);
+  const N = 16, sw = b.w / N, dw = W / N;
+  for (let i = 0; i < N; i++) {
+    // ★頭側38%は完全静止（顔がぐにゃぐにゃしない・ユーザー指摘）。波は尾側だけを走る。
+    const tailK = Math.max(0, (1 - i / (N - 1)) - 0.38) / 0.62;      // 1=尾端 … 0=頭側38%全域
+    const dy = tailK <= 0 ? 0 : Math.sin(now * 4.6 - i * 0.5) * 3.4 * tailK;
+    ctx.drawImage(img, b.x + i * sw, b.y, sw, b.h, -W / 2 + i * dw - 0.5, -H + dy, dw + 1, H);
+  }
+  ctx.restore();
+  // 金リボン「🏆 1着」
+  ctx.save();
+  ctx.globalAlpha = a;
+  const nm = (typeof commentaryName === "function") ? commentaryName(id) : id;
+  const label = "🏆 1着　" + nm;
+  ctx.font = "bold 16px system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const tw = ctx.measureText(label).width, rw = tw + 34, rh = 26, ry = baseY + 14;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cx - rw / 2, ry, rw, rh, 13); else ctx.rect(cx - rw / 2, ry, rw, rh);
+  const rg = ctx.createLinearGradient(0, ry, 0, ry + rh);
+  rg.addColorStop(0, "#ffd465"); rg.addColorStop(1, "#e2a22e");
+  ctx.fillStyle = rg; ctx.fill();
+  ctx.fillStyle = "#2a1d05"; ctx.fillText(label, cx, ry + rh / 2 + 0.5);
+  ctx.restore();
+  return true;
+}
 function rcDrawDragon(ctx, o) {
   if (typeof window !== 'undefined' && window.RC_USE_RIG === false) return rcDrawDragonPixel(ctx, o);
+  if (o.id && rcHasDragonSprite(o.id)) return rcDrawDragonSprite(ctx, o);   // 3D絵が用意済み＝最優先（表示専用）
+  if (o.id) _rcDragonSprite(o.id);                                          // 先読みkick（次フレームから3D絵に）
   if (RC_RIG) return rcDrawDragonRig(ctx, o);
   _rcEnsureRig();
   return rcDrawDragonPixel(ctx, o);   // ロード完了までグリッド竜で繋ぐ
@@ -1139,6 +1480,9 @@ function startRaceCanvas(container, ctx) {
 
   // ---- responsive canvas sizing (devicePixelRatio aware) ----
   let cw = 0, ch = 0, dpr = 1;
+  // R8-W6c: パララックス時はコース帯そのものが無い＝竜の飛行帯は「絵の世界」いっぱいに
+  // 広げる（モック準拠：後方竜は山を背に高く・先頭は手前の道の上を低く飛ぶ）。
+  const RC_TRACK_TOP_PARA = 0.30, RC_TRACK_BOT_PARA = 0.92, RC_TRACK_TOP_BASE = 0.34;
   let skyBase = null;            // offscreen time-of-day far-backdrop, rebuilt on resize
   function buildSkyBase() {
     if (!cw || !ch) { skyBase = null; return; }
@@ -1156,6 +1500,64 @@ function startRaceCanvas(container, ctx) {
       skyBase = oc;
     } catch (e) { skyBase = null; }
   }
+  // R8-W1: パララックス3層を「描画サイズの焼き済みタイル」にする。
+  // ・毎フレーム1600px級を縮小せず小タイルをwrap描画（速度）・セットあたり<1MB（メモリ）
+  // ・左端Bpxへ右端をαランプで重ねる＝タイル境界がC0連続の完全ループ（継ぎ目ゼロ）
+  // ・時間帯トーンは焼き込み（遠景ほど濃く＝空気遠近）。夜系レースのみ・失敗時 null=従来経路。
+  let paraBaked = null;
+  function bakePara() {
+    paraBaked = null;
+    if (!cw || !ch) return;
+    const t = rcRaceTime(race);
+    // 全時間帯パララックス（racebg_v2_time 納品済）。失敗時は従来経路へ自動フォールバック。
+    const e = rcParaFor(race, function () { if (document.contains(canvas)) bakePara(); }, RC_TIME_DIR[t] || "night");
+    if (!e || !e.ok) return;
+    try {
+      const conf = RC_SKY_CONF[t] || RC_SKY_CONF.night;
+      // ★モック準拠レイアウト（R8-W6c）：コースの帯を描かず「絵の世界そのもの」が路面。
+      //   L1=全画面カバー（空〜地面まで絵が描く）／L2=地平線まわりの中景／
+      //   L3=画面下端の最近景帯（×1.0＝竜と同じ路面速度＝これが事実上の地面）。
+      const spec = [
+        { dh: ch,        anchor: null,      tone: 0.55 },   // L1 全画面
+        { dh: ch * 0.62, anchor: ch * 0.80, tone: 0.35 },   // L2 中景（下端=画面80%）
+        { dh: ch * 0.34, anchor: ch + 2,    tone: 0.20 },   // L3 最近景（下端=画面下端）
+      ];
+      const L = [], dw = [], dh = [], dy = [];
+      const px = Math.min(2, dpr || 1);                                // 焼き解像度（dpr>2は2で十分）
+      for (let i = 0; i < 3; i++) {
+        const img = e.imgs[i], s = spec[i];
+        const w = Math.max(64, img.naturalWidth * (s.dh / img.naturalHeight));
+        const oc = document.createElement("canvas");
+        oc.width = Math.max(1, Math.round(w * px)); oc.height = Math.max(1, Math.round(s.dh * px));
+        const c2 = oc.getContext("2d");
+        c2.drawImage(img, 0, 0, oc.width, oc.height);
+        // ループ化クロスフェード：原画右端のB相当を左端へ αランプ(左1→右0) で重ねる
+        const B = Math.max(24, Math.round(oc.width * 0.09));
+        const strip = document.createElement("canvas");
+        strip.width = B; strip.height = oc.height;
+        const sc2 = strip.getContext("2d");
+        const swSrc = img.naturalWidth * (B / oc.width);
+        sc2.drawImage(img, img.naturalWidth - swSrc, 0, swSrc, img.naturalHeight, 0, 0, B, oc.height);
+        sc2.globalCompositeOperation = "destination-in";
+        const gr = sc2.createLinearGradient(0, 0, B, 0);
+        gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+        sc2.fillStyle = gr; sc2.fillRect(0, 0, B, oc.height);
+        c2.drawImage(strip, 0, 0);
+        // 時間帯トーン（soft-light・遠景ほど濃く）＋夕/黄昏は僅かな明度リフト
+        c2.save();
+        c2.globalCompositeOperation = "soft-light"; c2.globalAlpha = s.tone;
+        const tg = c2.createLinearGradient(0, 0, 0, oc.height);
+        conf.sky.forEach(function (sv) { tg.addColorStop(sv[0], sv[1]); });
+        c2.fillStyle = tg; c2.fillRect(0, 0, oc.width, oc.height);
+        const lift = t === "sunset" ? 0.10 : t === "dusk" ? 0.05 : 0;
+        if (lift > 0 && i === 0) { c2.globalCompositeOperation = "screen"; c2.globalAlpha = 1; c2.fillStyle = rcRgba(conf.haze, lift); c2.fillRect(0, 0, oc.width, oc.height); }
+        c2.restore();
+        L.push(oc); dw.push(w); dh.push(s.dh);
+        dy.push(s.anchor == null ? 0 : s.anchor - s.dh);
+      }
+      paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 1.0], haze: conf.haze };
+    } catch (_) { paraBaked = null; }
+  }
   function resize() {
     const parent = canvas.parentElement;
     if (!parent) return;          // canvas が DOM から外れている — リサイズをスキップ
@@ -1169,6 +1571,7 @@ function startRaceCanvas(container, ctx) {
     canvas.height = Math.round(ch * dpr);
     cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     buildSkyBase();
+    bakePara();
   }
   const onResize = () => { resize(); draw(); };
   window.addEventListener("resize", onResize);
@@ -1208,6 +1611,10 @@ function startRaceCanvas(container, ctx) {
     preT: 3.0,          // pre-start 3-2-1 countdown (holds τ at the gate)
     goFlash: 0,         // "GO！" burst after the countdown
     zoomBump: 0,        // extra push-in impulse from overtakes / close battles
+    photoT: 0,          // R8-W1: フォトフィニッシュ静止1拍の残り秒（>0の間 世界を止める・表示のみ）
+    photoUsed: false,   // 1着の鼻先ゴールで一度だけ発火
+    flyIn: 0,           // R8-W6d: GOからの秒数——地面スタート→各飛行高度へ舞い上がる演出用（表示のみ）
+    lowSpec: false,     // R8-W5: 低速機の自動縮退（パララックス2層・ポップ2件・ストリーク半減）
     prevStand: null,    // {id: place} last frame, for overtake detection
     cheerT: 1.2,        // throttle for cheer-your-pick callouts
     battleT: 0,         // throttle for 接戦！ callouts
@@ -1252,11 +1659,14 @@ function startRaceCanvas(container, ctx) {
     }
   }
   const shownLines = [];
+  // R8-W3 実況の強弱：山場ワードを含む最新行は「絶叫」スタイル（金・大きめ）＝表示のみ
+  const TELOP_HOT = /先頭|差し切|抜け出|かわし|接戦|並ん|仕掛け|伸び|ゴール|突き放|猛追|一気|捕らえ/;
   function renderTelop() {
     linesEl.innerHTML = "";
     shownLines.slice(-3).forEach((line, i, arr) => {
       const d = document.createElement("div");
-      d.className = i === arr.length - 1 ? "line is-latest" : "line-prev";
+      const latest = i === arr.length - 1;
+      d.className = latest ? ("line is-latest" + (TELOP_HOT.test(line) ? " is-hot" : "")) : "line-prev";
       d.textContent = line;
       linesEl.appendChild(d);
     });
@@ -1402,7 +1812,9 @@ function startRaceCanvas(container, ctx) {
 
   // ---- layout helpers ----
   function trackGeom() {
-    const top = ch * 0.34, bottom = ch * 0.965;
+    // パララックス時＝飛行帯を絵の世界いっぱいに（コース帯は存在しない・モック準拠）。
+    const top = ch * (paraBaked ? RC_TRACK_TOP_PARA : RC_TRACK_TOP_BASE);
+    const bottom = ch * (paraBaked ? RC_TRACK_BOT_PARA : 0.965);
     return { top, bottom, laneH: (bottom - top) / 8 };
   }
 
@@ -1852,8 +2264,27 @@ function startRaceCanvas(container, ctx) {
     // terrain now shows its own dedicated backdrop so the course reads at a glance.
     const stadium = (tb.keyA === "straight");
 
-    // --- sky: painted time-of-day base (combine) OR the themed procedural sky ---
-    if (skyBase) {
+    // --- sky: R8-W1 3層パララックス（夜系＆納品地域）→ 一枚絵ベース → プロシージャル ---
+    const para = paraBaked;
+    if (para) {
+      // L1 遠景×0.15 → L2 中景×0.45 → L3 近景帯×0.9（レール旗0.9と同平面＝柵が近景の地面に立つ）。
+      // タイルは焼き込みで完全ループ＝境界の継ぎ目なし。カメラが進むほど層の速度差で奥行きが出る。
+      for (let li = 0; li < 3; li++) {
+        if (S.lowSpec && li === 1) continue;                    // R8-W5: 低速機はL2を省き2層に縮退
+        const ox = S.camL * SREF * para.rate[li];
+        const dwl = para.dw[li], dhl = para.dh[li], dyl = para.dy[li], tile = para.L[li];
+        for (let k = Math.floor(ox / dwl); k * dwl - ox < cw; k++) {
+          cctx.drawImage(tile, k * dwl - ox, dyl, dwl, dhl);
+        }
+      }
+      // 地平の靄：絵の地平線（L1の約58%）に薄く敷いて層同士を馴染ませる
+      const hzY = ch * 0.58;
+      const hb = cctx.createLinearGradient(0, hzY - 30, 0, hzY + 22);
+      hb.addColorStop(0, rcRgba(para.haze, 0));
+      hb.addColorStop(0.6, rcRgba(para.haze, 0.16));
+      hb.addColorStop(1, rcRgba(para.haze, 0));
+      cctx.fillStyle = hb; cctx.fillRect(0, hzY - 30, cw, 52);
+    } else if (skyBase) {
       // far backdrop incl. sun/moon, clouds, distant ridges, 聖龍門 & grandstand, haze
       cctx.drawImage(skyBase, 0, 0, cw, ch);
     } else {
@@ -1871,8 +2302,11 @@ function startRaceCanvas(container, ctx) {
     }
 
     // distant terrain identity (volcano / clouds / hills / canyon / pylons)
-    drawThemeBackdrop(tb.keyA, g, 1);
-    if (tb.keyB !== tb.keyA) drawThemeBackdrop(tb.keyB, g, tb.t);
+    // （パララックス絵が地形の個性を担っている時はスキップ＝描き足しのつぎはぎ防止）
+    if (!para) {
+      drawThemeBackdrop(tb.keyA, g, 1);
+      if (tb.keyB !== tb.keyA) drawThemeBackdrop(tb.keyB, g, tb.t);
+    }
 
     // stadium dressing (skyline + clock tower + crowd) only on ground courses
     // (skipped when the painted base is active — it already has 聖龍門 + grandstand)
@@ -1917,7 +2351,8 @@ function startRaceCanvas(container, ctx) {
     // backdrop) so "the flags in back" clearly convey speed. Each flag's colour is
     // keyed to its world index (not the frame), so colours never flicker — seamless.
     // Stops naturally when the camera stops (start gate / after finish).
-    {
+    // （パララックス野外では柵ごと出さない＝モックに無い競技場備品。聖龍スタジアムのみ残す）
+    if (!para || para.slug === "stadium") {
       const pGap = 30, pScroll = S.camL * SREF * 0.9;   // ~ground rate (slight parallax) → moves WITH the scene
       const pcols = ["#ff6b8a", "#ffd34d", "#5ad1ff", "#9b8cff", "#7CFFB2"];
       const nC = pcols.length, first = Math.floor(pScroll / pGap), railY = g.top - 8;
@@ -1950,6 +2385,10 @@ function startRaceCanvas(container, ctx) {
     // --- track ground (themed turf) — the running ribbon CURVES through turns: its
     // top edge follows trackBendY(P). The fill runs from that curved top down to the
     // apron so there's never a gap when the ribbon arcs upward. ---
+    // R8-W6c: パララックス時はコースの帯を一切描かない＝「絵の世界そのもの」が路面（モック
+    // 準拠・ユーザー指定「モック通りコースを無くす」）。竜は絵の上を飛び、方向シェブロン等の
+    // 記号だけを世界に重ねる。従来コース（朝昼・未納品地域）は !para 側で完全温存。
+    if (!para) {
     const grd = cctx.createLinearGradient(0, g.top, 0, g.bottom);
     grd.addColorStop(0,   rcMix(tb.a.ground[0], tb.b.ground[0], tb.t));
     grd.addColorStop(0.5, rcMix(tb.a.ground[1], tb.b.ground[1], tb.t));
@@ -1991,11 +2430,31 @@ function startRaceCanvas(container, ctx) {
       cctx.fillStyle = ts; cctx.fillRect(0, g.top, cw, g.bottom - g.top);
     }
     cctx.restore();
-    // theme surface treatment (fog veil / lava cracks / bridge planks)
-    drawGroundOverlay(tb.keyA, g, WINW);
+    }   // ← !para（従来コースの帯描画ここまで。パララックス時は絵の世界が路面＝何も描かない）
 
-    // lane stripes
-    cctx.strokeStyle = "rgba(255,255,255,0.06)";
+    // 進行方向シェブロン（R8-W2・モック準拠）：路面に薄い「>」を世界固定で等間隔＝
+    // 走る向きと速度感を常時示す（両モード共通・表示のみ）。
+    {
+      const stepP = 0.05, k0 = Math.floor((S.camL - 0.08) / stepP);
+      const nK = Math.ceil((WINW + 0.16) / stepP);
+      const midY = (g.top + g.bottom) / 2;
+      const hh = (g.bottom - g.top) * 0.30, ww = hh * 0.55;
+      cctx.save();
+      cctx.lineWidth = 3; cctx.lineJoin = "round"; cctx.lineCap = "round";
+      cctx.strokeStyle = para ? "rgba(255,214,120,0.15)" : "rgba(255,214,120,0.09)";   // 絵の上では少し立てる（モック準拠）
+      for (let k = 0; k <= nK; k++) {
+        const P = (k0 + k) * stepP;
+        const px = screenX(P, WINW), py = midY + trackBendY(P);
+        cctx.beginPath(); cctx.moveTo(px - ww, py - hh); cctx.lineTo(px, py); cctx.lineTo(px - ww, py + hh); cctx.stroke();
+      }
+      cctx.restore();
+    }
+    // theme surface treatment (fog veil / lava cracks / bridge planks)
+    // （パララックス時はスキップ＝絵の路面に手続き模様を重ねない）
+    if (!para) drawGroundOverlay(tb.keyA, g, WINW);
+
+    // lane stripes（パララックス時は無し＝絵の世界にレーン白線は存在しない）
+    cctx.strokeStyle = para ? "rgba(0,0,0,0)" : "rgba(255,255,255,0.06)";
     cctx.lineWidth = 1;
     const _cy = g.top + (g.bottom - g.top) * 0.5;
     for (let i = 1; i < 8; i++) {
@@ -2027,13 +2486,15 @@ function startRaceCanvas(container, ctx) {
       // The near (lower) lanes get longer, brighter, faster streaks so the running
       // surface really tears past the screen — this is the dominant speed cue.
       for (let li = 0; li < 8; li++) {
+        if (S.lowSpec && (li % 2)) continue;  // R8-W5: 低速機はストリーク半減
         const depth = li / 7;                 // 0 = far/top, 1 = near/bottom
         const sy = g.top + (li + 0.5) * g.laneH;
         const len = 40 + depth * 56;          // near streaks much longer
         const gap = 38 + depth * 16;          // denser → more streaks tear past
         const mul = 1.2 + depth * 0.55;       // near streaks blur a touch faster than the ground
         const h = depth > 0.6 ? 3 : 2;        // near streaks thicker
-        const a = (0.14 + depth * 0.16).toFixed(3);
+        // 絵の世界の上では白線はごく薄い風のスジに（ユーザー指摘「横線をもう少し薄く」）
+        const a = ((para ? 0.045 : 0.14) + depth * (para ? 0.05 : 0.16)).toFixed(3);
         cctx.fillStyle = "rgba(255,255,255," + a + ")";
         // scroll keyed to the REAL ground rate (× small blur factor) so streaks read
         // as motion blur ON the track — not objects flying past on another plane.
@@ -2054,30 +2515,61 @@ function startRaceCanvas(container, ctx) {
       }
       cctx.stroke();
     };
-    cctx.strokeStyle = "rgba(0,0,0,0.16)"; cctx.lineWidth = 3;    railLine(g.top, 3.5);     // shadow under the far rail
-    cctx.strokeStyle = "rgba(244,248,255,0.72)"; cctx.lineWidth = 2.5; railLine(g.top, 1.5); // far rail (white)
-    cctx.strokeStyle = "rgba(220,230,245,0.26)"; cctx.lineWidth = 1.5; railLine(g.bottom, -1); // near rail (subtle)
-
-    // roadside props for the current terrain (torches, turn flags, rocks, …)
-    drawProps(g, WINW);
+    // （パララックス野外ではレール/プロップとも描かない＝空中に柵や旗が浮く不自然を排除。
+    //   道具立ては絵の中のもの＋接地したゲートだけ・ユーザー指摘）
+    if (!para) {
+      cctx.strokeStyle = "rgba(0,0,0,0.16)"; cctx.lineWidth = 3;    railLine(g.top, 3.5);     // shadow under the far rail
+      cctx.strokeStyle = "rgba(244,248,255,0.72)"; cctx.lineWidth = 2.5; railLine(g.top, 1.5); // far rail (white)
+      cctx.strokeStyle = "rgba(220,230,245,0.26)"; cctx.lineWidth = 1.5; railLine(g.bottom, -1); // near rail (subtle)
+      // roadside props for the current terrain (torches, turn flags, rocks, …)
+      drawProps(g, WINW);
+    }
 
     // --- finish gate (when in view) ---
+    // パララックス野外では「地面から立つ塔門」（浮かせない）。柱は円柱シェーディング＋
+    // 頂きに発光オーブ＝HD-2Dのチープさ対策（ユーザー指摘「ポールが安っぽい」）。
+    const drawPost3D = function (px, py0, py1, w2, base) {
+      const pg2 = cctx.createLinearGradient(px, 0, px + w2, 0);
+      pg2.addColorStop(0, rcShade(base, -34)); pg2.addColorStop(0.32, rcShade(base, 42));
+      pg2.addColorStop(0.55, rcShade(base, 6)); pg2.addColorStop(1, rcShade(base, -48));
+      cctx.fillStyle = pg2; cctx.fillRect(px, py0, w2, py1 - py0);
+      cctx.fillStyle = rcRgba(rcShade(base, 60), 0.9);                      // 金の柱頭リング
+      cctx.fillRect(px - 1, py0, w2 + 2, 2.5);
+    };
+    const drawOrb = function (px, py, r, col) {                             // 発光オーブ（ブルーム）
+      const t2 = performance.now() / 1000, pl = 0.72 + 0.28 * Math.sin(t2 * 2.6 + px * 0.1);
+      cctx.save(); cctx.globalCompositeOperation = "lighter";
+      const og = cctx.createRadialGradient(px, py, 0, px, py, r * 3.6);
+      og.addColorStop(0, rcRgba(col, 0.7 * pl)); og.addColorStop(0.4, rcRgba(col, 0.2 * pl)); og.addColorStop(1, rcRgba(col, 0));
+      cctx.fillStyle = og; cctx.beginPath(); cctx.arc(px, py, r * 3.6, 0, Math.PI * 2); cctx.fill();
+      cctx.restore();
+      cctx.fillStyle = "#fff8e4"; cctx.beginPath(); cctx.arc(px, py, r, 0, Math.PI * 2); cctx.fill();
+    };
     const goalX = screenX(1, WINW);
+    const gateBot = para ? ch * 0.95 : g.bottom;
     if (goalX < cw + 40 && goalX > -40) {
+      // 接地影（地面に立っている感）
+      if (para) { cctx.fillStyle = "rgba(0,0,0,0.35)"; cctx.beginPath(); cctx.ellipse(goalX, gateBot + 2, 21.6, 3.4, 0, 0, Math.PI * 2); cctx.fill(); }
       // checkered band
-      const bw = 9, rows = 10, rh = (g.bottom - g.top) / rows;
+      const bw = 9, rows = para ? 14 : 10, rh = (gateBot - g.top) / rows;
       for (let r = 0; r < rows; r++) {
         cctx.fillStyle = (r % 2 === 0) ? "#f4f4f4" : "#1c2030";
         cctx.fillRect(goalX - bw, g.top + r * rh, bw, rh);
         cctx.fillStyle = (r % 2 === 0) ? "#1c2030" : "#f4f4f4";
         cctx.fillRect(goalX, g.top + r * rh, bw, rh);
       }
-      // posts + banner
-      cctx.fillStyle = "#c9b27a";
-      cctx.fillRect(goalX - bw - 4, g.top - 22, 4, g.bottom - g.top + 22);
-      cctx.fillRect(goalX + bw, g.top - 22, 4, g.bottom - g.top + 22);
-      cctx.fillStyle = "#b23b3b";
-      cctx.fillRect(goalX - bw - 4, g.top - 22, bw * 2 + 8, 16);
+      // posts（円柱シェーディング）＋ 発光オーブ ＋ グラデ幕＋金トリム
+      drawPost3D(goalX - bw - 5, g.top - 22, gateBot, 5, "#c9b27a");
+      drawPost3D(goalX + bw, g.top - 22, gateBot, 5, "#c9b27a");
+      drawOrb(goalX - bw - 2.5, g.top - 25, 2.4, "#ffd34d");
+      drawOrb(goalX + bw + 2.5, g.top - 25, 2.4, "#ffd34d");
+      const bg2 = cctx.createLinearGradient(0, g.top - 22, 0, g.top - 6);
+      bg2.addColorStop(0, "#d4544e"); bg2.addColorStop(1, "#8e2a28");
+      cctx.fillStyle = bg2;
+      cctx.fillRect(goalX - bw - 5, g.top - 22, bw * 2 + 10, 16);
+      cctx.fillStyle = "#ffe9a8";
+      cctx.fillRect(goalX - bw - 5, g.top - 22, bw * 2 + 10, 1.5);
+      cctx.fillRect(goalX - bw - 5, g.top - 7.5, bw * 2 + 10, 1.5);
       cctx.fillStyle = "#fff";
       cctx.font = "bold 11px system-ui, sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
@@ -2086,14 +2578,26 @@ function startRaceCanvas(container, ctx) {
       if (!S.tapeBroken) {
         cctx.strokeStyle = "rgba(255,255,255,0.85)";
         cctx.lineWidth = 2;
-        cctx.beginPath(); cctx.moveTo(goalX, g.top); cctx.lineTo(goalX, g.bottom); cctx.stroke();
+        cctx.beginPath(); cctx.moveTo(goalX, g.top); cctx.lineTo(goalX, gateBot); cctx.stroke();
+      }
+      // 最終直線＝ゲートが呼ぶように輝く（接近で強く脈打つ・HD-2D発光）
+      if (para && !S.finished) {
+        const gk = clamp((leaderP - 0.84) / 0.14, 0, 1);
+        if (gk > 0) {
+          const t3 = performance.now() / 1000, pl3 = 0.7 + 0.3 * Math.sin(t3 * 3.2);
+          cctx.save(); cctx.globalCompositeOperation = "lighter"; cctx.globalAlpha = gk * 0.45 * pl3;
+          const gg2 = cctx.createRadialGradient(goalX, (g.top + gateBot) / 2, 6, goalX, (g.top + gateBot) / 2, 95);
+          gg2.addColorStop(0, "rgba(255,226,140,0.55)"); gg2.addColorStop(1, "rgba(255,226,140,0)");
+          cctx.fillStyle = gg2; cctx.fillRect(goalX - 100, g.top - 30, 200, gateBot - g.top + 60);
+          cctx.restore();
+        }
       }
     }
 
     // --- start gate (gantry at the start line) — grows grander with rank; recedes as the field pulls away ---
     const startGX = screenX(0, WINW);
     if (startGX > -90 && startGX < cw + 40 && (S.entryT > 0 || S.preT > 0 || S.tau < 0.06)) {
-      const rh = rankHype, gt = g.top, gb = g.bottom;
+      const rh = rankHype, gt = g.top, gb = para ? ch * 0.95 : g.bottom;   // 野外は地面まで＝接地した門
       const archH = 22 + rh * 30, postW = 4 + rh * 2, bw = 7;
       const postCol = rh > 0.66 ? "#e8c860" : rh > 0.33 ? "#c9b27a" : "#8a8f9e";
       const bannerCol = rh > 0.66 ? "#cf9a1e" : rh > 0.33 ? "#a85f33" : "#3a4a6a";
@@ -2106,8 +2610,15 @@ function startRaceCanvas(container, ctx) {
       }
       const rows = 12, rhh = (gb - gt) / rows;                          // start band
       for (let r = 0; r < rows; r++) { cctx.fillStyle = (r % 2 === 0) ? "rgba(235,240,255,0.45)" : "rgba(40,46,70,0.45)"; cctx.fillRect(startGX - bw, gt + r * rhh, bw * 2, rhh); }
-      cctx.fillStyle = postCol; cctx.fillRect(spanL, gt - archH, postW, (gb - gt) + archH); cctx.fillRect(startGX + bw, gt - archH, postW, (gb - gt) + archH);
-      cctx.fillStyle = bannerCol; cctx.fillRect(spanL, gt - archH, spanW, bannerH);
+      // 接地影＋円柱シェーディング柱＋頂きの発光オーブ（HD-2D・チープさ対策）
+      if (para) { cctx.fillStyle = "rgba(0,0,0,0.32)"; cctx.beginPath(); cctx.ellipse(startGX, gb + 2, spanW * 0.72, 3.2, 0, 0, Math.PI * 2); cctx.fill(); }
+      drawPost3D(spanL, gt - archH, gb, postW, postCol);
+      drawPost3D(startGX + bw, gt - archH, gb, postW, postCol);
+      drawOrb(spanL + postW / 2, gt - archH - 3, 2.2, rh > 0.5 ? "#ffd34d" : "#9fc4ff");
+      drawOrb(startGX + bw + postW / 2, gt - archH - 3, 2.2, rh > 0.5 ? "#ffd34d" : "#9fc4ff");
+      const sb2 = cctx.createLinearGradient(0, gt - archH, 0, gt - archH + bannerH);
+      sb2.addColorStop(0, rcShade(bannerCol, 26)); sb2.addColorStop(1, rcShade(bannerCol, -26));
+      cctx.fillStyle = sb2; cctx.fillRect(spanL, gt - archH, spanW, bannerH);
       if (rh > 0.33) { cctx.fillStyle = "#ffe9a8"; cctx.fillRect(spanL, gt - archH, spanW, 2); cctx.fillRect(spanL, gt - archH + bannerH - 2, spanW, 2); }
       cctx.fillStyle = "#fff"; cctx.font = "bold " + (9 + rh * 3).toFixed(0) + "px system-ui, sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle"; cctx.fillText("START", startGX, gt - archH + bannerH / 2);
@@ -2152,6 +2663,7 @@ function startRaceCanvas(container, ctx) {
     for (const p of S.particles) {
       if (p.scr) continue;
       const a = clamp(p.life, 0, 1);
+      if (p.acc) { _rcDrawAccent(cctx, p, a); continue; }
       if (p.kind === "dust") {
         cctx.fillStyle = `rgba(184,174,154,${0.42 * a})`;
         cctx.beginPath(); cctx.arc(p.x, p.y, p.size * (1 + (1 - a)), 0, Math.PI * 2); cctx.fill();
@@ -2174,6 +2686,25 @@ function startRaceCanvas(container, ctx) {
     const standings = timeline.standingsAt(S.tau);
     const standMap = {}; standings.forEach((id, i) => { standMap[id] = i + 1; });
 
+    // ★世界内イベントポップ（R8-W2・表示のみ）＝順位変動/スパートをその竜の頭上で祝う
+    //   （モックの「かわした！」）。レース中のみ・竜ごとクールダウンで騒がしさを抑制。
+    S.pops = S.pops || []; S.popCd = S.popCd || {};
+    const _popNow = performance.now() / 1000;
+    const _popsOn = S.entryT <= 0 && S.preT <= 0 && !S.finished && S.tau > 0.03;
+    // R8-W3 観客の反応SE（表示/音のみ）：先頭交代で歓声（7sクールダウン）・最終直線入りで一度どよめく
+    if (_popsOn && window.Sfx) {
+      const _lead = standings[0];
+      if (S._lastLead && _lead !== S._lastLead && _popNow > (S._leadCheerCd || 0)) {
+        try { Sfx.play("cheer", 0.96 + Math.random() * 0.08); } catch (e) {}
+        S._leadCheerCd = _popNow + 7;
+      }
+      S._lastLead = _lead;
+      if (!S._fsCheered) {
+        const _lp = timeline.progressAt(_lead, S.tau);
+        if (_lp > 0.82) { S._fsCheered = true; try { Sfx.play("cheer", 1.05); } catch (e) {} }
+      }
+    }
+
     const drawList = [...dragons].sort((a, b) => laneOf[b.id] - laneOf[a.id]);
     for (const dr of drawList) {
       const P = timeline.progressAt(dr.id, S.tau);
@@ -2183,9 +2714,64 @@ function startRaceCanvas(container, ctx) {
       const ownU = Math.min(1, S.tau / dr.finishTau);
 
       let x = screenX(Pvis, WINW);
-      const baseY = laneY(dr, g);
+      let baseY = laneY(dr, g);
+      // R8-W6d: 野外（パララックス）では全員「地面」からスタート——入場/カウントダウン中は
+      // 画面下端の大地に整列し、GOの瞬間に竜ごとの遅れでぎゅーんと各飛行高度へ舞い上がって
+      // ばらける（easeOutBack＝勢い＋ちょい行き過ぎ→すっと収まる）。表示のみ・進行/着順不変。
+      if (para) {
+        const ln = laneOf[dr.id] || 0;
+        const groundY = ch * 0.88 + (ln % 2) * 5 - 2;                       // 2列の前後感で整然と
+        const dl = ln * 0.055 + ((((ln + 3) * 2654435761) >>> 0) % 100) / 100 * 0.16;
+        const k = clamp((S.flyIn - dl) / 1.05, 0, 1);
+        const c1 = 1.25, c3 = c1 + 1;
+        const eb = k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+        // 離陸の一瞬＝光の礫＋巻き上がる砂塵（HD-2Dの「発光の瞬間」）
+        const prevEb = (S._launchEb && S._launchEb[dr.id]) || 0;
+        if (prevEb <= 0 && eb > 0) {
+          spawnDust(x - 10, groundY + 10, 3, 1.1);
+          spawnSpark(x - 6, groundY + 2, "#ffe9a8");
+        }
+        (S._launchEb = S._launchEb || {})[dr.id] = eb;
+        baseY = groundY + (baseY - groundY) * eb;
+        // 地上ではスターティンググリッド＝斜め後ろへ広めにずらして並ぶ（団子回避）。離陸で0へ収束。
+        x -= Math.max(0, 1 - eb) * (ln * 18 + 4);
+        // 地上の待機中だけ、たまに感情エモート（眠雲竜💤・泣き虫💧・火竜🔥・他♪✨＝愛らしさ）
+        if (eb <= 0 && (S.entryT > 0 || S.preT > 0)) {
+          const nw2 = performance.now() / 1000;
+          if (nw2 > (S.popCd[dr.id] || 0)) {
+            S.popCd[dr.id] = nw2 + 2.3 + ((ln * 37) % 10) / 6;
+            if (Math.random() < 0.5) {
+              const em = dr.id === "momu" ? "💤" : dr.id === "poro" ? "💧"
+                : ({ susu: 1, hibana: 1, benio: 1, shaku: 1, guren: 1, enma: 1, gouka: 1, phenix: 1 }[dr.id] ? "🔥" : (ln % 2 ? "♪" : "✨"));
+              S.pops.push({ x: x - 8, y: groundY - 40, tx: em, c: "#ffffff", t0: nw2, sz: 13 });
+            }
+          }
+        }
+      }
       const bob = Math.sin(S.gait[dr.id]) * (1.6 + intensity);
       const y = baseY + bob;
+      // 順位変動の検知→ポップ生成（standingsはタイムライン由来＝表示のみ・数値非干渉）
+      if (_popsOn && S.prevStand && x > cw * 0.06 && x < cw * 0.94) {
+        const rkNow = standMap[dr.id], pv = S.prevStand[dr.id];
+        const cd = S.popCd[dr.id] || 0;
+        // ポップも体の中心へ（鼻先アンカーのぶん左へ寄せる）
+        const _phw = rcHasDragonSprite(dr.id) ? rcDragonSpriteHalfW(dr.id, _RC_INRACE * laneDepth(dr)) : 0;
+        const px2 = x - _phw;
+        if (pv && rkNow < pv && _popNow > cd) {
+          S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "かわした！", c: "#8fe3ff", t0: _popNow });
+          S.pops.push({ x: px2 + 16, y: y - 60 * laneDepth(dr), tx: "✨", c: "#fff", t0: _popNow + 0.08, sz: 13 });   // 得意げの煌めき
+          S.popCd[dr.id] = _popNow + 3.2;
+          if (betSet.has(dr.id) && window.Sfx) { try { Sfx.play("tick", 1.2); } catch (e) {} }   // 自分の竜のUPだけ小さく鳴る
+        } else if (pv && rkNow - pv >= 2 && _popNow > cd) {
+          S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "！", c: "#ff6a5e", t0: _popNow });
+          S.pops.push({ x: px2 + 14, y: y - 58 * laneDepth(dr), tx: "💦", c: "#fff", t0: _popNow + 0.08, sz: 13 });   // 抜かれた焦り
+          S.popCd[dr.id] = _popNow + 3.2;
+        } else if (intensity > 0.95 && ownU < 0.92 && _popNow > cd && Math.random() < 0.010) {
+          S.pops.push({ x: px2, y: y - 46 * laneDepth(dr), tx: "仕掛けた！", c: "#ffd34d", t0: _popNow });
+          S.pops.push({ x: px2 + 16, y: y - 60 * laneDepth(dr), tx: "🔥", c: "#fff", t0: _popNow + 0.08, sz: 13 });   // 闘志
+          S.popCd[dr.id] = _popNow + 5.0;
+        }
+      }
 
       const offLeft = x < cw * 0.04;
       const drawX = clamp(x, cw * 0.05, cw * 0.97);
@@ -2256,6 +2842,9 @@ function startRaceCanvas(container, ctx) {
       const jumpY = beh.jump * 26 * dep;            // airborne lift
       const spriteY = y - jumpY;
       const dcx = drawX + (beh.dx || 0);            // horizontal offset (entrance walk-in)
+      // 体の中心アンカー（鼻先アンカーのスプライトは dcx の左へ伸びる）＝ラベル/マーカー共通
+      const _hw2 = rcHasDragonSprite(dr.id) ? rcDragonSpriteHalfW(dr.id, sprScale) : 0;
+      const bodyCx = dcx - _hw2;
       const grounded = 1 - 0.5 * beh.jump;          // shadow shrinks as it leaves the turf
       // soft contact shadow grounds the dragon on the turf (stays put during a jump)
       cctx.fillStyle = `rgba(0,0,0,${0.18 * grounded})`;
@@ -2301,37 +2890,64 @@ function startRaceCanvas(container, ctx) {
         if (_mood !== st.m && (urgent || _now - st.t >= 1.1)) { st.m = _mood; st.t = _now; }
         _mood = st.m;
       }
+      // 賭け竜マーカー＝足元の淡い金リング（体の下に描く＝顔を一切隠さない。丸囲いは廃止＝ユーザー指摘）
+      if (betSet.has(dr.id)) {
+        const rgx = bodyCx, rgy = baseY + 3, rw = Math.max(20 * dep, _hw2 * 1.05);
+        const rg = cctx.createRadialGradient(rgx, rgy, 1, rgx, rgy, rw);
+        rg.addColorStop(0, "rgba(255,211,77,0.28)"); rg.addColorStop(0.7, "rgba(255,211,77,0.12)"); rg.addColorStop(1, "rgba(255,211,77,0)");
+        cctx.save();
+        cctx.fillStyle = rg;
+        cctx.beginPath(); cctx.ellipse(rgx, rgy, rw, rw * 0.30, 0, 0, Math.PI * 2); cctx.fill();
+        cctx.strokeStyle = "rgba(255,211,77,0.5)"; cctx.lineWidth = 1.5;
+        cctx.beginPath(); cctx.ellipse(rgx, rgy, rw * 0.86, rw * 0.26, 0, 0, Math.PI * 2); cctx.stroke();
+        cctx.restore();
+      }
       rcDrawDragon(cctx, {
-        x: dcx, y: spriteY, scale: sprScale,
+        x: dcx, y: spriteY, scale: sprScale, id: dr.id,
         color: dr.color, style: dr.style, design: dragonDesign(dr.id),
         tint: (S._cmap || (S._cmap = (typeof rcDistinctColors === 'function' ? rcDistinctColors(dragons) : {})))[dr.id],
         gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6, mood: _mood,
         lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
         bank: bank, spread: spread, spin: beh.spin, squash: beh.squash, grounded: S.entryT > 0
       });
+      _rcEmitAccent(S, dragonDesign(dr.id), { x: dcx, y: spriteY, dep: dep, color: dr.color, intensity: intensity, grounded: S.entryT > 0, id: dr.id,
+        tailW: rcHasDragonSprite(dr.id) ? rcDragonSpriteHalfW(dr.id, _RC_INRACE * laneDepth(dr)) * 2 : 18 });   // 署名は尾の後ろから（位置のこだわり）
 
-      rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);
-      // bet reticle (player's pick)
-      if (betSet.has(dr.id)) {
-        cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2.5;
-        cctx.beginPath(); cctx.arc(dcx, spriteY - 4, 26 * dep, 0, Math.PI * 2); cctx.stroke();
-      }
-      // rank tag (live standing) — dark halo for legibility on turf
+      if (!rcHasDragonSprite(dr.id)) rcDrawDragonFace(cctx, dcx, spriteY, dep, _mood, performance.now(), dr.color);   // 3D絵は自前の表情を持つので漫符overlayは出さない
+      // rank badge — ★没入感優先＝控えめな半透明（ユーザー指摘）。賭け竜だけ淡い金塗り。
+      //   識別の主役は竜のスプライト自身・ラベルは「読みたい時に読める」薄さに。
       const rk = standMap[dr.id] || dr.rank;
-      const tagY = y - 30 * dep;
-      cctx.font = "bold 13px system-ui, sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
-      cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.85)";
-      cctx.strokeText(rk, dcx, tagY);
-      cctx.fillStyle = betSet.has(dr.id) ? "#ffd34d" : (popRank[dr.id] === 1 ? "#7fd1ff" : "#ffffff");
-      cctx.fillText(rk, dcx, tagY);
-      // name plate under the dragon
+      const isBet = betSet.has(dr.id);
+      // 地上整列中はラベルを出さない（スタートのごちゃごちゃ解消・ユーザー指摘）。
+      // 賭け竜だけは常時＝自分の竜は見失わない。離陸(6割上昇)で全員分が戻る。
+      const _lEb = para ? ((S._launchEb && S._launchEb[dr.id] != null) ? S._launchEb[dr.id] : 1) : 1;
+      if (_lEb > 0.6 || isBet) {
+      const tagY = y - 34 * dep;
+      const rr2 = (isBet ? 9 : 8) * dep;
+      cctx.beginPath(); cctx.arc(bodyCx, tagY, rr2, 0, Math.PI * 2);
+      cctx.fillStyle = isBet ? "rgba(255,211,77,0.80)" : "rgba(8,10,20,0.42)"; cctx.fill();
+      cctx.lineWidth = 1.3;
+      cctx.strokeStyle = isBet ? "rgba(255,243,196,0.7)" : (popRank[dr.id] === 1 ? "rgba(127,209,255,0.5)" : "rgba(255,255,255,0.28)");
+      cctx.stroke();
+      cctx.font = "bold " + Math.round((isBet ? 11 : 10) * dep) + "px system-ui, sans-serif";
+      cctx.textAlign = "center"; cctx.textBaseline = "middle";
+      cctx.fillStyle = isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.82)";
+      cctx.fillText(rk, bodyCx, tagY + 0.5);
+      cctx.textBaseline = "alphabetic";
+      // name plate — 控えめなピル（半透明・小さめ）。賭け竜はほんのり金味。
       const nm = commentaryName(dr.id);
-      cctx.font = "10px system-ui, sans-serif";
-      cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.8)";
-      cctx.strokeText(nm, dcx, baseY + 22);
-      cctx.fillStyle = "rgba(255,255,255,0.95)";
-      cctx.fillText(nm, dcx, baseY + 22);
+      cctx.font = "9.5px system-ui, sans-serif";
+      const nw = cctx.measureText(nm).width;
+      const plw = nw + 10, plh = 13, plx = bodyCx - plw / 2, ply = baseY + 12;
+      cctx.beginPath();
+      if (cctx.roundRect) cctx.roundRect(plx, ply, plw, plh, 6.5); else cctx.rect(plx, ply, plw, plh);
+      cctx.fillStyle = "rgba(8,10,20,0.36)"; cctx.fill();
+      if (isBet) { cctx.lineWidth = 1; cctx.strokeStyle = "rgba(255,211,77,0.4)"; cctx.stroke(); }
+      cctx.textAlign = "center"; cctx.textBaseline = "middle";
+      cctx.fillStyle = isBet ? "rgba(255,233,176,0.85)" : "rgba(255,255,255,0.68)";
+      cctx.fillText(nm, bodyCx, ply + plh / 2 + 0.5);
+      cctx.textBaseline = "alphabetic";
+      }   // ← ラベル表示ゲート（_lEb）
       // off-screen-behind indicator
       if (offLeft) {
         cctx.fillStyle = "rgba(255,255,255,0.6)";
@@ -2339,6 +2955,27 @@ function startRaceCanvas(container, ctx) {
         cctx.fillText("◀", cw * 0.03, y);
       }
       cctx.globalAlpha = _prevAlpha;             // end per-dragon edge fade
+    }
+    if (_popsOn) S.prevStand = standMap;         // 次フレームの順位変動検知用スナップショット
+
+    // イベントポップ描画（0.95s＝ポップイン→浮き上がり→フェード。世界座標＝竜と一緒に流れる）
+    if (S.lowSpec && S.pops.length > 2) S.pops.splice(0, S.pops.length - 2);   // R8-W5: 同時2件まで
+    if (S.pops.length) {
+      for (let i = S.pops.length - 1; i >= 0; i--) {
+        const p = S.pops[i], a = (_popNow - p.t0) / 0.95;
+        if (a >= 1) { S.pops.splice(i, 1); continue; }
+        const inK = Math.min(1, a / 0.14), rise = 26 * a;
+        const al = a < 0.75 ? 1 : 1 - (a - 0.75) / 0.25;
+        cctx.save();
+        cctx.translate(p.x, p.y - rise);
+        cctx.scale(0.6 + 0.4 * inK, 0.6 + 0.4 * inK);
+        cctx.font = "bold " + (p.sz || 15) + "px system-ui, sans-serif";
+        cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
+        cctx.globalAlpha = al;
+        cctx.lineWidth = 4; cctx.strokeStyle = "rgba(8,10,20,0.9)"; cctx.strokeText(p.tx, 0, 0);
+        cctx.fillStyle = p.c; cctx.fillText(p.tx, 0, 0);
+        cctx.restore();
+      }
     }
 
     // (world-space dust / ambient particles are drawn BEFORE the dragon loop now,
@@ -2353,6 +2990,46 @@ function startRaceCanvas(container, ctx) {
     if (tb.keyB !== tb.keyA) {
       const washB = rcTerrainInfo(tb.keyB).tint;
       if (washB) { cctx.save(); cctx.globalAlpha = tb.t; cctx.fillStyle = washB; cctx.fillRect(0, 0, cw, ch); cctx.restore(); }
+    }
+
+    // --- R8-W7: HD-2Dの光の粒（地域色・加算発光）——夜の空気に漂う熾火/蛍/星屑。
+    // 決定的な軌道（ハッシュ＋sin）＝ちらつかず、ゆっくり明滅しながら世界と逆方向に流れる。 ---
+    if (para && !S.finished) {
+      const mc = RC_PARA_MOTE[para.slug] || "#ffe9a8";
+      const tm = performance.now() / 1000;
+      const nMote = S.lowSpec ? 6 : 14;                        // R8-W5: 低速機は粒を減らす
+      cctx.save(); cctx.globalCompositeOperation = "lighter";
+      for (let mi = 0; mi < nMote; mi++) {
+        const sp2 = 0.35 + (mi % 4) * 0.16;
+        const mx = ((mi * 137.7 - (S.camL * SREF) * 0.35 * sp2 + tm * 6 * sp2) % (cw + 40) + (cw + 40)) % (cw + 40) - 20;
+        const my = ch * (0.16 + ((mi * 83) % 62) / 100) + Math.sin(tm * (0.7 + sp2) + mi * 2.4) * 9;
+        const pl2 = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(tm * (1.3 + sp2) + mi));
+        const mg = cctx.createRadialGradient(mx, my, 0, mx, my, 5.5);
+        mg.addColorStop(0, rcRgba(mc, 0.45 * pl2)); mg.addColorStop(1, rcRgba(mc, 0));
+        cctx.fillStyle = mg; cctx.beginPath(); cctx.arc(mx, my, 5.5, 0, Math.PI * 2); cctx.fill();
+        cctx.fillStyle = rcRgba("#ffffff", 0.45 * pl2);
+        cctx.beginPath(); cctx.arc(mx, my, 1.05, 0, Math.PI * 2); cctx.fill();
+      }
+      cctx.restore();
+    }
+
+    // --- R8-W6b: 近景シルエット帯（パララックス時・無機質対策）——画面最下端を岩や草の
+    // 影が最速×1.3で流れる＝疾走感と奥行き。決定的ハッシュ配置・下端16px内＝竜は隠さない。 ---
+    if (para && !S.finished) {
+      const fgScroll = S.camL * SREF * 1.3;
+      const stepFg = 34;
+      cctx.fillStyle = "rgba(6,7,14,0.88)";
+      for (let k = Math.floor(fgScroll / stepFg) - 1; k * stepFg - fgScroll < cw + stepFg; k++) {
+        const hxx = (((k * 2654435761) >>> 0) % 1000) / 1000;
+        if (hxx < 0.30) continue;                                    // 3割は空白＝疎らに
+        const bx2 = k * stepFg - fgScroll + hxx * 14;
+        const bw2 = 12 + hxx * 30, bh2 = 5 + hxx * 12;
+        cctx.beginPath();
+        cctx.moveTo(bx2 - bw2 / 2, ch + 1);
+        cctx.quadraticCurveTo(bx2 - bw2 * 0.18, ch - bh2 - (hxx > 0.72 ? 5 : 0), bx2 + bw2 * 0.14, ch - bh2 * 0.55);
+        cctx.quadraticCurveTo(bx2 + bw2 * 0.4, ch - bh2 * 0.2, bx2 + bw2 / 2, ch + 1);
+        cctx.closePath(); cctx.fill();
+      }
     }
 
     // --- final-straight drama vignette (darkens the corners, pulls the eye in) ---
@@ -2502,6 +3179,30 @@ function startRaceCanvas(container, ctx) {
       cctx.restore(); cctx.globalAlpha = 1;
     }
 
+    // --- R8-W1: フォトフィニッシュの1拍 — 白バウンス＋ゴール線ハイライト＋(きわどい時)ラベル ---
+    if (S.photoT > 0) {
+      const pk = clamp(S.photoT / 0.62, 0, 1);
+      cctx.fillStyle = "rgba(255,255,255," + (0.34 * pk * pk).toFixed(3) + ")";
+      cctx.fillRect(0, 0, cw, ch);
+      const pgx = clamp(screenX(1, S._winw || 0.3), -20, cw + 20);
+      cctx.fillStyle = "rgba(255,255,255," + (0.75 * pk).toFixed(3) + ")";
+      cctx.fillRect(pgx - 1, 0, 2, ch);
+      if (timeline.photoFinish) {
+        cctx.save();
+        cctx.font = "800 13px system-ui, sans-serif";
+        cctx.textAlign = "center"; cctx.textBaseline = "middle";
+        const pw = cctx.measureText("📸 写真判定").width + 22;
+        cctx.fillStyle = "rgba(14,18,34,0.78)";
+        cctx.beginPath();
+        if (cctx.roundRect) cctx.roundRect(cw / 2 - pw / 2, ch * 0.20 - 12, pw, 24, 12); else cctx.rect(cw / 2 - pw / 2, ch * 0.20 - 12, pw, 24);
+        cctx.fill();
+        cctx.strokeStyle = "rgba(255,255,255,0.55)"; cctx.lineWidth = 1; cctx.stroke();
+        cctx.fillStyle = "#fff";
+        cctx.fillText("📸 写真判定", cw / 2, ch * 0.20 + 1);
+        cctx.restore();
+      }
+    }
+
     // --- phase-entry banner (slides in from the side, holds, slides out) ---
     // --- terrain sign: an anime-style CUT-IN — a slanted banner that SLAMS in from the
     // left (speed lines + impact flash) as the leader enters a section, then snaps out.
@@ -2579,19 +3280,26 @@ function startRaceCanvas(container, ctx) {
     if (S.finished) {
       const winner = timeline.crossings[0];
       const rt = S.rewardT || 0;
+      // ★R8-W4：勝者ウィニングカット（HD-2D絵があれば rt 0〜1.55s に大写し・
+      //   見出し/払戻プレートはカットの終盤 rt-1.35s から＝順に語る）。表示のみ。
+      const hasCut = rcHasDragonSprite(winner.id);
+      if (hasCut) rcDrawWinnerCut(cctx, winner.id, cw / 2, ch * 0.54, rt, cw);
+      const rtd = hasCut ? Math.max(0, rt - 1.35) : rt;
       const _fc = (n) => (typeof fmtCoins === "function" ? fmtCoins(n) : String(n));
       cctx.save();
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      // headline fades in first
-      cctx.globalAlpha = Math.min(1, rt / 0.22);
+      // headline fades in first（カット時は「1着〈名前〉」行を省略＝金リボンと重複するため）
+      cctx.globalAlpha = Math.min(1, rtd / 0.22);
       cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 25px system-ui, sans-serif";
-      cctx.fillText("ゴールイン！", cw / 2, ch * 0.16);
-      cctx.fillStyle = "#fff"; cctx.font = "bold 15px system-ui, sans-serif";
-      cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.16 + 24);
+      cctx.fillText("ゴールイン！", cw / 2, ch * 0.14);
+      if (!hasCut) {
+        cctx.fillStyle = "#fff"; cctx.font = "bold 15px system-ui, sans-serif";
+        cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.14 + 24);
+      }
       cctx.globalAlpha = 1;
       // the reward plate pops in a beat later, showing the actual payout
       if (betResult) {
-        const rp = Math.max(0, Math.min(1, (rt - 0.18) / 0.4));
+        const rp = Math.max(0, Math.min(1, (rtd - 0.18) / 0.4));
         const ease = 1 - Math.pow(1 - rp, 3);
         const overshoot = rp < 1 ? Math.sin(rp * Math.PI) * 0.08 : 0;
         const sc = 0.62 + 0.38 * ease + overshoot;
@@ -2605,7 +3313,8 @@ function startRaceCanvas(container, ctx) {
         const amount = hit ? ("＋" + _fc(betResult.payout) + " コイン")
           : ("−" + _fc(Math.abs(betResult.profit)) + " コイン");
         cctx.save();
-        cctx.translate(cw / 2, ch * 0.35);
+        // ★プレートは下段へ＝ウィニングカット（中央）の主役を邪魔しない（ユーザー指定）
+        cctx.translate(cw / 2, hasCut ? ch * 0.82 : ch * 0.35);
         cctx.scale(sc, sc);
         cctx.globalAlpha = Math.min(1, rp * 1.4);
         const pw = 252, ph = 70;
@@ -2681,6 +3390,10 @@ function startRaceCanvas(container, ctx) {
         p.vy += 26 * dt;                       // gentle fall
         p.vx += Math.sin((p.rot || 0) * 2) * 18 * dt; // flutter sway
         p.rot = (p.rot || 0) + (p.vr || 0) * dt;
+      } else if (p.acc) {
+        if (p.kind === 'snow' || p.kind === 'tear') p.vy += 16 * pdt;        // 落ちる
+        else if (p.kind === 'ember' || p.kind === 'firegold' || p.kind === 'sleep') p.vy -= 10 * pdt;  // 昇る
+        p.vx *= (1 - 0.7 * pdt);                                             // 尾を引いて減速
       } else if (!p.amb) { p.vy += 60 * pdt; }
       else if (p.kind === "ember") { p.vy -= 9 * pdt; }
       p.life -= pdt / p.max;
@@ -2725,6 +3438,10 @@ function startRaceCanvas(container, ctx) {
     const ov = document.getElementById("event-overlay");
     if (ov && !ov.classList.contains("hidden")) return;
 
+    // R8-W1: フォトフィニッシュ静止1拍 — 1着の鼻先がゴールに触れた瞬間、世界ごと止める
+    // （τ/歩様/粒子すべて凍結＝写真。描画は続くのでフラッシュだけが減衰する。表示のみ）
+    if (S.photoT > 0) { S.photoT -= dt; if (S.photoT > 0) return; S.photoT = 0; }
+
     // --- entrance: parade the field in from the side before the countdown ---
     if (S.entryT > 0) {
       S.entryT -= dt * S.speed;
@@ -2753,6 +3470,9 @@ function startRaceCanvas(container, ctx) {
       }
       return;   // the field stays on the line until "GO！"
     }
+
+    // R8-W6d: GOからの経過秒（地面→飛行高度への舞い上がりイージング用・表示のみ）
+    if (S.flyIn < 3) S.flyIn += dt * S.speed;
 
     // --- run-through / pull-up: once the winner crosses, advance the global run-out
     // timer and every crossed dragon's coast clock (visProgress reads these to carry
@@ -2824,6 +3544,12 @@ function startRaceCanvas(container, ctx) {
           S.shake = Math.max(S.shake, 5);
           spawnSpark(gx, y, "#ffffff");
           addFloat(cw / 2, ch * 0.34, timeline.photoFinish ? "きわどい！" : "テープを切った！", "#fff");
+          // R8-W1: 鼻先がゴールした瞬間＝フォトフィニッシュ静止1拍（表示のみ・着順は確定済）
+          if (!S.photoUsed) {
+            S.photoUsed = true;
+            S.photoT = timeline.photoFinish ? 0.62 : 0.38;   // きわどい時は長め＋「写真判定」ラベル
+            if (window.Sfx) Sfx.play("tick", 0.55);           // シャッターの一打
+          }
         }
       }
     }
@@ -2838,6 +3564,7 @@ function startRaceCanvas(container, ctx) {
           S.shake = Math.max(S.shake, 2.5);
           const gp = trackGeom(); const y = laneY(dr, gp) - 18;
           addFloat(screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3), y, "つまずいた！", "#ff9a8a");
+          S.pops.push({ x: screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3) + 14, y: y - 14, tx: "💫", c: "#fff", t0: performance.now() / 1000, sz: 13 });   // 目回し
         }
         if (ev.type === "surge" && prevU < ev.u && ownU >= ev.u && dr.rank <= 4) {
           ev._shouted = true;
@@ -2967,6 +3694,18 @@ function startRaceCanvas(container, ctx) {
     if (!RC_ACTIVE || RC_ACTIVE.id !== loopId) return;        // superseded
     if (state.ui.screen !== "race_run") { stopRacePlayer(); return; }
     const dt = Math.min(0.05, (now - (S.last || now)) / 1000);
+    // R8-W5: 低速機の自動検知——実フレーム間隔の移動平均が40ms超（<25fps）を2秒続けたら
+    // 縮退モードに固定（レース中は戻さない＝ちらつき防止）。タブ復帰等の巨大間隔は無視。
+    // window.__rcLowSpec = true で強制（デバッグ用レバー・表示のみ）。
+    const rawMs = now - (S.last || now);
+    if (!S.lowSpec) {
+      if (window.__rcLowSpec) S.lowSpec = true;
+      else if (S.last && rawMs > 0 && rawMs < 500) {
+        S._fpsAvg = S._fpsAvg == null ? rawMs : S._fpsAvg * 0.9 + rawMs * 0.1;
+        if (S._fpsAvg > 40) { S._slowT = (S._slowT || 0) + rawMs; if (S._slowT > 2000) S.lowSpec = true; }
+        else S._slowT = 0;
+      }
+    }
     S.last = now;
     update(dt);
     draw();
@@ -3001,23 +3740,8 @@ function startRaceCanvas(container, ctx) {
       logEl.style.display = S.showLog ? "" : "none";
       if (S.showLog) renderLog();
     }, { secondary: true }));
-    // ミュート切替（レース中もいつでも）。SE・歓声＋BGMをまとめて消音／復帰。
-    const muteOn = !!(window.Sfx && Sfx.isMuted && Sfx.isMuted());
-    const muteBtn = makeBtn(muteOn ? "🔇" : "🔊", () => {
-      if (!window.Sfx) return;
-      const nowMuted = !Sfx.isMuted();
-      Sfx.setMuted(nowMuted);                          // SE・歓声ループを停止＋設定を保存
-      if (nowMuted) {
-        if (window.RaceBgm) RaceBgm.setMuted(true);    // BGMも止める
-      } else {
-        if (!S.finished && S.preT <= 0 && window.RaceBgm) RaceBgm.start();   // 進行中ならBGM再開
-        else if (S.finished && Sfx.startCrowd) Sfx.startCrowd();             // ゴール後なら歓声を鳴らし直す
-      }
-      renderControls();                                // アイコン更新
-    }, { secondary: true });
-    muteBtn.classList.add("rc-mute");
-    muteBtn.setAttribute("aria-label", muteOn ? "ミュート解除" : "ミュート");
-    controlsEl.appendChild(muteBtn);
+    // 音声操作は全画面共通の🔊FAB（右下）へ一本化——ボタン二重のUX混乱を解消（ユーザー指摘）。
+    // ミュート/音量は showVolumePanel が担い、BGM復帰は RaceBgm.setMuted(false) が面倒を見る。
     if (S.finished) {
       controlsEl.appendChild(makeBtn("結果を見る", () => { stopRacePlayer(); if (typeof renderResult === "function") renderResult(); }));
     }

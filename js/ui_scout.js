@@ -12,12 +12,32 @@ let _scoutMeetD = null;    // 交渉中の竜
 let _scoutMeetLoc = null;  // 交渉中のロケ
 
 // ── ハブ：ロケ段階開放＋マスク ───────────────────────────────────────────
+// C1解消：読み合いの核ルールの恒常ヘルプ（？ボタン＋初回自動表示・docs/GAME_FLOW_REDESIGN.md）
+function showScoutHelp() {
+  const legend = (typeof SCOUT_CAT_COLOR !== "undefined")
+    ? Object.keys(SCOUT_CAT_COLOR).map(k => `<span style="border-left:3px solid ${SCOUT_CAT_COLOR[k]};padding-left:5px;margin-right:8px;white-space:nowrap">${k}</span>`).join("")
+    : "";
+  showInfoPopup("🔍 スカウトの読み合い（ルール）",
+    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>① しぐさ＝気持ちのヒント</b><small>竜は言葉を話さない代わりに、しぐさで「いまの気持ち」（不安・警戒・甘え・遊びたい…）を見せる。まず読む。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🤝</span><div><b>② 気持ちに合う交渉術を選ぶ</b><small>合う技＝<u>信頼が上がり警戒が下がる</u>。合わない技は逆効果（決裂は運ではなく読み違い）。「観察」で気持ちを確かめてから動くのも手。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🎨</span><div><b>③ 色＝技の系統</b><small>${legend}</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🍃</span><div><b>④ 決裂しても失うのは旅費だけ</b><small>竜は逃げない。何度でも会いにいける（レースの結果には影響しません）。</small></div></div>`);
+}
+
 function renderScout() {
   if (typeof poroScoutUnlocked === "function" && !poroScoutUnlocked()) { if (typeof renderHome === "function") renderHome(); return; }
   state.ui.screen = "scout";
   const app = beginScreen();
-  app.appendChild(el("h2", null, "🔍 竜スカウト"));
+  const h2 = el("h2", null, "🔍 竜スカウト <button class=\"info-q\" title=\"読み合いのルール\">？</button>");
+  h2.querySelector(".info-q").onclick = () => showScoutHelp();
+  app.appendChild(h2);
   app.appendChild(el("div", "as-hint2", "野の竜は人の言葉を話さない。<b>しぐさ</b>から気持ちを読み、<b>交渉術</b>で心を開かせて仲間に迎えよう。遠征には<b>旅費</b>がかかる（表示専用＝レースの結果には影響しません）。"));
+  // 初回だけルールを自動で1回説明（以後は？ボタン）
+  if (typeof getStoryFlag === "function" && !getStoryFlag("_help_scout_seen")) {
+    setStoryFlag("_help_scout_seen", true);
+    if (typeof saveGame === "function") saveGame();
+    setTimeout(() => { try { if (state.ui.screen === "scout") showScoutHelp(); } catch (e) {} }, 450);
+  }
 
   const owned = (typeof poroMetDragonIds === "function" ? poroMetDragonIds().filter(id => id !== "poro").length : 0);
   app.appendChild(el("div", "scout-bar", `🏠 龍舎の竜：<b>${owned}</b>頭　｜　🪙 <b>${(state.player.coins || 0).toLocaleString("ja-JP")}</b>`));

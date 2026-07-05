@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="manifest" href="manifest.json">
 <title>聖龍爆走録ミミ ／ 転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件</title>
-<link rel="stylesheet" href="style.css?v=20260702k">
+<link rel="stylesheet" href="style.css?v=20260705z">
 </head>
 <body>
 <header id="header">
@@ -63,86 +63,87 @@
   8) sim_tools.js      — debug/balance harness
   9) main.js           — entry point, wires everything
 -->
-<script src="js/utils.js?v=20260702k"></script>
-<script src="js/sfx.js?v=20260702k"></script>
-<script src="js/bgm.js?v=20260702k"></script>
+<script src="js/utils.js?v=20260705z"></script>
+<script src="js/sfx.js?v=20260705z"></script>
+<script src="js/bgm.js?v=20260705z"></script>
 <!-- ゾーンBGM（ホーム/モール等を画面追従で自動再生・RaceBgm共有・表示専用） -->
-<script src="js/bgm_zones.js?v=20260702k"></script>
-<script src="js/data_dragons.js?v=20260702k"></script>
-<script src="js/data_courses.js?v=20260702k"></script>
-<script src="js/data_weather.js?v=20260702k"></script>
-<script src="js/data_ranks.js?v=20260702k"></script>
-<script src="js/data_assets.js?v=20260702k"></script>
-<script src="js/data_races.js?v=20260702k"></script>
-<script src="js/data_dragons_ext.js?v=20260702k"></script>
-<script src="js/state.js?v=20260702k"></script>
-<script src="js/race_engine.js?v=20260702k"></script>
-<script src="js/odds_engine.js?v=20260702k"></script>
-<script src="js/betting_engine.js?v=20260702k"></script>
-<script src="js/analysis_engine.js?v=20260702k"></script>
-<script src="js/assets_engine.js?v=20260702k"></script>
-<script src="js/lifetree_engine.js?v=20260702k"></script>
-<script src="js/recap_engine.js?v=20260702k"></script>
-<script src="js/broadcast_engine.js?v=20260702k"></script>
-<script src="js/commentary_data.js?v=20260702k"></script>
-<script src="js/commentary_engine.js?v=20260702k"></script>
-<script src="js/race_timeline_engine.js?v=20260702k"></script>
-<script src="js/race_canvas.js?v=20260702k"></script>
-<script src="js/event_hooks.js?v=20260702k"></script>
-<script src="js/event_registry.js?v=20260702k"></script>
-<script src="js/goals.js?v=20260702k"></script>
-<script src="js/meals.js?v=20260702k"></script>
+<script src="js/bgm_zones.js?v=20260705z"></script>
+<script src="js/data_dragons.js?v=20260705z"></script>
+<script src="js/data_courses.js?v=20260705z"></script>
+<script src="js/data_weather.js?v=20260705z"></script>
+<script src="js/data_ranks.js?v=20260705z"></script>
+<script src="js/data_assets.js?v=20260705z"></script>
+<script src="js/data_races.js?v=20260705z"></script>
+<script src="js/data_dragons_ext.js?v=20260705z"></script>
+<script src="js/state.js?v=20260705z"></script>
+<script src="js/race_engine.js?v=20260705z"></script>
+<script src="js/odds_engine.js?v=20260705z"></script>
+<script src="js/betting_engine.js?v=20260705z"></script>
+<script src="js/analysis_engine.js?v=20260705z"></script>
+<script src="js/assets_engine.js?v=20260705z"></script>
+<script src="js/lifetree_engine.js?v=20260705z"></script>
+<script src="js/recap_engine.js?v=20260705z"></script>
+<script src="js/broadcast_engine.js?v=20260705z"></script>
+<script src="js/commentary_data.js?v=20260705z"></script>
+<script src="js/commentary_engine.js?v=20260705z"></script>
+<script src="js/race_timeline_engine.js?v=20260705z"></script>
+<script src="js/race_canvas.js?v=20260705z"></script>
+<script src="js/event_hooks.js?v=20260705z"></script>
+<script src="js/event_registry.js?v=20260705z"></script>
+<script src="js/goals.js?v=20260705z"></script>
+<script src="js/progression.js?v=20260705z"></script>
+<script src="js/meals.js?v=20260705z"></script>
 <!-- 物語の小イベント（短い挿話・進行で解放・再読可・表示専用メタ） -->
-<script src="js/data_story_events.js?v=20260702k"></script>
+<script src="js/data_story_events.js?v=20260705z"></script>
 <!-- SNS（タイムライン/ファンレター・表示専用メタ） -->
-<script src="js/sns.js?v=20260702k"></script>
-<script src="js/ui_render.js?v=20260702k"></script>
+<script src="js/sns.js?v=20260705z"></script>
+<script src="js/ui_render.js?v=20260705z"></script>
 <!-- ui_render.jsからの分割（CODEMAP §6）：目標/食事＝ui_meta、暮らし系＝ui_assets -->
-<script src="js/ui_home.js?v=20260702k"></script>
-<script src="js/ui_meta.js?v=20260702k"></script>
-<script src="js/ui_assets.js?v=20260702k"></script>
+<script src="js/ui_home.js?v=20260705z"></script>
+<script src="js/ui_meta.js?v=20260705z"></script>
+<script src="js/ui_assets.js?v=20260705z"></script>
 <!-- 🏦 島の経済（暮らし配下・終章の絶滅メーター本体もここに集約・表示専用メタ） -->
-<script src="js/ui_economy.js?v=20260702k"></script>
+<script src="js/ui_economy.js?v=20260705z"></script>
 <!-- 🏆 コレクション・やり込み（暮らし配下・各収集の達成度＝得点＋ミニゲーム・表示専用メタ） -->
-<script src="js/ui_collection_score.js?v=20260702k"></script>
+<script src="js/ui_collection_score.js?v=20260705z"></script>
 <!-- 🏝 崑崙島 観光マップ統合ハブ（7分類で既存機能を束ねる・表示専用メタ・設定の聖典=KONRON handoff） -->
-<script src="js/konron_content.js?v=20260702k"></script>
-<script src="js/ui_konron_map.js?v=20260702k"></script>
-<script src="js/ui_story.js?v=20260702k"></script>
-<script src="js/ui_sns.js?v=20260702k"></script>
+<script src="js/konron_content.js?v=20260705z"></script>
+<script src="js/ui_konron_map.js?v=20260705z"></script>
+<script src="js/ui_story.js?v=20260705z"></script>
+<script src="js/ui_sns.js?v=20260705z"></script>
 <!-- ショッピングモール（station SQUARE風ライト・ポータル／renderMall を ui_render から移設） -->
-<script src="js/ui_mall.js?v=20260702k"></script>
-<script src="js/mall_rpg.js?v=20260702k"></script>
+<script src="js/ui_mall.js?v=20260705z"></script>
+<script src="js/mall_rpg.js?v=20260705z"></script>
 <!-- 大冒険ハブを station SQUARE 風に上書き定義（mall_rpg.js の後＝後勝ち・ロジック不変） -->
-<script src="js/ui_mall_rpg.js?v=20260702k"></script>
+<script src="js/ui_mall_rpg.js?v=20260705z"></script>
 <!-- 一人称ビューの3Dレンダラ（実証・ブラックルーム調）。mall_rpg.js の後に登録のみ。既定は2D・?mall3dで切替 -->
-<script src="js/mall_view_3d.js?v=20260702k"></script>
-<script src="js/dialogue.js?v=20260702k"></script>
-<script src="js/data_dialogue.js?v=20260702k"></script>
+<script src="js/mall_view_3d.js?v=20260705z"></script>
+<script src="js/dialogue.js?v=20260705z"></script>
+<script src="js/data_dialogue.js?v=20260705z"></script>
 <!-- 竜スカウト「発見＆交渉」：データ＋純ロジック（しぐさ→心情→交渉術／表示専用・docs/SCOUT_NEGOTIATION_DESIGN.md） -->
-<script src="js/data_scout.js?v=20260702k"></script>
-<script src="js/scout_engine.js?v=20260702k"></script>
+<script src="js/data_scout.js?v=20260705z"></script>
+<script src="js/scout_engine.js?v=20260705z"></script>
 <!-- 泣き虫竜ポロ：相棒キャラ／物語アーク／龍舎・スカウト・グルメレース解放（表示専用メタ） -->
-<script src="js/poro.js?v=20260702k"></script>
+<script src="js/poro.js?v=20260705z"></script>
 <!-- スカウトUI：ロケ段階ハブ（マスク）＋交渉エンカウンター（poro.js の renderScout を後勝ち上書き） -->
-<script src="js/ui_scout.js?v=20260702k"></script>
+<script src="js/ui_scout.js?v=20260705z"></script>
 <!-- ポロのグルメレース（クリア後ミニゲーム・横スクロール・表示専用） -->
-<script src="js/poro_gourmet.js?v=20260702k"></script>
+<script src="js/poro_gourmet.js?v=20260705z"></script>
 <!-- 終章（第5話セレスティア〜ED）：伏線/絶滅メーター/最終バトルレース（表示専用メタ・docs/epilogue_extinction_design.md） -->
-<script src="js/epilogue_engine.js?v=20260702k"></script>
+<script src="js/epilogue_engine.js?v=20260705z"></script>
 <!-- エンディング演出＆スタッフロール（表示専用・データ駆動／レース数値に非干渉） -->
-<script src="js/data_ending.js?v=20260702k"></script>
-<script src="js/ending_engine.js?v=20260702k"></script>
+<script src="js/data_ending.js?v=20260705z"></script>
+<script src="js/ending_engine.js?v=20260705z"></script>
 <!-- Live2Dリグ竜ランタイム（マスコット/レース竜用・表示専用） -->
-<script src="live2d/js/util.js?v=20260702k"></script>
-<script src="live2d/js/rig.js?v=20260702k"></script>
-<script src="live2d/js/player.js?v=20260702k"></script>
-<script src="js/dragon_live2d.js?v=20260702k"></script>
-<script src="js/sim_tools.js?v=20260702k"></script>
+<script src="live2d/js/util.js?v=20260705z"></script>
+<script src="live2d/js/rig.js?v=20260705z"></script>
+<script src="live2d/js/player.js?v=20260705z"></script>
+<script src="js/dragon_live2d.js?v=20260705z"></script>
+<script src="js/sim_tools.js?v=20260705z"></script>
 <!-- レスポンシブ自己診断（開発用・表示専用／設定デバッグの🩺から実行） -->
-<script src="js/devcheck.js?v=20260702k"></script>
+<script src="js/devcheck.js?v=20260705z"></script>
 <!-- 画面レジストリ＋直接ジャンプ（goto/rerenderCurrent/?go=・開発高速化） -->
-<script src="js/nav.js?v=20260702k"></script>
-<script src="js/main.js?v=20260702k"></script>
+<script src="js/nav.js?v=20260705z"></script>
+<script src="js/main.js?v=20260705z"></script>
 </body>
 </html>

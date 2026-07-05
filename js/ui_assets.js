@@ -67,8 +67,17 @@ function renderAssets() {
     ent.appendChild(entry("🏦", "島の経済", epOn ? "総資産・名声・村の景気… ＋ ☄️絶滅メーターの綱引き" : "総資産・名声・フォロワー・村の景気＝島の経済状態", epOn ? "☄️終章" : "", () => renderEconomy()));
   }
   // 🏆 コレクション・やり込み（各収集の達成度＝得点＋クリア後ミニゲーム）。js/ui_collection_score.js
+  // K3-A5：クリア前は「？？？」予告行（progressionのロック2表現＝この先に何かある、の余韻）
   if (typeof renderCollectionScore === "function") {
-    ent.appendChild(entry("🏆", "コレクション", "図鑑・衣装・食・小イベント… 達成度（得点）＋ミニゲーム", "", () => renderCollectionScore()));
+    const _cleared = (typeof kurashiChapter === "function") && kurashiChapter() >= 6;
+    if (_cleared) {
+      ent.appendChild(entry("🏆", "コレクション", "図鑑・衣装・食・小イベント… 達成度（得点）＋ミニゲーム", "", () => renderCollectionScore()));
+    } else {
+      ent.appendChild(entry("🔒", "？？？", "終章のあとで——島での日々の、すべてが得点になる。", "", () => {
+        if (typeof showInfoPopup === "function") showInfoPopup("🏆 ？？？",
+          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語を最後まで見届けると開放されます。図鑑も、衣装も、食べ歩きも——島での日々のすべてが、ここで振り返れるようになります。</small></div></div>`);
+      }));
+    }
   }
   // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。
   const _ch3unlocked = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
@@ -93,6 +102,24 @@ function renderAssets() {
   app.appendChild(actions);
 }
 
+// K3-A4（docs/KURASHI_STORY_WEAVE.md A4）：師範制＝各習い事に物語人物の師範を紐付け。
+// 登場章前は「？？？」（progressionのロック2表現）。紋は images/kurashi/shihan_<id>.webp
+// （CODEX納品スロット・未着なら絵文字にフォールバック）。表示専用・レース数値不変。
+const SKILL_SHIHAN = {
+  sake:   { name: "サケ・ウダダ",   ic: "🍶", color: "#c9a24a", ch: 1, skills: ["tea", "gym"],
+            word: "体と肚が据わりゃ、目も据わる。" },
+  mizu:   { name: "ミズ",           ic: "💧", color: "#5aa0d0", ch: 2, skills: ["invest", "english"],
+            word: "価値はね、言葉と数字でできてるの。" },
+  sumika: { name: "スミカ・ラグナ", ic: "🏘️", color: "#b08fd0", ch: 3, skills: ["cooking", "volunteer"],
+            word: "暮らしの手仕事が、いちばんの才能です。" },
+  makura: { name: "実況マクラ",     ic: "🎤", color: "#e0a050", ch: 4, skills: ["reading", "yoga"],
+            word: "声と物語は、鍛えた分だけ遠くへ届く。" }
+};
+function _shihanOf(skillId) {
+  for (const k in SKILL_SHIHAN) if (SKILL_SHIHAN[k].skills.indexOf(skillId) >= 0) return Object.assign({ id: k }, SKILL_SHIHAN[k]);
+  return null;
+}
+
 // 専用画面：習い事（アクティブスキル）。通うとレベルが上がり、効果テキストと称号がつくだけの
 // 完全な表示専用メタ進行。コイン・総資産・暮らしP・着順・オッズ・配当には一切触れない。
 function renderActiveSkills() {
@@ -101,6 +128,33 @@ function renderActiveSkills() {
   const as = state.player.activeSkills;
   const app = beginScreen();
   app.appendChild(el("h2", null, "習い事（アクティブスキル）"));
+
+  // ── 師範ボード（章連動・表示のみ）：誰に何を教わるかが物語と繋がる ──
+  try {
+    const chNow = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
+    const board = el("div", "shihan-board");
+    Object.keys(SKILL_SHIHAN).forEach(id => {
+      const m = SKILL_SHIHAN[id];
+      const met = chNow >= m.ch;
+      const mastered = m.skills.filter(sid => {
+        const sk = ACTIVE_SKILLS.find(x => x.id === sid);
+        return sk && (as[sid] || 0) >= sk.levels.length;
+      }).length;
+      const kaiden = met && mastered >= m.skills.length;
+      const chip = el("div", "shihan-chip" + (kaiden ? " kaiden" : "") + (met ? "" : " unmet"));
+      chip.style.setProperty("--shc", m.color);
+      chip.innerHTML = met
+        ? `<span class="shihan-crest"><img src="images/kurashi/shihan_${id}.webp" alt="" onerror="this.remove()"><i>${m.ic}</i></span>` +
+          `<span class="shihan-id"><b>${m.name}</b><small>${kaiden ? "🎓 免許皆伝！" : "皆伝 " + mastered + "/" + m.skills.length}</small></span>` +
+          `<span class="shihan-word">“${m.word}”</span>`
+        : `<span class="shihan-crest"><i>❓</i></span>` +
+          `<span class="shihan-id"><b>？？？</b><small>第${m.ch}話で出会う</small></span>`;
+      board.appendChild(chip);
+    });
+    app.appendChild(board);
+  } catch (e) {}
+  // C7解消：この画面の目的と称号の関係を1行で明示（無説明で放置されない）。
+  app.appendChild(el("div", "as-hint2", "「通う」を選ぶほど上達していく、ミミの暮らしの記録。極めると<b>称号</b>を獲得＝ホーム左上のプロフィール（🏅▾）で付け替えられます。コイン・総資産・レース結果には影響しません。"));
 
   const titles = ACTIVE_SKILLS.filter(s => (as[s.id] || 0) >= s.levels.length).length;
   app.appendChild(el("div", "as-hint2",
@@ -124,10 +178,16 @@ function renderActiveSkills() {
     const isEq = eq === s.id;
     const dots = Array.from({ length: max }, (_, i) => `<span class="askill-dot${i < lv ? " on" : ""}"></span>`).join("");
     const card = el("div", "askill" + (maxed ? " maxed" : "") + (isEq ? " equipped" : ""));
+    // K3-A4: 師範チップ（登場章前は？？？＝誰に教わるかも物語の楽しみ）
+    const _m = (typeof _shihanOf === "function") ? _shihanOf(s.id) : null;
+    const _chNow2 = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
+    const _mTag = _m ? (_chNow2 >= _m.ch
+      ? `<span class="askill-shihan" style="--shc:${_m.color}">${_m.ic} 師範 ${_m.name}</span>`
+      : `<span class="askill-shihan unmet">❓ 師範 ？？？</span>`) : "";
     card.innerHTML =
       `<div class="askill-top">` +
         `<span class="askill-ic">${s.icon}</span>` +
-        `<span class="askill-id"><span class="askill-nm">${s.name}</span><span class="askill-tag">${s.tag}</span></span>` +
+        `<span class="askill-id"><span class="askill-nm">${s.name}</span><span class="askill-tag">${s.tag}</span>${_mTag}</span>` +
         `<span class="askill-lv">${maxed ? "極" : "Lv" + lv}</span>` +
       `</div>` +
       `<div class="askill-dots">${dots}</div>` +
@@ -195,6 +255,14 @@ function showSkillTitleCutin(skill) {
 // 専用画面：くらしスキルツリー（枝タブ＋星座チェーン＋振り直し）
 // 直近に解放したノード（点灯ポップ演出を一度だけ再生するためのフラグ）
 let _ltJustUnlocked = null;
+// K3-A2（docs/KURASHI_STORY_WEAVE.md A2）：スミカの宿題＝章連動の推奨チェックリスト。
+// b=LIFE_BRANCHES のインデックス・n=目標節数。達成表示のみ・報酬なし（表示専用メタ）。
+const SUMIKA_HOMEWORK = {
+  3: { note: "まずは食と住から。倒れない暮らしが、いい予想を作るんです。", items: [{ b: 0, n: 2 }, { b: 1, n: 2 }] },
+  4: { note: "配信の時代ですから。装いと遊びにも、少しだけ投資を。", items: [{ b: 2, n: 3 }, { b: 4, n: 3 }] },
+  5: { note: "ここまで来たら、全部の枝を。暮らしの厚みが、島の底力になります。", items: [{ b: 0, n: 4 }, { b: 3, n: 4 }, { b: 5, n: 4 }] },
+  6: { note: "……もう宿題はありません。あなたの暮らしが、みんなのお手本です。", items: [] }
+};
 function renderLifeTree() {
   state.ui.screen = "life_tree";
   recomputeAssets(state);
@@ -202,6 +270,25 @@ function renderLifeTree() {
   const app = beginScreen();   // 上部に「← 暮らし」が付く
   app.appendChild(el("h2", null, "くらしスキルツリー"));
   app.appendChild(el("div", "as-hint2", `暮らしP ◇<b>${st.available}</b> 残り ／ 解放 ${st.unlockedCount}/${st.totalNodes}　<span class="as-hint">レースで総資産が増える＝暮らしPが貯まる</span>`));
+
+  // ── スミカの宿題（章連動・表示のみ）──
+  try {
+    const ch = Math.min(Math.max((typeof kurashiChapter === "function") ? kurashiChapter() : 3, 3), 6);
+    const hw = SUMIKA_HOMEWORK[ch];
+    if (hw) {
+      const rows = hw.items.map(it => {
+        const b = LIFE_BRANCHES[it.b]; if (!b) return "";
+        const pr = lifeBranchProgress(b.id);
+        const ok = pr.done >= it.n;
+        return `<div class="sh-row${ok ? " ok" : ""}"><span>${ok ? "☑" : "☐"}</span> ${b.icon} ${b.name}の枝を ${it.n} 節まで <i>（いま ${pr.done}）</i></div>`;
+      }).join("");
+      const box = el("div", "card sh-box");
+      box.innerHTML =
+        `<div class="sh-t">🏘️ スミカの宿題 <small>${ch >= 6 ? "クリア後" : "第" + ch + "話"}</small></div>` +
+        `<div class="sh-note">「${hw.note}」</div>` + rows;
+      app.appendChild(box);
+    }
+  } catch (e) {}
 
   if (!_lifeTab || !LIFE_TREE[_lifeTab]) {
     _lifeTab = LIFE_BRANCHES[0].id;
