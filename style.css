@@ -6708,3 +6708,6 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .meal-buy .meal-buy-heal { font-size: 12px; font-weight: 700; color: #9fe0b0; }
 .meal-buy small { font-size: 11px; color: rgba(255,255,255,.62); }
 .meal-buy.short small { color: #ff9a8a; font-weight: 700; }
+
+/* 食事：セクション見出しに段位価格を明示（タップ前に価格が見える・有料の食べる段位のみ）。 */
+.meal-sec-price { color: #ffd36b; font-weight: 800; white-space: nowrap; }

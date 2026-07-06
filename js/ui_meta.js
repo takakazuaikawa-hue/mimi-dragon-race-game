@@ -83,8 +83,13 @@ function renderMeals() {
     app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は終章（総資産1億・第5話）で開放されます。"));
   } else if (t) {
     const sec = el("div", "meal-sec");
+    // 段位内は価格一律（価格=基準単価×グレード）。タップ前に見えるよう、有料の食べる段位のみ見出しに価格を1回出す。
+    // 当てる段位(gourman/shinbo)は solveMeal＝無料なので価格は出さない。価格/課金ロジック(hunger.js)は不変。
+    const _secTag = (t.mode !== "guess" && typeof mealPrice === "function")
+      ? `🍴 食べて集める　<span class="meal-sec-price">🪙${mealPrice({ tier: t.id }).toLocaleString("ja-JP")}／品</span>`
+      : (t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める");
     sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
-      `<small>${t.sub}　・　${t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める"}</small></span>`;
+      `<small>${t.sub}　・　${_secTag}</small></span>`;
     app.appendChild(sec);
     const grid = el("div", "meal-grid");
     mealsByTier(t.id).forEach(m => {
