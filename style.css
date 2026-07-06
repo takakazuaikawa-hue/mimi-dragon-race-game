@@ -6653,3 +6653,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* (B) クイック返信パネルはオーバーレイ＝レイアウトを押し上げない（コメントボタンでキャラが動くバグ解消）。 */
 .hl-cmbar-wrap { position: relative; }
 .hl-cmbar-wrap .hl-qr { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); margin: 0; z-index: 5; }
+
+/* (D) フッターの“スカスカ”是正：アイコンを大きめに＝各タブに存在感を持たせる（専用イラストで更に充実）。 */
+.tik-tab .ic { font-size: 23px; }
+.tik-tab .tik-ic-img { width: 28px; height: 28px; }
+.tik-tab .lb { font-size: 9.5px; font-weight: 700; }
+@media (max-width: 480px) {
+  .tik-tab .ic { font-size: 22px; }
+  .tik-tab .tik-ic-img { width: 26px; height: 26px; }
+  .tik-tab .lb { font-size: 9px; }
+}

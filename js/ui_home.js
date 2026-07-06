@@ -806,12 +806,16 @@ function renderHome() {
     const _unreadL = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
     bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0, img: "sns" }));
   }
-  // 📖図鑑（両モード・初的中で解放）
-  if (typeof dexUnlocked === "function" && dexUnlocked()) {
+  // 5番目＝竜のハブ「龍舎」（スカウト/図鑑/ポロを集約）。図鑑は龍舎の中にある＝単独タブにしない
+  //   （ユーザー指摘：図鑑は竜舎から行けばよい）。龍舎が開く前(2勝目/ポロ発見前)は図鑑単体を出し、
+  //   龍舎解放で龍舎へ“昇格”＝図鑑が消える窓を作らない。
+  if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
+    bar.appendChild(tikTab("🏠", "龍舎", () => renderStable(), { img: "stable" }));
+  } else if (typeof dexUnlocked === "function" && dexUnlocked()) {
     bar.appendChild(tikTab("📖", "図鑑", () => renderCollection(), { img: "dex" }));
   } else {
     bar.appendChild(tikTab("📖", "図鑑", () => showInfoPopup("📖 図鑑",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。</small></div></div>`), { locked: true, img: "dex" }));
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります（のちに「龍舎」に集約）。</small></div></div>`), { locked: true, img: "dex" }));
   }
   dock.appendChild(bar);
   wrap.appendChild(dock);

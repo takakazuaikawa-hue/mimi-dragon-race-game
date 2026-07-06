@@ -7,11 +7,15 @@
 ## 置き場所とファイル名（この5つだけ）
 | key | ファイル名 | タブ | 意味 | 差し替え前の絵文字 |
 |---|---|---|---|---|
-| island  | `images/nav/island.webp`  | 島     | 崑崙島の観光ハブ（食べ歩き/買い物/龍舎） | 🏝️ |
+| island  | `images/nav/island.webp`  | 島     | 崑崙島の観光ハブ（食べ歩き/買い物） | 🏝️ |
 | kurashi | `images/nav/kurashi.webp` | 暮らし | 経済/くらしツリー/習い事/物語/相談 | 🌳 |
 | meal    | `images/nav/meal.webp`    | ごはん | 食べ歩きコレクション（勝ち飯/負け飯） | 🍽️ |
 | sns     | `images/nav/sns.webp`     | SNS    | タイムライン/ファンレター（配信のみ） | 📱 |
-| dex     | `images/nav/dex.webp`     | 図鑑   | 竜/コレクションの記録 | 📖 |
+| stable  | `images/nav/stable.webp`  | 龍舎   | 竜のハブ（図鑑/スカウト/ポロを集約）＝5番目の本命 | 🏠 |
+| dex     | `images/nav/dex.webp`     | 図鑑   | 龍舎解放前(早期)だけ出る暫定タブ。優先度低・後回し可 | 📖 |
+
+※5番目タブは進行で変化：龍舎解放前は「図鑑(dex)」、解放後は「龍舎(stable)」。配信モード(第4話以降)は
+常に龍舎なので、優先して用意すべきは **island / kurashi / meal / sns / stable の5枚**。dex は早期のみで任意。
 
 ## 画像の技術仕様（5枚で厳守＝統一感の要）
 - **正方形・透過PNG/WebP**（背景は完全透過）。推奨 256×256（表示は26px前後）。
@@ -34,7 +38,8 @@
 - **kurashi**：`a cozy little island cottage with a small tree beside it, warm window light — signifies "home & daily life"`
 - **meal**：`a steaming rice/ramen bowl with chopsticks, appetizing and cute, small heat swirl`
 - **sns**：`a smartphone showing a heart/chat bubble on screen — signifies social feed, playful`
-- **dex**：`an open book with a tiny cute dragon silhouette rising from the page — a monster field guide`
+- **stable**：`a cozy dragon stable/roost: a small barn-house with a round window and a tiny curled dragon inside — the dragon hub`
+- **dex**（任意・早期のみ）：`an open book with a tiny cute dragon silhouette rising from the page — a monster field guide`
 
 ## 確認手順（置いた後）
 1. `images/nav/` に5枚を配置 → `NAV_ICON_V` を bump。
