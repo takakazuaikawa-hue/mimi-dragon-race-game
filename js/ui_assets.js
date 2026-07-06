@@ -26,13 +26,17 @@ function renderAssets() {
   _h2.querySelector(".info-q").onclick = () => showMoneyMap();
   app.appendChild(_h2);
 
-  // 状態（コンパクト）：総資産 ＋ 暮らしP
-  const hero = el("div", "card lt-hero");
+  // いまのお部屋ヒーロー（J-URBAN=室内を主役に）。部屋tier=assetLevelOf(総資産)＝ホームと同じ基準（ui_home.js:185）。
+  const _roomT = Math.max(0, Math.min(5, (typeof assetLevelOf === "function") ? assetLevelOf(total) : 0));
+  const _hr = (new Date()).getHours(); const _dn = (_hr >= 6 && _hr < 18) ? "day" : "night";
+  const hero = el("div", "card lr-room");
+  hero.style.backgroundImage = `url('images/homebg/myroom_t${_roomT}_${_dn}.webp')`;
   hero.innerHTML =
-    `<div class="lt-hero-top">` +
-      `<div class="lt-hero-id"><div class="as-hero-lbl">総資産（ミミの再起度）</div><div class="as-hero-total">${fmtCoins(total)}</div></div>` +
-      `<div class="lt-pcard"><div class="lt-pnum">${st.available}</div><div class="lt-plbl">暮らしP</div></div>` +
-    `</div>`;
+    `<span class="lr-room-seal">いまのお部屋<b>Lv.${_roomT}</b></span>` +
+    `<img class="lr-room-mimi" src="images/cast/mini/mimi_mini.png" alt="ミミ" decoding="async">` +
+    `<div class="lr-room-info"><div class="lr-room-lbl">ミミの再起度（総資産）</div>` +
+      `<div class="lr-room-total">${fmtCoins(total)}</div>` +
+      `<div class="lr-room-p">暮らしP ◇${st.available}</div></div>`;
   app.appendChild(hero);
 
   const _avA = advisorVoiceEl("assets"); if (_avA) app.appendChild(_avA);
@@ -43,10 +47,10 @@ function renderAssets() {
     ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
   ].filter(x => x[1] > 0);
   const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
-  app.appendChild(el("div", "card as-break",
+  const _asBreak = el("div", "card as-break",   // ※「できること」の後（詳細）に配置するため、ここでは組むだけ。
     `<div class="as-break-bar">${parts.map(x => `<div style="width:${x[1] / sum * 100}%;background:${x[2]}"></div>`).join("")}</div>` +
     `<div class="as-break-legend">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} ${fmtCoins(x[1])}</span>`).join("")}</div>` +
-    `<div class="as-break-rescue">💛 破産しても安心 — 救済見込み <b>${fmtCoins(calculateRescueCoins(state, p.rank))}</b></div>`));
+    `<div class="as-break-rescue">💛 破産しても安心 — 救済見込み <b>${fmtCoins(calculateRescueCoins(state, p.rank))}</b></div>`);
 
   // 情報量が多いものは専用画面へ遷移（小さなグラフィカルな入口）
   let ready = false;
@@ -104,7 +108,9 @@ function renderAssets() {
       ent.appendChild(entry("💬", "相談（顧問）", "サケ・ミズ・スミカから、予想の視点をもらいます。", "", () => renderConsult()));
     }
   }
+  app.appendChild(el("div", "lr-sec", `<span>できること・すべきこと</span>`));
   app.appendChild(ent);
+  app.appendChild(_asBreak);   // 内訳＝詳細として下に。
 
   const actions = el("div", "actions");
   const back = el("button", "secondary", "ホームへ戻る"); back.onclick = () => renderHome();
