@@ -122,6 +122,15 @@ var SNS_DAILY = [
   { id: "d_celes", ic: "🌌", name: "セレスティア", handle: "@celestia_sky", base: 333,
     text: "……今日も、ちっぽけな灯りがよく燃えている。さて、どこまで視えるかしらね。" }
 ];
+// ★BUGFIX（出会う前のキャラが投稿する）：顧問/ポロの日替わり投稿は「出会った後」だけ流す。
+//   顧問＝advisorMet（総資産＋章既読）／ポロ＝poroFound。それ以外の島民は常時。
+var SNS_DAILY_GATE = { d_sake: "sake", d_mizu: "mizu", d_makura: "makura", d_sumika: "sumika", d_celes: "celestia", d_poro: "@poroFound" };
+function _snsDailyOk(po) {
+  var g = SNS_DAILY_GATE[po.id];
+  if (!g) return true;
+  if (g.charAt(0) === "@") return typeof getStoryFlag === "function" && !!getStoryFlag(g.slice(1));
+  return (typeof advisorMet === "function") ? advisorMet(g) : true;
+}
 
 // =========================================================================
 // マイルストーン投稿（進行で“永続解放”・節目の祝福）。日替わりとは別に上位に出る。
@@ -263,7 +272,7 @@ function replyPost(id, choiceIdx) { var s = snsData(); s.replies[id] = choiceIdx
 var _SNS_AGO = ["たった今", "1分前", "5分前", "12分前", "26分前", "40分前", "1時間前", "2時間前", "3時間前"];
 function timelinePosts() {
   // 今日の日替わり：6件を決定的に選ぶ＋擬似的な「◯前」を付与。
-  var daily = _snsDailyPick(SNS_DAILY, 6, 1).map(function (po, i) {
+  var daily = _snsDailyPick(SNS_DAILY.filter(_snsDailyOk), 6, 1).map(function (po, i) {   // ★BUGFIX：出会った相手だけ
     return { id: po.id, ic: po.ic, name: po.name, handle: po.handle, base: po.base, text: po.text, replies: po.replies, ago: _SNS_AGO[i] || "今日", _daily: true };
   });
   // 永続マイルストーン（解放済み）。

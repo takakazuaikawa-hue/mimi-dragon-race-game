@@ -241,6 +241,19 @@ const STORY_UNLOCK_AT = { "1": 0, "2": 3000, "3": 30000, "4": 1000000, "5": 1000
 function storyUnlockAt(chapterId) { const v = STORY_UNLOCK_AT[chapterId]; return v == null ? 0 : v; }
 // 総資産 needed for an advisor (= their introducing chapter's threshold).
 function castUnlockAt(castKey) { const ch = STORY_CHAPTERS.find(c => c.cast === castKey); return ch ? storyUnlockAt(ch.id) : 0; }
+// ★BUGFIX（ミズが出会う前に登場する）：顧問の“登場”は総資産だけでなく「その章を読んだ」ことも要る。
+//   従来 total>=castUnlockAt だけで判定＝新規スタートが総資産3000（=ミズ閾値）のため、第2話を
+//   読む前からミズが結果画面/相談/SNS/市況に現れていた。総資産閾値 AND 該当章の既読フラグで判定。
+//   サケ（第1話）は最初から。表示用のしきい値テキストは castUnlockAt を引き続き使う。
+function advisorMet(castKey) {
+  try {
+    const ch = STORY_CHAPTERS.find(c => c.cast === castKey);
+    if (!ch) return true;
+    if ((state.player.totalAssets || 0) < storyUnlockAt(ch.id)) return false;
+    if (ch.id === "1") return true;   // サケ＝物語の出発点（最初から会っている）
+    return typeof getStoryFlag === "function" && !!getStoryFlag("_chapter_intro_" + ch.id);
+  } catch (e) { return false; }
+}
 
 // (b) contextual one-liners — shown as an "advisor voice" on gameplay screens
 // once the advisor is met. Flavor / perspective only; never affects race math.

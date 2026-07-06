@@ -595,7 +595,7 @@ function advisorVoiceEl(context) {
   const total = state.player.totalAssets || 0;
   const order = context === "assets" ? ["sumika"] : ["celestia", "makura", "mizu", "sake"];
   let key = null;
-  for (const k of order) { if (STORY_RACE_VOICE[k] && total >= castUnlockAt(k)) { key = k; break; } }
+  for (const k of order) { if (STORY_RACE_VOICE[k] && (typeof advisorMet === "function" ? advisorMet(k) : total >= castUnlockAt(k))) { key = k; break; } }   // ★BUGFIX：既読も要る
   if (!key) return null;
   const c = STORY_CAST[key];
   const box = el("div", "card advisor-voice");
@@ -1657,7 +1657,7 @@ function renderRaceDetail(race) {
   // -- advisor voice line, shown atop a panel once that advisor has been met --
   function advVoiceHeader(key) {
     const cast = STORY_CAST[key];
-    if (!cast || (state.player.totalAssets || 0) < castUnlockAt(key)) return null;
+    if (!cast || (typeof advisorMet === "function" ? !advisorMet(key) : (state.player.totalAssets || 0) < castUnlockAt(key))) return null;   // ★BUGFIX：既読も要る
     const v = el("div", "adv-voice");
     v.style.setProperty("--cg", cast.color);
     v.innerHTML =
@@ -1682,7 +1682,7 @@ function renderRaceDetail(race) {
     const btnByKey = {};
     ADVS.forEach(a => {
       const cast = STORY_CAST[a.key];
-      let locked = a.gated && (state.player.totalAssets || 0) < castUnlockAt(a.key);
+      let locked = a.gated && (typeof advisorMet === "function" ? !advisorMet(a.key) : (state.player.totalAssets || 0) < castUnlockAt(a.key));   // ★BUGFIX：既読も要る
       let name = cast.name.split("・")[0], sym = cast.symbol;
       if (a.key === "celestia") {
         // 救済（破産3回超で“お姉さん”に出会う）でも解放。正体は第5話まで伏せる（名前/記号を隠す）。
@@ -1721,7 +1721,7 @@ function renderRaceDetail(race) {
   // -- ミズ：分析予想パネル — 人気の理由を分解→はがした実力評価で本命/対抗/穴。
   //    総資産3000でミズと出会うまではロック表示（彼女の章「ミズの分析予想」に対応）。 --
   function buildMizuPanel() {
-    const unlocked = (state.player.totalAssets || 0) >= castUnlockAt("mizu");
+    const unlocked = (typeof advisorMet === "function") ? advisorMet("mizu") : (state.player.totalAssets || 0) >= castUnlockAt("mizu");   // ★BUGFIX：既読も要る
     if (!unlocked) {
       const cast = STORY_CAST.mizu;
       const wrap = el("div", "card adv-panel adv-locked mizu-locked");
@@ -3272,7 +3272,9 @@ const ADVISOR_LINES = {
 
 function pickAdvisorReaction(ps, c) {
   if (!ps || typeof STORY_CAST === "undefined") return null;
-  const met = k => (typeof castUnlockAt !== "function") || castUnlockAt(k) <= (state.player.totalAssets || 0);
+  // ★BUGFIX：顧問の登場は「章を読んだ」ことも要る（advisorMet）。総資産だけの旧判定だと
+  //   出会う前のミズ等が結果画面で喋ってしまう。
+  const met = k => (typeof advisorMet === "function") ? advisorMet(k) : ((typeof castUnlockAt !== "function") || castUnlockAt(k) <= (state.player.totalAssets || 0));
   const tier = (typeof resultTierOf === "function") ? resultTierOf(ps) : 0;
   const streak = state.player.streak || 0;
   let winnerPopRank = 1;

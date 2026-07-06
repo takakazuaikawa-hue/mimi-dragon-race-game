@@ -52,11 +52,12 @@ function computeFameValue(state) {
   const p = state.player;
   const rankFame   = (p.rank - 1) * 8000;
   const winFame    = (p.wins || 0) * 600;
-  const raceFame   = (p.completedRaces || 0) * 120;
+  // ★BUGFIX（レース数で章/暮らしが進む）：名声は“成功”で伸ばす。純参加項（完走数×120）を撤去
+  //   ＝負け続けても総資産（→章/暮らし段位）が勝手に上がらない。参加の実感は村EXP等が担う。
   const payoutFame = Math.floor((p.biggestPayout || 0) * 0.002);
   let highRank = 0;
   if (p.completedByRank) for (let r = 4; r <= 7; r++) highRank += (p.completedByRank[r] || 0) * 2000;
-  return rankFame + winFame + raceFame + payoutFame + highRank;
+  return rankFame + winFame + payoutFame + highRank;
 }
 
 // §4.7 ドラゴン関連資産 — collection breadth (図鑑/観戦/推し竜). Never affects races.

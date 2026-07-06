@@ -310,7 +310,10 @@ function getCollectionNoteText(entry, dragon) {
 function gainVillageExp(race, hit, newDragonsThisRace) {
   const v = state.player.village;
   if (!v.exp) v.exp = 0;
-  let gain = race.rank * 10 + (hit ? race.rank * 5 : 0) + (newDragonsThisRace || 0) * 20;
+  // ★BUGFIX（レース数で章/暮らしが進む）：村は“成功”で栄える。負けレースでは伸ばさない
+  //   （旧 race.rank*10 の参加ボーナスが村Lv→施設価値を押し上げ、負け続けでも総資産が
+  //   勝手に進む主犯だった）。的中時のみ育つ＝勝って島を潤す、へ。スカウトは常に加点。
+  let gain = (hit ? race.rank * 15 : 0) + (newDragonsThisRace || 0) * 20;
   v.exp += gain;
   const threshold = v.level * 100;
   if (v.exp >= threshold && v.level < 10) {

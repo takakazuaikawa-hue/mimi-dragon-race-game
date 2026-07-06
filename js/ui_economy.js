@@ -126,12 +126,15 @@ function renderEconomy() {
     tile("💰", fmtCoins(p.biggestPayout || 0), "最高配当", "一撃の最高記録")));
 
   // ── 市況メモ（ミズの声・表示専用フレーバー）──
-  const memo = tier.lv >= 4
-    ? "市場はあなたを中心に回りはじめた。……あはん、いい流れね。"
-    : tier.lv >= 2
-      ? "人とお金が動きはじめた。市場は、まだ伸びる余地があるわ。"
-      : "まだ小さな賭場。でも、灯りが一つ点くたび、島は少しずつ温まる。";
-  app.appendChild(el("div", "card eco-memo", `<span class="eco-memo-who">💧 ミズの市況メモ</span><span class="eco-memo-tx">「${memo}」</span>`));
+  // ★BUGFIX：ミズと出会う前（第2話未読）は市況メモを出さない（advisorMet）。
+  if (typeof advisorMet !== "function" || advisorMet("mizu")) {
+    const memo = tier.lv >= 4
+      ? "市場はあなたを中心に回りはじめた。……あはん、いい流れね。"
+      : tier.lv >= 2
+        ? "人とお金が動きはじめた。市場は、まだ伸びる余地があるわ。"
+        : "まだ小さな賭場。でも、灯りが一つ点くたび、島は少しずつ温まる。";
+    app.appendChild(el("div", "card eco-memo", `<span class="eco-memo-who">💧 ミズの市況メモ</span><span class="eco-memo-tx">「${memo}」</span>`));
+  }
 
   const actions = el("div", "actions");
   const back = el("button", "secondary", "← 暮らしへ戻る"); back.onclick = () => renderAssets();
