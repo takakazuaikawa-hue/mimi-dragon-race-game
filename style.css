@@ -6663,3 +6663,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .tik-tab .tik-ic-img { width: 26px; height: 26px; }
   .tik-tab .lb { font-size: 9px; }
 }
+
+/* (①) コメントは1行省略をやめ、改行して読める形に（最大2行・列は上へ伸びて高さ確保）。 */
+.hl-cm { white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; max-width: 84%; line-height: 1.36; }
+.hl-cm.gift, .hl-cm.join, .hl-cm.vipjoin, .hl-cm.you { white-space: normal; }
+/* (③) ミミの吹き出し＝口を指す“尻尾”をやめ「ただの楕円(丸い吹き出し)」に＝尻尾の位置ズレを解消。 */
+.hl .hl-speech, .hl.tik .hl-speech { border-radius: 999px; padding: 9px 18px; }
+.hl-speech::after { content: none; }
