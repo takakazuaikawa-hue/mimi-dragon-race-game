@@ -32,10 +32,36 @@ function hungerBaseUnit() {
     return 50;
   } catch (e) { return 50; }
 }
-var MEAL_GRADE = { track: 1, home: 2, gourman: 6, shinbo: 20 };
-var MEAL_HEAL  = { track: 40, home: 55, gourman: 80, shinbo: 100 };
-function mealPrice(m) { return hungerBaseUnit() * (MEAL_GRADE[(m && m.tier)] || 1); }
-function mealHeal(m) { return MEAL_HEAL[(m && m.tier)] || 40; }
+// ── 食事の価格＝品ごとの現実価格（自宅=最安）×緩い生活段位スケール。おなか回復は品ごと固定（資産で増減しない）。──
+var MEAL_PRICE_BASE = {   // 基本価格（コイン）。自宅40〜300／屋台300〜750。
+  h_toast: 50, h_banana: 40, h_onigiri: 60, h_tkg: 80, h_natto: 90, h_ochazuke: 100,
+  h_yakimeshi: 120, h_sausage: 130, h_cupmen: 150, h_medama: 200, h_curry: 250, h_nabe: 300,
+  t_amazake: 350, t_wataame: 350, t_dango: 350, t_nikuman: 350, t_kakigori: 350, t_corn: 350,
+  t_dog: 400, t_yakitori: 450, t_takoyaki: 450, t_dote: 500, t_ikayaki: 500, t_ramen: 750
+};
+var MEAL_FILL = {         // おなか回復（品ごと・固定）。バナナ/綿あめは小、鍋/ラーメンは大。
+  h_toast: 20, h_banana: 15, h_onigiri: 30, h_tkg: 30, h_natto: 35, h_ochazuke: 25,
+  h_yakimeshi: 45, h_sausage: 30, h_cupmen: 35, h_medama: 45, h_curry: 50, h_nabe: 55,
+  t_amazake: 20, t_wataame: 10, t_dango: 25, t_nikuman: 40, t_kakigori: 15, t_corn: 30,
+  t_dog: 45, t_yakitori: 45, t_takoyaki: 45, t_dote: 50, t_ikayaki: 40, t_ramen: 60
+};
+var MEAL_TIER_BASE = { track: 400, home: 120, gourman: 700, shinbo: 1500 };  // データ未登録idのフォールバック価格
+var MEAL_HEAL_TIER = { track: 40, home: 45, gourman: 80, shinbo: 100 };      // 同・回復
+function hungerScale() {  // 生活段位（総資産）で外食が少しだけ高級化＝緩め。基本価格は現実的なまま維持。
+  try {
+    const a = (state.player && state.player.totalAssets) || 0;
+    if (a >= 100000000) return 2.5;
+    if (a >= 10000000) return 2.0;
+    if (a >= 1000000) return 1.6;
+    if (a >= 100000) return 1.3;
+    return 1.0;
+  } catch (e) { return 1.0; }
+}
+function mealPrice(m) {
+  const base = (m && MEAL_PRICE_BASE[m.id]) || (m && MEAL_TIER_BASE[m.tier]) || 100;
+  return Math.round(base * hungerScale() / 10) * 10;   // 10コイン単位に丸め
+}
+function mealHeal(m) { return (m && MEAL_FILL[m.id]) || (m && MEAL_HEAL_TIER[m.tier]) || 40; }
 
 // ── 詰み回避①：負け飯の無料枠（ハズレた日は1品おごり） ──
 function _hDay() { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
@@ -137,8 +163,10 @@ function lifeNodeBought(node) { try { return !!(state.lifeTree && state.lifeTree
   eatMeal = function (id) {
     try {
       const m = (typeof MEALS !== "undefined") ? MEALS.find(function (x) { return x.id === id; }) : null;
-      const eaten = (typeof mealEaten === "function") && mealEaten(id);
-      if (m && !eaten) {
+      if (m) {
+        const discovered = (typeof mealEaten === "function") && mealEaten(id);
+        // 既食＆満腹＝再注文しない（コインの無駄食い防止）。初回発見は満腹でも許容（収集のため）。
+        if (discovered && hungerGet() >= 100) { _hToast("🈵 おなかいっぱい。今は食べなくて大丈夫。"); return; }
         if (hungerFreeMealOk()) {
           state.player._freeMealDay = _hDay();
           _hToast("🍜 今日は店のおごりだ。「……次は勝てよ」　おなか +" + mealHeal(m));
@@ -148,7 +176,7 @@ function lifeNodeBought(node) { try { return !!(state.lifeTree && state.lifeTree
             if (typeof showInfoPopup === "function") showInfoPopup("🍽 持ち合わせが足りない…",
               `<div class="mm-row"><span class="mm-ic">💸</span><div><b>${price.toLocaleString("ja-JP")} コイン 必要（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）</b>` +
               `<small>${_hBrokeLine()}</small></div></div>` +
-              `<div class="mm-row"><span class="mm-ic">💡</span><div><small>レースで稼ぐか、安い屋台から。ハズレた日は1品「店のおごり」が出ます。</small></div></div>`);
+              `<div class="mm-row"><span class="mm-ic">💡</span><div><small>レースで稼ぐか、安い自宅ごはんから。ハズレた日は1品「店のおごり」が出ます。</small></div></div>`);
             return;   // 食べない＝収集も満腹も進まない（ゲートは出走のみ・ここは「買えない」だけ）
           }
           state.player.coins -= price;

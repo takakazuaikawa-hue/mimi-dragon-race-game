@@ -6709,5 +6709,5 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .meal-buy small { font-size: 11px; color: rgba(255,255,255,.62); }
 .meal-buy.short small { color: #ff9a8a; font-weight: 700; }
 
-/* 食事：セクション見出しに段位価格を明示（タップ前に価格が見える・有料の食べる段位のみ）。 */
-.meal-sec-price { color: #ffd36b; font-weight: 800; white-space: nowrap; }
+/* 食事：各カードに品ごとの価格バッジ（タップ前に価格が見える・食べる段位のみ）。名前の下に改行表示。 */
+.meal-card-price { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 800; color: #ffd36b; font-variant-numeric: tabular-nums; }

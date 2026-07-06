@@ -83,11 +83,8 @@ function renderMeals() {
     app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は終章（総資産1億・第5話）で開放されます。"));
   } else if (t) {
     const sec = el("div", "meal-sec");
-    // 段位内は価格一律（価格=基準単価×グレード）。タップ前に見えるよう、有料の食べる段位のみ見出しに価格を1回出す。
-    // 当てる段位(gourman/shinbo)は solveMeal＝無料なので価格は出さない。価格/課金ロジック(hunger.js)は不変。
-    const _secTag = (t.mode !== "guess" && typeof mealPrice === "function")
-      ? `🍴 食べて集める　<span class="meal-sec-price">🪙${mealPrice({ tier: t.id }).toLocaleString("ja-JP")}／品</span>`
-      : (t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める");
+    // 価格は品ごとに異なる（各カードに表示）ので、見出しはモードのみ。当てる段位は無料。
+    const _secTag = t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める";
     sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
       `<small>${t.sub}　・　${_secTag}</small></span>`;
     app.appendChild(sec);
@@ -98,7 +95,9 @@ function renderMeals() {
       const thumb = (un && m.photo)
         ? `<span class="meal-card-thumb"><img src="${m.photo}" alt="" decoding="async"></span>`
         : `<span class="meal-card-ic">${un ? m.icon : "❔"}</span>`;
-      card.innerHTML = `${thumb}<span class="meal-card-nm">${un ? m.name : "？？？"}</span>`;
+      const _cardPrice = (!m.quiz && typeof mealPrice === "function")
+        ? `<span class="meal-card-price">🪙${mealPrice(m).toLocaleString("ja-JP")}</span>` : "";
+      card.innerHTML = `${thumb}<span class="meal-card-nm">${un ? m.name : "？？？"}${_cardPrice}</span>`;
       card.onclick = () => showMealDetail(m);
       grid.appendChild(card);
     });
@@ -116,31 +115,34 @@ function showMealDetail(m) {
     : `<div class="meal-pop-ic">${m.icon}</div><div class="navpop-t">${m.name}</div>`);
   const render = () => {
     if (!m.quiz) {
-      // ── 食べる ──
-      if (mealEaten(m.id)) {
-        box.innerHTML = head() + `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`;
-        const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => _closeMeal(); btns.appendChild(ok); box.appendChild(btns);
-      } else {
-        // 食べる前に 価格(ボタンに🪙=習い事と同作法)＋おなか回復＋所持コイン を明示。価格/課金ロジックは hunger.js のまま不変。
-        const _price = (typeof mealPrice === "function") ? mealPrice(m) : 0;
-        const _heal  = (typeof mealHeal === "function") ? mealHeal(m) : 0;
-        const _coins = (state.player && state.player.coins) || 0;
-        const _free  = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
-        const _short = !_free && _coins < _price;
-        const _priceTxt = _free ? "🍜 今日はおごり（無料）" : "🍽 " + _price.toLocaleString("ja-JP") + "コイン";
-        const _bal = "🪙" + _coins.toLocaleString("ja-JP");
-        const _balTxt = _free ? "所持 " + _bal
-          : _short ? "所持 " + _bal + "（足りない）"
-          : "所持 " + _bal + " → 残り 🪙" + (_coins - _price).toLocaleString("ja-JP");
-        box.innerHTML = head() + `<div class="meal-prompt">ひとくち、いってみる？</div>` +
-          `<div class="meal-buy${_short ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
-          `<small>${_balTxt}</small></div>`;
-        const btns = el("div", "navpop-btns");
-        const eat = el("button", "navpop-go", "🍴 いただきます！");
-        eat.onclick = () => { eatMeal(m.id); if (window.Sfx) Sfx.play("coin"); render(); };
-        const later = el("button", "navpop-cancel", "また今度"); later.onclick = () => _closeMeal();
-        btns.appendChild(eat); btns.appendChild(later); box.appendChild(btns);
-      }
+      // ── 食べる（何度でも＝腹ごしらえ）。初回は発見、既食は再注文で回復。満腹時はムダ食い防止。 ──
+      const eaten = mealEaten(m.id);
+      const _price = (typeof mealPrice === "function") ? mealPrice(m) : 0;
+      const _heal  = (typeof mealHeal === "function") ? mealHeal(m) : 0;
+      const _coins = (state.player && state.player.coins) || 0;
+      const _free  = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
+      const _hunger = (typeof hungerGet === "function") ? hungerGet() : 100;
+      const _full  = eaten && _hunger >= 100;                       // 既食＆満腹＝再注文不可
+      const _short = !_free && !_full && _coins < _price;
+      const _priceTxt = _free ? "🍜 今日はおごり（無料）" : "🍽 " + _price.toLocaleString("ja-JP") + "コイン";
+      const _bal = "🪙" + _coins.toLocaleString("ja-JP");
+      const _balTxt = _full ? "🈵 おなかいっぱい（おなか " + _hunger + "／100）"
+        : _free ? "所持 " + _bal
+        : _short ? "所持 " + _bal + "（足りない）"
+        : "所持 " + _bal + " → 残り 🪙" + (_coins - _price).toLocaleString("ja-JP");
+      let _html = head();
+      _html += eaten
+        ? `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`
+        : `<div class="meal-prompt">ひとくち、いってみる？</div>`;
+      _html += `<div class="meal-buy${(_short || _full) ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
+        `<small>${_balTxt}</small></div>`;
+      box.innerHTML = _html;
+      const btns = el("div", "navpop-btns");
+      const eat = el("button", "navpop-go" + (_full ? " is-off" : ""), eaten ? "🍴 もう一度食べる" : "🍴 いただきます！");
+      if (_full) eat.disabled = true;
+      else eat.onclick = () => { eatMeal(m.id); if (window.Sfx) Sfx.play("coin"); render(); };
+      const later = el("button", "navpop-cancel", eaten ? "閉じる" : "また今度"); later.onclick = () => _closeMeal();
+      btns.appendChild(eat); btns.appendChild(later); box.appendChild(btns);
     } else {
       // ── 当てる（食材／隠し味） ──
       if (mealSolved(m.id)) {
