@@ -6552,11 +6552,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .tik-tab:active { transform: scale(.9); }
 
 /* ── ★ホーム モバイル致命傷修正：目標チップとLIVE帯の衝突（狭幅で重なる） ── */
-/* 目標チップの右端がLIVE帯（右上・約145px）に絶対かぶらないよう幅を保証＋タイトルは1行省略 */
-.hl-goal { max-width: calc(100% - 172px); }
+/* 目標チップの右端がLIVE帯（右上）に絶対かぶらないよう幅を保証＋タイトルは1行省略。
+   ★LIVE帯の内容実測=約165px。上限をそれ未満(150)にすると「万」がステージ端でクリップされたため
+   float上限を170へ、目標側の確保も190へ拡張（内容幅に整合させて溢れ/衝突の両方を根絶）。 */
+.hl-goal { max-width: calc(100% - 190px); }
 .hl-goal .hl-goal-k, .hl-goal .hl-goal-t, .hl-goal .hl-goal-n {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hl-float { max-width: 150px; flex-wrap: nowrap; }
+.hl-float { max-width: 170px; flex-wrap: nowrap; }
 .hl-float .hl-float-v, .hl-float .hl-float-fol { white-space: nowrap; }
 /* ヘッダー：狭幅でピルが溢れないようプロフィールを縮み優先に */
 .hl-prof { flex: 0 1 auto; min-width: 0; }
@@ -6569,7 +6571,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ── ホーム 最終：目標チップ幅をモード別に（配信=LIVE帯分を空ける／静か=広く使える） ── */
 .hl .hl-goal { max-width: 72%; }              /* 静かモード＝LIVE帯なし＝広め */
-.hl.tik .hl-goal { max-width: calc(100% - 172px); }   /* 配信＝LIVE帯を絶対に避ける */
+.hl.tik .hl-goal { max-width: calc(100% - 190px); }   /* 配信＝LIVE帯(約165px)を絶対に避ける */
 
 /* ── ホーム 実機対応：ノッチ/セーフエリア（ヘッダーが切り欠きに潜らない・実機の実害対策） ── */
 .hl-top { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
@@ -6600,3 +6602,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   display: flex; align-items: center; justify-content: center;
   border: 1.5px solid rgba(12,14,22,.9); box-shadow: 0 1px 2px rgba(0,0,0,.45); }
 .hl-prof-streak { color: #ff9a3c; font-weight: 800; font-style: normal; }
+
+/* ── ヒーロー：明るい窓背景から主役(ミミ)を分離する“逆光ハロー”。背後の中心だけを僅かに
+   沈めて、緑×ボロ衣装で埋もれがちな立ち絵を前に出す（窓の景色は周縁に残す）。ミミ(z1)の背面。 ── */
+.hl-stage { background: radial-gradient(ellipse 52% 46% at 50% 47%, rgba(6,8,16,.32), rgba(6,8,16,.12) 54%, rgba(6,8,16,0) 74%); }
