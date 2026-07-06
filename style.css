@@ -5321,7 +5321,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   box-shadow: 0 10px 30px rgba(0,0,0,.4); border: 1px solid var(--glass-border); line-height: 0; }
 .km-mapimg { display: block; width: 100%; height: auto; }
 /* エリアピン（少数・よく離して配置・ラベル付き＝重ならない/押しやすい） */
-.km-areapin { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px;
+/* ピンの座標(left/top=mx%,my%)は「丸ドットの中心」が地図上のその地点を指す想定。だがボタンは
+   dot+ラベルの縦積みで、translate(-50%,-50%)は“ボタン全体”を中心に据えるため、視覚的なドットは
+   意図した地点より上（ラベル分の高さの半分）にズレて表示されていた（実測オフセット−7px・全ピン共通＝
+   ユーザー指摘「ボタンと実際に押せる場所のずれ」）。ドット中心がぴったり座標に来るよう+7px補正。 */
+.km-areapin { position: absolute; transform: translate(-50%, calc(-50% + 7px)); display: flex; flex-direction: column; align-items: center; gap: 3px;
   background: none; border: none; padding: 4px; cursor: pointer; z-index: 2; }
 .km-areapin-dot { width: 40px; height: 40px; border-radius: 50%; border: 3px solid #fff; background: var(--pc, #caa24a);
   display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 3px 10px rgba(0,0,0,.6); transition: transform .12s; }
