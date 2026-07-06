@@ -6813,3 +6813,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .askill.locked { opacity: .68; }
 .askill.locked .askill-ic { filter: grayscale(1); }
 .askill-go.locked { background: rgba(255,255,255,.06); color: var(--mist-soft); border: 1px solid var(--glass-border); cursor: pointer; }
+
+/* 食事詳細ポップの写真：観光と同じ「タップで拡大／縮小」トグル（ユーザー指摘・機能追加）。 */
+.meal-pop-photo { cursor: zoom-in; }
+.meal-pop-photo.meal-pop-photo--zoom { aspect-ratio: auto; max-height: 70vh; object-fit: contain; background: #000; cursor: zoom-out; }

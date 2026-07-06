@@ -113,6 +113,11 @@ function showMealDetail(m) {
   const head = () => (m.photo
     ? `<img class="meal-pop-photo" src="${m.photo}" alt="" decoding="async"><div class="meal-pop-ic meal-pop-ic--over">${m.icon}</div><div class="navpop-t">${m.name}</div>`
     : `<div class="meal-pop-ic">${m.icon}</div><div class="navpop-t">${m.name}</div>`);
+  // 観光の写真ビューアーと同じ「タップで拡大／縮小」。box.innerHTML更新のたびに呼び直す（要素が作り直されるため）。
+  const _wirePhotoZoom = () => {
+    const ph = box.querySelector(".meal-pop-photo");
+    if (ph) ph.onclick = () => ph.classList.toggle("meal-pop-photo--zoom");
+  };
   const render = () => {
     if (!m.quiz) {
       // ── 食べる（何度でも＝腹ごしらえ）。初回は発見、既食は再注文で回復。満腹時はムダ食い防止。 ──
@@ -137,6 +142,7 @@ function showMealDetail(m) {
       _html += `<div class="meal-buy${(_short || _full) ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
         `<small>${_balTxt}</small></div>`;
       box.innerHTML = _html;
+      _wirePhotoZoom();
       const btns = el("div", "navpop-btns");
       const eat = el("button", "navpop-go" + (_full ? " is-off" : ""), eaten ? "🍴 もう一度食べる" : "🍴 いただきます！");
       if (_full) eat.disabled = true;
@@ -147,9 +153,11 @@ function showMealDetail(m) {
       // ── 当てる（食材／隠し味） ──
       if (mealSolved(m.id)) {
         box.innerHTML = head() + `<div class="meal-desc">${m.desc}</div><div class="meal-react meal-hit">${m.quiz.hit}</div><div class="meal-note">📖 ${m.note}</div>`;
+        _wirePhotoZoom();
         const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => _closeMeal(); btns.appendChild(ok); box.appendChild(btns);
       } else {
         box.innerHTML = head() + `<div class="meal-desc">${m.desc}</div><div class="meal-q">${m.quiz.q}</div>`;
+        _wirePhotoZoom();
         const ch = el("div", "meal-choices");
         m.quiz.choices.forEach((c, i) => {
           const cb = el("button", "meal-choice", c);
