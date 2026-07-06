@@ -779,84 +779,40 @@ function renderHome() {
   //   出入りで枠数が変わらない＝配信化してもレイアウトがガタつかない。ロック表現は2種だけ：
   //   ・条件明示ロック＝実アイコン＋🔒ラベル＋タップで解放条件（観光/モール/図鑑）
   //   ・？？？ミステリー枠＝サプライズ性が価値のもの（龍舎=ポロ・SNS=配信変身）
+  // ★固定5タブ＝両モード共通（docs/HOME_COMMERCIAL_REDESIGN・バグ修正：静かモードが旧10ボタンの
+  //   まま古かったのを解消）。配信=.tik（ライブ演出＋5番目SNS）／静か=クリーンなバー＋5番目図鑑。
+  //   統合＝食べ歩き/買い物/龍舎→🏝島ハブ・物語/経済/ツリー/習い事/相談→🌳暮らしハブ・
+  //   設定/シェア→ヘッダー⋯。タブは即遷移（配信のみフェード）。解放の見せ場（🔒＋条件ポップ）は維持。
+  if (broadcast) wrap.classList.add("tik");
+  const bar = el("div", "tik-bar");
+  const tikTab = (icon, label, go, opts) => {
+    opts = opts || {};
+    const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));
+    b.innerHTML = `<span class="ic">${icon}</span><span class="lb">${label}</span>` + (opts.dot ? `<i class="dot"></i>` : "");
+    b.onclick = opts.locked ? go : () => _tikGo(go);   // 遷移はフェード（配信のみ）・ロックのポップは即時
+    return b;
+  };
+  // 🏝島（初勝利で解放・中に食べ歩き/買い物/龍舎）
+  if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
+    bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap()));
+  } else {
+    bar.appendChild(tikTab("🏝️", "島", () => showInfoPopup("🏝️ 島",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true }));
+  }
+  bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets()));                          // 経済/ツリー/習い事/物語/相談/コレクション
+  bar.appendChild(tikTab("🐲", "レース", () => renderRaceSelect(), { center: true }));
+  bar.appendChild(tikTab("🍽️", "ごはん", () => renderMeals()));                          // 勝ち飯/負け飯＝高頻度ループを1タップ
+  // 5番目：配信=📱SNS（未読ドット）／静か=📖図鑑（初的中で解放）
   if (broadcast) {
-    wrap.classList.add("tik");   // H2/H3磨きのスコープ（配信モードだけTikTok意匠を適用）
-    // ★H1（docs/HOME_COMMERCIAL_REDESIGN.md・A案=本物のTikTok Live再現）：配信モードは
-    // ガラスの固定5タブ。統合＝食事/モール/龍舎→🏝島（観光ハブ内ポータル）・物語→🌳暮らしハブ・
-    // シェア/設定→ヘッダー⋯。タブは即遷移（確認ポップなし＝商業アプリの作法）。
-    // ロックは🔒＋タップで条件明示（解放の見せ場は維持）。静かモードは従来の10枠のまま。
-    const bar = el("div", "tik-bar");
-    const tikTab = (icon, label, go, opts) => {
-      opts = opts || {};
-      const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));
-      b.innerHTML = `<span class="ic">${icon}</span><span class="lb">${label}</span>` + (opts.dot ? `<i class="dot"></i>` : "");
-      b.onclick = opts.locked ? go : () => _tikGo(go);   // 遷移はフェード・ロックのポップは即時
-      return b;
-    };
-    if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
-      bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap()));
-    } else {
-      bar.appendChild(tikTab("🏝️", "島", () => showInfoPopup("🏝️ 島",
-        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true }));
-    }
-    bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets()));
-    bar.appendChild(tikTab("🐲", "レース", () => renderRaceSelect(), { center: true }));
-    // 🍽ごはん＝毎レース後の勝ち飯/負け飯ループ（高頻度）を1タップに（ユーザー指摘「ご飯導線」）。
-    // 図鑑は龍舎・暮らしコレクション経由の3導線があるためタブから外した。
-    bar.appendChild(tikTab("🍽️", "ごはん", () => renderMeals()));
     const _unreadL = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
     bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0 }));
-    dock.appendChild(bar);
+  } else if (typeof dexUnlocked === "function" && dexUnlocked()) {
+    bar.appendChild(tikTab("📖", "図鑑", () => renderCollection()));
   } else {
-  const rail = el("div", "hl-rail");
-  const navItem = (icon, label, desc, go) => {
-    const b = el("button", "hl-item", `<span class="ic">${icon}</span><span class="lb">${label}</span>`);
-    b.onclick = () => showNavConfirm(icon, label, desc, go);
-    return b;
-  };
-  const lockedItem = (icon, label, title, teaserHtml) => {
-    const b = el("button", "hl-item locked", `<span class="ic">${icon}</span><span class="lb">🔒${label}</span>`);
-    b.onclick = () => showInfoPopup(title,
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>${teaserHtml}</small></div></div>`);
-    return b;
-  };
-  const mysteryItem = () => {
-    const b = el("button", "hl-item locked", `<span class="ic">❔</span><span class="lb">？？？</span>`);
-    b.onclick = () => showInfoPopup("❔ ？？？",
-      `<div class="mm-row"><span class="mm-ic">❔</span><div><b>ひみつ</b><small>島で暮らしていれば、いつか出会えます。</small></div></div>`);
-    return b;
-  };
-  // 1 観光（初勝利で解放・条件明示）
-  rail.appendChild((typeof konronMapUnlocked === "function" && konronMapUnlocked())
-    ? navItem("🏝️", "観光", "崑崙島を写真でめぐる。食べ歩き・買い物・レース・温泉・絶景・推し活へ。", () => renderKonronMap())
-    : lockedItem("🏝️", "観光", "🏝️ 観光", "レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます。"));
-  // 2 暮らし／3 食事（常設）
-  rail.appendChild(navItem("🏠", "暮らし", "総資産と暮らしの歩みを確認します。", () => renderAssets()));
-  rail.appendChild(navItem("🍽️", "食事", "ミミの食べ歩きコレクション。食べて・当てて集めます。", () => renderMeals()));
-  // 4 モール（第2話で解放・条件明示）
-  rail.appendChild(mallUnlocked()
-    ? navItem("🛍️", "モール", "ミミの衣装を買って、自由に着替えます。", () => renderMall())
-    : lockedItem("🛍️", "モール", "🛍️ ショッピングモール", "<u>第2話「ミズの分析」</u>を読むと開放されます（総資産3千で第2話が解禁）。"));
-  // 5 龍舎（ポロ発見＝サプライズ→？？？枠）
-  rail.appendChild((typeof poroStableUnlocked === "function" && poroStableUnlocked())
-    ? navItem("🐲", "龍舎", "ポロと出会った竜たちの拠点。なでて仲良く＋竜スカウト＋（図鑑）。", () => renderStable())
-    : mysteryItem());
-  // 6 図鑑（初的中で解放・条件明示・解放後は常設の独立枠＝龍舎に吸収して消さない）
-  rail.appendChild((typeof dexUnlocked === "function" && dexUnlocked())
-    ? navItem("📖", "図鑑", "出会った竜の記録を見ます。", () => renderCollection())
-    : lockedItem("📖", "図鑑", "📖 図鑑", "レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。"));
-  // 7 物語（常設）
-  rail.appendChild(navItem("📜", "物語", "ミミと5人の物語を読み進めます。", () => renderStory()));
-  // 8 SNS（スマホ購入前＝？？？枠）
-  rail.appendChild(mysteryItem());
-  // 9 設定／10 シェア（常設）
-  rail.appendChild(navItem("⚙️", "設定", "サウンド・情報量・村のようす・データ。", () => renderSettings()));
-  rail.appendChild(navItem("📣", "シェア", "友達にこのゲームを教えます。", () => shareGameInfo()));
-  // 10枠固定＝5列×2行で不変（枠数が変わらないのでレイアウトも不変）。
-  const _rn = rail.children.length;
-  rail.style.gridTemplateColumns = "repeat(" + (_rn <= 8 ? _rn : Math.ceil(_rn / 2)) + ", 1fr)";
-  dock.appendChild(rail);
+    bar.appendChild(tikTab("📖", "図鑑", () => showInfoPopup("📖 図鑑",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。</small></div></div>`), { locked: true }));
   }
+  dock.appendChild(bar);
   wrap.appendChild(dock);
 
   app.appendChild(wrap);
