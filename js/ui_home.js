@@ -238,11 +238,14 @@ function renderHome() {
   const top = el("div", "hl-top");
   top.appendChild(el("div", "hl-brand", `<span class="hl-brand-crest">🐲</span><b>聖龍爆走録<i>ミミ</i></b>`));
   const prof = el("button", "hl-prof");
+  // ヘッダー端正化：詰め込みで名前が「予想家ミ」に切れていたのを解消。
+  //  ①名前は単独行で必ず全表示 ②ランクはアバター角のバッジへ（テキスト行から外す）
+  //  ③2行目は称号のみ（タップ＝称号切替と一致＝一貫性）。杯名/連勝は暮らしで見る。
   prof.innerHTML =
-    `<span class="hl-prof-av">🐰</span>` +
-    `<span class="hl-prof-tx"><b>予想家ミミ<i class="hl-prof-title">🏅${eqTitle || "称号"}<span class="hl-prof-caret">▾</span></i></b>` +
-    `<small>ランク${p.rank}<span class="hl-prof-rl">${rankLabel ? " " + rankLabel : ""}</span>${p.streak >= 2 ? `・🔥${p.streak}連勝` : ""}</small></span>`;
-  prof.title = "取得済みの称号を切り替える";
+    `<span class="hl-prof-av">🐰<i class="hl-prof-lv" title="プレイヤーランク">${p.rank}</i></span>` +
+    `<span class="hl-prof-tx"><b>予想家ミミ</b>` +
+    `<small><i class="hl-prof-title">🏅${eqTitle || "称号"}<span class="hl-prof-caret">▾</span></i>${p.streak >= 2 ? ` <span class="hl-prof-streak">🔥${p.streak}</span>` : ""}</small></span>`;
+  prof.title = "取得済みの称号を切り替える／ランク" + p.rank + (rankLabel ? "・" + rankLabel : "");
   prof.onclick = () => showTitleSwitcher();
   top.appendChild(prof);
 
@@ -352,7 +355,7 @@ function renderHome() {
     floatBox.innerHTML =
       `<span class="hl-live">LIVE</span>` +
       `<span class="hl-float-v">👁 <b></b></span>` +
-      `<span class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b></span>`;
+      `<span class="hl-float-fol">👥 <b>${_fmtF(_folV)}</b></span>`;
     viewersEl = floatBox.querySelector(".hl-float-v b");
     stage.appendChild(floatBox);
   }

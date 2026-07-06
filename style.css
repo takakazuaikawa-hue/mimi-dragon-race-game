@@ -6577,3 +6577,26 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl .hl-mimi img { object-position: center bottom; }
 /* 目標チップ・LIVE帯を厳密に同じ上端に（視覚基準線を揃える＝端正さの最後の1手） */
 .hl-goal, .hl-float { top: 10px; }
+
+/* ── ヘッダー最終調整（モバイル・375px）：右クラスタ（所持金/おなか/🔊/⋯）を少し詰めて
+   プロフィールピルに自然幅を返す。内容が約18px超過して唯一縮む .hl-prof が潰れ、
+   名前「予想家ミミ」と2行目（称号▾・ランク）が両方切れていたのを根治。両モード共通。 ── */
+@media (max-width: 480px) {
+  .hl-top { gap: 4px; padding-left: 8px; padding-right: 8px; }
+  .hl-top .hl-money, .hl-top .hl-hunger { padding: 0 8px; gap: 3px; }
+  .hl-prof { padding: 4px 8px 4px 4px; gap: 6px; }
+  .hl-prof .hl-prof-av { width: 26px; height: 26px; font-size: 15px; }
+  .hl-prof .hl-prof-tx b { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hl-prof .hl-prof-tx small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* スマホは2行目を「🏅称号▾ ・ランク5」までに固定＝杯名/連勝は省いて溢れさせない（杯名は暮らしで見る）。 */
+  .hl-prof .hl-prof-rl { display: none; }
+}
+
+/* ── プロフィール：ランクはアバター角の金バッジへ（2行目を称号のみに短縮＝名前の全表示を担保）。全幅共通。 ── */
+.hl-prof-av { position: relative; overflow: visible; }
+.hl-prof-lv { position: absolute; right: -4px; bottom: -4px; min-width: 15px; height: 15px; padding: 0 3px;
+  box-sizing: border-box; border-radius: 999px; background: linear-gradient(180deg, #ffdd77, #efa838);
+  color: #3a2606; font-size: 9px; font-weight: 900; font-style: normal; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid rgba(12,14,22,.9); box-shadow: 0 1px 2px rgba(0,0,0,.45); }
+.hl-prof-streak { color: #ff9a3c; font-weight: 800; font-style: normal; }
