@@ -2746,7 +2746,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   padding: 22px; background: rgba(6,8,12,0.74); backdrop-filter: blur(3px); animation: mushinIn .22s ease; }
 .dex-detail { --dc: #e6b24a; width: 100%; max-width: 340px; position: relative; border: 1px solid var(--dc);
   box-shadow: 0 20px 50px -16px rgba(0,0,0,0.8); }
-.dex-detail-x { position: absolute; top: 8px; right: 8px; z-index: 2; width: 34px; height: 34px; border-radius: 50%;
+.dex-detail-x { position: absolute; top: 8px; right: 8px; z-index: 2; width: 34px; height: 34px; border-radius: 50%; padding: 0;
   border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: var(--mist); font-size: 18px; line-height: 30px; cursor: pointer; }
 .dd-head { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-bottom: 13px; }
 .dd-art { flex: none; width: 100%; height: 150px; border-radius: 10px; background: radial-gradient(120% 90% at 50% 30%, rgba(255,255,255,0.05), rgba(0,0,0,0.34));
@@ -4756,7 +4756,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .mv-mode { font-size: 13px; font-weight: 800; color: #e6cd86; letter-spacing: .04em; text-shadow: 0 1px 4px rgba(0,0,0,.7); }
 .mv-count { margin-left: auto; font-size: 12px; color: #eef4f6; background: rgba(0,0,0,.5);
   padding: 3px 10px; border-radius: 999px; }
-.mv-x { width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,.24);
+.mv-x { width: 34px; height: 34px; border-radius: 50%; padding: 0; border: 1px solid rgba(255,255,255,.24);
   background: rgba(0,0,0,.46); color: #f3ecdd; font-size: 15px; line-height: 1; cursor: pointer; }
 .mv-x:active { transform: scale(.92); }
 /* 左右の大きなめくりボタン */
