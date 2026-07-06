@@ -6185,14 +6185,19 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .news-men--h2 { height: 20px; margin-left: 4px; }
 
 /* ===== H1 TikTok Live風タブバー（配信ホームのみ・A案） ===== */
-.tik-bar { display: grid; grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr; gap: 4px;
+/* ★レースタブ撤去に伴い等幅flexへ（旧gridの中央1.25fr＝レース強調用は廃止）。4/5タブどちらも均等。 */
+.tik-bar { display: flex; gap: 4px;
   padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); margin-top: 8px;
   background: rgba(14, 16, 30, .66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255,255,255,.10); border-radius: 18px;
   box-shadow: 0 -6px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06); }
-.tik-tab { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+.tik-tab { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 7px 2px 6px; background: none; border: none; border-radius: 12px; color: #dfe4f2;
   transition: transform .12s ease, background .12s ease; }
+/* ★専用イラストアイコン（箱方式）：絵文字と同じ表示枠に収める。選択/ロックは既存の .tik-tab 状態に追従。 */
+.tik-tab .ic { display: inline-flex; align-items: center; justify-content: center; }
+.tik-tab .tik-ic-img { width: 26px; height: 26px; object-fit: contain; display: block;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
 .tik-tab:active { transform: scale(.92); background: rgba(255,255,255,.06); }
 .tik-tab .ic { font-size: 21px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
 .tik-tab .lb { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; }

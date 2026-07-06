@@ -782,10 +782,19 @@ function renderHome() {
   //   設定/シェア→ヘッダー⋯。タブは即遷移（配信のみフェード）。解放の見せ場（🔒＋条件ポップ）は維持。
   if (broadcast) wrap.classList.add("tik");
   const bar = el("div", "tik-bar");
+  // ★箱方式：専用イラストアイコン images/nav/<key>.webp があれば絵文字を差し替える（無ければ絵文字のまま＝安全）。
+  //   差し替え時は NAV_ICON_V を bump してキャッシュ撃破。5枚：island/kurashi/meal/sns/dex。
+  const NAV_ICON_V = "1";
   const tikTab = (icon, label, go, opts) => {
     opts = opts || {};
     const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));
     b.innerHTML = `<span class="ic">${icon}</span><span class="lb">${label}</span>` + (opts.dot ? `<i class="dot"></i>` : "");
+    if (opts.img) {   // 画像があれば絵文字を差し替え・404なら onload 不発で絵文字のまま
+      const ic = b.querySelector(".ic");
+      const im = new Image();
+      im.onload = () => { if (ic) { ic.textContent = ""; im.className = "tik-ic-img"; im.alt = ""; ic.appendChild(im); b.classList.add("has-img"); } };
+      im.src = `images/nav/${opts.img}.webp?v=${NAV_ICON_V}`;
+    }
     b.onclick = opts.locked ? go : () => _tikGo(go);   // 遷移はフェード（配信のみ）・ロックのポップは即時
     return b;
   };
@@ -793,24 +802,24 @@ function renderHome() {
   //   二重導線バグを解消／ユーザー指摘）。中央強調も廃止＝全タブ等価。行き先：島/暮らし/ごはん/SNS/図鑑。
   // 🏝島（初勝利で解放・中に食べ歩き/買い物/龍舎）
   if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
-    bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap()));
+    bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap(), { img: "island" }));
   } else {
     bar.appendChild(tikTab("🏝️", "島", () => showInfoPopup("🏝️ 島",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true }));
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true, img: "island" }));
   }
-  bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets()));                          // 経済/ツリー/習い事/物語/相談/コレクション
-  bar.appendChild(tikTab("🍽️", "ごはん", () => renderMeals()));                          // 勝ち飯/負け飯＝高頻度ループを1タップ
+  bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets(), { img: "kurashi" }));       // 経済/ツリー/習い事/物語/相談/コレクション
+  bar.appendChild(tikTab("🍽️", "ごはん", () => renderMeals(), { img: "meal" }));          // 勝ち飯/負け飯＝高頻度ループを1タップ
   // 📱SNS＝配信モードのみ（未読ドット）
   if (broadcast) {
     const _unreadL = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
-    bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0 }));
+    bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0, img: "sns" }));
   }
   // 📖図鑑（両モード・初的中で解放）
   if (typeof dexUnlocked === "function" && dexUnlocked()) {
-    bar.appendChild(tikTab("📖", "図鑑", () => renderCollection()));
+    bar.appendChild(tikTab("📖", "図鑑", () => renderCollection(), { img: "dex" }));
   } else {
     bar.appendChild(tikTab("📖", "図鑑", () => showInfoPopup("📖 図鑑",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。</small></div></div>`), { locked: true }));
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります。</small></div></div>`), { locked: true, img: "dex" }));
   }
   dock.appendChild(bar);
   wrap.appendChild(dock);
