@@ -6803,3 +6803,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .lr-page .lr-sec--locked::before { background: #a89878; }
 .lr-page .lr-sec--locked::after { background: linear-gradient(90deg, rgba(150,130,100,.4), rgba(150,130,100,0)); }
 .lr-page .as-entries + .lr-sec--locked { margin-top: 22px; }
+
+/* 習い事：師範とまだ出会っていないカードは通えない（🔒）。視覚的にも控えめに。 */
+.askill.locked { opacity: .68; }
+.askill.locked .askill-ic { filter: grayscale(1); }
+.askill-go.locked { background: rgba(255,255,255,.06); color: var(--mist-soft); border: 1px solid var(--glass-border); cursor: pointer; }

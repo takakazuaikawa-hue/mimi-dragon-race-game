@@ -235,7 +235,9 @@ function renderActiveSkills() {
     // K3-A4: 師範チップ（登場章前は？？？＝誰に教わるかも物語の楽しみ）
     const _m = (typeof _shihanOf === "function") ? _shihanOf(s.id) : null;
     const _chNow2 = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
-    const _mTag = _m ? (_chNow2 >= _m.ch
+    // 師範とまだ出会っていない習い事は通えない（「師範？？？」なのに通えるのは矛盾＝ユーザー指摘）。
+    const _shihanMet = !_m || _chNow2 >= _m.ch;
+    const _mTag = _m ? (_shihanMet
       ? `<span class="askill-shihan" style="--shc:${_m.color}">${_m.ic} 師範 ${_m.name}</span>`
       : `<span class="askill-shihan unmet">❓ 師範 ？？？</span>`) : "";
     card.innerHTML =
@@ -247,9 +249,17 @@ function renderActiveSkills() {
       `<div class="askill-dots">${dots}</div>` +
       `<div class="askill-effect">${maxed
         ? `🏅 称号「${s.title}」を獲得！`
-        : (lv > 0 ? s.levels[lv - 1] : "まだ通っていない。")}</div>` +
-      (!maxed ? `<div class="askill-next"><span>次</span>${s.levels[lv]}</div>` : "");
-    if (!maxed) {
+        : !_shihanMet ? `師範とまだ出会っていない。` : (lv > 0 ? s.levels[lv - 1] : "まだ通っていない。")}</div>` +
+      (!maxed && _shihanMet ? `<div class="askill-next"><span>次</span>${s.levels[lv]}</div>` : "");
+    if (!maxed && !_shihanMet) {
+      card.classList.add("locked");
+      const go = el("button", "askill-go locked", "🔒 師範とまだ出会っていない");
+      go.onclick = () => {
+        if (typeof showInfoPopup === "function") showInfoPopup("❓ 師範 ？？？",
+          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ通えません</b><small>第${_m.ch}話で師範と出会うと、「${s.name}」に通えるようになります。</small></div></div>`);
+      };
+      card.appendChild(go);
+    } else if (!maxed) {
       // E2：月謝制（基準単価×2）。払えたら1回通う。価格をボタンに明示。
       const _fee = (typeof lessonFee === "function") ? lessonFee() : 0;
       const go = el("button", "askill-go", (lv > 0 ? "また通う" : "通ってみる") + `　🪙${_fee.toLocaleString("ja-JP")}`);
