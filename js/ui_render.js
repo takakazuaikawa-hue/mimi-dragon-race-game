@@ -1294,7 +1294,7 @@ function showCollectionDragonDetail(d) {   // ※poro.js の showDragonDetail(id
   document.body.appendChild(ov);
   const cv = card.querySelector(".dd-art canvas");
   if (cv && cv.getContext && typeof rcDrawDragon === "function") {
-    rcDrawDragon(cv.getContext("2d"), { x: 161, y: 117, scale: 2.85, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.5 });
+    rcDrawDragon(cv.getContext("2d"), { id: d.id, x: 161, y: 117, scale: 2.85, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.5 });
   }
   card.querySelector(".dex-detail-x").onclick = () => ov.remove();
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
@@ -1371,7 +1371,7 @@ function renderCollection() {
     if (seen) {
       const cv = card.querySelector("canvas");
       if (cv && cv.getContext && typeof rcDrawDragon === "function")
-        rcDrawDragon(cv.getContext("2d"), { x: 42, y: 38, scale: 0.72, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 });
+        rcDrawDragon(cv.getContext("2d"), { id: d.id, x: 42, y: 38, scale: 0.72, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 });
       card.onclick = () => showCollectionDragonDetail(d);
     } else {
       const cv = card.querySelector("canvas"); if (cv) cv.style.display = "none";
