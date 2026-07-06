@@ -6685,3 +6685,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .hl-dock .tik-tab .tik-ic-img { width: 28px; height: 28px; }
   .hl-dock .tik-tab .lb { font-size: 9.5px; }
 }
+
+/* ══ ユーザー指示（①②③・2026-07-08）══ */
+/* ① コメントの「枠線」だけ消す（背景box/影は保持）。.hl.tik .hl-cm.gift(0,3,0)等に勝つため!important。 */
+.hl-cm, .hl-cm.join, .hl-cm.gift, .hl-cm.you, .hl-cm.vipjoin { border: none !important; }
+/* ② ミミの吹き出し＝楕円のみ／吹き出し効果（尻尾）なし。 */
+.hl-speech, .hl .hl-speech, .hl.tik .hl-speech { border-radius: 999px; }
+.hl-speech::after { content: none; }
+/* ③ コメント表示領域：横幅+30%（min(56vw,250px)→min(75vw,325px)＝226→約294px）。縦幅+60%は表示件数5→8で確保(JS)。 */
+.hl-stage .hl-left { width: min(75vw, 325px); }

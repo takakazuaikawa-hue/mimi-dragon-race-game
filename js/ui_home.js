@@ -498,7 +498,7 @@ function renderHome() {
   function _addCm(name, color, text, cls) {
     const d = el("div", "hl-cm" + (cls ? " " + cls : ""), `<b style="color:${color}">${name}</b>${text}`);
     cms.appendChild(d);
-    while (cms.children.length > 5) cms.removeChild(cms.firstChild);   // ★最新5件＝配信の賑わいを出しつつ立ち絵下部に収める
+    while (cms.children.length > 8) cms.removeChild(cms.firstChild);   // ★最新8件（縦の表示領域+60%分・ユーザー指示③）
   }
   // 状況連動コメント：今のプレイ状況（連勝/コイン/ランク/勝率/時間帯/衣装…）に合う台詞を集める（表示専用）
   function _ctxCm() {
