@@ -6694,3 +6694,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-speech::after { content: none; }
 /* ③ コメント表示領域：横幅+30%（min(56vw,250px)→min(75vw,325px)＝226→約294px）。縦幅+60%は表示件数5→8で確保(JS)。 */
 .hl-stage .hl-left { width: min(75vw, 325px); }
+
+/* ── 下メニューの高さ圧縮（無駄な余白/最小高さを詰める・ユーザー指示）。タップ領域は≥44pxを維持・CTAは据え置き。 ── */
+.hl-dock { padding: 5px 8px 6px; gap: 4px; }
+.hl-dock .tik-bar { padding: 4px 8px calc(6px + env(safe-area-inset-bottom, 0px)); margin-top: 0; }
+.hl-dock .tik-tab { min-height: 44px; padding: 3px 2px; }
