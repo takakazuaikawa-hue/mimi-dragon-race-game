@@ -116,7 +116,17 @@ function showMealDetail(m) {
         box.innerHTML = head() + `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`;
         const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => _closeMeal(); btns.appendChild(ok); box.appendChild(btns);
       } else {
-        box.innerHTML = head() + `<div class="meal-prompt">ひとくち、いってみる？</div>`;
+        // 食べる前に 価格(ボタンに🪙=習い事と同作法)＋おなか回復＋所持コイン を明示。価格/課金ロジックは hunger.js のまま不変。
+        const _price = (typeof mealPrice === "function") ? mealPrice(m) : 0;
+        const _heal  = (typeof mealHeal === "function") ? mealHeal(m) : 0;
+        const _coins = (state.player && state.player.coins) || 0;
+        const _free  = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
+        const _short = !_free && _coins < _price;
+        const _shortTxt = _short ? "　…あと🪙" + (_price - _coins).toLocaleString("ja-JP") : "";
+        const _priceTxt = _free ? "🍜 今日はおごり（無料）" : "🍽 " + _price.toLocaleString("ja-JP") + "コイン";
+        box.innerHTML = head() + `<div class="meal-prompt">ひとくち、いってみる？</div>` +
+          `<div class="meal-buy${_short ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
+          `<small>所持 🪙${_coins.toLocaleString("ja-JP")}${_shortTxt}</small></div>`;
         const btns = el("div", "navpop-btns");
         const eat = el("button", "navpop-go", "🍴 いただきます！");
         eat.onclick = () => { eatMeal(m.id); if (window.Sfx) Sfx.play("coin"); render(); };

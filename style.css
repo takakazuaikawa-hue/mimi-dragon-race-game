@@ -6699,3 +6699,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-dock { padding: 5px 8px 6px; gap: 4px; }
 .hl-dock .tik-bar { padding: 4px 8px calc(6px + env(safe-area-inset-bottom, 0px)); margin-top: 0; }
 .hl-dock .tik-tab { min-height: 44px; padding: 3px 2px; }
+
+/* 食事：食べる前に 価格・おなか回復・所持コインを明示。現状維持＋透明化（価格/課金は hunger.js のまま不変）・ユーザー選択。 */
+.meal-buy { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: 6px 0 2px; }
+.meal-buy-row { display: flex; align-items: baseline; gap: 12px; }
+.meal-buy-cost { font-size: 15px; font-weight: 800; color: #ffd36b; }
+.meal-buy.short .meal-buy-cost { color: #ff9a8a; }
+.meal-buy .meal-buy-heal { font-size: 12px; font-weight: 700; color: #9fe0b0; }
+.meal-buy small { font-size: 11px; color: rgba(255,255,255,.62); }
+.meal-buy.short small { color: #ff9a8a; font-weight: 700; }
