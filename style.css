@@ -6797,3 +6797,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .lr-page .lr-sec::after { background: linear-gradient(90deg, rgba(202,162,74,.55), rgba(202,162,74,0)); }
 .lr-page .lr-sec--todo span { color: #b5541f; }
 .lr-page .actions button.secondary { background: rgba(43,38,32,.06); color: #2b2620; border: 1px solid rgba(43,38,32,.22); }
+
+/* 「この先で解放されること」＝できることと分離した予告見出し（未開放を「できる」と偽らない・ユーザー指摘）。 */
+.lr-page .lr-sec--locked span { color: #8a7a5a; }
+.lr-page .lr-sec--locked::before { background: #a89878; }
+.lr-page .lr-sec--locked::after { background: linear-gradient(90deg, rgba(150,130,100,.4), rgba(150,130,100,0)); }
+.lr-page .as-entries + .lr-sec--locked { margin-top: 22px; }

@@ -102,14 +102,15 @@ function renderAssets() {
     const epOn = (typeof epilogueOn === "function") && epilogueOn();
     ent.appendChild(entry("🏦", "島の経済", epOn ? "総資産・名声・村の景気… ＋ ☄️絶滅メーターの綱引き" : "総資産・名声・フォロワー・村の景気＝島の経済状態", epOn ? "☄️終章" : "", () => renderEconomy()));
   }
+  // 「できること」＝実際に今できることだけ。未開放は locked に分けて別見出しへ（ここに混ぜると「できる」が嘘になる＝ユーザー指摘）。
+  const locked = el("div", "as-entries");
   // 🏆 コレクション・やり込み（各収集の達成度＝得点＋クリア後ミニゲーム）。js/ui_collection_score.js
-  // K3-A5：クリア前は「？？？」予告行（progressionのロック2表現＝この先に何かある、の余韻）
   if (typeof renderCollectionScore === "function") {
     const _cleared = (typeof kurashiChapter === "function") && kurashiChapter() >= 6;
     if (_cleared) {
       ent.appendChild(entry("🏆", "コレクション", "図鑑・衣装・食・小イベント… 達成度（得点）＋ミニゲーム", "", () => renderCollectionScore()));
     } else {
-      ent.appendChild(entry("🔒", "？？？", "終章のあとで——島での日々の、すべてが得点になる。", "", () => {
+      locked.appendChild(entry("🔒", "？？？", "終章のあとで——島での日々の、すべてが得点になる。", "", () => {
         if (typeof showInfoPopup === "function") showInfoPopup("🏆 ？？？",
           `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語を最後まで見届けると開放されます。図鑑も、衣装も、食べ歩きも——島での日々のすべてが、ここで振り返れるようになります。</small></div></div>`);
       }));
@@ -120,7 +121,7 @@ function renderAssets() {
     ent.appendChild(entry("🌳", "くらしスキルツリー", `暮らしP ◇${st.available} 残り ・ 解放 ${st.unlockedCount}/${st.totalNodes}`, ready ? "振れる!" : "", () => renderLifeTree()));
     ent.appendChild(entry("🎁", "生活資産コレクション", `${colOwned} / ${LIFE_ASSETS.length} 解放`, "", () => renderLifeCollection()));
   } else {
-    ent.appendChild(entry("🔒", "くらしツリー・生活資産", "第3話「スミカと総資産」を読むと開放", "", () => {
+    locked.appendChild(entry("🔒", "くらしツリー・生活資産", "第3話「スミカと総資産」を読むと開放", "", () => {
       if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
         `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話「スミカと総資産」</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
     }));
@@ -132,7 +133,7 @@ function renderAssets() {
   // E4：予想の相談も第2話「ミズの分析」で解禁（1章は勘レース）。表示ゲートのみ・数値不変。
   if (typeof renderConsult === "function") {
     if (typeof analysisUnlocked === "function" && !analysisUnlocked()) {
-      ent.appendChild(entry("🔒", "相談（顧問）", "第2話「ミズの分析」を読むと、予想の相談ができます。", "", () => {
+      locked.appendChild(entry("🔒", "相談（顧問）", "第2話「ミズの分析」を読むと、予想の相談ができます。", "", () => {
         if (typeof showInfoPopup === "function") showInfoPopup("💬 相談（顧問）",
           `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ相談できません</b><small><u>第2話「ミズの分析」</u>を読むと、サケ・ミズ・スミカに予想の視点をもらえます（総資産3千で第2話が解禁）。いまはカンで勝負！</small></div></div>`);
       }));
@@ -143,6 +144,10 @@ function renderAssets() {
   }
   app.appendChild(el("div", "lr-sec", `<span>できること</span>`));
   app.appendChild(ent);
+  if (locked.children.length) {
+    app.appendChild(el("div", "lr-sec lr-sec--locked", `<span>この先で解放されること</span>`));
+    app.appendChild(locked);
+  }
   app.appendChild(_asBreak);   // 内訳＝詳細として下に。
 
   const actions = el("div", "actions");
