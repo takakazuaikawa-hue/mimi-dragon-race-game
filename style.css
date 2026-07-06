@@ -6671,3 +6671,24 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* (③) ミミの吹き出し＝口を指す“尻尾”をやめ「ただの楕円(丸い吹き出し)」に＝尻尾の位置ズレを解消。 */
 .hl .hl-speech, .hl.tik .hl-speech { border-radius: 999px; padding: 9px 18px; }
 .hl-speech::after { content: none; }
+
+/* ════════════════════════════════════════════════════════════════════
+   下部メニュー＝案A「静かなガラスドック」確定版（設計提案→ユーザー選択・docs/FOOTER_DESIGN.md）。
+   ゲームで最も触る面。原則：タップ≥48px／高さを規定／アイコン大きめ／ラベル常時／押下で沈む。
+   ════════════════════════════════════════════════════════════════════ */
+.hl-dock .tik-bar { padding: 7px 8px calc(9px + env(safe-area-inset-bottom, 0px)); gap: 4px;
+  background: rgba(14,16,30,.62); border: 1px solid rgba(255,255,255,.10); border-radius: 18px;
+  -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px);
+  box-shadow: 0 -6px 22px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06); }
+.hl-dock .tik-tab { min-height: 52px; justify-content: center; gap: 3px; border-radius: 14px; padding: 6px 2px;
+  transition: transform .11s ease, background .11s ease; }
+.hl-dock .tik-tab .ic { font-size: 26px; line-height: 1; }
+.hl-dock .tik-tab .tik-ic-img { width: 30px; height: 30px; }
+.hl-dock .tik-tab .lb { font-size: 10px; font-weight: 700; color: #e7ebf5; letter-spacing: .02em; }
+.hl-dock .tik-tab:active { transform: scale(.92); background: rgba(255,255,255,.08); }   /* 押下で沈む＝触った実感 */
+@media (max-width: 480px) {
+  .hl-dock .tik-tab { min-height: 50px; }
+  .hl-dock .tik-tab .ic { font-size: 25px; }
+  .hl-dock .tik-tab .tik-ic-img { width: 28px; height: 28px; }
+  .hl-dock .tik-tab .lb { font-size: 9.5px; }
+}
