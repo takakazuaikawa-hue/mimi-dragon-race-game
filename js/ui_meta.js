@@ -122,11 +122,14 @@ function showMealDetail(m) {
         const _coins = (state.player && state.player.coins) || 0;
         const _free  = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
         const _short = !_free && _coins < _price;
-        const _shortTxt = _short ? "　…あと🪙" + (_price - _coins).toLocaleString("ja-JP") : "";
         const _priceTxt = _free ? "🍜 今日はおごり（無料）" : "🍽 " + _price.toLocaleString("ja-JP") + "コイン";
+        const _bal = "🪙" + _coins.toLocaleString("ja-JP");
+        const _balTxt = _free ? "所持 " + _bal
+          : _short ? "所持 " + _bal + "（足りない）"
+          : "所持 " + _bal + " → 残り 🪙" + (_coins - _price).toLocaleString("ja-JP");
         box.innerHTML = head() + `<div class="meal-prompt">ひとくち、いってみる？</div>` +
           `<div class="meal-buy${_short ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
-          `<small>所持 🪙${_coins.toLocaleString("ja-JP")}${_shortTxt}</small></div>`;
+          `<small>${_balTxt}</small></div>`;
         const btns = el("div", "navpop-btns");
         const eat = el("button", "navpop-go", "🍴 いただきます！");
         eat.onclick = () => { eatMeal(m.id); if (window.Sfx) Sfx.play("coin"); render(); };
