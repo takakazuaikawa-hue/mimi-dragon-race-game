@@ -214,11 +214,12 @@ function lifeNodePrereqMet(node) {
 function lifeNodeMissingPrereqs(node) {
   return (node.prereqs || []).filter(pr => !lifeNodeUnlocked(pr));
 }
-// "unlocked" | "ready"(振り分け可) | "prereq"(前提待ち) | "nopoints"(P不足)
+// "unlocked" | "ready"(振り分け可) | "prereq"(前提待ち)
+// ★ユーザー指示：解放はコインのみで判定（暮らしPは総資産から自動で貯まる指標として残すが、
+//   解放条件からは撤廃）。実際の支払い可否は hunger.js の unlockLifeNode ラップ（コイン）で判定。
 function lifeNodeState(node) {
   if (lifeNodeUnlocked(node)) return "unlocked";
   if (!lifeNodePrereqMet(node)) return "prereq";
-  if (lifePointsAvailable() < node.cost) return "nopoints";
   return "ready";
 }
 function unlockLifeNode(node) {

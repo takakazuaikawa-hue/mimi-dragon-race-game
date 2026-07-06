@@ -66,8 +66,15 @@ function renderAssets() {
     `<div class="as-break-rescue">💛 破産しても安心 — 救済見込み <b>${fmtCoins(calculateRescueCoins(state, p.rank))}</b></div>`);
 
   // 情報量が多いものは専用画面へ遷移（小さなグラフィカルな入口）
-  let ready = false;
-  LIFE_BRANCHES.forEach(b => { const pr = lifeBranchProgress(b.id); if (pr.next && lifeNodeState(pr.next) === "ready") ready = true; });
+  // ★解放はコインのみ（暮らしP撤廃）。readyは「prereq充足」だけでなく「コインで実際に払えるか」も見る。
+  let ready = false; let _readyNodeForTodo = null;
+  LIFE_BRANCHES.forEach(b => {
+    const pr = lifeBranchProgress(b.id);
+    if (pr.next && lifeNodeState(pr.next) === "ready" &&
+        (p.coins || 0) >= ((typeof lifeNodePrice === "function") ? lifeNodePrice(pr.next) : 0)) {
+      ready = true; if (!_readyNodeForTodo) _readyNodeForTodo = pr.next;
+    }
+  });
   const colOwned = LIFE_ASSETS.filter(it => isLifeAssetUnlocked(state, it, level)).length;
   const unlockedCh = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
   const skTitles = ACTIVE_SKILLS.filter(s => ((p.activeSkills || {})[s.id] || 0) >= s.levels.length).length;
@@ -87,7 +94,10 @@ function renderAssets() {
     ch.id !== "ED" && total >= storyUnlockAt(ch.id) &&
     !(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_" + ch.id))) : null;
   if (_nextCh) todo.push({ ic: "📖", label: "新しい話が読める", sub: _nextCh.title, onClick: () => renderStory() });
-  if (_ch3unlocked && ready) todo.push({ ic: "🌳", label: "暮らしPが振れる", sub: `暮らしP ◇${st.available} で新しいノードが解放できる`, onClick: () => renderLifeTree() });
+  if (_ch3unlocked && ready && _readyNodeForTodo) {
+    const _rtPrice = (typeof lifeNodePrice === "function") ? lifeNodePrice(_readyNodeForTodo) : 0;
+    todo.push({ ic: "🌳", label: "くらしツリーが取り入れられる", sub: `${_readyNodeForTodo.title}・🪙${_rtPrice.toLocaleString("ja-JP")}`, onClick: () => renderLifeTree() });
+  }
   const _nextSkill = ACTIVE_SKILLS.find(s => ((p.activeSkills || {})[s.id] || 0) < s.levels.length);
   const _fee = (typeof lessonFee === "function") ? lessonFee() : 0;
   if (_nextSkill && (p.coins || 0) >= _fee) todo.push({ ic: "🎫", label: "習い事に通える", sub: `${_nextSkill.name}・🪙${_fee.toLocaleString("ja-JP")}で通える`, onClick: () => renderActiveSkills() });
@@ -412,15 +422,14 @@ function renderLifeTree() {
     } else {
       desc = node.desc;
     }
-    // E2：初回解放にコイン（基準単価×P費）。振り直し後の再取得（既購入）は◇Pのみ＝無料。
+    // ★解放はコインのみ（暮らしPは解放条件から撤廃・ユーザー指示）。振り直し後の再取得（既購入）は無料。
     const _bought = (typeof lifeNodeBought === "function") && lifeNodeBought(node);
     const _coin = (typeof lifeNodePrice === "function") ? lifeNodePrice(node) : 0;
     const _coinTag = (!_bought && _coin) ? ` 🪙${_coin.toLocaleString("ja-JP")}` : "";
     let right;
-    if (stt === "unlocked")      right = `<span class="lt-node-cost done">✓</span>`;
-    else if (stt === "ready")    right = `<button class="lt-buy">振り分け<b>◇${node.cost}${_coinTag}</b></button>`;
-    else if (stt === "nopoints") right = `<span class="lt-node-cost short">◇${node.cost}<small>P不足</small></span>`;
-    else                         right = `<span class="lt-node-cost lock">◇${node.cost}${_coinTag}</span>`;
+    if (stt === "unlocked") right = `<span class="lt-node-cost done">✓</span>`;
+    else if (stt === "ready") right = `<button class="lt-buy">取り入れる<b>${_coinTag || " 🪙0"}</b></button>`;
+    else right = `<span class="lt-node-cost lock">${_coinTag || "🪙0"}</span>`;
     const row = el("div", "lt-node " + stt + cz,
       `<div class="lt-node-rail"><div class="lt-node-dot">${dot}</div></div>` +
       `<div class="lt-node-body"><div class="lt-node-title">${node.title}</div>` +
