@@ -81,6 +81,27 @@ function renderEconomy() {
     app.appendChild(_ecoExtinctionPanel());
   }
 
+  // ── 🏗 島づくり入口（5章解放・docs/ISLAND_INVEST_DESIGN.md）──
+  //   稼いだ富を島に注ぎ、絶滅を押し戻す。5章前はロック＋条件明示（解放の見せ場）。
+  if (typeof renderIslandBuild === "function") {
+    const _ch5 = (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5")) || total >= 100000000;
+    if (_ch5) {
+      const bd = el("button", "card isl-entry");
+      const _tn = (typeof islandTier === "function") ? ISLAND_TIER_NAME[islandTier()] : "";
+      const _dv = (typeof islandDevTotal === "function") ? islandDevTotal() + "/" + islandDevMax() : "";
+      bd.innerHTML = `<span class="isl-entry-ic">🏗</span><span class="isl-entry-tx"><b>島づくり</b>` +
+        `<small>${_tn}　発展度 ${_dv}　・　富を注いで絶滅を押し戻す</small></span><span class="isl-entry-go">›</span>`;
+      bd.onclick = () => renderIslandBuild();
+      app.appendChild(bd);
+    } else {
+      const bl = el("button", "card isl-entry locked");
+      bl.innerHTML = `<span class="isl-entry-ic">🔒</span><span class="isl-entry-tx"><b>島づくり</b><small>終章（第5話）で、島そのものに投資できるようになります</small></span>`;
+      bl.onclick = () => { if (typeof showInfoPopup === "function") showInfoPopup("🏗 島づくり",
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語が終章（<u>第5話「セレスティアの神眼」</u>・総資産1億）に入ると、勝ち取った富を島の施設・店・レース場・竜宿舎・公共・産業に投資して、島を造り替えられるようになります。</small></div></div>`); };
+      app.appendChild(bl);
+    }
+  }
+
   // ── 島の景気（総資産ティア＋次の段階への進捗）──
   const tier = _ecoTierOf(total);
   const nextTh = (typeof nextAssetThreshold === "function") ? nextAssetThreshold(total) : null;
@@ -134,6 +155,13 @@ function renderEconomy() {
         ? "人とお金が動きはじめた。市場は、まだ伸びる余地があるわ。"
         : "まだ小さな賭場。でも、灯りが一つ点くたび、島は少しずつ温まる。";
     app.appendChild(el("div", "card eco-memo", `<span class="eco-memo-who">💧 ミズの市況メモ</span><span class="eco-memo-tx">「${memo}」</span>`));
+  }
+
+  // ── 島の景色（I2初弾・島づくりの発展度でテキストが進化＝“歩ける報酬”の芽）──
+  if (typeof islandTier === "function" && typeof islandDevTotal === "function" && islandDevTotal() > 0) {
+    const _scene = ["島に、新しい息吹が芽ぶきはじめた。", "道が、灯りが、少しずつ島を編み直していく。",
+      "どこを歩いても、島が育っているのがわかる。人の声が、明るい。", "ここは、もう誰にも淘汰させない——栄えた島。"][islandTier()];
+    app.appendChild(el("div", "card eco-scene", `<span class="eco-scene-ic">🏝️</span><span class="eco-scene-tx">${_scene}</span>`));
   }
 
   const actions = el("div", "actions");

@@ -6320,3 +6320,43 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   font-size: 12px; }
 .hl-hunger b { font-size: 12.5px; }
 .hl-hunger.low { background: rgba(255,80,80,.16); border-color: rgba(255,110,110,.5); color: #ffb9b9; }
+
+/* ===== 🏗 島づくり（5章・ISLAND_INVEST_DESIGN・体験＝事業を叶える瞬間が主役） ===== */
+.isl-entry { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  border-left: 3px solid #e2a22e; }
+.isl-entry-ic { font-size: 22px; }
+.isl-entry-tx b { display: block; font-size: 13.5px; }
+.isl-entry-tx small { font-size: 10.5px; color: var(--mist-soft); }
+.isl-entry-go { margin-left: auto; color: #ffd98a; font-size: 18px; font-weight: 900; }
+.isl-entry.locked { opacity: .7; border-left-color: rgba(255,255,255,.2); }
+.isl-head { display: flex; gap: 12px; align-items: center; }
+.isl-radar { flex: 0 0 auto; }
+.isl-head-id { flex: 1; min-width: 0; }
+.isl-tier { font-size: 15px; font-weight: 800; }
+.isl-dev { font-size: 12px; color: var(--mist-soft); margin: 2px 0 5px; }
+.isl-meter { font-size: 11px; color: var(--mist-soft); }
+.isl-meter b { color: #ffd98a; }
+.isl-meter-bar { display: block; height: 6px; margin-top: 3px; border-radius: 3px; background: rgba(255,255,255,.10); overflow: hidden; }
+.isl-meter-bar i { display: block; height: 100%; background: linear-gradient(90deg, #d6452f, #ffd34d); }
+.isl-hint { font-size: 9.5px; color: var(--mist-soft); margin-top: 5px; line-height: 1.5; }
+.isl-cat { margin-top: 12px; }
+.isl-cat-h { display: flex; align-items: center; gap: 7px; font-size: 13px; padding: 4px 2px;
+  border-bottom: 2px solid var(--ic, #888); }
+.isl-cat-h .isl-cat-ic { font-size: 16px; }
+.isl-cat-h small { margin-left: auto; color: var(--mist-soft); font-size: 11px; }
+.isl-proj { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.isl-proj-id { flex: 1; min-width: 0; }
+.isl-proj-id b { display: block; font-size: 12.5px; }
+.isl-proj-id small { font-size: 10px; color: var(--mist-soft); }
+.isl-proj-buy { flex: 0 0 auto; padding: 7px 11px; border-radius: 9px; border: 1px solid rgba(255,211,77,.5);
+  background: rgba(255,211,77,.12); color: #ffe9a8; font-size: 11.5px; font-weight: 700; }
+.isl-proj-buy.short { opacity: .5; }
+.isl-proj.done { opacity: .72; }
+.isl-proj-done { color: #7CFFB2; font-weight: 900; font-size: 16px; }
+.isl-done .isl-done-t { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
+.isl-done .isl-done-say { font-size: 12px; line-height: 1.7; }
+.isl-done .isl-done-doom { margin-top: 8px; font-size: 12px; font-weight: 800; color: #ffd9a0;
+  background: linear-gradient(90deg, rgba(214,69,47,.25), rgba(255,211,77,.15)); border-radius: 8px; padding: 6px 10px; }
+.eco-scene { display: flex; align-items: center; gap: 9px; }
+.eco-scene-ic { font-size: 18px; }
+.eco-scene-tx { font-size: 12px; line-height: 1.6; color: #cfe6d8; }

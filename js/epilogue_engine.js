@@ -148,6 +148,16 @@ function epPush(reason) {
   if (e.meter <= 0) { e.meter = 0; e.finalReady = true; onFinalReady(); }
   epSave();
 }
+// 5章 島づくり（island.js）：事業完成で任意量メーターを押し戻す。押し戻し受付中のみ有効。
+function epPushAmount(n) {
+  if (!epiloguePushable()) return 0;
+  const e = epData();
+  const before = e.meter;
+  e.meter = Math.max(0, e.meter - (n || 0));
+  if (e.meter <= 0) { e.meter = 0; e.finalReady = true; onFinalReady(); }
+  epSave();
+  return before - e.meter;   // 実際に退いた量
+}
 // ソフト失敗（絶滅に振り切れた）：詰まらせない。真ん中やや上へ戻して仕切り直し。
 function onDoomReached() {
   const e = epData(); e.cycle += 1; e.meter = Math.round(EP_CONST.RANGE * 0.65);
