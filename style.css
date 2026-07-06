@@ -1668,7 +1668,11 @@ table.entry-table {
   /* max-width:100%＝bodyの枠幅にクランプ（noneだと横カルーセル等の固有幅で#appが数千pxに膨張し、
      中身が右へ切れて見える＝観光kt-railで実測7523px。100%でどの画面も枠内スクロールに収まる）。 */
   #header { flex: none; max-width: 100%; border-radius: 16px 16px 0 0; }
-  #app { flex: 1 1 auto; min-height: 0; max-width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* ★統一サイズの要：ベースの #app{margin:0 auto} が、PC枠(body=flex column)では
+     「flexアイテムのauto余白 → align-stretch無効 → 中身の幅に縮む」を招き、画面ごとに
+     #app幅がバラつく(meals=350/collection=450)不具合の原因だった。width:100%+margin:0で
+     どの画面でも枠幅(=450)に固定＝画面サイズを完全統一する（中身の中央寄せは各画面内で行う）。 */
+  #app { flex: 1 1 auto; min-height: 0; width: 100%; max-width: 100%; margin: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
   /* 通常画面はガラス調サーフェスを敷き、アンビエント上でも内容を読みやすく（ホーム/タイトルは自前の
      全画面演出があるのでガラス地は除外＝据え置き）。 */
   body:not(.home-mode):not(.title-mode) #app {
