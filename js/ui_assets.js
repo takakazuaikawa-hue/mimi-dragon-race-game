@@ -22,6 +22,7 @@ function renderAssets() {
   const level = Math.max(0, Math.min(a.unlockedLifeStages || 0, 5));
   const st = lifeTreeStats();
   const app = beginScreen();
+  app.classList.add("lr-page");   // J-URBAN風の紙質感はこの画面だけに限定（他画面のas-entry/as-breakは不変）。
   const _h2 = el("h2", null, `暮らしと資産 <button class="info-q" title="お金のしくみ">？</button>`);
   _h2.querySelector(".info-q").onclick = () => showMoneyMap();
   app.appendChild(_h2);
@@ -58,13 +59,44 @@ function renderAssets() {
   const colOwned = LIFE_ASSETS.filter(it => isLifeAssetUnlocked(state, it, level)).length;
   const unlockedCh = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
   const skTitles = ACTIVE_SKILLS.filter(s => ((p.activeSkills || {})[s.id] || 0) >= s.levels.length).length;
-  const entry = (ic, label, sub, badge, onClick) => {
+  const entry = (ic, label, sub, badge, onClick, avatarSrc) => {
+    const avatar = avatarSrc ? `<img class="as-entry-mini" src="${avatarSrc}" alt="" onerror="this.remove()">` : "";
     const b = el("button", "as-entry",
       `<span class="as-entry-ic">${ic}</span><span class="as-entry-tx"><span class="as-entry-l">${label}${badge ? ` <span class="as-entry-badge">${badge}</span>` : ""}</span>` +
-        `<span class="as-entry-s">${sub}</span></span><span class="as-entry-ch">›</span>`);
+        `<span class="as-entry-s">${sub}</span></span>${avatar}<span class="as-entry-ch">›</span>`);
     b.onclick = onClick; return b;
   };
   const ent = el("div", "as-entries");
+  // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。
+  // ※すべきこと判定でも使うため、ここ（ent構築の前）で確定させる。
+  const _ch3unlocked = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
+
+  // ── すべきこと（今アクションがある時だけ・動的に上部へ）：迷わず次の一手。無ければ非表示。 ──
+  const todo = [];
+  const _nextCh = (typeof STORY_CHAPTERS !== "undefined") ? STORY_CHAPTERS.find(ch =>
+    ch.id !== "ED" && total >= storyUnlockAt(ch.id) &&
+    !(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_" + ch.id))) : null;
+  if (_nextCh) todo.push({ ic: "📖", label: "新しい話が読める", sub: _nextCh.title, onClick: () => renderStory() });
+  if (_ch3unlocked && ready) todo.push({ ic: "🌳", label: "暮らしPが振れる", sub: `暮らしP ◇${st.available} で新しいノードが解放できる`, onClick: () => renderLifeTree() });
+  const _nextSkill = ACTIVE_SKILLS.find(s => ((p.activeSkills || {})[s.id] || 0) < s.levels.length);
+  const _fee = (typeof lessonFee === "function") ? lessonFee() : 0;
+  if (_nextSkill && (p.coins || 0) >= _fee) todo.push({ ic: "🎫", label: "習い事に通える", sub: `${_nextSkill.name}・🪙${_fee.toLocaleString("ja-JP")}で通える`, onClick: () => renderActiveSkills() });
+  if (todo.length) {
+    app.appendChild(el("div", "lr-sec lr-sec--todo", `<span>すべきこと</span>`));
+    const td = el("div", "lr-todo");
+    todo.forEach(t => {
+      const b = el("button", "lr-todo-item",
+        `<span class="lr-todo-ic">${t.ic}</span><span class="lr-todo-tx"><b>${t.label}</b><small>${t.sub}</small></span><span class="as-entry-ch">›</span>`);
+      b.onclick = t.onClick; td.appendChild(b);
+    });
+    app.appendChild(td);
+  }
+  // ── できること：常設機能。担当師範がいる行はminiを添える（images/cast/mini/・第◯話で会うと表示）。 ──
+  const _chNowMini = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
+  const _shihanMini = (skillId) => {
+    const m = (typeof _shihanOf === "function") ? _shihanOf(skillId) : null;
+    return (m && _chNowMini >= m.ch) ? `images/cast/mini/${m.id}_mini.png` : null;
+  };
   // 🏦 島の経済：島の景気・名声・フォロワー・レース経済を一望（終章中は絶滅メーター本体もここに）。js/ui_economy.js
   if (typeof renderEconomy === "function") {
     const epOn = (typeof epilogueOn === "function") && epilogueOn();
@@ -83,8 +115,7 @@ function renderAssets() {
       }));
     }
   }
-  // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。
-  const _ch3unlocked = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
+  // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。_ch3unlocked は上（すべきこと判定）で確定済み。
   if (_ch3unlocked) {
     ent.appendChild(entry("🌳", "くらしスキルツリー", `暮らしP ◇${st.available} 残り ・ 解放 ${st.unlockedCount}/${st.totalNodes}`, ready ? "振れる!" : "", () => renderLifeTree()));
     ent.appendChild(entry("🎁", "生活資産コレクション", `${colOwned} / ${LIFE_ASSETS.length} 解放`, "", () => renderLifeCollection()));
@@ -94,7 +125,8 @@ function renderAssets() {
         `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話「スミカと総資産」</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
     }));
   }
-  ent.appendChild(entry("🎫", "習い事（アクティブスキル）", `称号 ${skTitles} / ${ACTIVE_SKILLS.length} 獲得 ・ ミミの暮らしの記録`, skTitles >= ACTIVE_SKILLS.length ? "コンプ!" : "", () => renderActiveSkills()));
+  // 習い事：次に通える師範のミニ肖像を添える（未登場の師範なら無し＝ネタバレしない）。
+  ent.appendChild(entry("🎫", "習い事（アクティブスキル）", `称号 ${skTitles} / ${ACTIVE_SKILLS.length} 獲得 ・ ミミの暮らしの記録`, skTitles >= ACTIVE_SKILLS.length ? "コンプ!" : "", () => renderActiveSkills(), _nextSkill ? _shihanMini(_nextSkill.id) : null));
   ent.appendChild(entry("📖", "物語", `${unlockedCh} / ${STORY_CHAPTERS.length} 話 解放`, "", () => renderStory()));
   // 相談（顧問）はホームのナビから移設＝暮らしハブに配置（予想の視点をもらう・任意）。
   // E4：予想の相談も第2話「ミズの分析」で解禁（1章は勘レース）。表示ゲートのみ・数値不変。
@@ -105,10 +137,11 @@ function renderAssets() {
           `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ相談できません</b><small><u>第2話「ミズの分析」</u>を読むと、サケ・ミズ・スミカに予想の視点をもらえます（総資産3千で第2話が解禁）。いまはカンで勝負！</small></div></div>`);
       }));
     } else {
-      ent.appendChild(entry("💬", "相談（顧問）", "サケ・ミズ・スミカから、予想の視点をもらいます。", "", () => renderConsult()));
+      // 分析（相談）を最初に開いたミズを代表として添える。
+      ent.appendChild(entry("💬", "相談（顧問）", "サケ・ミズ・スミカから、予想の視点をもらいます。", "", () => renderConsult(), "images/cast/mini/mizu_mini.png"));
     }
   }
-  app.appendChild(el("div", "lr-sec", `<span>できること・すべきこと</span>`));
+  app.appendChild(el("div", "lr-sec", `<span>できること</span>`));
   app.appendChild(ent);
   app.appendChild(_asBreak);   // 内訳＝詳細として下に。
 

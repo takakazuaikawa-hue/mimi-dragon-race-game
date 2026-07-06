@@ -6756,3 +6756,30 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* できること行：余白を少し広く静かに。 */
 .lr-page .as-entries, .as-entries { gap: 10px; }
 .as-entry { padding: 13px 15px; }
+
+/* ── 暮らし画面v2：部屋を大きく・ミミ接地／すべきこと・できことの分離／師範ミニ／J-URBAN紙質感(この画面限定) ── */
+.lr-room { height: 240px; }   /* v1の190pxから拡大。 */
+.lr-room-mimi { height: 195px; bottom: -3px; left: 10px; }   /* 床に足がつくよう下端を詰める＝接地。 */
+
+/* すべきこと：CTAらしい左金ラインの紙カード。できることより先＝迷わず次の一手。 */
+.lr-sec--todo span { color: #ffb347; }
+.lr-todo { display: flex; flex-direction: column; gap: 9px; margin: 0 0 6px; }
+.lr-todo-item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+  padding: 13px 15px; border-radius: 14px; border: 1px solid rgba(230,178,74,.45); border-left: 4px solid var(--gold);
+  background: linear-gradient(180deg, var(--cream) 0%, var(--paper) 100%);
+  box-shadow: 0 5px 16px -9px rgba(0,0,0,.5); }
+.lr-todo-item:active { transform: translateY(1px); }
+.lr-todo-ic { font-size: 21px; flex: none; width: 28px; text-align: center; }
+.lr-todo-tx { flex: 1; min-width: 0; }
+.lr-todo-tx b { display: block; font-size: 13.5px; font-weight: 800; color: var(--ink); }
+.lr-todo-tx small { display: block; font-size: 11px; color: #6b6255; margin-top: 2px; line-height: 1.35; }
+
+/* できること：J-URBAN風の紙面カード（このlr-page画面だけ・他画面のas-entry/as-breakは不変）。 */
+.lr-page .as-entry { background: linear-gradient(180deg, var(--cream) 0%, var(--paper) 100%);
+  border: 1px solid rgba(150,120,70,.28); box-shadow: 0 4px 13px -9px rgba(0,0,0,.45); }
+.lr-page .as-entry-l { color: var(--ink); }
+.lr-page .as-entry-s { color: #6b6255; }
+.lr-page .as-entry-badge { background: #e6b24a; color: #241f0c; }
+.lr-page .as-entry-ch { color: #9a8a68; }
+.as-entry-mini { width: 30px; height: 30px; object-fit: contain; flex: none; margin: 0 2px 0 4px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.3)); }
