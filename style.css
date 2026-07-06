@@ -6389,3 +6389,184 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .isl-fac-buy .isl-fac-buy-doom { font-size: 10.5px; color: #ffcaba; }
 .isl-fac-buy.short { opacity: .5; }
 .isl-fac.maxed { opacity: .82; border-left-color: #e2b455; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ホーム画面 総合リデザイン（2026-07 iteration・文脈的ミニマリズム＋統一ガラス）
+   原則：①ヘッダーは統一ピル②浮遊物は最小＆1つのガラストークン③下部スクリムで可読
+   ④余白グリッド（10/12px）⑤強い階層（CTA金・状態は控えめ）
+   ═══════════════════════════════════════════════════════════════════════ */
+.hl { --gbg: rgba(11,13,24,.52); --gbd: rgba(255,255,255,.13); --gbl: blur(13px); }
+
+/* ── ヘッダー：3ゾーン（ブランド｜プロフィール｜資源+アイコン）・統一ピル ── */
+.hl-top { display: flex; align-items: center; gap: 6px; padding: 8px 10px; }
+.hl-top .hl-brand { display: none; }                     /* ブランドは全体ヘッダーと重複＝ホームでは隠す */
+.hl-prof { display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 5px; height: 38px;
+  background: var(--gbg); backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl);
+  border: 1px solid var(--gbd); border-radius: 999px; min-width: 0; }
+.hl-prof .hl-prof-av { width: 28px; height: 28px; font-size: 17px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: rgba(255,255,255,.10); flex: 0 0 auto; }
+.hl-prof .hl-prof-tx { min-width: 0; line-height: 1.15; }
+.hl-prof .hl-prof-tx b { font-size: 12px; display: flex; align-items: center; gap: 3px; }
+.hl-prof .hl-prof-title { font-style: normal; font-size: 9.5px; opacity: .85; }
+.hl-prof .hl-prof-tx small { font-size: 9.5px; color: var(--mist-soft); }
+/* 資源ピル＝コイン/おなかを同じ形に統一（並べて“資源クラスタ”に見せる） */
+.hl-top .hl-money, .hl-top .hl-hunger { height: 38px; border-radius: 999px; background: var(--gbg);
+  backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl); border: 1px solid var(--gbd);
+  display: flex; align-items: center; gap: 4px; padding: 0 11px; margin: 0; }
+.hl-top .hl-money { margin-left: auto; }                  /* ここから右クラスタ */
+.hl-top .hl-money-coin b { color: #ffd34d; font-size: 13px; }
+.hl-top .hl-money-as { display: none; }                   /* 総資産バーはヘッダーから外す（暮らしで見る）＝すっきり */
+.hl-top .hl-hunger { font-size: 12px; }
+.hl-top .hl-hunger b { font-size: 12.5px; color: #ffd9a0; }
+.hl-top .hl-hunger.low { background: rgba(255,90,90,.16); border-color: rgba(255,120,120,.45); }
+.hl-top .hl-hunger.low b { color: #ffb9b9; }
+/* アイコンボタン（🔊 ⋯）＝円形ゴースト・同径 */
+.hl-top .hl-sys { width: 38px; height: 38px; border-radius: 50%; background: var(--gbg);
+  backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl); border: 1px solid var(--gbd);
+  font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0; }
+.hl-top .hl-vol { margin-left: 0; }
+
+/* ── ヒーロー上の浮遊物：1つのガラストークンで統一・10px グリッド ── */
+.hl-goal { position: absolute; left: 10px; top: 10px; max-width: 62%; z-index: 4;
+  background: var(--gbg); backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl);
+  border: 1px solid var(--gbd); border-radius: 13px; padding: 8px 12px; text-align: left; }
+.hl-float { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; align-items: center; gap: 9px;
+  background: var(--gbg); backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl);
+  border: 1px solid var(--gbd); border-radius: 999px; padding: 6px 11px; font-size: 11px; }
+.hl-float .hl-live { display: inline-flex; align-items: center; gap: 4px; font-weight: 900; font-size: 10px; color: #fff; }
+.hl-float .hl-live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #ff3b52;
+  box-shadow: 0 0 6px #ff3b52; animation: hlLiveBlink 1.4s ease-in-out infinite; }
+@keyframes hlLiveBlink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.hl-float .hl-float-v b, .hl-float .hl-float-fol b { color: #fff; }
+.hl-float .hl-float-fol { color: #ffb9d4; }
+
+/* ── 立ち絵の下スクリム＝コメント/入力を必ず読める（TikTokの作法） ── */
+.hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 42%; z-index: 2;
+  background: linear-gradient(to top, rgba(6,8,16,.72), rgba(6,8,16,.30) 55%, rgba(6,8,16,0)); pointer-events: none; }
+.hl-left { position: absolute; left: 10px; right: 10px; bottom: 62px; z-index: 3; }
+.hl-comments { display: flex; flex-direction: column; gap: 4px; }
+.hl-cm { align-self: flex-start; max-width: 80%; background: rgba(8,10,20,.42); border-radius: 12px;
+  padding: 4px 10px; font-size: 11.5px; line-height: 1.4; color: #eef1f7; }
+.hl-cm b { margin-right: 5px; }
+
+/* ── 入力行＝ヒーロー下端に固定・[💬][🎁][❤️]・きせかえは小さな👗 ── */
+.hl-cmwrap, .hl-actionfloat { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 5; }
+.hl-cmbar { display: flex; align-items: center; gap: 7px; }
+.hl-cminput { flex: 1; height: 40px; border-radius: 999px; background: var(--gbg); backdrop-filter: var(--gbl);
+  -webkit-backdrop-filter: var(--gbl); border: 1px solid var(--gbd); color: var(--mist-soft);
+  text-align: left; padding: 0 15px; font-size: 12.5px; }
+.hl-giftbtn, .hl-likebtn { height: 40px; min-width: 46px; border-radius: 999px; background: var(--gbg);
+  backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl); border: 1px solid var(--gbd); }
+/* きせかえ＝右下の小円アイコン（立ち絵中央から退避） */
+.hl-dress { position: absolute; right: 10px; bottom: 58px; z-index: 5; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--gbg); backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl);
+  border: 1px solid var(--gbd); display: flex; align-items: center; justify-content: center; padding: 0; }
+.hl-dress .hl-dress-ic { font-size: 18px; }
+.hl-dress .hl-dress-nm { display: none; }
+/* 吹き出し＝同じガラス言語 */
+.hl-speech { background: rgba(255,255,255,.92); color: #201a2e; }
+
+/* ── ホーム iteration2：目標チップの洗練・コメント位置・余白リズム ── */
+.hl-goal { padding: 7px 11px; max-width: 60%; border-left: 2px solid #ff5c9a; }
+.hl.tik .hl-goal { border-left: 2px solid #ff5c9a; }
+.hl-goal .hl-goal-k { font-size: 8.5px; letter-spacing: .04em; color: var(--mist-soft); opacity: .95; }
+.hl-goal .hl-goal-k::before { content: "📌 "; }
+.hl-goal .hl-goal-t { font-size: 12px; font-weight: 800; display: block; margin: 1px 0; line-height: 1.25; }
+.hl-goal .hl-goal-p { display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; margin: 3px 0; }
+.hl-goal .hl-goal-p i { display: block; height: 100%; background: linear-gradient(90deg, #ff5c9a, #ffd34d); }
+.hl-goal .hl-goal-n { font-size: 9px; color: var(--mist-soft); }
+/* コメントは入力行のすぐ上に低く・最大3件・古いものは薄く */
+.hl-left { bottom: 60px; }
+.hl-comments { gap: 3px; }
+.hl-comments .hl-cm:first-child { opacity: .6; }
+.hl-comments .hl-cm { animation: hlCmIn .25s ease both; }
+@keyframes hlCmIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* CTA と タブバーの間隔・ヘッダー高さのリズムを統一 */
+.hl-race { margin: 10px 0 8px; }
+
+/* ── ホーム iteration3：目標チップをLIVEピル並みに洗練・フッター微調整・全体の締め ── */
+.hl-goal { padding: 6px 11px 7px; border-radius: 14px; }
+.hl-goal .hl-goal-k { font-size: 8px; text-transform: none; }
+.hl-goal .hl-goal-t { font-size: 11.5px; margin: 1px 0 0; }
+.hl-goal .hl-goal-p { height: 3px; margin: 4px 0 2px; }
+.hl-goal .hl-goal-n { font-size: 8.5px; opacity: .9; }
+/* LIVE帯とフォロワー：数字の視認性を少し上げ余白を締める */
+.hl-float { padding: 6px 12px; gap: 10px; }
+.hl-float .hl-float-v, .hl-float .hl-float-fol { font-size: 10.5px; }
+.hl-float .hl-float-v b, .hl-float .hl-float-fol b { font-weight: 800; }
+/* フッター（タブバー）：アイコンを少し大きく・ラベル間隔を締める・上に薄い仕切り光 */
+.tik-bar { margin-top: 6px; box-shadow: 0 -8px 22px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.07); }
+.tik-tab .ic { font-size: 18px; }
+.tik-tab .lb { font-size: 9px; margin-top: 1px; }
+.tik-tab.center { box-shadow: 0 5px 15px rgba(226,162,46,.44), inset 0 1px 0 rgba(255,255,255,.55); }
+/* 立ち絵をわずかに上へ＝上部の暗帯を減らしキャラを主役に（feet少し切れてもライブ的にOK） */
+.hl.tik .hl-mimi img, .hl .hl-mimi img { object-position: bottom center; }
+
+/* ── ホーム iteration4：ヒーローを枠に溶かす（没入感）＋最終の締め ── */
+/* 立ち絵ステージの縁を内側ビネットで暗く落とし、暗いキャビン背景をアプリ枠へ自然に溶かす
+   ＝「箱の中の写真」から「配信画面そのもの」へ。中央のキャラは明るいまま。 */
+.hl-stage { border-radius: 16px; overflow: hidden; position: relative; }
+.hl-stage::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  box-shadow: inset 0 0 44px 8px rgba(6,8,16,.55), inset 0 22px 30px -10px rgba(6,8,16,.5); }
+/* オーバーレイ（目標/LIVE/コメント/入力/着替え）はビネットより前面へ */
+.hl-goal, .hl-float, .hl-left, .hl-cmwrap, .hl-actionfloat, .hl-dress, .hl-speech { z-index: 6; }
+/* 上部のオーバーレイを少し上詰め＝暗帯を有効活用しキャラの顔まわりを空ける */
+.hl-goal, .hl-float { top: 9px; }
+/* CTA・タブの左右インセットをヒーローと厳密に揃える（12px グリッド） */
+.hl-dock, .hl-race, .tik-bar { margin-left: 0; margin-right: 0; }
+
+/* ── ホーム iteration5：上部スクリムで対称化・プロフィール微圧縮・最終の磨き ── */
+/* 下端と対称の上端スクリム＝目標/LIVEがクリーンな面に載り、キャビンの梁を沈める（上下対称＝端正） */
+.hl-stage .hl-topscrim { position: absolute; left: 0; right: 0; top: 0; height: 26%; z-index: 3; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(6,8,16,.62), rgba(6,8,16,.18) 60%, rgba(6,8,16,0)); }
+/* プロフィールを少しコンパクトに＝右クラスタとの重量バランス */
+.hl-prof { max-width: 46%; }
+.hl-prof .hl-prof-tx b { font-size: 11.5px; }
+/* 目標チップとLIVE帯の高さ感を揃える（両方 top:9px・視覚重量を近づける） */
+.hl-goal { background: rgba(11,13,24,.46); }
+.hl-float { background: rgba(11,13,24,.46); }
+/* 入力ピルのプレースホルダをやや明るく＝押せる感 */
+.hl-cminput { color: rgba(255,255,255,.72); }
+
+/* ── ホーム iteration6：コメントを1行省略で統一（ライブフィードの流れ・長い助言も1行に） ── */
+.hl-cm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 82%; }
+.hl-cm.gift, .hl-cm.join, .hl-cm.vipjoin, .hl-cm.you { white-space: nowrap; }
+/* 目標チップ：唯一の色アクセント（マゼンタ左縁）を保ちつつ縁を細く上品に＝“ピン留め”の記号性は残す */
+.hl-goal { border-left-width: 2px; }
+/* コメント最上段（最古）の淡さをもう少し＝流れの奥行き */
+.hl-comments .hl-cm:first-child { opacity: .5; }
+
+/* ── ホーム iteration7：最終の“生きた”仕上げ（吹き出し尻尾・CTAの呼吸・整列の締め） ── */
+/* 吹き出しに尻尾＝発話の記号（右下＝ミミの方向へ） */
+.hl-speech { position: relative; border-radius: 14px; padding: 9px 13px; font-size: 12.5px; line-height: 1.45;
+  box-shadow: 0 4px 14px rgba(0,0,0,.28); }
+.hl-speech::after { content: ""; position: absolute; right: 26px; bottom: -7px; width: 14px; height: 14px;
+  background: inherit; transform: rotate(45deg); border-radius: 0 0 3px 0; }
+/* 金CTAに柔らかな発光＝主役の呼吸（押して、の合図・控えめ） */
+.hl.tik .hl-race { box-shadow: 0 6px 20px rgba(226,162,46,.34), inset 0 1px 0 rgba(255,255,255,.5); }
+/* LIVEドットの脈動を少し強く＝生配信の鼓動 */
+.hl-float .hl-live::before { box-shadow: 0 0 8px 1px #ff3b52; }
+/* 資源ピルの数字を等幅寄せ＝桁のガタつき防止（915万/100 が整って見える） */
+.hl-top .hl-money b, .hl-top .hl-hunger b { font-variant-numeric: tabular-nums; }
+/* タブの押下フィードバックをきびきび（既存に念押し） */
+.tik-tab:active { transform: scale(.9); }
+
+/* ── ★ホーム モバイル致命傷修正：目標チップとLIVE帯の衝突（狭幅で重なる） ── */
+/* 目標チップの右端がLIVE帯（右上・約145px）に絶対かぶらないよう幅を保証＋タイトルは1行省略 */
+.hl-goal { max-width: calc(100% - 172px); }
+.hl-goal .hl-goal-k, .hl-goal .hl-goal-t, .hl-goal .hl-goal-n {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hl-float { max-width: 150px; flex-wrap: nowrap; }
+.hl-float .hl-float-v, .hl-float .hl-float-fol { white-space: nowrap; }
+/* ヘッダー：狭幅でピルが溢れないようプロフィールを縮み優先に */
+.hl-prof { flex: 0 1 auto; min-width: 0; }
+.hl-top .hl-money, .hl-top .hl-hunger, .hl-top .hl-sys { flex: 0 0 auto; }
+
+/* ── ★吹き出しの位置修正：目標チップ帯を避け、ミミの上半身に絶対配置で浮かせる（尻尾も維持） ── */
+.hl .hl-speech, .hl.tik .hl-speech { position: absolute; top: 23%; left: 12px; right: auto; bottom: auto;
+  max-width: 66%; z-index: 7; }
+.hl .hl-speech, .hl.tik .hl-speech { top: 37%; }
+
+/* ── ホーム 最終：目標チップ幅をモード別に（配信=LIVE帯分を空ける／静か=広く使える） ── */
+.hl .hl-goal { max-width: 72%; }              /* 静かモード＝LIVE帯なし＝広め */
+.hl.tik .hl-goal { max-width: calc(100% - 172px); }   /* 配信＝LIVE帯を絶対に避ける */

@@ -325,12 +325,14 @@ function renderHome() {
   mimi.title = "タップでミミが反応";
   mimi.onclick = (e) => { e.stopPropagation(); try { _mimiTalk(); } catch (err) {} };
   stage.appendChild(mimi);
+  stage.appendChild(el("div", "hl-topscrim"));   // ★上端スクリム（目標/LIVEをクリーンな面に載せる・下端と対称）
   // 👗 きせかえ＝明示ボタン。ラベルに“今の衣装名”を出して「表示（今の衣装）＋操作（着替え）」の二役に。
   const _curOutfit = (typeof outfitById === "function") ? outfitById(oid) : null;
   const _outfitNm = (_curOutfit && _curOutfit.name) ? _curOutfit.name : "きせかえ";
   const dressBtn = el("button", "hl-dress");
-  dressBtn.innerHTML = `<span class="hl-dress-ic">👗</span><span class="hl-dress-nm">${_outfitNm}</span>`;
-  dressBtn.title = `いまの衣装：${_outfitNm}（タップできせかえ）`;
+  // ★デザイン刷新：立ち絵中央に浮いていた「衣装名つきラベル」→ 右下の小さな👗アイコンへ（入力行の面に統合）。
+  dressBtn.innerHTML = `<span class="hl-dress-ic">👗</span>`;
+  dressBtn.title = `きせかえ（いまの衣装：${_outfitNm}）`;
   dressBtn.onclick = (e) => { e.stopPropagation(); if (typeof showMimiViewer === "function") showMimiViewer(); };
   stage.appendChild(dressBtn);
 
@@ -343,14 +345,15 @@ function renderHome() {
   let viewersEl = null;
   if (broadcast) {
     const floatBox = el("div", "hl-float");
-    viewersEl = el("div", "hl-viewers", "👁 <b></b>");
     const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
     const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
+    // ★デザイン刷新：LIVE・視聴・フォロワーを1本のクリーンなガラス帯に。冗長な戦績行は撤去
+    //   （出走/単勝/勝率/最高＝島の経済で見る情報）。視聴者数は hl-viewers に注入。
     floatBox.innerHTML =
-      `<div class="hl-float-live"><span class="hl-live">LIVE</span></div>` +
-      `<div class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b> フォロワー</div>` +
-      (p.completedRaces > 0 ? `<div class="hl-float-rec">出走${p.completedRaces}・単勝${p.wins}・勝率${winRate}%・最高${fmtCoins(p.biggestPayout || 0)}</div>` : "");
-    floatBox.querySelector(".hl-float-live").appendChild(viewersEl);
+      `<span class="hl-live">LIVE</span>` +
+      `<span class="hl-float-v">👁 <b></b></span>` +
+      `<span class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b></span>`;
+    viewersEl = floatBox.querySelector(".hl-float-v b");
     stage.appendChild(floatBox);
   }
 
@@ -424,10 +427,9 @@ function renderHome() {
   emb.innerHTML = "<span></span><span></span><span></span><span></span><span></span><span></span><span></span>";
   stage.appendChild(emb);
 
-  // 左下カラム：📋デイリーミッション（ライブ告知風・表示のみ）＋流れるコメント
-  //   （📌旧ランク進捗ピンは撤去＝🎯目標チップと内容重複のため。§2026-07）
+  // 左下カラム：流れるコメントのみ。★デザイン刷新：📋ミッション帯はヒーローから撤去（🎯目標チップと
+  //   内容重複＋立ち絵上の低コントラスト帯が雑然の主因だった。ミッションはSNS/目標画面で確認）。
   const left = el("div", "hl-left");
-  left.appendChild(el("div", "hl-pin hl-missions", "📋 " + _dailyMissionText()));
   const cms = el("div", "hl-comments");
   left.appendChild(cms);
   stage.appendChild(left);
@@ -491,8 +493,8 @@ function renderHome() {
   const _fame = (state.assets && state.assets.fameValue) || 0;
   let _viewers = 380 + p.rank * 260 + ((p.villageLevel || 1) * 180) + Math.min(4000, p.completedRaces * 6) + Math.floor(_fame / 50);
   const _fmtV = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
-  if (broadcast && viewersEl) {   // ★視聴者数は配信モードのみ
-    const _vB = viewersEl.querySelector("b");
+  if (broadcast && viewersEl) {   // ★視聴者数は配信モードのみ（viewersEl は帯内の <b> 要素そのもの）
+    const _vB = viewersEl;
     _vB.textContent = _fmtV(_viewers);
     window._hlTimers.push(setInterval(() => {
       if (state.ui.screen !== "home") { window._hlTimers.forEach(clearInterval); return; }
@@ -509,7 +511,7 @@ function renderHome() {
   function _addCm(name, color, text, cls) {
     const d = el("div", "hl-cm" + (cls ? " " + cls : ""), `<b style="color:${color}">${name}</b>${text}`);
     cms.appendChild(d);
-    while (cms.children.length > 6) cms.removeChild(cms.firstChild);
+    while (cms.children.length > 3) cms.removeChild(cms.firstChild);   // ★3件だけ＝立ち絵を覆わない
   }
   // 状況連動コメント：今のプレイ状況（連勝/コイン/ランク/勝率/時間帯/衣装…）に合う台詞を集める（表示専用）
   function _ctxCm() {
