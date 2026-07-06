@@ -239,6 +239,57 @@ var MEALS = [
 ];
 
 // 進捗（表示専用メタ）：食べた/解いたを記録。
+const MEAL_PHOTOS = {
+  t_yakitori: "images/meals/t_yakitori.webp",
+  t_ramen: "images/meals/t_ramen.webp",
+  t_dote: "images/meals/t_dote.webp",
+  t_dango: "images/meals/t_dango.webp",
+  t_dog: "images/meals/t_dog.webp",
+  t_kakigori: "images/meals/t_kakigori.webp",
+  t_nikuman: "images/meals/t_nikuman.webp",
+  t_ikayaki: "images/meals/t_ikayaki.webp",
+  t_takoyaki: "images/meals/t_takoyaki.webp",
+  t_corn: "images/meals/t_corn.webp",
+  t_amazake: "images/meals/t_amazake.webp",
+  t_wataame: "images/meals/t_wataame.webp",
+
+  h_onigiri: "images/meals/h_onigiri.webp",
+  h_tkg: "images/meals/h_tkg.webp",
+  h_toast: "images/meals/h_toast.webp",
+  h_nabe: "images/meals/h_nabe.webp",
+  h_curry: "images/meals/h_curry.webp",
+  h_medama: "images/meals/h_medama.webp",
+  h_cupmen: "images/meals/h_cupmen.webp",
+  h_banana: "images/meals/h_banana.webp",
+  h_natto: "images/meals/h_natto.webp",
+  h_ochazuke: "images/meals/h_ochazuke.webp",
+  h_yakimeshi: "images/meals/h_yakimeshi.webp",
+  h_sausage: "images/meals/h_sausage.webp",
+
+  g_paella: "images/meals/g_paella.webp",
+  g_pasta: "images/meals/g_pasta.webp",
+  g_steak: "images/meals/g_steak.webp",
+  g_pudding: "images/meals/g_pudding.webp",
+  g_chowder: "images/meals/g_chowder.webp",
+  g_tempura: "images/meals/g_tempura.webp",
+  g_risotto: "images/meals/g_risotto.webp",
+  g_ajillo: "images/meals/g_ajillo.webp",
+  g_acqua: "images/meals/g_acqua.webp",
+  g_gyoza: "images/meals/g_gyoza.webp",
+
+  s_curry: "images/meals/s_curry.webp",
+  s_pound: "images/meals/s_pound.webp",
+  s_dashimaki: "images/meals/s_dashimaki.webp",
+  s_chocolate: "images/meals/s_chocolate.webp",
+  s_ramen: "images/meals/s_ramen.webp",
+  s_cheese: "images/meals/s_cheese.webp",
+  s_nikujaga: "images/meals/s_nikujaga.webp",
+  s_omurice: "images/meals/s_omurice.webp",
+  s_castella: "images/meals/s_castella.webp",
+  s_karaage: "images/meals/s_karaage.webp"
+};
+MEALS.forEach(function (m) { if (!m.photo && MEAL_PHOTOS[m.id]) m.photo = MEAL_PHOTOS[m.id]; });
+
 function mealData() {
   var p = state.player;
   if (!p.meals) p.meals = {};

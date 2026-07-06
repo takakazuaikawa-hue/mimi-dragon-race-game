@@ -90,7 +90,10 @@ function renderMeals() {
     mealsByTier(t.id).forEach(m => {
       const un = mealUnlocked(m);
       const card = el("button", "meal-card" + (un ? " got" : ""));
-      card.innerHTML = `<span class="meal-card-ic">${un ? m.icon : "❔"}</span><span class="meal-card-nm">${un ? m.name : "？？？"}</span>`;
+      const thumb = (un && m.photo)
+        ? `<span class="meal-card-thumb"><img src="${m.photo}" alt="" decoding="async"></span>`
+        : `<span class="meal-card-ic">${un ? m.icon : "❔"}</span>`;
+      card.innerHTML = `${thumb}<span class="meal-card-nm">${un ? m.name : "？？？"}</span>`;
       card.onclick = () => showMealDetail(m);
       grid.appendChild(card);
     });
@@ -103,7 +106,9 @@ function showMealDetail(m) {
   const box = el("div", "navpop meal-pop");
   // 閉じる時、食事画面なら再描画＝食べた/解いたカードが即「取得済み」に反映される。
   const _closeMeal = () => { ov.remove(); if (state.ui.screen === "meals" && typeof renderMeals === "function") renderMeals(); };
-  const head = () => `<div class="meal-pop-ic">${m.icon}</div><div class="navpop-t">${m.name}</div>`;
+  const head = () => (m.photo
+    ? `<img class="meal-pop-photo" src="${m.photo}" alt="" decoding="async"><div class="meal-pop-ic meal-pop-ic--over">${m.icon}</div><div class="navpop-t">${m.name}</div>`
+    : `<div class="meal-pop-ic">${m.icon}</div><div class="navpop-t">${m.name}</div>`);
   const render = () => {
     if (!m.quiz) {
       // ── 食べる ──
