@@ -186,6 +186,8 @@ function renderStoryChapter(chId) {
   }
   // フォールバック：2勝より先に第3/4章へ到達していた場合のみ、章を開いた時にポロ発見アークを再生。
   if (typeof maybePlayPoroArcOnChapter === "function") maybePlayPoroArcOnChapter(ch.id);
+  // 小出しⒷⒸ：ポロ発見済み＆該当章(4=マクラ/5=セレスティア)を読んだ後、初回だけ後日談を再生。
+  if (typeof maybePlayPoroFollowupOnChapter === "function") maybePlayPoroFollowupOnChapter(ch.id);
   // 第4話「マクラと推し竜文化」を開く＝図鑑（推し竜の記録）を解放。
   if (ch.id === "4" && typeof setStoryFlag === "function" && !getStoryFlag("metMakura")) setStoryFlag("metMakura", true);
   // 第5話「セレスティアの神眼」を開く＝終章（絶滅メーターの綱引き）起動。

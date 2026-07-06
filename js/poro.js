@@ -64,12 +64,11 @@ function dexUnlocked() {
 // ── 第4章 発見〜聖龍幼体説〜鑑定〜受容の物語アーク（立ち絵セリフ） ──
 // キャラの声（[[mimi-costume-mall]] §キャラの役割）：ミミ=来訪者(反応/質問)、サケ=現場/竜を見る、
 // ミズ=市場/価値、スミカ=生活/手配、マクラ=観客/熱狂、セレスティア=聖龍の意味/世界の天井。
+// ★小出し設計（ユーザー指示）：出会いは2勝目という早期タイミングなので、まだ物語で会っていない
+//   キャラ（マクラ＝第4話／セレスティア＝第5話）はこの核心シーンに出演させない。彼女たちの反応は
+//   別の短い後日談シーン（poroMakuraFollowupScript/poroCelestiaFollowupScript）として切り出し、
+//   実際にその章を読んだ後に1回だけ再生する＝進行に追いつくまで小出しにする。
 function poroDiscoveryScript() {
-  // ★物語の進行フラグに関わらず、この演出は2勝到達（または3/4話フォールバック）で早期発生しうる。
-  //   まだ会っていないキャラ（マクラ＝第4話／セレスティア＝第5話）を先出演させるとネタバレ・
-  //   矛盾になるため、未登場なら台詞をnarrator/villagerの汎用反応に差し替える（ユーザー指摘）。
-  const _met = (chId) => !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_" + chId));
-  const metMakura = _met("4"), metCelestia = _met("5");
   return [
     ["narrator", "雷雨の去ったレース場の裏手。資材置き場、木箱の陰で——なにかが、ちいさく震えていた。"],
     ["mimi", "……あれ？ なにか、ふるえてる……。", "default"],
@@ -78,21 +77,13 @@ function poroDiscoveryScript() {
     ["poro", "……ぽろぉ……。", "cry"],
     ["mimi", "あったかい……。ちっちゃな竜さん。どこから来たの？", "default"],
     ["villager", "っ……その紫の体に、宝石みたいな鱗……ま、まさか、聖龍の幼体じゃ……！？"],
-    metMakura
-      ? ["makura", "出たァ！ 雨上がり・聖龍レース当日・祭祀布にくるまれた紫の仔竜！ こいつぁバズらせない手はないぜ！？"]
-      : ["villager", "お、おい、写真撮っとけ……！ こんなの、二度と見れねえかもしれねえぞ！"],
     ["mimi", "せ、聖龍……？ この子が……？", "panic"],
-    metCelestia
-      ? ["celestia", "聖龍。世界の淘汰を生き残り、頂点に立つ竜。……その名は、軽々しく与えるものではない。"]
-      : ["villager", "せ、聖龍って……そんな伝説、ほんとにあるのか……？"],
     ["mizu", "落ち着きなさい。魔力測定器は異常値を示した——けれど、あの機械、この子の涙と鼻水でショートしただけよ。あはん。"],
     ["sake", "だが妙だ。この仔、人の不安によく耳が動く。音と匂いと、地の震えを拾っている。そこだけは、本物だ。"],
     ["mimi", "じゃあ……ほんとうに、聖龍なんですか……？", "default"],
     ["sumika", "ミミ様。憶測では育てられません。きちんと鑑定を取りましょう。——結果が、出ました。"],
     ["narrator", "＜鑑定結果＞　種族：ムラサキマルチビ竜／成長段階：幼体／希少指定：なし／聖龍との血縁：なし／特殊能力：なし／……食べ過ぎ傾向：あり。"],
-    metMakura
-      ? ["makura", "……な〜んだ。ぜんぶ、ふつうの仔竜かぁ。聖龍ちゃうんかい。"]
-      : ["villager", "……な〜んだ。ぜんぶ、ふつうの仔竜かぁ。"],
+    ["villager", "……な〜んだ。ぜんぶ、ふつうの仔竜かぁ。"],
     ["mizu", "紫も、宝石の鱗も、この地方では珍しくない。祭祀布は夜市の古布屋の品。開催日に現れたのも——屋台の果物が目当て。市場が、勝手に夢を見ただけ。"],
     ["poro", "……ぽろ？", "default"],
     ["mimi", "……。", "default"],
@@ -100,6 +91,26 @@ function poroDiscoveryScript() {
     ["mimi", "よかった。ポロは、ポロのままでいいです。", "happy"],
     ["sake", "……ふん。名は？"],
     ["mimi", "ポロ。泣き虫の、ポロです。わたしの……相棒。", "happy"],
+    ["poro", "……ぽろっ！"]
+  ];
+}
+// 後日談Ⓑ：第4話（マクラと推し竜文化）を実際に読んだ後、初めて開いた時に1回だけ再生。
+function poroMakuraFollowupScript() {
+  return [
+    ["narrator", "ポロの噂は、あっという間に配信者の耳に入っていた。"],
+    ["makura", "出たァ！ 噂の紫の仔竜！ こいつぁバズらせない手はないぜ！？"],
+    ["mimi", "……この子はポロです。世界は救いません。ただの、食いしん坊で。", "smile"],
+    ["makura", "そういうとこも込みで、バズるんだよなぁ。人気ってのは、正体よりキャラだぜ？"],
+    ["poro", "……ぽろ？", "default"]
+  ];
+}
+// 後日談Ⓒ：第5話（セレスティアの神眼）を実際に読んだ後、初めて開いた時に1回だけ再生。
+function poroCelestiaFollowupScript() {
+  return [
+    ["narrator", "終章の気配が近づく頃、あの旅人がふらりとポロを覗き込んだ。"],
+    ["celestia", "……ただの仔竜。けれど時々思うの。“ただの”が、一番強く続くのかもしれないと。"],
+    ["mimi", "……セレスティアさん？", "default"],
+    ["celestia", "なんでもないわ。大事にね、その子。"],
     ["poro", "……ぽろっ！"]
   ];
 }
@@ -128,6 +139,38 @@ function maybePlayPoroArcOnChapter(chId) {
   if (chId !== "3" && chId !== "4") return false;
   if (poroFound()) return false;
   return _playPoroArc();
+}
+// 後日談の共通再生ヘルパー（_playPoroArcと同じ二重起動ガードを共用＝同時に2つ走らせない）。
+function _playPoroFollowup(script, seenFlag) {
+  if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
+  if (window._poroArcPlaying) return false;
+  window._poroArcPlaying = true;
+  Dialogue.play(script, { force: true }).then(function () {
+    window._poroArcPlaying = false;
+    if (typeof setStoryFlag === "function") setStoryFlag(seenFlag, true);
+    if (typeof saveGame === "function") saveGame();
+  });
+  return true;
+}
+// 小出しⒷ：ポロ発見済み＆第4話を実際に読んだ後、初回だけマクラの後日談を再生（renderStoryChapterから呼ぶ）。
+function maybePlayPoroMakuraFollowup() {
+  if (!poroFound()) return false;
+  if (!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_4"))) return false;
+  if (typeof getStoryFlag === "function" && getStoryFlag("poroMakuraSceneSeen")) return false;
+  return _playPoroFollowup(poroMakuraFollowupScript(), "poroMakuraSceneSeen");
+}
+// 小出しⒸ：ポロ発見済み＆第5話を実際に読んだ後、初回だけセレスティアの後日談を再生。
+function maybePlayPoroCelestiaFollowup() {
+  if (!poroFound()) return false;
+  if (!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"))) return false;
+  if (typeof getStoryFlag === "function" && getStoryFlag("poroCelestiaSceneSeen")) return false;
+  return _playPoroFollowup(poroCelestiaFollowupScript(), "poroCelestiaSceneSeen");
+}
+// ui_story.js から章を開くたびに呼ぶ窓口（4→マクラ、5→セレスティア）。
+function maybePlayPoroFollowupOnChapter(chId) {
+  if (chId === "4") return maybePlayPoroMakuraFollowup();
+  if (chId === "5") return maybePlayPoroCelestiaFollowup();
+  return false;
 }
 
 // 発見完了＝フラグ確定（poroFound＋鑑定＋スカウト/龍舎を同時解放）。仕様 §8・§12。
