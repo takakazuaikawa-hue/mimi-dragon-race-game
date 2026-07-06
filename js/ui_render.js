@@ -1268,6 +1268,24 @@ function renderHelp() {
 }
 
 // §09 §8,§9,§10 Collection screen
+// 図鑑専用：HD-2Dスプライトはレースの「鼻先(右端)アンカー」契約のまま(x,y,scale)を図鑑の
+// 小さいcanvasにそのまま当てはめると、実画像の縦横比によっては胴体がキャンバス外へはみ出て
+// 半分しか映らない（ユーザー指摘）。図鑑では実アスペクト比から余白内にきっちり収まるx/y/scale
+// を計算し直す＝レース側のrcDrawDragonSprite本体・座標契約には一切触れない（表示のみ・安全）。
+function _dexFitSprite(id, cw, ch, padX, padYTop, padYBottom) {
+  try {
+    if (typeof _rcDragonSprite !== "function") return null;
+    const e = _rcDragonSprite(id);
+    if (!e || !e.ok || !e.box) return null;   // 未ロード＝呼び出し側で従来の固定値にフォールバック
+    const ar = e.box.w / e.box.h;
+    const availH = ch - padYTop - padYBottom, availW = cw - padX * 2;
+    let hpx = availH, wpx = hpx * ar;
+    if (wpx > availW) { wpx = availW; hpx = wpx / ar; }   // 横長の竜は幅基準に収め直す
+    const mul = (typeof RC_SIZE_MUL !== "undefined" && RC_SIZE_MUL[id]) || 1;
+    const scale = hpx / ((typeof RC_DSP_H !== "undefined" ? RC_DSP_H : 46) * mul);
+    return { x: padX + wpx, y: ch - padYBottom, scale };
+  } catch (e) { return null; }
+}
 // §41 — 図鑑：竜カードの詳細ポップ（大きめスプライト＋特徴＋記録＋解放ノート＋お気に入り）。
 let _dexFilter = "all";
 function showCollectionDragonDetail(d) {   // ※poro.js の showDragonDetail(id) と名前衝突していたため改名（図鑑=オブジェクト渡し）。
@@ -1294,7 +1312,10 @@ function showCollectionDragonDetail(d) {   // ※poro.js の showDragonDetail(id
   document.body.appendChild(ov);
   const cv = card.querySelector(".dd-art canvas");
   if (cv && cv.getContext && typeof rcDrawDragon === "function") {
-    rcDrawDragon(cv.getContext("2d"), { id: d.id, x: 161, y: 117, scale: 2.85, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.5 });
+    const _fit = _dexFitSprite(d.id, 300, 150, 16, 12, 16);
+    const _o = _fit ? { id: d.id, x: _fit.x, y: _fit.y, scale: _fit.scale, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.5 }
+      : { id: d.id, x: 161, y: 117, scale: 2.85, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.5 };
+    rcDrawDragon(cv.getContext("2d"), _o);
   }
   card.querySelector(".dex-detail-x").onclick = () => ov.remove();
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
@@ -1370,8 +1391,12 @@ function renderCollection() {
       (fav ? `<span class="dex-fav">★</span>` : "");
     if (seen) {
       const cv = card.querySelector("canvas");
-      if (cv && cv.getContext && typeof rcDrawDragon === "function")
-        rcDrawDragon(cv.getContext("2d"), { id: d.id, x: 42, y: 38, scale: 0.72, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 });
+      if (cv && cv.getContext && typeof rcDrawDragon === "function") {
+        const _fit2 = _dexFitSprite(d.id, 78, 56, 5, 4, 6);
+        const _o2 = _fit2 ? { id: d.id, x: _fit2.x, y: _fit2.y, scale: _fit2.scale, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 }
+          : { id: d.id, x: 42, y: 38, scale: 0.72, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 };
+        rcDrawDragon(cv.getContext("2d"), _o2);
+      }
       card.onclick = () => showCollectionDragonDetail(d);
     } else {
       const cv = card.querySelector("canvas"); if (cv) cv.style.display = "none";
