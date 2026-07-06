@@ -6703,3 +6703,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-comments .hl-cm.join, .hl-comments .hl-cm.vipjoin { color: #d9caff; }
 .hl-comments .hl-cm.gift { color: #ffd9a0; }
 .hl-comments .hl-cm.you  { color: #ffe6a3; }
+
+/* ── コメントの縦帯を“ミミの顔あたり”まで拡張：下から積み、上端(40%)で古いものをフェード（ライブ配信のフィード）。 ── */
+.hl-stage .hl-left { top: 40%; bottom: 10px; display: flex; flex-direction: column; justify-content: flex-end; }
+.hl-stage .hl-comments { overflow: hidden; max-height: 100%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 15%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 15%, #000 100%); }
