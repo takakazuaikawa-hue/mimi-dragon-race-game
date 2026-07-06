@@ -6692,3 +6692,14 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .hl-dock .tik-tab .tik-ic-img { width: 28px; height: 28px; }
   .hl-dock .tik-tab .lb { font-size: 9.5px; }
 }
+
+/* ── コメントは“枠”をなくして浮かせる（TikTok Live風）：地の箱/縁を消し、影で可読性を確保。横幅も広く。 ── */
+.hl-comments .hl-cm,
+.hl-comments .hl-cm.join, .hl-comments .hl-cm.gift, .hl-comments .hl-cm.you, .hl-comments .hl-cm.vipjoin {
+  background: none !important; border: none !important; border-radius: 0; padding: 1px 0; max-width: 94%;
+  text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 3px rgba(0,0,0,.7); }
+.hl-comments .hl-cm b { text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+/* イベント系は“文字色”で区別（枠なし）：入場=薄紫／ギフト=金／自分の投稿=淡金 */
+.hl-comments .hl-cm.join, .hl-comments .hl-cm.vipjoin { color: #d9caff; }
+.hl-comments .hl-cm.gift { color: #ffd9a0; }
+.hl-comments .hl-cm.you  { color: #ffe6a3; }
