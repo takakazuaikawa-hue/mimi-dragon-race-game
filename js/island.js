@@ -1,101 +1,122 @@
 // =========================================================================
 // island.js — 5章「島づくり」（docs/ISLAND_INVEST_DESIGN.md）。
 // =========================================================================
-// 体験の芯＝「事業に富を注ぐ → 島が変わる → 絶滅メーターが退く」。レーダーは手薄マップ（副役）。
+// 体験の芯＝「施設を少しずつ育てる → 島が変わる → 絶滅メーターが退く」。
+// ★投資はレベル制（逓増コスト）＝一括購入は先が見えず挫折するため。常に今すぐ買える次の一手＋
+//   進捗バー＋節目のご褒美。レーダーは手薄マップ（副）。
 // レースの着順/オッズ/配当/FinalPower は不変。担うのは①コインシンク②メーター押し戻し③テキスト進化。
-// 状態：state.player.island = { done:{projectId:1}, dev:number }（initガード・既存セーブ互換）。
+// 状態：state.player.island = { lv:{facId:level}, dev:number }（initガード・既存セーブ互換）。
 
 var ISLAND_CATS = [
-  { id: "infra",    ic: "🏗", name: "施設",     color: "#57b1dd" },
-  { id: "commerce", ic: "🏪", name: "商業",     color: "#e6b24a" },
-  { id: "race",     ic: "🏟", name: "レース",   color: "#d6452f" },
-  { id: "dragon",   ic: "🐲", name: "竜",       color: "#9a6ad0" },
-  { id: "public",   ic: "⛲", name: "公共",     color: "#49c89c" },
-  { id: "industry", ic: "🏭", name: "産業",     color: "#caa44a" }
+  { id: "infra",    ic: "🏗", name: "施設",     color: "#57b1dd", base: 1500000, growth: 1.72, maxLv: 8,
+    milestones: {
+      1: { name: "港の桟橋を直す",   doom: 8,  react: ["ミミ", "がたがたの桟橋、やっと直った！ 船が安心して着ける島って、それだけで豊かだ。"] },
+      4: { name: "谷に橋を架ける",   doom: 14, react: ["スミカ・ラグナ", "ミミ様。橋の向こうの村と、やっと行き来ができます。……島がひとつに繋がりました。"] },
+      8: { name: "大通りを石畳に",   doom: 24, react: ["ミミ", "泥だらけだった大通りが、石畳に。雨の日も、みんなが胸を張って歩ける。"] }
+    } },
+  { id: "commerce", ic: "🏪", name: "商業",     color: "#e6b24a", base: 1800000, growth: 1.74, maxLv: 8,
+    milestones: {
+      1: { name: "屋台に補助金",     doom: 8,  react: ["屋台のおやじ", "補助金だと……？ ふん、その分うまいもん作らにゃ罰が当たる。見てろよ。"] },
+      4: { name: "市場を拡張する",   doom: 15, react: ["ミズ", "市場が広がれば、価値の巡りも太くなる。……あなた、商人の才もあるのね。あはん。"] },
+      8: { name: "百貨店を誘致する", doom: 24, react: ["ミミ", "島に百貨店……！ 昔の私が見たら、目を回して気絶するやつだ。"] }
+    } },
+  { id: "race",     ic: "🏟", name: "レース",   color: "#d6452f", base: 2200000, growth: 1.74, maxLv: 8,
+    milestones: {
+      1: { name: "観客席を増やす",   doom: 8,  react: ["実況マクラ", "席が増えた分だけ、歓声も増える！ この島のレースは、まだまだ熱くなるぞ——！"] },
+      4: { name: "ナイター照明をつける", doom: 15, react: ["ミミ", "夜のレース……！ 火山の赤と、照明の白。あの子たちが星みたいに駆けるんだ。"] },
+      8: { name: "大競技場を建てる", doom: 25, react: ["実況マクラ", "世界の天井さえ覗きにくる大舞台だ！ ここが……聖龍レースの、心臓になる。"] }
+    } },
+  { id: "dragon",   ic: "🐲", name: "竜",       color: "#9a6ad0", base: 2000000, growth: 1.74, maxLv: 8,
+    milestones: {
+      1: { name: "竜の宿舎を建てる", doom: 9,  react: ["ポロ", "あったかいおうち……！ ぼくたち竜も、ゆっくりねむれるよ。ありがと、おねえちゃん。"] },
+      4: { name: "竜の牧場を拓く",   doom: 16, react: ["ミミ", "竜たちが自由に走れる牧場。レースじゃない、ただ幸せそうな姿……いいなあ。"] },
+      8: { name: "竜の療養所を作る", doom: 24, react: ["スミカ・ラグナ", "傷ついた竜も、歳をとった竜も、ここで穏やかに。……島は、勝者だけのものではありません。"] }
+    } },
+  { id: "public",   ic: "⛲", name: "公共",     color: "#49c89c", base: 1500000, growth: 1.72, maxLv: 8,
+    milestones: {
+      1: { name: "井戸を掘る",       doom: 8,  react: ["村の子ども", "みず、いっぱいでるよ！ ミミおねえちゃん、まほうつかいみたい！"] },
+      4: { name: "診療所を建てる",   doom: 16, react: ["スミカ・ラグナ", "お医者様が常駐してくださる。……もう、熱を出した子を抱えて夜通し歩かなくていい。"] },
+      8: { name: "学校を建てる",     doom: 25, react: ["ミミ", "子どもたちが、字を覚えて、予想も覚えて……いつか私を負かすのかな。それも、楽しみ。"] }
+    } },
+  { id: "industry", ic: "🏭", name: "産業",     color: "#caa44a", base: 1800000, growth: 1.74, maxLv: 8,
+    milestones: {
+      1: { name: "畑を耕す",         doom: 8,  react: ["ミミ", "島の畑！ 採れたての野菜って、こんなに甘いんだ。屋台のおやじが泣いて喜んでた。"] },
+      4: { name: "漁港を整備する",   doom: 15, react: ["漁師", "いい漁港だ。これで時化の日も船が守れる。……島の飯が、もっとうまくなるぞ。"] },
+      8: { name: "工房街をひらく",   doom: 24, react: ["ミズ", "作る力は、いちばん強い価値。……この島は、もう誰かに淘汰される島ではないわ。"] }
+    } }
 ];
-
-// 事業（安→高／各分野3件）。cost=富の出口・doom=完成でメーターを退かせる量（レース毎+3に対し中8/大25）。
-// react=完成の一言（キャラ声）・evolve=この事業が書き換える島の断片（I2で各所へ結線）。weight=発展度への寄与。
-var ISLAND_PROJECTS = [
-  // 🏗 施設
-  { cat: "infra", id: "inf_pier",  name: "港の桟橋を直す",   cost: 2000000,  doom: 8,  weight: 1, react: ["ミミ", "がたがたの桟橋、やっと直った！ 船が安心して着ける島って、それだけで豊かだ。"] },
-  { cat: "infra", id: "inf_bridge", name: "谷に橋を架ける",   cost: 12000000, doom: 14, weight: 2, react: ["スミカ・ラグナ", "ミミ様。橋の向こうの村と、やっと行き来ができます。……島がひとつに繋がりました。"] },
-  { cat: "infra", id: "inf_road",  name: "大通りを石畳に",   cost: 60000000, doom: 22, weight: 3, react: ["ミミ", "泥だらけだった大通りが、石畳に。雨の日も、みんなが胸を張って歩ける。"] },
-  // 🏪 商業
-  { cat: "commerce", id: "com_subsidy", name: "屋台に補助金", cost: 2500000,  doom: 8,  weight: 1, react: ["屋台のおやじ", "補助金だと……？ ふん、その分うまいもん作らにゃ罰が当たる。見てろよ。"] },
-  { cat: "commerce", id: "com_market",  name: "市場を拡張する", cost: 18000000, doom: 15, weight: 2, react: ["ミズ", "市場が広がれば、価値の巡りも太くなる。……あなた、商人の才もあるのね。あはん。"] },
-  { cat: "commerce", id: "com_depart",  name: "百貨店を誘致する", cost: 80000000, doom: 24, weight: 3, react: ["ミミ", "島に百貨店……！ 昔の私が見たら、目を回して気絶するやつだ。"] },
-  // 🏟 レース
-  { cat: "race", id: "rac_seats", name: "観客席を増やす",   cost: 3000000,  doom: 8,  weight: 1, react: ["実況マクラ", "席が増えた分だけ、歓声も増える！ この島のレースは、まだまだ熱くなるぞ——！"] },
-  { cat: "race", id: "rac_light", name: "ナイター照明をつける", cost: 20000000, doom: 15, weight: 2, react: ["ミミ", "夜のレース……！ 火山の赤と、照明の白。あの子たちが星みたいに駆けるんだ。"] },
-  { cat: "race", id: "rac_dome",  name: "大競技場を建てる",  cost: 90000000, doom: 25, weight: 3, react: ["実況マクラ", "世界の天井さえ覗きにくる大舞台だ！ ここが……聖龍レースの、心臓になる。"] },
-  // 🐲 竜
-  { cat: "dragon", id: "drg_barn", name: "竜の宿舎を建てる", cost: 3000000,  doom: 9,  weight: 1, react: ["ポロ", "あったかいおうち……！ ぼくたち竜も、ゆっくりねむれるよ。ありがと、おねえちゃん。"] },
-  { cat: "dragon", id: "drg_ranch", name: "竜の牧場を拓く",  cost: 22000000, doom: 16, weight: 2, react: ["ミミ", "竜たちが自由に走れる牧場。レースじゃない、ただ幸せそうな姿……いいなあ。"] },
-  { cat: "dragon", id: "drg_clinic", name: "竜の療養所を作る", cost: 85000000, doom: 24, weight: 3, react: ["スミカ・ラグナ", "傷ついた竜も、歳をとった竜も、ここで穏やかに。……島は、勝者だけのものではありません。"] },
-  // ⛲ 公共
-  { cat: "public", id: "pub_well",   name: "井戸を掘る",     cost: 2000000,  doom: 8,  weight: 1, react: ["村の子ども", "みず、いっぱいでるよ！ ミミおねえちゃん、まほうつかいみたい！"] },
-  { cat: "public", id: "pub_clinic", name: "診療所を建てる", cost: 20000000, doom: 16, weight: 2, react: ["スミカ・ラグナ", "お医者様が常駐してくださる。……もう、熱を出した子を抱えて夜通し歩かなくていい。"] },
-  { cat: "public", id: "pub_school", name: "学校を建てる",   cost: 80000000, doom: 25, weight: 3, react: ["ミミ", "子どもたちが、字を覚えて、予想も覚えて……いつか私を負かすのかな。それも、楽しみ。"] },
-  // 🏭 産業
-  { cat: "industry", id: "ind_farm",  name: "畑を耕す",       cost: 2500000,  doom: 8,  weight: 1, react: ["ミミ", "島の畑！ 採れたての野菜って、こんなに甘いんだ。屋台のおやじが泣いて喜んでた。"] },
-  { cat: "industry", id: "ind_port",  name: "漁港を整備する", cost: 18000000, doom: 15, weight: 2, react: ["漁師", "いい漁港だ。これで時化の日も船が守れる。……島の飯が、もっとうまくなるぞ。"] },
-  { cat: "industry", id: "ind_craft", name: "工房街をひらく", cost: 85000000, doom: 24, weight: 3, react: ["ミズ", "作る力は、いちばん強い価値。……この島は、もう誰かに淘汰される島ではないわ。"] }
-];
+var ISLAND_GEN_DOOM = 3;   // 通常Lv（節目でない）の押し戻し量
 
 function islandState() {
   const p = state.player;
-  if (!p.island) p.island = { done: {}, dev: 0 };
-  if (!p.island.done) p.island.done = {};
+  if (!p.island) p.island = { lv: {}, dev: 0 };
+  if (!p.island.lv) p.island.lv = {};
   if (typeof p.island.dev !== "number") p.island.dev = 0;
   return p.island;
 }
-function islandDone(id) { return !!islandState().done[id]; }
-// 分野別の投資度（0..1）＝その分野の完成weight / 分野総weight。レーダー軸。
-function islandCatProgress(catId) {
-  let got = 0, total = 0;
-  ISLAND_PROJECTS.forEach(function (pr) { if (pr.cat === catId) { total += pr.weight; if (islandDone(pr.id)) got += pr.weight; } });
-  return total ? got / total : 0;
+function islandCat(id) { return ISLAND_CATS.find(function (c) { return c.id === id; }); }
+function islandLevel(id) { return islandState().lv[id] || 0; }
+// 次のLvのコスト（cost(lv)=base×growth^lv・現在Lv基点）。最大なら null。
+function islandNextCost(cat) {
+  const lv = islandLevel(cat.id);
+  if (lv >= cat.maxLv) return null;
+  return Math.round(cat.base * Math.pow(cat.growth, lv) / 10000) * 10000;   // 万単位で丸め
 }
-// 発展度（完成weight合計）と帯。テキスト進化 islandTier() が参照。
-function islandDevTotal() { let s = 0; ISLAND_PROJECTS.forEach(function (pr) { if (islandDone(pr.id)) s += pr.weight; }); return s; }
-function islandDevMax() { let s = 0; ISLAND_PROJECTS.forEach(function (pr) { s += pr.weight; }); return s; }
+// このLvアップが節目か（milestone定義があるか）。
+function islandMilestoneAt(cat, lv) { return cat.milestones && cat.milestones[lv]; }
+// 次に来る節目（Lv）と名前＝目標の可視化。
+function islandNextMilestone(cat) {
+  const lv = islandLevel(cat.id);
+  const keys = Object.keys(cat.milestones).map(Number).sort(function (a, b) { return a - b; });
+  for (let i = 0; i < keys.length; i++) if (keys[i] > lv) return { lv: keys[i], name: cat.milestones[keys[i]].name };
+  return null;
+}
+function islandCatProgress(catId) { const c = islandCat(catId); return c ? islandLevel(catId) / c.maxLv : 0; }
+function islandDevTotal() { let s = 0; ISLAND_CATS.forEach(function (c) { s += islandLevel(c.id); }); return s; }
+function islandDevMax() { let s = 0; ISLAND_CATS.forEach(function (c) { s += c.maxLv; }); return s; }
 function islandTier() {
   const r = islandDevMax() ? islandDevTotal() / islandDevMax() : 0;
-  return r >= 0.85 ? 3 : r >= 0.5 ? 2 : r >= 0.2 ? 1 : 0;   // 0芽 1育 2栄 3極
+  return r >= 0.85 ? 3 : r >= 0.5 ? 2 : r >= 0.2 ? 1 : 0;
 }
 var ISLAND_TIER_NAME = ["芽ぶきの島", "育ちゆく島", "栄える島", "極まりの島"];
 
-// 事業を叶える＝コイン消費＋メーター押し戻し＋発展度更新。払えなければ false。表示専用メタ。
-function islandFund(pr) {
+// 施設を1Lv育てる＝コスト消費＋メーター押し戻し＋発展度更新。節目なら完成カットイン、通常なら軽トースト。
+function islandInvest(cat) {
   try {
-    if (!pr || islandDone(pr.id)) return false;
-    if ((state.player.coins || 0) < pr.cost) {
+    const lv = islandLevel(cat.id);
+    if (lv >= cat.maxLv) return false;
+    const cost = islandNextCost(cat);
+    if ((state.player.coins || 0) < cost) {
       if (typeof showInfoPopup === "function") showInfoPopup("🏗 富が足りない…",
-        `<div class="mm-row"><span class="mm-ic">💸</span><div><b>${pr.cost.toLocaleString("ja-JP")} コイン 必要（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）</b>` +
-        `<small>レースで稼いで、また島に注ごう。焦らずとも、あなたの一勝が島を延ばす。</small></div></div>`);
+        `<div class="mm-row"><span class="mm-ic">💸</span><div><b>${cost.toLocaleString("ja-JP")} コイン 必要（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）</b>` +
+        `<small>レースで稼いで、また島に注ごう。少しずつでいい——あなたの一勝が、島を延ばす。</small></div></div>`);
       return false;
     }
-    state.player.coins -= pr.cost;
-    islandState().done[pr.id] = 1;
+    const newLv = lv + 1;
+    const ms = islandMilestoneAt(cat, newLv);
+    const doom = ms ? ms.doom : ISLAND_GEN_DOOM;
+    state.player.coins -= cost;
+    islandState().lv[cat.id] = newLv;
     islandState().dev = islandDevTotal();
-    const pushed = (typeof epPushAmount === "function") ? epPushAmount(pr.doom) : 0;
+    const pushed = (typeof epPushAmount === "function") ? epPushAmount(doom) : 0;
     if (typeof updateHeader === "function") try { updateHeader(); } catch (e) {}
     if (typeof saveGame === "function") try { saveGame(); } catch (e) {}
-    // 完成の瞬間：語り手の一言＋メーターが退いた実感（cut-in流用）。
-    _islandCompletionCutin(pr, pushed);
+    if (ms) _islandMilestoneCutin(cat, ms, pushed);
+    else {
+      if (typeof _showUnlockToast === "function") _showUnlockToast(`🏗 ${cat.name}を整備（Lv${newLv}）　☄️ 絶滅 −${pushed}`);
+      if (state.ui.screen === "island_build") renderIslandBuild();
+    }
     return true;
   } catch (e) { return false; }
 }
 
-function _islandCompletionCutin(pr, pushed) {
+function _islandMilestoneCutin(cat, ms, pushed) {
   try {
-    const who = pr.react[0], line = pr.react[1];
     const ov = el("div", "navpop-ov");
     const box = el("div", "navpop isl-done");
     box.innerHTML =
-      `<div class="isl-done-t">🎉 「${pr.name}」が叶った！</div>` +
-      `<div class="isl-done-say"><b>${who}</b>「${line}」</div>` +
+      `<div class="isl-done-t">${cat.ic} 「${ms.name}」が叶った！</div>` +
+      `<div class="isl-done-say"><b>${ms.react[0]}</b>「${ms.react[1]}」</div>` +
       (pushed > 0 ? `<div class="isl-done-doom">☄️ 絶滅メーターを <b>${pushed}</b> 押し戻した</div>` : "");
     const btn = el("button", "navpop-go", "島が、また育った");
     btn.onclick = function () { ov.remove(); if (state.ui.screen === "island_build" && typeof renderIslandBuild === "function") renderIslandBuild(); };
@@ -105,35 +126,31 @@ function _islandCompletionCutin(pr, pushed) {
   } catch (e) {}
 }
 
-// 6角レーダー（自前SVG・手薄マップ）＝分野別投資度を多角形で。ライブラリ不要（固定6軸）。
+// 6角レーダー（自前SVG・手薄マップ）＝施設別Lv/maxLvを多角形で。ライブラリ不要（固定6軸）。
 function islandRadarSVG(size) {
   const c = size / 2, R = size * 0.38, N = 6;
   function pt(i, r) { const a = -Math.PI / 2 + i * (Math.PI * 2 / N); return [c + Math.cos(a) * r, c + Math.sin(a) * r]; }
   let g = "";
-  // グリッド（3リング＋軸）
   for (let ring = 1; ring <= 3; ring++) {
     let d = "";
     for (let i = 0; i < N; i++) { const p = pt(i, R * ring / 3); d += (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1) + " "; }
     g += `<path d="${d}Z" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="1"/>`;
   }
   for (let i = 0; i < N; i++) { const p = pt(i, R); g += `<line x1="${c}" y1="${c}" x2="${p[0].toFixed(1)}" y2="${p[1].toFixed(1)}" stroke="rgba(255,255,255,.10)"/>`; }
-  // 投資度ポリゴン
   let d = "";
   ISLAND_CATS.forEach(function (cat, i) { const p = pt(i, R * Math.max(0.04, islandCatProgress(cat.id))); d += (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1) + " "; });
   g += `<path d="${d}Z" fill="rgba(255,206,110,.22)" stroke="#ffd34d" stroke-width="1.5"/>`;
-  // 軸ラベル（アイコン）
   ISLAND_CATS.forEach(function (cat, i) { const p = pt(i, R + size * 0.075); g += `<text x="${p[0].toFixed(1)}" y="${(p[1] + 4).toFixed(1)}" text-anchor="middle" font-size="${size * 0.09}">${cat.ic}</text>`; });
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
 }
 
-// 🏗 島づくり画面（島の経済配下・5章解放）。主役＝事業カード、レーダーは上部の手薄マップ。
+// 🏗 島づくり画面（島の経済配下・5章解放）。主役＝施設カード（Lvバー＋今すぐ買える次の一手）。
 function renderIslandBuild() {
   state.ui.screen = "island_build";
   const app = beginScreen();
   app.appendChild(el("h2", null, "🏗 島づくり"));
-  app.appendChild(el("div", "as-hint2", "勝ち取った富を、島に注ぐ。一つ叶えるたび、島が変わり、迫る絶滅が一歩退く。"));
+  app.appendChild(el("div", "as-hint2", "勝ち取った富を、島に少しずつ注ぐ。育てるほど島が変わり、迫る絶滅が一歩ずつ退く。"));
 
-  // 上部：発展度＋レーダー（手薄マップ）＋メーター
   const tier = islandTier();
   const head = el("div", "card isl-head");
   const meterPct = (typeof epilogueProgress === "function") ? epilogueProgress() : null;
@@ -142,28 +159,35 @@ function renderIslandBuild() {
     `<div class="isl-head-id"><div class="isl-tier">${["🌱", "🌿", "🌳", "🏝️"][tier]} ${ISLAND_TIER_NAME[tier]}</div>` +
     `<div class="isl-dev">発展度 <b>${islandDevTotal()}</b> / ${islandDevMax()}</div>` +
     (meterPct != null ? `<div class="isl-meter">☄️ 島の余命 <b>${meterPct}%</b><span class="isl-meter-bar"><i style="width:${meterPct}%"></i></span></div>` : "") +
-    `<div class="isl-hint">レーダーの凹みが“手薄な分野”。バランスよく育てるほど島は粘り強い。</div></div>`;
+    `<div class="isl-hint">レーダーの凹みが“手薄な分野”。安いLvから少しずつ、バランスよく。</div></div>`;
   app.appendChild(head);
 
-  // 分野ごとに事業カード
+  // 施設カード＝Lvバー＋次の節目の予告＋「投資する（次Lvのコスト）」
   ISLAND_CATS.forEach(function (cat) {
-    const projs = ISLAND_PROJECTS.filter(function (p) { return p.cat === cat.id; });
-    const doneN = projs.filter(function (p) { return islandDone(p.id); }).length;
-    const sec = el("div", "isl-cat");
-    sec.style.setProperty("--ic", cat.color);
-    sec.appendChild(el("div", "isl-cat-h", `<span class="isl-cat-ic">${cat.ic}</span><b>${cat.name}</b><small>${doneN}/${projs.length}</small>`));
-    projs.forEach(function (pr) {
-      const done = islandDone(pr.id);
-      const afford = (state.player.coins || 0) >= pr.cost;
-      const card = el("div", "isl-proj" + (done ? " done" : ""));
-      card.innerHTML =
-        `<div class="isl-proj-id"><b>${pr.name}</b><small>${done ? "✓ 叶えた" : "☄️押し戻し " + pr.doom}</small></div>` +
-        (done ? `<span class="isl-proj-done">✓</span>`
-              : `<button class="isl-proj-buy${afford ? "" : " short"}">🪙${pr.cost.toLocaleString("ja-JP")}</button>`);
-      if (!done) { const b = card.querySelector(".isl-proj-buy"); if (b) b.onclick = function () { islandFund(pr); }; }
-      sec.appendChild(card);
-    });
-    app.appendChild(sec);
+    const lv = islandLevel(cat.id), maxed = lv >= cat.maxLv;
+    const nextCost = islandNextCost(cat);
+    const afford = nextCost != null && (state.player.coins || 0) >= nextCost;
+    const nm = islandNextMilestone(cat);
+    const curMs = islandMilestoneAt(cat, lv);   // 今の到達名（あれば）
+    const card = el("div", "isl-fac" + (maxed ? " maxed" : ""));
+    card.style.setProperty("--ic", cat.color);
+    // 進捗バー（Lv/maxLv・節目位置に印）
+    let pips = "";
+    for (let i = 1; i <= cat.maxLv; i++) pips += `<span class="isl-pip${i <= lv ? " on" : ""}${cat.milestones[i] ? " ms" : ""}"></span>`;
+    card.innerHTML =
+      `<div class="isl-fac-top"><span class="isl-fac-ic">${cat.ic}</span>` +
+        `<span class="isl-fac-id"><b>${cat.name}</b><small>${curMs ? curMs.name : (lv > 0 ? "整備中" : "手つかず")}</small></span>` +
+        `<span class="isl-fac-lv">${maxed ? "極" : "Lv" + lv}<small>/${cat.maxLv}</small></span></div>` +
+      `<div class="isl-fac-bar">${pips}</div>` +
+      (nm ? `<div class="isl-fac-next">次の見どころ：<b>Lv${nm.lv} ${nm.name}</b></div>` : (maxed ? `<div class="isl-fac-next done">🏆 この分野は極まった</div>` : "")) +
+      (maxed ? "" :
+        `<button class="isl-fac-buy${afford ? "" : " short"}">` +
+          `<span class="isl-fac-buy-lv">Lv${lv}→${lv + 1}${cat.milestones[lv + 1] ? " ★" : ""}</span>` +
+          `<span class="isl-fac-buy-cost">🪙${nextCost.toLocaleString("ja-JP")}</span>` +
+          `<span class="isl-fac-buy-doom">☄️−${cat.milestones[lv + 1] ? cat.milestones[lv + 1].doom : ISLAND_GEN_DOOM}</span>` +
+        `</button>`);
+    if (!maxed) { const b = card.querySelector(".isl-fac-buy"); if (b) b.onclick = function () { islandInvest(cat); }; }
+    app.appendChild(card);
   });
 
   const actions = el("div", "actions");
@@ -171,4 +195,4 @@ function renderIslandBuild() {
   actions.appendChild(back);
   app.appendChild(actions);
 }
-if (typeof window !== "undefined") { window.ISLAND_PROJECTS = ISLAND_PROJECTS; window.renderIslandBuild = renderIslandBuild; }
+if (typeof window !== "undefined") { window.ISLAND_CATS = ISLAND_CATS; window.renderIslandBuild = renderIslandBuild; }

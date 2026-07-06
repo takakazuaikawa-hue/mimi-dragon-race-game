@@ -6360,3 +6360,32 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .eco-scene { display: flex; align-items: center; gap: 9px; }
 .eco-scene-ic { font-size: 18px; }
 .eco-scene-tx { font-size: 12px; line-height: 1.6; color: #cfe6d8; }
+
+/* ===== 🏗 島づくり レベル制施設カード（逓増投資・プレイヤー心理＝常に見える次の一手） ===== */
+.isl-fac { margin-top: 11px; padding: 11px; border-radius: 12px;
+  background: linear-gradient(160deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+  border: 1px solid rgba(255,255,255,.10); border-left: 3px solid var(--ic, #888); }
+.isl-fac-top { display: flex; align-items: center; gap: 9px; }
+.isl-fac-ic { font-size: 20px; }
+.isl-fac-id { flex: 1; min-width: 0; }
+.isl-fac-id b { display: block; font-size: 13.5px; }
+.isl-fac-id small { font-size: 10.5px; color: var(--mist-soft); }
+.isl-fac-lv { font-size: 14px; font-weight: 800; color: #ffe9a8; }
+.isl-fac-lv small { font-size: 10px; color: var(--mist-soft); font-weight: 600; }
+.isl-fac-bar { display: flex; gap: 3px; margin: 8px 0 6px; }
+.isl-fac-bar .isl-pip { flex: 1; height: 7px; border-radius: 3px; background: rgba(255,255,255,.10); }
+.isl-fac-bar .isl-pip.on { background: var(--ic, #ffd34d); }
+.isl-fac-bar .isl-pip.ms { position: relative; }
+.isl-fac-bar .isl-pip.ms::after { content: "★"; position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+  font-size: 8px; color: #ffd98a; }
+.isl-fac-bar .isl-pip.ms.on::after { color: #ffd34d; }
+.isl-fac-next { font-size: 10.5px; color: var(--mist-soft); margin-bottom: 8px; }
+.isl-fac-next b { color: #ffd9a0; }
+.isl-fac-next.done { color: #ffd98a; }
+.isl-fac-buy { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; border-radius: 10px;
+  border: 1px solid rgba(255,211,77,.5); background: rgba(255,211,77,.12); color: #ffe9a8; }
+.isl-fac-buy .isl-fac-buy-lv { font-size: 12px; font-weight: 800; }
+.isl-fac-buy .isl-fac-buy-cost { margin-left: auto; font-size: 12.5px; font-weight: 800; }
+.isl-fac-buy .isl-fac-buy-doom { font-size: 10.5px; color: #ffcaba; }
+.isl-fac-buy.short { opacity: .5; }
+.isl-fac.maxed { opacity: .82; border-left-color: #e2b455; }
