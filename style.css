@@ -6664,13 +6664,6 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .tik-tab .lb { font-size: 9px; }
 }
 
-/* (①) コメントは1行省略をやめ、改行して読める形に（最大2行・列は上へ伸びて高さ確保）。 */
-.hl-cm { white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-  overflow: hidden; max-width: 84%; line-height: 1.36; }
-.hl-cm.gift, .hl-cm.join, .hl-cm.vipjoin, .hl-cm.you { white-space: normal; }
-/* (③) ミミの吹き出し＝口を指す“尻尾”をやめ「ただの楕円(丸い吹き出し)」に＝尻尾の位置ズレを解消。 */
-.hl .hl-speech, .hl.tik .hl-speech { border-radius: 999px; padding: 9px 18px; }
-.hl-speech::after { content: none; }
 
 /* ════════════════════════════════════════════════════════════════════
    下部メニュー＝案A「静かなガラスドック」確定版（設計提案→ユーザー選択・docs/FOOTER_DESIGN.md）。
@@ -6692,39 +6685,3 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .hl-dock .tik-tab .tik-ic-img { width: 28px; height: 28px; }
   .hl-dock .tik-tab .lb { font-size: 9.5px; }
 }
-
-/* ── コメントは“枠”をなくして浮かせる（TikTok Live風）：地の箱/縁を消し、影で可読性を確保。横幅も広く。 ── */
-.hl-comments .hl-cm,
-.hl-comments .hl-cm.join, .hl-comments .hl-cm.gift, .hl-comments .hl-cm.you, .hl-comments .hl-cm.vipjoin {
-  background: none !important; border: none !important; border-radius: 0; padding: 1px 0; max-width: 94%;
-  text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 3px rgba(0,0,0,.7); }
-.hl-comments .hl-cm b { text-shadow: 0 1px 3px rgba(0,0,0,.9); }
-/* イベント系は“文字色”で区別（枠なし）：入場=薄紫／ギフト=金／自分の投稿=淡金 */
-.hl-comments .hl-cm.join, .hl-comments .hl-cm.vipjoin { color: #d9caff; }
-.hl-comments .hl-cm.gift { color: #ffd9a0; }
-.hl-comments .hl-cm.you  { color: #ffe6a3; }
-
-/* ── コメントの縦帯を“ミミの顔あたり”まで拡張：下から積み、上端(40%)で古いものをフェード（ライブ配信のフィード）。 ── */
-.hl-stage .hl-left { top: 40%; bottom: 10px; display: flex; flex-direction: column; justify-content: flex-end; }
-.hl-stage .hl-comments { overflow: hidden; max-height: 100%;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 15%, #000 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 15%, #000 100%); }
-
-/* ══ コメント最終調整（実機指摘）══ */
-/* ② 縦帯を少し低く（顔まで届かせすぎない）。 */
-.hl-stage .hl-left { top: 48%; }
-/* ① 3行で文字が消えるバグ根治：base .hl-cm の backdrop-filter が -webkit-box を flow-root 化させ
-   line-clamp を無効化→ overflow:hidden が3行目を硬く切っていた。clampをやめ全文折返し(block)＋blur除去
-   ＝省略しない。③ 横幅も少し広く。 */
-.hl-comments .hl-cm {
-  display: block !important; white-space: normal; overflow: visible;
-  -webkit-line-clamp: unset; text-overflow: clip;
-  width: fit-content; max-width: 98%;
-  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-/* ④ ギフト/入場＝“特別な見た目”を復活（枠なし基調の中で淡いカプセルにして event を主張）。 */
-.hl-comments .hl-cm.gift {
-  display: inline-block !important; padding: 2px 11px; border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255,163,64,.32), rgba(255,163,64,.05)) !important; }
-.hl-comments .hl-cm.join, .hl-comments .hl-cm.vipjoin {
-  display: inline-block !important; padding: 2px 11px; border-radius: 999px;
-  background: linear-gradient(90deg, rgba(150,110,255,.34), rgba(150,110,255,.06)) !important; }

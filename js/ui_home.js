@@ -498,7 +498,7 @@ function renderHome() {
   function _addCm(name, color, text, cls) {
     const d = el("div", "hl-cm" + (cls ? " " + cls : ""), `<b style="color:${color}">${name}</b>${text}`);
     cms.appendChild(d);
-    while (cms.children.length > 14) cms.removeChild(cms.firstChild);   // ★最新14件＝縦帯を顔あたりまで使う（古いものはCSSで上フェード）
+    while (cms.children.length > 5) cms.removeChild(cms.firstChild);   // ★最新5件＝配信の賑わいを出しつつ立ち絵下部に収める
   }
   // 状況連動コメント：今のプレイ状況（連勝/コイン/ランク/勝率/時間帯/衣装…）に合う台詞を集める（表示専用）
   function _ctxCm() {
@@ -529,7 +529,7 @@ function renderHome() {
       if (met.length && Math.random() < 0.16) {
         const c = STORY_CAST[met[Math.floor(Math.random() * met.length)]];
         let t = (STORY_RACE_VOICE && STORY_RACE_VOICE[c.key]) || c.gives;
-        if (t.length > 60) t = t.slice(0, 59) + "…";   // 2行折返し表示に合わせ早すぎる省略を緩和（①）
+        if (t.length > 34) t = t.slice(0, 33) + "…";
         _addCm(c.symbol + c.name.split("・")[0], c.color, t);
         return;
       }
