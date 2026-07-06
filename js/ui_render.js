@@ -391,7 +391,7 @@ function showMoneyMap() {
     <div class="mm-flow">🪙 勝つ → 🏦 育つ → 🔓 解放される</div>
     <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・ログボで増え、賭け・お買い物で減る。<u>減っても物語は戻らない</u>。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🏦</span><div><b>総資産</b><small>人生の最高到達点（下がらない）。コインの最高記録＋生活資産＋名声。<u>物語・衣装・ランクを解放するカギ</u>。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">🌱</span><div><b>暮らしP</b><small>総資産が伸びると貯まる。くらしツリーの解放に使う。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🌱</span><div><b>暮らしP</b><small>総資産が伸びると貯まる、暮らしの充実度。くらしツリーの解放は<u>コイン</u>で行う。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🏅</span><div><b>ランク</b><small>出走と勝利で昇格。新しいレースが解放される。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🎫</span><div><b>メダル・かけら</b><small>モール探検専用。常連特典と衣装交換に。コインとは別のお財布。</small></div></div>
     <div class="mm-row"><span class="mm-ic">💗</span><div><b>視聴者・いいね</b><small>配信のにぎわい（飾り）。勝負には影響しない。</small></div></div>`);
@@ -3077,7 +3077,7 @@ function drawRecapScreen() {
       if (g.featuredBonus > 0) R("★", "注目レース達成", "＋" + fmtCoins(g.featuredBonus), "gain");
       g.collectionLabels.forEach((lb, i) => R("📖", lb, "＋" + fmtCoins(c.collectionAwards[i].reward), "gain"));
       if (g.assetsDelta > 0) R("🏦", "総資産（最高記録更新）", "＋" + fmtCoins(g.assetsDelta), "asset");
-      if (g.lifePDelta > 0) R("🌱", "暮らしP（くらしツリーで使える）", "＋" + g.lifePDelta, "asset");
+      if (g.lifePDelta > 0) R("🌱", "暮らしP（総資産で貯まる指標）", "＋" + g.lifePDelta, "asset");
       if (g.rankUp) R("🏅", "ランク昇格！", "ランク" + g.rankUp, "rankup");
       g.storyUnlocked.forEach(t => R("📜", "物語が解放", t, "rankup"));
       if (g.mission) R("📋", "デイリーミッション「出走」", "達成！", "asset");
