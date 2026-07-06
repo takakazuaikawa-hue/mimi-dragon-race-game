@@ -6606,3 +6606,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ── ヒーロー：明るい窓背景から主役(ミミ)を分離する“逆光ハロー”。背後の中心だけを僅かに
    沈めて、緑×ボロ衣装で埋もれがちな立ち絵を前に出す（窓の景色は周縁に残す）。ミミ(z1)の背面。 ── */
 .hl-stage { background: radial-gradient(ellipse 52% 46% at 50% 47%, rgba(6,8,16,.32), rgba(6,8,16,.12) 54%, rgba(6,8,16,0) 74%); }
+
+/* ── ヘッダー数字の基準線を揃える：所持金ピルは「コイン＋隠し資産バー」の縦積みの名残で
+   単独コインが上寄り(cy18.5)になり、おなか(cy27)と高さがズレて見えた。行方向・中央寄せへ
+   統一し、数字のフォントサイズ/行間も揃える＝箱だけでなく“中身の基準線”まで一致させる。 ── */
+.hl-top .hl-money { flex-direction: row; justify-content: center; align-items: center; }
+.hl-top .hl-money-coin { display: flex; align-items: center; gap: 4px; }
+.hl-top .hl-money-coin b, .hl-top .hl-hunger b { font-size: 13px; line-height: 1; }
