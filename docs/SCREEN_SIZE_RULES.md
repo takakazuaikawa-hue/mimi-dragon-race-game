@@ -90,9 +90,16 @@ YouTube Shorts/TikTok が横長環境（PCブラウザ）でどう振る舞う�
     縦長窓では470×836にキャップし上下レターボックス（700×2000→上582px）。旧「既知の残課題（低い窓で数十pxスクロール）」はこれで解消。
     （＝**containing block化**。`document.body.appendChild`のモーダル/演出/音量ボタン等が個別修正なしで枠内へ収まる）。
     `min-height:0`で基本ルールの`min-height:100dvh`を打ち消す（無いとaspect-ratioが無視される＝実測で発覚した罠）。
-  - `#header`＝`flex:none;max-width:100%`／`#app`＝`flex:1 1 auto;overflow-y:auto;max-width:100%`（内部だけスクロール）。
+  - `#header`＝`flex:none;max-width:100%`／`#app`＝`flex:1 1 auto;overflow-y:auto;overflow-x:hidden;width:100%;max-width:100%;margin:0`（内部だけスクロール）。
     **★max-widthをnoneにしない**：noneだと横カルーセル等の固有幅で#appが数千pxに膨張し中身が右へ切れて見える
     （観光`.kt-rail`で実測7523px）。`100%`＝枠幅にクランプし、広い子は各自の`overflow-x`で内部スクロールに収まる。
+    **★#appに`width:100%;margin:0`を必ず付ける（2026-07-06実測で発覚）**：ベースの`#app{margin:0 auto}`が
+    残ると、PC枠(body=flex column)では「flexアイテムのauto余白 → align-stretchが無効 → #appが“中身の幅”に縮む」
+    というCSS仕様の罠にはまり、**画面ごとに#app幅がバラつく**（実測 meals=350／home=423／collection=450＝
+    サイズ不統一）。`width:100%;margin:0`で全画面を枠幅(=body幅)に固定＝統一サイズの要。中身の中央寄せは各画面内で行う。
+    **★`overflow-x:hidden`**：縦スクロールバー出現時に全幅要素が数px右へ溢れて横スクロールバーが出るのを断つ
+    （#app自体は横スクロールさせない方針。子の内部`overflow-x`スクロールは親のhiddenと独立に動く）。
+    ※検証は body枠(450×800)だけでなく**全画面で#app幅が一致するか**まで見ること（body固定＝OKではない）。
   - **既知の副作用と対処**：画面遷移アニメーション（`#app.nav-fwd > *`等）が`transform`を`fill-mode:both`で残すと、`position:sticky`な子要素（`.rs-ctrl`等）の基準計算が壊れる（Chromium系の既知の癖）。`both`→`backwards`に変更して解消済み。
   - **計測の作法（devcheck）**：入場アニメ(translateX)の途中で測ると全画面が“右に+18px あふれ”に見える誤検出が出る。
     さらにバックグラウンドタブではCSSアニメ/rAFがスロットルされ「待っても終わらない」。よって
