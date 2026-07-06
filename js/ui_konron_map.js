@@ -364,6 +364,7 @@ function _kmPhotoOf(s, kind) { return (kind === "gourmet") ? s.gourmet : s.photo
 function _kmPhotoCap(s, kind) { return (kind === "gourmet") ? ("🍽 " + s.name + "のご当地グルメ") : (s.line || s.name); }
 function _kmOpenPhoto(spotId, kind) {
   const s = KONRON_SPOTS[spotId]; const src = s && _kmPhotoOf(s, kind); if (!src) return;
+  document.querySelectorAll(".km-viewer").forEach(v => v.remove());   // 既存ビューアーを先に消す（重ね開き→閉じても前の画像が残る不具合の修正）
   const ov = el("div", "km-viewer");
   ov.innerHTML =
     `<div class="km-viewer-bd"></div>` +
@@ -384,6 +385,7 @@ function _kmOpenPhoto(spotId, kind) {
 function _kmSnsCompose(spotId, kind) {
   const s = KONRON_SPOTS[spotId]; const src = s && _kmPhotoOf(s, kind); if (!src) return;
   if (typeof addMyPost !== "function") { _kmToast("SNS機能が見つかりません"); return; }
+  document.querySelectorAll(".km-compose").forEach(v => v.remove());   // 既存の投稿モーダルを先に消す（同種の重ね開き対策）
   const def = (kind === "gourmet" ? `${s.name}でこれ食べた😋📸` : `${s.name}で一枚📸 ${s.line || ""}`).trim();
   const cm = el("div", "km-compose");
   cm.innerHTML =
