@@ -344,21 +344,23 @@ function renderHome() {
   const broadcast = (typeof broadcastOn === "function") ? broadcastOn() : true;
   const _metMakura = (typeof getStoryFlag === "function") && getStoryFlag("metMakura");
 
-  // 出走情報・LIVE・フォロワーを背景に“浮かせる”フロート（配信オーバーレイ・右上）。★配信モードのみ。
+  // ★top overlay ＝ 目標チップ(左・可変幅)＋LIVE帯(右・自然幅・優先) を1本の flex 行に収める。
+  //   これで帯にフォロワーを戻しても、数値がいくら大きくても帯は必ず全部見え、目標側が幅を譲って
+  //   省略表示になる＝枠外はみ出しが原理的に起きない（ユーザー指摘＝フォロワーは帯に必要）。goalBtn は下で append。
+  const topRow = el("div", "hl-toprow");
+  stage.appendChild(topRow);
   let viewersEl = null;
   if (broadcast) {
     const floatBox = el("div", "hl-float");
     const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
     const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
-    // ★LIVE帯＝「LIVE＋視聴者数」だけ（TikTok Live忠実）。フォロワー(👥)は終章で巨大化し
-    //   （実機21万＋視聴230.8万）目標チップと衝突して枠外にはみ出す不具合の主因だったので帯から外す
-    //   ＝フォロワーはSNSで確認。これで数値がいくら大きくなっても帯は視聴者数までで枠内に収まる。
-    void _folV; void _fmtF;
+    // LIVE＋視聴者＋フォロワーを1本のガラス帯に（TikTok Live）。帯は自然幅・折り返さず必ず全部表示。
     floatBox.innerHTML =
-      `<span class="hl-live">LIVE</span>` +
-      `<span class="hl-float-v">👁 <b></b></span>`;
+      `<span class="hl-live"><i class="hl-live-dot"></i>LIVE</span>` +
+      `<span class="hl-float-v">👁 <b></b></span>` +
+      `<span class="hl-float-fol">👥 <b>${_fmtF(_folV)}</b></span>`;
     viewersEl = floatBox.querySelector(".hl-float-v b");
-    stage.appendChild(floatBox);
+    topRow.appendChild(floatBox);
   }
 
   // 🎯 目標（クエスト）チップ：ステージ左上に常設＝「いま次にやること」を1つだけ表示。
@@ -369,46 +371,36 @@ function renderHome() {
     const _epOn = (typeof epilogueOn === "function") && epilogueOn();
     const _ep = _epOn ? epData() : null;
     const _broke = p.coins <= 0;
-    let _html = null, _cls = "hl-goal", _onclick = null;
-    // ★簡素化（ユーザー指摘）：冗長な前置きラベル(「つぎの目標」等)と達成度メーター/バーは撤去。
-    //   アイコン＋やること＋短い「くわしく▸」だけ＝一目で分かる・幅も狭くLIVE帯と衝突しない。詳細はタップ先で。
+    let _title = null, _cls = "hl-goal", _onclick = null;
+    // ★単一行に簡素化（ユーザー指摘＝もっとシンプルに入りきるように）：アイコン＋やること＋常設の▸だけ。
+    //   長いときは末尾を…省略し▸は常に残る（flex行で幅を譲る側＝LIVE帯を必ず優先表示）。
     if (_epOn && _ep.finalReady) {
       _cls += " hl-goal--act hl-goal--final";
-      _html =
-        `<span class="hl-goal-t">⚔️ 最終決戦へ</span>` +
-        `<span class="hl-goal-n">タップで決戦 ▸</span>`;
+      _title = "⚔️ 最終決戦へ";
       _onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
     } else if (_broke) {
       _cls += " hl-goal--act hl-goal--broke";
-      _html =
-        `<span class="hl-goal-t">🙏 無心する</span>` +
-        `<span class="hl-goal-n">コインが0 ・ タップ ▸</span>`;
+      _title = "🙏 無心する";
       _onclick = () => { if (typeof showMushinOverlay === "function") showMushinOverlay(); };
     } else if (_metMakura && !broadcast) {
       _cls += " hl-goal--act hl-goal--phone";
-      _html =
-        `<span class="hl-goal-t">📱 スマホを買って配信を始める</span>` +
-        `<span class="hl-goal-n">タップで開始 ▸</span>`;
+      _title = "📱 スマホを買って配信を始める";
       _onclick = () => { if (typeof buyPhoneAndGoLive === "function") buyPhoneAndGoLive(); };
     } else if (_epOn) {
       const _zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
       _cls += " hl-goal--ep hl-goal--ep-" + _zone;
-      _html =
-        `<span class="hl-goal-t">☄️ 絶滅メーターを押し戻す</span>` +
-        `<span class="hl-goal-n">くわしく ▸</span>`;
+      _title = "☄️ 絶滅メーターを押し戻す";
       _onclick = () => { if (typeof renderEconomy === "function") renderEconomy(); else if (typeof renderGoals === "function") renderGoals(); };
     } else if (typeof nextGoal === "function") {
       const _ng = nextGoal();
-      _html = _ng
-        ? `<span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-n">くわしく ▸</span>`
-        : `<span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">図鑑を見る ▸</span>`;
+      _title = _ng ? `${_ng.icon} ${_ng.title}` : "✨ すべて達成しました！";
       _onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
     }
-    if (_html) {
+    if (_title) {
       const goalBtn = el("button", _cls);
-      goalBtn.innerHTML = _html;
+      goalBtn.innerHTML = `<span class="hl-goal-t">${_title}</span><span class="hl-goal-caret">▸</span>`;
       if (_onclick) goalBtn.onclick = _onclick;
-      stage.appendChild(goalBtn);
+      topRow.appendChild(goalBtn);
       // C4解消：☄️メーターチップの“ホーム初出”時に一度だけ自動説明（従来は島の経済画面でしか出なかった）。
       //   500ms＝progressionCheckOnHome(700ms)より先に出す→1到着1モーダルルールで解放通知側が譲る。
       if (_cls.indexOf("hl-goal--ep") >= 0 && typeof maybeShowMeterHelpFirstTime === "function") {

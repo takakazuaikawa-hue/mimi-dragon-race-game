@@ -6622,3 +6622,34 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-top .hl-money { flex-direction: row; justify-content: center; align-items: center; }
 .hl-top .hl-money-coin { display: flex; align-items: center; gap: 4px; }
 .hl-top .hl-money-coin b, .hl-top .hl-hunger b { font-size: 13px; line-height: 1; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ホーム top overlay 再設計（実機指摘・土台から）：
+   目標チップ(左・可変幅)＋LIVE帯(右・自然幅・優先)を1本の flex 行(.hl-toprow)に。
+   帯はフォロワーを含め必ず全部表示＝目標側が幅を譲り末尾…省略。はみ出しが原理的にゼロ。
+   ════════════════════════════════════════════════════════════════════════ */
+.hl-stage .hl-toprow { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 6;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
+.hl-stage .hl-toprow > * { pointer-events: auto; }
+/* 目標チップ＝左・可変幅（足りなければ末尾…省略）・単一行。旧の絶対配置/縦積み/メーターを上書き。 */
+.hl-stage .hl-toprow .hl-goal { position: static; top: auto; left: auto; right: auto; margin: 0; max-width: none;
+  flex: 0 1 auto; min-width: 0; order: 0; display: flex; flex-direction: row; align-items: center; gap: 5px; }
+.hl-toprow .hl-goal .hl-goal-t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12px; font-weight: 800; line-height: 1.25; }
+.hl-toprow .hl-goal .hl-goal-caret { flex: none; opacity: .65; font-size: 11px; }
+/* LIVE帯＝右・自然幅・優先（折り返さず必ず全部表示）。 */
+.hl-stage .hl-toprow .hl-float { position: static; top: auto; right: auto; left: auto; margin: 0; max-width: none;
+  flex: 0 0 auto; order: 2; white-space: nowrap; }
+/* LIVEバッジ＝枠と文字をきっちり中央（赤ピル＋白ドット）。旧の全体点滅/::beforeドットは撤去。 */
+.hl-float .hl-live { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px;
+  background: linear-gradient(180deg, #ff5e6c, #e02d4f); color: #fff; font-size: 9.5px; font-weight: 900;
+  letter-spacing: .05em; line-height: 1; animation: none; }
+.hl-float .hl-live::before { content: none; }
+.hl-live-dot { width: 5px; height: 5px; border-radius: 50%; background: #fff; flex: none;
+  box-shadow: 0 0 6px 1px rgba(255,255,255,.75); animation: hlPulse 1.4s ease-in-out infinite; }
+
+/* (A) コメント列は入力バー直上へ＝下の空白を解消（旧 bottom:60px の浮きが「余白」の正体）。 */
+.hl-stage .hl-left { bottom: 10px; }
+/* (B) クイック返信パネルはオーバーレイ＝レイアウトを押し上げない（コメントボタンでキャラが動くバグ解消）。 */
+.hl-cmbar-wrap { position: relative; }
+.hl-cmbar-wrap .hl-qr { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); margin: 0; z-index: 5; }
