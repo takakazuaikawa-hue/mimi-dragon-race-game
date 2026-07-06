@@ -5321,15 +5321,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   box-shadow: 0 10px 30px rgba(0,0,0,.4); border: 1px solid var(--glass-border); line-height: 0; }
 .km-mapimg { display: block; width: 100%; height: auto; }
 /* エリアピン（少数・よく離して配置・ラベル付き＝重ならない/押しやすい） */
-/* ピンの座標(left/top=mx%,my%)は「丸ドットの中心」が地図上のその地点を指す想定。だがボタンは
-   dot+ラベルの縦積みで、translate(-50%,-50%)は“ボタン全体”を中心に据えるため、視覚的なドットは
-   意図した地点より上（ラベル分の高さの半分）にズレて表示されていた（実測オフセット−7px・全ピン共通＝
-   ユーザー指摘「ボタンと実際に押せる場所のずれ」）。ドット中心がぴったり座標に来るよう+7px補正。 */
-.km-areapin { position: absolute; transform: translate(-50%, calc(-50% + 7px)); display: flex; flex-direction: column; align-items: center; gap: 3px;
-  background: none; border: none; padding: 4px; cursor: pointer; z-index: 2; }
+/* ピンの座標(left/top=mx%,my%)は「丸ドットの中心」が地図上のその地点を指す想定。
+   クリック領域はドット(40x40)だけに絞る＝ラベルはpointer-events:noneの見た目専用（ユーザー指摘
+   「ボタンと実際に押せる場所のずれ」の真因：以前はラベルを含むボタン全体がヒット領域だったため、
+   近接する2ピン（例：レース場↔温泉）でラベル同士が重なり、DOM順で後のピンがクリックを奪っていた）。 */
+.km-areapin { position: absolute; width: 40px; height: 40px; transform: translate(-50%, -50%);
+  background: none; border: none; padding: 0; cursor: pointer; z-index: 2; }
 .km-areapin-dot { width: 40px; height: 40px; border-radius: 50%; border: 3px solid #fff; background: var(--pc, #caa24a);
   display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 3px 10px rgba(0,0,0,.6); transition: transform .12s; }
-.km-areapin-lbl { font-size: 10.5px; font-weight: 800; color: #fff; text-shadow: 0 1px 3px #000, 0 0 6px #000; white-space: nowrap; line-height: 1; }
+.km-areapin-lbl { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); pointer-events: none;
+  font-size: 10.5px; font-weight: 800; color: #fff; text-shadow: 0 1px 3px #000, 0 0 6px #000; white-space: nowrap; line-height: 1; }
 .km-areapin:hover .km-areapin-dot, .km-areapin:focus .km-areapin-dot { transform: scale(1.16); }
 .km-areapin:focus { outline: none; }
 .km-areapin--sel .km-areapin-dot { transform: scale(1.22); border-color: #ffe6a8; box-shadow: 0 0 0 3px rgba(255,230,168,.55), 0 3px 10px rgba(0,0,0,.6); }
