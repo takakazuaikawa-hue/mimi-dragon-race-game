@@ -263,6 +263,12 @@ function renderKonronMap() {
 
 // ④ 崑崙ガイドブック（島の図鑑）：KONRON_GUIDE を分類表示。tier＝総資産で段階解放（未解放は？？？）。表示専用。
 function renderKonronGuide() {
+  if (!konronMapUnlocked()) {   // Ⓑ 親konron_mapと同じ条件でゲート（島がロック中はガイドも閉じる）。
+    renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ 観光",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、崑崙島を巡れるようになります。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "konron_guide";
   const app = beginScreen();
   app.classList.add("kt-page");
@@ -292,6 +298,12 @@ function renderKonronGuide() {
 // ⑤ 観光フォト・コレクション（図鑑）：全スポットの景色＋グルメ写真をグリッド表示。
 // 解放済(=その場所に行ける)＝写真、未解放＝？。タップで鑑賞ビューア→SNS投稿。表示専用。
 function renderKonronGallery() {
+  if (!konronMapUnlocked()) {   // Ⓑ 親konron_mapと同じ条件でゲート（島がロック中はギャラリーも閉じる）。
+    renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ 観光",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、崑崙島の写真を集められます。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "konron_gallery";
   const app = beginScreen();
   app.classList.add("kt-page");

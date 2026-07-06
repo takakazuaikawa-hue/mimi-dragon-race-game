@@ -202,7 +202,12 @@ function poroReaction() { const a = PORO_REACTIONS; return a[Math.floor((dragonA
 // 龍舎（仕様 §4.2）— 表示専用の管理拠点。ポロ常駐＋出会った竜の閲覧・親密度・お気に入り。
 // =========================================================================
 function renderStable() {
-  if (!poroStableUnlocked()) { if (typeof renderHome === "function") renderHome(); return; }
+  if (!poroStableUnlocked()) {   // Ⓒ 無反応→🔒案内でフィードバック。
+    if (typeof renderHome === "function") renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("🐉 龍舎（りゅうしゃ）",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースを勝ち進み、相棒ポロと出会うと、竜たちのお世話ができるようになります。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "stable";
   const app = beginScreen();
   app.appendChild(el("h2", null, "🏠 龍舎"));

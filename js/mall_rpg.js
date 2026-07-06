@@ -1254,6 +1254,12 @@ function rpgBindKeys() {
 }
 
 function renderMallRpg(flash) {
+  if (typeof mallUnlocked === "function" && !mallUnlocked()) {   // Ⓑ 親mallと同じ条件でゲート（モールがロック中は大冒険も閉じる）。
+    if (typeof renderHome === "function") renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("🛍️ お買い物ダンジョン",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話「ミズの分析」</u>を読むとモールが解放されます（総資産3千で第2話が解禁）。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "mall_rpg";
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();
   rpgBindKeys();

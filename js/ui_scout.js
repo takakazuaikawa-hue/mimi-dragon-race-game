@@ -25,7 +25,12 @@ function showScoutHelp() {
 }
 
 function renderScout() {
-  if (typeof poroScoutUnlocked === "function" && !poroScoutUnlocked()) { if (typeof renderHome === "function") renderHome(); return; }
+  if (typeof poroScoutUnlocked === "function" && !poroScoutUnlocked()) {   // Ⓒ 無反応→🔒案内でフィードバック。
+    if (typeof renderHome === "function") renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("🐉 ドラゴンスカウト",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースを勝ち進み、相棒ポロと出会うと、新しい竜を探しに行けるようになります。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "scout";
   const app = beginScreen();
   const h2 = el("h2", null, "🔍 竜スカウト <button class=\"info-q\" title=\"読み合いのルール\">？</button>");

@@ -1270,7 +1270,7 @@ function renderHelp() {
 // §09 §8,§9,§10 Collection screen
 // §41 — 図鑑：竜カードの詳細ポップ（大きめスプライト＋特徴＋記録＋解放ノート＋お気に入り）。
 let _dexFilter = "all";
-function showDragonDetail(d) {
+function showCollectionDragonDetail(d) {   // ※poro.js の showDragonDetail(id) と名前衝突していたため改名（図鑑=オブジェクト渡し）。
   const entry = (state.player.collection || {})[d.id];
   if (!entry || !entry.seen) return;
   const r = entry.records || {};
@@ -1309,6 +1309,12 @@ function showDragonDetail(d) {
 }
 
 function renderCollection() {
+  if (typeof dexUnlocked === "function" && !dexUnlocked()) {   // Ⓐ 早期解放を封じる：図鑑は初的中で開く（mall型の案内つき）。
+    if (typeof renderHome === "function") renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("🐉 竜図鑑",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて的中</u>すると、出会った竜を図鑑に記録できます。</small></div></div>`);
+    return;
+  }
   state.ui.screen = "collection";
   const app = beginScreen();
   app.appendChild(el("h2", null, "竜図鑑"));
@@ -1366,7 +1372,7 @@ function renderCollection() {
       const cv = card.querySelector("canvas");
       if (cv && cv.getContext && typeof rcDrawDragon === "function")
         rcDrawDragon(cv.getContext("2d"), { x: 42, y: 38, scale: 0.72, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 });
-      card.onclick = () => showDragonDetail(d);
+      card.onclick = () => showCollectionDragonDetail(d);
     } else {
       const cv = card.querySelector("canvas"); if (cv) cv.style.display = "none";
     }

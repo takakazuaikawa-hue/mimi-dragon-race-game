@@ -13,6 +13,12 @@
 let _snsTab = "feed";
 
 function renderSns(tab) {
+  if (typeof broadcastOn === "function" && !broadcastOn()) {   // Ⓐ 早期解放を封じる：SNSはスマホ購入(配信モード)で開く。
+    if (typeof renderHome === "function") renderHome();
+    if (typeof showInfoPopup === "function") showInfoPopup("📱 Pyogram（SNS）",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ使えません</b><small>スマホを手に入れると、ミミのSNSがはじまります。</small></div></div>`);
+    return;
+  }
   if (tab) _snsTab = ({ timeline: "feed", home: "feed", fanletters: "dm", letters: "dm", profile: "profile" }[tab]) || tab;
   if (["feed", "profile", "dm"].indexOf(_snsTab) < 0) _snsTab = "feed";
   state.ui.screen = "sns";
