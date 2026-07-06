@@ -6783,3 +6783,17 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .lr-page .as-entry-ch { color: #9a8a68; }
 .as-entry-mini { width: 30px; height: 30px; object-fit: contain; flex: none; margin: 0 2px 0 4px;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,.3)); }
+
+/* ── 暮らし画面＝背景も明るく（konron .kt-page と同じ手法・同じ色を流用＝明画面IDの統一）。
+   ユーザー指摘：参考サイトを出した画面は背景まで明るくすべき。以後、参考指定がある画面は基調を残さない。 ── */
+#app.lr-page { background-color: #f7f2ea !important; background-image: none !important; color: #2b2620; }
+.lr-page h2 { color: #2b2620; border-bottom-color: rgba(43,38,32,.18); }
+.lr-page .adv-voice { background: rgba(43,38,32,.05); }
+.lr-page .adv-voice-name, .lr-page .adv-voice-line { color: #2b2620; }
+.lr-page .as-hint2 { color: #6b6255; }
+.lr-page .as-hint2 b { color: #a8791f; }
+.lr-page .lr-sec span { color: #8a6a2a; }
+.lr-page .lr-sec::before { background: #caa24a; }
+.lr-page .lr-sec::after { background: linear-gradient(90deg, rgba(202,162,74,.55), rgba(202,162,74,0)); }
+.lr-page .lr-sec--todo span { color: #b5541f; }
+.lr-page .actions button.secondary { background: rgba(43,38,32,.06); color: #2b2620; border: 1px solid rgba(43,38,32,.22); }
