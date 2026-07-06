@@ -350,12 +350,13 @@ function renderHome() {
     const floatBox = el("div", "hl-float");
     const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
     const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
-    // ★デザイン刷新：LIVE・視聴・フォロワーを1本のクリーンなガラス帯に。冗長な戦績行は撤去
-    //   （出走/単勝/勝率/最高＝島の経済で見る情報）。視聴者数は hl-viewers に注入。
+    // ★LIVE帯＝「LIVE＋視聴者数」だけ（TikTok Live忠実）。フォロワー(👥)は終章で巨大化し
+    //   （実機21万＋視聴230.8万）目標チップと衝突して枠外にはみ出す不具合の主因だったので帯から外す
+    //   ＝フォロワーはSNSで確認。これで数値がいくら大きくなっても帯は視聴者数までで枠内に収まる。
+    void _folV; void _fmtF;
     floatBox.innerHTML =
       `<span class="hl-live">LIVE</span>` +
-      `<span class="hl-float-v">👁 <b></b></span>` +
-      `<span class="hl-float-fol">👥 <b>${_fmtF(_folV)}</b></span>`;
+      `<span class="hl-float-v">👁 <b></b></span>`;
     viewersEl = floatBox.querySelector(".hl-float-v b");
     stage.appendChild(floatBox);
   }
@@ -369,47 +370,38 @@ function renderHome() {
     const _ep = _epOn ? epData() : null;
     const _broke = p.coins <= 0;
     let _html = null, _cls = "hl-goal", _onclick = null;
+    // ★簡素化（ユーザー指摘）：冗長な前置きラベル(「つぎの目標」等)と達成度メーター/バーは撤去。
+    //   アイコン＋やること＋短い「くわしく▸」だけ＝一目で分かる・幅も狭くLIVE帯と衝突しない。詳細はタップ先で。
     if (_epOn && _ep.finalReady) {
-      // ⚔️ 最終決戦へ（クライマックス・最優先）
       _cls += " hl-goal--act hl-goal--final";
       _html =
-        `<span class="hl-goal-k">☄️ 終章・クライマックス</span>` +
         `<span class="hl-goal-t">⚔️ 最終決戦へ</span>` +
-        `<span class="hl-goal-n">淘汰を押し切った ・ タップで決戦 ▸</span>`;
+        `<span class="hl-goal-n">タップで決戦 ▸</span>`;
       _onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
     } else if (_broke) {
-      // 🙏 無心する（コイン0＝何よりまず立て直す）
-      const _begAmt = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, p.rank) : 300;
       _cls += " hl-goal--act hl-goal--broke";
       _html =
-        `<span class="hl-goal-k">🆘 いま次にやること</span>` +
         `<span class="hl-goal-t">🙏 無心する</span>` +
-        `<span class="hl-goal-n">コインが0 ・ 基準額 ${fmtCoins(_begAmt)} 相当 ▸</span>`;
+        `<span class="hl-goal-n">コインが0 ・ タップ ▸</span>`;
       _onclick = () => { if (typeof showMushinOverlay === "function") showMushinOverlay(); };
     } else if (_metMakura && !broadcast) {
-      // 📱 スマホを買って配信を始める（第4話マクラ後＝配信ホームへの変身トリガ）
       _cls += " hl-goal--act hl-goal--phone";
       _html =
-        `<span class="hl-goal-k">📱 いま次にやること</span>` +
-        `<span class="hl-goal-t">スマホを買って配信を始める</span>` +
-        `<span class="hl-goal-n">マクラに背中を押された ・ タップで開始 ▸</span>`;
+        `<span class="hl-goal-t">📱 スマホを買って配信を始める</span>` +
+        `<span class="hl-goal-n">タップで開始 ▸</span>`;
       _onclick = () => { if (typeof buyPhoneAndGoLive === "function") buyPhoneAndGoLive(); };
     } else if (_epOn) {
-      // ☄️ 絶滅メーター（綱引き中）→ 島の経済で詳細
-      const _dial = epilogueDial().toFixed(2); const _prog = epilogueProgress();
       const _zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
       _cls += " hl-goal--ep hl-goal--ep-" + _zone;
       _html =
-        `<span class="hl-goal-k">☄️ 終章のもくひょう</span>` +
-        `<span class="hl-goal-t">絶滅メーターを押し戻す</span>` +
-        `<span class="hl-goal-p"><i style="width:${_prog}%"></i></span>` +
-        `<span class="hl-goal-n">答えの単勝 ${_dial}倍 ・ くわしく ▸</span>`;
+        `<span class="hl-goal-t">☄️ 絶滅メーターを押し戻す</span>` +
+        `<span class="hl-goal-n">くわしく ▸</span>`;
       _onclick = () => { if (typeof renderEconomy === "function") renderEconomy(); else if (typeof renderGoals === "function") renderGoals(); };
     } else if (typeof nextGoal === "function") {
-      const _ng = nextGoal(); const _gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
+      const _ng = nextGoal();
       _html = _ng
-        ? `<span class="hl-goal-k">🎯 つぎの目標</span><span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-p"><i style="width:${_gs.total ? Math.round(_gs.done / _gs.total * 100) : 0}%"></i></span><span class="hl-goal-n">${_gs.done}/${_gs.total} 達成 ▸</span>`
-        : `<span class="hl-goal-k">🎯 目標</span><span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">${_gs.done}/${_gs.total} ▸</span>`;
+        ? `<span class="hl-goal-t">${_ng.icon} ${_ng.title}</span><span class="hl-goal-n">くわしく ▸</span>`
+        : `<span class="hl-goal-t">✨ すべて達成しました！</span><span class="hl-goal-n">図鑑を見る ▸</span>`;
       _onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
     }
     if (_html) {
@@ -514,7 +506,7 @@ function renderHome() {
   function _addCm(name, color, text, cls) {
     const d = el("div", "hl-cm" + (cls ? " " + cls : ""), `<b style="color:${color}">${name}</b>${text}`);
     cms.appendChild(d);
-    while (cms.children.length > 3) cms.removeChild(cms.firstChild);   // ★3件だけ＝立ち絵を覆わない
+    while (cms.children.length > 5) cms.removeChild(cms.firstChild);   // ★最新5件＝配信の賑わいを出しつつ立ち絵下部に収める
   }
   // 状況連動コメント：今のプレイ状況（連勝/コイン/ランク/勝率/時間帯/衣装…）に合う台詞を集める（表示専用）
   function _ctxCm() {
@@ -797,6 +789,8 @@ function renderHome() {
     b.onclick = opts.locked ? go : () => _tikGo(go);   // 遷移はフェード（配信のみ）・ロックのポップは即時
     return b;
   };
+  // ★フッター＝“行き先”タブだけ（レースは上のゴールドCTA「レースへ進む」が唯一の導線＝
+  //   二重導線バグを解消／ユーザー指摘）。中央強調も廃止＝全タブ等価。行き先：島/暮らし/ごはん/SNS/図鑑。
   // 🏝島（初勝利で解放・中に食べ歩き/買い物/龍舎）
   if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
     bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap()));
@@ -805,13 +799,14 @@ function renderHome() {
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true }));
   }
   bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets()));                          // 経済/ツリー/習い事/物語/相談/コレクション
-  bar.appendChild(tikTab("🐲", "レース", () => renderRaceSelect(), { center: true }));
   bar.appendChild(tikTab("🍽️", "ごはん", () => renderMeals()));                          // 勝ち飯/負け飯＝高頻度ループを1タップ
-  // 5番目：配信=📱SNS（未読ドット）／静か=📖図鑑（初的中で解放）
+  // 📱SNS＝配信モードのみ（未読ドット）
   if (broadcast) {
     const _unreadL = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
     bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0 }));
-  } else if (typeof dexUnlocked === "function" && dexUnlocked()) {
+  }
+  // 📖図鑑（両モード・初的中で解放）
+  if (typeof dexUnlocked === "function" && dexUnlocked()) {
     bar.appendChild(tikTab("📖", "図鑑", () => renderCollection()));
   } else {
     bar.appendChild(tikTab("📖", "図鑑", () => showInfoPopup("📖 図鑑",
