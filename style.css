@@ -3882,21 +3882,29 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .meal-tab-p { font-size: 10px; font-weight: 800; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
 .meal-tab.on .meal-tab-p { color: #ffce8a; }
 .meal-tab.done .meal-tab-p { color: #7bdca0; }
-.meal-sec { display: flex; align-items: center; gap: 9px; margin: 14px 0 8px; }
-.meal-sec-ic { font-size: 22px; flex: none; }
-.meal-sec-tx b { display: block; font-size: 14px; color: var(--mist); }
-.meal-sec-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; }
-.meal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-.meal-card { display: flex; align-items: center; gap: 9px; padding: 11px 12px; border-radius: 12px; cursor: pointer;
-  background: var(--glass-2); border: 1px solid var(--glass-border); text-align: left; }
+/* セクション見出し：細い金の罫で上品に区切る（参考=飲食サイトのミニマルな線・和の余白）。 */
+.meal-sec { display: flex; align-items: center; gap: 9px; margin: 18px 0 11px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,217,102,.18); }
+.meal-sec-ic { font-size: 20px; flex: none; }
+.meal-sec-tx b { display: block; font-size: 14.5px; font-weight: 800; color: var(--mist); letter-spacing: .01em; }
+.meal-sec-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 2px; }
+/* 一覧：写真を主役にしたメニューカード（画像=ヒーロー／下に名前・価格）。参考=飲食サイトのグリッド。 */
+.meal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.meal-card { display: flex; flex-direction: column; padding: 0; border-radius: 14px; overflow: hidden; cursor: pointer;
+  background: var(--glass-2); border: 1px solid var(--glass-border); text-align: left;
+  transition: transform .12s ease, box-shadow .14s ease, border-color .14s ease; }
+.meal-card.got { border-color: rgba(255,217,102,.3); box-shadow: 0 7px 20px -12px rgba(0,0,0,.6); }
 .meal-card:active { transform: translateY(1px); }
-.meal-card-ic { font-size: 24px; flex: none; width: 30px; text-align: center; filter: grayscale(.9) opacity(.55); }
-.meal-card.got .meal-card-ic { filter: none; }
-.meal-card-thumb { flex: none; width: 54px; height: 40px; border-radius: 7px; overflow: hidden;
-  background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(0,0,0,.16); }
+/* メディア領域＝写真（既食）or ミステリー地（未発見）。同じ高さでカードを揃える。 */
+.meal-card-thumb { width: 100%; height: 104px; border: none; border-radius: 0; box-shadow: none; background: rgba(0,0,0,.25); }
 .meal-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.meal-card-nm { font-size: 12.5px; font-weight: 700; color: var(--mist-soft); line-height: 1.25; }
-.meal-card.got .meal-card-nm { color: var(--mist); }
+.meal-card-ic { display: flex; align-items: center; justify-content: center; width: 100%; height: 104px;
+  font-size: 30px; color: rgba(255,255,255,.3); filter: none;
+  background: radial-gradient(120% 90% at 50% 30%, rgba(255,217,102,.07), transparent 62%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.022) 0 7px, rgba(255,255,255,0) 7px 15px); }
+/* テキスト領域＝名前＋価格。 */
+.meal-card-nm { padding: 8px 11px 9px; font-size: 12.5px; font-weight: 700; color: var(--mist-soft); line-height: 1.3; }
+.meal-card.got .meal-card-nm { color: var(--mist); font-weight: 800; }
 
 .meal-pop { max-width: 360px; text-align: center; }
 .meal-pop-photo { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; border-radius: 12px; margin-bottom: 8px;
