@@ -6570,3 +6570,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ── ホーム 最終：目標チップ幅をモード別に（配信=LIVE帯分を空ける／静か=広く使える） ── */
 .hl .hl-goal { max-width: 72%; }              /* 静かモード＝LIVE帯なし＝広め */
 .hl.tik .hl-goal { max-width: calc(100% - 172px); }   /* 配信＝LIVE帯を絶対に避ける */
+
+/* ── ホーム 実機対応：ノッチ/セーフエリア（ヘッダーが切り欠きに潜らない・実機の実害対策） ── */
+.hl-top { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+/* 立ち絵の縦位置が端末で暴れないよう object-position を固定（顔が切れない） */
+.hl .hl-mimi img { object-position: center bottom; }
+/* 目標チップ・LIVE帯を厳密に同じ上端に（視覚基準線を揃える＝端正さの最後の1手） */
+.hl-goal, .hl-float { top: 10px; }
