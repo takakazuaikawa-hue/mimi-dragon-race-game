@@ -354,8 +354,10 @@ function _kmZoomBanner(area) {
 }
 
 // ── 観光フォト・コレクション：専用写真があれば「タップで鑑賞・SNS投稿」できるバナーに ──
-function _kmSpotPhotoBanner(s) {
-  return `<button class="km-photo" data-photo="${s.id}">` +
+function _kmSpotPhotoBanner(id, s) {
+  // ※KONRON_SPOTSの値オブジェクトは自身のidを持たない（idはオブジェクトのキー）。s.idは常にundefinedになり
+  //   data-photo="undefined" → タップしても_kmOpenPhotoが該当スポットを見つけられず無反応だった（ユーザー指摘）。
+  return `<button class="km-photo" data-photo="${id}">` +
     `<img class="km-photo-img" src="${s.photo}" alt="${s.name}" decoding="async">` +
     `<span class="km-photo-tag">📸 タップで鑑賞・SNS投稿</span></button>`;
 }
@@ -496,7 +498,7 @@ function _kmRenderPanel() {
       } catch (e) {}
     }
     panel.style.setProperty("--kmc", c.color);
-    let body = (open && s.photo) ? _kmSpotPhotoBanner(s) : _kmZoomBanner(area);
+    let body = (open && s.photo) ? _kmSpotPhotoBanner(_kmSpot, s) : _kmZoomBanner(area);
     if (area && area.spots.length > 1) body += `<button class="km-areaback" data-back="1">← ${area.name}</button>`;
     body += `<div class="km-card-head"><span class="km-card-ic">${c.ic}</span>` +
       `<div class="km-card-id"><b>${s.name}</b><small>${c.name}${s.time && s.time !== "—" ? "・" + s.time : ""}</small></div></div>`;
@@ -530,7 +532,7 @@ function _kmRenderPanel() {
       body += `<div class="km-card-line">${s.line}</div>`;
       if (s.shoot && s.shoot !== "—") body += `<div class="km-card-shoot">📸 撮れるもの：${s.shoot}</div>`;
       body += _kmContentHtml(_kmSpot);   // 見どころ／名物／豆知識（作りこみ）
-      if (s.gourmet) body += `<button class="km-gourmet" data-gourmet="${s.id}"><img src="${s.gourmet}" alt="" decoding="async"><span>🍽 ご当地グルメ・タップで鑑賞／投稿</span></button>`;
+      if (s.gourmet) body += `<button class="km-gourmet" data-gourmet="${_kmSpot}"><img src="${s.gourmet}" alt="" decoding="async"><span>🍽 ご当地グルメ・タップで鑑賞／投稿</span></button>`;   // s.id は常にundefined（同種バグ・上のdata-photoと同じ原因）
       if (s.portal && typeof window[s.portal] === "function") {
         const labelMap = { renderMeals: "🍢 食べ歩きへ", renderMall: "🛍️ ショッピングへ", renderRaceSelect: "🏁 レースへ", renderSns: "📣 SNSへ", renderScout: "🐉 竜スカウトへ" };
         body += `<button class="km-go" data-portal="${s.portal}">${labelMap[s.portal] || "▶ ひらく"}</button>`;
