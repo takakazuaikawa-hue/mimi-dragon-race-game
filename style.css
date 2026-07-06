@@ -6709,3 +6709,22 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-stage .hl-comments { overflow: hidden; max-height: 100%;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 15%, #000 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 15%, #000 100%); }
+
+/* ══ コメント最終調整（実機指摘）══ */
+/* ② 縦帯を少し低く（顔まで届かせすぎない）。 */
+.hl-stage .hl-left { top: 48%; }
+/* ① 3行で文字が消えるバグ根治：base .hl-cm の backdrop-filter が -webkit-box を flow-root 化させ
+   line-clamp を無効化→ overflow:hidden が3行目を硬く切っていた。clampをやめ全文折返し(block)＋blur除去
+   ＝省略しない。③ 横幅も少し広く。 */
+.hl-comments .hl-cm {
+  display: block !important; white-space: normal; overflow: visible;
+  -webkit-line-clamp: unset; text-overflow: clip;
+  width: fit-content; max-width: 98%;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+/* ④ ギフト/入場＝“特別な見た目”を復活（枠なし基調の中で淡いカプセルにして event を主張）。 */
+.hl-comments .hl-cm.gift {
+  display: inline-block !important; padding: 2px 11px; border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,163,64,.32), rgba(255,163,64,.05)) !important; }
+.hl-comments .hl-cm.join, .hl-comments .hl-cm.vipjoin {
+  display: inline-block !important; padding: 2px 11px; border-radius: 999px;
+  background: linear-gradient(90deg, rgba(150,110,255,.34), rgba(150,110,255,.06)) !important; }
