@@ -27,6 +27,10 @@ function renderAssets() {
   _h2.querySelector(".info-q").onclick = () => showMoneyMap();
   app.appendChild(_h2);
 
+  // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。
+  // ※部屋ヒーローの暮らしP表示のタップ導線でも使うため、先に確定させる。
+  const _ch3unlocked = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
+
   // いまのお部屋ヒーロー（J-URBAN=室内を主役に）。部屋tier=assetLevelOf(総資産)＝ホームと同じ基準（ui_home.js:185）。
   const _roomT = Math.max(0, Math.min(5, (typeof assetLevelOf === "function") ? assetLevelOf(total) : 0));
   const _hr = (new Date()).getHours(); const _dn = (_hr >= 6 && _hr < 18) ? "day" : "night";
@@ -39,6 +43,14 @@ function renderAssets() {
       `<div class="lr-room-total">${fmtCoins(total)}</div>` +
       `<div class="lr-room-p">暮らしP ◇${st.available}</div></div>`;
   app.appendChild(hero);
+  // 暮らしP表示：タップで反映（解放済みならくらしツリーへ・未解放なら他の箇所と同じ🔒案内）。
+  const _roomPEl = hero.querySelector(".lr-room-p");
+  _roomPEl.style.cursor = "pointer";
+  _roomPEl.onclick = () => {
+    if (_ch3unlocked) { renderLifeTree(); return; }
+    if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話「スミカと総資産」</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
+  };
 
   const _avA = advisorVoiceEl("assets"); if (_avA) app.appendChild(_avA);
 
@@ -67,9 +79,7 @@ function renderAssets() {
     b.onclick = onClick; return b;
   };
   const ent = el("div", "as-entries");
-  // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。
-  // ※すべきこと判定でも使うため、ここ（ent構築の前）で確定させる。
-  const _ch3unlocked = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
+  // _ch3unlocked は冒頭（部屋ヒーローの暮らしPタップ導線）で確定済み。
 
   // ── すべきこと（今アクションがある時だけ・動的に上部へ）：迷わず次の一手。無ければ非表示。 ──
   const todo = [];
@@ -419,6 +429,13 @@ function renderLifeTree() {
     if (stt === "ready") {
       const btn = row.querySelector(".lt-buy");
       if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { _ltJustUnlocked = node.nodeId; renderLifeTree(); showLifeCutin(node); } };
+    } else if (stt === "unlocked") {
+      // 解放済みノードはタップで回想ポップ（ユーザー指摘：タップしても無反応だった）。
+      row.style.cursor = "pointer";
+      row.onclick = () => {
+        if (typeof showInfoPopup === "function") showInfoPopup(`${node.icon} ${node.title}`,
+          `<div class="mm-row"><span class="mm-ic">✓</span><div><b>解放済み</b><small>${node.desc}</small></div></div>`);
+      };
     }
     chain.appendChild(row);
   });
