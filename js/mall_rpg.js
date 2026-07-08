@@ -1277,6 +1277,11 @@ function renderMallRpg(flash) {
 }
 
 // ── ハブ（情報の見え方：主役=冒険を1つ立て、副次情報は折りたたみ＋！バッジ・？モーダル）
+// ⚠️【重要】この rpgRenderHub は js/ui_mall_rpg.js が後勝ちで“全文再定義”して上書きします
+//   （index.html で ui_mall_rpg.js を後に読み込むため、実際に画面へ出るのは向こうの版）。
+//   ここにセクションを足しても ui_mall_rpg.js 側にも入れないとプレイヤーには表示されません
+//   （過去に称号・フロア帯が丸ごと消えた実績あり＝docs/MALL_UX_BACKLOG.md P0-1）。
+//   ハブへ機能追加する時は必ず両方に反映すること。
 function rpgRenderHub(app) {
   const d = rpgData();
   const rec = d.records || {};
