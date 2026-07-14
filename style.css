@@ -6753,6 +6753,20 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .lr-room-total { font-size: 27px; font-weight: 800; color: #fff; line-height: 1.05;
   font-variant-numeric: tabular-nums; text-shadow: 0 2px 7px rgba(0,0,0,.55); }
 .lr-room-p { font-size: 11px; font-weight: 700; color: var(--gold-bright); margin-top: 1px; }
+/* 引っ越し：部屋ヒーロー直下の主アクション（コインで一段上の部屋へ）。 */
+.lr-move { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; cursor: pointer;
+  margin: 10px 0 2px; padding: 12px 14px; border-radius: 14px;
+  border: 1px solid rgba(214,69,47,.42); border-left: 4px solid #d6452f;
+  background: linear-gradient(180deg, #fffaf0 0%, #f3ece0 100%); box-shadow: 0 5px 16px -10px rgba(0,0,0,.55); }
+.lr-move:active { transform: translateY(1px); }
+.lr-move.short { border-color: rgba(43,38,32,.18); border-left-color: #b3a891; }
+.lr-move.maxed { border-color: rgba(230,178,74,.5); border-left-color: #e6b24a; cursor: default; }
+.lr-move-ic { flex: none; width: 26px; font-size: 20px; text-align: center; }
+.lr-move-tx { flex: 1; min-width: 0; }
+.lr-move-tx b { display: block; font-size: 13px; font-weight: 800; color: #2b2620; }
+.lr-move-tx small { display: block; margin-top: 2px; font-size: 11px; line-height: 1.4; color: #6b6255;
+  font-variant-numeric: tabular-nums; }
+.lr-move.short .lr-move-tx small { color: #a4501f; }
 /* できること見出し：金の細罫＋トラッキング小見出し。 */
 .lr-sec { display: flex; align-items: center; gap: 10px; margin: 20px 2px 12px; }
 .lr-sec::before { content: ""; width: 15px; height: 1px; background: var(--gold-line); flex: none; }

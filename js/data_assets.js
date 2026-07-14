@@ -40,6 +40,31 @@ function nextAssetThreshold(total) {
   return null;
 }
 
+// ── 引っ越し（自宅の部屋レベル 0..5）──────────────────────────────
+// ★くらしツリーと同じ作法：部屋は「コインを払って引っ越す」。総資産では自動で上がらない。
+//   既存セーブは今の総資産レベルをそのまま引き継ぐ（部屋が下がることはない）。
+const ROOM_MOVE_COST = [0, 500, 5000, 50000, 1000000, 50000000];   // 目標Lvごとの引っ越し費用（🪙）。調整はここだけ。
+const ROOM_NAMES = ["下宿の一間", "小さな借家", "陽当たりの家", "丘の一軒家", "見晴らしの邸宅", "崑崙の大屋敷"];
+
+function roomLevel() {
+  const p = state.player;
+  if (typeof p.roomLevel !== "number") p.roomLevel = assetLevelOf(p.totalAssets || 0);   // 移行：今の部屋を維持
+  return Math.max(0, Math.min(5, p.roomLevel));
+}
+function roomName(lv) { return ROOM_NAMES[Math.max(0, Math.min(5, lv))]; }
+function canMoveRoom() { return roomLevel() < 5; }
+function roomMovePrice() { return ROOM_MOVE_COST[roomLevel() + 1] || 0; }
+function tryMoveRoom() {
+  if (!canMoveRoom()) return { ok: false, maxed: true };
+  const price = roomMovePrice();
+  const coins = state.player.coins || 0;
+  if (coins < price) return { ok: false, broke: true, price: price, coins: coins };
+  state.player.coins = coins - price;
+  state.player.roomLevel = roomLevel() + 1;
+  if (typeof saveGame === "function") saveGame();
+  return { ok: true, level: state.player.roomLevel, price: price };
+}
+
 // §30 §7 — story unlocks by 総資産 (thresholds in STORY_UNLOCK_AT below), not by
 // complex flags. 5 話 + ED. Texts are the canonical 一文「件。」 style from the
 // story-event spec; each chapter introduces one advisor (STORY_CAST) and carries

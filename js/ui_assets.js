@@ -32,12 +32,12 @@ function renderAssets() {
   const _ch3unlocked = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
 
   // いまのお部屋ヒーロー（J-URBAN=室内を主役に）。部屋tier=assetLevelOf(総資産)＝ホームと同じ基準（ui_home.js:185）。
-  const _roomT = Math.max(0, Math.min(5, (typeof assetLevelOf === "function") ? assetLevelOf(total) : 0));
+  const _roomT = (typeof roomLevel === "function") ? roomLevel() : 0;
   const _hr = (new Date()).getHours(); const _dn = (_hr >= 6 && _hr < 18) ? "day" : "night";
   const hero = el("div", "card lr-room");
   hero.style.backgroundImage = `url('images/homebg/myroom_t${_roomT}_${_dn}.webp')`;
   hero.innerHTML =
-    `<span class="lr-room-seal">いまのお部屋<b>Lv.${_roomT}</b></span>` +
+    `<span class="lr-room-seal">${(typeof roomName === "function") ? roomName(_roomT) : "いまのお部屋"}<b>Lv.${_roomT}</b></span>` +
     `<img class="lr-room-mimi" src="images/cast/mini/mimi_mini.png" alt="ミミ" decoding="async">` +
     `<div class="lr-room-info"><div class="lr-room-lbl">ミミの再起度（総資産）</div>` +
       `<div class="lr-room-total">${fmtCoins(total)}</div>` +
@@ -51,6 +51,38 @@ function renderAssets() {
     if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話「スミカと総資産」</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
   };
+
+  // ★引っ越し：コインで部屋を一段上げる（総資産では自動で上がらない）。くらしツリーと同じ「コインで解放」の作法。
+  if (typeof canMoveRoom === "function") {
+    const _mvNext = _roomT + 1;
+    const _mvPrice = roomMovePrice();
+    const _mvOK = (p.coins || 0) >= _mvPrice;
+    const mv = el("button", "lr-move" + (canMoveRoom() ? (_mvOK ? "" : " short") : " maxed"));
+    mv.innerHTML = canMoveRoom()
+      ? `<span class="lr-move-ic">🚚</span><span class="lr-move-tx">` +
+          `<b>「${roomName(_mvNext)}」へ引っ越す（Lv.${_mvNext}）</b>` +
+          `<small>${_mvOK
+            ? `費用 ${fmtCoins(_mvPrice)} ／ 引っ越すと残り ${fmtCoins((p.coins || 0) - _mvPrice)}`
+            : `費用 ${fmtCoins(_mvPrice)} ／ 所持 ${fmtCoins(p.coins || 0)}（足りない）`}</small>` +
+        `</span><span class="as-entry-ch">›</span>`
+      : `<span class="lr-move-ic">🏯</span><span class="lr-move-tx"><b>「${roomName(5)}」——これ以上の家はない</b>` +
+        `<small>ミミの暮らしは、島のてっぺんまで来た。</small></span>`;
+    mv.onclick = () => {
+      const r = tryMoveRoom();
+      if (r.ok) {
+        try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
+        if (typeof showInfoPopup === "function") showInfoPopup("🚚 引っ越し完了！",
+          `<div class="mm-row"><span class="mm-ic">🏠</span><div><b>「${roomName(r.level)}」（Lv.${r.level}）に移りました</b>` +
+          `<small>−${fmtCoins(r.price)}　ホームの背景も、新しいお部屋になります。</small></div></div>`);
+        renderAssets();
+      } else if (r.broke && typeof showInfoPopup === "function") {
+        showInfoPopup("🚚 まだ引っ越せない",
+          `<div class="mm-row"><span class="mm-ic">🪙</span><div><b>コインが足りません</b>` +
+          `<small>「${roomName(_mvNext)}」の費用は ${fmtCoins(r.price)}。いまの所持は ${fmtCoins(r.coins)}。レースで稼いで戻ってきてね。</small></div></div>`);
+      }
+    };
+    app.appendChild(mv);
+  }
 
   const _avA = advisorVoiceEl("assets"); if (_avA) app.appendChild(_avA);
 

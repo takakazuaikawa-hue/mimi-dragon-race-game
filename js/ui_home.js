@@ -182,7 +182,7 @@ function renderHome() {
     let floorUsed, focusUsed, chain;
     if (set.myroom) {
       // 自宅：現在の総資産レベルの部屋→無ければ下の段→最後はバルコニー/旧背景へ
-      const lvl = Math.min(5, (typeof assetLevelOf === "function") ? assetLevelOf(state.player.totalAssets || 0) : 0);
+      const lvl = (typeof roomLevel === "function") ? roomLevel() : 0;
       const tiers = k => { const a = []; for (let t = lvl; t >= 0; t--) a.push(`images/homebg/myroom_t${t}_${k}.webp`); return a; };
       floorUsed = MYROOM_FLOORS[lvl] || 0.74;
       focusUsed = MYROOM_FOCUS_X;
@@ -774,18 +774,22 @@ function renderHome() {
   //   設定/シェア→ヘッダー⋯。タブは即遷移（配信のみフェード）。解放の見せ場（🔒＋条件ポップ）は維持。
   if (broadcast) wrap.classList.add("tik");
   const bar = el("div", "tik-bar");
-  // ★箱方式：専用イラストアイコン images/nav/<key>.webp があれば絵文字を差し替える（無ければ絵文字のまま＝安全）。
-  //   差し替え時は NAV_ICON_V を bump してキャッシュ撃破。5枚：island/kurashi/meal/sns/dex。
-  const NAV_ICON_V = "1";
+  // ★箱方式：専用アイコン images/nav/<key>.svg があれば絵文字を差し替える（無ければwebp→絵文字＝安全）。
+  //   差し替え時は NAV_ICON_V を bump してキャッシュ撃破。5枚：island/kurashi/meal/sns/stable（dexは早期用）。
+  const NAV_ICON_V = "20260706a";
   const tikTab = (icon, label, go, opts) => {
     opts = opts || {};
     const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));
     b.innerHTML = `<span class="ic">${icon}</span><span class="lb">${label}</span>` + (opts.dot ? `<i class="dot"></i>` : "");
-    if (opts.img) {   // 画像があれば絵文字を差し替え・404なら onload 不発で絵文字のまま
+    if (opts.img) {   // SVG優先。無ければ旧webp、それも無ければ絵文字のまま
       const ic = b.querySelector(".ic");
       const im = new Image();
       im.onload = () => { if (ic) { ic.textContent = ""; im.className = "tik-ic-img"; im.alt = ""; ic.appendChild(im); b.classList.add("has-img"); } };
-      im.src = `images/nav/${opts.img}.webp?v=${NAV_ICON_V}`;
+      im.onerror = () => {
+        im.onerror = null;
+        im.src = `images/nav/${opts.img}.webp?v=${NAV_ICON_V}`;
+      };
+      im.src = `images/nav/${opts.img}.svg?v=${NAV_ICON_V}`;
     }
     b.onclick = opts.locked ? go : () => _tikGo(go);   // 遷移はフェード（配信のみ）・ロックのポップは即時
     return b;
