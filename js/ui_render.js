@@ -556,6 +556,15 @@ function playShinganCutin() {
 // 振り分けて、約200の生活アップグレードを解放していく“くらしスキルツリー”。完全に表示専用のメタ進行で、
 // コイン・着順・オッズ・配当・賭け経済には一切触れない（暮らしPは総資産＝再起度から導出するだけ）。
 
+// 章の“予告用”タイトル。章題そのものに顧問の名が入っている（例「第5話　セレスティアの神眼」）ので、
+// まだ出会っていない相手の章は章番号だけに伏せる（R7＝予告はしてよいが固有名は出さない）。読めば本来の章題に戻る。
+function chapterTeaseTitle(ch) {
+  if (!ch) return "";
+  const met = (typeof advisorMet === "function") && advisorMet(ch.cast);   // fail-closed：判定できなければ伏せる
+  if (met) return ch.title || ("物語 " + ch.id);
+  return ch.id === "ED" ? "エンディング" : "第" + ch.id + "話";
+}
+
 // =========================================================================
 // Story-unlock popup (a) — shown when a 総資産 threshold is crossed during a
 // race. Reuses the same CG placeholder slot. `chapters` is an array; it chains
@@ -565,21 +574,34 @@ function showStoryUnlock(chapters, idx) {
   idx = idx || 0;
   const ch = chapters[idx];
   if (!ch) return;
-  const cast = STORY_CAST[ch.cast];
+  // ★門番：このポップアップは「総資産のしきい値を跨いだ瞬間」＝その章をまだ読んでいない時に出る（読むには
+  //   しきい値到達が要るので、ここに来る章は必ず未読）。旧コードは未読のまま章題（＝顧問の本名入り）・一枚絵・
+  //   顔・名前・肩書・テーマ色・本文まで丸ごと出しており、_chapter_intro_N は立てない＝「読む前にセレスティアと
+  //   神眼を知っているのに、他の画面では？？？」という矛盾を生んでいた。ここは“解放の告知”に徹し、正体は
+  //   物語画面で読んで初めて明かす（R1／R7）。met 判定は既読の章に使われた場合の保険（従来どおり全部出す）。
+  const met = (typeof advisorMet === "function") && advisorMet(ch.cast);
+  const cast = met ? STORY_CAST[ch.cast] : null;
   const ex = document.getElementById("story-unlock"); if (ex) ex.remove();
   const ov = el("div", "story-unlock-overlay"); ov.id = "story-unlock";
   const modal = el("div", "card story-unlock-modal");
-  if (cast) modal.style.setProperty("--cg", cast.color);
+  modal.style.setProperty("--cg", (typeof castColorSafe === "function") ? castColorSafe(ch.cast) : "#8a8175");   // 未登場＝無彩色（色でキャラを推測させない）
   modal.innerHTML =
     `<div class="su-badge">✦ 新エピソード解放 ✦</div>` +
-    `<div class="story-cg viewable"><div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
-      `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div></div>` +
-    `<div class="su-title">${ch.title}</div>` +
+    (met
+      ? `<div class="story-cg viewable"><div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
+        `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div></div>`
+      // 未読＝一枚絵も場面説明も出さない（どちらもその章の顧問を映す＝正体バレ）。封をした枠だけ見せる。
+      : `<div class="story-cg"><div class="story-cg-art"><span class="story-cg-sym">📖</span></div>` +
+        `<div class="story-cg-cap"><span class="story-cg-tag">未読</span>一枚絵は、記事を読むとひらきます。</div></div>`) +
+    `<div class="su-title">${chapterTeaseTitle(ch)}</div>` +
     (cast ? `<div class="su-cast"><span class="su-cast-sym" style="--cg:${cast.color}">${photoOr("images/cast/" + ch.cast + ".png", cast.symbol)}</span>${cast.name}<small>（${cast.tag}）</small></div>` : "") +
-    `<div class="su-body">${ch.body}</div>`;
+    (met
+      ? `<div class="su-body">${ch.body}</div>`
+      : `<div class="su-body">総資産がのびて、聖龍日報の続報がとどいた。<br>〈📖 物語〉から読めます。</div>`);
   // 解放ポップアップでも一枚絵をタップ→全画面ビューア（renderStory と同じ挙動）。
-  // story-viewer(z-index 9200) は解放オーバーレイ(1000)の上に出る。
-  const cgEl = modal.querySelector(".story-cg");
+  // story-viewer(z-index 9200) は解放オーバーレイ(1000)の上に出る。★未読の章では開かない（ビューアは
+  // 章題・顧問名・本文をそのまま全画面に出すため、ここが抜け道になる）。
+  const cgEl = met ? modal.querySelector(".story-cg") : null;
   if (cgEl) cgEl.onclick = () => { if (typeof showStoryArt === "function") showStoryArt(ch); };
   const btn = el("button", "su-close", idx < chapters.length - 1 ? "次へ ▶" : "とじる");
   btn.onclick = () => { ov.remove(); if (idx < chapters.length - 1) showStoryUnlock(chapters, idx + 1); };
@@ -592,10 +614,9 @@ function showStoryUnlock(chapters, idx) {
 //   context "race"   → most-advanced race advisor met (Sake→Mizu→Makura→Celestia)
 //   context "assets" → Sumika (lifestyle / 総資産)
 function advisorVoiceEl(context) {
-  const total = state.player.totalAssets || 0;
   const order = context === "assets" ? ["sumika"] : ["celestia", "makura", "mizu", "sake"];
   let key = null;
-  for (const k of order) { if (STORY_RACE_VOICE[k] && (typeof advisorMet === "function" ? advisorMet(k) : total >= castUnlockAt(k))) { key = k; break; } }   // ★BUGFIX：既読も要る
+  for (const k of order) { if (STORY_RACE_VOICE[k] && (typeof advisorMet === "function") && advisorMet(k)) { key = k; break; } }   // ★BUGFIX：既読も要る／fail-closed：判定できなければ喋らせない
   if (!key) return null;
   const c = STORY_CAST[key];
   const box = el("div", "card advisor-voice");
@@ -642,16 +663,15 @@ function consultCelestia() {
 function celestiaSectionEl() {
   const c = state.current;
   if (!c || !c.race) return null;
-  // 解放＝総資産1億 or「救済」＝破産3回超で“知らないお姉さん”に出会った（js/epilogue_engine.js）。
-  const rich = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
-  const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
-  if (!rich && !met) return null;   // まだ出会っていない
-  const revealed = (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"));   // 第5話で正体判明
-  const cast = STORY_CAST.celestia;
-  const sym = revealed ? cast.symbol : "🌌";
-  const who = revealed ? "セレスティア" : "あのお姉さん";
+  // 解放＝第5話を読んで出会う（advisorMet）or「救済」＝破産3回超で“知らないお姉さん”に出会った（js/epilogue_engine.js）。
+  // ★門番：総資産だけで開けると、第5話を読む前に神眼（＝結果固定＋オッズ1.1倍）まで発動してしまうので advisorMet で判定（fail-closed）。
+  const revealed = (typeof advisorMet === "function") && advisorMet("celestia");   // 第5話で正体判明＝本名・☄️・「神眼」解禁
+  const stranger = (typeof castStrangerSeen === "function") && castStrangerSeen();
+  if (!revealed && !stranger) return null;   // まだ出会っていない
+  const sym = (typeof castSymbolSafe === "function") ? castSymbolSafe("celestia") : "🌌";
+  const who = String((typeof castNameSafe === "function") ? castNameSafe("celestia") : "あのお姉さん").split("・")[0];
   const box = el("div", "card celestia-box");
-  box.style.setProperty("--cg", revealed ? cast.color : "#7a6aa0");
+  box.style.setProperty("--cg", revealed ? castColorSafe("celestia") : "#7a6aa0");
   if (c._celestiaRevealed) {
     const win = DRAGONS.find(d => d.id === c._celestiaRevealed);
     const nm = win ? win.name : "？";
@@ -951,32 +971,52 @@ function renderSettings() {
     }
   }
 
-  // おまけ：エンディング＆スタッフロール（表示専用。進行に関係なくいつでも観られる）。
+  // おまけ：エンディング＆スタッフロール。★クリア後だけ（未クリアで再生すると顧問5人の立ち絵・全5話の
+  // 一枚絵・結末まで丸ごとネタバレし、gameCleared まで立ってしまう＝新規セーブで実際に再生できていた）。
+  // 主条件＝最終決戦の完走（epData().edFlag：正規ルート epilogue_engine.js:epilogueClear が立てる唯一の印。
+  // gameCleared は正規ルートでは立たないので、これ単独でガードすると永久ロックになる）。
+  const edUnlocked = (function () {
+    try {
+      if (state.ui && state.ui.debug) return true;                                   // デバッグ中は動作確認のため開ける
+      if (typeof epData === "function" && epData().edFlag) return true;              // 最終決戦を完走した（正規クリア）
+      return (typeof getStoryFlag === "function") && !!getStoryFlag("gameCleared");  // 既に一度クリア済みのセーブ
+    } catch (e) { return false; }   // fail-closed：判定できないときは伏せる（ネタバレは取り消せない）
+  })();
   app.appendChild(el("div", "as-sec", "おまけ"));
-  const edRow = el("div", "set-row",
-    `<span class="set-ic">🎬</span><span class="set-tx"><span class="set-nm">エンディングを観る</span><span class="set-sub">送り出し＋スタッフロール</span></span>`);
-  const edBtn = el("button", "set-toggle on", "▶ 再生");
-  edBtn.onclick = () => {
-    if (window.Sfx && Sfx.play) Sfx.play("click");
-    if (window.Ending && Ending.play) {
-      Ending.play().then(() => {
-        // 本編クリア＝エンディング完走。ポロを見つけていれば「ポロのグルメレース」解放（仕様§7・表示専用）。
-        try {
-          if (typeof setStoryFlag === "function" && !getStoryFlag("gameCleared")) {
-            setStoryFlag("gameCleared", true);
-            if (typeof poroFound === "function" && poroFound()) {
-              setStoryFlag("poroGourmetRaceUnlocked", true);
-              if (typeof showInfoPopup === "function") showInfoPopup("🏃 ポロのグルメレース 解放！",
-                `<div class="mm-row"><span class="mm-ic">🥹</span><div><b>クリアおめでとう！</b><small>おまけに「ポロのグルメレース」が遊べるようになりました。設定のおまけ欄から、いつでもどうぞ。</small></div></div>`);
+  if (!edUnlocked) {
+    // 🔒条件明示（進行の作法）。ネタバレになるので登場人物・結末には触れず、条件だけを出す。
+    const edLock = el("div", "set-row",
+      `<span class="set-ic">🔒</span><span class="set-tx"><span class="set-nm">エンディングを観る</span><span class="set-sub">最終決戦をクリアすると解放されます</span></span>`);
+    const edLockBtn = el("button", "set-toggle", "🔒");
+    edLockBtn.disabled = true;
+    edLock.appendChild(edLockBtn);
+    app.appendChild(edLock);
+  } else {
+    const edRow = el("div", "set-row",
+      `<span class="set-ic">🎬</span><span class="set-tx"><span class="set-nm">エンディングを観る</span><span class="set-sub">送り出し＋スタッフロール</span></span>`);
+    const edBtn = el("button", "set-toggle on", "▶ 再生");
+    edBtn.onclick = () => {
+      if (window.Sfx && Sfx.play) Sfx.play("click");
+      if (window.Ending && Ending.play) {
+        Ending.play().then(() => {
+          // 本編クリア＝エンディング完走。ポロを見つけていれば「ポロのグルメレース」解放（仕様§7・表示専用）。
+          try {
+            if (typeof setStoryFlag === "function" && !getStoryFlag("gameCleared")) {
+              setStoryFlag("gameCleared", true);
+              if (typeof poroFound === "function" && poroFound()) {
+                setStoryFlag("poroGourmetRaceUnlocked", true);
+                if (typeof showInfoPopup === "function") showInfoPopup("🏃 ポロのグルメレース 解放！",
+                  `<div class="mm-row"><span class="mm-ic">🥹</span><div><b>クリアおめでとう！</b><small>おまけに「ポロのグルメレース」が遊べるようになりました。設定のおまけ欄から、いつでもどうぞ。</small></div></div>`);
+              }
             }
-          }
-          if (state.ui.screen === "settings") renderSettings();
-        } catch (e) {}
-      });
-    }
-  };
-  edRow.appendChild(edBtn);
-  app.appendChild(edRow);
+            if (state.ui.screen === "settings") renderSettings();
+          } catch (e) {}
+        });
+      }
+    };
+    edRow.appendChild(edBtn);
+    app.appendChild(edRow);
+  }
 
   // ポロのグルメレース（クリア後解放・仕様§7）。表示専用ミニゲーム。
   if (typeof poroGourmetUnlocked === "function" && poroGourmetUnlocked()) {
@@ -1688,7 +1728,7 @@ function renderRaceDetail(race) {
   // -- advisor voice line, shown atop a panel once that advisor has been met --
   function advVoiceHeader(key) {
     const cast = STORY_CAST[key];
-    if (!cast || (typeof advisorMet === "function" ? !advisorMet(key) : (state.player.totalAssets || 0) < castUnlockAt(key))) return null;   // ★BUGFIX：既読も要る
+    if (!cast || !((typeof advisorMet === "function") && advisorMet(key))) return null;   // ★BUGFIX：既読も要る／fail-closed：判定できなければ出さない
     const v = el("div", "adv-voice");
     v.style.setProperty("--cg", cast.color);
     v.innerHTML =
@@ -1712,19 +1752,18 @@ function renderRaceDetail(race) {
     const host = el("div", "adv-panel-host");
     const btnByKey = {};
     ADVS.forEach(a => {
-      const cast = STORY_CAST[a.key];
-      let locked = a.gated && (typeof advisorMet === "function" ? !advisorMet(a.key) : (state.player.totalAssets || 0) < castUnlockAt(a.key));   // ★BUGFIX：既読も要る
-      let name = cast.name.split("・")[0], sym = cast.symbol;
-      if (a.key === "celestia") {
-        // 救済（破産3回超で“お姉さん”に出会う）でも解放。正体は第5話まで伏せる（名前/記号を隠す）。
-        const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
-        const revealed = (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"));
-        if (met) locked = false;
-        if (!revealed) { name = "？？？"; sym = "🌌"; }
-      }
+      // ★門番：出走表(マクラ)・財政(スミカ)は“常に見られる中核情報”なのでパネルは開けたままにし、
+      //   まだ出会っていない相手の「正体」だけを伏せる（名前・記号・テーマ色は castNameSafe 系を通す）。
+      //   従来は gated の無いタブが短絡して advisorMet を一度も見ず、初回の賭け画面から本名が出ていた。
+      let locked = !!a.gated && !((typeof advisorMet === "function") && advisorMet(a.key));   // fail-closed：判定できなければロック
+      const name = String((typeof castNameSafe === "function") ? castNameSafe(a.key) : "？？？").split("・")[0];
+      const sym = (typeof castSymbolSafe === "function") ? castSymbolSafe(a.key) : "❓";
+      const color = (typeof castColorSafe === "function") ? castColorSafe(a.key) : "#8a8175";
+      // 救済（破産3回超で“お姉さん”に出会う）でも1着は聞ける。正体（本名/☄️）は castNameSafe 側が第5話まで伏せる。
+      if (a.key === "celestia" && (typeof castStrangerSeen === "function") && castStrangerSeen()) locked = false;
       const b = el("button", "adv-tab" + (locked ? " locked" : ""));
       b.dataset.key = a.key;
-      b.style.setProperty("--cg", cast.color);
+      b.style.setProperty("--cg", color);
       b.innerHTML =
         `<span class="adv-mark">${locked ? "🔒" : sym}</span>` +
         `<span class="adv-tab-label">${a.label}</span>` +
@@ -1752,15 +1791,14 @@ function renderRaceDetail(race) {
   // -- ミズ：分析予想パネル — 人気の理由を分解→はがした実力評価で本命/対抗/穴。
   //    総資産3000でミズと出会うまではロック表示（彼女の章「ミズの分析予想」に対応）。 --
   function buildMizuPanel() {
-    const unlocked = (typeof advisorMet === "function") ? advisorMet("mizu") : (state.player.totalAssets || 0) >= castUnlockAt("mizu");   // ★BUGFIX：既読も要る
+    const unlocked = (typeof advisorMet === "function") && advisorMet("mizu");   // ★BUGFIX：既読も要る／fail-closed
     if (!unlocked) {
-      const cast = STORY_CAST.mizu;
       const wrap = el("div", "card adv-panel adv-locked mizu-locked");
-      wrap.style.setProperty("--cg", cast.color);
+      wrap.style.setProperty("--cg", (typeof castColorSafe === "function") ? castColorSafe("mizu") : "#8a8175");   // 未登場＝無彩色
       wrap.innerHTML =
         `<div class="cel-lock-row"><span class="cel-lock-sym">🔒</span>` +
-        `<div class="cel-lock-body"><div class="cel-lock-title">ミズの分析予想は、まだ読めない</div>` +
-        `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("mizu"))} でミズと出会うと、人気の理由を分解した本命・対抗・穴が読めます。</div></div></div>`;
+        `<div class="cel-lock-body"><div class="cel-lock-title">分析予想は、まだ読めない</div>` +
+        `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("mizu"))} に届いて第2話を読むと、人気の理由を分解した本命・対抗・穴が読めます。</div></div></div>`;
       return wrap;
     }
     const a = generateMizuAnalysis(race, oddsResult, state.current.trialForms);
@@ -1837,19 +1875,20 @@ function renderRaceDetail(race) {
     return wrap;
   }
 
-  // -- セレスティア：1着を聞く（解放済みなら2段階の神眼、未解放ならロック表示） --
-  // 解放＝総資産1億 or「救済」＝破産3回超で“知らないお姉さん”に出会う（js/epilogue_engine.js）。
+  // -- セレスティア：1着を聞く（出会っていれば2段階の神眼、未登場ならロック表示） --
+  // 解放＝第5話を読んで出会う（advisorMet）or「救済」＝破産3回超で“知らないお姉さん”に出会う（js/epilogue_engine.js）。
   function buildCelestiaPanel() {
-    const rich = (state.player.totalAssets || 0) >= castUnlockAt("celestia");
-    const met = (typeof getStoryFlag === "function" && getStoryFlag("celestiaStrangerSeen"));
-    if (rich || met) { const cel = celestiaSectionEl(); if (cel) return cel; }
-    const cast = STORY_CAST.celestia;
+    // ★門番：総資産だけで開くと、第5話未読でも神眼（結果固定＋オッズ1.1倍）というゲーム効果まで発動してしまう。
+    //   同じ画面のタブは advisorMet で🔒なので自己矛盾にもなっていた。advisorMet に統一（fail-closed）。
+    const met = (typeof advisorMet === "function") && advisorMet("celestia");
+    const stranger = (typeof castStrangerSeen === "function") && castStrangerSeen();
+    if (met || stranger) { const cel = celestiaSectionEl(); if (cel) return cel; }
     const wrap = el("div", "card adv-panel cel-locked");
-    wrap.style.setProperty("--cg", cast.color);
+    wrap.style.setProperty("--cg", (typeof castColorSafe === "function") ? castColorSafe("celestia") : "#8a8175");   // 未登場＝無彩色（色でキャラを推測させない）
     wrap.innerHTML =
       `<div class="cel-lock-row"><span class="cel-lock-sym">🔒</span>` +
       `<div class="cel-lock-body"><div class="cel-lock-title">“1着を聞ける相手” には、まだ出会っていない</div>` +
-      `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("celestia"))} に届くか、何度も無一文になって立ち上がるうち、ふと現れる誰かに出会うかもしれません。</div></div></div>`;
+      `<div class="cel-lock-sub">総資産 ${fmtCoins(castUnlockAt("celestia"))} に届いて第5話を読むか、何度も無一文になって立ち上がるうち、ふと現れる誰かに出会うかもしれません。</div></div></div>`;
     return wrap;
   }
 
@@ -2445,7 +2484,9 @@ function settleRace() {
       assetsDelta: Math.max(0, newTotal - prevTotal),
       lifePDelta: Math.max(0, _lifeP1 - _lifeP0),
       rankUp: state.player.rank > _rank0 ? state.player.rank : 0,
-      storyUnlocked: justUnlocked.map(ch => ch.title),
+      // ★台帳の「📜 物語が解放」も章題をそのまま出すと未登場の名が漏れる（例「第5話　セレスティアの神眼」）。
+      //   ここに載る章は必ず未読なので、章番号だけの見出しに伏せる（R7）。
+      storyUnlocked: justUnlocked.map(ch => chapterTeaseTitle(ch)),
       mission: _mission
     };
   } catch (e) { c.gainLedger = null; }
@@ -3222,7 +3263,9 @@ function nextGoals(state) {
   if (typeof STORY_CHAPTERS !== "undefined" && typeof storyUnlockAt === "function") {
     let best = null, bestAt = Infinity;
     STORY_CHAPTERS.forEach(ch => { const at = storyUnlockAt(ch.id); if (at > total && at < bestAt) { bestAt = at; best = ch; } });
-    if (best) goals.push({ kind: "story", icon: "📖", label: best.title || ("物語 " + best.id), sub: `総資産 あと ${fmtCoins(bestAt - total)}`, pct: clamp(total / bestAt * 100, 2, 99) });
+    // ★予告に固有名を出さない：未解放の章タイトルには顧問の名前が入る（例「第5話　セレスティアの神眼」）。
+    //   まだ出会っていない相手を予告で漏らさないよう、章番号だけの見出しに伏せる（読むと本タイトルに戻る）。
+    if (best) goals.push({ kind: "story", icon: "📖", label: chapterTeaseTitle(best), sub: `総資産 あと ${fmtCoins(bestAt - total)}`, pct: clamp(total / bestAt * 100, 2, 99) });
   }
   return goals;
 }
@@ -3305,7 +3348,7 @@ function pickAdvisorReaction(ps, c) {
   if (!ps || typeof STORY_CAST === "undefined") return null;
   // ★BUGFIX：顧問の登場は「章を読んだ」ことも要る（advisorMet）。総資産だけの旧判定だと
   //   出会う前のミズ等が結果画面で喋ってしまう。
-  const met = k => (typeof advisorMet === "function") ? advisorMet(k) : ((typeof castUnlockAt !== "function") || castUnlockAt(k) <= (state.player.totalAssets || 0));
+  const met = k => (typeof advisorMet === "function") && advisorMet(k);   // fail-closed：判定できなければ喋らせない
   const tier = (typeof resultTierOf === "function") ? resultTierOf(ps) : 0;
   const streak = state.player.streak || 0;
   let winnerPopRank = 1;
@@ -3630,13 +3673,14 @@ function showShareFallback(text, title) {
 
 function renderAnalysis() {
   state.ui.screen = "analysis";
-  // E4：1章は“勘レース”。分析予想は第2話「ミズの分析」で解禁（表示ゲート・数値不変）。
+  // E4：1章は“勘レース”。分析予想は第2話を読むと解禁（表示ゲート・数値不変）。
+  // ★予告に固有名を出さない：この文面は第2話が未読＝まだ出会っていない時にしか出ないので、章番号だけで案内する。
   if (typeof analysisUnlocked === "function" && !analysisUnlocked()) {
     const app0 = beginScreen();
     app0.appendChild(el("h2", null, "レース後分析"));
     app0.appendChild(el("div", "card",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ「分析」はできません</b>` +
-      `<small>いまはカンだけが頼りのミミ。<u>第2話「ミズの分析」</u>を読むと、オッズの読み方・妙味・次のヒントが手に入ります（総資産3千で第2話が解禁）。</small></div></div>` +
+      `<small>いまはカンだけが頼りのミミ。<u>第2話</u>を読むと、オッズの読み方・妙味・次のヒントが手に入ります（総資産3千で第2話が解禁）。</small></div></div>` +
       `<div class="mm-row"><span class="mm-ic">🐰</span><div><small>ミミ「ぶ、分析……？　なにそれおいしいの……？　いまはカン！　カンで勝負だよっ！（震え声）」</small></div></div>`));
     const acts = el("div", "actions");
     const bk = el("button", "secondary", "◀ 結果へ戻る"); bk.onclick = () => renderResult();

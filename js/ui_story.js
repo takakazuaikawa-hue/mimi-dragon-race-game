@@ -21,6 +21,14 @@ function _newsMast(leftMeta, rightMeta) {
 // 見出し罫（rubric）。labelHTML はHTML可（件数バッジ等）。
 function _newsRubric(labelHTML) { return el("div", "news-rubric", labelHTML); }
 
+// ★門番の薄いラッパ（正本は data_assets.js の advisorMet/castNameSafe/castSymbolSafe/castColorSafe/castStrangerSeen）。
+//   読み込み順の事故で未定義でも落とさず「伏せる側」へ倒す＝fail-closed（ネタバレは取り消せない・非表示は無害）。
+function _csMet(k)      { return (typeof advisorMet === "function") ? !!advisorMet(k) : false; }
+function _csName(k)     { return (typeof castNameSafe === "function") ? castNameSafe(k) : "？？？"; }
+function _csSym(k)      { return (typeof castSymbolSafe === "function") ? castSymbolSafe(k) : "❓"; }
+function _csColor(k)    { return (typeof castColorSafe === "function") ? castColorSafe(k) : "#8a8175"; }
+function _csStranger()  { return (typeof castStrangerSeen === "function") ? !!castStrangerSeen() : false; }
+
 function renderStory() {
   state.ui.screen = "story";
   recomputeAssets(state);
@@ -45,18 +53,35 @@ function renderStory() {
   news.appendChild(_newsRubric("聖龍五人衆 ・ 連載記事"));
   const arts = el("div", "news-arts");
   STORY_CHAPTERS.forEach(ch => {
-    const unlocked = total >= storyUnlockAt(ch.id);
+    // ★「解禁（＝読める）」と「登場（＝読んだ）」は別物。ここを混同していたのが本丸の穴。
+    //   新規スタートの総資産は 1000+村2000＝3000＝第2話のしきい値ちょうど。旧コードは unlocked だけで
+    //   カードを開いていたため、1行も読まないうちに chapterDisplayTitle（＝STORY_CAST.name の本名）で
+    //   「ミズ・アオラ」、肩書「エコノミスト」、顔写真、テーマ色が一面に出ていた（第5話も総資産1億で
+    //   「セレスティア・ブラックメテオ／世界の天井／神眼」が未読のまま露出＝R3違反）。
+    //   未読の記事は「読める」ことだけ伝え、寄稿者の名・顔・記号・肩書・章題（章題にも名が入る）は伏せる。
+    const unlocked = total >= storyUnlockAt(ch.id);   // 総資産で「読める」か
+    const met = _csMet(ch.cast);                      // 出会ったか（しきい値 AND その章を読んだ・R1）
     const cast = STORY_CAST[ch.cast];
     const art = el("button", "news-art" + (unlocked ? "" : " locked"));
-    if (cast) art.style.setProperty("--na", cast.color);
-    const photo = unlocked
-      ? `<span class="news-photo-s">${photoOr("images/story/" + ch.id + ".jpg", `<span class="sym">${cast ? cast.symbol : "🐲"}</span>`)}</span>`
-      : `<span class="news-photo-s locked"><span class="sym">🔒</span></span>`;
-    const kicker = cast ? cast.tag : (ch.id === "ED" ? "最終回" : "特報");
-    const head = unlocked ? chapterDisplayTitle(ch) : `<span class="news-censor">■■■■■■</span>`;
-    const lead2 = unlocked
-      ? (ch.id === "ED" ? "次なる物語へ——結びの一面。" : ch.title)
-      : `次號予告 ／ 総資産 ${fmtCoins(storyUnlockAt(ch.id))} にて解禁`;
+    // テーマ色も門番経由（未登場は無彩色）。解禁済みでも未読なら寄稿者はまだ他人＝色でも正体を出さない。
+    if (cast) art.style.setProperty("--na", _csColor(ch.cast));
+    const photo = !unlocked
+      ? `<span class="news-photo-s locked"><span class="sym">🔒</span></span>`
+      : met
+        ? `<span class="news-photo-s">${photoOr("images/story/" + ch.id + ".jpg", `<span class="sym">${cast ? _csSym(ch.cast) : "🐲"}</span>`)}</span>`
+        // 未読＝顔写真を出さない。記号は門番経由（❓／セレスティアの伏線段階だけ🌌）。
+        : `<span class="news-photo-s"><span class="sym">${cast ? _csSym(ch.cast) : "🐲"}</span></span>`;
+    const kicker = !unlocked ? "未公開"
+      : met ? (cast ? cast.tag : (ch.id === "ED" ? "最終回" : "特報"))
+      : "未読";
+    const head = !unlocked ? `<span class="news-censor">■■■■■■</span>`
+      : met ? chapterDisplayTitle(ch)
+      // 未読の見出しは「第N話」だけ（ED は元から名を含まない）。固有名を出さずに予告する（R7）。
+      : (ch.id === "ED" ? "エンディング" : `第${ch.id}話　<span class="news-censor">■■■■</span>`);
+    const lead2 = !unlocked
+      ? `次號予告 ／ 総資産 ${fmtCoins(storyUnlockAt(ch.id))} にて解禁`
+      : met ? (ch.id === "ED" ? "次なる物語へ——結びの一面。" : ch.title)
+      : "本紙未読 ／ タップで記事を読む";
     art.innerHTML = photo +
       `<span class="news-art-tx"><span class="news-kicker">${kicker}</span>` +
         `<span class="news-head">${head}</span><span class="news-lead2">${lead2}</span></span>` +
@@ -258,21 +283,33 @@ function renderConsult() {
   const arts = el("div", "news-arts");
   Object.keys(STORY_CAST).forEach(k => {
     const c = STORY_CAST[k];
-    const unlocked = total >= castUnlockAt(k);
+    // ★門番：登場の述語は advisorMet（総資産しきい値 AND その章を読んだ）だけ。旧判定 total>=castUnlockAt では
+    //   新規スタートの総資産3000＝ミズのしきい値のため、第2話を1行も読まずに名簿へ顔・氏名・肩書・決めゼリフが出ていた。
+    const unlocked = _csMet(k);
     const art = el("div", "news-art news-art-consult" + (unlocked ? "" : " locked"));
-    if (c) art.style.setProperty("--na", c.color);
-    const photo = unlocked
-      ? `<span class="news-photo-s">${photoOr("images/cast/" + k + ".png", `<span class="sym">${c.symbol}</span>`)}</span>`
-      : `<span class="news-photo-s locked"><span class="sym">🔒</span></span>`;
-    art.innerHTML = unlocked
-      ? photo + `<span class="news-art-tx"><span class="news-kicker">${c.tag}</span>` +
-          `<span class="news-head">${c.name}</span>` +
+    art.style.setProperty("--na", _csColor(k));   // 未登場は無彩色＝テーマ色から正体を推測させない
+    if (unlocked) {
+      const photo = `<span class="news-photo-s">${photoOr("images/cast/" + k + ".png", `<span class="sym">${_csSym(k)}</span>`)}</span>`;
+      art.innerHTML = photo +
+        `<span class="news-art-tx"><span class="news-kicker">${c.tag}</span>` +
+          `<span class="news-head">${_csName(k)}</span>` +
           `<span class="news-lead2">${c.focus}　／　授けるもの＝${c.gives}</span>` +
           `<span class="news-quote">「${c.consult}」</span>` +
-          `<span class="news-lead2">${CONSULT_EFFECT[k] || CONSULT_EFFECT._default}</span></span>`
-      : photo + `<span class="news-art-tx"><span class="news-kicker">？？？</span>` +
-          `<span class="news-head"><span class="news-censor">■■■■</span></span>` +
-          `<span class="news-lead2">総資産 ${fmtCoins(castUnlockAt(k))} にて初登場</span></span>`;
+          `<span class="news-lead2">${CONSULT_EFFECT[k] || CONSULT_EFFECT._default}</span></span>`;
+    } else {
+      // 未登場：名前・記号は門番経由のみ（セレスティアの伏線段階だけ「あのお姉さん🌌」＝本名・☄️・肩書・神眼は伏せる）。
+      const stranger = (k === "celestia") && _csStranger();
+      const chId = (STORY_CHAPTERS.find(x => x.cast === k) || {}).id;
+      // 案内の出し分け：しきい値未達なら金額、到達済み・章未読なら「第N話を読むと初登場」（固有名は出さない・R7）。
+      const hint = (total >= castUnlockAt(k) && chId)
+        ? `第${chId}話を読むと初登場`
+        : `総資産 ${fmtCoins(castUnlockAt(k))} にて初登場`;
+      art.innerHTML =
+        `<span class="news-photo-s locked"><span class="sym">${_csSym(k)}</span></span>` +
+        `<span class="news-art-tx"><span class="news-kicker">${stranger ? "素性不明" : "？？？"}</span>` +
+          `<span class="news-head">${stranger ? _csName(k) : `<span class="news-censor">■■■■</span>`}</span>` +
+          `<span class="news-lead2">${hint}</span></span>`;
+    }
     arts.appendChild(art);
   });
   news.appendChild(arts);

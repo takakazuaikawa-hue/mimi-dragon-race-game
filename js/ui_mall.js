@@ -35,8 +35,9 @@ var _scmHeroTimer = null;       // ヒーロー自動送りのタイマー
 function renderMall() {
   if (typeof mallUnlocked === "function" && !mallUnlocked()) {
     renderHome();
+    // ★ロック案内で章題（＝未登場の顧問名）は出さない。予告は「第N話を読むと開放」までに留める。
     if (typeof showInfoPopup === "function") showInfoPopup("🛍️ ショッピングモール",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話「ミズの分析」</u>を読むと解放されます（総資産3千で第2話が解禁）。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話</u>を読むと解放されます（総資産3千で第2話が解禁）。</small></div></div>`);
     return;
   }
   state.ui.screen = "mall";
@@ -237,7 +238,11 @@ function _scmService() {
   const items = [
     { ic: "clock", t: "営業時間・定休日のご案内", go: () => _scmInfo("🕐 営業時間", `<div class="mm-row"><span class="mm-ic">⏰</span><div><b>10:00〜25:00（ミミが起きてる間）</b><small>定休日：なし。配信のない夜もこっそり開いてます。</small></div></div>`) },
     { ic: "service", t: "各種サービスのご案内", go: () => _scmInfo("🛎 サービス", `<div class="mm-row"><span class="mm-ic">👗</span><div><b>無料の試着・お着替え</b><small>所持している服はいつでも切替OK。何度でも無料。</small></div></div><div class="mm-row"><span class="mm-ic">🎁</span><div><b>ラッピング</b><small>……は、ありません。ぜんぶ自分で着ます！</small></div></div>`) },
-    { ic: "smile", t: "お子さま連れのお客さま", go: () => _scmInfo("😊 お子さま連れ", `<div class="mm-row"><span class="mm-ic">🐉</span><div><b>泣き虫竜ポロも大歓迎</b><small>はぐれたら、たぶん試着室で泣いてます。</small></div></div>`) },
+    // ★門番：ポロは発見（単勝2勝目）まで名前も「泣き虫」も出さない＝出会う前に命名オチを潰さない。fail-closed。
+    { ic: "smile", t: "お子さま連れのお客さま", go: () => _scmInfo("😊 お子さま連れ",
+        ((typeof poroFound === "function" && poroFound())
+          ? `<div class="mm-row"><span class="mm-ic">🐉</span><div><b>泣き虫竜ポロも大歓迎</b><small>はぐれたら、たぶん試着室で泣いてます。</small></div></div>`
+          : `<div class="mm-row"><span class="mm-ic">🐉</span><div><b>仔竜連れ、大歓迎です</b><small>はぐれたら、たぶん試着室で泣いてます。</small></div></div>`)) },
     { ic: "search", t: "館内のおとしもの", go: () => _scmInfo("🔍 おとしもの", `<div class="mm-row"><span class="mm-ic">🎫</span><div><b>外れ馬券、たくさん届いてます</b><small>心当たりのある方は……まあ、そっとしておきましょう。</small></div></div>`) },
     { ic: "paw", t: "ペット同伴のお客さま", go: () => _scmInfo("🐾 ペット同伴", `<div class="mm-row"><span class="mm-ic">🐲</span><div><b>竜の同伴、歓迎です</b><small>大きい子は屋上の「大冒険」フロアへどうぞ。</small></div></div>`) },
     { ic: "news", t: "スタッフ募集", go: () => _scmInfo("📣 スタッフ募集", `<div class="mm-row"><span class="mm-ic">🐰</span><div><b>ただいま募集はしておりません</b><small>店員はミミ一人。今日も元気に営業中！</small></div></div>`) }

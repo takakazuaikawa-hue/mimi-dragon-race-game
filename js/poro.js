@@ -65,9 +65,10 @@ function dexUnlocked() {
 // キャラの声（[[mimi-costume-mall]] §キャラの役割）：ミミ=来訪者(反応/質問)、サケ=現場/竜を見る、
 // ミズ=市場/価値、スミカ=生活/手配、マクラ=観客/熱狂、セレスティア=聖龍の意味/世界の天井。
 // ★小出し設計（ユーザー指示）：出会いは2勝目という早期タイミングなので、まだ物語で会っていない
-//   キャラ（マクラ＝第4話／セレスティア＝第5話）はこの核心シーンに出演させない。彼女たちの反応は
-//   別の短い後日談シーン（poroMakuraFollowupScript/poroCelestiaFollowupScript）として切り出し、
+//   顧問（ミズ＝第2話／スミカ＝第3話／マクラ＝第4話／セレスティア＝第5話）はこの核心シーンに
+//   出演させない。彼女たちの反応は別の短い後日談シーン（poro***FollowupScript）として切り出し、
 //   実際にその章を読んだ後に1回だけ再生する＝進行に追いつくまで小出しにする。
+//   核心シーン（発見・命名オチ）はナレーター／ミミ／ポロ／村人／サケ（第1話＝最初から知り合い）だけで回す。
 function poroDiscoveryScript() {
   return [
     ["narrator", "雷雨の去ったレース場の裏手。資材置き場、木箱の陰で——なにかが、ちいさく震えていた。"],
@@ -78,19 +79,43 @@ function poroDiscoveryScript() {
     ["mimi", "あったかい……。ちっちゃな竜さん。どこから来たの？", "default"],
     ["villager", "っ……その紫の体に、宝石みたいな鱗……ま、まさか、聖龍の幼体じゃ……！？"],
     ["mimi", "せ、聖龍……？ この子が……？", "panic"],
-    ["mizu", "落ち着きなさい。魔力測定器は異常値を示した——けれど、あの機械、この子の涙と鼻水でショートしただけよ。あはん。"],
+    // 旧ミズ台詞の情報（測定器がショートしただけ）を村人の口へ。未登場の顧問を出さないため。
+    ["villager", "み、魔力測定器が振り切れとる……！ ——いや待て。この機械、この仔の涙と鼻水でショートしとるだけだ……。"],
     ["sake", "だが妙だ。この仔、人の不安によく耳が動く。音と匂いと、地の震えを拾っている。そこだけは、本物だ。"],
     ["mimi", "じゃあ……ほんとうに、聖龍なんですか……？", "default"],
-    ["sumika", "ミミ様。憶測では育てられません。きちんと鑑定を取りましょう。——結果が、出ました。"],
+    // 旧スミカ台詞の役割（鑑定へ促す）をサケへ。サケは第1話＝最初から会っている唯一の顧問。
+    ["sake", "……知らん。憶測じゃ竜は育たん。鑑定に出せ。話はそれからだ。"],
     ["narrator", "＜鑑定結果＞　種族：ムラサキマルチビ竜／成長段階：幼体／希少指定：なし／聖龍との血縁：なし／特殊能力：なし／……食べ過ぎ傾向：あり。"],
     ["villager", "……な〜んだ。ぜんぶ、ふつうの仔竜かぁ。"],
-    ["mizu", "紫も、宝石の鱗も、この地方では珍しくない。祭祀布は夜市の古布屋の品。開催日に現れたのも——屋台の果物が目当て。市場が、勝手に夢を見ただけ。"],
+    // 旧ミズ台詞の種明かしを村人＋ナレーターへ分担（「市場が夢を見た」の総括はナレーターが引き取る）。
+    ["villager", "紫も、宝石みたいな鱗も、この辺じゃ珍しくねぇしなあ。巻いてた祭祀布だって、夜市の古布屋に積んであるやつだ。"],
+    ["narrator", "開催日に現れたのも——屋台の果物が目当て。ただそれだけのことに、みんなが勝手に夢を見ていた。"],
     ["poro", "……ぽろ？", "default"],
     ["mimi", "……。", "default"],
     ["mimi", "じゃあ、世界を救わなくていいんですね。", "smile"],
     ["mimi", "よかった。ポロは、ポロのままでいいです。", "happy"],
     ["sake", "……ふん。名は？"],
     ["mimi", "ポロ。泣き虫の、ポロです。わたしの……相棒。", "happy"],
+    ["poro", "……ぽろっ！"]
+  ];
+}
+// 後日談Ⓐ-1：第2話（ミズと市場）を実際に読んだ後、初めて開いた時に1回だけ再生。ミズ＝市場・期待値の視点。
+function poroMizuFollowupScript() {
+  return [
+    ["narrator", "帳簿から目を上げたその人が、ミミの腕の中をちらりと見た。"],
+    ["mizu", "それが噂の“聖龍の幼体”ね。……ふふ。あの一週間、紫の布は三倍に跳ねたのよ、あはん。"],
+    ["mimi", "え……ポロ、なんにもしてないのに……。", "default"],
+    ["mizu", "そう。価値ではなく、期待だけが値を吊り上げた。——その子の値段はゼロ。だから安心して、抱いていなさい。"],
+    ["poro", "……ぽろ？", "default"]
+  ];
+}
+// 後日談Ⓐ-2：第3話（スミカと生活の立て直し）を実際に読んだ後、初めて開いた時に1回だけ再生。スミカ＝生活・住居の視点。
+function poroSumikaFollowupScript() {
+  return [
+    ["narrator", "住まいの点検に来た秘書が、部屋の隅の毛布の山を見つけて足を止めた。"],
+    ["sumika", "ミミ様。竜は情緒ではなく設備です。寝床・水場・餌箱——三点、手配いたしました。"],
+    ["mimi", "そ、そこまで……！？ ポロ、おうちができたって。", "happy"],
+    ["sumika", "生活が整えば、竜は泣き止みます。……ええ。人も、同じです。"],
     ["poro", "……ぽろっ！"]
   ];
 }
@@ -152,22 +177,51 @@ function _playPoroFollowup(script, seenFlag) {
   });
   return true;
 }
-// 小出しⒷ：ポロ発見済み＆第4話を実際に読んだ後、初回だけマクラの後日談を再生（renderStoryChapterから呼ぶ）。
+// ★門番の正本＝顧問の“登場”は advisorMet(castKey)（総資産しきい値 AND その章の既読）だけで判定する。
+//   Dialogue は STORY_CAST をそのまま使う＝台本に mizu/sumika/… を書いた瞬間に本名・テーマ色・立ち絵が
+//   出てしまうため、後日談の門番も _chapter_intro_N の直読みではなく advisorMet に一本化する。
+//   （fail-closed：advisorMet が未定義なら false ＝ 出さない。既読フラグは再生完了後にしか立たないので、
+//     一時的に閉じても内容が消えることはなく、条件を満たした時に再生される。）
+function _poroAdvisorMet(castKey) {
+  try { return (typeof advisorMet === "function") && !!advisorMet(castKey); } catch (e) { return false; }
+}
+function _poroSeen(flag) { return !!(typeof getStoryFlag === "function" && getStoryFlag(flag)); }
+
+// 小出しⒶ-1：ポロ発見済み＆ミズと出会った後、初回だけミズの後日談を再生（renderStoryChapterから呼ぶ）。
+function maybePlayPoroMizuFollowup() {
+  if (!poroFound()) return false;
+  if (!_poroAdvisorMet("mizu")) return false;
+  if (_poroSeen("poroMizuSceneSeen")) return false;
+  return _playPoroFollowup(poroMizuFollowupScript(), "poroMizuSceneSeen");
+}
+// 小出しⒶ-2：ポロ発見済み＆スミカと出会った後、初回だけスミカの後日談を再生。
+function maybePlayPoroSumikaFollowup() {
+  if (!poroFound()) return false;
+  if (!_poroAdvisorMet("sumika")) return false;
+  if (_poroSeen("poroSumikaSceneSeen")) return false;
+  return _playPoroFollowup(poroSumikaFollowupScript(), "poroSumikaSceneSeen");
+}
+// 小出しⒷ：ポロ発見済み＆マクラと出会った後（第4話）、初回だけマクラの後日談を再生。
 function maybePlayPoroMakuraFollowup() {
   if (!poroFound()) return false;
-  if (!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_4"))) return false;
-  if (typeof getStoryFlag === "function" && getStoryFlag("poroMakuraSceneSeen")) return false;
+  if (!_poroAdvisorMet("makura")) return false;
+  if (_poroSeen("poroMakuraSceneSeen")) return false;
   return _playPoroFollowup(poroMakuraFollowupScript(), "poroMakuraSceneSeen");
 }
-// 小出しⒸ：ポロ発見済み＆第5話を実際に読んだ後、初回だけセレスティアの後日談を再生。
+// 小出しⒸ：ポロ発見済み＆セレスティアと出会った後（第5話＝正体解禁）、初回だけ後日談を再生。
+//   ★伏線段階（celestiaStrangerSeen だけ立っている状態）では advisorMet が false ＝ 本名も立ち絵も出さない。
 function maybePlayPoroCelestiaFollowup() {
   if (!poroFound()) return false;
-  if (!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5"))) return false;
-  if (typeof getStoryFlag === "function" && getStoryFlag("poroCelestiaSceneSeen")) return false;
+  if (!_poroAdvisorMet("celestia")) return false;
+  if (_poroSeen("poroCelestiaSceneSeen")) return false;
   return _playPoroFollowup(poroCelestiaFollowupScript(), "poroCelestiaSceneSeen");
 }
-// ui_story.js から章を開くたびに呼ぶ窓口（4→マクラ、5→セレスティア）。
+// ui_story.js から章を開くたびに呼ぶ窓口（2→ミズ、3→スミカ、4→マクラ、5→セレスティア）。
+// ★発見アークが同じ呼び出しで走った直後は poroFound() がまだ false（フラグは再生完了後に立つ）ため、
+//   後日談はここでは走らず、次にその章を開いた時に再生される＝二重再生しない。
 function maybePlayPoroFollowupOnChapter(chId) {
+  if (chId === "2") return maybePlayPoroMizuFollowup();
+  if (chId === "3") return maybePlayPoroSumikaFollowup();
   if (chId === "4") return maybePlayPoroMakuraFollowup();
   if (chId === "5") return maybePlayPoroCelestiaFollowup();
   return false;
@@ -259,7 +313,7 @@ function renderStable() {
   if (!poroStableUnlocked()) {   // Ⓒ 無反応→🔒案内でフィードバック。
     if (typeof renderHome === "function") renderHome();
     if (typeof showInfoPopup === "function") showInfoPopup("🐉 龍舎（りゅうしゃ）",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースを勝ち進み、相棒ポロと出会うと、竜たちのお世話ができるようになります。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースを勝ち進み、相棒と出会うと、竜たちのお世話ができるようになります。</small></div></div>`);
     return;
   }
   state.ui.screen = "stable";

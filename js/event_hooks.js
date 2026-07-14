@@ -51,6 +51,65 @@ function registerEvent(ev) {
   eventHooks[ev.hook].push(ev);
 }
 
+// ★話者ゲート（正本 R1/R2）──────────────────────────────────────────
+//   イベントの発火条件は once/flag/race… しか見ておらず「誰が喋るか」を見ていなかった。
+//   そのため registry に speaker:"mizu" と書くだけで、物語で出会う前のミズが立ち絵つきで
+//   喋ってしまう（例: 新規プレイヤーの初レース選択で first_race_intro_mimi が発火）。
+//   顧問5人（STORY_CAST）の“登場”の唯一の述語は advisorMet() なので、話者IDをその門番に通す。
+
+// dialogue.js の ALIAS と同じ表記ゆれ吸収（registry は sake_udada 等の旧IDで書かれている）。
+const EVENT_SPEAKER_ALIAS = {
+  sake_udada: "sake",
+  dragon_villager: "villager"
+};
+
+// 顧問5人（＝ゲート対象）。STORY_CAST 未ロード時に門番が素通しにならないための控え（fail-closed）。
+const GATED_CAST_KEYS = ["sake", "mizu", "sumika", "makura", "celestia"];
+
+function eventSpeakerCastKey(id) {
+  if (id == null || id === "") return "narrator";   // 話者なしの action（coin_rescue 等）はナレーション扱い
+  const s = String(id);
+  return EVENT_SPEAKER_ALIAS[s] || s;
+}
+
+// STORY_CAST のキーだけがゲート対象。mimi/announcer/system/villager/narrator/モブは常時OK。
+function eventSpeakerGated(key) {
+  try {
+    if (typeof STORY_CAST === "object" && STORY_CAST && STORY_CAST[key]) return true;
+  } catch (e) {}
+  return GATED_CAST_KEYS.indexOf(key) >= 0;   // STORY_CAST が読めない時も顧問は伏せる側に倒す
+}
+
+// 話者を出してよいか。顧問は advisorMet() のみが門番。判定不能なら「出さない」（fail-closed R6）。
+function speakerAllowed(id) {
+  const key = eventSpeakerCastKey(id);
+  if (!eventSpeakerGated(key)) return true;
+  if (typeof advisorMet !== "function") return false;   // ネタバレは不可逆・非表示は無害
+  try { return !!advisorMet(key); } catch (e) { return false; }
+}
+
+// セリフを出す action の型（＝話者ゲートの対象）。coin_rescue 等の副作用 action は話者を持たない。
+const SPEECH_ACTION_TYPES = ["dialogue", "tutorial_message", "panyu_message", "system_message"];
+
+// 「セリフしか持たない」イベントか。副作用（救済コイン・フラグ付与）を持つものは持ち越し禁止＝
+// 遅らせると経済/進行が止まるので、行単位で落として必ず発火させる。
+function eventSpeechOnly(ev) {
+  if (ev.effects) return false;
+  return (ev.actions || []).every(a => SPEECH_ACTION_TYPES.indexOf(a.type) >= 0);
+}
+
+// イベント全体の可否。
+//  ・once × セリフのみ … 1行でも未登場の顧問が混ざるなら発火させず“持ち越す”。
+//    （some で発火させると、その行だけ落ちたまま once が消費され、出会った後も二度と出ない＝空撃ち。）
+//  ・それ以外 … 喋れる話者が一人でも居れば発火し、未登場の行だけ落とす（once が無い＝取りこぼさない）。
+function eventSpeakersAllowed(ev) {
+  const acts = ev.actions || [];
+  if (!acts.length) return true;   // セリフを持たない（effects だけの）イベントは対象外
+  const once = !!(ev.condition && ev.condition.once);
+  if (once && eventSpeechOnly(ev)) return acts.every(a => speakerAllowed(a.speaker));
+  return acts.some(a => speakerAllowed(a.speaker));
+}
+
 // §10 §17 condition evaluation. All declared keys must match; `test` may be
 // a function for ad-hoc predicates.
 function eventConditionMet(ev, context) {
@@ -65,6 +124,9 @@ function eventConditionMet(ev, context) {
   if (c.betType && (!context || !context.bet || context.bet.type !== c.betType)) return false;
   if (c.tag && (!context || !context.tags || !context.tags.includes(c.tag))) return false;
   if (typeof c.test === "function" && !c.test(context)) return false;
+  // ★話者ゲート：喋れる話者が一人もいない（＝未登場の顧問しか喋らない）イベントは発火させない。
+  //   発火前に落とすので once が空撃ちで消費されず、出会った後の初回にちゃんと出る。
+  if (!eventSpeakersAllowed(ev)) return false;
   return true;
 }
 
@@ -73,6 +135,8 @@ function eventConditionMet(ev, context) {
 function runEventActions(ev, context) {
   const _speech = [];   // この event のセリフを集約 → 立ち絵プレイヤーへ一括
   for (const a of (ev.actions || [])) {
+    // ★話者ゲート：混在イベント（ミミ＋顧問など）は、未登場の顧問の行だけ落とす。
+    if (!speakerAllowed(a.speaker)) continue;
     const text = (typeof a.text === "function") ? a.text(context) : a.text;
     switch (a.type) {
       case "dialogue":

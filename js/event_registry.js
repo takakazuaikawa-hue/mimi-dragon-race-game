@@ -48,7 +48,19 @@ registerEvent({
     { type: "tutorial_message", speaker: "mimi", expr: "panic",
       text: "競竜なんて、わたし来たばかりで右も左も……どこを見たらいいんでしょう？" },
     { type: "tutorial_message", speaker: "sake_udada",
-      text: "落ち着け。まずは出走表とコースを見ろ。脚質と気配だ。賭け方は——単竜＝1着、複竜＝3着以内、ワイド竜＝2頭が3着以内。それだけ覚えりゃいい。" },
+      text: "落ち着け。まずは出走表とコースを見ろ。脚質と気配だ。賭け方は——単竜＝1着、複竜＝3着以内、ワイド竜＝2頭が3着以内。それだけ覚えりゃいい。" }
+  ]
+});
+
+// ★ミズのオッズ講釈は上から分離（元は first_race_intro_mimi の3行目）。
+//   同居のままだと、ミミ＋サケは初回から登場済み＝イベントが発火して once を消費し、
+//   未登場のミズの行だけが落ちて「二度と出ない」。第2話を読んだ後の初レース選択で出す。
+registerEvent({
+  id: "first_race_intro_mizu",
+  hook: "beforeRaceSelect",
+  condition: { once: true, requiredFlag: "_chapter_intro_2" },
+  priority: 9,
+  actions: [
     { type: "tutorial_message", speaker: "mizu",
       text: "そしてオッズは勝率ではないわ、あはん。人気と価値を、分けて見ることね。" }
   ]
@@ -272,12 +284,21 @@ registerEvent({
 
 // ===== §10 Phase 3: Crybaby dragon (Poro) story + Village reactions =====
 
+// ★ポロの門番＝poroFound()（単勝2勝目の発見アーク）が唯一。話者ゲート（顧問＝advisorMet）では塞げない：
+//   下の3イベントは speaker が mimi/sake＝常時OKなのに、本文でポロを名指ししているため。
+//   さらに poro は ORIGINAL_8＝全レースの既定出走表に居るので、ゲート無しだと「初レースの出走表」で
+//   いきなり「泣き虫竜ポロちゃん」と出て、発見アークの命名オチが潰れる（once も空撃ちで消費）。
+//   poro.js は event_registry.js より後に読み込まれるため typeof で確認し、判定不能なら出さない側に倒す。
+function poroKnownForEvents() {
+  try { return (typeof poroFound === "function") && !!poroFound(); } catch (e) { return false; }
+}
+
 registerEvent({
   id: "poro_first_sight",
   hook: "afterEntryList",
   condition: {
     once: true,
-    test: ctx => ctx && ctx.race && getRaceDragonIds(ctx.race).includes("poro")
+    test: ctx => poroKnownForEvents() && ctx && ctx.race && getRaceDragonIds(ctx.race).includes("poro")
   },
   actions: [{ type: "dialogue", speaker: "mimi", expr: "default",
     text: "あ……泣き虫竜ポロちゃん。泣いてるのに……足音は、落ち着いてる気がする。気のせい、かなあ。" }]
@@ -288,7 +309,8 @@ registerEvent({
   hook: "afterRaceAnalysis",
   condition: {
     once: true,
-    test: ctx => state.player.collection.poro && state.player.collection.poro.records.racesSeen >= 3
+    test: ctx => poroKnownForEvents() &&
+      state.player.collection.poro && state.player.collection.poro.records.racesSeen >= 3
   },
   actions: [
     { type: "dialogue", speaker: "sake_udada",
@@ -303,7 +325,7 @@ registerEvent({
   hook: "afterRaceResult",
   condition: {
     once: true,
-    test: ctx => ctx && state.current && state.current.raceResult &&
+    test: ctx => poroKnownForEvents() && ctx && state.current && state.current.raceResult &&
       state.current.raceResult.entries.slice(0,3).some(e => e.dragon.id === "poro")
   },
   priority: 8,
@@ -367,7 +389,18 @@ registerEvent({
     { type: "dialogue", speaker: "mimi", expr: "happy",
       text: "神兎大レース……竜レース界の、頂点。こんな場所に、わたしが立てるなんて……！" },
     { type: "dialogue", speaker: "sake_udada",
-      text: "長距離マラソン、最高峰の竜たち、観衆の熱狂だ。ここまで来たなら、胸を張れ。" },
+      text: "長距離マラソン、最高峰の竜たち、観衆の熱狂だ。ここまで来たなら、胸を張れ。" }
+  ]
+});
+// ★ミズの行は分離（元は rank7_first_intro_shinto の3行目）。同居のままだと、物語を飛ばして
+//   第2話未読のまま神兎大レースへ来た人は「ミミ＋サケだけ出て once 消費」or「イベント全体が持ち越し」に
+//   なる。分離すれば、ミミ/サケは頂点の瞬間に喋り、ミズは出会った後の同レースでちゃんと喋る。
+registerEvent({
+  id: "rank7_first_intro_shinto_mizu",
+  hook: "afterRaceSelect",
+  condition: { once: true, raceId: "race_lapan_shinto_grand" },
+  priority: 9,
+  actions: [
     { type: "dialogue", speaker: "mizu",
       text: "妙味は巨額の配当よ、あはん。市場のハイプを冷静に剥がせる者だけが、残るの。" }
   ]
@@ -380,7 +413,18 @@ registerEvent({
   priority: 7,
   actions: [
     { type: "dialogue", speaker: "mimi", expr: "happy",
-      text: "鳳凰竜フェニックス……！ 黄金の翼の、伝説の竜さん。わぁ、観客が大歓声ですっ！" },
+      text: "鳳凰竜フェニックス……！ 黄金の翼の、伝説の竜さん。わぁ、観客が大歓声ですっ！" }
+  ]
+});
+// ★ミズの行は分離（元は rival_intro_phenix の2行目）。フェニックス初出走はランク4＝総資産は足りるが、
+//   _chapter_intro_2 は「物語を実際に読んだ」フラグなので、物語を飛ばした人はミズ未登場のまま到達しうる。
+//   同居のままだとミミの行だけ出て once を消費し、ミズの講釈が二度と出なくなる。
+registerEvent({
+  id: "rival_intro_phenix_mizu",
+  hook: "afterEntryList",
+  condition: { once: true, test: ctx => ctx && ctx.race && getRaceDragonIds(ctx.race).includes("phenix") },
+  priority: 6,   // ミミの行(7)の直後。同点の raika/stella/glaze より先に登録＝並び順は維持。
+  actions: [
     { type: "dialogue", speaker: "mizu",
       text: "ただし市場は本命視しすぎるわ、あはん。これだけ買われて、まだ値ごろ……？ 期待値を疑いなさい。" }
   ]

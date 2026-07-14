@@ -61,7 +61,9 @@ function pgReset() {
 function renderPoroGourmet() {
   if (!(typeof poroGourmetUnlocked === "function" && poroGourmetUnlocked())) {
     if (typeof renderHome === "function") renderHome();
-    if (typeof showInfoPopup === "function") showInfoPopup("🏃 ポロのグルメレース",
+    // ★このロック案内が出る＝未解放＝ポロ未発見のこともある。相棒の名前は伏せる（命名オチ・R4）。
+    const _pgFound = (typeof poroFound === "function") && poroFound();
+    if (typeof showInfoPopup === "function") showInfoPopup(_pgFound ? "🏃 ポロのグルメレース" : "🏃 ？？？のミニゲーム",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>本編をクリア（エンディングを観る）すると解放されます。</small></div></div>`);
     return;
   }

@@ -280,6 +280,35 @@ function advisorMet(castKey) {
   } catch (e) { return false; }
 }
 
+// ★門番ヘルパ（正本・全画面共通）──────────────────────────────
+//   「未登場の顧問の“正体”を画面に出さない」ための唯一の入口。名前・記号・テーマ色を出す箇所は
+//   STORY_CAST[k].name を直接読まず、必ず castNameSafe/castSymbolSafe/castColorSafe を通す。
+//   ・顧問（STORY_CAST のキー）＝ advisorMet() が真のときだけ本名。
+//   ・セレスティアだけ2段：celestiaStrangerSeen（破産の伏線）で「あのお姉さん🌌」、
+//     第5話（_chapter_intro_5）で正体解禁。伏線段階で本名・☄️・立ち絵を出さない。
+//   ・fail-closed：例外や未定義のときは伏せる側（？？？）に倒す。ネタバレは不可逆・非表示は無害。
+function castStrangerSeen() {
+  try { return typeof getStoryFlag === "function" && !!getStoryFlag("celestiaStrangerSeen"); } catch (e) { return false; }
+}
+function castNameSafe(castKey) {
+  try {
+    if (advisorMet(castKey)) return (STORY_CAST[castKey] || {}).name || "？？？";
+    if (castKey === "celestia" && castStrangerSeen()) return "あのお姉さん";
+  } catch (e) {}
+  return "？？？";
+}
+function castSymbolSafe(castKey) {
+  try {
+    if (advisorMet(castKey)) return (STORY_CAST[castKey] || {}).symbol || "❓";
+    if (castKey === "celestia" && castStrangerSeen()) return "🌌";
+  } catch (e) {}
+  return "❓";
+}
+function castColorSafe(castKey) {
+  try { if (advisorMet(castKey)) return (STORY_CAST[castKey] || {}).color || "#8a8175"; } catch (e) {}
+  return "#8a8175";   // 未登場＝無彩色（テーマ色でキャラを推測させない）
+}
+
 // (b) contextual one-liners — shown as an "advisor voice" on gameplay screens
 // once the advisor is met. Flavor / perspective only; never affects race math.
 const STORY_RACE_VOICE = {

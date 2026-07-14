@@ -36,6 +36,45 @@ function _gDexTotal() { try { return (typeof DRAGONS !== "undefined") ? DRAGONS.
 function _gLifeStage() { try { return (state.assets && state.assets.unlockedLifeStages) || 0; } catch (e) { return 0; } }
 function _gLifeNodes() { try { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).filter(function (k) { return state.lifeTree.unlocked[k]; }).length; } catch (e) { return 0; } }
 
+// ★ネタバレ門番 ─────────────────────────────────────────────
+//   目標は「まだ出会っていない相手」の名前まで先に見せてしまう（新規セーブでも全段が読める）ため、
+//   物語側（ui_story.js の ■■■■■■）と足並みを揃えて、未登場キャラの固有名・章題だけを伏せる。
+//   ・顧問（サケ/ミズ/スミカ/マクラ/セレスティア）＝ data_assets.js の advisorMet() が唯一の述語。
+//   ・ポロ＝ poro.js の poroFound() が唯一の門番（命名オチを潰さないため名前も「泣き虫」も出さない）。
+//   ・伏せるのは正体だけ。条件（総資産◯◯・第N話を読む・2勝）は残す＝進む先はわかる（予告はOK）。
+//   ・fail-closed：関数が未定義／例外なら「まだ出会っていない」側に倒す（ネタバレは不可逆・伏字は無害）。
+function _gAdvisorMet(castKey) {
+  try { return (typeof advisorMet === "function") ? !!advisorMet(castKey) : false; } catch (e) { return false; }
+}
+function _gPoroFound() {
+  try { return (typeof poroFound === "function") ? !!poroFound() : false; } catch (e) { return false; }
+}
+// この目標の中身を伏せるか＝依存する相手（cast＝顧問キー／hides:"poro"）にまだ出会っていない。
+// ★判定は goalDone ではなく advisorMet/poroFound で行う（達成フラグと“出会い”は別物のため）。
+function goalMasked(g) {
+  try {
+    if (!g) return false;
+    if (g.cast && !_gAdvisorMet(g.cast)) return true;
+    if (g.hides === "poro" && !_gPoroFound()) return true;
+  } catch (e) { return true; }   // 例外時も伏せる側へ
+  return false;
+}
+// 表示用タイトル／ヒント（★UI側は g.title / g.hint を直読みせず必ずこの2つを通すこと）。
+function goalTitleSafe(g) {
+  if (!g) return "";
+  return goalMasked(g) ? (g.maskTitle || g.title || "") : (g.title || "");
+}
+function goalHintSafe(g) {
+  if (!g) return "";
+  return goalMasked(g) ? (g.maskHint || g.hint || "") : (g.hint || "");
+}
+// 表示用アイコン。★記号もネタバレになりうる（☄️＝STORY_CAST.celestia.symbol）ので、
+//   maskIcon を持つ目標は未登場のあいだ無害な記号へ差し替える（castSymbolSafe と同じ考え方）。
+function goalIconSafe(g) {
+  if (!g) return "";
+  return goalMasked(g) ? (g.maskIcon || g.icon || "") : (g.icon || "");
+}
+
 // 段メタ（物語進行）。
 var GOAL_PHASES = [
   { id: 1, label: "序章 ― 生き延びる" },
@@ -55,28 +94,32 @@ var GOALS = [
   { id: "firstMeal",  phase: 1, icon: "🍙", title: "屋台のごはんにありつく",     hint: "暮らしが上がると食事も変わる。",           done: function () { return _gLifeStage() >= 1; } },
 
   // ── 第二話：オッズと市場 ── 🛍️モール買い物が開く ──
-  { id: "readCh2",    phase: 2, icon: "📊", title: "ミズの分析を学ぶ（第2話）", hint: "総資産3千 ＋ 第2話を読む → 🛍️モールで買い物が開放。", done: function () { return _gFlag("_chapter_intro_2"); } },
+  // cast: 未登場のあいだ固有名を伏せる（maskTitle/maskHint に切替）。条件＝総資産・第N話はそのまま残す。
+  { id: "readCh2",    phase: 2, icon: "📊", title: "ミズの分析を学ぶ（第2話）", hint: "総資産3千 ＋ 第2話を読む → 🛍️モールで買い物が開放。", cast: "mizu", maskTitle: "？？？に会う（第2話）", done: function () { return _gFlag("_chapter_intro_2"); } },
   { id: "changeFit",  phase: 2, icon: "👗", title: "衣装を着替えてみる",         hint: "モールで服を手に入れて着替える。",         done: function () { return _gOutfitCount() >= 2; } },
   { id: "wideHit",    phase: 2, icon: "✨", title: "ワイド／複勝を当てる",       hint: "単勝の外に“妙味”を見つける。",             done: function () { return _gFlag("firstWideHit"); } },
   { id: "rankUp",     phase: 2, icon: "🏅", title: "ランクを上げる",             hint: "出走と勝利でランク2へ。",                   done: function (s) { return (s.player.rank || 1) >= 2; } },
 
   // ── 第三話：暮らしを立てる ── 🌱くらしツリー・生活資産／2勝で🐲龍舎・竜スカウト ──
-  { id: "readCh3",    phase: 3, icon: "🏠", title: "スミカと総資産（第3話）",   hint: "総資産3万 ＋ 第3話を読む → 🌱くらしツリー・生活資産が開放。", done: function () { return _gFlag("_chapter_intro_3"); } },
-  { id: "buddy",      phase: 3, icon: "🐲", title: "相棒を見つける（2勝）",     hint: "2勝するとポロと出会い、🐲龍舎・竜スカウトが開く。", done: function (s) { return (s.player.wins || 0) >= 2; } },
+  { id: "readCh3",    phase: 3, icon: "🏠", title: "スミカと総資産（第3話）",   hint: "総資産3万 ＋ 第3話を読む → 🌱くらしツリー・生活資産が開放。", cast: "sumika", maskTitle: "？？？と総資産（第3話）", done: function () { return _gFlag("_chapter_intro_3"); } },
+  // hides:"poro" ＝ 発見前は名前「ポロ」を出さない（命名オチを潰さないため。発見条件の2勝は仕様どおり不変）。
+  { id: "buddy",      phase: 3, icon: "🐲", title: "相棒を見つける（2勝）",     hint: "2勝するとポロと出会い、🐲龍舎・竜スカウトが開く。", hides: "poro", maskHint: "2勝すると相棒と出会い、🐲龍舎・竜スカウトが開く。", done: function (s) { return (s.player.wins || 0) >= 2; } },
   { id: "lifeTree",   phase: 3, icon: "🌱", title: "くらしツリーを育てはじめる", hint: "暮らしポイントで生活を解放する。",         done: function () { return _gLifeNodes() >= 1; } },
   { id: "oneRoom",    phase: 3, icon: "🛏️", title: "ワンルームへ引っ越す",       hint: "総資産を伸ばして住まいを上げる。",         done: function () { return _gLifeStage() >= 2; } },
 
   // ── 第四話：配信者になる ── 📱スマホ購入でホーム放送化・SNS解禁 ──
-  { id: "meetMakura", phase: 4, icon: "📣", title: "マクラに会う（第4話）",     hint: "総資産100万 ＋ 第4話を読む → 📖図鑑の深い情報。", done: function () { return _gFlag("metMakura"); } },
-  { id: "buyPhone",   phase: 4, icon: "📱", title: "スマホを買って配信を始める", hint: "マクラに背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", done: function () { return _gFlag("phoneBought"); } },
+  { id: "meetMakura", phase: 4, icon: "📣", title: "マクラに会う（第4話）",     hint: "総資産100万 ＋ 第4話を読む → 📖図鑑の深い情報。", cast: "makura", maskTitle: "？？？に会う（第4話）", done: function () { return _gFlag("metMakura"); } },
+  { id: "buyPhone",   phase: 4, icon: "📱", title: "スマホを買って配信を始める", hint: "マクラに背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", cast: "makura", maskHint: "？？？に背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", done: function () { return _gFlag("phoneBought"); } },
   { id: "fol10k",     phase: 4, icon: "💗", title: "フォロワーを1万人にする",   hint: "名声と戦績で配信を育てる。",               done: function () { return goalFollowers() >= 10000; } },
   { id: "dexHalf",    phase: 4, icon: "📖", title: "図鑑を半分まで埋める",       hint: "出会った竜を記録していく。",               done: function () { var seen = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0; return seen >= Math.ceil(_gDexTotal() / 2); } },
 
   // ── 終章：島を守る ── 全開放（スカウト全ロケ・買い物全品・暮らし全枝・上級グルメ） ──
-  { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: "総資産1億 ＋ 第5話 → 終章・☄️絶滅メーター。", done: function () { return _gFlag("_chapter_intro_5") || _gFlag("celestiaStrangerSeen"); } },
+  // セレスティアは伏線段階（celestiaStrangerSeen）でも本名・☄️・「神眼」を出さない（解禁は第5話＝advisorMet）。
+  { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: "総資産1億 ＋ 第5話 → 終章・☄️絶滅メーター。", cast: "celestia", maskTitle: "？？？（第5話）", maskHint: "総資産1億 ＋ 第5話を読む → 終章がはじまる。", done: function () { return _gFlag("_chapter_intro_5") || _gFlag("celestiaStrangerSeen"); } },
   { id: "scout3",     phase: 5, icon: "🌋", title: "新たな地で竜を3頭スカウトする", hint: "終章で全ロケーション（火山・水中・空中…）が開放。", done: function () { return _gScouted() >= 3; } },
   { id: "fol100k",    phase: 5, icon: "💗", title: "フォロワーを10万人にする",   hint: "島いちばんの予想家へ。",                   done: function () { return goalFollowers() >= 100000; } },
-  { id: "protect",    phase: 5, icon: "☄️", title: "賭場を壊さず、島を守りきる", hint: "終章をクリアしてエンディングへ。",         done: function () { try { return !!(state.player.epilogue && state.player.epilogue.edFlag); } catch (e) { return false; } } }
+  // ☄️はセレスティアの記号（data_assets.js の STORY_CAST.celestia.symbol）＝未登場のあいだは出さない（R3）。文面に固有名は無いので伏せるのはアイコンだけ。
+  { id: "protect",    phase: 5, icon: "☄️", title: "賭場を壊さず、島を守りきる", hint: "終章をクリアしてエンディングへ。",         cast: "celestia", maskIcon: "🏝️", done: function () { try { return !!(state.player.epilogue && state.player.epilogue.edFlag); } catch (e) { return false; } } }
 ];
 
 function goalDone(g) { try { return !!g.done(state); } catch (e) { return false; } }
@@ -90,4 +133,9 @@ function nextGoal() {
   for (var i = 0; i < GOALS.length; i++) if (!goalDone(GOALS[i])) return GOALS[i];
   return null;
 }
-if (typeof window !== "undefined") { window.GOALS = GOALS; window.nextGoal = nextGoal; window.goalsStats = goalsStats; }
+// ★門番つきの表示関数も公開（ホーム／目標一覧の両方が同じ伏字ルールを使うため）。
+if (typeof window !== "undefined") {
+  window.GOALS = GOALS; window.nextGoal = nextGoal; window.goalsStats = goalsStats;
+  window.goalMasked = goalMasked; window.goalTitleSafe = goalTitleSafe; window.goalHintSafe = goalHintSafe;
+  window.goalIconSafe = goalIconSafe;
+}

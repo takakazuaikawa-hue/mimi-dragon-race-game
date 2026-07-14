@@ -92,12 +92,14 @@ function _igStories(ci) {
     row.appendChild(st);
   }
   // NPCのストーリー（軽い・タップで画像＋ひとこと）
+  // ★門番：まだ出会っていない相手はストーリー枠にも出さない（gate＝sns.js の _snsCastOk と同じ台帳）。
+  //   ポロは発見前＝名前も「ぐすっ」も出さない（命名オチ）。マクラは第4話で出会うまで出さない。
   const npc = [
     { ic: "🐰", nm: "mimi", h: "@mimi_yosou", t: "きょうも配信するよ〜！見にきてね🐰" },
     { ic: "🔥", nm: "推し竜", h: "@oshi_dragon", t: "本命は決めた。…当たるとは言ってない。" },
-    { ic: "🐉", nm: "ポロ", h: "@poro_naki", t: "おねえちゃん、きょうもみにきたよ。ぐすっ" },
-    { ic: "🎤", nm: "マクラ", h: "@makura_live", t: "さあ今日も竜が駆ける——！🐉🔥" }
-  ];
+    { ic: "🐉", nm: "ポロ", h: "@poro_naki", t: "おねえちゃん、きょうもみにきたよ。ぐすっ", gate: "@poroFound" },
+    { ic: "🎤", nm: "マクラ", h: "@makura_live", t: "さあ今日も竜が駆ける——！🐉🔥", gate: "makura" }
+  ].filter(n => !n.gate || ((typeof _snsCastOk === "function") ? _snsCastOk(n.gate) : false));   // fail-closed
   npc.forEach((n, i) => {
     const st = el("button", "ig-story");
     st.innerHTML = `<span class="ig-story-ring"><span class="ig-story-av">${n.ic}</span></span><span class="ig-story-nm">${n.nm}</span>`;

@@ -84,7 +84,8 @@ function renderEconomy() {
   // ── 🏗 島づくり入口（5章解放・docs/ISLAND_INVEST_DESIGN.md）──
   //   稼いだ富を島に注ぎ、絶滅を押し戻す。5章前はロック＋条件明示（解放の見せ場）。
   if (typeof renderIslandBuild === "function") {
-    const _ch5 = (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5")) || total >= 100000000;
+    // ★門番：解放は advisorMet("celestia")＝総資産1億 AND 第5話既読のみ（旧 OR は第5話未読でも総資産だけで開いた＝未登場のまま終章の中身に触れてしまう）。
+    const _ch5 = (typeof advisorMet === "function") && advisorMet("celestia");
     if (_ch5) {
       const bd = el("button", "card isl-entry");
       const _tn = (typeof islandTier === "function") ? ISLAND_TIER_NAME[islandTier()] : "";
@@ -95,9 +96,10 @@ function renderEconomy() {
       app.appendChild(bd);
     } else {
       const bl = el("button", "card isl-entry locked");
-      bl.innerHTML = `<span class="isl-entry-ic">🔒</span><span class="isl-entry-tx"><b>島づくり</b><small>終章（第5話）で、島そのものに投資できるようになります</small></span>`;
+      bl.innerHTML = `<span class="isl-entry-ic">🔒</span><span class="isl-entry-tx"><b>島づくり</b><small>終章（総資産1億・第5話）で、島そのものに投資できるようになります</small></span>`;
+      // ★ロック案内では未登場キャラの固有名（第5話の副題）を出さない。予告は「終章（総資産1億・第5話）」まで。
       bl.onclick = () => { if (typeof showInfoPopup === "function") showInfoPopup("🏗 島づくり",
-        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語が終章（<u>第5話「セレスティアの神眼」</u>・総資産1億）に入ると、勝ち取った富を島の施設・店・レース場・竜宿舎・公共・産業に投資して、島を造り替えられるようになります。</small></div></div>`); };
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語が<u>終章（総資産1億・第5話）</u>に入ると、勝ち取った富を島の施設・店・レース場・竜宿舎・公共・産業に投資して、島を造り替えられるようになります。</small></div></div>`); };
       app.appendChild(bl);
     }
   }
@@ -148,7 +150,9 @@ function renderEconomy() {
 
   // ── 市況メモ（ミズの声・表示専用フレーバー）──
   // ★BUGFIX：ミズと出会う前（第2話未読）は市況メモを出さない（advisorMet）。
-  if (typeof advisorMet !== "function" || advisorMet("mizu")) {
+  // ★fail-closed 化：旧 `typeof advisorMet !== "function" ||` は読み込み順の事故で advisorMet が
+  //   未定義のとき「出す」側に倒れていた（＝未登場のミズの名が出る）。伏せる側に倒す（R6）。
+  if ((typeof advisorMet === "function") && advisorMet("mizu")) {
     const memo = tier.lv >= 4
       ? "市場はあなたを中心に回りはじめた。……あはん、いい流れね。"
       : tier.lv >= 2

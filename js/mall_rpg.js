@@ -1256,8 +1256,9 @@ function rpgBindKeys() {
 function renderMallRpg(flash) {
   if (typeof mallUnlocked === "function" && !mallUnlocked()) {   // Ⓑ 親mallと同じ条件でゲート（モールがロック中は大冒険も閉じる）。
     if (typeof renderHome === "function") renderHome();
+    // ★ロック案内で章題（＝未登場の顧問名）は出さない。予告は「第N話を読むと開放」までに留める。
     if (typeof showInfoPopup === "function") showInfoPopup("🛍️ お買い物ダンジョン",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話「ミズの分析」</u>を読むとモールが解放されます（総資産3千で第2話が解禁）。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話</u>を読むとモールが解放されます（総資産3千で第2話が解禁）。</small></div></div>`);
     return;
   }
   state.ui.screen = "mall_rpg";
@@ -1446,17 +1447,30 @@ function rpgShowHelp() {
 }
 
 // ── 🛍️ フロアのショップ（買い物＝モールに来る理由。店主との値切り・タイムセール＝買い物自体を遊びに）
+// ★門番：店主＝スミカは第3話（総資産3万）で出会う顧問。モール解放は第2話なので、出会う前に店へ入れてしまう。
+//   会っていない相手の名前も口調（＝ミミの名を知っている「ミミ様」呼び）も出さない＝未登場は「店員さん」＋「お客様」。
+//   値切り/購入/フロアコンプ/グランドコンプの _shopMsg も同じ吹き出しに出るので、表示直前のここ1箇所で敬称を差し替える。
+function rpgKeeperMet() { return (typeof advisorMet === "function") && !!advisorMet("sumika"); }   // fail-closed（未定義＝出さない側に倒す）
+function rpgKeeperName() {
+  if (!rpgKeeperMet()) return "店員さん";
+  const n = (typeof castNameSafe === "function") ? castNameSafe("sumika") : "？？？";   // 名前は必ず門番ヘルパ経由
+  return String(n).split("・")[0];
+}
+function rpgKeeperLine(s) {
+  const t = String(s || "");
+  return rpgKeeperMet() ? t : t.replace(/ミミ様/g, "お客様");   // 未登場の店員はミミの名を知らない
+}
 function rpgRenderShop(app) {
   const d = rpgData();
   const fi = RPG ? RPG.fi : 0, meta = rpgFloorMeta(fi), arr = rpgShopFor(fi);
   const own = rpgShopOwnedN(arr);
   const dealIt = RPG && RPG._dealId ? arr.find(x => x.id === RPG._dealId) : null;
 
-  // 店主スミカ（声＝施設・暮らしのスミカ「ミミ様」）
+  // 店主（出会った後＝施設・暮らしのスミカ「ミミ様」／出会う前＝名もなき「店員さん」「お客様」）
   const keep = el("div", "rpg-shopkeep");
-  const line = (RPG && RPG._shopMsg) ? RPG._shopMsg
-    : (dealIt ? `いらっしゃいませ、ミミ様♪ 本日のおすすめは ${dealIt.ic}${dealIt.n} ですわ！` : "いらっしゃいませ、ミミ様♪ ごゆっくりどうぞ");
-  keep.innerHTML = `<div class="sk-face">💁‍♀️</div><div class="sk-bubble"><b>スミカ</b><span>${line}</span></div>`;
+  const line = rpgKeeperLine((RPG && RPG._shopMsg) ? RPG._shopMsg
+    : (dealIt ? `いらっしゃいませ、ミミ様♪ 本日のおすすめは ${dealIt.ic}${dealIt.n} ですわ！` : "いらっしゃいませ、ミミ様♪ ごゆっくりどうぞ"));
+  keep.innerHTML = `<div class="sk-face">💁‍♀️</div><div class="sk-bubble"><b>${rpgKeeperName()}</b><span>${line}</span></div>`;
   app.appendChild(keep);
 
   const head = el("div", "rpg-shop-head");

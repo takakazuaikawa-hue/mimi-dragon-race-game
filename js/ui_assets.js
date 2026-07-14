@@ -48,8 +48,9 @@ function renderAssets() {
   _roomPEl.style.cursor = "pointer";
   _roomPEl.onclick = () => {
     if (_ch3unlocked) { renderLifeTree(); return; }
+    // ★この案内が出る＝第3話未読＝スミカ未登場。章の副題（＝顧問の固有名）は出さず「第3話」までに留める（R7）。
     if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話「スミカと総資産」</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
   };
 
   // ★引っ越し：コインで部屋を一段上げる（総資産では自動で上がらない）。くらしツリーと同じ「コインで解放」の作法。
@@ -125,7 +126,13 @@ function renderAssets() {
   const _nextCh = (typeof STORY_CHAPTERS !== "undefined") ? STORY_CHAPTERS.find(ch =>
     ch.id !== "ED" && total >= storyUnlockAt(ch.id) &&
     !(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_" + ch.id))) : null;
-  if (_nextCh) todo.push({ ic: "📖", label: "新しい話が読める", sub: _nextCh.title, onClick: () => renderStory() });
+  // ★門番：_nextCh は定義上「未読の章」＝その章の顧問はまだ未登場。章題そのものに固有名が入っている
+  //   （「第2話　ミズの分析予想」「第5話　セレスティアの神眼」＝本名も“神眼”も露出）ので、出会っている
+  //   顧問の章だけ章題を出し、それ以外は「第N話」までに伏せる（R7：予告はするが固有名は出さない）。
+  if (_nextCh) {
+    const _ncMet = (typeof advisorMet === "function") && advisorMet(_nextCh.cast);   // 未定義なら伏せる側（fail-closed）
+    todo.push({ ic: "📖", label: "新しい話が読める", sub: _ncMet ? _nextCh.title : `第${_nextCh.id}話`, onClick: () => renderStory() });
+  }
   if (_ch3unlocked && ready && _readyNodeForTodo) {
     const _rtPrice = (typeof lifeNodePrice === "function") ? lifeNodePrice(_readyNodeForTodo) : 0;
     todo.push({ ic: "🌳", label: "くらしツリーが取り入れられる", sub: `${_readyNodeForTodo.title}・🪙${_rtPrice.toLocaleString("ja-JP")}`, onClick: () => renderLifeTree() });
@@ -173,9 +180,10 @@ function renderAssets() {
     ent.appendChild(entry("🌳", "くらしスキルツリー", `暮らしP ◇${st.available} 残り ・ 解放 ${st.unlockedCount}/${st.totalNodes}`, ready ? "振れる!" : "", () => renderLifeTree()));
     ent.appendChild(entry("🎁", "生活資産コレクション", `${colOwned} / ${LIFE_ASSETS.length} 解放`, "", () => renderLifeCollection()));
   } else {
-    locked.appendChild(entry("🔒", "くらしツリー・生活資産", "第3話「スミカと総資産」を読むと開放", "", () => {
+    // ★同上：第3話未読＝スミカ未登場なので、章の副題（固有名）を伏せた予告にする（R7）。
+    locked.appendChild(entry("🔒", "くらしツリー・生活資産", "第3話を読むと開放", "", () => {
       if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
-        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話「スミカと総資産」</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
     }));
   }
   // 習い事：次に通える師範のミニ肖像を添える（未登場の師範なら無し＝ネタバレしない）。
@@ -185,13 +193,22 @@ function renderAssets() {
   // E4：予想の相談も第2話「ミズの分析」で解禁（1章は勘レース）。表示ゲートのみ・数値不変。
   if (typeof renderConsult === "function") {
     if (typeof analysisUnlocked === "function" && !analysisUnlocked()) {
-      locked.appendChild(entry("🔒", "相談（顧問）", "第2話「ミズの分析」を読むと、予想の相談ができます。", "", () => {
+      // ★ロック案内では未登場の顧問名（＝第2話の副題も含む）を出さない。予告は「第2話」まで（R7）。
+      locked.appendChild(entry("🔒", "相談（顧問）", "第2話を読むと、予想の相談ができます。", "", () => {
         if (typeof showInfoPopup === "function") showInfoPopup("💬 相談（顧問）",
-          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ相談できません</b><small><u>第2話「ミズの分析」</u>を読むと、サケ・ミズ・スミカに予想の視点をもらえます（総資産3千で第2話が解禁）。いまはカンで勝負！</small></div></div>`);
+          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ相談できません</b><small><u>第2話</u>を読むと、出会った顧問に予想の視点をもらえます（総資産3千で第2話が解禁）。いまはカンで勝負！</small></div></div>`);
       }));
     } else {
-      // 分析（相談）を最初に開いたミズを代表として添える。
-      ent.appendChild(entry("💬", "相談（顧問）", "サケ・ミズ・スミカから、予想の視点をもらいます。", "", () => renderConsult(), "images/cast/mini/mizu_mini.png"));
+      // ★門番：誘い文に並べるのは「もう出会った顧問」だけ（遷移先の相談画面は未登場を？？？で伏せている＝そこと矛盾させない）。
+      const _metNames = ["sake", "mizu", "sumika", "makura", "celestia"]
+        .filter(k => (typeof advisorMet === "function") && advisorMet(k))
+        .map(k => ((typeof castNameSafe === "function") ? castNameSafe(k) : "？？？").split("・")[0]);
+      const _consultSub = _metNames.length
+        ? `${_metNames.join("・")}から、予想の視点をもらいます。`
+        : "顧問から、予想の視点をもらいます。";
+      // 分析（相談）を最初に開いたミズを代表として添える（未登場なら肖像も出さない＝ネタバレしない）。
+      const _mizuMet = (typeof advisorMet === "function") && advisorMet("mizu");
+      ent.appendChild(entry("💬", "相談（顧問）", _consultSub, "", () => renderConsult(), _mizuMet ? "images/cast/mini/mizu_mini.png" : null));
     }
   }
   app.appendChild(el("div", "lr-sec", `<span>できること</span>`));
@@ -401,9 +418,11 @@ function renderLifeTree() {
         const ok = pr.done >= it.n;
         return `<div class="sh-row${ok ? " ok" : ""}"><span>${ok ? "☑" : "☐"}</span> ${b.icon} ${b.name}の枝を ${it.n} 節まで <i>（いま ${pr.done}）</i></div>`;
       }).join("");
+      // ★門番：宿題の主（スミカ）の名前も castNameSafe 経由（この画面は第3話既読が前提だが、名前は必ず門番を通す＝fail-closed）。
+      const _swName = ((typeof castNameSafe === "function") ? castNameSafe("sumika") : "？？？").split("・")[0];
       const box = el("div", "card sh-box");
       box.innerHTML =
-        `<div class="sh-t">🏘️ スミカの宿題 <small>${ch >= 6 ? "クリア後" : "第" + ch + "話"}</small></div>` +
+        `<div class="sh-t">🏘️ ${_swName}の宿題 <small>${ch >= 6 ? "クリア後" : "第" + ch + "話"}</small></div>` +
         `<div class="sh-note">「${hw.note}」</div>` + rows;
       app.appendChild(box);
     }

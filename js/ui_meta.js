@@ -30,10 +30,15 @@ function renderGoals() {
     items.forEach(g => {
       const done = (typeof goalDone === "function") ? goalDone(g) : false;
       const isNext = ng && g.id === ng.id;
+      // ★まだ出会っていないキャラの固有名・章題は伏せる（goals.js の門番／未定義なら伏字側に倒す＝fail-closed）。
+      const title = (typeof goalTitleSafe === "function") ? goalTitleSafe(g) : (g.maskTitle || g.title);
+      const hint  = (typeof goalHintSafe === "function") ? goalHintSafe(g) : (g.maskHint || g.hint);
+      // アイコンも門番を通す（☄️＝セレスティアの記号なので未登場のあいだは無害な記号へ）。
+      const icon  = (typeof goalIconSafe === "function") ? goalIconSafe(g) : (g.maskIcon || g.icon);
       const row = el("div", "goal-row" + (done ? " done" : "") + (isNext ? " next" : ""));
       row.innerHTML =
-        `<span class="goal-ic">${done ? "✅" : (isNext ? "🎯" : g.icon)}</span>` +
-        `<span class="goal-tx"><b>${g.title}</b><small>${done ? "達成ずみ" : g.hint}</small></span>` +
+        `<span class="goal-ic">${done ? "✅" : (isNext ? "🎯" : icon)}</span>` +
+        `<span class="goal-tx"><b>${title}</b><small>${done ? "達成ずみ" : hint}</small></span>` +
         `<span class="goal-st">${done ? "✓ クリア" : (isNext ? "挑戦中" : "")}</span>`;
       list.appendChild(row);
     });

@@ -393,7 +393,10 @@ function renderHome() {
       _onclick = () => { if (typeof renderEconomy === "function") renderEconomy(); else if (typeof renderGoals === "function") renderGoals(); };
     } else if (typeof nextGoal === "function") {
       const _ng = nextGoal();
-      _title = _ng ? `${_ng.icon} ${_ng.title}` : "✨ すべて達成しました！";
+      // ★門番：目標タイトルは未登場キャラの名前・章題を含む（例「スミカと総資産（第3話）」）ので、
+      //   g.title を直読みせず goalTitleSafe() でマスク版を得る（未登場なら「？？？」）。typeofは読込順の保険。
+      const _gt = _ng ? ((typeof goalTitleSafe === "function") ? goalTitleSafe(_ng) : _ng.title) : "";
+      _title = _ng ? `${_ng.icon} ${_gt}` : "✨ すべて達成しました！";
       _onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
     }
     if (_title) {
@@ -495,6 +498,9 @@ function renderHome() {
   const _CMC = ["#57b1dd", "#6ac06a", "#e0a0c0", "#caa44a", "#9a6ad0", "#ff9a5c"];
   const _CMT = ["ミミちゃん今日も推す！", "初見です！よろしく！", "🐲🐲🐲", "ぱほぱほ〜！", "今日こそ波乱こい", "本命党です", "穴党ですが何か", "耳ぴょこぴょこかわいい", "その衣装どこで買ったの？", "レースまだかな", "🔥🔥🔥", "💖💖", "ポロちゃん推し", "オッズ見てから来た", "村から応援してます", "🥕どうぞ", "昨日の波乱すごかった", "おやつ持ってきた", "今日の本命教えて", "かわいいの域を超えてる",
     "今日も配信おつかれ！", "ミミちゃんの予想たより", "次のレースわくわく", "本命か穴か悩む〜", "耳ぴょこんかわいすぎ", "今日の調子どう？", "いっしょにドキドキしたい", "竜たちかっこいい！", "また来ちゃった！", "投げ銭しちゃう🪙", "実況たのしみ", "推し竜に全ツッパ", "コメント読んでくれる？", "ぱほぱほ言って〜", "癒やされる〜", "がんばれミミちゃん！", "今日のラッキー竜は？", "村の誇りだよ"];
+  // ★門番：ポロは poroFound()（単勝2勝目）で出会うまで名前を出さない＝「ポロちゃん推し」が
+  //   発見前に流れると命名のオチが潰れる。fail-closed＝門番が無ければポロ入りの台詞は出さない。
+  const _CMT_OK = (typeof poroFound === "function" && poroFound()) ? _CMT : _CMT.filter(t => t.indexOf("ポロ") < 0);
   function _addCm(name, color, text, cls) {
     const d = el("div", "hl-cm" + (cls ? " " + cls : ""), `<b style="color:${color}">${name}</b>${text}`);
     cms.appendChild(d);
@@ -525,12 +531,16 @@ function renderHome() {
   function _randCm() {
     // 出会い済みの顧問がたまに登場（雰囲気のみ・表示専用）
     try {
-      const met = Object.keys(STORY_CAST).filter(k => (p.totalAssets || 0) >= castUnlockAt(k));
+      // ★門番：総資産だけで判定していたため、第5話未読でも総資産1億を超えた瞬間にセレスティアが
+      //   本名・専用色・固有セリフでコメント欄に流れ、正体がバレていた（他画面は「あのお姉さん」でマスク中）。
+      //   登場の唯一の述語＝advisorMet()。表示名/記号/色も castNameSafe/castSymbolSafe/castColorSafe を必ず通す。
+      const met = (typeof advisorMet === "function")
+        ? Object.keys(STORY_CAST).filter(k => advisorMet(k)) : [];   // fail-closed：門番が無ければ誰も出さない
       if (met.length && Math.random() < 0.16) {
-        const c = STORY_CAST[met[Math.floor(Math.random() * met.length)]];
-        let t = (STORY_RACE_VOICE && STORY_RACE_VOICE[c.key]) || c.gives;
+        const k = met[Math.floor(Math.random() * met.length)];
+        let t = (STORY_RACE_VOICE && STORY_RACE_VOICE[k]) || (STORY_CAST[k] || {}).gives || "";
         if (t.length > 34) t = t.slice(0, 33) + "…";
-        _addCm(c.symbol + c.name.split("・")[0], c.color, t);
+        _addCm(castSymbolSafe(k) + castNameSafe(k).split("・")[0], castColorSafe(k), t);
         return;
       }
     } catch (e) {}
@@ -542,7 +552,7 @@ function renderHome() {
         return;
       }
     } catch (e) {}
-    _addCm(_CMN[Math.floor(Math.random() * _CMN.length)], _CMC[Math.floor(Math.random() * _CMC.length)], _CMT[Math.floor(Math.random() * _CMT.length)]);
+    _addCm(_CMN[Math.floor(Math.random() * _CMN.length)], _CMC[Math.floor(Math.random() * _CMC.length)], _CMT_OK[Math.floor(Math.random() * _CMT_OK.length)]);
   }
   // ★流れる視聴者コメントは配信モードのみ（スマホ購入＝SNS解放より前は出さない）。
   //   静かモードはミミの独り言(_banter)と背景・目標だけ＝“配信”はまだ始まっていない、という状態を守る。
@@ -586,7 +596,12 @@ function renderHome() {
 
   // 入場通知（TikTokの "joined" 風・表示専用）：ときどき誰かが遊びに来る。
   // まれにVIPが金の入場バナー＋⭐バーストで来る＝配信の「おっ」という瞬間（表示のみ）。
-  const _VIPS = ["👑 推し竜団長", "🐉 竜好きの長老", "💎 島いちの太客", "🎤 マクラ（お忍び）"];
+  const _VIPS = ["👑 推し竜団長", "🐉 竜好きの長老", "💎 島いちの太客"];
+  // ★門番：マクラの「お忍び入場」は出会った後だけ（未登場の顧問の固有名を配信に出さない）。
+  //   実運用では配信＝スマホ購入＝第4話後だが、フラグの前後関係に依存せず advisorMet() で明示的に塞ぐ。
+  if (typeof advisorMet === "function" && advisorMet("makura")) {
+    _VIPS.push(castSymbolSafe("makura") + " " + castNameSafe("makura").split("・")[0] + "（お忍び）");
+  }
   function _joinCm(vip) {
     if (vip) {
       const vnm = _VIPS[Math.floor(Math.random() * _VIPS.length)];
@@ -744,6 +759,34 @@ function renderHome() {
   cmwrap.appendChild(qr); cmwrap.appendChild(cmbar);
   actionFloat.appendChild(cmwrap);   // コメント/いいねバー（レースへ進むの直上に浮く）
   }   // ← end if(broadcast)：コメント入力/いいねバー
+
+  // 🐉「次の一戦」台座＝★静かモードのみ。配信モードは上の .hl-actionbar にコメント/いいねバーが載るが、
+  //   静かモードでは同じ層が空＝高さ0になり、レースCTAの真上が素の余白になっていた（CTAが浮いて見える原因）。
+  //   同じ層に「次に走る一戦」を軽く据えて台座にする。★表示専用＝既存の featuredRaceToday() を読むだけで、
+  //   レース生成・着順・オッズ・配当には一切触れない。タップはCTAと同じ遷移（レース選択）。
+  if (!broadcast) {
+    try {
+      const _nr = (typeof featuredRaceToday === "function") ? featuredRaceToday() : null;
+      if (_nr) {
+        const _grade = (typeof gradeBadgeHTML === "function") ? gradeBadgeHTML(_nr.rank) : "";
+        const _nm = (typeof raceFullName === "function") ? raceFullName(_nr) : "";
+        const _time = (typeof RACE_TIME_LABEL !== "undefined" && RACE_TIME_LABEL[_nr.number]) || "";
+        const _dist = (typeof DISTANCE !== "undefined" && DISTANCE[_nr.distance]) ? DISTANCE[_nr.distance].label : "";
+        const _wx = (typeof WEATHERS !== "undefined" && WEATHERS[_nr.weather]) ? WEATHERS[_nr.weather].label : "";
+        const _meta = [_time, _dist, _wx].filter(Boolean).join("　");
+        if (_nm) {
+          const nextBtn = el("button", "hl-nextrace");
+          nextBtn.innerHTML =
+            `<span class="hl-nextrace-tag">次の一戦</span>` +
+            `<span class="hl-nextrace-nm">${_grade}${_nm}</span>` +
+            (_meta ? `<span class="hl-nextrace-meta">${_meta}</span>` : "");
+          nextBtn.title = "レース選択へ";
+          nextBtn.onclick = () => _tikGo(() => renderRaceSelect());   // CTA(.hl-race)と同じ遷移
+          actionFloat.appendChild(nextBtn);
+        }
+      }
+    } catch (e) {}   // 読めなければ静かに省略＝台座を出さないだけ（壊すより出さない）
+  }
 
   // 🙏無心(0コイン) / ⚔️最終決戦 は「いま次にやること」＝🎯目標チップ（上の goalBtn）に統合済み＝ここでは作らない。
   // コメント/いいねバーだけが常設フロート層＝出入りが無いのでミミの立ち位置も固定ドックも不動（ユーザー指摘）。

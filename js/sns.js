@@ -67,22 +67,50 @@ var SNS_IMGS = {
 };
 var SNS_IMG_FALLBACK = ["images/home_vista_day.jpg", "images/12_stage_seiryu-street-sunset_v2.png", "images/homebg/beach_day.webp"];
 function _snsHash(s) { var h = 0, t = String(s || ""); for (var i = 0; i < t.length; i++) { h = (h * 31 + t.charCodeAt(i)) >>> 0; } return h; }
+// ★立ち絵の門番台帳：未登場キャラの“顔”はどの投稿写真にも出さない（名前を伏せても顔が出れば同じこと）。
+//   新しい立ち絵を SNS_IMGS に足すときは、ここにも1行足すこと（既定は素通し＝表示なので登録漏れが唯一の穴）。
+var SNS_STAND_GATE = [
+  { m: "/stand/poro", g: "@poroFound" },    // ポロ＝発見後だけ（顔が出ると「泣き虫ポロ」の命名オチが割れる）
+  { m: "/stand/celestia", g: "celestia" },  // セレスティア＝第5話まで顔も封印（伏線段階は“知らないお姉さん”）
+  { m: "/stand/mizu", g: "mizu" },
+  { m: "/stand/sumika", g: "sumika" },
+  { m: "/stand/makura", g: "makura" }
+];
+function _snsImgOk(url) {
+  var u = String(url || "");
+  for (var i = 0; i < SNS_STAND_GATE.length; i++) if (u.indexOf(SNS_STAND_GATE[i].m) >= 0) return _snsCastOk(SNS_STAND_GATE[i].g);
+  return true;   // 風景・街並みなど（キャラの正体を含まない絵）は常時OK
+}
 function _snsPostImg(po) {
   if (po && po.img) return po.img;
-  var pool = (po && SNS_IMGS[po.handle]) || SNS_IMG_FALLBACK;
+  var pool = ((po && SNS_IMGS[po.handle]) || SNS_IMG_FALLBACK).filter(_snsImgOk);
+  // ★fail-closed：プールが立ち絵1枚だけの相手（例 @poro_naki）は全滅する。ここで元のプールへ戻すと
+  //   門番が素通しになる（ui_sns.js のストーリーは handle 直指定で呼ぶため実際に露出していた）。
+  //   全滅時は元へ戻さず、立ち絵を含まない共通フォールバック（風景）へ倒す。
+  if (!pool.length) pool = SNS_IMG_FALLBACK;
   return pool[_snsHash(po && po.id) % pool.length];
 }
-// 自分の投稿で選べる“カメラロール”（写真＋既定キャプション）。
-var SNS_CAMERA = [
+// 自分の投稿で選べる“カメラロール”（写真＋既定キャプション）。gate＝門番（"@フラグ" or 顧問キー）。
+var SNS_CAMERA_ALL = [
   { img: "images/39_char_mimi-keyvisual-racetrack.png", cap: "きょうのわたし📸 配信たのしかった！" },
   { img: "images/homebg/beach_day.webp", cap: "島のビーチでひとやすみ🏖️" },
   { img: "images/homebg/balcony_night.webp", cap: "夜のバルコニーから。いい風🌙" },
   { img: "images/racebg/fire.webp", cap: "今日のレース場、熱かった🔥" },
   { img: "images/home_vista_day.jpg", cap: "いい天気！ 竜たちもごきげん☀️" },
   { img: "images/12_stage_seiryu-street-sunset_v2.png", cap: "聖龍街の夕暮れ、すきだなぁ🌇" },
-  { img: "images/cast/stand/poro.webp", cap: "相棒のポロと📷 泣き虫だけど最高の子" },
+  // ★BUGFIX（出会う前のキャラが出る）：発見前のカメラロールに「ポロ」の名前も立ち絵も出さない。
+  { img: "images/cast/stand/poro.webp", cap: "相棒のポロと📷 泣き虫だけど最高の子", gate: "@poroFound" },
   { img: "images/homebg/market_day.webp", cap: "食べ歩き中〜🍢 なに食べよ" }
 ];
+// ui_sns.js は SNS_CAMERA を配列として直接読むので、中身を“その場で”入れ替えて同期する（snsCheckin から毎描画）。
+var SNS_CAMERA = [];
+function snsSyncCamera() {
+  var ok = SNS_CAMERA_ALL.filter(function (c) { return _snsCastOk(c.gate); });
+  SNS_CAMERA.length = 0;
+  for (var i = 0; i < ok.length; i++) SNS_CAMERA.push(ok[i]);
+  return SNS_CAMERA;
+}
+snsSyncCamera();   // 読み込み時にも中身を入れておく（state未生成でも門番はfalse側＝安全に倒れる）
 
 // =========================================================================
 // 日替わり“生フィード”の投稿プール（毎日ここから巡回して数件流れる）。
@@ -122,15 +150,17 @@ var SNS_DAILY = [
   { id: "d_celes", ic: "🌌", name: "セレスティア", handle: "@celestia_sky", base: 333,
     text: "……今日も、ちっぽけな灯りがよく燃えている。さて、どこまで視えるかしらね。" }
 ];
-// ★BUGFIX（出会う前のキャラが投稿する）：顧問/ポロの日替わり投稿は「出会った後」だけ流す。
-//   顧問＝advisorMet（総資産＋章既読）／ポロ＝poroFound。それ以外の島民は常時。
-var SNS_DAILY_GATE = { d_sake: "sake", d_mizu: "mizu", d_makura: "makura", d_sumika: "sumika", d_celes: "celestia", d_poro: "@poroFound" };
-function _snsDailyOk(po) {
-  var g = SNS_DAILY_GATE[po.id];
-  if (!g) return true;
-  if (g.charAt(0) === "@") return typeof getStoryFlag === "function" && !!getStoryFlag(g.slice(1));
-  return (typeof advisorMet === "function") ? advisorMet(g) : true;
+// ★BUGFIX（出会う前のキャラが投稿する）：顧問/ポロの投稿・手紙は「出会った後」だけ出す。
+//   門番の正本＝顧問は advisorMet(castKey)（総資産＋その章の既読）／"@フラグ"はストーリーフラグ（例：ポロ＝poroFound）。
+//   それ以外（ミミ・島民・モブ・新聞・屋台）は常時OK。SNSは本名・ハンドル・立ち絵が一度に出る最悪の露出面なので、
+//   advisorMet が未定義（読み込み順の事故など）のときは “出さない” 側に倒す＝fail-closed（ネタバレは取り返しがつかない）。
+function _snsCastOk(gate) {
+  if (!gate) return true;
+  if (gate.charAt(0) === "@") return _snsFlag(gate.slice(1));
+  return (typeof advisorMet === "function") ? !!advisorMet(gate) : false;
 }
+var SNS_DAILY_GATE = { d_sake: "sake", d_mizu: "mizu", d_makura: "makura", d_sumika: "sumika", d_celes: "celestia", d_poro: "@poroFound" };
+function _snsDailyOk(po) { return _snsCastOk(SNS_DAILY_GATE[po.id]); }
 
 // =========================================================================
 // マイルストーン投稿（進行で“永続解放”・節目の祝福）。日替わりとは別に上位に出る。
@@ -156,8 +186,10 @@ var SNS_POSTS = [
     unlock: function () { return _snsRaces() >= 30; } },
   { id: "p_makura_legend", ic: "🎤", name: "実況マクラ", handle: "@makura_live", base: 402,
     text: "もはやミミの予想は“当てもの”じゃない。物語だ。この島の誰もが、次の一戦を待っている。", unlock: function () { return _snsRank() >= 5; } },
+  // ★BUGFIX（正体バレ）：伏線段階（celestiaStrangerSeen＝破産で見た“知らないお姉さん”）では出さない。
+  //   本名・@celestia_sky・立ち絵は第5話（advisorMet("celestia")）まで封印＝SNS_POST_GATE が唯一の門番。
   { id: "p_celestia", ic: "🌌", name: "セレスティア", handle: "@celestia_sky", base: 666,
-    text: "……面白い灯りね。消えそうで、消えない。あなたの“視る目”、わたしが見定めてあげる。", unlock: function () { return _snsFlag("celestiaStrangerSeen"); } },
+    text: "……面白い灯りね。消えそうで、消えない。あなたの“視る目”、わたしが見定めてあげる。", unlock: function () { return true; } },
   { id: "p_thanks", ic: "🐰", name: "ミミ", handle: "@mimi_yosou", base: 888,
     text: "いつも見てくれて、ほんとにありがとう。わたし、この世界に来てよかった。…これからも、いっしょに当てようね！", unlock: function () { return _snsRaces() >= 10; } },
   // ── 暮らし還流（docs/KURASHI_STORY_WEAVE.md B）──
@@ -168,6 +200,16 @@ var SNS_POSTS = [
     text: "また来たよ、あの子。うちの新作、いちばんうまそうに食うんだ。……悪い気はしねえ。（グルメ面『みみしんぼ』連載中）",
     unlock: function () { return Object.keys(((typeof state !== "undefined" && state.player) || {}).meals || {}).length >= 10; } }
 ];
+// ★BUGFIX（マイルストーンだけ素通し）：日替わり(SNS_DAILY_GATE)は守れていたのに、rank/コインだけで解放される
+//   マイルストーン投稿は顧問の登場判定を通っておらず、「日替わりのマクラは出ないのに投稿はする」矛盾が起きていた。
+//   顧問に紐づく投稿はここに登録し、unlock と AND で判定する（ミミ/島民/モブ/新聞/屋台/竜舎は対象外＝常時OK）。
+var SNS_POST_GATE = {
+  p_rank2: "makura", p_makura_legend: "makura",   // 実況マクラ＝第4話
+  p_rich: "mizu",                                 // ミズ＝第2話
+  p_veteran: "sake",                              // サケ＝第1話（最初から会っている）
+  p_celestia: "celestia",                         // セレスティア＝第5話（伏線段階では本名も立ち絵も出さない）
+  p_poro: "@poroFound"                            // ポロ＝単勝2勝目の発見後だけ
+};
 
 // =========================================================================
 // デイリーお題（投票・その日のものを1つ／options.share=反応の基準%＝コスメ）。
@@ -231,10 +273,13 @@ var FAN_LETTERS = [
   { id: "l_walker", ic: "📷", from: "写真館のばあばより", subject: "あんたの歩いた道",
     body: "ミミちゃんへ。\nうちの店の前を、あんたが何度も通るのを見てたよ。市場も、崖も、温泉も。\n島の人間でも、そんなに歩く子はいない。\nあんたが見てくれた景色はね、みんな、誰かのふるさとなんだ。\nありがとうね。今度、寄っていきな。いちばんいい笑顔を、一枚撮ってあげる。",
     unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 20; } },
+  // ★BUGFIX（正体バレ）：伏線段階では届かない。第5話で出会ってから届く手紙にする（門番＝SNS_LETTER_GATE）。
   { id: "l_celestia", ic: "🌌", from: "セレスティア", subject: "天井の、その先へ",
     body: "ちっぽけな予想家へ。\nこの世界には“天井”がある。価値の届かぬものは、淘汰される。\n——だけど、あなたは。その理に、まっすぐ抗ってみせた。\n面白い。あなたの物語の結末、最後まで見届けてあげる。",
-    unlock: function () { return _snsFlag("celestiaStrangerSeen"); } }
+    unlock: function () { return true; } }
 ];
+// ★手紙の門番（投稿と同じ規約）。値が顧問キーなら差出人名も castNameSafe() で解決する（未登場なら？？？に倒れる）。
+var SNS_LETTER_GATE = { l_sake: "sake", l_mizu: "mizu", l_celestia: "celestia", l_poro: "@poroFound" };
 
 // =========================================================================
 // 進捗ストア（表示専用メタ）。
@@ -275,10 +320,11 @@ function timelinePosts() {
   var daily = _snsDailyPick(SNS_DAILY.filter(_snsDailyOk), 6, 1).map(function (po, i) {   // ★BUGFIX：出会った相手だけ
     return { id: po.id, ic: po.ic, name: po.name, handle: po.handle, base: po.base, text: po.text, replies: po.replies, ago: _SNS_AGO[i] || "今日", _daily: true };
   });
-  // 永続マイルストーン（解放済み）。
+  // 永続マイルストーン（解放済み＋★出会った相手だけ）。unlock が投げたら出さない側に倒す（fail-closed）。
   var mile = [];
   for (var i = SNS_POSTS.length - 1; i >= 0; i--) {
-    var p = SNS_POSTS[i]; var ok = true; try { ok = p.unlock ? p.unlock() : true; } catch (e) { ok = true; }
+    var p = SNS_POSTS[i]; var ok = false; try { ok = p.unlock ? !!p.unlock() : true; } catch (e) { ok = false; }
+    if (ok && !_snsCastOk(SNS_POST_GATE[p.id])) ok = false;   // ★BUGFIX：未登場の顧問はマイルストーンでも投稿しない
     if (ok) mile.push({ id: p.id, ic: p.ic, name: p.name, handle: p.handle, base: p.base, text: p.text, replies: p.replies, ago: "" });
   }
   // 日替わりを上、マイルストーンを下（最近の祝福は適度に混ぜる：先頭2件はミドルへ）。
@@ -323,6 +369,7 @@ function postTemplates() { return POST_TEMPLATES.filter(function (t) { try { ret
 
 // ── 連続ログイン（SNSを開いた連続日数・コスメ専用＝コイン非干渉） ──
 function snsCheckin() {
+  snsSyncCamera();   // SNS画面を開くたびカメラロールの門番を再評価（発見前のポロを混ぜない・発見後は即出る）
   var s = snsData(); var today = _snsDay(); var info = { streak: s.checkin.streak || 0, isNew: false };
   if (s.checkin.lastDay !== today) {
     if (s.checkin.lastDay != null && today === s.checkin.lastDay + 1) s.checkin.streak = (s.checkin.streak || 0) + 1;
@@ -344,8 +391,17 @@ function snsStreakBadge(streak) {
 function fanLetters() {
   var out = [];
   for (var i = FAN_LETTERS.length - 1; i >= 0; i--) {
-    var l = FAN_LETTERS[i]; var ok = true; try { ok = l.unlock ? l.unlock() : true; } catch (e) { ok = true; }
-    if (ok) out.push(l);
+    var l = FAN_LETTERS[i];
+    var g = SNS_LETTER_GATE[l.id];
+    var ok = false; try { ok = l.unlock ? !!l.unlock() : true; } catch (e) { ok = false; }   // fail-closed
+    if (ok && !_snsCastOk(g)) ok = false;   // ★BUGFIX：未登場の顧問からは手紙も届かない（DMは本名がそのまま出る）
+    if (!ok) continue;
+    // 差出人名は STORY_CAST を直読みせず castNameSafe() 経由（正本の門番ヘルパ）。原本は書き換えずコピーに載せる。
+    if (g && g.charAt(0) !== "@" && typeof castNameSafe === "function") {
+      var c = {}; for (var k in l) if (Object.prototype.hasOwnProperty.call(l, k)) c[k] = l[k];
+      c.from = castNameSafe(g);
+      out.push(c);
+    } else out.push(l);
   }
   return out;
 }

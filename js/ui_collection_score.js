@@ -65,7 +65,8 @@ function renderCollectionScore() {
   if (typeof mallUnlocked === "function" && mallUnlocked() && typeof renderMall === "function") {
     games.appendChild(gEntry("🌟", "エンドレスタワー", "🗼お買い物ダンジョンの無限階に挑む", function () { renderMall(); }));
   }
-  if (!games.children.length) games.appendChild(el("div", "as-hint2", "進めると、やり込みミニゲームがここに並びます（ポロのグルメレースはクリア後に解放）。"));
+  // ★この文が出る＝ミニゲーム未解放。相棒の名前は伏せる（未発見なら命名オチを潰す・R4）。
+  if (!games.children.length) games.appendChild(el("div", "as-hint2", "進めると、やり込みミニゲームがここに並びます（本編クリア後に解放）。"));
   app.appendChild(games);
 
   var actions = el("div", "actions");

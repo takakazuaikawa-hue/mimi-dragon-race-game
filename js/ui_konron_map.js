@@ -78,7 +78,8 @@ const KONRON_SPOTS = {
   oyakata:   { name: "親方の渋茶処", cat: "food", tier: 1, time: "昼", photo: "images/konron/spots/oyakata.webp", gourmet: "images/konron/spots/oyakata_gourmet.webp", shoot: "欠け湯呑みの渋茶・出走メモ・竜の旗・古い親方", line: "ぶっきらぼうな渋茶が一杯。竜を読む老親方の、路地裏の止まり木。" },
   furununo:  { name: "夜市の古布屋", cat: "shop", tier: 2, time: "夜", photo: "images/konron/spots/furununo.webp", shoot: "藍染の古布・竜の祭祀布・お面・狐の店主", line: "灯りに浮かぶ古布の山。ほのかに光る祭祀布は、夜市のいちばん奥に眠る。" },
   // ── 第4波：要設計枠の新スポット（フレーバー/聖典由来・時々ファンタジー＆亜人） ──
-  left_wing: { name: "左翼・大学研究街", cat: "civic", tier: 2, time: "昼", photo: "images/konron/spots/left_wing.webp", shoot: "観光経済大学・Mizu研究室・オッズ解析の天文台・椰子並木", line: "大翼通りの“左の翼”。観光経済大学とオッズ解析が、勝負の裏側を支える頭脳街。" },
+  // ★shoot は固有名を持たない中立の文言が正（未登場の顧問名を風景説明で出さないため）。出会っていれば _kmShootOf が名前入りに差し替える。
+  left_wing: { name: "左翼・大学研究街", cat: "civic", tier: 2, time: "昼", photo: "images/konron/spots/left_wing.webp", shoot: "観光経済大学・オッズ解析の研究室・天文台・椰子並木", line: "大翼通りの“左の翼”。観光経済大学とオッズ解析が、勝負の裏側を支える頭脳街。" },
   yokukatown:{ name: "翼下タウン", cat: "port", tier: 1, time: "夕", photo: "images/konron/spots/yokukatown.webp", shoot: "レース場直下の新興市場街・建設中の櫓・露店", line: "レース場の足下に湧いた、活気あふれる新興の街。今がいちばん面白い。" },
   ushiome_dora:{ name: "潮目ドーラ", cat: "view", tier: 2, time: "早朝", photo: "images/konron/spots/ushiome_dora.webp", shoot: "ミストラ湾口の濃霧・霧の主の気配・入港待ちの舟", line: "湾の入口に居つく霧の主。晴れる一瞬を待って、船は港へ滑り込む。" },
   lodge:     { name: "山小屋のまかない", cat: "food", tier: 2, time: "昼", photo: "images/konron/spots/lodge.webp", gourmet: "images/konron/spots/lodge_gourmet.webp", shoot: "高地の山小屋・干したきのこ・谷と滝の眺め・きのこリゾット", line: "雨の日ほど、きのこは香る。谷を見下ろす山小屋の、滋味深いまかない。" },
@@ -432,6 +433,27 @@ function _kmContentHtml(spotId) {
   return h + '</div>';
 }
 
+// ★門番（表示専用）：スポットの説明文に「まだ出会っていない相手」の固有名を出さないための出し分け。
+//   ・撮れるもの＝ミズ研究室は advisorMet("mizu")（総資産しきい値 AND 第2話既読）のときだけ名前が載る。
+//   ・章スタンプ＝ポロは poroFound() が唯一の門番。発見前は「ポロ」も「泣き虫」も出さない（命名オチを潰さない）。
+//   どちらも typeof/例外は「出さない」側に倒す（fail-closed）。
+function _kmShootOf(id, s) {
+  const base = (s && s.shoot) || "";
+  try {
+    if (id === "left_wing" && typeof advisorMet === "function" && advisorMet("mizu")) {
+      const nm = ((typeof castNameSafe === "function") ? castNameSafe("mizu") : "").split("・")[0];
+      if (nm && nm !== "？？？") return base.replace("オッズ解析の研究室", nm + "研究室");
+    }
+  } catch (e) {}
+  return base;
+}
+function _kmStampText(id, txt) {
+  if (id !== "ryusha") return txt;
+  let found = false;
+  try { found = (typeof poroFound === "function") && !!poroFound(); } catch (e) { found = false; }
+  return found ? txt : "第3話——小さな子竜と目が合った、竜たちの森。";   // 発見前は名前も“泣き虫”も伏せる
+}
+
 // K3-A3: 章→舞台スポットの対応（表示のみ）。[章配列, 日報風キャプション]
 const KM_STAMP = {
   tanryu:     [[1], "第1話——すべては、はじめての一枚の券から。"],
@@ -507,7 +529,7 @@ function _kmRenderPanel() {
       const chNow = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
       const stamp = KM_STAMP[_kmSpot];
       if (open && stamp && stamp[0].indexOf(chNow) >= 0) {
-        body += `<div class="km-stamp">📰 いまの話の舞台<span>${stamp[1]}</span></div>`;
+        body += `<div class="km-stamp">📰 いまの話の舞台<span>${_kmStampText(_kmSpot, stamp[1])}</span></div>`;   // ★門番経由（未発見のポロを名指ししない）
       }
     } catch (e) {}
     // H4: 観光スタンプラリー（表示専用・spotsSeen＝K2の還流台帳と同じ台帳を使う）。
@@ -530,7 +552,8 @@ function _kmRenderPanel() {
       body += `<div class="km-card-lock">🔒 まだ行けない場所（<b>${_kmTierLabel(s.tier)}</b>で解放）。総資産 ${KM_TIER_AT[s.tier].toLocaleString("ja-JP")} で開放。</div>`;
     } else {
       body += `<div class="km-card-line">${s.line}</div>`;
-      if (s.shoot && s.shoot !== "—") body += `<div class="km-card-shoot">📸 撮れるもの：${s.shoot}</div>`;
+      const _shoot = _kmShootOf(_kmSpot, s);   // ★門番経由（未登場の顧問名を「撮れるもの」に出さない）
+      if (_shoot && _shoot !== "—") body += `<div class="km-card-shoot">📸 撮れるもの：${_shoot}</div>`;
       body += _kmContentHtml(_kmSpot);   // 見どころ／名物／豆知識（作りこみ）
       if (s.gourmet) body += `<button class="km-gourmet" data-gourmet="${_kmSpot}"><img src="${s.gourmet}" alt="" decoding="async"><span>🍽 ご当地グルメ・タップで鑑賞／投稿</span></button>`;   // s.id は常にundefined（同種バグ・上のdata-photoと同じ原因）
       if (s.portal && typeof window[s.portal] === "function") {
