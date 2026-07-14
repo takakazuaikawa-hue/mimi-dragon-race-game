@@ -760,33 +760,7 @@ function renderHome() {
   actionFloat.appendChild(cmwrap);   // コメント/いいねバー（レースへ進むの直上に浮く）
   }   // ← end if(broadcast)：コメント入力/いいねバー
 
-  // 🐉「次の一戦」台座＝★静かモードのみ。配信モードは上の .hl-actionbar にコメント/いいねバーが載るが、
-  //   静かモードでは同じ層が空＝高さ0になり、レースCTAの真上が素の余白になっていた（CTAが浮いて見える原因）。
-  //   同じ層に「次に走る一戦」を軽く据えて台座にする。★表示専用＝既存の featuredRaceToday() を読むだけで、
-  //   レース生成・着順・オッズ・配当には一切触れない。タップはCTAと同じ遷移（レース選択）。
-  if (!broadcast) {
-    try {
-      const _nr = (typeof featuredRaceToday === "function") ? featuredRaceToday() : null;
-      if (_nr) {
-        const _grade = (typeof gradeBadgeHTML === "function") ? gradeBadgeHTML(_nr.rank) : "";
-        const _nm = (typeof raceFullName === "function") ? raceFullName(_nr) : "";
-        const _time = (typeof RACE_TIME_LABEL !== "undefined" && RACE_TIME_LABEL[_nr.number]) || "";
-        const _dist = (typeof DISTANCE !== "undefined" && DISTANCE[_nr.distance]) ? DISTANCE[_nr.distance].label : "";
-        const _wx = (typeof WEATHERS !== "undefined" && WEATHERS[_nr.weather]) ? WEATHERS[_nr.weather].label : "";
-        const _meta = [_time, _dist, _wx].filter(Boolean).join("　");
-        if (_nm) {
-          const nextBtn = el("button", "hl-nextrace");
-          nextBtn.innerHTML =
-            `<span class="hl-nextrace-tag">次の一戦</span>` +
-            `<span class="hl-nextrace-nm">${_grade}${_nm}</span>` +
-            (_meta ? `<span class="hl-nextrace-meta">${_meta}</span>` : "");
-          nextBtn.title = "レース選択へ";
-          nextBtn.onclick = () => _tikGo(() => renderRaceSelect());   // CTA(.hl-race)と同じ遷移
-          actionFloat.appendChild(nextBtn);
-        }
-      }
-    } catch (e) {}   // 読めなければ静かに省略＝台座を出さないだけ（壊すより出さない）
-  }
+  // ※「次の一戦」台座はドック内（レースCTAの直上）に置く＝CTAと横幅が厳密に一致する（下部 raceBtn の直前で生成）。
 
   // 🙏無心(0コイン) / ⚔️最終決戦 は「いま次にやること」＝🎯目標チップ（上の goalBtn）に統合済み＝ここでは作らない。
   // コメント/いいねバーだけが常設フロート層＝出入りが無いのでミミの立ち位置も固定ドックも不動（ユーザー指摘）。
@@ -803,6 +777,28 @@ function renderHome() {
       try { fn(); } finally { requestAnimationFrame(() => appEl.classList.remove("scr-fade")); }
     }, 130);
   };
+  // 🐉「次の一戦」台座＝★静かモードのみ・ドック内でCTAの直上に。CTAと同じ dock に入るので横幅が厳密に一致。
+  //   ★表示専用＝featuredRaceToday() を読むだけ（レース生成・着順・オッズ・配当には触れない）。
+  //   1行・レース名だけ（時刻/距離/天気の詰め込みと途中改行を廃止＝「何の一戦か」だけを静かに示す台座）。
+  if (!broadcast) {
+    try {
+      const _nr = (typeof featuredRaceToday === "function") ? featuredRaceToday() : null;
+      const _nm = (_nr && typeof raceFullName === "function") ? raceFullName(_nr) : "";
+      if (_nm) {
+        const _grade = (typeof gradeBadgeHTML === "function") ? gradeBadgeHTML(_nr.rank) : "";
+        const nextBtn = el("button", "hl-nextrace");
+        nextBtn.innerHTML =
+          `<span class="hl-nextrace-tag">次の一戦</span>` +
+          (_grade ? `<span class="hl-nextrace-grade">${_grade}</span>` : "") +
+          `<span class="hl-nextrace-nm">${_nm}</span>` +
+          `<span class="hl-nextrace-go">›</span>`;
+        nextBtn.title = "レース選択へ";
+        nextBtn.onclick = () => _tikGo(() => renderRaceSelect());   // CTA(.hl-race)と同じ遷移
+        dock.appendChild(nextBtn);
+      }
+    } catch (e) {}   // 読めなければ静かに省略＝台座を出さないだけ（壊すより出さない）
+  }
+
   const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
   raceBtn.onclick = () => _tikGo(() => renderRaceSelect());
   dock.appendChild(raceBtn);
