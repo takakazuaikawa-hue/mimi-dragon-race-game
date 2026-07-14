@@ -227,6 +227,43 @@ function maybePlayPoroFollowupOnChapter(chId) {
   return false;
 }
 
+// ★追いつき再生（ユーザー指定）：後日談は「章を開いた時」に出るが、第2話（総資産3千）・第3話（3万）は
+//   出会い（単勝2勝目）より先に読まれるのが普通。そのままだと「章をもう一度開き直した時」にしか流れず、
+//   多くのプレイヤーが見ないまま終わる。そこで発見の瞬間に、既に読み終えている章の後日談を章順にまとめて
+//   再生してから解放通知を出す。門番は各 maybePlay* と同じ advisorMet（未登場の顧問は出ない）。
+const PORO_FOLLOWUPS = [
+  { cast: "mizu",     flag: "poroMizuSceneSeen",     script: poroMizuFollowupScript },
+  { cast: "sumika",   flag: "poroSumikaSceneSeen",   script: poroSumikaFollowupScript },
+  { cast: "makura",   flag: "poroMakuraSceneSeen",   script: poroMakuraFollowupScript },
+  { cast: "celestia", flag: "poroCelestiaSceneSeen", script: poroCelestiaFollowupScript }
+];
+// まだ見ていない＝「出会い済みの顧問 × 未再生」の後日談（章順）。
+function pendingPoroFollowups() {
+  if (!poroFound()) return [];
+  return PORO_FOLLOWUPS.filter(f => _poroAdvisorMet(f.cast) && !_poroSeen(f.flag));
+}
+// 溜まっている後日談を順に再生し、終わったら done() を呼ぶ。再生するものが無ければ false（呼び元が done する）。
+function playPoroFollowupCatchup(done) {
+  const pend = pendingPoroFollowups();
+  if (!pend.length) return false;
+  if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
+  if (window._poroArcPlaying) return false;
+  window._poroArcPlaying = true;
+  let chain = Promise.resolve();
+  pend.forEach(function (f) {
+    chain = chain.then(function () { return Dialogue.play(f.script(), { force: true }); })
+                 .then(function () {
+                   if (typeof setStoryFlag === "function") setStoryFlag(f.flag, true);   // 1本ずつ確定（途中離脱でも取りこぼさない）
+                   if (typeof saveGame === "function") saveGame();
+                 });
+  });
+  chain.then(function () {
+    window._poroArcPlaying = false;
+    if (typeof done === "function") done();
+  });
+  return true;
+}
+
 // 発見完了＝フラグ確定（poroFound＋鑑定＋スカウト/龍舎を同時解放）。仕様 §8・§12。
 function completePoroDiscovery() {
   if (typeof setStoryFlag !== "function") return;
@@ -236,7 +273,11 @@ function completePoroDiscovery() {
   setStoryFlag("poroConfirmedNotSacredDragon", true);
   setStoryFlag("dragonScoutUnlocked", true);
   setStoryFlag("dragonStableUnlocked", true);
-  showPoroUnlockNotice();
+  // ★追いつき再生：poroFound を立てた直後なので、既に読み終えている章の後日談が pending に見える。
+  //   出会い済みの顧問の反応を章順にまとめて流し、終わってから解放通知を出す（無ければ即通知）。
+  const _caughtUp = (typeof playPoroFollowupCatchup === "function") &&
+    playPoroFollowupCatchup(function () { showPoroUnlockNotice(); });
+  if (!_caughtUp) showPoroUnlockNotice();
 }
 
 // 新機能解放通知（仕様 §12「UI上で新機能解放通知が表示される」）。
