@@ -38,7 +38,7 @@ function renderAssets() {
   hero.style.backgroundImage = `url('images/homebg/myroom_t${_roomT}_${_dn}.webp')`;
   hero.innerHTML =
     `<span class="lr-room-seal">${(typeof roomName === "function") ? roomName(_roomT) : "いまのお部屋"}<b>Lv.${_roomT}</b></span>` +
-    `<img class="lr-room-mimi" src="images/cast/mini/mimi_mini.png" alt="ミミ" decoding="async">` +
+    `<img class="lr-room-mimi" src="images/cast/mini/mimi_loading1_mini.png" alt="ミミ" decoding="async">` +
     `<div class="lr-room-info"><div class="lr-room-lbl">ミミの再起度（総資産）</div>` +
       `<div class="lr-room-total">${fmtCoins(total)}</div>` +
       `<div class="lr-room-p">暮らしP ◇${st.available}</div></div>`;
