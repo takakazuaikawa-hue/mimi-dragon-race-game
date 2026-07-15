@@ -108,6 +108,9 @@ function renderMeals() {
     });
     app.appendChild(grid);
   }
+  // ★M2/M3 結線の穴埋め：食事のあとの「次の一手」（今日の一枚／次のレース）＝島の一日ループ。
+  //   台帳(next_suggest.js の at:"meals")は定義済みだったが renderMeals から呼ばれておらず死んでいた。
+  if (typeof nextSuggestRow === "function") { const _nx = nextSuggestRow("meals"); if (_nx) app.appendChild(_nx); }
 }
 // 一品の詳細＝実食（eat）or 食材/隠し味あて（guess）。解放後は何度でも読める。
 function showMealDetail(m) {

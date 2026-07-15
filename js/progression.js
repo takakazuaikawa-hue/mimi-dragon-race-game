@@ -36,15 +36,17 @@ const UNLOCKS = [
     notifyTitle: "🌱 くらしツリーが解放！",
     notifyBody: "暮らしポイントで生活を育てる「くらしツリー」と生活資産が使えるようになりました。負けた夜にも人生が終わらない、本当の準備を。" },
   // --- toast（既存画面への追加。モーダルは出さない） ---
-  { id: "scoutloc_cliff", icon: "🪨", label: "スカウト新ロケ：崖", tier: "toast",
+  // ★M3 余白の尊重：ロケ名と生息竜はスカウト画面が ？？？ で伏せて「行って確かめる」発見にしている
+  //   （ui_scout.js）。toast でロケ名まで先に明かすと発見を先食いするので、「新しい行き先が増えた」だけ告知。
+  { id: "scoutloc_cliff", icon: "🔭", label: "スカウト新ロケ", tier: "toast",
     cond: function () { return _scoutLocOpen("cliff"); },
-    notifyBody: "🔭 スカウトに新ロケ「🪨 崖」が追加！　高所に気性の荒い竜が棲んでいます。" },
-  { id: "scoutloc_volcano", icon: "🌋", label: "スカウト新ロケ：火山/水中", tier: "toast",
+    notifyBody: "🔭 竜スカウトに新しい行き先が増えました。どこへ行けるかは、スカウト画面で。" },
+  { id: "scoutloc_volcano", icon: "🔭", label: "スカウト新ロケ", tier: "toast",
     cond: function () { return _scoutLocOpen("volcano"); },
-    notifyBody: "🔭 スカウトに新ロケ「🌋 火山地帯」「🌊 水中」が追加！　力自慢と幻想の竜たち。" },
-  { id: "scoutloc_sky", icon: "☁️", label: "スカウト新ロケ：空中", tier: "toast",
+    notifyBody: "🔭 竜スカウトにまた新しい行き先が。次はどんな竜がいるか——確かめに行ってみて。" },
+  { id: "scoutloc_sky", icon: "🔭", label: "スカウト新ロケ", tier: "toast",
     cond: function () { return _scoutLocOpen("sky"); },
-    notifyBody: "🔭 スカウトに最後のロケ「☁️ 空中」が追加！　伝説格が翼を休める場所。" },
+    notifyBody: "🔭 竜スカウトに、最後の行き先がひらきました。その空に何がいるかは、あなたの目で。" },
   { id: "mealtier", icon: "🍽️", label: "上級グルメ", tier: "toast",
     cond: function () { return (typeof mealEndgameOpen === "function") && mealEndgameOpen(); },
     notifyBody: "🍽️ 食事に「上級グルメ」のティアが解放！　島の食の頂点へ。" }

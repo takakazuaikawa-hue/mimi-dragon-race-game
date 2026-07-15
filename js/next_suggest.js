@@ -21,10 +21,8 @@ var NEXT_SUGGEST = [
     cond: function (ctx) {
       try { return !(ctx && ctx.hit) && getStoryFlag("_chapter_intro_3") && lifeTreeStats().available > 0; } catch (e) { return false; }
     }, go: function () { renderLifeTree(); } },
-  { at: "result", weight: 60, icon: "📸", label: "今日の一枚を見にいく", sub: "観光の日替わりフォトミッション",
-    cond: function (ctx) {
-      try { return typeof _kmPhotoMission === "function" && konronMapUnlocked() && (function () { const id = _kmPhotoMission(); return id && !_kmPmDone(id); })(); } catch (e) { return false; }
-    }, go: function () { renderKonronMap(); } },
+  // ★M3 重複告知の削減：「今日の一枚」は崑崙マップ内のストリップと食事あとの導線で押し出す。
+  //   結果画面からも出すと同じミニ発見を3口で告知＝出し過ぎになるので、結果画面からは外した（勝ち飯/SNS/負け飯で十分）。
 
   // ── 食事のあと（M2）：島の一日ループの続き ──
   { at: "meals", weight: 90, icon: "📸", label: "今日の一枚を見にいく", sub: "腹ごしらえのあとは、島さんぽ",
