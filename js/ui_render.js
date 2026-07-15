@@ -570,45 +570,10 @@ function chapterTeaseTitle(ch) {
 // race. Reuses the same CG placeholder slot. `chapters` is an array; it chains
 // via 次へ so multiple unlocks in one race show one after another.
 // =========================================================================
-function showStoryUnlock(chapters, idx) {
-  idx = idx || 0;
-  const ch = chapters[idx];
-  if (!ch) return;
-  // ★門番：このポップアップは「総資産のしきい値を跨いだ瞬間」＝その章をまだ読んでいない時に出る（読むには
-  //   しきい値到達が要るので、ここに来る章は必ず未読）。旧コードは未読のまま章題（＝顧問の本名入り）・一枚絵・
-  //   顔・名前・肩書・テーマ色・本文まで丸ごと出しており、_chapter_intro_N は立てない＝「読む前にセレスティアと
-  //   神眼を知っているのに、他の画面では？？？」という矛盾を生んでいた。ここは“解放の告知”に徹し、正体は
-  //   物語画面で読んで初めて明かす（R1／R7）。met 判定は既読の章に使われた場合の保険（従来どおり全部出す）。
-  const met = (typeof advisorMet === "function") && advisorMet(ch.cast);
-  const cast = met ? STORY_CAST[ch.cast] : null;
-  const ex = document.getElementById("story-unlock"); if (ex) ex.remove();
-  const ov = el("div", "story-unlock-overlay"); ov.id = "story-unlock";
-  const modal = el("div", "card story-unlock-modal");
-  modal.style.setProperty("--cg", (typeof castColorSafe === "function") ? castColorSafe(ch.cast) : "#8a8175");   // 未登場＝無彩色（色でキャラを推測させない）
-  modal.innerHTML =
-    `<div class="su-badge">✦ 新エピソード解放 ✦</div>` +
-    (met
-      ? `<div class="story-cg viewable"><div class="story-cg-art">${photoOr("images/story/" + ch.id + ".jpg", `<span class="story-cg-sym">${cast ? cast.symbol : "🐲"}</span>`)}<span class="story-cg-zoom">🔍 全画面</span></div>` +
-        `<div class="story-cg-cap"><span class="story-cg-tag">一枚絵</span>${ch.scene || ""}</div></div>`
-      // 未読＝一枚絵も場面説明も出さない（どちらもその章の顧問を映す＝正体バレ）。封をした枠だけ見せる。
-      : `<div class="story-cg"><div class="story-cg-art"><span class="story-cg-sym">📖</span></div>` +
-        `<div class="story-cg-cap"><span class="story-cg-tag">未読</span>一枚絵は、記事を読むとひらきます。</div></div>`) +
-    `<div class="su-title">${chapterTeaseTitle(ch)}</div>` +
-    (cast ? `<div class="su-cast"><span class="su-cast-sym" style="--cg:${cast.color}">${photoOr("images/cast/" + ch.cast + ".png", cast.symbol)}</span>${cast.name}<small>（${cast.tag}）</small></div>` : "") +
-    (met
-      ? `<div class="su-body">${ch.body}</div>`
-      : `<div class="su-body">総資産がのびて、聖龍日報の続報がとどいた。<br>〈📖 物語〉から読めます。</div>`);
-  // 解放ポップアップでも一枚絵をタップ→全画面ビューア（renderStory と同じ挙動）。
-  // story-viewer(z-index 9200) は解放オーバーレイ(1000)の上に出る。★未読の章では開かない（ビューアは
-  // 章題・顧問名・本文をそのまま全画面に出すため、ここが抜け道になる）。
-  const cgEl = met ? modal.querySelector(".story-cg") : null;
-  if (cgEl) cgEl.onclick = () => { if (typeof showStoryArt === "function") showStoryArt(ch); };
-  const btn = el("button", "su-close", idx < chapters.length - 1 ? "次へ ▶" : "とじる");
-  btn.onclick = () => { ov.remove(); if (idx < chapters.length - 1) showStoryUnlock(chapters, idx + 1); };
-  modal.appendChild(btn);
-  ov.appendChild(modal);
-  document.body.appendChild(ov);
-}
+// ★撤去（2026-07）：レース直後の全画面解放モーダル showStoryUnlock は「いきなり出て雑」（ユーザー指摘）のため廃止。
+//   解放告知は結果明細の1行＋物語ナビ🆕バッジ＋次のホーム到着のカットイン（progression.js _showStoryCutin）へ。
+//   関連CSS（.story-unlock-*/.su-*/.story-cg-*）は現状未使用だが、.story-cg-art/.su-cast-sym の一部が
+//   .consult-port と同じセレクタを共有するため style.css には残置（呼び出しの復活は禁止）。
 
 // (b) advisor "voice" element for a gameplay screen, or null if none met yet.
 //   context "race"   → most-advanced race advisor met (Sake→Mizu→Makura→Celestia)
