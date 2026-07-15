@@ -6594,7 +6594,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-prof .hl-prof-tx b { font-size: 11.5px; }
 /* 目標チップとLIVE帯の高さ感を揃える（両方 top:9px・視覚重量を近づける） */
 .hl-goal { background: rgba(11,13,24,.46); }
-.hl-float { background: rgba(11,13,24,.46); }
+/* ★LIVE帯コンテナ自身は透明に：赤LIVEバッジと視聴者ピル(.hl-vpill)が各自の背景を持つので、
+   ここに背景を敷くと「四角い黒い帯」が背景写真の上に残る（ユーザー指摘：この暗がりを透明に）。 */
+.hl-float { background: transparent; }
 /* 入力ピルのプレースホルダをやや明るく＝押せる感 */
 .hl-cminput { color: rgba(255,255,255,.72); }
 
