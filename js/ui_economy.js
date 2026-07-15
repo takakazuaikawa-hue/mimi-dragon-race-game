@@ -161,17 +161,40 @@ function renderEconomy() {
     app.appendChild(el("div", "card eco-memo", `<span class="eco-memo-who">💧 ミズの市況メモ</span><span class="eco-memo-tx">「${memo}」</span>`));
   }
 
-  // ── 島の景色（I2初弾・島づくりの発展度でテキストが進化＝“歩ける報酬”の芽）──
+  // ── 島の景色（I2・島づくりの発展度でテキストが進化。全体の一文＋育った分野ごとの“いま”）──
   if (typeof islandTier === "function" && typeof islandDevTotal === "function" && islandDevTotal() > 0) {
     const _scene = ["島に、新しい息吹が芽ぶきはじめた。", "道が、灯りが、少しずつ島を編み直していく。",
       "どこを歩いても、島が育っているのがわかる。人の声が、明るい。", "ここは、もう誰にも淘汰させない——栄えた島。"][islandTier()];
-    app.appendChild(el("div", "card eco-scene", `<span class="eco-scene-ic">🏝️</span><span class="eco-scene-tx">${_scene}</span>`));
+    let _sceneHTML = `<div class="eco-scene-lead"><span class="eco-scene-ic">🏝️</span><span class="eco-scene-tx">${_scene}</span></div>`;
+    // 育った分野ごとの一文（Lvが高い順に最大3つ）＝投資が“歩ける報酬”のテキストに化ける。
+    const _domains = (typeof islandEvolveScenes === "function") ? islandEvolveScenes(3) : [];
+    if (_domains.length) {
+      _sceneHTML += `<div class="eco-scene-list">` + _domains.map(function (d) {
+        return `<div class="eco-scene-row"><span class="eco-scene-di">${d.ic}</span><span class="eco-scene-dt">${d.line}</span></div>`;
+      }).join("") + `</div>`;
+    }
+    app.appendChild(el("div", "card eco-scene", _sceneHTML));
   }
 
   const actions = el("div", "actions");
   const back = el("button", "secondary", "← 暮らしへ戻る"); back.onclick = () => renderAssets();
   actions.appendChild(back);
   app.appendChild(actions);
+}
+
+// I4 決戦の備え＝4つの軸の到達状況（提示のみ・表示専用）。ラベルは固有名を出さない（R7）。
+function _finalPrepList() {
+  const p = state.player || {}, col = p.collection || {};
+  let scouted = 0; try { scouted = Object.values(col).filter(function (e) { return e && e.scouted; }).length; } catch (e) {}
+  const tier = (typeof islandTier === "function") ? islandTier() : 0;
+  let advs = 0; try { advs = ["sake", "mizu", "sumika", "makura", "celestia"].filter(function (k) { return typeof advisorMet === "function" && advisorMet(k); }).length; } catch (e) {}
+  const seen = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_5");
+  return [
+    { ic: "🐲", label: "竜を集める",     ok: scouted >= 8, now: scouted + "/8 頭" },
+    { ic: "🏝️", label: "島を育てる",     ok: tier >= 2,    now: (typeof ISLAND_TIER_NAME !== "undefined" ? ISLAND_TIER_NAME[tier] : "") },
+    { ic: "🎓", label: "みんなの助言を得る", ok: advs >= 5,  now: advs + "/5 人" },
+    { ic: "📖", label: "物語を見届ける", ok: !!seen,       now: seen ? "済" : "これから" }
+  ];
 }
 
 // 終章：絶滅メーター本体（綱引きダイヤル＋？説明＋最終決戦）。ホームのHUDをここへ移設。表示専用。
@@ -194,6 +217,17 @@ function _ecoExtinctionPanel() {
   const _q = hud.querySelector(".info-q");
   if (_q) _q.onclick = (ev) => { ev.stopPropagation(); if (typeof showEpilogueMeterHelp === "function") showEpilogueMeterHelp(); };
   wrap.appendChild(hud);
+  // I4 決戦の備え：これまでの積み重ねを4つの軸で見せる（カタルシスの提示のみ・最終決戦の発火条件は
+  //   finalReady=メーター0 のまま。ここでゲートはしない）。ラベルは固有名を出さない（R7）。
+  const prep = _finalPrepList();
+  const prepDone = prep.filter(function (x) { return x.ok; }).length;
+  const pl = el("div", "eco-prep");
+  pl.innerHTML = `<div class="eco-prep-t">⚔️ 決戦に持っていくもの <b>${prepDone}/4</b></div>` +
+    prep.map(function (x) {
+      return `<div class="eco-prep-row${x.ok ? " done" : ""}"><span class="pk">${x.ok ? "✓" : "○"}</span>` +
+        `<span class="pic">${x.ic}</span><span class="plb">${x.label}</span><span class="pn">${x.now || ""}</span></div>`;
+    }).join("");
+  wrap.appendChild(pl);
   if (e.finalReady) {
     const fin = el("button", "hl-final eco-final", `⚔️ 最終決戦へ ▶`);
     fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };

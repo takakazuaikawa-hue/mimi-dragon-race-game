@@ -6383,9 +6383,27 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .isl-done .isl-done-say { font-size: 12px; line-height: 1.7; }
 .isl-done .isl-done-doom { margin-top: 8px; font-size: 12px; font-weight: 800; color: #ffd9a0;
   background: linear-gradient(90deg, rgba(214,69,47,.25), rgba(255,211,77,.15)); border-radius: 8px; padding: 6px 10px; }
-.eco-scene { display: flex; align-items: center; gap: 9px; }
-.eco-scene-ic { font-size: 18px; }
+.eco-scene { display: flex; flex-direction: column; gap: 8px; }
+.eco-scene-lead { display: flex; align-items: center; gap: 9px; }
+.eco-scene-ic { font-size: 18px; flex: 0 0 auto; }
 .eco-scene-tx { font-size: 12px; line-height: 1.6; color: #cfe6d8; }
+/* I2：発展した分野ごとの“いま”の一文（育った順）。 */
+.eco-scene-list { display: flex; flex-direction: column; gap: 5px; padding-left: 2px;
+  border-top: 1px solid rgba(255,255,255,.06); padding-top: 8px; }
+.eco-scene-row { display: flex; align-items: center; gap: 8px; }
+.eco-scene-di { flex: 0 0 auto; font-size: 15px; width: 20px; text-align: center; }
+.eco-scene-dt { font-size: 11.5px; line-height: 1.5; color: #b8cfc2; }
+/* I4：決戦の備え（4条件の到達状況・提示のみ）。 */
+.eco-prep { margin-top: 10px; padding-top: 9px; border-top: 1px dashed rgba(226,162,46,.28); }
+.eco-prep-t { font-size: 11px; font-weight: 800; letter-spacing: .03em; color: #f0c67a; margin-bottom: 6px; }
+.eco-prep-t b { color: #ffe1a0; }
+.eco-prep-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; opacity: .72; }
+.eco-prep-row.done { opacity: 1; }
+.eco-prep-row .pk { flex: 0 0 auto; width: 16px; text-align: center; font-weight: 900; color: #6b6255; }
+.eco-prep-row.done .pk { color: #64c98a; }
+.eco-prep-row .pic { flex: 0 0 auto; font-size: 14px; }
+.eco-prep-row .plb { flex: 1 1 auto; font-size: 12px; color: var(--mist); }
+.eco-prep-row .pn { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
 
 /* ===== 🏗 島づくり レベル制施設カード（逓増投資・プレイヤー心理＝常に見える次の一手） ===== */
 .isl-fac { margin-top: 11px; padding: 11px; border-radius: 12px;
@@ -6696,7 +6714,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px);
   box-shadow: 0 -6px 22px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06); }
 .hl-dock .tik-tab { min-height: 52px; justify-content: center; gap: 3px; border-radius: 14px; padding: 6px 2px;
-  transition: transform .11s ease, background .11s ease; }
+  transition: transform .11s ease, background .11s ease, filter .16s ease; }
 .hl-dock .tik-tab .ic { font-size: 26px; line-height: 1; }
 .hl-dock .tik-tab .tik-ic-img { width: 30px; height: 30px; }
 .hl-dock .tik-tab .lb { font-size: 10px; font-weight: 700; color: #e7ebf5; letter-spacing: .02em; }
@@ -6719,15 +6737,17 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ── 下メニューの高さ圧縮（無駄な余白/最小高さを詰める・ユーザー指示）。タップ領域は≥44pxを維持・CTAは据え置き。 ── */
 .hl-dock { padding: 5px 8px 6px; gap: 4px; }
-.hl-dock .tik-bar { padding: 4px 8px calc(6px + env(safe-area-inset-bottom, 0px)); margin-top: 0; }
-.hl-dock .tik-tab { min-height: 44px; padding: 3px 2px; }
+.hl-dock .tik-bar { padding: 5px 8px calc(7px + env(safe-area-inset-bottom, 0px)); margin-top: 0; }
+.hl-dock .tik-tab { min-height: 60px; padding: 4px 1px; }
 
 /* NAV_ICON_SPEC: 高級リゾート案内70% / ゲームUI艶30%。小型タブでも埋もれない表示サイズへ。 */
-.hl-dock .tik-tab .tik-ic-img { width: 35px; height: 35px; }
-.hl-dock .tik-tab .ic { min-height: 35px; }
+.hl-dock .tik-tab .tik-ic-img { width: 42px; height: 42px; }
+.hl-dock .tik-tab .ic { min-height: 42px; }
+.hl-dock .tik-tab:not(.locked):hover .tik-ic-img { filter: brightness(1.12) saturate(1.08) drop-shadow(0 2px 5px rgba(79,210,255,.34)); }
+.hl-dock .tik-tab:not(.locked):active .tik-ic-img { filter: brightness(1.2) saturate(1.12) drop-shadow(0 1px 6px rgba(255,210,105,.46)); }
 @media (max-width: 480px) {
-  .hl-dock .tik-tab .tik-ic-img { width: 33px; height: 33px; }
-  .hl-dock .tik-tab .ic { min-height: 33px; }
+  .hl-dock .tik-tab .tik-ic-img { width: 39px; height: 39px; }
+  .hl-dock .tik-tab .ic { min-height: 39px; }
 }
 
 /* 食事：食べる前に 価格・おなか回復・所持コインを明示。現状維持＋透明化（価格/課金は hunger.js のまま不変）・ユーザー選択。 */

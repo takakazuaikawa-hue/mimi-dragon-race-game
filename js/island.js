@@ -80,6 +80,32 @@ function islandTier() {
 }
 var ISLAND_TIER_NAME = ["芽ぶきの島", "育ちゆく島", "栄える島", "極まりの島"];
 
+// I2 テキスト進化：分野ごとに、育つほど島の“いま”を語る3段の一文（Lv1-3 / 4-7 / 8）。表示専用・数値不変。
+var ISLAND_EVOLVE = {
+  infra:    ["桟橋が直り、船がまっすぐ着くようになった。", "谷に橋が架かり、島がひと続きになった。", "石畳の大通りを、みんなが胸を張って歩く。"],
+  commerce: ["屋台に活気が戻り、いい匂いが路地に満ちる。", "広がった市場に、人とお金がよく巡る。", "百貨店の灯りが、島の夜をあたたかく照らす。"],
+  race:     ["観客席が増え、歓声がひと回り大きくなった。", "ナイター照明の下、竜が星のように駆ける。", "大競技場は、聖龍レースの心臓になった。"],
+  dragon:   ["あたたかい宿舎で、竜たちが安心して眠る。", "牧場では、竜がただ幸せそうに走っている。", "療養所ができ、老いた竜も穏やかに暮らせる。"],
+  public:   ["井戸から水があふれ、子どもらが笑う。", "診療所ができ、熱の夜に歩かなくてよくなった。", "学校からは、字を覚える子どもの声がする。"],
+  industry: ["畑の野菜が甘い。屋台のおやじが泣いた。", "漁港が整い、島の食がもっと豊かになった。", "工房街がひらき、島は自分の手で価値を作る。"]
+};
+function islandEvolveLine(catId) {
+  const arr = ISLAND_EVOLVE[catId]; if (!arr) return "";
+  const lv = islandLevel(catId);
+  if (lv >= 8) return arr[2];
+  if (lv >= 4) return arr[1];
+  if (lv >= 1) return arr[0];
+  return "";
+}
+// 発展済みの分野を「育っている順」に並べ、その“いま”の一文つきで返す（島の景色カード用）。
+function islandEvolveScenes(limit) {
+  return ISLAND_CATS
+    .map(function (c) { return { ic: c.ic, name: c.name, lv: islandLevel(c.id), line: islandEvolveLine(c.id) }; })
+    .filter(function (x) { return x.lv >= 1 && x.line; })
+    .sort(function (a, b) { return b.lv - a.lv; })
+    .slice(0, limit || 3);
+}
+
 // 施設を1Lv育てる＝コスト消費＋メーター押し戻し＋発展度更新。節目なら完成カットイン、通常なら軽トースト。
 function islandInvest(cat) {
   try {
