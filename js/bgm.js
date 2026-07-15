@@ -26,7 +26,8 @@ const RACE_BGM_TRACKS = [
   "the-fanfare.mp3",
   "sky-hero.mp3",
   "unlosable-battle.mp3",
-  "fog-cutting-flag.mp3"
+  "fog-cutting-flag.mp3",
+  "lets-do-this.mp3"   // 「やったるで」＝気合い曲。レース実況のローテーションに追加（ASCII名でNFD404回避）
 ];
 
 var RaceBgm = (function () {
@@ -110,7 +111,7 @@ var RaceBgm = (function () {
       if (audio) {
         try { audio.volume = BGM_BASE * bgmLevel; var p = audio.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
       } else if (pending) {
-        if (pending.kind === "file" && pending.path) playFile(pending.path);
+        if (pending.kind === "file" && pending.path) playFile(pending.path, { once: pending.once });
         else start();
       }
     }
@@ -126,15 +127,16 @@ var RaceBgm = (function () {
 
   // 任意ファイルをBGMとして再生（エンディングの「ある日森の中ドラゴンに出会った」等）。
   // audio を共有するので、音量スライダー(setVolume)・ミュート(setMuted)・停止(stop/fadeOut)がそのまま効く。
-  function playFile(relPath) {
+  function playFile(relPath, opts) {
+    opts = opts || {};
     stop();
-    pending = { kind: "file", path: relPath };   // ミュート中でも意図を覚える→解除で復帰
+    pending = { kind: "file", path: relPath, once: !!opts.once };   // ミュート中でも意図を覚える→解除で復帰
     if (isMuted()) return;
     try {
       var parts = String(relPath).split("/");
       parts[parts.length - 1] = encodeURIComponent(parts[parts.length - 1]);   // 日本語/空白のファイル名を安全に
       var a = new Audio(parts.join("/"));
-      a.loop = true;
+      a.loop = !opts.once;   // once=true＝ループしない単発ジングル（結果画面のファンファーレ等）
       a.volume = BGM_BASE * bgmLevel;
       var p = a.play(); if (p && p.catch) p.catch(function () {});
       audio = a;

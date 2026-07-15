@@ -3044,6 +3044,9 @@ function renderResult() {
     const winnerOd = c.oddsResult.oddsData.find(o => o.dragonId === c.raceResult.entries[0].dragon.id);
     runEventHooks("afterRaceResult", { race: c.race, hit: r.hit, popularityRank: winnerOd.popularityRank, bigLoss: !r.hit && r.wager >= 500 });
     if (state.player.coins <= 0) runEventHooks("onBankruptcy", { race: c.race });
+    // 🎉 的中時＝結果画面のファンファーレ（「ファンファーレの日々」）。1レースにつき1回だけ・単発（ループ無し）。
+    //   結果は zone=other なので bgm_zones は奪わず、ホームへ戻ると自然停止。外れは従来どおり無音。
+    if (r.hit && window.RaceBgm && RaceBgm.playFile) { try { RaceBgm.playFile("bgm/racebgm/fanfare-days.mp3", { once: true }); } catch (e) {} }
     c.resultHooksRan = true;
   }
 
