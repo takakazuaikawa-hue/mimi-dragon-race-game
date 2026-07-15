@@ -6501,10 +6501,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    幅を空けて左の目標チップが「絶…」まで潰れないように。※6477ブロックより後に置いて確実に上書き。 */
 @media (max-width: 560px) { .hl-float-fol { display: none; } }
 
-/* ── 立ち絵の下スクリム＝配信モードのみ（コメント/入力が立ち絵の上に載るため必ず読める）。
-   静かモードはコメントが無い＝下端を暗くしない（＝ミミの下半身を沈めない）。 ── */
-.hl.tik .hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 42%; z-index: 2;
-  background: linear-gradient(to top, rgba(6,8,16,.72), rgba(6,8,16,.30) 55%, rgba(6,8,16,0)); pointer-events: none; }
+/* ── 立ち絵の下スクリム＝配信モードのみ（コメント/入力が立ち絵の上に載るため）。★ユーザー指摘：静かホームで
+   薄くしたのに配信は暗いまま＝不快。コメントは各バブル(.hl-cm)が自前の背景を持つので大きな暗幕は不要。
+   最下端だけ薄く落として入力/ギフトバーの下地にする程度に（ミミの下半身を沈めない・静かモードに近い明るさ）。 ── */
+.hl.tik .hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; z-index: 2;
+  background: linear-gradient(to top, rgba(6,8,16,.40), rgba(6,8,16,.12) 55%, rgba(6,8,16,0)); pointer-events: none; }
 .hl-left { position: absolute; left: 10px; right: 10px; bottom: 62px; z-index: 3; }
 .hl-comments { display: flex; flex-direction: column; gap: 4px; }
 .hl-cm { align-self: flex-start; max-width: 80%; background: rgba(8,10,20,.42); border-radius: 12px;
