@@ -3673,9 +3673,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-bg-img.portrait { inset: 0; width: 100%; height: 100%; object-position: center; opacity: .97;
   animation: hlKenP 42s ease-in-out infinite alternate; }
 @keyframes hlKenP { from { transform: scale(1.015); } to { transform: scale(1.07); } }
-/* 背景スクリム：上端はヘッダー可読性のため残すが、中央〜下端（ミミの居る帯）は薄く＝立ち絵を暗く沈めない。 */
+/* 背景スクリム：上端だけヘッダー可読性のため薄く残し、中央〜下端（ミミの帯）はほぼ透明＝立ち絵を沈めない。 */
 .hl-bg-scrim { position: absolute; inset: 0; background:
-  linear-gradient(180deg, rgba(8,12,16,.58) 0%, rgba(8,12,16,.16) 26%, rgba(8,12,16,.04) 56%, rgba(8,10,14,.44) 100%); }
+  linear-gradient(180deg, rgba(8,12,16,.42) 0%, rgba(8,12,16,.08) 22%, rgba(8,12,16,0) 46%, rgba(8,10,14,0) 100%); }
 @keyframes hlKen { from { transform: translate(0,0) scale(1); } to { transform: translate(-1.6%,1.2%) scale(1.06); } }
 
 .hl { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - 30px); }   /* #header非表示前提＝ほぼ全画面（TikTok流のノースクロール） */
@@ -3745,7 +3745,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   box-shadow: 0 6px 18px -8px rgba(0,0,0,.7); transition: transform .1s ease, background .15s ease; -webkit-tap-highlight-color: transparent; }
 .hl-dress:hover { background: rgba(20,26,34,.78); }
 .hl-dress:active { transform: scale(.92); }
-.hl-dress-ic { font-size: 13px; line-height: 1; flex: none; }
+.hl-dress-ic { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.hl-dress-ic img { width: 22px; height: 22px; display: block; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
 .hl-dress-nm { max-width: 116px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ミミは中央・周囲とのバランスを取りつつ最大化（PCはコンテナ相対、スマホは画面幅相対）。
    背が高い時は上段バー(z-index:3)の背後に収まるので情報を隠さない。 */
@@ -6225,9 +6226,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .tik-tab.locked .lb::before { content: "🔒"; font-size: 8px; margin-right: 1px; }
 .tik-tab .dot { position: absolute; top: 5px; right: 22%; width: 8px; height: 8px; border-radius: 50%;
   background: #ff4d5e; border: 1.5px solid rgba(14,16,30,.9); }
-/* ヒーロー下端のグラデスクリム＝コメント/入力の可読性（TikTokの作法） */
-.hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34%;
-  background: linear-gradient(to top, rgba(6,8,16,.55), rgba(6,8,16,0)); pointer-events: none; }
+/* ヒーロー下端＝ごく薄いグラデだけ（画像の切れ目を柔らかくする程度）。静かモードで下半身を暗くしない。
+   配信モードのコメント可読用の濃い下スクリムは .hl.tik .hl-stage::after（別途）で上書きされる。 */
+.hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22%;
+  background: linear-gradient(to top, rgba(6,8,16,.22), rgba(6,8,16,0)); pointer-events: none; }
 
 /* ===== H2/H3 磨き（配信モード .hl.tik 限定・TikTok Live忠実） ===== */
 /* 🎯目標チップ＝📌ピン留めコメント風（すりガラス＋アクセント縁） */
@@ -6464,8 +6466,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-float .hl-float-v b, .hl-float .hl-float-fol b { color: #fff; }
 .hl-float .hl-float-fol { color: #ffb9d4; }
 
-/* ── 立ち絵の下スクリム＝コメント/入力を必ず読める（TikTokの作法） ── */
-.hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 42%; z-index: 2;
+/* ── 立ち絵の下スクリム＝配信モードのみ（コメント/入力が立ち絵の上に載るため必ず読める）。
+   静かモードはコメントが無い＝下端を暗くしない（＝ミミの下半身を沈めない）。 ── */
+.hl.tik .hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 42%; z-index: 2;
   background: linear-gradient(to top, rgba(6,8,16,.72), rgba(6,8,16,.30) 55%, rgba(6,8,16,0)); pointer-events: none; }
 .hl-left { position: absolute; left: 10px; right: 10px; bottom: 62px; z-index: 3; }
 .hl-comments { display: flex; flex-direction: column; gap: 4px; }
@@ -6485,7 +6488,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-dress { position: absolute; right: 10px; bottom: 58px; z-index: 5; width: 38px; height: 38px; border-radius: 50%;
   background: var(--gbg); backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl);
   border: 1px solid var(--gbd); display: flex; align-items: center; justify-content: center; padding: 0; }
-.hl-dress .hl-dress-ic { font-size: 18px; }
+.hl-dress .hl-dress-ic { width: 28px; height: 28px; }
+.hl-dress .hl-dress-ic img { width: 28px; height: 28px; }
 .hl-dress .hl-dress-nm { display: none; }
 /* 吹き出し＝同じガラス言語 */
 .hl-speech { background: rgba(255,255,255,.92); color: #201a2e; }
@@ -6527,13 +6531,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl.tik .hl-mimi img, .hl .hl-mimi img { object-position: bottom center; }
 
 /* ── ホーム iteration4：ヒーローを枠に溶かす（没入感）＋最終の締め ── */
-/* 立ち絵ステージの縁を内側ビネットで暗く落とし、暗いキャビン背景をアプリ枠へ自然に溶かす
-   ＝「箱の中の写真」から「配信画面そのもの」へ。中央のキャラは明るいまま。 */
+/* ★全面没入：ステージは“枠の中の写真”ではなく画面そのもの。内側ビネット（縁の暗い囲い）は
+   「枠を感じさせる」ためユーザー指摘で撤去。立ち絵はアプリ枠の縁まで明るく満ちる。 */
 .hl-stage { border-radius: 16px; overflow: hidden; position: relative; }
-/* ★内側ビネットは“枠へ溶かす”ための最小限に。強すぎると立ち絵(ミミ)まで暗く囲って画面が狭く見える
-   （ユーザー指摘）。縁を薄く落とすだけにして中央〜下のミミは明るいまま残す。 */
-.hl-stage::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  box-shadow: inset 0 0 30px 2px rgba(6,8,16,.26); }
+/* （内側ビネット .hl-stage::before は撤去＝枠感の除去。上端/下端の可読性はスクリムだけで担う。） */
 /* オーバーレイ（目標/LIVE/コメント/入力/着替え）はビネットより前面へ */
 .hl-goal, .hl-float, .hl-left, .hl-cmwrap, .hl-actionfloat, .hl-dress, .hl-speech { z-index: 6; }
 /* 上部のオーバーレイを少し上詰め＝暗帯を有効活用しキャラの顔まわりを空ける */
@@ -6543,8 +6544,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ── ホーム iteration5：上部スクリムで対称化・プロフィール微圧縮・最終の磨き ── */
 /* 下端と対称の上端スクリム＝目標/LIVEがクリーンな面に載り、キャビンの梁を沈める（上下対称＝端正） */
-.hl-stage .hl-topscrim { position: absolute; left: 0; right: 0; top: 0; height: 26%; z-index: 3; pointer-events: none;
-  background: linear-gradient(to bottom, rgba(6,8,16,.62), rgba(6,8,16,.18) 60%, rgba(6,8,16,0)); }
+.hl-stage .hl-topscrim { position: absolute; left: 0; right: 0; top: 0; height: 24%; z-index: 3; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(6,8,16,.46), rgba(6,8,16,.12) 60%, rgba(6,8,16,0)); }
 /* プロフィールを少しコンパクトに＝右クラスタとの重量バランス */
 .hl-prof { max-width: 46%; }
 .hl-prof .hl-prof-tx b { font-size: 11.5px; }
@@ -6634,7 +6635,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ── ヒーロー：明るい窓背景から主役(ミミ)を分離する“逆光ハロー”。背後の中心だけを僅かに
    沈めて、緑×ボロ衣装で埋もれがちな立ち絵を前に出す（窓の景色は周縁に残す）。ミミ(z1)の背面。 ── */
-.hl-stage { background: radial-gradient(ellipse 52% 46% at 50% 47%, rgba(6,8,16,.16), rgba(6,8,16,.06) 54%, rgba(6,8,16,0) 74%); }
+/* 中央ハローは撤去（ミミの居る中央を暗くしない＝ユーザー指摘）。背景色は透明。 */
+.hl-stage { background: transparent; }
 
 /* ── ヘッダー数字の基準線を揃える：所持金ピルは「コイン＋隠し資産バー」の縦積みの名残で
    単独コインが上寄り(cy18.5)になり、おなか(cy27)と高さがズレて見えた。行方向・中央寄せへ
