@@ -30,7 +30,12 @@ function renderSns(tab) {
 
   // 上：ブランドバー（Pyogramロゴ）
   const top = el("div", "ig-topbar");
-  top.innerHTML = `<span class="ig-logo">Pyogram</span>`;
+  // ★Pyogramロゴ＝タップでフィードへ（Instagramと同じ：ロゴ→ホームフィード）。
+  const logo = el("button", "ig-logo");
+  logo.textContent = "Pyogram";
+  logo.title = "フィードへ";
+  logo.onclick = () => { _snsTab = "feed"; renderSns(); };
+  top.appendChild(logo);
   const dmBtn = el("button", "ig-top-dm");
   const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
   dmBtn.innerHTML = `✉️${unread ? `<span class="ig-dmbadge">${unread}</span>` : ""}`;
@@ -69,8 +74,17 @@ function renderSns(tab) {
 function _igFeed(body, ci) {
   // ストーリーズ
   body.appendChild(_igStories(ci));
-  // フィード投稿
-  const posts = (typeof timelinePosts === "function") ? timelinePosts() : [];
+  // ★自分の投稿もフィードに出す（プロフィールだけ更新されフィードに出ないバグ修正）。新しい順で最上部に。
+  const mine = (typeof myPosts === "function") ? myPosts() : [];
+  const today = (typeof _snsDay === "function") ? _snsDay() : 0;
+  const minePosts = mine.map(function (m) {
+    const d = today - (m.day || today);
+    return { id: m.id, ic: "🐰", name: "予想家ミミ", handle: "@mimi_yosou",
+      base: (typeof myPostReacts === "function") ? myPostReacts(m) : 0,
+      text: m.text, img: m.img, replies: [], ago: d <= 0 ? "きょう" : d + "日前", _mine: true };
+  });
+  // フィード投稿＝自分の投稿（上）＋みんなの投稿（下）
+  const posts = minePosts.concat((typeof timelinePosts === "function") ? timelinePosts() : []);
   posts.forEach(po => body.appendChild(_igPost(po)));
   if (!posts.length) body.appendChild(el("div", "ig-empty", "まだ投稿がありません。"));
 }

@@ -2226,7 +2226,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ===== SNS「Pyogram」＝Instagram風に忠実（黒テーマ・写真主体・js/ui_sns.js） ===== */
 .ig-app { background: #000; color: #fafafa; border-radius: 14px; overflow: hidden; border: 1px solid #262626; margin-top: -2px; }
 .ig-topbar { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid #1f1f1f; }
-.ig-logo { font-family: "Snell Roundhand", "Brush Script MT", "Segoe Script", cursive; font-style: italic; font-weight: 700; font-size: 24px; color: #fafafa; line-height: 1; letter-spacing: .5px; }
+.ig-logo { font-family: "Snell Roundhand", "Brush Script MT", "Segoe Script", cursive; font-style: italic; font-weight: 700; font-size: 24px; color: #fafafa; line-height: 1; letter-spacing: .5px;
+  background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ig-logo:active { opacity: .7; }
 .ig-top-dm { position: relative; background: none; border: none; font-size: 20px; cursor: pointer; padding: 2px; }
 .ig-dmbadge { position: absolute; top: -4px; right: -6px; min-width: 15px; padding: 0 4px; border-radius: 999px; background: #ed4956; color: #fff; font-size: 9px; font-weight: 800; line-height: 15px; }
 .ig-body { min-height: 40px; }
