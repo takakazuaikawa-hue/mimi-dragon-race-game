@@ -6484,10 +6484,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-float .hl-live .hl-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 5px rgba(255,255,255,.8);
   transform: translateY(-0.5px); animation: hlLiveBlink 1.4s ease-in-out infinite; }
 @keyframes hlLiveBlink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
-/* 視聴者ピル＝ガラス帯：重なった視聴者アバター＋👁人数＋💗フォロワー */
+/* 視聴者ピル＝背景は敷かない（ユーザー指摘：この領域を黒くする必要はない）。アバター＋数字が背景の上に直接浮く。
+   明るい背景でも読めるよう文字に影を付ける（TikTokの映像上テキストと同じ）。 */
 .hl-vpill { display: inline-flex; align-items: center; gap: 7px; min-width: 0;
-  background: var(--gbg); -webkit-backdrop-filter: var(--gbl); backdrop-filter: var(--gbl);
-  border: 1px solid var(--gbd); border-radius: 999px; padding: 3px 9px 3px 6px; font-size: 10.5px; color: var(--mist); white-space: nowrap; }
+  background: transparent; border: 0; padding: 3px 2px; font-size: 10.5px; color: #fff; white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,.75), 0 0 2px rgba(0,0,0,.6); }
 .hl-avs { display: inline-flex; flex: none; }
 .hl-avs i { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(13,17,23,.92); margin-left: -6px; box-shadow: 0 1px 2px rgba(0,0,0,.45); }
 .hl-avs i:first-child { margin-left: 0; }
@@ -6543,7 +6544,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* コメントは入力行のすぐ上に低く・最大3件・古いものは薄く */
 .hl-left { bottom: 60px; }
 .hl-comments { gap: 3px; }
-.hl-comments .hl-cm:first-child { opacity: .6; }
+.hl-comments .hl-cm:first-child { opacity: 1; }
 .hl-comments .hl-cm { animation: hlCmIn .25s ease both; }
 @keyframes hlCmIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 /* CTA と タブバーの間隔・ヘッダー高さのリズムを統一 */
@@ -6605,8 +6606,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-cm.gift, .hl-cm.join, .hl-cm.vipjoin, .hl-cm.you { white-space: nowrap; }
 /* 目標チップ：唯一の色アクセント（マゼンタ左縁）を保ちつつ縁を細く上品に＝“ピン留め”の記号性は残す */
 .hl-goal { border-left-width: 2px; }
-/* コメント最上段（最古）の淡さをもう少し＝流れの奥行き */
-.hl-comments .hl-cm:first-child { opacity: .5; }
+/* ★最上段コメントの淡さは廃止（ユーザー指摘：一番上だけ不自然に透明にする意味がない）＝他と同じ不透明度。 */
+.hl-comments .hl-cm:first-child { opacity: 1; }
 
 /* ── ホーム iteration7：最終の“生きた”仕上げ（吹き出し尻尾・CTAの呼吸・整列の締め） ── */
 /* 吹き出しに尻尾＝発話の記号（右下＝ミミの方向へ） */
@@ -6695,7 +6696,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    目標チップ(左・可変幅)＋LIVE帯(右・自然幅・優先)を1本の flex 行(.hl-toprow)に。
    帯はフォロワーを含め必ず全部表示＝目標側が幅を譲り末尾…省略。はみ出しが原理的にゼロ。
    ════════════════════════════════════════════════════════════════════════ */
-.hl-stage .hl-toprow { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 6;
+/* ★ヘッダー直下に寄せる（top:10px だとヘッダーとの間が不自然に空く・ユーザー指摘）。負のtopで数px上げ、
+   目標チップ/LIVE帯がヘッダーに続く1行に見えるように（はみ出しは #app.hl-clip が切る）。 */
+.hl-stage .hl-toprow { position: absolute; top: -2px; left: 10px; right: 10px; z-index: 6;
   display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
 .hl-stage .hl-toprow > * { pointer-events: auto; }
 /* 目標チップ＝左・可変幅（足りなければ末尾…省略）・単一行。旧の絶対配置/縦積み/メーターを上書き。 */
