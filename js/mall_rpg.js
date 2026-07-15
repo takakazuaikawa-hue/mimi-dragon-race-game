@@ -2,8 +2,9 @@
 // 🗝️ モール地下大迷宮 — 一人称ダンジョンRPG（女神転生風・グリッド一人称）
 // モール地下に広がる迷宮を1歩ずつ探索。ランダムエンカウントで魔物と戦い、弱点を突いて
 // 「もう1回！」を奪い、ボスを倒して衣装を得る。弱点は戦って判明＝魔物図鑑に記録。
-// ★完全に表示メタ：着順・オッズ・配当・プレイヤーのコインには一切干渉しない（[[race-math-immutable]]）。
-//   報酬は内部通貨ゴールド＋衣装(outfitsWon=着替えに反映)のみ。レース系engineには接続しない。
+// ★表示メタ：着順・オッズ・配当には一切干渉しない（[[race-math-immutable]]）。冒険の報酬は内部通貨ゴールド
+//   （消耗品・ガチャに使う）＋衣装(outfitsWon=着替えに反映・無償ドロップ)。★E3通貨統一：お土産ショップの
+//   購入だけは所持コイン(state.player.coins)で払う＝経済を一本化（rpgBuyGoods）。それ以外はコイン非干渉。
 // 永続: state.player.rpg = {lv,exp,hp,mp,maxhp,maxmp,gold,skills[],items{},cleared,codex{},best{}}
 // =========================================================================
 
@@ -1172,18 +1173,22 @@ function rpgHaggle(id) {
   else               { mul = 1.1; msg = "あらあら、強気ですこと！ むしろ正規で、ね？"; tag = "ちょい高め…"; cls = "bad"; rpgSfx("tick"); }
   RPG._haggle[id] = { mul: mul }; RPG._shopMsg = msg;
   const np = rpgItemPrice(it), sv = it.price - np;   // 浮いた額（マイナスなら強気で割高）を明示
-  rpgFx.banner(tag + (sv > 0 ? ` −${sv}G` : (sv < 0 ? ` +${-sv}G` : "")), cls);
+  rpgFx.banner(tag + (sv > 0 ? ` −${fmtCoins(sv)}` : (sv < 0 ? ` +${fmtCoins(-sv)}` : "")), cls);
   renderMallRpg();
 }
 function rpgBuyGoods(id) {
   const d = rpgData(), it = rpgShopFor(RPG ? RPG.fi : 0).find(x => x.id === id);
   if (!it || rpgOwned(id)) return;
   const price = rpgItemPrice(it);
-  if (d.gold < price) { rpgSfx("tick"); if (RPG) RPG._shopMsg = "あら、ゴールドが足りないみたい…"; renderMallRpg(); return; }
+  // ★E3 通貨統一：お土産は所持コイン（レースで稼ぐお金）で買う＝経済を一本化。消耗品/ガチャは冒険で稼ぐ
+  //   ゴールドのまま（戦闘のシンクを残す）、衣装は戦利品として無償ドロップのまま（拾う快感を残す）。
+  const coins = state.player.coins || 0;
+  if (coins < price) { rpgSfx("tick"); if (RPG) RPG._shopMsg = "あら、コインが足りないみたい…"; renderMallRpg(); return; }
   const save = Math.max(0, it.price - price);           // 値切り/セールで浮いた額（成功体験を明示）
-  d.gold -= price; d.shop = d.shop || {}; d.shop[id] = true;
-  if (RPG) { RPG._shopMsg = save > 0 ? `お買い上げ♪ ${save}Gもお得でしたわね、ミミ様！` : "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${price}G で買った！${save > 0 ? `（−${save}G）` : ""}`, "good"); }
-  rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！" + (save > 0 ? ` −${save}G` : ""), "victory");
+  state.player.coins = coins - price; d.shop = d.shop || {}; d.shop[id] = true;
+  if (RPG) { RPG._shopMsg = save > 0 ? `お買い上げ♪ ${fmtCoins(save)}もお得でしたわね、ミミ様！` : "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${fmtCoins(price)} で買った！${save > 0 ? `（−${fmtCoins(save)}）` : ""}`, "good"); }
+  rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！" + (save > 0 ? ` −${fmtCoins(save)}` : ""), "victory");
+  if (typeof updateHeader === "function") updateHeader();   // 財布ヘッダ更新（通常モールの buyOutfit と同じ作法）
   rpgShopFloorReward(RPG ? RPG.fi : 0);                  // 🎀 そのフロアの品を全部そろえたら一度きりのごほうび
   rpgGrandCompCheck();                                   // 👑 全48品コンプで記念衣装＋最上位称号
   rpgSave(); renderMallRpg();
@@ -1476,7 +1481,7 @@ function rpgRenderShop(app) {
   const head = el("div", "rpg-shop-head");
   const complete = own >= arr.length;
   head.innerHTML = `<div class="rpg-shop-t">🛍️ ${meta.name} のお店</div>` +
-    `<div class="rpg-shop-sub"><span>🪙 ${d.gold}G</span><span class="sc${complete ? " done" : ""}">${complete ? "✓ コンプ" : "そろえた"} ${own}/${arr.length}</span></div>`;
+    `<div class="rpg-shop-sub"><span>🪙 ${fmtCoins(state.player.coins || 0)}</span><span class="sc${complete ? " done" : ""}">${complete ? "✓ コンプ" : "そろえた"} ${own}/${arr.length}</span></div>`;
   app.appendChild(head);
 
   // 💡おすすめ＝未所持の最安品（セール品以外）。買う動機を1つに絞る
@@ -1488,12 +1493,12 @@ function rpgRenderShop(app) {
     const owned = rpgOwned(it.id), price = rpgItemPrice(it);
     const isDeal = RPG && RPG._dealId === it.id, haggled = RPG && RPG._haggle && RPG._haggle[it.id];
     const isRec = it.id === recId, save = Math.max(0, it.price - price);
-    const can = d.gold >= price, cat = RPG_SHOP_CAT[it.cat] || { ic: "🛍️" };
+    const can = (state.player.coins || 0) >= price, cat = RPG_SHOP_CAT[it.cat] || { ic: "🛍️" };
     const card = el("div", "rpg-good" + (owned ? " owned" : can ? " ready" : " off") + (isDeal ? " deal" : "") + (isRec ? " rec" : ""));
     let inner = (isDeal ? `<span class="deal-tag">🎉SALE</span>` : (isRec ? `<span class="rec-tag">💡おすすめ</span>` : "")) +
       `<span class="gic">${it.ic}</span><b>${it.n}</b><span class="gcat">${cat.ic}${cat.n}</span>`;
     if (owned) inner += `<span class="gprice owned">✓ 購入ずみ</span>`;
-    else inner += `<span class="gprice">🪙${price}${save > 0 ? ` <s>${it.price}</s> <span class="gsave">−${save}G</span>` : (price > it.price ? ` <span class="gover">+${price - it.price}G</span>` : "")}</span>`;
+    else inner += `<span class="gprice">🪙${fmtCoins(price)}${save > 0 ? ` <s>${fmtCoins(it.price)}</s> <span class="gsave">−${fmtCoins(save)}</span>` : (price > it.price ? ` <span class="gover">+${fmtCoins(price - it.price)}</span>` : "")}</span>`;
     card.innerHTML = inner;
     if (!owned) {
       const acts = el("div", "good-acts");

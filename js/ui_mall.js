@@ -311,6 +311,6 @@ function _scmHelp() {
   _scmInfo("🛍️ MIMI MALL の遊び方",
     `<div class="mm-row"><span class="mm-ic">🪙</span><div><b>おさいふ ${fmtCoins(state.player.coins || 0)}</b><small>服はコインで購入。着替えは何度でも無料。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">👤</span><div><b>未購入はシルエット</b><small>買うと姿が見られる。集める楽しみ！</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🏬</span><div><b>フロアガイド＝巨大モール大冒険</b><small>1Fから屋上まで冒険して衣装GET（コインは使わない）。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🏬</span><div><b>フロアガイド＝巨大モール大冒険</b><small>1Fから屋上まで冒険して衣装GET。お土産は所持コインで買えます。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🏁</span><div><b>レースには影響しません</b><small>見た目だけのお楽しみ（着順・配当は不変）。</small></div></div>`);
 }
