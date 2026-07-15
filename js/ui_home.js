@@ -100,6 +100,10 @@ function renderHome() {
   document.body.classList.remove("title-mode");
   const app = beginScreen();
   document.body.classList.add("home-mode");   // グローバル#headerを隠す（資産/ランクはホーム独自ヘッダー＋フロートへ集約）
+  // ★ミミを「枠の中」でなく「UIの後ろ」に：立ち絵ステージのクリップを開き(#app.hl-clip .hl-stage=overflow visible)、
+  //   代わりに枠(#app)側でクリップする。ドック(z5)が脚に重なって隠すので足元が硬く切れず、ミミがUIの背後に立つ。
+  //   ★home限定（beginScreenでhl-clipを外す＝他画面はoverflow:autoのままスクロール可能）。_fitHlで枠にぴたり収まる前提。
+  app.classList.add("hl-clip");
   const p = state.player;
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   // daily login reward — checked once per session, shown just after home paints
@@ -346,7 +350,7 @@ function renderHome() {
   const _outfitNm = (_curOutfit && _curOutfit.name) ? _curOutfit.name : "きせかえ";
   const dressBtn = el("button", "hl-dress");
   // ★デザイン刷新：立ち絵中央に浮いていた「衣装名つきラベル」→ 右下の小さな👗アイコンへ（入力行の面に統合）。
-  dressBtn.innerHTML = `<span class="hl-dress-ic"><img src="images/nav/outfit.svg?v=20260715i" alt=""></span>`;
+  dressBtn.innerHTML = `<span class="hl-dress-ic"><img src="images/nav/outfit.svg?v=20260715j" alt=""></span>`;
   dressBtn.title = `きせかえ（いまの衣装：${_outfitNm}）`;
   dressBtn.onclick = (e) => { e.stopPropagation(); if (typeof showMimiViewer === "function") showMimiViewer(); };
   stage.appendChild(dressBtn);
@@ -827,7 +831,7 @@ function renderHome() {
   const bar = el("div", "tik-bar");
   // ★箱方式：専用アイコン images/nav/<key>.svg があれば絵文字を差し替える（無ければwebp→絵文字＝安全）。
   //   差し替え時は NAV_ICON_V を bump してキャッシュ撃破。5枚：island/kurashi/meal/sns/stable（dexは早期用）。
-  const NAV_ICON_V = "20260715i";
+  const NAV_ICON_V = "20260715j";
   const tikTab = (icon, label, go, opts) => {
     opts = opts || {};
     const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));

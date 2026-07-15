@@ -6553,6 +6553,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    「枠を感じさせる」ためユーザー指摘で撤去。立ち絵はアプリ枠の縁まで明るく満ちる。 */
 .hl-stage { border-radius: 16px; overflow: hidden; position: relative; }
 /* （内側ビネット .hl-stage::before は撤去＝枠感の除去。上端/下端の可読性はスクリムだけで担う。） */
+/* ★ミミをUIの背後に：ホーム(#app.hl-clip)ではステージのクリップを開き、はみ出しは枠(#app)側で切る。
+   立ち絵(z1)は下のドック(z5)の裏へ伸び、脚がドックに隠れて“UIの後ろに立つ”＝足元が硬く切れない。
+   #app 側で overflow:hidden にすることでスクロールバーは出さない（_fitHl で枠にぴたり収まる前提・home限定）。 */
+#app.hl-clip { overflow: hidden; }
+#app.hl-clip .hl-stage { overflow: visible; }
 /* オーバーレイ（目標/LIVE/コメント/入力/着替え）はビネットより前面へ */
 .hl-goal, .hl-float, .hl-left, .hl-cmwrap, .hl-actionfloat, .hl-dress, .hl-speech { z-index: 6; }
 /* 上部のオーバーレイを少し上詰め＝暗帯を有効活用しキャラの顔まわりを空ける */
@@ -6738,16 +6743,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ── 下メニューの高さ圧縮（無駄な余白/最小高さを詰める・ユーザー指示）。タップ領域は≥44pxを維持・CTAは据え置き。 ── */
 .hl-dock { padding: 5px 8px 6px; gap: 4px; }
 .hl-dock .tik-bar { padding: 5px 8px calc(7px + env(safe-area-inset-bottom, 0px)); margin-top: 0; }
-.hl-dock .tik-tab { min-height: 60px; padding: 4px 1px; }
+.hl-dock .tik-tab { min-height: 54px; padding: 4px 2px; }
 
 /* NAV_ICON_SPEC: 高級リゾート案内70% / ゲームUI艶30%。小型タブでも埋もれない表示サイズへ。 */
-.hl-dock .tik-tab .tik-ic-img { width: 42px; height: 42px; }
-.hl-dock .tik-tab .ic { min-height: 42px; }
+.hl-dock .tik-tab .tik-ic-img { width: 34px; height: 34px; }
+.hl-dock .tik-tab .ic { min-height: 34px; line-height: 0; }
 .hl-dock .tik-tab:not(.locked):hover .tik-ic-img { filter: brightness(1.12) saturate(1.08) drop-shadow(0 2px 5px rgba(79,210,255,.34)); }
 .hl-dock .tik-tab:not(.locked):active .tik-ic-img { filter: brightness(1.2) saturate(1.12) drop-shadow(0 1px 6px rgba(255,210,105,.46)); }
 @media (max-width: 480px) {
-  .hl-dock .tik-tab .tik-ic-img { width: 39px; height: 39px; }
-  .hl-dock .tik-tab .ic { min-height: 39px; }
+  .hl-dock .tik-tab .tik-ic-img { width: 32px; height: 32px; }
+  .hl-dock .tik-tab .ic { min-height: 32px; }
 }
 
 /* 食事：食べる前に 価格・おなか回復・所持コインを明示。現状維持＋透明化（価格/課金は hunger.js のまま不変）・ユーザー選択。 */
