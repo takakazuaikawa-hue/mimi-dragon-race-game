@@ -3673,9 +3673,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-bg-img.portrait { inset: 0; width: 100%; height: 100%; object-position: center; opacity: .97;
   animation: hlKenP 42s ease-in-out infinite alternate; }
 @keyframes hlKenP { from { transform: scale(1.015); } to { transform: scale(1.07); } }
-/* 背景スクリム：背景写真を沈めないため、ごく薄い上端の一筋のみ（ヘッダーは .hl-top が自前の暗帯を持つ）。中央〜下端は完全透明。 */
-.hl-bg-scrim { position: absolute; inset: 0; background:
-  linear-gradient(180deg, rgba(8,12,16,.20) 0%, rgba(8,12,16,0) 12%, rgba(8,12,16,0) 100%); }
+/* 背景スクリム：背景写真を全面に生かすため撤去（透明）。ヘッダーは .hl-top が自前の暗帯を持つので暗幕は不要。 */
+.hl-bg-scrim { position: absolute; inset: 0; background: transparent; }
 @keyframes hlKen { from { transform: translate(0,0) scale(1); } to { transform: translate(-1.6%,1.2%) scale(1.06); } }
 
 .hl { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - 30px); }   /* #header非表示前提＝ほぼ全画面（TikTok流のノースクロール） */
@@ -6478,10 +6477,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-float { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; flex-direction: row; align-items: center; gap: 6px;
   background: transparent; border: 0; padding: 0; max-width: 66%; pointer-events: none; }
 /* LIVE＝独立した赤バッジ（TikTokの赤LIVE・白ドットが点滅） */
-.hl-float .hl-live { display: inline-flex; align-items: center; gap: 4px; font-weight: 900; font-size: 10px; letter-spacing: .06em; color: #fff;
-  background: linear-gradient(180deg, #ff5e6c, #e02d4f); border-radius: 7px; padding: 3px 7px; box-shadow: 0 2px 8px -2px rgba(224,45,79,.6); }
+.hl-float .hl-live { display: inline-flex; align-items: center; gap: 5px; font-weight: 800; font-size: 10px; line-height: 1; letter-spacing: .08em; color: #fff;
+  font-family: "Helvetica Neue", Arial, system-ui, -apple-system, sans-serif;   /* ★LIVEはラテン専用フォントで（和文フォントのラテン字形/縦メトリクスのズレを避ける） */
+  background: linear-gradient(180deg, #ff5e6c, #e02d4f); border-radius: 7px; padding: 4px 7px; box-shadow: 0 2px 8px -2px rgba(224,45,79,.6); }
+/* ★ドットは大文字「LIVE」の視覚中心に合わせる：全大文字は下部に余白がないため幾何中心では低く見える→わずかに上へ。 */
 .hl-float .hl-live .hl-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 5px rgba(255,255,255,.8);
-  animation: hlLiveBlink 1.4s ease-in-out infinite; }
+  transform: translateY(-0.5px); animation: hlLiveBlink 1.4s ease-in-out infinite; }
 @keyframes hlLiveBlink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 /* 視聴者ピル＝ガラス帯：重なった視聴者アバター＋👁人数＋💗フォロワー */
 .hl-vpill { display: inline-flex; align-items: center; gap: 7px; min-width: 0;
@@ -6585,9 +6586,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ── ホーム iteration5：上部スクリムで対称化・プロフィール微圧縮・最終の磨き ── */
 /* 下端と対称の上端スクリム＝目標/LIVEがクリーンな面に載り、キャビンの梁を沈める（上下対称＝端正） */
-/* ★背景を沈めないため上端スクリムはごく薄い一筋だけ（ヘッダーは .hl-top が自前の暗帯を持つので余分な暗幕は不要・ユーザー指摘）。 */
-.hl-stage .hl-topscrim { position: absolute; left: 0; right: 0; top: 0; height: 14%; z-index: 3; pointer-events: none;
-  background: linear-gradient(to bottom, rgba(6,8,16,.20), rgba(6,8,16,0) 70%); }
+/* ★背景を全面に生かす：上端スクリムは撤去（透明）。ヘッダーは .hl-top が自前の暗帯を持ち、目標チップ/LIVE帯も
+   各自の背景ピルを持つので、背景写真の上に暗幕は不要（ユーザー指摘：LIVE帯の周りの四角い暗がりも透明に）。 */
+.hl-stage .hl-topscrim { display: none; }
 /* プロフィールを少しコンパクトに＝右クラスタとの重量バランス */
 .hl-prof { max-width: 46%; }
 .hl-prof .hl-prof-tx b { font-size: 11.5px; }
