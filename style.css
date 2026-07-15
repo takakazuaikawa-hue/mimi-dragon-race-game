@@ -6474,15 +6474,32 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-goal { position: absolute; left: 10px; top: 10px; max-width: 62%; z-index: 4;
   background: var(--gbg); backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl);
   border: 1px solid var(--gbd); border-radius: 13px; padding: 8px 12px; text-align: left; }
-.hl-float { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; align-items: center; gap: 9px;
-  background: var(--gbg); backdrop-filter: var(--gbl); -webkit-backdrop-filter: var(--gbl);
-  border: 1px solid var(--gbd); border-radius: 999px; padding: 6px 11px; font-size: 11px; }
-.hl-float .hl-live { display: inline-flex; align-items: center; gap: 4px; font-weight: 900; font-size: 10px; color: #fff; }
-.hl-float .hl-live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #ff3b52;
-  box-shadow: 0 0 6px #ff3b52; animation: hlLiveBlink 1.4s ease-in-out infinite; }
+/* ★TikTok Live 右上クラスタ：赤LIVEバッジ＋視聴者ガラスピル（横一列・コンパクト）。縦積みのスタッツ盤面から戻す。 */
+.hl-float { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; flex-direction: row; align-items: center; gap: 6px;
+  background: transparent; border: 0; padding: 0; max-width: 66%; pointer-events: none; }
+/* LIVE＝独立した赤バッジ（TikTokの赤LIVE・白ドットが点滅） */
+.hl-float .hl-live { display: inline-flex; align-items: center; gap: 4px; font-weight: 900; font-size: 10px; letter-spacing: .06em; color: #fff;
+  background: linear-gradient(180deg, #ff5e6c, #e02d4f); border-radius: 7px; padding: 3px 7px; box-shadow: 0 2px 8px -2px rgba(224,45,79,.6); }
+.hl-float .hl-live .hl-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 5px rgba(255,255,255,.8);
+  animation: hlLiveBlink 1.4s ease-in-out infinite; }
 @keyframes hlLiveBlink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
-.hl-float .hl-float-v b, .hl-float .hl-float-fol b { color: #fff; }
-.hl-float .hl-float-fol { color: #ffb9d4; }
+/* 視聴者ピル＝ガラス帯：重なった視聴者アバター＋👁人数＋💗フォロワー */
+.hl-vpill { display: inline-flex; align-items: center; gap: 7px; min-width: 0;
+  background: var(--gbg); -webkit-backdrop-filter: var(--gbl); backdrop-filter: var(--gbl);
+  border: 1px solid var(--gbd); border-radius: 999px; padding: 3px 9px 3px 6px; font-size: 10.5px; color: var(--mist); white-space: nowrap; }
+.hl-avs { display: inline-flex; flex: none; }
+.hl-avs i { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(13,17,23,.92); margin-left: -6px; box-shadow: 0 1px 2px rgba(0,0,0,.45); }
+.hl-avs i:first-child { margin-left: 0; }
+.hl-avs i:nth-child(1) { background: linear-gradient(135deg, #8fd0ff, #3f7fd0); }
+.hl-avs i:nth-child(2) { background: linear-gradient(135deg, #ffc0da, #e0588a); }
+.hl-avs i:nth-child(3) { background: linear-gradient(135deg, #ffe0a0, #e6a838); }
+.hl-float-v { flex: none; }
+.hl-float-v b { color: #fff; font-variant-numeric: tabular-nums; }
+.hl-float-fol { flex: none; color: #ffb9d4; display: inline-flex; align-items: center; gap: 2px; }
+.hl-float-fol b { color: #fff; font-variant-numeric: tabular-nums; }
+/* スマホは右上クラスタを LIVE＋視聴者アバター＋👁人数 に絞る＝TikTok本来（フォロワーはプロフィール側）。
+   幅を空けて左の目標チップが「絶…」まで潰れないように。※6477ブロックより後に置いて確実に上書き。 */
+@media (max-width: 560px) { .hl-float-fol { display: none; } }
 
 /* ── 立ち絵の下スクリム＝配信モードのみ（コメント/入力が立ち絵の上に載るため必ず読める）。
    静かモードはコメントが無い＝下端を暗くしない（＝ミミの下半身を沈めない）。 ── */

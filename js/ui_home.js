@@ -370,11 +370,15 @@ function renderHome() {
     const floatBox = el("div", "hl-float");
     const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
     const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
-    // LIVE＋視聴者＋フォロワーを1本のガラス帯に（TikTok Live）。帯は自然幅・折り返さず必ず全部表示。
+    // ★TikTok Live 右上クラスタ：赤LIVEバッジ＋ガラスの視聴者ピル（重なった視聴者アバター＋👁人数＋💗フォロワー）。
+    //   横一列・コンパクト＝TikTokの「配信を見ている観客」感（縦積みのスタッツ盤面から戻す・ユーザー指摘）。
     floatBox.innerHTML =
       `<span class="hl-live"><i class="hl-live-dot"></i>LIVE</span>` +
-      `<span class="hl-float-v">👁 <b></b></span>` +
-      `<span class="hl-float-fol">👥 <b>${_fmtF(_folV)}</b></span>`;
+      `<span class="hl-vpill">` +
+        `<span class="hl-avs"><i></i><i></i><i></i></span>` +
+        `<span class="hl-float-v">👁 <b></b></span>` +
+        `<span class="hl-float-fol">💗 <b>${_fmtF(_folV)}</b></span>` +
+      `</span>`;
     viewersEl = floatBox.querySelector(".hl-float-v b");
     topRow.appendChild(floatBox);
   }
