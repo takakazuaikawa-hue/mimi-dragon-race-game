@@ -3673,9 +3673,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-bg-img.portrait { inset: 0; width: 100%; height: 100%; object-position: center; opacity: .97;
   animation: hlKenP 42s ease-in-out infinite alternate; }
 @keyframes hlKenP { from { transform: scale(1.015); } to { transform: scale(1.07); } }
-/* 背景スクリム：上端だけヘッダー可読性のため薄く残し、中央〜下端（ミミの帯）はほぼ透明＝立ち絵を沈めない。 */
+/* 背景スクリム：背景写真を沈めないため、ごく薄い上端の一筋のみ（ヘッダーは .hl-top が自前の暗帯を持つ）。中央〜下端は完全透明。 */
 .hl-bg-scrim { position: absolute; inset: 0; background:
-  linear-gradient(180deg, rgba(8,12,16,.42) 0%, rgba(8,12,16,.08) 22%, rgba(8,12,16,0) 46%, rgba(8,10,14,0) 100%); }
+  linear-gradient(180deg, rgba(8,12,16,.20) 0%, rgba(8,12,16,0) 12%, rgba(8,12,16,0) 100%); }
 @keyframes hlKen { from { transform: translate(0,0) scale(1); } to { transform: translate(-1.6%,1.2%) scale(1.06); } }
 
 .hl { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; min-height: calc(100dvh - 30px); }   /* #header非表示前提＝ほぼ全画面（TikTok流のノースクロール） */
@@ -6228,8 +6228,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   background: #ff4d5e; border: 1.5px solid rgba(14,16,30,.9); }
 /* ヒーロー下端＝ごく薄いグラデだけ（画像の切れ目を柔らかくする程度）。静かモードで下半身を暗くしない。
    配信モードのコメント可読用の濃い下スクリムは .hl.tik .hl-stage::after（別途）で上書きされる。 */
-.hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22%;
-  background: linear-gradient(to top, rgba(6,8,16,.22), rgba(6,8,16,0)); pointer-events: none; }
+.hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 14%;
+  background: linear-gradient(to top, rgba(6,8,16,.14), rgba(6,8,16,0)); pointer-events: none; }
 
 /* ===== H2/H3 磨き（配信モード .hl.tik 限定・TikTok Live忠実） ===== */
 /* 🎯目標チップ＝📌ピン留めコメント風（すりガラス＋アクセント縁） */
@@ -6501,15 +6501,15 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    幅を空けて左の目標チップが「絶…」まで潰れないように。※6477ブロックより後に置いて確実に上書き。 */
 @media (max-width: 560px) { .hl-float-fol { display: none; } }
 
-/* ── 立ち絵の下スクリム＝配信モードのみ（コメント/入力が立ち絵の上に載るため）。★ユーザー指摘：静かホームで
-   薄くしたのに配信は暗いまま＝不快。コメントは各バブル(.hl-cm)が自前の背景を持つので大きな暗幕は不要。
-   最下端だけ薄く落として入力/ギフトバーの下地にする程度に（ミミの下半身を沈めない・静かモードに近い明るさ）。 ── */
-.hl.tik .hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; z-index: 2;
-  background: linear-gradient(to top, rgba(6,8,16,.40), rgba(6,8,16,.12) 55%, rgba(6,8,16,0)); pointer-events: none; }
+/* ── 立ち絵の下スクリム＝配信モードのみ。★ユーザー指摘：暗幕で背景が沈むのが不快。コメントは各バブル(.hl-cm)、
+   入力/ギフトバーも自前の背景を持つので大きな暗幕は不要。最下端に一筋だけ残す程度にして背景をそのまま見せる。 ── */
+.hl.tik .hl-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 16%; z-index: 2;
+  background: linear-gradient(to top, rgba(6,8,16,.24), rgba(6,8,16,0) 80%); pointer-events: none; }
 .hl-left { position: absolute; left: 10px; right: 10px; bottom: 62px; z-index: 3; }
 .hl-comments { display: flex; flex-direction: column; gap: 4px; }
-.hl-cm { align-self: flex-start; max-width: 80%; background: rgba(8,10,20,.42); border-radius: 12px;
-  padding: 4px 10px; font-size: 11.5px; line-height: 1.4; color: #eef1f7; }
+/* ★背景の暗幕を外したぶん、コメント自体のバブルを少し濃くして明るい背景の上でも読めるように（TikTokの半透明コメント）。 */
+.hl-cm { align-self: flex-start; max-width: 80%; background: rgba(8,10,20,.62); border-radius: 12px;
+  padding: 4px 10px; font-size: 11.5px; line-height: 1.4; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
 .hl-cm b { margin-right: 5px; }
 
 /* ── 入力行＝ヒーロー下端に固定・[💬][🎁][❤️]・きせかえは小さな👗 ── */
@@ -6585,8 +6585,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ── ホーム iteration5：上部スクリムで対称化・プロフィール微圧縮・最終の磨き ── */
 /* 下端と対称の上端スクリム＝目標/LIVEがクリーンな面に載り、キャビンの梁を沈める（上下対称＝端正） */
-.hl-stage .hl-topscrim { position: absolute; left: 0; right: 0; top: 0; height: 24%; z-index: 3; pointer-events: none;
-  background: linear-gradient(to bottom, rgba(6,8,16,.46), rgba(6,8,16,.12) 60%, rgba(6,8,16,0)); }
+/* ★背景を沈めないため上端スクリムはごく薄い一筋だけ（ヘッダーは .hl-top が自前の暗帯を持つので余分な暗幕は不要・ユーザー指摘）。 */
+.hl-stage .hl-topscrim { position: absolute; left: 0; right: 0; top: 0; height: 14%; z-index: 3; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(6,8,16,.20), rgba(6,8,16,0) 70%); }
 /* プロフィールを少しコンパクトに＝右クラスタとの重量バランス */
 .hl-prof { max-width: 46%; }
 .hl-prof .hl-prof-tx b { font-size: 11.5px; }
