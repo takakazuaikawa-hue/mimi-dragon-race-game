@@ -226,9 +226,21 @@ function renderHome() {
   app.appendChild(bg);
 
   const wrap = el("div", "hl");
-  // 1画面フィット：dvh/vhは環境差が大きい（WebViewで実視界より小さく解決される例あり）ので
-  // 実測 innerHeight で .hl の高さを確定（リサイズ追従・ホーム再描画で旧リスナは差し替え）。
-  function _fitHl() { wrap.style.minHeight = Math.max(420, window.innerHeight - 30) + "px"; }
+  // 1画面フィット：dvh/vhは環境差が大きい（WebViewで実視界より小さく解決される例あり）ので実測で確定。
+  // ★基準は「実際の枠(#app)の内寸」＝PCの固定9:16フレームでは innerHeight(全ビューポート)より小さい。
+  //   旧実装は window.innerHeight-30 で組んでいたため PC枠(#app=836)より高い880になり、はみ出して
+  //   スクロールバーが出ていた（ユーザー指摘）。#app の client 高さ−上下padding に合わせる（枠にぴたり収まる）。
+  function _fitHl() {
+    var frame = document.getElementById("app");
+    var h;
+    if (frame && frame.clientHeight) {
+      var fcs = getComputedStyle(frame);
+      h = frame.clientHeight - (parseFloat(fcs.paddingTop) || 0) - (parseFloat(fcs.paddingBottom) || 0);
+    } else {
+      h = window.innerHeight - 30;   // フォールバック（枠が取れない場合＝旧挙動）
+    }
+    wrap.style.minHeight = Math.max(420, h) + "px";
+  }
   _fitHl();
   if (window._hlResize) window.removeEventListener("resize", window._hlResize);
   window._hlResize = _fitHl;
@@ -334,7 +346,7 @@ function renderHome() {
   const _outfitNm = (_curOutfit && _curOutfit.name) ? _curOutfit.name : "きせかえ";
   const dressBtn = el("button", "hl-dress");
   // ★デザイン刷新：立ち絵中央に浮いていた「衣装名つきラベル」→ 右下の小さな👗アイコンへ（入力行の面に統合）。
-  dressBtn.innerHTML = `<span class="hl-dress-ic"><img src="images/nav/outfit.svg?v=20260715d" alt=""></span>`;
+  dressBtn.innerHTML = `<span class="hl-dress-ic"><img src="images/nav/outfit.svg?v=20260715i" alt=""></span>`;
   dressBtn.title = `きせかえ（いまの衣装：${_outfitNm}）`;
   dressBtn.onclick = (e) => { e.stopPropagation(); if (typeof showMimiViewer === "function") showMimiViewer(); };
   stage.appendChild(dressBtn);
@@ -815,7 +827,7 @@ function renderHome() {
   const bar = el("div", "tik-bar");
   // ★箱方式：専用アイコン images/nav/<key>.svg があれば絵文字を差し替える（無ければwebp→絵文字＝安全）。
   //   差し替え時は NAV_ICON_V を bump してキャッシュ撃破。5枚：island/kurashi/meal/sns/stable（dexは早期用）。
-  const NAV_ICON_V = "20260706a";
+  const NAV_ICON_V = "20260715i";
   const tikTab = (icon, label, go, opts) => {
     opts = opts || {};
     const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));
