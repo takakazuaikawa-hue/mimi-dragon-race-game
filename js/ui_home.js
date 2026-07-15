@@ -334,7 +334,7 @@ function renderHome() {
   const _outfitNm = (_curOutfit && _curOutfit.name) ? _curOutfit.name : "きせかえ";
   const dressBtn = el("button", "hl-dress");
   // ★デザイン刷新：立ち絵中央に浮いていた「衣装名つきラベル」→ 右下の小さな👗アイコンへ（入力行の面に統合）。
-  dressBtn.innerHTML = `<span class="hl-dress-ic">👗</span>`;
+  dressBtn.innerHTML = `<span class="hl-dress-ic"><img src="images/nav/outfit.svg?v=20260715d" alt=""></span>`;
   dressBtn.title = `きせかえ（いまの衣装：${_outfitNm}）`;
   dressBtn.onclick = (e) => { e.stopPropagation(); if (typeof showMimiViewer === "function") showMimiViewer(); };
   stage.appendChild(dressBtn);
@@ -842,7 +842,9 @@ function renderHome() {
     bar.appendChild(tikTab("🏝️", "島", () => showInfoPopup("🏝️ 島",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true, img: "island" }));
   }
-  bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets(), { img: "kurashi" }));       // 経済/ツリー/習い事/物語/相談/コレクション
+  // 🌳暮らし＝物語もこの中。新しい話が読める時は未読ドットで気づかせる（レース直後のモーダルの代わり）。
+  const _storyNew = (typeof storyHasUnread === "function") && storyHasUnread();
+  bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets(), { img: "kurashi", dot: _storyNew }));   // 経済/ツリー/習い事/物語/相談/コレクション
   bar.appendChild(tikTab("🍽️", "ごはん", () => renderMeals(), { img: "meal" }));          // 勝ち飯/負け飯＝高頻度ループを1タップ
   // 📱SNS＝配信モードのみ（未読ドット）
   if (broadcast) {

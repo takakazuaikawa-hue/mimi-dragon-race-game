@@ -2403,6 +2403,9 @@ function settleRace() {
   c.settled = true;
   state.player.pendingPayout = 0;   // consumed normally — nothing to reconcile on next load
   const betResult = c.betResult, raceResult = c.raceResult;
+  // ★このレースの実績反映“前”に、いま読める未読章を控える（レース後に新しく読めるようになった章を差分で出すため）。
+  const _availBefore = new Set((typeof chapterAvailable === "function")
+    ? STORY_CHAPTERS.filter(ch => chapterAvailable(ch.id) && !chapterRead(ch.id)).map(ch => ch.id) : []);
   // Award payout
   state.player.coins += betResult.payout;
   state.player.completedRaces += 1;
@@ -2460,8 +2463,11 @@ function settleRace() {
   const _lifeP0 = (typeof lifeTreeStats === "function") ? lifeTreeStats().earned : 0;
   const ra = recomputeAssets(state);
   const newTotal = state.player.totalAssets || 0;
-  // (a) story: any chapter whose 総資産 threshold was crossed THIS race pops up.
-  const justUnlocked = STORY_CHAPTERS.filter(ch => prevTotal < storyUnlockAt(ch.id) && newTotal >= storyUnlockAt(ch.id));
+  // (a) story: このレースの実績で「新しく読めるようになった」章（前は読めず、今は読める・未読）。
+  //     ★総資産のしきい値跨ぎではなく chapterAvailable の差分＝1レースで複数話がまとめて出ない（前章既読が要る）。
+  const justUnlocked = (typeof chapterAvailable === "function")
+    ? STORY_CHAPTERS.filter(ch => ch.id !== "ED" && chapterAvailable(ch.id) && !chapterRead(ch.id) && !_availBefore.has(ch.id))
+    : [];
   if (ra.level > prevStage || justUnlocked.length) {
     runEventHooks("onStoryUnlock", { stage: ra.level, chapter: ra.unlockedStory, chapters: justUnlocked });
   }
@@ -2492,7 +2498,8 @@ function settleRace() {
   } catch (e) { c.gainLedger = null; }
   saveGame();
   updateHeader();
-  if (justUnlocked.length) showStoryUnlock(justUnlocked);   // popup over the result screen
+  // ★レース直後に全画面モーダルは出さない（「いきなり出て雑」＝ユーザー指摘）。
+  //   解放は結果明細の1行（storyUnlocked）で静かに触れ、物語ナビのバッジ＋次のホーム到着時のカットインで案内する。
 }
 
 // §07 §13 Bet confirmation modal.
@@ -3120,7 +3127,8 @@ function drawRecapScreen() {
       if (g.assetsDelta > 0) R("🏦", "総資産（最高記録更新）", "＋" + fmtCoins(g.assetsDelta), "asset");
       if (g.lifePDelta > 0) R("🌱", "暮らしP（総資産で貯まる指標）", "＋" + g.lifePDelta, "asset");
       if (g.rankUp) R("🏅", "ランク昇格！", "ランク" + g.rankUp, "rankup");
-      g.storyUnlocked.forEach(t => R("📜", "物語が解放", t, "rankup"));
+      // ★解放は結果画面では静かに1行だけ（章題は出さず「新しい話が届いた」）。詳しい案内は物語ナビ/ホーム側で。
+      if (g.storyUnlocked && g.storyUnlocked.length) R("📖", "新しい話が届いた", "〈物語〉へ", "rankup");
       if (g.mission) R("📋", "デイリーミッション「出走」", "達成！", "asset");
       const box = el("div", "rs-ledger");
       box.innerHTML = `<div class="rs-lg-t">📦 今回の獲得</div>` + rows.join("");
@@ -3259,13 +3267,17 @@ function nextGoals(state) {
   if (nextT && nextT > total) {
     goals.push({ kind: "stage", icon: "🏠", label: "暮らしの段階アップ", sub: `総資産 あと ${fmtCoins(nextT - total)}`, pct: clamp(total / nextT * 100, 2, 99) });
   }
-  // next story chapter
-  if (typeof STORY_CHAPTERS !== "undefined" && typeof storyUnlockAt === "function") {
-    let best = null, bestAt = Infinity;
-    STORY_CHAPTERS.forEach(ch => { const at = storyUnlockAt(ch.id); if (at > total && at < bestAt) { bestAt = at; best = ch; } });
-    // ★予告に固有名を出さない：未解放の章タイトルには顧問の名前が入る（例「第5話　セレスティアの神眼」）。
-    //   まだ出会っていない相手を予告で漏らさないよう、章番号だけの見出しに伏せる（読むと本タイトルに戻る）。
-    if (best) goals.push({ kind: "story", icon: "📖", label: chapterTeaseTitle(best), sub: `総資産 あと ${fmtCoins(bestAt - total)}`, pct: clamp(total / bestAt * 100, 2, 99) });
+  // next story chapter（★解放は chapterAvailable が正本＝前章既読＋実績。予告に固有名は出さない）
+  if (typeof STORY_CHAPTERS !== "undefined" && typeof chapterAvailable === "function") {
+    const nextCh = STORY_CHAPTERS.find(ch => !chapterRead(ch.id));   // 未読で最も手前の章
+    if (nextCh) {
+      const avail = chapterAvailable(nextCh.id);
+      // 進捗バー：総資産ゲートの章(4/5/ED)だけ total で見せ、実績ゲート(2/3)は解禁前は控えめに。
+      const at = (typeof storyUnlockAt === "function") ? storyUnlockAt(nextCh.id) : 0;
+      const pct = avail ? 100 : (at > total ? clamp(total / at * 100, 2, 99) : 40);
+      const sub = avail ? "いま読める！" : ((typeof chapterUnlockHint === "function" && chapterUnlockHint(nextCh.id)) || "続きはもう少し");
+      goals.push({ kind: "story", icon: "📖", label: chapterTeaseTitle(nextCh), sub: sub, pct: pct });
+    }
   }
   return goals;
 }

@@ -149,6 +149,8 @@ function recomputeAssets(state) {
 // §7 — the highest story chapter unlocked at this 総資産 (spec 32 §9 thresholds).
 // ★EDは総資産1兆 か、終章クリア（epilogue.edFlag＝絶滅メーターを押し切り最終決戦を完走）で解放。
 function epStoryGateOk(ch, total) {
+  // ★解放の正本＝chapterAvailable（前章既読＋実績）。従来の総資産しきい値はフォールバックに残す。
+  if (typeof chapterAvailable === "function") return chapterAvailable(ch.id);
   if (ch.id === "ED" && state.player && state.player.epilogue && state.player.epilogue.edFlag) return true;
   return total >= storyUnlockAt(ch.id);
 }

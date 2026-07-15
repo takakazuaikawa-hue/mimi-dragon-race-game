@@ -37,7 +37,7 @@ function renderStory() {
 
   const news = el("div", "news");
   const issue = (state.player.completedRaces || 0) + 1;
-  const unlockedCount = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
+  const unlockedCount = STORY_CHAPTERS.filter(ch => (typeof chapterAvailable === "function") ? chapterAvailable(ch.id) : (total >= storyUnlockAt(ch.id))).length;
 
   // 題字
   news.appendChild(_newsMast(`第 ${issue} 號`, `本紙連載 ${unlockedCount}／${STORY_CHAPTERS.length} 話`));
@@ -59,7 +59,7 @@ function renderStory() {
     //   「ミズ・アオラ」、肩書「エコノミスト」、顔写真、テーマ色が一面に出ていた（第5話も総資産1億で
     //   「セレスティア・ブラックメテオ／世界の天井／神眼」が未読のまま露出＝R3違反）。
     //   未読の記事は「読める」ことだけ伝え、寄稿者の名・顔・記号・肩書・章題（章題にも名が入る）は伏せる。
-    const unlocked = total >= storyUnlockAt(ch.id);   // 総資産で「読める」か
+    const unlocked = (typeof chapterAvailable === "function") ? chapterAvailable(ch.id) : (total >= storyUnlockAt(ch.id));   // 「読める」か（前章既読＋実績・正本）
     const met = _csMet(ch.cast);                      // 出会ったか（しきい値 AND その章を読んだ・R1）
     const cast = STORY_CAST[ch.cast];
     const art = el("button", "news-art" + (unlocked ? "" : " locked"));
@@ -79,7 +79,7 @@ function renderStory() {
       // 未読の見出しは「第N話」だけ（ED は元から名を含まない）。固有名を出さずに予告する（R7）。
       : (ch.id === "ED" ? "エンディング" : `第${ch.id}話　<span class="news-censor">■■■■</span>`);
     const lead2 = !unlocked
-      ? `次號予告 ／ 総資産 ${fmtCoins(storyUnlockAt(ch.id))} にて解禁`
+      ? `次號予告 ／ ${(typeof chapterUnlockHint === "function" && chapterUnlockHint(ch.id)) || ("総資産 " + fmtCoins(storyUnlockAt(ch.id)) + " にて解禁")}`
       : met ? (ch.id === "ED" ? "次なる物語へ——結びの一面。" : ch.title)
       : "本紙未読 ／ タップで記事を読む";
     art.innerHTML = photo +
@@ -181,14 +181,14 @@ function showStoryEvent(e) {
 function renderStoryChapter(chId) {
   const ch = STORY_CHAPTERS.find(c => c.id === chId);
   recomputeAssets(state);
-  if (!ch || state.player.totalAssets < storyUnlockAt(ch.id)) { renderStory(); return; }
+  if (!ch || ((typeof chapterAvailable === "function") ? !chapterAvailable(ch.id) : (state.player.totalAssets < storyUnlockAt(ch.id)))) { renderStory(); return; }
   // 読み飛ばしガード：手前に“解禁済みなのに未読”の話が残っていたら、先にそこから読んでもらう（順番厳守）。
   //   ＝総資産だけで終章へ飛び、配信も体験しないまま結末のセリフを踏む断絶を防ぐ（表示のみ・レース数値に非干渉）。
   if (typeof getStoryFlag === "function") {
     var _order = ["1", "2", "3", "4", "5", "ED"], _i = _order.indexOf(chId);
     for (var _k = 0; _k < _i; _k++) {
       var _pid = _order[_k];
-      if (state.player.totalAssets < storyUnlockAt(_pid)) continue;   // まだ解禁前の話は飛ばして良い
+      if ((typeof chapterAvailable === "function") ? !chapterAvailable(_pid) : (state.player.totalAssets < storyUnlockAt(_pid))) continue;   // まだ解禁前の話は飛ばして良い
       if (!getStoryFlag("_chapter_intro_" + _pid)) {
         if (typeof showInfoPopup === "function") showInfoPopup("📖 先に前のお話を",
           `<div class="mm-row"><span class="mm-ic">📖</span><div><b>ちょっと待って！</b><small>いきなり結末まで飛ぶと、ミミが置いてけぼりで泣いちゃう。まずは手前のお話から、順番にどうぞ。</small></div></div>`);

@@ -274,11 +274,54 @@ function advisorMet(castKey) {
   try {
     const ch = STORY_CHAPTERS.find(c => c.cast === castKey);
     if (!ch) return true;
-    if ((state.player.totalAssets || 0) < storyUnlockAt(ch.id)) return false;
     if (ch.id === "1") return true;   // サケ＝物語の出発点（最初から会っている）
+    // ★「出会った」＝その章を読んだこと（読むには chapterAvailable を通る＝ペースは章側で担保）。
+    //   旧実装は total>=storyUnlockAt も要求していたが、解放を実績ベースに変えたため読了フラグだけで判定する。
     return typeof getStoryFlag === "function" && !!getStoryFlag("_chapter_intro_" + ch.id);
   } catch (e) { return false; }
 }
+
+// ── 章の解放ペース（正本・単一の述語）────────────────────────────────
+// ★ユーザー指示：1レースの高配当で2〜3話がまとめて解放されるのは急すぎる。
+//   ①前の章を読むまで次の章は出さない（＝未読は常に1章まで＝まとめ解放が原理的に起きない）
+//   ②序盤は総資産でなく“実績”（走った回数・勝ち）で刻む＝幸運な高配当で飛ばない。物語本文の流れとも一致
+//     （1話サケの基礎→数レース走って勘に詰まる→2話ミズ→初勝利→3話スミカ→島がリゾート→4話マクラ→世界の天井→5話）。
+// 章の解放判定は全画面この chapterAvailable() を唯一の入口にする（storyUnlockAt は表示テキスト用に残す）。
+function chapterRead(id) { try { return typeof getStoryFlag === "function" && !!getStoryFlag("_chapter_intro_" + id); } catch (e) { return false; } }
+function chapterAvailable(chId) {
+  try {
+    const p = state.player || {};
+    const total = p.totalAssets || 0, races = p.completedRaces || 0, wins = p.wins || 0;
+    switch (String(chId)) {
+      case "1":  return true;                                       // サケ＝島に着いた最初から
+      case "2":  return chapterRead("1") && races >= 3;             // ミズ＝1話を読み、数レース走って勘に詰まってから
+      case "3":  return chapterRead("2") && wins >= 1;             // スミカ＝2話を読み、初勝利で勝ち分の守り方に直面してから
+      case "4":  return chapterRead("3") && total >= 1000000;      // マクラ＝島がリゾートに育つ頃（総資産100万）
+      case "5":  return chapterRead("4") && total >= 100000000;    // セレスティア＝世界の天井が見える頃（総資産1億）
+      case "ED": return chapterRead("5") && (!!(p.epilogue && p.epilogue.edFlag) || total >= storyUnlockAt("ED"));
+      default:   return false;
+    }
+  } catch (e) { return false; }
+}
+// 解放の人間向け条件テキスト（次號予告・目標ヒント用）。固有名は出さない（未登場ゲートR7）。
+function chapterUnlockHint(chId) {
+  switch (String(chId)) {
+    case "2":  return "第1話を読み、レースを数戦こなすと解禁";
+    case "3":  return "第2話を読み、はじめて単勝を当てると解禁";
+    case "4":  return "第3話を読み、総資産 " + fmtCoins(1000000) + " で解禁";
+    case "5":  return "第4話を読み、総資産 " + fmtCoins(100000000) + " で解禁";
+    case "ED": return "第5話を読み、最終決戦をクリアすると解禁";
+    default:   return "";
+  }
+}
+// いま読める最も手前の未読章（無ければ null）。ED も含む。バッジ/追いつき告知の共通入口。
+function nextUnreadChapter() {
+  try {
+    for (const ch of STORY_CHAPTERS) { if (!chapterRead(ch.id) && chapterAvailable(ch.id)) return ch; }
+  } catch (e) {}
+  return null;
+}
+function storyHasUnread() { return !!nextUnreadChapter(); }
 
 // ★門番ヘルパ（正本・全画面共通）──────────────────────────────
 //   「未登場の顧問の“正体”を画面に出さない」ための唯一の入口。名前・記号・テーマ色を出す箇所は

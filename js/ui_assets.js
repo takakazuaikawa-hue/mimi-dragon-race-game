@@ -109,7 +109,7 @@ function renderAssets() {
     }
   });
   const colOwned = LIFE_ASSETS.filter(it => isLifeAssetUnlocked(state, it, level)).length;
-  const unlockedCh = STORY_CHAPTERS.filter(ch => total >= storyUnlockAt(ch.id)).length;
+  const unlockedCh = STORY_CHAPTERS.filter(ch => (typeof chapterAvailable === "function") ? chapterAvailable(ch.id) : (total >= storyUnlockAt(ch.id))).length;
   const skTitles = ACTIVE_SKILLS.filter(s => ((p.activeSkills || {})[s.id] || 0) >= s.levels.length).length;
   const entry = (ic, label, sub, badge, onClick, avatarSrc) => {
     const avatar = avatarSrc ? `<img class="as-entry-mini" src="${avatarSrc}" alt="" onerror="this.remove()">` : "";
@@ -124,7 +124,7 @@ function renderAssets() {
   // ── すべきこと（今アクションがある時だけ・動的に上部へ）：迷わず次の一手。無ければ非表示。 ──
   const todo = [];
   const _nextCh = (typeof STORY_CHAPTERS !== "undefined") ? STORY_CHAPTERS.find(ch =>
-    ch.id !== "ED" && total >= storyUnlockAt(ch.id) &&
+    ch.id !== "ED" && ((typeof chapterAvailable === "function") ? chapterAvailable(ch.id) : (total >= storyUnlockAt(ch.id))) &&
     !(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_" + ch.id))) : null;
   // ★門番：_nextCh は定義上「未読の章」＝その章の顧問はまだ未登場。章題そのものに固有名が入っている
   //   （「第2話　ミズの分析予想」「第5話　セレスティアの神眼」＝本名も“神眼”も露出）ので、出会っている
@@ -188,7 +188,7 @@ function renderAssets() {
   }
   // 習い事：次に通える師範のミニ肖像を添える（未登場の師範なら無し＝ネタバレしない）。
   ent.appendChild(entry("🎫", "習い事（アクティブスキル）", `称号 ${skTitles} / ${ACTIVE_SKILLS.length} 獲得 ・ ミミの暮らしの記録`, skTitles >= ACTIVE_SKILLS.length ? "コンプ!" : "", () => renderActiveSkills(), _nextSkill ? _shihanMini(_nextSkill.id) : null));
-  ent.appendChild(entry("📖", "物語", `${unlockedCh} / ${STORY_CHAPTERS.length} 話 解放`, "", () => renderStory()));
+  ent.appendChild(entry("📖", "物語", `${unlockedCh} / ${STORY_CHAPTERS.length} 話 解放`, ((typeof storyHasUnread === "function" && storyHasUnread()) ? "🆕" : ""), () => renderStory()));
   // 相談（顧問）はホームのナビから移設＝暮らしハブに配置（予想の視点をもらう・任意）。
   // E4：予想の相談も第2話「ミズの分析」で解禁（1章は勘レース）。表示ゲートのみ・数値不変。
   if (typeof renderConsult === "function") {

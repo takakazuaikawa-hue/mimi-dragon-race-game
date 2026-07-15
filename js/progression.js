@@ -127,6 +127,16 @@ function progressionCheckOnHome() {
   try {
     if (document.querySelector(".navpop-ov")) return;   // 既に何かのモーダルが出ていたら譲る（1到着1件ルール）
     let cutinDone = false;
+    // ★物語の新章＝レース直後にモーダルを出さず、ここ（次のホーム到着）で静かに1件だけ案内する（ユーザー指摘）。
+    //   優先度は高め（新しい話は大きな出来事）＝他の解放より先に見せる。1到着1モーダルの枠を消費する。
+    if (typeof nextUnreadChapter === "function") {
+      const _ch = nextUnreadChapter();
+      if (_ch && !_unlockNotified("story_" + _ch.id)) {
+        _markNotified("story_" + _ch.id);
+        _showStoryCutin(_ch);
+        cutinDone = true;
+      }
+    }
     for (const u of UNLOCKS.concat(KURASHI_WATCH)) {
       if (_unlockNotified(u.id)) continue;
       let open = false; try { open = !!u.cond(); } catch (e) {}
@@ -161,6 +171,26 @@ function _showUnlockCutin(u) {
   ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
   document.body.appendChild(ov);
   try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+}
+
+// 物語の新章カットイン＝解放の cut-in と同じ枠。章題は伏せる（未読＝顧問未登場・R7）＝固有名を出さない。
+function _showStoryCutin(ch) {
+  const _title = (typeof chapterTeaseTitle === "function") ? chapterTeaseTitle(ch) : ("第" + ch.id + "話");
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop infopop");
+  box.innerHTML =
+    `<div class="navpop-t">📖 新しい話が届いた</div>` +
+    `<div class="infopop-body"><div class="mm-row"><span class="mm-ic">📰</span>` +
+    `<div><b>${_title}</b><small>聖龍日報に続報がとどきました。〈物語〉から読めます。</small></div></div></div>`;
+  const btns = el("div", "navpop-btns");
+  const later = el("button", "navpop-x", "あとで"); later.onclick = function () { ov.remove(); };
+  const go = el("button", "navpop-go", "読む ▸");
+  go.onclick = function () { ov.remove(); if (typeof renderStory === "function") renderStory(); };
+  btns.appendChild(later); btns.appendChild(go); box.appendChild(btns);
+  ov.appendChild(box);
+  ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+  try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
 }
 
 // toast＝下部にすっと出て消える帯（モーダルではない・タップで即消し）。
