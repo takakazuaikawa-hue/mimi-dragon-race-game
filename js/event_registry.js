@@ -357,8 +357,9 @@ registerEvent({
   hook: "afterRaceSelect",
   condition: { once: true, rankAtLeast: 4, test: ctx => ctx && ctx.race && ctx.race.rank === 4 },
   priority: 8,
+  // ★D4：教訓の変奏をやめ「別の転」に書き分け（4=群衆／5=ミズの妙味／6=祭りの空気）。声表準拠。
   actions: [{ type: "dialogue", speaker: "sake_udada",
-    text: "大地域杯。ここからは市場が本格的にハイプを乗せ始める。前走の結果や派手さに釣られず、コースと適性を冷静に読め。" }]
+    text: "……客の声、聞こえるか。ああいう日は竜より先に、財布のほうが熱くなる。" }]
 });
 registerEvent({
   id: "rank5_first_intro",
@@ -366,7 +367,7 @@ registerEvent({
   condition: { once: true, rankAtLeast: 5, test: ctx => ctx && ctx.race && ctx.race.rank === 5 },
   priority: 8,
   actions: [{ type: "dialogue", speaker: "mizu",
-    text: "竜王杯。賞金の桁が変わると、ブランドや前走勝利が市場を支配するわ、あはん。過剰人気の裏に、妙味が眠るのよ。" }]
+    text: "竜王杯ね。桁が増えると、みんな急に“名前”で買い始めるの。……名前は走らないのに。ほら、妙味の匂いがしてきた。" }]
 });
 registerEvent({
   id: "rank6_first_intro_festival",
@@ -374,7 +375,7 @@ registerEvent({
   condition: { once: true, rankAtLeast: 6, test: ctx => ctx && ctx.race && ctx.race.rank === 6 },
   priority: 8,
   actions: [{ type: "dialogue", speaker: "sake_udada",
-    text: "祝祭級だ。観衆と新聞のハイプが極端になる。看板の竜が過剰人気になりやすい。狙うのは、冷静な実力派だ。" }]
+    text: "祝祭級だ。……この太鼓の音はな、竜の脚も客の財布も軽くする。浮つくなよ。浮ついた金がいちばん旨いのは、胴元だ。" }]
 });
 registerEvent({
   id: "rank7_first_intro_shinto",

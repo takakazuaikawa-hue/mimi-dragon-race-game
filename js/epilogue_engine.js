@@ -42,6 +42,30 @@ const STRANGER_AGAIN = [
   ["mimi", "うぅ、またゼロからです……でも、やめませんっ！", "default"],
   ["stranger", "ふふ。その薄い見込み、わたしは好きよ。"]
 ];
+// ★G7（NARRATIVE_DESIGN）：破産しない上手いプレイヤーにも伏線を届ける代替トリガー。
+//   第4話既読 かつ 絶景（view）スポット初訪問の到着VN直後に、名乗らないまま現れる。
+//   同じ celestiaStrangerSeen を立てる＝以後の再会・神眼コンサルト解放は無心ルートと合流。
+const STRANGER_VISTA = [
+  ["narrator", "展望の先で、風がふいに止む。……いつの間にか、星空みたいなドレスの女(ひと)が、隣で同じ景色を見ていた。"],
+  ["stranger", "いい眺め。……ここから見ると、レース場の灯りって、星みたいでしょう。"],
+  ["mimi", "わ……！　い、いつの間に……。ど、どちらさま、ですか？", "panic"],
+  ["stranger", "ただの通りすがり。……ねえ。あの灯り、いつまで続くと思う？"],
+  ["mimi", "え……？　ずっと、続いてほしいです。ごはんも、レースも、ぜんぶ。", "default"],
+  ["stranger", "ふふ。そう答える子の顔を、見に来たの。——困ったら、わたしに聞いてごらんなさい。1着くらいなら、視(み)えてしまうの。"],
+  ["mimi", "み、視える……？　あの、お名前を……", "default"],
+  ["stranger", "いつか、ね。"]
+];
+function maybeStrangerVista() {
+  if (typeof getStoryFlag !== "function" || typeof setStoryFlag !== "function") return false;
+  if (getStoryFlag("celestiaStrangerSeen")) return false;              // 既出＝無心ルートで会っている
+  if (!getStoryFlag("_chapter_intro_4")) return false;                 // 第4話既読から（終盤の伏線）
+  if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
+  let script = STRANGER_VISTA.slice();
+  if (getStoryFlag("_chapter_intro_5")) script = script.map(ln => ln[0] === "stranger" ? ["celestia", ln[1], ln[2]] : ln);
+  setStoryFlag("celestiaStrangerSeen", true);
+  Dialogue.play(script, { force: true });
+  return true;
+}
 
 // 破産(無心)が3回を“超えた”ら登場。runMushin→finishMushin の「立て直す」後に呼ぶ。
 // 戻り値 true ＝ VNを再生した（呼び出し側は renderHome を二重にしない）。

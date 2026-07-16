@@ -564,7 +564,11 @@ function _kmPlayArrival(id, s, cat) {
     const seenVN = kz.arrivalSeen || (kz.arrivalSeen = {});
     if (seenVN[id]) return;   // 到着VNはスポットごとに1回だけ（2回目からは静かに）
     seenVN[id] = 1; if (typeof saveGame === "function") saveGame();
-    Dialogue.play(_kmArrivalScript(id, s, cat));
+    // ★G7：絶景スポットの初訪問後は「知らないお姉さん」の代替カメオ（破産しない上手い人向け・
+    //   第4話既読＋未遭遇のみ発火＝epilogue_engine.maybeStrangerVista が全条件を持つ）。
+    Dialogue.play(_kmArrivalScript(id, s, cat)).then(function () {
+      try { if (cat === "view" && typeof maybeStrangerVista === "function") maybeStrangerVista(); } catch (e2) {}
+    });
   } catch (e) {}
 }
 

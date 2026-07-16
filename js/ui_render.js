@@ -589,7 +589,7 @@ function advisorVoiceEl(context) {
   box.innerHTML =
     `<span class="av-sym">${c.symbol}</span>` +
     `<span class="av-body"><span class="av-name">${c.name}<small>（${c.tag}）</small></span>` +
-    `<span class="av-line">${STORY_RACE_VOICE[key]}</span></span>`;
+    `<span class="av-line">${storyVoiceLine(key, context === "assets" ? "assets" : "race")}</span></span>`;
   return box;
 }
 
@@ -641,7 +641,7 @@ function celestiaSectionEl() {
     const win = DRAGONS.find(d => d.id === c._celestiaRevealed);
     const nm = win ? win.name : "？";
     box.classList.add("revealed");
-    const warn = `……ただし答えは知れ渡った。<b>${nm}</b> の単勝も複勝も、実際の馬券どおり最低の <b>1.1倍</b> まで弾けた。それでも、教わった1頭なら1.1倍は確実。──1着を知ることと、大きく勝つことは違うわ。`;
+    const warn = `……ほら、もう知れ渡った。<b>${nm}</b> の札に人が群がって、単勝も複勝も最低の <b>1.1倍</b>。それでも、教わった1頭の1.1倍は確実。──1着を知ることと、大きく勝つことは、違うでしょう？`;
     box.innerHTML =
       `<div class="cel-head">${sym} ${revealed ? "セレスティアの神眼" : "あのお姉さんの“予想”"}</div>` +
       `<div class="cel-reveal">この一戦、生き残る一頭は <b>${nm}</b>。</div>` +
@@ -657,7 +657,8 @@ function celestiaSectionEl() {
     };
     const renderOpen = () => {
       box.classList.add("cel-open");
-      const catchTx = "1着を、教えてくれる。ただし開示した瞬間、その竜の単勝も複勝も、最低の1.1倍まで弾ける。──それでも、確実な1.1倍は残るわ。聞く？";
+      // ★D6：神眼1.1倍の“説明”はこの台詞1本＋絶滅メーターヘルプの2箇所だけに集約（声表準拠）。
+      const catchTx = "答えは、教えられる。つまらなくなるのは、あなたの側よ。……教えた竜には札が殺到して、単勝も複勝も最低の1.1倍。──それでも、聞く？";
       box.innerHTML =
         `<div class="cel-head">${sym} ${who}に1着を聞く</div>` +
         `<div class="cel-warn">${catchTx}</div>`;
@@ -1699,7 +1700,7 @@ function renderRaceDetail(race) {
     v.innerHTML =
       `<span class="adv-voice-sym">${cast.symbol}</span>` +
       `<span class="adv-voice-body"><span class="adv-voice-name">${cast.name.split("・")[0]}<small>（${cast.tag}）</small></span>` +
-      `<span class="adv-voice-line">${STORY_RACE_VOICE[key] || cast.consult}</span></span>`;
+      `<span class="adv-voice-line">${storyVoiceLine(key, "consult") || cast.consult}</span></span>`;
     return v;
   }
 
@@ -2508,7 +2509,11 @@ function showBetConfirm() {
     // レース数値不変・FTUE=最初の3レースは素通し）。ごはんへ誘導して中止。
     if (typeof hungerCanRace === "function" && !hungerCanRace()) {
       closeBetConfirm();
+      // ★G9：空腹UIとキャラの結線＝第1話の「まず食え」をサケの声で再演（門番advisorMet・fail-closed）。
+      const sakeLine = (typeof advisorMet === "function" && advisorMet("sake"))
+        ? `<div class="mm-row"><span class="mm-ic">🐲</span><div><b>サケ</b><small>「まず食え。……話は、その後だ。」</small></div></div>` : "";
       if (typeof showInfoPopup === "function") showInfoPopup("🍖 おなかがすいて走れない…",
+        sakeLine +
         `<div class="mm-row"><span class="mm-ic">🍽</span><div><b>ごはんを食べよう</b><small>ホームの🍽ごはんへ。ハズレた日は1品「店のおごり」が出ます。</small></div></div>`);
       return;
     }

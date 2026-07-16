@@ -558,7 +558,7 @@ function renderHome() {
         ? Object.keys(STORY_CAST).filter(k => advisorMet(k)) : [];   // fail-closed：門番が無ければ誰も出さない
       if (met.length && Math.random() < 0.16) {
         const k = met[Math.floor(Math.random() * met.length)];
-        let t = (STORY_RACE_VOICE && STORY_RACE_VOICE[k]) || (STORY_CAST[k] || {}).gives || "";
+        let t = ((typeof storyVoiceLine === "function") && storyVoiceLine(k, "race")) || (STORY_CAST[k] || {}).gives || "";
         if (t.length > 34) t = t.slice(0, 33) + "…";
         _addCm(castSymbolSafe(k) + castNameSafe(k).split("・")[0], castColorSafe(k), t);
         return;

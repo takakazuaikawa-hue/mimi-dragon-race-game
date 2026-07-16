@@ -357,13 +357,28 @@ function castColorSafe(castKey) {
 
 // (b) contextual one-liners — shown as an "advisor voice" on gameplay screens
 // once the advisor is met. Flavor / perspective only; never affects race math.
+// ★D5（NARRATIVE_DESIGN）：同一文の多面再演をやめ、画面別3変奏に分割。
+//   race=レース系画面の分析ひとこと／consult=相談ハブの導入（呼び水）／assets=暮らし画面。
+//   取り出しは storyVoiceLine(key, ctx)（文字列の旧形式もフォールバックで読める）。
 const STORY_RACE_VOICE = {
-  sake:     "息を見ろ。人気でも数字でもなく、竜の気配で選べ。",
-  mizu:     "オッズは勝率じゃない。観客の願望が混ざった値であるわ。人気と価値を分けて見るのよ、あはん。",
-  makura:   "その人気、実力か物語か？ 盛られてるだけの竜を高値で掴むなよ？",
-  sumika:   "勝っても負けても、住居・食事・名声まで含めた総資産が再起の土台です。",
-  celestia: "1着を知っても、配当が消えれば意味がない。価値の残る賭けを探しなさい。"
+  sake:     { race: "パドックの息を見ろ。数字は、その後でいい。",
+              consult: "おう、来たか。……何を迷ってる。言ってみろ。" },
+  mizu:     { race: "その倍率、人気のぶんだけ水増しされてる。……で、中身は？",
+              consult: "あら、いらっしゃい。相談料は取らないわ。……今のところは。" },
+  makura:   { race: "その人気、実力？　それとも切り抜きのバズ？　……見分けてから買いな。",
+              consult: "お、来た来た。今日の見どころ、30秒で言うよ？" },
+  sumika:   { assets: "勝っても負けても、帰る部屋と温かい食事。……それが、明日も賭けられる理由です。",
+              race: "無理のない賭金でしたら、負けは経費です。……帳簿にはそう書きます。",
+              consult: "ミミ様、ご相談は何なりと。書類はこちらで巻きますので。" },
+  celestia: { race: "答えを知る賭けと、答えを探す賭け。……楽しいのは、後のほうよ。",
+              consult: "上から見てるとね、レース場って、いちばん星に似てるの。……で、今日は何が知りたいの？" }
 };
+function storyVoiceLine(key, ctx) {
+  const v = STORY_RACE_VOICE[key];
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  return v[ctx] || v.race || v.consult || v.assets || "";
+}
 
 // §30 §6 — lifestyle stages by asset level (index 0..5). Drives the
 // "ミミの生活" panel. Cosmetic/flavor only; never touches race math.
