@@ -194,15 +194,22 @@ const SPEAKER_LABELS = {
 function speakerLabel(id) { return SPEAKER_LABELS[id] || id || "—"; }
 
 // Main dispatcher — priority desc, default 0.
+// ★1ティック1VN（NARRATIVE_DESIGN W3・P8）：同じフックで“セリフだけ”のイベントが複数条件を
+//   満たしても、再生するのは優先度最上位の1本だけ。残りは発火させない＝once が未消費のまま
+//   次の機会に自然と持ち越される（同閾値の三重発火で無関係な話が連結される事故を防ぐ）。
+//   副作用つきイベント（救済コイン・フラグ）は経済/進行が止まるので予算外＝必ず発火。
 function runEventHooks(hookName, context) {
   const list = eventHooks[hookName];
   if (!list || list.length === 0) return;
   const sorted = [...list].sort((a, b) => (b.priority || 0) - (a.priority || 0));
   let speech = [];
+  let vnBudget = 1;
   for (const ev of sorted) {
     if (eventConditionMet(ev, context)) {
+      const speechOnly = eventSpeechOnly(ev);
+      if (speechOnly && vnBudget <= 0) continue;   // 持ち越し（once未消費＝空撃ちしない）
       const s = runEventActions(ev, context);
-      if (s && s.length) speech = speech.concat(s);
+      if (s && s.length) { speech = speech.concat(s); if (speechOnly) vnBudget--; }
     }
   }
   if (speech.length) emitSpeech(speech);

@@ -253,6 +253,38 @@ function finalizeLines(raw, phaseId) {
   return [...head, ...tail];
 }
 
+// --- ★G6: マクラ人格レイヤ（NARRATIVE_DESIGN）------------------------------
+// 第4話でマクラと出会って以降、実況に配信者の人格が乗る“文言だけ”のレイヤ。
+// 事実（竜名・順位・着順）は一切改変しない＝固有フレーズの挿入と、動きの行の語尾の熱だけ。
+// 門番=advisorMet（fail-closed：判定できなければ素の実況のまま）。抽選・結果には不干渉。
+const MAKURA_PHRASES = {
+  early:       ["さあ始まった始まった、実況はこのマクラ！", "初見さんも常連さんも、いらっしゃい！"],
+  mid:         ["同接、伸びてる伸びてる！", "コメントの流速がえらいことに。"],
+  development: ["……はい今の、切り抜きポイントね。", "コメント欄、追いつけてるー？"],
+  late:        ["声出していこう、ここからだよ！", "推しの名前、叫んでけ！"],
+  finish:      ["アーカイブ残留、確定だァ！", "今日も見に来てくれて、あざした〜！"]
+};
+function makuraLayer(lines, phaseId) {
+  try { if (!(typeof advisorMet === "function" && advisorMet("makura"))) return lines; }
+  catch (e) { return lines; }
+  const out = lines.slice();
+  const pool = MAKURA_PHRASES[phaseId] || [];
+  if (pool.length) {
+    const ph = pool[out.length % pool.length];
+    if (phaseId === "early") out.splice(1, 0, ph);              // スタート宣言の直後
+    else if (phaseId === "finish") out.push(ph);                // 着順の後ろ＝事実行に触れない
+    else out.splice(Math.min(2, out.length), 0, ph);
+  }
+  if (phaseId === "late" || phaseId === "finish") {
+    for (let i = 0; i < out.length; i++) {
+      const s = out[i];
+      if (/^[123]着、/.test(s)) continue;                        // 着順の事実行は不変
+      if (/(抜け出す|が追う|まだ粘る|脚が来る)。$/.test(s)) out[i] = s.slice(0, -1) + "ッ！";
+    }
+  }
+  return out;
+}
+
 // --- Public ----------------------------------------------------------------
 
 /**
@@ -274,7 +306,7 @@ function buildPhaseCommentary(phase, prevPhase, ctx) {
   return {
     phaseId: phase.id,
     tempoMs: PHASE_TEMPO[phase.id] || 1000,
-    lines: finalizeLines(raw, phase.id),
+    lines: makuraLayer(finalizeLines(raw, phase.id), phase.id),
     focusDragonIds: phase.focusDragonIds || [],
     tags: phase.tags || [],
     visualMode: phase.visualMode

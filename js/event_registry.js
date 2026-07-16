@@ -451,5 +451,56 @@ registerEvent({
     text: "氷甲竜グレイズ。地味だが耐久・気性・スタミナが揃ってる。長距離・霧・耐久戦で値段以上を見せるタイプだ。" }]
 });
 
+// ===== ★G5（NARRATIVE_DESIGN）: 100万→1億グラインド帯の中間イベント =====
+// 空白帯に「転」のある掛け合いを置く（4章既読から・once・表示専用＝レース数値不変）。
+// 連敗カウンタ p.missRun は checkEconomyMilestones（state.js）が更新する表示メタ。
+
+// 連敗の夜（転＝ミズは負けた夜の数字を「市場が返す借用書」と読む）
+registerEvent({
+  id: "g5_losing_night",
+  hook: "afterRaceResult",
+  condition: { once: true, requiredFlag: "_chapter_intro_4",
+    test: ctx => ((state.player && state.player.missRun) || 0) >= 4 },
+  priority: 6,
+  actions: [
+    { type: "dialogue", speaker: "mizu", text: "4連敗。……ふふ、いい顔になってきたじゃない。" },
+    { type: "dialogue", speaker: "mimi", expr: "panic", text: "笑いごとじゃないですよぅ……お財布が、軽い……。" },
+    { type: "dialogue", speaker: "mizu", text: "覚えておきなさい。相場はね、痛かった夜の数字だけ、ちゃんと返してくるの。" },
+    { type: "dialogue", speaker: "mimi", expr: "default", text: "……返して、くれますかね。" },
+    { type: "dialogue", speaker: "mizu", text: "返させるのよ。——荒れた日は、値札が嘘をつく。……拾いに行くわよ、ミミ。" }
+  ]
+});
+// 中間点500万（サケ＝金が増えたときこそ飯の心配をする親方肌）
+registerEvent({
+  id: "g5_mid_5m",
+  hook: "afterRaceResult",
+  condition: { once: true, requiredFlag: "_chapter_intro_4",
+    test: () => ((state.player && state.player.totalAssets) || 0) >= 5000000 },
+  priority: 6,
+  actions: [
+    { type: "dialogue", speaker: "sake_udada", text: "総資産500万。……ハッ、あの行き倒れがな。" },
+    { type: "dialogue", speaker: "mimi", expr: "happy", text: "えへへ、それ、褒めてます？" },
+    { type: "dialogue", speaker: "sake_udada", text: "褒めてない。……飯は食ってるか。金が増えると、飯を忘れる奴が出る。" },
+    { type: "dialogue", speaker: "mimi", expr: "smile", text: "食べてます！　むしろ、食べる量は増えました！" },
+    { type: "dialogue", speaker: "sake_udada", text: "なら、いい。" }
+  ]
+});
+// 行政の横槍＝中間点5000万（転＝スミカ章の事件。聴取の通達が「島に数えられた」証になる）
+registerEvent({
+  id: "g5_admin_audit",
+  hook: "afterRaceResult",
+  condition: { once: true, requiredFlag: "_chapter_intro_4",
+    test: () => ((state.player && state.player.totalAssets) || 0) >= 50000000 },
+  priority: 6,
+  actions: [
+    { type: "dialogue", speaker: "sumika", text: "ミミ様。行政より通達です。……『個人資産の急拡大について、聴取を行う』と。" },
+    { type: "dialogue", speaker: "mimi", expr: "panic", text: "ちょ、聴取!?　わたし、脱税してませんよ!?　領収書、ぜんぶ枕の下です！" },
+    { type: "dialogue", speaker: "sumika", text: "保管場所から是正しましょう。……ですがご安心を。書類はわたくしが巻きます。" },
+    { type: "dialogue", speaker: "sumika", text: "それに、これは好機です。行政が目をつけた——島の経済で、無視できない大きさになったということですから。" },
+    { type: "dialogue", speaker: "mimi", expr: "smile", text: "……そっか。わたし、島に数えられてるんだ。" },
+    { type: "dialogue", speaker: "sumika", text: "はい。……次は、数える側に回りましょう、ミミ様。" }
+  ]
+});
+
 // ===== EXTENSION POINT — §10 Phase 5+: Full story arcs go here =====
 // Append additional dialogue/story beats for future phases below.

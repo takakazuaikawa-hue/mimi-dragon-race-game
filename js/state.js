@@ -358,6 +358,8 @@ function checkEconomyMilestones(betResult) {
   if (betResult && betResult.payout > p.biggestPayout) {
     p.biggestPayout = betResult.payout;
   }
+  // 連敗カウンタ（表示メタのみ＝「連敗の夜」等の会話イベントが読む。レース数値には一切非干渉）。
+  if (betResult) p.missRun = betResult.hit ? 0 : ((p.missRun || 0) + 1);
   saveGame();
 }
 

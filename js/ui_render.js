@@ -285,7 +285,22 @@ function buyPhoneAndGoLive() {
     try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
     if (typeof renderHome === "function") renderHome();
     if (typeof showInfoPopup === "function") showInfoPopup("📱 配信、はじめました！",
-      `<div class="mm-row"><span class="mm-ic">📱</span><div><b>配信デビュー！</b><small>ミミはスマホを手に入れ、配信を開始。ホームが“放送中”になり、👁視聴者・💬コメント・💗フォロワー・📱SNS が解禁されました。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">📱</span><div><b>配信デビュー！</b><small>ミミはスマホを手に入れ、配信を開始。ホームが“放送中”になり、👁視聴者・💬コメント・💗フォロワー・📱SNS が解禁されました。</small></div></div>`,
+      function () {
+        // ★G10（NARRATIVE_DESIGN）：機能列挙の代読でなく、マクラの実演ツアー＝説明より先に
+        //   1回さわらせる（do-then-explain）。VN後にSNSタイムラインへ直行。表示専用。
+        if (window.Dialogue && Dialogue.play) {
+          Dialogue.play([
+            ["makura", "よし、開通ついでにタイムライン見せてもらうよ。ほら——これがお前の巣だ。", "default"],
+            ["mimi", "わ……もう、コメントついてる……！", "happy"],
+            ["makura", "いいね1個は拍手1回。ファンレターは……まあ、読めば泣く。バズったら？　その日は飯が旨い。", "default"],
+            ["makura", "難しいことはいい。まず1回、好きな投稿に🔥つけてこい。……話は、その後だ。", "default"],
+            ["mimi", "それ、サケさんの真似ですか？", "smile"]
+          ], { force: true }).then(function () {
+            try { if (typeof goto === "function") goto("sns"); } catch (e) {}
+          });
+        }
+      });
   };
   var afford = (state.player.coins || 0) >= 3000;
   if (window.Dialogue && Dialogue.play && typeof STORY_CAST !== "undefined") {
@@ -304,15 +319,23 @@ function buyPhoneAndGoLive() {
 }
 
 // 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。
-function showInfoPopup(title, html) {
+// onClose（任意）＝閉じた時に1回だけ呼ぶ。スカウト成立→八竜集結VN、配信開通→マクラのツアー等の
+// 「ポップの後に続きを再生する」結線が使う（従来は第3引数が黙って無視されていた）。
+function showInfoPopup(title, html, onClose) {
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop infopop");
   box.innerHTML = `<div class="navpop-t">${title}</div><div class="infopop-body">${html}</div>`;
+  let closed = false;
+  const close = () => {
+    if (closed) return; closed = true;
+    ov.remove();
+    if (typeof onClose === "function") { try { onClose(); } catch (e) {} }
+  };
   const btns = el("div", "navpop-btns");
-  const ok = el("button", "navpop-go", "わかった！"); ok.onclick = () => ov.remove();
+  const ok = el("button", "navpop-go", "わかった！"); ok.onclick = close;
   btns.appendChild(ok); box.appendChild(btns);
   ov.appendChild(box);
-  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.onclick = (e) => { if (e.target === ov) close(); };
   document.body.appendChild(ov);
 }
 
