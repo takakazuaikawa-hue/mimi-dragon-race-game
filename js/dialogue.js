@@ -232,7 +232,9 @@
     var im = new Image();
     im.onload = function () {
       dom.bg.appendChild(im);
-      requestAnimationFrame(function () { im.classList.add("on"); });
+      // rAFは非アクティブタブで凍結する＝classが付かず透明のままになるため、強制リフローで即時に確実に発火。
+      void im.offsetWidth;
+      im.classList.add("on");
       while (dom.bg.children.length > 2) dom.bg.removeChild(dom.bg.firstChild);
     };
     im.src = url;

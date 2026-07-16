@@ -492,6 +492,82 @@ function _kmAreaProg(area) {
   } catch (e) { return { got: 0, total: 0 }; }
 }
 
+// ===== 到着ミニVN（NARRATIVE_DESIGN §5＝観光の旅行体験化）=========================
+// 初訪問のスタンプ押印と同時に、カテゴリ担当のガイドと3〜4行の掛け合い。背景はそのスポットの実写真
+// （bg:にパス指定＝dialogue.js のクロスフェード背景）。構成はフリ→ボケ（ガイドの職業病）→ミミのツッコミ→
+// 写真/グルメへの誘い。★門番: 未登場の顧問はミミ（＋発見済みならポロ）の二人旅にフォールバック（fail-closed）。
+const KM_GUIDE = { port: "sake", okuchi: "sake", food: "mizu", shop: "mizu", civic: "sumika", stay: "sumika",
+  race: "makura", oshi: "makura", view: "celestia", onsen: "poro" };
+function _kmArrivalScript(id, s, cat) {
+  const nm = s.name;
+  let g = KM_GUIDE[cat] || null;
+  const met = k => { try { return typeof advisorMet === "function" && advisorMet(k); } catch (e) { return false; } };
+  const hasPoro = (typeof poroFound === "function") && poroFound();
+  if (g === "poro" && !hasPoro) g = null;
+  if (g && g !== "poro" && !met(g)) g = null;
+  const bg = s.photo;   // 実在のスポット写真を場面に（旅行の絵になる）
+  const closer = s.gourmet
+    ? { s: "mimi", e: "happy", t: "……いい匂いする。写真の前に、一口だけ。ね？", fx: "hop" }
+    : { s: "mimi", e: "smile", t: "よし、ここは一枚撮っておこう。旅の証拠！" };
+  // ガイド別：職業病ボケ→ミミのツッコミ（声表準拠・各3〜4行）
+  const S = {
+    sake: [
+      { s: "sake", t: "着いたぞ。……いい風だ。", bg: bg },
+      { s: "sake", t: nm + "。竜を連れて歩くなら、まずここの匂いを覚えろ。" },
+      { s: "mimi", e: "panic", t: "匂い!?　景色じゃなくて!?　……くんくん。……あ、ほんとだ、覚えた。" },
+      closer
+    ],
+    mizu: [
+      { s: "mizu", t: "はい到着、" + nm + "。……ちなみにここの土地、坪いくらだと思う？", bg: bg },
+      { s: "mimi", e: "panic", t: "旅先で原価の話やめて!?", fx: "shake" },
+      { s: "mizu", t: "ふふ。いいものを見る目は、値段を知ってから育つの。……ほら、見てらっしゃい。" },
+      closer
+    ],
+    sumika: [
+      { s: "sumika", t: "ミミ様、" + nm + "に到着しました。……並びます。", bg: bg },
+      { s: "mimi", t: "え、まだ誰も並んでな……", fx: "shake" },
+      { s: "sumika", t: "人気施設は、並んでから考えるのが行政の知恵です。整理券をどうぞ。" },
+      closer
+    ],
+    makura: [
+      { s: "makura", t: "はい" + nm + "着いたー！　カメラ回ってる？　回ってないけど回ってる体でよろしく！", bg: bg },
+      { s: "mimi", e: "panic", t: "どういう体!?", fx: "shake" },
+      { s: "makura", t: "旅はぜんぶ切り抜きどころ。……ここ、いいね。バズる風が吹いてる。" },
+      closer
+    ],
+    celestia: [
+      { s: "celestia", t: "……ここ、上から見るといちばん綺麗なのよ。", bg: bg },
+      { s: "mimi", t: "上からの感想!?　わたしたち今、下にいるんですけど!?" },
+      { s: "celestia", t: "だから来たの。下から見る" + nm + "は、初めて。……いいものね。" },
+      closer
+    ],
+    poro: [
+      { s: "narrator", t: "♨️ " + nm + "。ポロが先にとぽんと浸かって、目を細めた。", bg: bg },
+      { s: "mimi", e: "happy", t: "あっ、ずるい！　わたしも入る！……ふあぁ……とける……。" },
+      { s: "narrator", t: "ポロの尻尾が、お湯の中でゆっくり三回ゆれた。（……ごきげんだ）" },
+      closer
+    ]
+  };
+  if (g && S[g]) return S[g];
+  // フォールバック＝ミミの一人旅（＋ポロがいれば足元に）
+  return [
+    { s: "mimi", t: "とうちゃーく！　ここが" + nm + "かぁ……。", bg: bg, fx: "hop" },
+    hasPoro ? { s: "narrator", t: "ポロが足元で、ぐるりとあたりを見回している。" }
+            : { s: "mimi", e: "smile", t: "……ひとり旅も、わるくない。うん。" },
+    closer
+  ];
+}
+function _kmPlayArrival(id, s, cat) {
+  try {
+    if (!(window.Dialogue && Dialogue.play)) return;
+    const kz = state.player.kurashi || (state.player.kurashi = {});
+    const seenVN = kz.arrivalSeen || (kz.arrivalSeen = {});
+    if (seenVN[id]) return;   // 到着VNはスポットごとに1回だけ（2回目からは静かに）
+    seenVN[id] = 1; if (typeof saveGame === "function") saveGame();
+    Dialogue.play(_kmArrivalScript(id, s, cat));
+  } catch (e) {}
+}
+
 function _kmRenderPanel() {
   const panel = document.getElementById("km-panel"); if (!panel) return;
 
@@ -517,6 +593,8 @@ function _kmRenderPanel() {
         }
         if (_kmPhotoMission() === _kmSpot && !_kmPmDone(_kmSpot)) { kz.pmDay = _kmDayKey(); kz.pmSpot = _kmSpot; _pmJust = true; }
         if (_stampNew || _pmJust) { if (typeof saveGame === "function") saveGame(); }
+        // ★初訪問＝到着ミニVN（ガイドとの掛け合い・スポット写真を背景に）。パネル描画後に少し遅らせて再生。
+        if (_stampNew) { const _aid = _kmSpot, _as = s; setTimeout(() => _kmPlayArrival(_aid, _as, _as.cat), 420); }
       } catch (e) {}
     }
     panel.style.setProperty("--kmc", c.color);
