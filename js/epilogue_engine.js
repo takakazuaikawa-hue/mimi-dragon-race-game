@@ -187,10 +187,25 @@ function finalShowcaseBeats() {
   const beats = [];
   beats.push({ ic: "🏦", k: "築いた暮らし", v: fc(p.totalAssets || 0), c: "ゼロから、ここまで立て直してきた。" });
   beats.push({ ic: "🏅", k: "駆け抜けた軌跡", v: "ランク" + (p.rank || 1) + "・" + (p.completedRaces || 0) + "走", c: (p.wins || 0) + "勝。負けても、また立った。" });
+  // ★P10ハルウララ原則＝固有名詞で振り返る（既存台帳を読むだけ・数値不変）。
+  if ((p.biggestPayout || 0) > 0) beats.push({ ic: "💥", k: "忘れない一撃", v: fc(p.biggestPayout) + " コイン", c: "あの日の払戻。手が、震えた。" });
   const dex = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0;
   if (dex > 0) beats.push({ ic: "📖", k: "出会った竜たち", v: dex + "頭を図鑑に", c: "どの子にも、ちゃんと物語があった。" });
-  const scouted = Object.values(p.collection || {}).filter(function (e) { return e && e.scouted; }).length;
-  if (scouted > 0) beats.push({ ic: "🐲", k: "龍舎に迎えた仲間", v: scouted + "頭をスカウト", c: "強さじゃなく、好きで選んだ。" });
+  const roster = (typeof scoutedRoster === "function") ? scoutedRoster() : [];
+  if (roster.length > 0) {
+    const names = roster.slice(0, 3).map(function (d) { return d.name; }).join("・");
+    beats.push({ ic: "🐲", k: "心を通わせた竜", v: (roster.length >= 8) ? "八竜、集結" : roster.length + "頭が龍舎に",
+      c: names + (roster.length > 3 ? "……ほか" + (roster.length - 3) + "頭。" : "。") + "強さじゃなく、好きで選んだ。" });
+  }
+  let mealsGot = 0, mealName = "";
+  try {
+    if (typeof MEALS !== "undefined" && typeof mealEaten === "function") {
+      for (let i = 0; i < MEALS.length; i++) if (mealEaten(MEALS[i].id)) { mealsGot++; mealName = MEALS[i].name; }
+    }
+  } catch (e) {}
+  if (mealsGot > 0) beats.push({ ic: "🍜", k: "食べ歩いた味", v: mealsGot + " 品", c: (mealName ? "「" + mealName + "」も——" : "") + "ぜんぶ、おいしかった。" });
+  const fol = (typeof goalFollowers === "function") ? goalFollowers() : 0;
+  if (fol > 0) beats.push({ ic: "💗", k: "見てくれた人", v: fol.toLocaleString() + " 人", c: "無一文のうさぎを、ここまで連れてきてくれた。" });
   const outfits = (p.outfitsBought || []).length;
   if (outfits > 0) beats.push({ ic: "👗", k: "着てきた晴れ着", v: outfits + "着", c: "今日も、いちばんの一着で。" });
   if (typeof poroFound === "function" && poroFound()) beats.push({ ic: "🐉", k: "いちばんの相棒", v: "ポロ", c: "特別じゃなくても、愛されていい。" });
@@ -240,6 +255,68 @@ function playFinalShowcase() {
     next();
   });
 }
+// 八竜見参カットイン（NARRATIVE_DESIGN §6-4）。スカウト済みロスターの実スプライト
+// (images/dragons/<id>.png) を名前つきで整列させる全画面演出。0頭なら即resolve＝fail-closed、
+// 1〜7頭でも「盟友見参」で破綻しない可変長。表示専用＝走るレースには一切触れない。
+// スプライトの透過版dataURLを取得。生PNGはグレー無地背景つき＝race_canvasのキー抜きキャッシュ
+// （_rcDragonSprite: flood-fillで背景透過＋被写体bbox）をそのまま再利用する（二重実装しない）。
+// 未ロード中は null（呼び出し側がポーリング）。race_canvas不在でも安全に null。
+function _ecSpriteURL(id) {
+  try {
+    if (typeof _rcDragonSprite !== "function") return null;
+    const e = _rcDragonSprite(id);
+    if (!e || !e.ok || e.bad) return null;
+    const src = e.cv || e.img;
+    const b = e.box || { x: 0, y: 0, w: src.width, h: src.height };
+    const c = document.createElement("canvas"); c.width = b.w; c.height = b.h;
+    c.getContext("2d").drawImage(src, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+    return c.toDataURL();
+  } catch (err) { return null; }
+}
+function playEightDragonsCutin() {
+  return new Promise(function (resolve) {
+    const roster = (typeof scoutedRoster === "function") ? scoutedRoster().slice(0, 8) : [];
+    if (!roster.length || !(typeof el === "function" && typeof document !== "undefined")) { resolve(); return; }
+    var ex = document.getElementById("eight-cutin"); if (ex) ex.remove();
+    const full = roster.length >= 8;
+    var ov = el("div", "eight-cutin"); ov.id = "eight-cutin";
+    ov.innerHTML = '<div class="ec-flash"></div>' +
+      '<div class="ec-title">' + (full ? "八竜見参" : "盟友見参") + '</div>' +
+      '<div class="ec-sub">' + (full ? "ミミが心を通わせた八頭、ゲート前にそろい踏み" : "ミミが心を通わせた竜たちが、ゲート前に並ぶ") + '</div>' +
+      '<div class="ec-row">' + roster.map(function (d, i) {
+        var c = (typeof dragonColor === "function") ? dragonColor(d) : "#888";
+        return '<figure class="ec-d" style="--i:' + i + ';--c:' + c + '">' +
+          '<img alt="" style="visibility:hidden">' +
+          '<figcaption>' + d.name + '</figcaption></figure>';
+      }).join("") + '</div>' +
+      '<div class="fin-skip">タップで進む ▶</div>';
+    document.body.appendChild(ov);
+    // キー抜き済みスプライトを流し込む（ロード待ちはポーリング・間に合わない竜は名前プレートのみ）。
+    roster.forEach(function (d) { try { if (typeof _rcDragonSprite === "function") _rcDragonSprite(d.id); } catch (e2) {} });
+    var figs = ov.querySelectorAll(".ec-d img");
+    var tries = 0;
+    var poll = setInterval(function () {
+      tries++;
+      var pending = 0;
+      for (var i = 0; i < figs.length; i++) {
+        if (figs[i].dataset.done) continue;
+        var u = _ecSpriteURL(roster[i].id);
+        if (u) { figs[i].src = u; figs[i].style.visibility = "visible"; figs[i].dataset.done = "1"; }
+        else pending++;
+      }
+      if (!pending || tries > 25) { clearInterval(poll); poll = null; }
+    }, 120);
+    try { if (window.Sfx) Sfx.play("legendary"); } catch (e2) {}
+    var t = setTimeout(done, 1200 + roster.length * 240 + 2400);
+    function done() {
+      if (t) { clearTimeout(t); t = null; }
+      if (poll) { clearInterval(poll); poll = null; }
+      ov.classList.add("out");
+      setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); resolve(); }, 440);
+    }
+    ov.onclick = done;
+  });
+}
 function startFinalBattle() {
   const e = epData();
   if (e.edFlag) { if (window.Ending && Ending.play) Ending.play(); return; }
@@ -252,15 +329,31 @@ function startFinalBattle() {
     [who, "ねえ、ミミ。……ここまで歩いてきた道を、少しだけ振り返ってみない？", "default"],
     ["mimi", "はいっ。……わたしたちが積み上げてきた、ぜんぶを。", "happy"]
   ];
-  // ② 最終レース＝立ち絵連発（顧問5人＋ミミ＋観客が沸く）→ 締め。予想は覆らない／それでも全員が沸く。
+  // ② 最終レース＝立ち絵連発 → 締め。予想は覆らない／それでも全員が沸く。
+  // ★脱カーテンコール（NARRATIVE_DESIGN §6-7・D13/D14解消）：顧問はテーマの要約を読まず、
+  //   各人が“プレイヤーの実績”をひとつずつ拾う。数字は既存台帳を読むだけ（数値不変）。
+  const p2 = state.player || {};
+  const fc2 = (typeof fmtCoins === "function") ? fmtCoins : function (n) { return String(n); };
+  const roster = (typeof scoutedRoster === "function") ? scoutedRoster() : [];
+  const fol = (typeof goalFollowers === "function") ? goalFollowers() : 0;
+  const vlv2 = p2.villageLevel || (p2.village && p2.village.level) || 1;
+  const broke = p2.brokeCount || 0;
   const closing = [
     ["narrator", "高らかにファンファーレ。最終レース――島じゅうの視線が、ゲートに集まる。"],
-    ["makura", "さあさあ最後の大一番、実況はこのマクラ！　全頭そろい踏み、観客のボルテージは過去最高だァ！"],
-    ["sake", "ハッ、いい息してやがる。どの竜も、今日ばかりは気配が違うぜ。"],
+    ["makura", "同時視聴" + fol.toLocaleString() + "人！　島の全員が見てるぞ、実況はこのマクラ！　……ミミ、今日はあんたの配信だ。胸張ってけ！"],
+    roster.length
+      ? ["sake", "ゲート脇を見ろ。お前が口説き落とした" + (roster.length >= 8 ? "八頭" : roster.length + "頭") + "が、そろって首を伸ばしてやがる。……いい面構えになった。竜も、お前もだ。"]
+      : ["sake", "ゲートの竜たちを見ろ。今日は全頭、いい面構えだ。……お前が育てた賭場だからな。"],
+    (p2.biggestPayout || 0) > 0
+      ? ["mizu", "あなたの最高払戻、" + fc2(p2.biggestPayout) + "コイン。……あの日の伝票、額に入れて飾りたいくらいよ、あはん。"]
+      : ["mizu", "堅くても細くても、あなたは張り続けた。……市場はね、続けた人を覚えているのよ、あはん。"],
+    ["sumika", "村は、レベル" + vlv2 + "になりました。ミミ様が食べて、住んで、賭けたお金が——ぜんぶ、この灯りになっています。"],
+    [who, (broke > 0
+      ? "あなたが空っぽから立ち上がった回数、" + broke + "回。ぜんぶ視ていたわ。……1着を当てるより、よほど奇跡よ。"
+      : "あなたは一度も、この島を嫌いにならなかった。……ぜんぶ、視ていたわ。"), "default"],
     [who, "……視えている。1着は、動かない。わたしの神眼の、とおりに。", "default"],
     ["narrator", "ゲートが開く。先頭は、セレスティアの読みどおりの一頭。だが――"],
-    ["mizu", "見て。単勝はたった1点に潰れても……複勝が、ワイドが、割れて咲いてる。願いの乗った値よ、あはん。"],
-    ["sumika", "住居も食事も名声も、ぜんぶ賭け札になって島を巡りました。……だから、こんなに沸くんです。"],
+    ["mizu", "見て。単勝はたった1点に潰れても……複勝が、ワイドが、割れて咲いてる。願いの乗った値よ。"],
     ["makura", "2着に伏兵ッ！　3着はなんと万年最下位ァ！　当たり札も、外れ札も、総立ちだァ――！"],
     ["mimi", "……みんな、笑ってる。勝っても、負けても。", "happy"],
     [who, "驚いた。淘汰の前で、ここまで“穴”を残す島は、そうないわ。", "default"],
@@ -274,8 +367,13 @@ function startFinalBattle() {
     if (window.Ending && Ending.play) Ending.play();
   };
   const afterShow = function () {
-    if (window.Dialogue && Dialogue.play) Dialogue.play(closing, { force: true }).then(toEnding);
-    else toEnding();
+    const playClosing = function () {
+      if (window.Dialogue && Dialogue.play) Dialogue.play(closing, { force: true }).then(toEnding);
+      else toEnding();
+    };
+    // 走馬灯のあと、締めVNの前に——集めた竜たちが実スプライトで見参（0頭ならスキップ）。
+    if (typeof playEightDragonsCutin === "function") playEightDragonsCutin().then(playClosing);
+    else playClosing();
   };
   const runShow = function () {
     if (typeof playFinalShowcase === "function") playFinalShowcase().then(afterShow);

@@ -73,6 +73,20 @@ function scoutDragonHome(d) {
 function _scoutAllDragons() {
   return (typeof DRAGONS !== "undefined" ? DRAGONS : []).filter(d => d && d.id !== "poro");
 }
+// ── 八竜ロスター（NARRATIVE_DESIGN §6-1）────────────────────────────────
+// スカウト成立済みの竜を絆(affection)降順で個体データごと返す。読み取り専用＝
+// collection/レース数値には一切触れない。終章の見参カットイン・走馬灯・集結VNが読む。
+function scoutedRoster() {
+  const col = (state.player && state.player.collection) || {};
+  return Object.keys(col)
+    .filter(id => col[id] && col[id].scouted && id !== "poro")
+    .map(id => (typeof dragonById === "function") ? dragonById(id) : null)
+    .filter(Boolean)
+    .sort((a, b) => {
+      const af = (typeof dragonAffection === "function") ? dragonAffection : function () { return 0; };
+      return af(b.id) - af(a.id);
+    });
+}
 function dragonsAtLocation(locId) { return _scoutAllDragons().filter(d => scoutDragonHome(d) === locId); }
 function unscoutedAtLocation(locId) {
   const col = (state.player && state.player.collection) || {};

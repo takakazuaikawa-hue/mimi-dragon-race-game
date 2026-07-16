@@ -196,6 +196,14 @@ function _scoutAct(approachId) {
 }
 
 // ── 成立＝心を開く → 既存の払い出し ──────────────────────────────────────
+// G2: 成立の個別ひとこと。交渉ペルソナ(favCat)由来＝竜ごとに決定的で、口説き方の記憶と一致する。
+const _SCOUT_WIN_VOICE = {
+  "声": n => `名前を呼んだら、ちゃんとこっちを見たの。${n}、もう家族だ〜。`,
+  "間": n => `${n}はね、間合いが大事なの。……今日、その間合いに入れてもらえた。`,
+  "贈": n => `${n}、贈り物のときだけ目の色が変わるんだよ。かわいいやつめ〜。`,
+  "遊": n => `${n}ってば、遊びだすと止まらないの。龍舎、にぎやかになるぞ〜。`,
+  "身": n => `${n}が、そっと身を寄せてくれた。……あったかいんだ、竜って。`
+};
 function _scoutWin() {
   const d = _scoutMeetD;
   const e = poroColEntry(d.id);
@@ -206,11 +214,45 @@ function _scoutWin() {
   if (window.Sfx && Sfx.play) Sfx.play("legendary");
   if (typeof saveGame === "function") saveGame();
   _scoutSess = null;
+  let mimiLine = "";
+  try {
+    const cat = (typeof scoutPersona === "function") ? scoutPersona(d).favCat : "身";
+    mimiLine = (_SCOUT_WIN_VOICE[cat] || _SCOUT_WIN_VOICE["身"])(d.name);
+  } catch (err) { mimiLine = ""; }
   showInfoPopup(`🤝 ${d.name} と心が通じた！`,
     `<div class="mm-row"><span class="mm-ic">🐲</span><div><b>${d.name}を龍舎に迎えた。</b><small>${d.portraitTone || d.tone || "言葉はなくても、気持ちは通じた。"}</small></div></div>` +
+    (mimiLine ? `<div class="mm-row"><span class="mm-ic">🐰</span><div><b>ミミ</b><small>「${mimiLine}」</small></div></div>` : "") +
     (isNew ? `<div class="mm-row"><span class="mm-ic">📖</span><div><b>図鑑＆龍舎に登録</b><small>出会いの記録が増えた。</small></div></div>` : "") +
     `<div class="mm-note">※ 表示専用。レースの結果・オッズ・配当は変わりません。</div>`,
-    () => renderScout());
+    () => { if (!_maybeEightAssembly(isNew)) renderScout(); });
+}
+
+// ── G1: 八竜集結（8頭目成立の夜・1回だけ）───────────────────────────────
+// 表示専用のVN。終章中なら決意、終章前なら予告のトーン（NARRATIVE_DESIGN §6-2）。
+function _maybeEightAssembly(isNew) {
+  try {
+    if (!isNew) return false;
+    if (!(typeof scoutedRoster === "function" && scoutedRoster().length >= 8)) return false;
+    if (typeof getStoryFlag === "function" && getStoryFlag("eightDragonsAssembled")) return false;
+    if (!(window.Dialogue && Dialogue.play)) return false;
+    if (typeof setStoryFlag === "function") setStoryFlag("eightDragonsAssembled", true);
+    const inEp = (typeof epilogueOn === "function") && epilogueOn();
+    const hasPoro = (typeof poroFound === "function") && poroFound();
+    const script = [
+      ["narrator", "龍舎に、八つ目の寝床が埋まった。……その夜。だれに呼ばれたわけでもなく、竜たちが庭に集まってくる。"]
+    ];
+    if (hasPoro) script.push(["narrator", "輪のまんなかで、ポロがうれしそうにころんと転がった。——ここが真ん中だと言わんばかりに。"]);
+    script.push(
+      ["mimi", "わ、わ。みんな、どうしたの……？", "happy"],
+      ["narrator", "八対の目が、まっすぐミミを見ている。強いからじゃない。速いからでもない。——好きで選んだ、八頭。"],
+      ["mimi", "……うん。覚えてるよ。ひとりずつ、心が通じた日のこと。", "default"]
+    );
+    if (inEp) script.push(["mimi", "淘汰なんかに、この島は渡さない。{w:400}……その時が来たら、いっしょに走ろうね。", "default"]);
+    else script.push(["mimi", "なんだろう。……この子たちとなら、どんな“最後”が来ても、だいじょうぶな気がする。", "smile"]);
+    script.push(["narrator", "八竜、そろい踏み。——この夜のことを、島はのちに「集結」と呼ぶ。"]);
+    Dialogue.play(script, { force: true }).then(() => renderScout());
+    return true;
+  } catch (err) { return false; }
 }
 
 // ── 決裂＝逃走（再挑戦可） ────────────────────────────────────────────────

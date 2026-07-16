@@ -5895,6 +5895,40 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .fin-card.finale .fin-ic { animation: none; }
 }
 
+/* ===== 八竜見参カットイン（終章・走馬灯の後＝実スプライト整列・表示専用） ===== */
+.eight-cutin { position: fixed; inset: 0; z-index: 9000; cursor: pointer; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: radial-gradient(125% 100% at 50% 38%, #2c1f4a 0%, #1a1230 50%, #090612 100%);
+  opacity: 0; animation: ecIn .45s ease forwards; }
+.eight-cutin.out { animation: ecOut .4s ease forwards; }
+.ec-flash { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 32%, rgba(255,220,120,.2) 50%, transparent 68%);
+  animation: ecSweep 1.3s ease .25s both; }
+.ec-title { font-size: 44px; font-weight: 900; letter-spacing: .16em; color: #ffd76a;
+  text-shadow: 0 0 26px rgba(255,180,60,.55), 0 3px 0 rgba(0,0,0,.5);
+  animation: ecTitle .6s cubic-bezier(.2,1.6,.4,1) .12s both; }
+.ec-sub { font-size: 12px; color: #cbb8ff; letter-spacing: .08em; }
+.ec-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 10px;
+  max-width: min(92vw, 480px); margin-top: 8px; }
+.ec-d { width: 88px; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  opacity: 0; animation: ecPop .5s cubic-bezier(.2,1.5,.4,1) both;
+  animation-delay: calc(.55s + var(--i) * .22s); }
+.ec-d img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated;
+  filter: drop-shadow(0 0 10px var(--c)) drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
+.ec-d figcaption { font-size: 10px; color: #fff; background: rgba(0,0,0,.42);
+  border: 1px solid var(--c); border-radius: 99px; padding: 1px 8px; white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+@keyframes ecIn { to { opacity: 1; } }
+@keyframes ecOut { to { opacity: 0; } }
+@keyframes ecSweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes ecTitle { from { transform: scale(2.1); opacity: 0; filter: blur(6px); }
+  to { transform: scale(1); opacity: 1; filter: none; } }
+@keyframes ecPop { from { transform: translateY(24px) scale(.6); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .eight-cutin, .ec-flash, .ec-title, .ec-d { animation: none; opacity: 1; }
+}
+
 /* ===== バトル突入トランジション（上下バー＋フラッシュ＋ラベル） ===== */
 .rpg-enc { position:absolute; inset:0; overflow:hidden; }
 .rpg-enc .enc-flash { position:absolute; inset:0; background:#fff; animation:encFlash .5s ease-out forwards; }
