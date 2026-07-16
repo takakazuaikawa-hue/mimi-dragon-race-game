@@ -1262,8 +1262,10 @@ function renderMallRpg(flash) {
   if (typeof mallUnlocked === "function" && !mallUnlocked()) {   // Ⓑ 親mallと同じ条件でゲート（モールがロック中は大冒険も閉じる）。
     if (typeof renderHome === "function") renderHome();
     // ★ロック案内で章題（＝未登場の顧問名）は出さない。予告は「第N話を読むと開放」までに留める。
+    // 解禁条件の文は chapterUnlockHint（data_assets.js・実績ゲートの正本）から引く＝化石テキスト防止。
+    const _rpgH2 = (typeof chapterUnlockHint === "function" && chapterUnlockHint("2")) || "";
     if (typeof showInfoPopup === "function") showInfoPopup("🛍️ お買い物ダンジョン",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話</u>を読むとモールが解放されます（総資産3千で第2話が解禁）。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話</u>を読むとモールが解放されます${_rpgH2 ? `（第2話は${_rpgH2}）` : ""}。</small></div></div>`);
     return;
   }
   state.ui.screen = "mall_rpg";

@@ -314,16 +314,16 @@ function mealStatsAll() {
   for (var i = 0; i < MEALS.length; i++) if (mealUnlocked(MEALS[i])) got++;
   return { got: got, total: MEALS.length };
 }
-// ★ティアの開放：基本（🍢🍙＝食べ歩き/自宅・eat）は早期から。上級グルメ（🍽️🥢＝島のミミグルマン/みみしんぼ・
-//   “当てる”系）は終章で開放（progression再設計・docs/PROGRESSION_DESIGN.md）。表示専用。
+// ★ティアの開放：基本（🍢🍙＝食べ歩き/自宅・eat）は早期から。
+//   グルマン＝総資産100万（第4話・観光tier2と同じ物差し）／しんぼ＝終章（第5話既読）。
+//   旧仕様は両方1億＝くらしツリー等より遥かに遅く「解放度が合わない」体感ズレの原因だった（NARRATIVE_DESIGN §7-B）。
 function mealEndgameOpen() {
-  try {
-    if (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_5")) return true;
-    return (state.player.totalAssets || 0) >= 100000000;   // 1億＝第5話/終章のしきい値（総資産は高水位＝戻らない）
-  } catch (e) { return false; }
+  try { return (typeof chapterRead === "function") ? chapterRead("5")
+    : (typeof getStoryFlag === "function" && !!getStoryFlag("_chapter_intro_5")); } catch (e) { return false; }
 }
 function mealTierUnlocked(tierId) {
-  if (tierId === "gourman" || tierId === "shinbo") return mealEndgameOpen();   // 上級グルメ＝終章
+  if (tierId === "shinbo") return mealEndgameOpen();                                   // みみしんぼ＝終章
+  if (tierId === "gourman") { try { return (state.player.totalAssets || 0) >= 1000000; } catch (e) { return false; } }   // グルマン＝100万
   return true;   // 基本ティアは常時
 }
 if (typeof window !== "undefined") { window.MEALS = MEALS; window.MEAL_TIERS = MEAL_TIERS; }

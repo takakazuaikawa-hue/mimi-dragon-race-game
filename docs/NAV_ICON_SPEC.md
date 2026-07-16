@@ -18,28 +18,31 @@
 常に龍舎なので、優先して用意すべきは **island / kurashi / meal / sns / stable の5枚**。dex は早期のみで任意。
 
 ## 画像の技術仕様（5枚で厳守＝統一感の要）
-- **正方形・透過PNG/WebP**（背景は完全透過）。推奨 256×256（表示は26px前後）。
-- 被写体は**中央・単一オブジェクト**、余白は上下左右に均等（画面では丸い枠に入る）。
-- **小さく潰しても意味が伝わるシルエット**（ディテール過多は禁物）。
-- 5枚とも**同じ線幅・同じ光源（上から）・同じ塗り・同じ余白**。バラつきは即NG。
+- **正方形・背景完全透過のSVG / PNG / WebP**。原寸は256px以上、実表示は33px前後。
+- 被写体は中央に大きく置く。可視シルエットはキャンバスの**76〜82%**を使い、余白だけが主役にならないようにする。
+- 小さくしても一目で読める、太い外形と2〜4個までの大きな面を優先する。細かい装飾・文字・説明記号は禁止。
+- 5枚とも、既存の製品UIで検証された同一グリッド・同一線幅・深い紺の縁・下方向の短い影を共有する。
 
 ## 画風（マスタールール・全5枚共通）
-崑崙島（南国）の世界観に合う、**フラットで可愛いイラストアイコン**。
-- 太めの丸い輪郭線、ふっくらしたシェイプ、やわらかい陰影（2〜3階調）。
-- パレット：ティール/エメラルド＋ゴールド＋コーラルの暖色島トーン（ゲーム本編と同系）。
-- 質感：ほんの少しのハイライトで艶を出す＝「作り込まれた」印象。安っぽいクリップアート感は禁止。
-- 文字・記号は入れない（アイコンのみ）。
+崑崙島の**高級リゾート案内 70% + ライブゲームUIの艶 30%**。
+
+- 絵文字を描き直したミニチュアや、情報を詰め込んだ3D小物にはしない。既存の製品UIで磨かれたグリフの**読める輪郭**を土台に、崑崙島の色と影だけを載せる。
+- 真珠色、シャンパンゴールド、海の青緑、夜空に映えるコーラルを役割別のアクセントにし、緑一色やアニメ塗りには寄せない。
+- 透明背景で、**大きい丸枠・角丸ボタン・台座**は使わない。短い影と二色面だけで、暗いライブ画面から浮かせる。
+- 33pxでシルエットが読めることを最優先にする。細部の質感より、輪郭、余白、役割ごとの色差を守る。
+- ベースグリフはPhosphor Icons（MIT）を使用する。出典とライセンスは `docs/THIRD_PARTY_NOTICES.md` に記録する。
 
 ### 共通ネガティブ
-`text, letters, watermark, drop shadow on background, photo, realistic, 3d render, harsh gradient, busy background, multiple objects, frame/border box`
+`emoji, operating system glyph, flat clip art, hand drawn line, cartoon, anime face, cute mascot, green dominant, thick circular frame, button background, text, letters, watermark, busy scene, tiny details, distorted perspective`
 
-## 個別プロンプト（英語・上のマスタールールに続けて使う）
-- **island**：`a small tropical volcanic island: one palm tree, a rounded green isle, a gentle volcano peak with a soft warm glow, calm teal water base`
-- **kurashi**：`a cozy little island cottage with a small tree beside it, warm window light — signifies "home & daily life"`
-- **meal**：`a steaming rice/ramen bowl with chopsticks, appetizing and cute, small heat swirl`
-- **sns**：`a smartphone showing a heart/chat bubble on screen — signifies social feed, playful`
-- **stable**：`a cozy dragon stable/roost: a small barn-house with a round window and a tiny curled dragon inside — the dragon hub`
-- **dex**（任意・早期のみ）：`an open book with a tiny cute dragon silhouette rising from the page — a monster field guide`
+## シンボルの役割
+- **island**：崑崙島とラグーン。
+- **kurashi**：滞在・相談・物語・経済を含むリゾートレジデンス。
+- **meal**：食べ歩きコレクション。
+- **sns**：レース配信とファンの熱を拾うライブ・ビーコン。
+- **stable**：龍と会う格納庫。ベースの龍舎に、固有の竜の目を重ねる。
+- **dex**：島と竜の発見を蓄えるアトラス。
+- **outfit**：ミミの衣装室。
 
 ## 確認手順（置いた後）
 1. `images/nav/` に5枚を配置 → `NAV_ICON_V` を bump。

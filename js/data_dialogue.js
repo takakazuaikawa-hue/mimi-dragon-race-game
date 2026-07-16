@@ -88,11 +88,18 @@
 
   global.DLG = DLG;
 
-  // 顧問のフル立ち絵（images/cast/stand/<key>.webp）をVNセリフに登録 —— 顔アイコンでなく
-  // 全身立ち絵で表示される（404時は従来どおり絵文字シンボルへ自動フォールバック）。
+  // 顧問のフル立ち絵をVNセリフに登録。★表情オブジェクト形式（NARRATIVE_DESIGN §4）＝
+  // stand/<k>_<expr>.webp を置くだけで自動で表情差分が効く（欠損は default→絵文字へ多段フォールバック）。
+  // 生成すべき表情の一覧と指示は docs/CAST_ART_BRIEF.md。
   if (global.Dialogue && global.Dialogue.registerCast) {
     ["sake", "mizu", "sumika", "makura", "celestia"].forEach(function (k) {
-      global.Dialogue.registerCast(k, { img: "images/cast/stand/" + k + ".webp" });
+      var base = "images/cast/stand/" + k;
+      global.Dialogue.registerCast(k, { img: {
+        default: base + ".webp",
+        smile: base + "_smile.webp",
+        happy: base + "_happy.webp",
+        panic: base + "_panic.webp"
+      } });
     });
   }
 })(window);

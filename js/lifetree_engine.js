@@ -217,9 +217,18 @@ function lifeNodeMissingPrereqs(node) {
 // "unlocked" | "ready"(振り分け可) | "prereq"(前提待ち)
 // ★ユーザー指示：解放はコインのみで判定（暮らしPは総資産から自動で貯まる指標として残すが、
 //   解放条件からは撤廃）。実際の支払い可否は hunger.js の unlockLifeNode ラップ（コイン）で判定。
+// ★総資産帯ゲート（NARRATIVE_DESIGN §7-C）：コインさえあれば終盤ノードまで買えた＝食事段位（総資産基準）と
+//   体感がズレる問題の修正。cost段階→総資産のしきい値は ASSET_LEVELS と同じ物差し
+//   （cost1=最初から / 2=1万 / 3=10万 / 4=100万 / 5+=1億=終章全開放）。帯未満は prereq 扱い（既存UIの🔒表示に乗る）。
+const LIFE_NODE_BAND = [0, 0, 10000, 100000, 1000000, 100000000];
+function lifeNodeBandAt(node) {
+  const c = Math.min((node && node.cost) || 1, LIFE_NODE_BAND.length - 1);
+  return LIFE_NODE_BAND[c];
+}
 function lifeNodeState(node) {
   if (lifeNodeUnlocked(node)) return "unlocked";
   if (!lifeNodePrereqMet(node)) return "prereq";
+  try { if (((state.player && state.player.totalAssets) || 0) < lifeNodeBandAt(node)) return "prereq"; } catch (e) {}
   return "ready";
 }
 function unlockLifeNode(node) {

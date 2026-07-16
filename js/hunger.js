@@ -48,12 +48,13 @@ var MEAL_FILL = {         // おなか回復（品ごと・固定）。バナナ
 var MEAL_TIER_BASE = { track: 400, home: 120, gourman: 700, shinbo: 1500 };  // データ未登録idのフォールバック価格
 var MEAL_HEAL_TIER = { track: 40, home: 45, gourman: 80, shinbo: 100 };      // 同・回復
 function hungerScale() {  // 生活段位（総資産）で外食が少しだけ高級化＝緩め。基本価格は現実的なまま維持。
+  // ★崖の位置を ASSET_LEVELS（1万/10万/100万/1億）と揃える＝生活ステージが上がる瞬間と物価が動く瞬間を一致（§7-J）。
   try {
     const a = (state.player && state.player.totalAssets) || 0;
     if (a >= 100000000) return 2.5;
-    if (a >= 10000000) return 2.0;
-    if (a >= 1000000) return 1.6;
-    if (a >= 100000) return 1.3;
+    if (a >= 1000000) return 2.0;
+    if (a >= 100000) return 1.5;
+    if (a >= 10000) return 1.2;
     return 1.0;
   } catch (e) { return 1.0; }
 }

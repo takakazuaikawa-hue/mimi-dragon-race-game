@@ -60,9 +60,10 @@ function renderMeals() {
   app.appendChild(ob);
 
   const tiers = (typeof MEAL_TIERS !== "undefined") ? MEAL_TIERS : [];
-  const _tUnlocked = id => (typeof mealTierUnlocked !== "function") || mealTierUnlocked(id);   // 上級グルメは終章で開放
-  const _lockMsg = () => { if (typeof showInfoPopup === "function") showInfoPopup("🥢 上級グルメ",
-    `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>「島のミミグルマン」「みみしんぼ」は<u>終章（総資産1億・第5話）</u>で開放されます。まずは食べ歩きから。</small></div></div>`); };
+  const _tUnlocked = id => (typeof mealTierUnlocked !== "function") || mealTierUnlocked(id);   // グルマン=総資産100万／しんぼ=終章（meals.js）
+  const _mealLockHint = id => id === "shinbo" ? "終章（第5話）" : "総資産100万";   // ★段位ごとの解禁条件（新ゲートと一致させる）
+  const _lockMsg = (id) => { if (typeof showInfoPopup === "function") showInfoPopup("🥢 上級グルメ",
+    `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>この段位は<u>${_mealLockHint(id)}</u>で開放されます。まずは食べ歩きから。</small></div></div>`); };
   if (!_mealTab || !tiers.some(t => t.id === _mealTab) || !_tUnlocked(_mealTab)) {
     const firstInc = tiers.find(t => _tUnlocked(t.id) && (function () { const s = mealTierStats(t.id); return s.got < s.total; })());
     _mealTab = (firstInc || tiers.find(t => _tUnlocked(t.id)) || tiers[0] || {}).id;
@@ -75,9 +76,9 @@ function renderMeals() {
     const done = !locked && st.total > 0 && st.got === st.total;
     const tab = el("button", "meal-tab" + (t.id === _mealTab ? " on" : "") + (done ? " done" : "") + (locked ? " locked" : ""));
     tab.innerHTML = locked
-      ? `<span class="meal-tab-ic">🔒</span><span class="meal-tab-p">終章</span>`
+      ? `<span class="meal-tab-ic">🔒</span><span class="meal-tab-p">${t.id === "shinbo" ? "終章" : "100万"}</span>`
       : `<span class="meal-tab-ic">${t.icon}</span><span class="meal-tab-p">${done ? "✓ " : ""}${st.got}/${st.total}</span>`;
-    tab.onclick = locked ? _lockMsg : () => { _mealTab = t.id; renderMeals(); };
+    tab.onclick = locked ? (() => _lockMsg(t.id)) : () => { _mealTab = t.id; renderMeals(); };
     tabs.appendChild(tab);
   });
   app.appendChild(tabs);
@@ -85,7 +86,7 @@ function renderMeals() {
   // 選択中の段だけ：見出し＋グリッド（未開放なら開放案内）
   const t = tiers.find(x => x.id === _mealTab) || tiers[0];
   if (t && !_tUnlocked(t.id)) {
-    app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は終章（総資産1億・第5話）で開放されます。"));
+    app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は" + _mealLockHint(t.id) + "で開放されます。"));
   } else if (t) {
     const sec = el("div", "meal-sec");
     // 価格は品ごとに異なる（各カードに表示）ので、見出しはモードのみ。当てる段位は無料。

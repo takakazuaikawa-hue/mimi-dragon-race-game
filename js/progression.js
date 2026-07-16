@@ -78,10 +78,10 @@ function analysisUnlocked() {
 const KURASHI_WATCH = [
   { id: "k_tree5", tier: "toast",
     cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 5; },
-    notifyBody: "🌱 くらしツリーが5節目。スミカ「暮らしが根を張ってきたね。聖龍日報の文化面が取材したいって」" },
+    notifyBody: "🌱 くらしツリーが5節目。スミカ「ミミ様の生活調査票、初めて空欄が埋まりました。日報の文化面が取材したいそうです」" },   // ★声表: スミカ=丁寧語・呼称ミミ様
   { id: "k_tree15", tier: "toast",
     cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 15; },
-    notifyBody: "🌳 くらしツリーが15節目！　スミカ「もう立派な木。……あんた、島の暮らしの見本になってるよ」" },
+    notifyBody: "🌳 くらしツリーが15節目！　スミカ「ミミ様の生活調査票、空欄がほとんど埋まりました。……少し、嬉しいです」" },   // ★声表: スミカ=丁寧語・呼称ミミ様（「あんた」は声ブレ）
   { id: "k_tree30", tier: "toast",
     cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 30; },
     notifyBody: "🌳 くらしツリーが30節目！！　枝の先まで灯りがともる。日報いわく「島でいちばん豊かな木」。" },
@@ -93,10 +93,10 @@ const KURASHI_WATCH = [
     cond: function () { return typeof LIFE_TIERS !== "undefined" && LIFE_TIERS[3] && ((state.player && state.player.totalAssets) || 0) >= LIFE_TIERS[3].min; },
     notifyBody: "🏡 暮らしがまた一段上がりました。日報いわく「崑崙の丘に、竜の見える家」。ご近所さんが増えました。" },
   { id: "k_meals10", tier: "toast",
-    cond: function () { return Object.keys((state.player && state.player.meals) || {}).length >= 10; },
+    cond: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; },   // ★BUGFIX: player.meals は {eaten,solved} の2キー固定＝旧式は永遠に偽だった
     notifyBody: "🍽️ 食べ歩き10品目！　グルメ面「みみしんぼ」外伝が載りました。屋台のおやじが照れてます。" },
   { id: "k_meals25", tier: "toast",
-    cond: function () { return Object.keys((state.player && state.player.meals) || {}).length >= 25; },
+    cond: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 25; },   // ★BUGFIX: 同上
     notifyBody: "🍽️ 食べ歩き25品！　グルメ面いわく「この島の味を、彼女はぜんぶ知っている」。" },
   { id: "k_spots8", tier: "toast",
     cond: function () { return Object.keys(((state.player || {}).kurashi || {}).spotsSeen || {}).length >= 8; },

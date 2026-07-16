@@ -20,11 +20,14 @@
 
 // §30 §7.1 — inflation-style asset-level thresholds (tunable).
 // assetLevelOf(total) → 0..5. Level N unlocks 第(N+1)話; level 5 unlocks ED.
+// ★物語のしきい値と整合（NARRATIVE_DESIGN §7-I）：level3=100万（第4話と同時）・level4=1億（第5話と同時）。
+//   旧値（1千万/10億）は章と無関係の孤立した崖で「解放度が合わない」体感ズレの原因だった。
+//   unlockedLifeStages は高水位＝既存セーブは下がらない。部屋の購入はコイン制（ROOM_MOVE_COST）なので費用不変。
 const ASSET_LEVELS = [
   { level: 1, threshold: 10000 },
   { level: 2, threshold: 100000 },
-  { level: 3, threshold: 10000000 },
-  { level: 4, threshold: 1000000000 },
+  { level: 3, threshold: 1000000 },
+  { level: 4, threshold: 100000000 },
   { level: 5, threshold: 1000000000000 }
 ];
 

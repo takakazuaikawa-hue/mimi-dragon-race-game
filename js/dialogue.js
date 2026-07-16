@@ -114,9 +114,13 @@
     }
     if (c.img) {
       if (typeof c.img === "function") { var r = c.img(expr); return r ? [r] : []; }
+      if (Array.isArray(c.img)) return c.img.slice();   // ★多段フォールバック（各要素は文字列 or {src,sil}）
       if (typeof c.img === "object") {
-        var p = c.img[expr] || c.img.default;
-        return p ? [p] : [];
+        // ★表情差分＋defaultフォールバック（欠損表情は404チェーンでdefaultへ落ちる）
+        var p = [];
+        if (expr && c.img[expr]) p.push(c.img[expr]);
+        if (c.img.default) p.push(c.img.default);
+        return p;
       }
       return [c.img];
     }
@@ -178,6 +182,7 @@
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-live", "polite");
 
+    var bg = mk("div", "dlg-bg");        // ★背景レイヤ（scrimの下・行の bg:"nightmarket" 等でクロスフェード）
     var scrim = mk("div", "dlg-scrim");
     var stage = mk("div", "dlg-stage");
 
@@ -200,6 +205,7 @@
 
     var skip = mk("button", "dlg-skip", "スキップ ✕");
 
+    overlay.appendChild(bg);
     overlay.appendChild(scrim);
     overlay.appendChild(stage);
     overlay.appendChild(box);
@@ -213,9 +219,28 @@
     box.addEventListener("click", onTapAdvance);
     skip.addEventListener("click", function (ev) { ev.stopPropagation(); skipAll(); });
 
-    dom = { overlay: overlay, stage: stage, slots: slots, box: box, name: name, text: text, next: next, skip: skip };
+    dom = { overlay: overlay, bg: bg, stage: stage, slots: slots, box: box, name: name, text: text, next: next, skip: skip };
     return dom;
   }
+
+  // ★背景のクロスフェード（bg:"stable" → images/bg/stable.webp。パス指定もそのまま通す）。404は静かに無視。
+  function setBg(id) {
+    if (!dom) return;
+    var url = /[/.]/.test(id) ? id : "images/bg/" + id + ".webp";
+    if (dom.bg.dataset.cur === url) return;
+    dom.bg.dataset.cur = url;
+    var im = new Image();
+    im.onload = function () {
+      dom.bg.appendChild(im);
+      requestAnimationFrame(function () { im.classList.add("on"); });
+      while (dom.bg.children.length > 2) dom.bg.removeChild(dom.bg.firstChild);
+    };
+    im.src = url;
+  }
+  function clearBg() { if (dom && dom.bg) { dom.bg.innerHTML = ""; delete dom.bg.dataset.cur; } }
+
+  // ★感情アニメ→効果音の自動対応（fx1語で音まで付く）。行の se: 明示が最優先。
+  var FX_SE = { shake: "miss", hop: "paho", nod: "tick", flash: "alert" };
 
   /* =====================================================================
      4) 再生エンジン（直列化・タイプライタ・送り/スキップ）
@@ -237,7 +262,9 @@
       if (Array.isArray(l)) l = { s: l[0], t: l[1], e: l[2] };
       var t = (l.t != null) ? l.t : l.text;
       if (t == null || t === "") continue;
-      out.push({ s: (l.s != null ? l.s : l.speaker), t: String(t), e: (l.e || l.expr), side: l.side });
+      // ★演出フィールドは任意（fx=感情アニメ/se=効果音/bg=背景/w=行末の間ms）。既存台本は無指定＝従来どおり。
+      out.push({ s: (l.s != null ? l.s : l.speaker), t: String(t), e: (l.e || l.expr), side: l.side,
+        fx: l.fx, se: l.se, bg: l.bg, w: l.w });
     }
     return out;
   }
@@ -274,6 +301,8 @@
     if (!line) { finish(); return; }
     var c = castOf(line.s);
 
+    if (line.bg) setBg(line.bg);   // ★場面（背景）は行から切替可能
+
     // 立ち絵：話者の側に表示。ナレーションは両方暗転＋名前なし。
     var side = line.side || (c.side === "right" ? "right" : "left");
     if (c.narrator) {
@@ -286,10 +315,19 @@
       d.name.style.display = c.name ? "" : "none";
       d.name.textContent = c.name || "";
       d.name.style.setProperty("--cg", c.color || "#caa24a");
+      // ★感情アニメ（fx: shake/hop/nod/flash）＝話者の立ち絵imgに一発アニメ。reduced-motionでは無効。
+      //   fx無指定の行でも前回のfxクラスを必ず除去（残留すると呼吸アニメが止まるため）。
+      var fim = d.slots[side].img;
+      fim.classList.remove("fx-shake", "fx-hop", "fx-nod", "fx-flash");
+      if (line.fx && !REDUCE) { void fim.offsetWidth; fim.classList.add("fx-" + line.fx); }
     }
     d.box.style.setProperty("--cg", c.color || "#caa24a") ;
 
-    startType(line.t);
+    // ★効果音：se: 明示 > fx の自動対応（FX_SE）。Sfx未ロードでも安全。
+    var se = line.se || (line.fx && FX_SE[line.fx]);
+    if (se && global.Sfx && Sfx.play) { try { Sfx.play(se); } catch (e) {} }
+
+    startType(line.t, line);
   }
 
   function setSlot(side, id, expr, c) {
@@ -307,10 +345,13 @@
   function loadInto(sl, list, sym) {
     var i = 0, img = sl.img, symEl = sl.sym;
     function tryNext() {
-      if (i >= list.length) { img.style.display = "none"; symEl.textContent = sym || "💬"; symEl.style.display = ""; return; }
+      if (i >= list.length) { img.style.display = "none"; symEl.textContent = sym || "💬"; symEl.style.display = ""; sl.wrap.classList.remove("sil"); return; }
+      // ★エントリは 文字列 or {src, sil:true}。sil＝シルエット表示（例: 伏線お姉さん＝celestia を暗く落として正体を隠す）
+      var entry = list[i], src = (typeof entry === "object" && entry) ? entry.src : entry, sil = !!(entry && entry.sil);
       img.style.display = ""; symEl.style.display = "none";
       img.onerror = function () { i++; tryNext(); };
-      img.src = list[i];
+      img.onload = function () { sl.wrap.classList.toggle("sil", sil); };
+      img.src = src;
     }
     tryNext();
   }
@@ -327,11 +368,22 @@
   }
 
   // タイプライタ表示
-  function startType(t) {
+  var autoTimer = 0;
+  function startType(t, line) {
     var d = dom;
-    full = t; shown = 0; typing = true;
+    // ★インラインの間：{w:600} をテキスト中に書くと、その位置で600msの溜め（表示テキストからは除去）。
+    var waits = {}, buf = "", srcT = String(t), reW = /\{w:(\d+)\}/g, lastW = 0, mW;
+    while ((mW = reW.exec(srcT))) {
+      buf += srcT.slice(lastW, mW.index);
+      waits[buf.length] = (waits[buf.length] || 0) + (parseInt(mW[1], 10) || 0);
+      lastW = mW.index + mW[0].length;
+    }
+    buf += srcT.slice(lastW);
+    full = buf; shown = 0; typing = true;
+    clearTimeout(autoTimer);
     d.next.style.visibility = "hidden";
-    if (REDUCE || opts.instant) { d.text.textContent = full; typing = false; d.next.style.visibility = "visible"; return; }
+    var lineWait = (line && line.w) || 0;   // 行末の間（次行送り前ではなく▼表示までの溜め）
+    if (REDUCE || opts.instant) { d.text.textContent = full; typing = false; d.next.style.visibility = "visible"; maybeAuto(); return; }
     d.text.textContent = "";
     clearTimeout(typeTimer);
     var speed = opts.speed || 22;
@@ -339,17 +391,31 @@
       if (!typing) return;
       shown++;
       d.text.textContent = full.slice(0, shown);
-      if (shown >= full.length) { typing = false; d.next.style.visibility = "visible"; return; }
-      typeTimer = setTimeout(tick, speed);
+      if (shown % 3 === 0 && global.Sfx && Sfx.play && !opts.silent) { try { Sfx.play("tick"); } catch (e) {} }   // タイプ音（3文字ごと・小さく）
+      if (shown >= full.length) {
+        typing = false;
+        setTimeout(function () { if (!typing) { d.next.style.visibility = "visible"; maybeAuto(); } }, lineWait);
+        return;
+      }
+      typeTimer = setTimeout(tick, speed + (waits[shown] || 0));   // ★{w:ms} の位置で溜める
     })();
+  }
+
+  // ★オート送り（opts.autoAdvance=true）：読み切りサイズに応じて自動で次へ。手動タップでキャンセルされない設計
+  //   （advance が呼ばれたら次行の startType が autoTimer をクリアする）。
+  function maybeAuto() {
+    if (!opts.autoAdvance) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function () { if (queue && !typing) advance(); }, 900 + full.length * 42);
   }
 
   function advance() {
     if (typing) { // タイプ中なら一気に表示
       typing = false; clearTimeout(typeTimer);
-      dom.text.textContent = full; dom.next.style.visibility = "visible";
+      dom.text.textContent = full; dom.next.style.visibility = "visible"; maybeAuto();
       return;
     }
+    clearTimeout(autoTimer);
     idx++;
     if (idx >= queue.length) finish();
     else step();
@@ -361,7 +427,8 @@
   }
 
   function finish() {
-    typing = false; clearTimeout(typeTimer);
+    typing = false; clearTimeout(typeTimer); clearTimeout(autoTimer);
+    clearBg();   // ★背景は台本ごと＝次の無関係な会話に前の場面を持ち越さない
     if (dom) dom.overlay.classList.add("hidden");
     document.removeEventListener("keydown", onKey, true);
     var r = resolveFn; resolveFn = null; queue = null;

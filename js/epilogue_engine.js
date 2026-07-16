@@ -11,12 +11,14 @@
 //   ここに追記していく（定数表＋関数を集約する想定）。
 // =========================================================================
 
-// 正体判明前の仮の姿としてダイアログcast登録（後ろ姿シルエット。アート未配置時は絵文字🌌へ自動FB）。
+// 正体判明前の仮の姿としてダイアログcast登録。
+// ★専用絵(stranger.webp)が無ければ celestia をシルエット加工（.sil＝暗転フィルタ）で表示＝
+//   「絵文字で出る」404バグの解消。同一人物のシルエットなので伏線としても正しい（正体は判別不能）。
 (function registerStrangerCast() {
   if (typeof window !== "undefined" && window.Dialogue && Dialogue.registerCast) {
     Dialogue.registerCast("stranger", {
       name: "知らないお姉さん", color: "#7a6aa0", symbol: "🌌", side: "left",
-      img: "images/cast/stand/stranger.webp"
+      img: ["images/cast/stand/stranger.webp", { src: "images/cast/stand/celestia.webp", sil: true }]
     });
   }
 })();

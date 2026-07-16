@@ -39,6 +39,8 @@
 
 // ===== V1 sample events (§14 §25 + §10 §11 "V1") =====
 
+// ★D1/D2解消＋do-then-explain（NARRATIVE_DESIGN P2）：講義をやめ「まず賭けさせる」。
+//   賭式のルール定義はここから撤去し、各賭式の初選択時チュートリアル（beforeBet・下の3本）に分割。
 registerEvent({
   id: "first_race_intro_mimi",
   hook: "beforeRaceSelect",
@@ -46,9 +48,9 @@ registerEvent({
   priority: 10,
   actions: [
     { type: "tutorial_message", speaker: "mimi", expr: "panic",
-      text: "競竜なんて、わたし来たばかりで右も左も……どこを見たらいいんでしょう？" },
+      text: "レース場、ひろ……ひろい！　どこ見たらいいの、これ……サケさん、助けて！" },
     { type: "tutorial_message", speaker: "sake_udada",
-      text: "落ち着け。まずは出走表とコースを見ろ。脚質と気配だ。賭け方は——単竜＝1着、複竜＝3着以内、ワイド竜＝2頭が3着以内。それだけ覚えりゃいい。" }
+      text: "講義はしない。まず一回、好きな竜に賭けてこい。……話は、その後だ。" }
   ]
 });
 
@@ -66,17 +68,7 @@ registerEvent({
   ]
 });
 
-registerEvent({
-  id: "first_race_intro",
-  hook: "afterRaceSelect",
-  condition: { once: true, raceId: "race_grandclock_1" },
-  actions: [
-    { type: "dialogue", speaker: "sake_udada",
-      text: "まずは出走表とオッズを見ろ。人気だけで買うな。コースと脚質も見るんだ。" },
-    { type: "dialogue", speaker: "mimi",
-      text: "はいっ！ まずは、竜さんたちの様子を見るところからですね！" }
-  ]
-});
+// （旧 first_race_intro＝afterRaceSelect の二重intro は D1 で削除：上の intro_mimi に一本化）
 
 registerEvent({
   id: "sake_overbet_favorite_warning",
@@ -84,17 +76,36 @@ registerEvent({
   condition: { once: true, raceId: "race_grandclock_1" },
   actions: [
     { type: "dialogue", speaker: "sake_udada",
-      text: "前走勝った竜は買われやすい。だが、今日の区間が合うとは限らない。" }
+      text: "前で勝った竜は、買われる。……今日のコースに合うかは、別の話だ。" }
   ]
 });
 
+// ★D2：賭式のルールは「その賭式を初めて選んだ瞬間」に1回だけ（分割投与・P8）。
+registerEvent({
+  id: "first_win_tutorial",
+  hook: "beforeBet",
+  condition: { once: true, betType: "win" },
+  actions: [
+    { type: "tutorial_message", speaker: "sake_udada",
+      text: "単竜。1着を当てる、いちばん熱い札だ。……信じた一頭に、まっすぐ張れ。" }
+  ]
+});
+registerEvent({
+  id: "first_place_tutorial",
+  hook: "beforeBet",
+  condition: { once: true, betType: "place" },
+  actions: [
+    { type: "tutorial_message", speaker: "sake_udada",
+      text: "複竜は3着以内に入れば当たり。配当は薄いが、飯代は守れる。" }
+  ]
+});
 registerEvent({
   id: "first_wide_tutorial",
   hook: "beforeBet",
   condition: { once: true, betType: "wide" },
   actions: [
     { type: "tutorial_message", speaker: "sake_udada",
-      text: "ワイド竜は、選んだ2竜がどちらも三着以内なら当たりだ。穴を拾う時に使いやすい。" }
+      text: "ワイド竜は、選んだ2頭がどっちも3着以内なら当たり。……穴を拾う時に効く。" }
   ]
 });
 
@@ -119,24 +130,8 @@ registerEvent({
   ]
 });
 
-registerEvent({
-  id: "mimi_hit_reaction",
-  hook: "afterRaceResult",
-  condition: { test: ctx => ctx && ctx.hit },
-  actions: [
-    { type: "dialogue", speaker: "mimi", expr: "happy",
-      text: "や、やりました！ 当たってます！ しっぽが勝手に跳ねちゃいます！" }
-  ]
-});
-registerEvent({
-  id: "mimi_miss_reaction",
-  hook: "afterRaceResult",
-  condition: { test: ctx => ctx && !ctx.hit },
-  actions: [
-    { type: "dialogue", speaker: "mimi", expr: "default",
-      text: "外れちゃいました……でも、分析画面を見れば、次のヒントが見えてきます！" }
-  ]
-});
+// ★D3解消：毎レースの hit/miss VN は削除。リアクションは結果画面のミミ講評（recap_engine の
+//   buildMimiRecap＝声表準拠の池）が一手に担う。VNの割り込み（二重リアクション）を根絶。
 
 registerEvent({
   id: "first_bankruptcy_rescue",
@@ -155,8 +150,9 @@ registerEvent({
   hook: "onRankUp",
   condition: { once: false },
   actions: [
-    { type: "dialogue", speaker: "mimi",
-      text: "おめでとう！ プレイヤーランクが上がりました！ 賭け上限も増えて、新しいレースに挑めるわ！" }
+    // ★声表準拠（ミミ＝短文の畳みかけ→一拍→飯に着地。自分に「おめでとう」と言わせない・システム文の読み上げ禁止）
+    { type: "dialogue", speaker: "mimi", e: "happy",
+      text: "え、うそ、上のクラス……行ける？ 行けちゃう？　……よし、行く前に腹ごしらえ！" }
   ]
 });
 

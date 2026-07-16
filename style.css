@@ -1816,10 +1816,33 @@ table.entry-table {
   filter: drop-shadow(0 8px 14px rgba(0,0,0,0.4));
 }
 .dlg-standee.has    { opacity: 1; }
-.dlg-standee.active { opacity: 1; filter: none; z-index: 2; }
-.dlg-standee.dim    { opacity: .52; filter: brightness(.6) saturate(.82); z-index: 1; }
+/* ★話者フォーカス：話し手はわずかにズーム＋前面、聞き手は沈む＝「誰が喋っているか」が体で分かる（紙芝居の解毒①） */
+.dlg-standee { transform-origin: 50% 100%; }
+.dlg-standee.active { opacity: 1; filter: none; z-index: 2; transform: scale(1.05); }
+.dlg-standee.dim    { opacity: .5; filter: brightness(.55) saturate(.8); z-index: 1; transform: scale(.96); }
 .dlg-standee.active img { animation: dlg-breathe 3.6s ease-in-out infinite; }
-.dlg-standee.in { animation: dlg-rise .34s cubic-bezier(.2,.8,.25,1) both; }
+/* ★入場はサイド別スライドイン（左右から登場＝空間が生まれる。旧: 全員同じ下から26px） */
+.dlg-standee.left.in  { animation: dlg-in-l .38s cubic-bezier(.2,.8,.25,1) both; }
+.dlg-standee.right.in { animation: dlg-in-r .38s cubic-bezier(.2,.8,.25,1) both; }
+/* ★シルエット表示（正体を隠すキャラ＝伏線お姉さん等。dialogue.js の img エントリ {sil:true} で点灯） */
+.dlg-standee.sil img { filter: brightness(.13) saturate(.25) blur(.6px) drop-shadow(0 10px 16px rgba(0,0,0,.45)); }
+/* ★感情アニメ（fx: shake/hop/nod/flash）：立ち絵imgへ一発。wrap の scale と衝突しないよう img 側に当てる */
+.dlg-standee img.fx-shake { animation: dlg-fx-shake .42s ease both; }
+.dlg-standee img.fx-hop   { animation: dlg-fx-hop .46s cubic-bezier(.3,1.6,.4,1) both; }
+.dlg-standee img.fx-nod   { animation: dlg-fx-nod .5s ease both; }
+.dlg-standee img.fx-flash { animation: dlg-fx-flash .5s ease both; }
+@keyframes dlg-fx-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+@keyframes dlg-fx-hop   { 0% { transform: translateY(0); } 35% { transform: translateY(-24px); } 70% { transform: translateY(3px); } 100% { transform: translateY(0); } }
+@keyframes dlg-fx-nod   { 0%,100% { transform: rotate(0deg); } 40% { transform: rotate(2.6deg); } }
+@keyframes dlg-fx-flash { 0%,100% { filter: none; } 30% { filter: brightness(1.7) saturate(1.2); } }
+@keyframes dlg-in-l { from { transform: translateX(-9%) scale(1); opacity: 0; } }
+@keyframes dlg-in-r { from { transform: translateX(9%) scale(1); opacity: 0; } }
+/* ★背景レイヤ（行の bg: 指定でクロスフェード。scrim はその上に重なったまま＝可読性を保つ） */
+.dlg-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.dlg-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transition: opacity .5s ease; }
+.dlg-bg img.on { opacity: 1; }
+.dlg-scrim { z-index: 0; }
 
 .dlg-box {
   position: relative; z-index: 3; width: min(720px, 94%);
@@ -1863,7 +1886,10 @@ table.entry-table {
   .dlg-text { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .dlg-standee, .dlg-standee.in, .dlg-standee.active img, .dlg-next { animation: none !important; transition: opacity .2s ease !important; }
+  .dlg-standee, .dlg-standee.in, .dlg-standee.active img, .dlg-next,
+  .dlg-standee img.fx-shake, .dlg-standee img.fx-hop, .dlg-standee img.fx-nod, .dlg-standee img.fx-flash { animation: none !important; transition: opacity .2s ease !important; }
+  .dlg-bg img { transition: none !important; }
+  .dlg-standee.active, .dlg-standee.dim { transform: none !important; }
 }
 
 .actions { display: flex; gap: 10px; margin-top: 16px; }

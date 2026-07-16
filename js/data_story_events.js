@@ -31,7 +31,7 @@ var STORY_EVENTS = [
     body: "はじめてのレース、つかれた〜。\n場外のラーメン屋で、ずるずる。背脂がぶわっ。\n…単勝、溶けちゃったけど。この一杯さえあれば、明日もがんばれる気がする。ごちそうさまっ！" },
   { id: "se_sake_tea", ic: "🍶", who: "サケ・ウダダ", color: "#c9a24a", cast: "sake",
     title: "親方の渋茶", unlock: function () { return _seRaces() >= 3; },
-    body: "「茶ァ、飲むか」\nサケのおやじが、ぶっきらぼうに湯呑みを差し出してきた。にがい。でも、あったかい。\n「予想ってのはな、当てるもんじゃねえ。竜を、ちゃんと見るもんだ。…お前は、筋がいい」\n……照れるから、やめてほしい。でも、ちょっと、うれしい。" },
+    body: "「茶、飲むか」\nサケさんが、ぶっきらぼうに湯呑みを差し出してきた。にがい。でも、あったかい。\n「予想は、当てるものじゃない。竜を、ちゃんと見るものだ。……お前は、筋がいい」\n……照れるから、やめてほしい。でも、ちょっと、うれしい。" },
   { id: "se_firstwin", ic: "🎉", who: "ミミ", color: "#e58fb0",
     title: "初勝利の夜", unlock: function () { return _seWins() >= 1; },
     body: "当たった。…当たっちゃった！\nしっぽが勝手にぴょんって跳ねて、気づいたら場内で叫んでた。はずかしい。\nでも、あの竜が一着でゴールした瞬間の景色、ぜったい忘れない。\nわたし、予想家ミミ。…ちょっとだけ、本気で名乗れる気がしてきた。" },
@@ -69,7 +69,7 @@ var STORY_EVENTS = [
     title: "引っ越しの日", unlock: function () { return typeof LIFE_TIERS !== "undefined" && _seAssets() >= LIFE_TIERS[2].min; },
     body: "段ボール、みっつ。わたしの全財産は、意外と軽い。\n新しい部屋は、窓から竜の飛ぶ空が見える。\nスミカが「カーテンはこれ」と譲らず、ポロが箱をひとつ運んで力尽きた。\n夜、まっさらな床に寝転んで思う。\n——借金まみれだったわたしが、屋根の心配をしなくていい。それって、すごいことだ。" },
   { id: "se_gourmet_gaiden", ic: "🍜", who: "ミミ", color: "#e58fb0",
-    title: "みみしんぼ・外伝", unlock: function () { return Object.keys(((typeof state !== "undefined" && state.player) || {}).meals || {}).length >= 10; },
+    title: "みみしんぼ・外伝", unlock: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; },   // ★BUGFIX: player.meals は {eaten,solved} 固定＝旧式は永遠に偽
     body: "グルメ面の隅に、小さな連載が始まった。『みみしんぼ』。\n「うまいものは、勝った日のためにあるんじゃない。明日も走るためにある」\n……これ、わたしが屋台で言ったやつだ。おやじさん、載せたな！？\n恥ずかしい。でも、切り抜いて、部屋に貼った。" },
   { id: "se_island_walker", ic: "📷", who: "ミミ", color: "#e58fb0",
     title: "島を歩く人", unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; },

@@ -49,8 +49,10 @@ function renderAssets() {
   _roomPEl.onclick = () => {
     if (_ch3unlocked) { renderLifeTree(); return; }
     // ★この案内が出る＝第3話未読＝スミカ未登場。章の副題（＝顧問の固有名）は出さず「第3話」までに留める（R7）。
+    // 解禁条件の文は chapterUnlockHint（実績ゲートの正本）から引く＝旧「総資産3万」の化石テキスト排除。
+    const _lpH3 = (typeof chapterUnlockHint === "function" && chapterUnlockHint("3")) || "";
     if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます${_lpH3 ? `（第3話は${_lpH3}）` : ""}。</small></div></div>`);
   };
 
   // ★引っ越し：コインで部屋を一段上げる（総資産では自動で上がらない）。くらしツリーと同じ「コインで解放」の作法。
@@ -182,8 +184,10 @@ function renderAssets() {
   } else {
     // ★同上：第3話未読＝スミカ未登場なので、章の副題（固有名）を伏せた予告にする（R7）。
     locked.appendChild(entry("🔒", "くらしツリー・生活資産", "第3話を読むと開放", "", () => {
+      // 解禁条件の文は chapterUnlockHint（実績ゲートの正本）から引く＝旧「総資産3万」の化石テキスト排除。
+      const _enH3 = (typeof chapterUnlockHint === "function" && chapterUnlockHint("3")) || "";
       if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
-        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます（総資産3万で第3話が解禁）。</small></div></div>`);
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます${_enH3 ? `（第3話は${_enH3}）` : ""}。</small></div></div>`);
     }));
   }
   // 習い事：次に通える師範のミニ肖像を添える（未登場の師範なら無し＝ネタバレしない）。
@@ -195,8 +199,10 @@ function renderAssets() {
     if (typeof analysisUnlocked === "function" && !analysisUnlocked()) {
       // ★ロック案内では未登場の顧問名（＝第2話の副題も含む）を出さない。予告は「第2話」まで（R7）。
       locked.appendChild(entry("🔒", "相談（顧問）", "第2話を読むと、予想の相談ができます。", "", () => {
+        // 解禁条件の文は chapterUnlockHint（実績ゲートの正本）から引く＝旧「総資産3千」の化石テキスト排除。
+        const _coH2 = (typeof chapterUnlockHint === "function" && chapterUnlockHint("2")) || "";
         if (typeof showInfoPopup === "function") showInfoPopup("💬 相談（顧問）",
-          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ相談できません</b><small><u>第2話</u>を読むと、出会った顧問に予想の視点をもらえます（総資産3千で第2話が解禁）。いまはカンで勝負！</small></div></div>`);
+          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ相談できません</b><small><u>第2話</u>を読むと、出会った顧問に予想の視点をもらえます${_coH2 ? `（第2話は${_coH2}）` : ""}。いまはカンで勝負！</small></div></div>`);
       }));
     } else {
       // ★門番：誘い文に並べるのは「もう出会った顧問」だけ（遷移先の相談画面は未登場を？？？で伏せている＝そこと矛盾させない）。

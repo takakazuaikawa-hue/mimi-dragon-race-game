@@ -198,7 +198,7 @@ var SNS_POSTS = [
     unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; } },
   { id: "p_gourmet", ic: "🍜", name: "屋台のおやじ", handle: "@yatai_oyaji", base: 96,
     text: "また来たよ、あの子。うちの新作、いちばんうまそうに食うんだ。……悪い気はしねえ。（グルメ面『みみしんぼ』連載中）",
-    unlock: function () { return Object.keys(((typeof state !== "undefined" && state.player) || {}).meals || {}).length >= 10; } }
+    unlock: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; } }   // ★BUGFIX: 同上（食10品で解禁が実際に動くように）
 ];
 // ★BUGFIX（マイルストーンだけ素通し）：日替わり(SNS_DAILY_GATE)は守れていたのに、rank/コインだけで解放される
 //   マイルストーン投稿は顧問の登場判定を通っておらず、「日替わりのマクラは出ないのに投稿はする」矛盾が起きていた。
@@ -252,7 +252,7 @@ var FAN_LETTERS = [
     body: "ミミおねえちゃんへ。\nぼく、ミミおねえちゃんみたいに竜のことがわかるようになりたいです。\nきのう、はじめて『きはい』ってことばをおぼえました。サケのおじさんがおしえてくれた！\nまたはいしん、みにいきます。",
     unlock: function () { return _snsRaces() >= 5; } },
   { id: "l_sake", ic: "🍶", from: "サケ・ウダダ", subject: "（不器用な殴り書き）",
-    body: "ミミ。\nこういうのは柄じゃねえが、一度だけ書いておく。\nお前、最初は右も左もわからん顔してたが、今じゃ立派に竜を見る目をしてる。\n…誇りに思うぞ。次の一戦も、気配を見ろ。それだけだ。",
+    body: "ミミ。\nこういうのは柄じゃないが、一度だけ書く。\nお前、最初は右も左もわからん顔をしていた。今は、竜を見る目をしている。\n……誇りに思う。次の一戦も、気配を見ろ。それだけだ。",
     unlock: function () { return _snsWins() >= 3; } },
   { id: "l_rescued", ic: "🏘️", from: "立て直った村人より", subject: "灯りを、ありがとう",
     body: "ミミ様。\nあなたが賭場の灯りを守ってくれたおかげで、わたしたちの村は、今日も笑っています。\n総資産だの名声だの、難しいことはわかりません。でも、あなたが来てから、夜が明るくなった。\nそれだけは、確かです。",

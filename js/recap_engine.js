@@ -271,29 +271,40 @@ function buildCourseWeatherAnalysis(race, analysis) {
 }
 
 // §29 §8 — 1-2 sentence Mimi sign-off. Branches hit / near-miss / 大穴 / miss.
+// ★声表準拠（NARRATIVE_DESIGN §2）：ミミ＝一人称「わたし」・短文の畳みかけ→一拍・話が飯に着地。
+//   旧文はコーチの講評口調（「〜ましょう」）＝誰の声か分からない声ブレだった。状況4分岐×各2〜3種の池（D3解消）。
 function buildMimiRecap(bet, betResult, raceResult, popMap) {
-  if (!bet || !betResult) {
-    return "今日も一戦、しっかり見ていきましょう。";
-  }
+  if (!bet || !betResult) return "さ、今日はどんなレースかな。";
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   const winner = raceResult.entries[0];
   const winnerPop = (popMap[winner.dragon.id] || {}).popularityRank || 9;
   if (betResult.hit) {
-    // 大穴: a high-popularity-rank dragon in the winning combo
     const bigPop = bet.selections.some(id => {
       const od = popMap[id]; return od && od.popularityRank >= 5;
     }) || winnerPop >= 5;
-    if (bigPop) {
-      return "市場が見落としていた強さを拾えました。こういう一戦を取れると、予想は一気に面白くなります。";
-    }
-    return "読みどころがきれいにつながりました。次も、人気だけでなく条件を見ていきましょう。";
+    if (bigPop) return pick([
+      "見た!? いまの見た!?　みんなが素通りした子が、一番先にゴールしたの！　……今夜は豪華にいくよ。",
+      "ふっふっふ。わたしだけは信じてたもんね。……ほんとだよ？　半分くらいは。",
+      "穴っていうか、宝物。誰も掘らなかっただけ。……よし、この配当で何食べよう。"
+    ]);
+    return pick([
+      "よし、当たり！　読んだ通り……って言いたいけど、心臓はバクバクだった。",
+      "ゴールの瞬間、耳がぴーんってなった。当たった日のごはんは、味が違うんだよね。",
+      "ちゃんと数字より竜を見た結果です。えっへん。……さ、勝ち飯勝ち飯。"
+    ]);
   }
-  // miss: was it close?
   const nearMiss = bet.selections.some(id => {
     const e = raceResult.entries.find(x => x.dragon.id === id);
     return e && (e.rank === 4 || (bet.type === "win" && e.rank <= 3));
   });
-  if (nearMiss) {
-    return "惜しいところまでは見えていました。次は、位置取りと終盤の脚をもう少し重ねて見たいです。";
-  }
-  return "今回は流れが向きませんでした。負けを次の手がかりに変えて、もう一度読み直しましょう。";
+  if (nearMiss) return pick([
+    "〜〜っ、惜しくもない外れ方より、こういうのがいちばん悔しい！　……見てなさいよ、次。",
+    "あと一歩。あとひと伸び。……ゴール板、ちょっとだけ手前に動かない？　動かないか。",
+    "うう、鼻の差……。今日は反省茶。明日は勝ち飯。そういうことにする。"
+  ]);
+  return pick([
+    "……外れました。はい。……お腹すいた。負け飯食べて忘れる！",
+    "レースは水物。わたしの財布も水物。……次、次！",
+    "今日のは読めないって。誰に聞いても読めないって言うもん。……たぶん。"
+  ]);
 }
