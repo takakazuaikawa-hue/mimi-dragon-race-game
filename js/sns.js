@@ -189,7 +189,9 @@ var SNS_POSTS = [
   // ★BUGFIX（正体バレ）：伏線段階（celestiaStrangerSeen＝破産で見た“知らないお姉さん”）では出さない。
   //   本名・@celestia_sky・立ち絵は第5話（advisorMet("celestia")）まで封印＝SNS_POST_GATE が唯一の門番。
   { id: "p_celestia", ic: "🌌", name: "セレスティア", handle: "@celestia_sky", base: 666,
-    text: "……面白い灯りね。消えそうで、消えない。あなたの“視る目”、わたしが見定めてあげる。", unlock: function () { return true; } },
+    text: "……面白い灯りね。消えそうで、消えない。あなたの“視る目”、わたしが見定めてあげる。",
+    // ★D15: 第5話VN→(+1走)手紙→(+3走)この投稿、の時差解禁。門番SNS_POST_GATEは従来どおり併用。
+    unlock: function () { var c = (typeof advisorMet === "function") && advisorMet("celestia"); return (typeof unlockDelayRace === "function") ? unlockDelayRace("p_celestia", c, 3) : c; } },
   { id: "p_thanks", ic: "🐰", name: "ミミ", handle: "@mimi_yosou", base: 888,
     text: "いつも見てくれて、ほんとにありがとう。わたし、この世界に来てよかった。…これからも、いっしょに当てようね！", unlock: function () { return _snsRaces() >= 10; } },
   // ── 暮らし還流（docs/KURASHI_STORY_WEAVE.md B）──
@@ -279,7 +281,8 @@ var FAN_LETTERS = [
   // ★BUGFIX（正体バレ）：伏線段階では届かない。第5話で出会ってから届く手紙にする（門番＝SNS_LETTER_GATE）。
   { id: "l_celestia", ic: "🌌", from: "セレスティア", subject: "天井の、その先へ",
     body: "ちっぽけな予想家へ。\nこの世界には“天井”がある。価値の届かぬものは、淘汰される。\n——だけど、あなたは。その理に、まっすぐ抗ってみせた。\n面白い。あなたの物語の結末、最後まで見届けてあげる。",
-    unlock: function () { return true; } }
+    // ★D15: 第5話VNの翌レース後に届く（門番SNS_LETTER_GATEは従来どおり併用）。
+    unlock: function () { var c = (typeof advisorMet === "function") && advisorMet("celestia"); return (typeof unlockDelayRace === "function") ? unlockDelayRace("l_celestia", c, 1) : c; } }
 ];
 // ★手紙の門番（投稿と同じ規約）。値が顧問キーなら差出人名も castNameSafe() で解決する（未登場なら？？？に倒れる）。
 var SNS_LETTER_GATE = { l_sake: "sake", l_mizu: "mizu", l_celestia: "celestia", l_poro: "@poroFound" };

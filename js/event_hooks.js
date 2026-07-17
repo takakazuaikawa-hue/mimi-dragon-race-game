@@ -46,12 +46,12 @@ function setStoryFlag(name, val) { state.player.flags[name] = val; saveGame(); }
 // ★D9〜D11（NARRATIVE_DESIGN）: 同じ閾値で toast/號外/SNS が同時多重発火しないための時差ヘルパー。
 //   条件の初達成時刻（走数/日）を flags に刻み、號外=+1レース後・SNS投稿/手紙=+1日後に true になる。
 //   表示解禁のタイミングだけを遅らせる＝進行・経済・レース数値には一切非干渉。
-function unlockDelayRace(key, cond) {
+function unlockDelayRace(key, cond, n) {
   try {
     if (!cond) return false;
     const fl = state.player.flags, k = "_dly_race_" + key;
     if (fl[k] == null) { fl[k] = (state.player.completedRaces || 0); saveGame(); }
-    return (state.player.completedRaces || 0) >= fl[k] + 1;
+    return (state.player.completedRaces || 0) >= fl[k] + (n || 1);
   } catch (e) { return !!cond; }   // 判定不能なら遅延なしで開く（閉じ込めない側に倒す）
 }
 function unlockDelayDay(key, cond) {
