@@ -314,6 +314,38 @@ function raiseAffection(id, amt) {
 }
 function dragonById(id) { return (typeof DRAGONS !== "undefined") ? DRAGONS.find(d => d.id === id) : null; }
 
+// ── お世話ゲーム（龍舎）＝表示メタのデイリーループ ─────────────────────
+// なでる=1日3回まで有効(+3)・ごはん=1日1回(+6/大好物+12)。絆(affection)はランク4段階で可視化し、
+// 見返り＝「絆の深い順に八竜見参へ並ぶ」（scoutedRosterのaffection降順＝既存結線の可視化）。
+// 大好物＝竜ごとに決定的に1品（食べ歩きMEALSから）。当てると図鑑に記録＝52頭ぶんの発見パズル。
+// コイン消費は食事と同じ表示メタ消費。レースの着順/オッズ/配当には一切非干渉。
+function _stDay() { return Math.floor(Date.now() / 86400000); }
+function stableCare(id) {
+  const e = poroColEntry(id);
+  if (!e.care || e.care.d !== _stDay()) e.care = { d: _stDay(), p: 0, f: false };
+  return e.care;
+}
+const BOND_RANKS = [[90, "かぞく", "💞"], [60, "しんゆう", "💗"], [30, "なかよし", "💕"], [0, "かおみしり", "🤍"]];
+function bondRank(af) { return BOND_RANKS.find(r => (af || 0) >= r[0]); }
+// 大好物：竜IDから決定的に1品（クイズ品を除いた実食メニューから）。データ追加でも既存竜の好物が
+// なるべくズレないよう、ID文字列のハッシュで固定。
+function dragonFavFood(d) {
+  if (!d || typeof MEALS === "undefined") return null;
+  const pool = MEALS.filter(m => !m.quiz);
+  if (!pool.length) return null;
+  let h = 0; const s = String(d.id);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return pool[h % pool.length];
+}
+// 絆ランクの節目を跨いだらお祝い（表示のみ）。
+function _bondRankUpToast(d, before, after) {
+  const rb = bondRank(before), ra = bondRank(after);
+  if (rb === ra) return;
+  try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+  if (typeof showInfoPopup === "function") showInfoPopup(`${ra[2]} 絆ランクアップ！`,
+    `<div class="mm-row"><span class="mm-ic">${ra[2]}</span><div><b>${d.name} と「${ra[1]}」になった！</b><small>絆の深い竜から順に、最終決戦の「八竜見参」に並びます。</small></div></div>`);
+}
+
 const PORO_STYLE_LABEL = { escape: "逃げ", front: "先行", late: "差し", chase: "追込" };
 function poroStyleLabel(d) { return (d && PORO_STYLE_LABEL[d.style]) || "オールラウンド"; }
 // 得意距離/天候/気性/体調＝既存statから導出した“表示用”の見立て（レース計算には使わない）。
@@ -362,28 +394,37 @@ function renderStable() {
   }
   state.ui.screen = "stable";
   const app = beginScreen();
-  app.appendChild(el("h2", null, "🏠 龍舎"));
-  app.appendChild(el("div", "as-hint2", "ポロと、出会った竜たちの拠点。なでて仲良くなろう（表示専用・レースには影響しません）。"));
+  // 龍舎の絵（Codex納品 bg/stable.webp）をヘッダーバナーに。404なら静かに消える。
+  const hero = el("div", "stable-hero");
+  hero.innerHTML = `<img src="images/bg/stable.webp" alt="" decoding="async" onerror="this.closest('.stable-hero').remove()"><span>🏠 龍舎</span>`;
+  app.appendChild(hero);
+  app.appendChild(el("div", "as-hint2", "ポロと、迎えた竜たちの家。毎日なでて、ごはんをあげて、絆を深めよう。絆の深い竜から、最終決戦の「八竜見参」に並びます（表示専用・レース結果には影響しません）。"));
 
-  // ── ポロ常駐カード（マスコット＋親密度＋なでる＋小イベント） ──
+  // ── ポロ常駐カード（マスコット＋親密度＋なでる[1日3回]＋小イベント） ──
   const af = dragonAffection("poro");
+  const pr = bondRank(af);
+  const care0 = stableCare("poro");
   const poroCard = el("div", "card stable-poro");
   poroCard.innerHTML =
     `<div class="stable-poro-fig">${poroStandeeHTML(96)}</div>` +
     `<div class="stable-poro-info">` +
-      `<div class="stable-poro-nm">🥹 泣き虫竜ポロ <span class="stable-tag">相棒</span></div>` +
+      `<div class="stable-poro-nm">🥹 泣き虫竜ポロ <span class="stable-tag">相棒</span><span class="st-rank">${pr[2]} ${pr[1]}</span></div>` +
       `<div class="stable-poro-sub">ムラサキマルチビ竜・幼体／気性：臆病でやさしい</div>` +
-      `<div class="stable-aff"><span>なかよし度</span><div class="stable-aff-bar"><i style="width:${af}%"></i></div><b>${af}</b></div>` +
+      `<div class="stable-aff"><span>絆</span><div class="stable-aff-bar"><i style="width:${af}%"></i></div><b>${af}</b></div>` +
       `<div class="stable-poro-ev" id="stable-poro-ev">${poroStableEvent()}</div>` +
     `</div>`;
-  const pet = el("button", "stable-pet", "🫳 なでる");
+  const pet = el("button", "stable-pet", care0.p < 3 ? `🫳 なでる（今日あと${3 - care0.p}回）` : "🫳 なでる");
   pet.onclick = () => {
-    const v = raiseAffection("poro", 3);
+    const care = stableCare("poro");
+    const before = dragonAffection("poro");
+    let v = before;
+    if (care.p < 3) { care.p++; v = raiseAffection("poro", 3); _bondRankUpToast(dragonById("poro") || { name: "ポロ" }, before, v); }
     if (window.Sfx && Sfx.play) Sfx.play("paho");
     poroCard.querySelector(".stable-aff-bar i").style.width = v + "%";
     poroCard.querySelector(".stable-aff b").textContent = v;
+    pet.textContent = care.p < 3 ? `🫳 なでる（今日あと${3 - care.p}回）` : "🫳 なでる";
     const ev = document.getElementById("stable-poro-ev");
-    if (ev) ev.textContent = pickPoroPet(v);
+    if (ev) ev.textContent = care.p >= 3 && v === before ? "ポロはもう満足そう。今日はたくさん甘えられた。" : pickPoroPet(v);
   };
   poroCard.querySelector(".stable-poro-info").appendChild(pet);
   app.appendChild(poroCard);
@@ -402,26 +443,41 @@ function renderStable() {
   }
   app.appendChild(subnav);
 
-  // ── 出会った竜の一覧 ──
+  // ── 迎えた竜（スカウト済＝お世話できる）と、見かけた竜（図鑑のみ）を分けて表示 ──
   const met = poroMetDragonIds().filter(id => id !== "poro");
-  app.appendChild(el("div", "stable-sec", `🐉 出会った竜 <span>${met.length}</span>`));
-  if (!met.length) {
-    app.appendChild(el("div", "stable-empty", "まだポロのほかに竜はいません。レースで竜を見たり、竜スカウトで出会えます。"));
+  const scoutedIds = met.filter(id => (poroColEntry(id) || {}).scouted);
+  const seenIds = met.filter(id => !(poroColEntry(id) || {}).scouted);
+  const mkCard = (id, canCare) => {
+    const d = dragonById(id); if (!d) return null;
+    const e = poroColEntry(id);
+    const af2 = e.affection || 0;
+    const r = bondRank(af2);
+    const careToday = canCare ? stableCare(id) : null;
+    const todo = canCare && (careToday.p < 3 || !careToday.f);
+    const card = el("button", "stable-card" + (e.favorite ? " fav" : "") + (canCare ? "" : " ghostly"),
+      `<span class="stable-card-dot" style="background:${d.color || "#caa24a"}"></span>` +
+      `<span class="stable-card-nm">${d.name}${todo ? ' <i class="st-todo">●</i>' : ""}</span>` +
+      (canCare
+        ? `<span class="stable-card-sub">${r[2]} ${r[1]}${e.favFound ? "・🍽" : ""}</span>`
+        : `<span class="stable-card-sub">${poroStyleLabel(d)}・${poroTemperLabel(d)}</span>`) +
+      `<span class="stable-card-aff"><i style="width:${af2}%"></i></span>`);
+    card.onclick = () => showDragonDetail(id);
+    return card;
+  };
+  app.appendChild(el("div", "stable-sec", `🐲 迎えた竜（お世話できる）<span>${scoutedIds.length}</span>`));
+  if (!scoutedIds.length) {
+    app.appendChild(el("div", "stable-empty", "まだ龍舎に竜はいません。🔍竜スカウトで心を通わせると、ここに迎えられます。"));
   } else {
     const grid = el("div", "stable-grid");
-    met.forEach(id => {
-      const d = dragonById(id); if (!d) return;
-      const e = poroColEntry(id);
-      const af2 = e.affection || 0;
-      const card = el("button", "stable-card" + (e.favorite ? " fav" : ""),
-        `<span class="stable-card-dot" style="background:${d.color || "#caa24a"}"></span>` +
-        `<span class="stable-card-nm">${d.name}</span>` +
-        `<span class="stable-card-sub">${poroStyleLabel(d)}・${poroTemperLabel(d)}${e.scouted ? " ・🔍" : ""}</span>` +
-        `<span class="stable-card-aff"><i style="width:${af2}%"></i></span>`);
-      card.onclick = () => showDragonDetail(id);
-      grid.appendChild(card);
-    });
+    scoutedIds.forEach(id => { const c = mkCard(id, true); if (c) grid.appendChild(c); });
     app.appendChild(grid);
+  }
+  if (seenIds.length) {
+    app.appendChild(el("div", "stable-sec", `👀 見かけた竜（図鑑のみ）<span>${seenIds.length}</span>`));
+    app.appendChild(el("div", "as-hint2", "レースで見かけた竜たち。🔍スカウトで迎えると、お世話ができるようになります。"));
+    const grid2 = el("div", "stable-grid");
+    seenIds.forEach(id => { const c = mkCard(id, false); if (c) grid2.appendChild(c); });
+    app.appendChild(grid2);
   }
 
   const actions = el("div", "actions");
@@ -450,24 +506,105 @@ function pickPoroPet(v) {
   return "ポロが、おそるおそる近づいて、ほっぺをくっつけた。";
 }
 
-// 個体詳細（表示専用）。
+// 個体詳細＝お世話ポップアップ（なでる/差し入れ/大好物あて・すべて表示メタ）。
+// スカウト済み（＋ポロ）だけがお世話対象。未スカウトは閲覧のみ＋スカウトへの導線。
 function showDragonDetail(id) {
-  const d = dragonById(id); if (!d || typeof showInfoPopup !== "function") return;
+  const d = dragonById(id); if (!d || typeof el !== "function") return;
   const e = poroColEntry(id);
-  const rec = e.records || {};
-  const af = e.affection || 0;
-  showInfoPopup(`${id === "poro" ? "🥹 " : "🐉 "}${d.name}`,
-    `<div class="dd-flavor">${d.portraitTone || ""}</div>` +
-    `<div class="dd-row"><span>脚質</span><b>${poroStyleLabel(d)}</b></div>` +
-    `<div class="dd-row"><span>得意距離</span><b>${poroDistLabel(d)}</b></div>` +
-    `<div class="dd-row"><span>得意天候</span><b>${poroWeatherLabel(d)}</b></div>` +
-    `<div class="dd-row"><span>気性</span><b>${poroTemperLabel(d)}</b></div>` +
-    `<div class="dd-row"><span>体調</span><b>${poroMoodLabel(d)}</b></div>` +
-    `<div class="dd-row"><span>人気度</span><b>${d.publicImage != null ? d.publicImage : "—"}</b></div>` +
-    (d.traits && d.traits.length ? `<div class="dd-traits">${d.traits.map(t => `<span>${t}</span>`).join("")}</div>` : "") +
-    `<div class="dd-row"><span>なかよし度</span><b>${af}</b></div>` +
-    (rec.racesSeen ? `<div class="dd-rec">観戦${rec.racesSeen}・3着内${rec.top3Seen || 0}・あなたの的中${rec.playerHitCount || 0}</div>` : "") +
-    `<div class="mm-note">※ 表示専用。レースの結果・オッズ・配当には影響しません。</div>`);
+  const canCare = id === "poro" || !!e.scouted;
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop infopop dragon-care");
+  ov.appendChild(box);
+  const close = () => { ov.remove(); if (state.ui && state.ui.screen === "stable" && typeof renderStable === "function") renderStable(); };
+  ov.onclick = (ev) => { if (ev.target === ov) close(); };
+  const fav = dragonFavFood(d);
+  const render = (reaction) => {
+    const af = e.affection || 0;
+    const r = bondRank(af);
+    const rec = e.records || {};
+    const care = canCare ? stableCare(id) : null;
+    box.innerHTML =
+      `<div class="navpop-t">${id === "poro" ? "🥹 " : "🐉 "}${d.name} <span class="st-rank">${r[2]} ${r[1]}</span></div>` +
+      `<div class="infopop-body">` +
+        `<div class="dd-flavor">${d.portraitTone || ""}</div>` +
+        `<div class="dd-row"><span>脚質</span><b>${poroStyleLabel(d)}</b></div>` +
+        `<div class="dd-row"><span>気性</span><b>${poroTemperLabel(d)}</b></div>` +
+        `<div class="dd-row"><span>体調</span><b>${poroMoodLabel(d)}</b></div>` +
+        `<div class="dd-row"><span>絆</span><b>${af}</b><div class="stable-aff-bar dd-aff"><i style="width:${af}%"></i></div></div>` +
+        `<div class="dd-row"><span>大好物</span><b>${e.favFound && fav ? `${fav.icon || "🍽"} ${fav.name}` : "？？？"}</b></div>` +
+        (e.favFound ? "" : `<div class="dd-hint">🍽 ごはんの差し入れで、大好物が見つかるかも。</div>`) +
+        (rec.racesSeen ? `<div class="dd-rec">観戦${rec.racesSeen}・3着内${rec.top3Seen || 0}・あなたの的中${rec.playerHitCount || 0}</div>` : "") +
+        (reaction ? `<div class="dd-react">${reaction}</div>` : "") +
+      `</div>`;
+    const btns = el("div", "navpop-btns dd-btns");
+    if (canCare) {
+      // 🫳 なでる（1日3回まで有効）
+      const petB = el("button", "navpop-go dd-care", care.p < 3 ? `🫳 なでる（あと${3 - care.p}）` : "🫳 なでる");
+      petB.onclick = () => {
+        const c2 = stableCare(id); const before = e.affection || 0;
+        if (c2.p < 3) {
+          c2.p++;
+          const after = raiseAffection(id, 3);
+          try { if (window.Sfx) Sfx.play("paho"); } catch (err) {}
+          _bondRankUpToast(d, before, after);
+          render(`${d.name}は気持ちよさそうに目を細めた。`);
+        } else {
+          render(`${d.name}はもう満足そうだ。……また明日、来よう。`);
+        }
+      };
+      btns.appendChild(petB);
+      // 🍽 ごはんをあげる（1日1回・覚えた食べ歩きメニューから・コイン消費＝表示メタ）
+      const feedB = el("button", "navpop-go dd-care", care.f ? "🍽 今日はごはん済み" : "🍽 ごはんをあげる");
+      feedB.onclick = () => {
+        const c2 = stableCare(id);
+        if (c2.f) { render(`${d.name}のおなかは、今日はもういっぱい。`); return; }
+        const pool = (typeof MEALS !== "undefined") ? MEALS.filter(m => !m.quiz && typeof mealEaten === "function" && mealEaten(m.id)) : [];
+        if (!pool.length) { render("差し入れできる料理をまだ知らない。……まず🍽ごはんで食べ歩きしてこよう。"); return; }
+        // 品選びリスト（覚えた品＝あなたの食べ歩きが竜との絆になる）
+        box.querySelector(".infopop-body").innerHTML +=
+          `<div class="dd-feed-t">どれを差し入れる？（1日1回）</div>` +
+          `<div class="dd-feed-list">` + pool.map(m => {
+            const price = (typeof mealPrice === "function") ? mealPrice(m) : 100;
+            return `<button class="dd-feed" data-m="${m.id}">${m.icon || "🍽"} ${m.name}<small>−${price.toLocaleString("ja-JP")}</small></button>`;
+          }).join("") + `</div>`;
+        box.querySelectorAll(".dd-feed").forEach(fb => {
+          fb.onclick = () => {
+            const m = MEALS.find(x => x.id === fb.getAttribute("data-m")); if (!m) return;
+            const price = (typeof mealPrice === "function") ? mealPrice(m) : 100;
+            if ((state.player.coins || 0) < price) { render(`持ち合わせが足りない……（${price.toLocaleString("ja-JP")}コイン必要）`); return; }
+            state.player.coins -= price;
+            if (typeof updateHeader === "function") try { updateHeader(); } catch (err) {}
+            const c3 = stableCare(id); c3.f = true;
+            const isFav = fav && fav.id === m.id;
+            const before = e.affection || 0;
+            const after = raiseAffection(id, isFav ? 12 : 6);
+            try { if (window.Sfx) Sfx.play(isFav ? "legendary" : "coin"); } catch (err) {}
+            if (isFav && !e.favFound) { e.favFound = true; if (typeof saveGame === "function") saveGame(); }
+            _bondRankUpToast(d, before, after);
+            render(isFav
+              ? `${d.name}の目が、かがやいた——大好物だ！！　しっぽが正直すぎる。（絆+12）`
+              : `${d.name}は${m.name}をゆっくり味わって、小さく鳴いた。（絆+6）`);
+          };
+        });
+      };
+      btns.appendChild(feedB);
+    } else {
+      const note = el("div", "dd-hint", "🔍 スカウトで心を通わせて迎えると、なでる・ごはんの差し入れができるようになります。");
+      box.querySelector(".infopop-body").appendChild(note);
+      if (typeof poroScoutUnlocked === "function" && poroScoutUnlocked() && typeof renderScout === "function") {
+        const goScout = el("button", "navpop-go dd-care", "🔍 スカウトへ行く");
+        goScout.onclick = () => { ov.remove(); renderScout(); };
+        btns.appendChild(goScout);
+      }
+    }
+    const ok = el("button", "navpop-go secondary", "とじる"); ok.onclick = close;
+    btns.appendChild(ok);
+    box.appendChild(btns);
+    const note2 = el("div", "mm-note", "※ 表示専用。レースの結果・オッズ・配当には影響しません。");
+    box.appendChild(note2);
+  };
+  render("");
+  document.body.appendChild(ov);
 }
 
 // =========================================================================
