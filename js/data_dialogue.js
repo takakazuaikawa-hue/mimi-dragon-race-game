@@ -154,7 +154,10 @@
         default: base + ".webp",
         smile: base + "_smile.webp",
         happy: base + "_happy.webp",
-        panic: base + "_panic.webp"
+        panic: base + "_panic.webp",
+        think: base + "_think.webp",       // ミズ思案 ほか（CAST_ART_BRIEF §1・欠損はdefaultへFB）
+        serious: base + "_serious.webp",   // スミカ眼光・セレスティア神性
+        sad: base + "_sad.webp"            // セレスティア憂い
       } });
     });
   }

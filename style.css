@@ -5441,6 +5441,18 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .km-gourmet img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .km-gourmet span { position: absolute; left: 8px; bottom: 8px; font-size: 11px; font-weight: 800; color: #fff;
   background: rgba(150,80,30,.72); padding: 3px 9px; border-radius: 999px; }
+/* ★N5: ここで食べる（スポット↔MEALS直結） */
+.km-eats { margin-top: 10px; border: 1px solid rgba(255,180,90,.22); border-radius: 11px; padding: 8px; background: rgba(150,80,30,.08); }
+.km-eats-t { font-size: 11px; font-weight: 800; color: #e8b47a; letter-spacing: .04em; margin: 0 2px 6px; }
+.km-eat { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: none; cursor: pointer;
+  background: rgba(0,0,0,.22); border-radius: 9px; padding: 7px 9px; color: #f3ead9; }
+.km-eat + .km-eat { margin-top: 5px; }
+.km-eat:active { transform: scale(.985); }
+.km-eat .ke-ic { font-size: 15px; }
+.km-eat .ke-nm { font-size: 12px; font-weight: 700; flex: 1 1 auto; min-width: 0; }
+.km-eat small { font-size: 10px; color: #c9a87e; white-space: nowrap; }
+.km-eat.locked { cursor: default; opacity: .62; }
+.km-eat.quiz small { color: #a8c4e0; }
 .km-viewer, .km-compose { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .km-viewer-bd, .km-compose-bd { position: absolute; inset: 0; background: rgba(6,10,14,.92); }
 .km-viewer-stage { position: relative; z-index: 1; max-width: 96vw; max-height: 70vh; overflow: auto; border-radius: 10px; }

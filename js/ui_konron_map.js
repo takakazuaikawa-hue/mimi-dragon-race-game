@@ -572,6 +572,50 @@ function _kmPlayArrival(id, s, cat) {
   } catch (e) {}
 }
 
+// ★N5: スポット↔グルメ直結（NARRATIVE_DESIGN W4）。ここに1行足すだけで「ここで食べる」が増える。
+// 実食(eat)品はその場で食べられる（eatMeal＝hunger.jsの課金/満腹ラップ経由＝経済は既存どおり）。
+// クイズ品(quiz)はごはん画面の名物あてへ誘導。ティア未解放は🔒＋条件表示。表示メタ＝レース数値不変。
+const KM_SPOT_MEALS = {
+  market:        ["t_nikuman", "t_kakigori"],
+  kachimeshi:    ["t_yakitori", "t_dote"],
+  makemeshi:     ["t_ramen"],
+  jogai:         ["t_dog", "g_gyoza"],
+  ennichi:       ["t_takoyaki", "t_wataame", "t_ikayaki", "s_karaage"],
+  amazake_chaya: ["t_amazake", "t_dango"],
+  oyakata:       ["s_dashimaki"],
+  cafe:          ["s_pound"],
+  patisserie:    ["s_chocolate"],
+  kissaten:      ["g_pudding", "s_omurice"],
+  backbistro:    ["g_pasta"],
+  lavasteak:     ["g_steak"],
+  ryoshimeshi:   ["g_paella", "g_tempura"],
+  lodge:         ["g_risotto"],
+  quaybar:       ["g_ajillo", "g_chowder"],
+  wagashi:       ["s_castella"],
+  mango:         ["t_kakigori"]
+};
+function _kmMealHtml(spotId) {
+  try {
+    const ids = KM_SPOT_MEALS[spotId];
+    if (!ids || !ids.length || typeof MEALS === "undefined") return "";
+    let rows = "";
+    ids.forEach(function (mid) {
+      const m = MEALS.find(function (x) { return x.id === mid; }); if (!m) return;
+      const tierOpen = (typeof mealTierUnlocked !== "function") || mealTierUnlocked(m.tier);
+      const got = (typeof mealUnlocked === "function") && mealUnlocked(m);
+      if (!tierOpen) {
+        const hint = m.tier === "shinbo" ? "終章（第5話）で解放" : m.tier === "gourman" ? "総資産100万で解放" : "まだ食べられない";
+        rows += `<div class="km-eat locked"><span class="ke-ic">🔒</span><span class="ke-nm">${m.icon || "🍽"} ${m.name}</span><small>${hint}</small></div>`;
+      } else if (m.quiz) {
+        rows += `<button class="km-eat quiz" data-meal="${m.id}"><span class="ke-ic">${got ? "✅" : "❓"}</span><span class="ke-nm">${m.icon || "🍽"} ${m.name}</span><small>${got ? "攻略済み・ごはん画面で読み返す" : "名物あてに挑戦（ごはん画面へ）"}</small></button>`;
+      } else {
+        rows += `<button class="km-eat" data-meal="${m.id}"><span class="ke-ic">${got ? "✅" : "🍽"}</span><span class="ke-nm">${m.icon || "🍽"} ${m.name}</span><small>${got ? "おかわりする" : "はじめての実食！"}</small></button>`;
+      }
+    });
+    if (!rows) return "";
+    return `<div class="km-eats"><div class="km-eats-t">🍽 ここで食べる</div>${rows}</div>`;
+  } catch (e) { return ""; }
+}
 function _kmRenderPanel() {
   const panel = document.getElementById("km-panel"); if (!panel) return;
 
@@ -638,6 +682,7 @@ function _kmRenderPanel() {
       if (_shoot && _shoot !== "—") body += `<div class="km-card-shoot">📸 撮れるもの：${_shoot}</div>`;
       body += _kmContentHtml(_kmSpot);   // 見どころ／名物／豆知識（作りこみ）
       if (s.gourmet) body += `<button class="km-gourmet" data-gourmet="${_kmSpot}"><img src="${s.gourmet}" alt="" decoding="async"><span>🍽 ご当地グルメ・タップで鑑賞／投稿</span></button>`;   // s.id は常にundefined（同種バグ・上のdata-photoと同じ原因）
+      body += _kmMealHtml(_kmSpot);   // ★N5: ここで食べる（スポット↔MEALS直結）
       if (s.portal && typeof window[s.portal] === "function") {
         const labelMap = { renderMeals: "🍢 食べ歩きへ", renderMall: "🛍️ ショッピングへ", renderRaceSelect: "🏁 レースへ", renderSns: "📣 SNSへ", renderScout: "🐉 竜スカウトへ" };
         // ★遷移先が未解放なら「開いてる見た目→跳ね返される」をやめ、鍵つきの案内表示にする（NARRATIVE_DESIGN §7-H）。
@@ -664,6 +709,22 @@ function _kmRenderPanel() {
     if (ph) ph.onclick = () => _kmOpenPhoto(ph.getAttribute("data-photo"), "photo");
     const gm = panel.querySelector(".km-gourmet");
     if (gm) gm.onclick = () => _kmOpenPhoto(gm.getAttribute("data-gourmet"), "gourmet");
+    // ★N5: ここで食べる＝その場実食（初実食はミミの実食コメントVN）。クイズ品はごはん画面へ。
+    panel.querySelectorAll(".km-eat[data-meal]").forEach(function (b) {
+      b.onclick = function () {
+        const mid = b.getAttribute("data-meal");
+        const m = (typeof MEALS !== "undefined") && MEALS.find(function (x) { return x.id === mid; });
+        if (!m) return;
+        if (m.quiz) { if (typeof renderMeals === "function") renderMeals(); return; }
+        const first = !((typeof mealEaten === "function") && mealEaten(mid));
+        if (typeof eatMeal === "function") eatMeal(mid);   // hungerラップ経由（課金/満腹/おごり）
+        // 実食が成立した初回だけ、ミミのコメントを一言（満腹/金欠で不成立なら eaten 不変＝出ない）
+        if (first && (typeof mealEaten === "function") && mealEaten(mid) && window.Dialogue && Dialogue.play && m.react) {
+          Dialogue.play([{ s: "mimi", t: m.react, e: "happy" }]);
+        }
+        _kmRenderPanel();
+      };
+    });
     return;
   }
 
