@@ -5391,6 +5391,27 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sc-react { font-size: 13px; color: #d7e4e9; text-align: center; padding: 7px 10px; margin-bottom: 9px;
   background: rgba(255,230,168,.08); border-radius: 10px; line-height: 1.6; }
 
+/* 📜 伝承（スカウトの読み物・図鑑コレクション） */
+.sc-lore { border-radius: 12px; padding: 11px 13px; margin-bottom: 10px;
+  background: linear-gradient(180deg, rgba(58,48,32,.55), rgba(38,32,22,.55));
+  border: 1px solid rgba(214,178,110,.28); }
+.sc-lore-t { font-size: 11px; font-weight: 800; color: #d6b26e; letter-spacing: .05em; margin-bottom: 5px; }
+.sc-lore-tx { font-size: 13px; line-height: 1.85; color: #f0e6d0;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
+.sc-lore.new { border-color: rgba(255,210,110,.6); box-shadow: 0 0 18px rgba(255,200,90,.18);
+  animation: scLoreIn .7s ease both; }
+.sc-lore.new .sc-lore-t { color: #ffd76a; }
+.sc-lore--win { text-align: left; margin: 8px 0; }
+@keyframes scLoreIn { from { opacity: 0; transform: translateY(8px); } }
+.dd-lore-t { font-size: 11px; font-weight: 800; color: #d6b26e; margin: 10px 0 4px; }
+.dd-lore { border-left: 3px solid rgba(214,178,110,.4); padding: 4px 0 4px 10px; margin-bottom: 6px; }
+.dd-lore b { display: block; font-size: 10.5px; color: #d6b26e; margin-bottom: 2px; }
+.dd-lore p { margin: 0; font-size: 12px; line-height: 1.75; color: #ede4d0;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
+.dd-lore.locked { opacity: .55; border-left-color: rgba(255,255,255,.15); }
+.dd-lore.locked p { font-family: inherit; font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { .sc-lore.new { animation: none; } }
+
 /* 手札（交渉術） */
 .sc-hand-lbl { font-size: 11.5px; font-weight: 800; color: #9fb0b8; letter-spacing: .04em; margin: 2px 2px 6px; }
 .sc-hand { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 9px; }

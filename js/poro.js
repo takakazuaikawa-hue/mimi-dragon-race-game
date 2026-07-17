@@ -533,6 +533,15 @@ function showDragonDetail(id) {
         `<div class="dd-row"><span>絆</span><b>${af}</b><div class="stable-aff-bar dd-aff"><i style="width:${af}%"></i></div></div>` +
         `<div class="dd-row"><span>大好物</span><b>${e.favFound && fav ? `${fav.icon || "🍽"} ${fav.name}` : "？？？"}</b></div>` +
         (e.favFound ? "" : `<div class="dd-hint">🍽 ごはんの差し入れで、大好物が見つかるかも。</div>`) +
+        // 📜 伝承コレクション（スカウト体験で解禁した断章の永久保管棚）
+        ((typeof dragonLoreTexts === "function" && dragonLoreTexts(id)) ? (function () {
+          const L = dragonLoreTexts(id), lv = (typeof dragonLoreLv === "function") ? dragonLoreLv(id) : 0;
+          return `<div class="dd-lore-t">📜 伝承 <b>${lv}</b>/3</div>` + L.map(function (t, i) {
+            return (i < lv)
+              ? `<div class="dd-lore"><b>${DRAGON_LORE_TITLES[i]}</b><p>${t}</p></div>`
+              : `<div class="dd-lore locked"><b>${DRAGON_LORE_TITLES[i]}</b><p>🔒 ${DRAGON_LORE_HINTS[i]}</p></div>`;
+          }).join("");
+        })() : "") +
         (rec.racesSeen ? `<div class="dd-rec">観戦${rec.racesSeen}・3着内${rec.top3Seen || 0}・あなたの的中${rec.playerHitCount || 0}</div>` : "") +
         (reaction ? `<div class="dd-react">${reaction}</div>` : "") +
       `</div>`;

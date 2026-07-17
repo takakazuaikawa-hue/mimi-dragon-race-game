@@ -108,7 +108,9 @@ function scoutEnterLocation(locId) {
   const d = pool[idx];
   _scoutMeetD = d; _scoutMeetLoc = locId;
   _scoutSess = createScoutSession(d.id, locId);
-  _scoutRenderEncounter(true);
+  // 📜 断章I「出会いの噂」＝遭遇で解禁（新規なら演出つきで表示・図鑑に永久収集）
+  const loreNew = (typeof dragonLoreUnlock === "function") ? dragonLoreUnlock(d.id, 1) : null;
+  _scoutRenderEncounter(true, null, loreNew ? { lore: loreNew, loreLv: 1 } : null);
 }
 
 // ── 交渉エンカウンター画面（土台再設計）─────────────────────────────────
@@ -185,6 +187,20 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
   // 直前の反応（竜の返事）
   if (lastReaction) app.appendChild(el("div", "sc-react", lastReaction));
 
+  // 📜 伝承（スカウト体験の核＝竜ごとの読み物が少しずつ解禁され図鑑に集まる）
+  //   新規解禁＝金の演出つき／再訪の初手＝既知の断章Iを静かに再掲（読み返せる）。
+  const loreT = (typeof dragonLoreTexts === "function") ? dragonLoreTexts(d.id) : null;
+  if (fx.lore) {
+    const lp = el("div", "sc-lore new");
+    lp.innerHTML = `<div class="sc-lore-t">📜 ${DRAGON_LORE_TITLES[(fx.loreLv || 1) - 1]}——図鑑に刻まれた</div>` +
+      `<div class="sc-lore-tx">${fx.lore}</div>`;
+    app.appendChild(lp);
+  } else if (first && loreT && typeof dragonLoreLv === "function" && dragonLoreLv(d.id) >= 1) {
+    const lp = el("div", "sc-lore");
+    lp.innerHTML = `<div class="sc-lore-t">📜 島の噂</div><div class="sc-lore-tx">${loreT[0]}</div>`;
+    app.appendChild(lp);
+  }
+
   // 手札
   const { hand, extras } = scoutHand(sess, 5);
   app.appendChild(el("div", "sc-hand-lbl", "交渉術をえらぶ"));
@@ -229,7 +245,12 @@ function _scoutAct(approachId) {
   }
   if (sess.status === "win") { _scoutWin(); return; }
   if (sess.status === "lose") { _scoutLose(); return; }
-  _scoutRenderEncounter(false, res.reactionText, { outcome: res.outcome, dt: sess.trust - t0, dw: sess.wary - w0 });
+  // 📜 断章II「島の逸話」＝心を開きかけた瞬間（信頼が成立ラインの半分に到達）に解禁
+  const goal = (typeof SCOUT_TRUST_GOAL !== "undefined") ? SCOUT_TRUST_GOAL : 100;
+  const lore2 = (sess.trust >= goal * 0.5 && typeof dragonLoreUnlock === "function")
+    ? dragonLoreUnlock(_scoutMeetD.id, 2) : null;
+  _scoutRenderEncounter(false, res.reactionText,
+    { outcome: res.outcome, dt: sess.trust - t0, dw: sess.wary - w0, lore: lore2, loreLv: 2 });
 }
 
 // ── 成立＝心を開く → 既存の払い出し ──────────────────────────────────────
@@ -256,8 +277,11 @@ function _scoutWin() {
     const cat = (typeof scoutPersona === "function") ? scoutPersona(d).favCat : "身";
     mimiLine = (_SCOUT_WIN_VOICE[cat] || _SCOUT_WIN_VOICE["身"])(d.name);
   } catch (err) { mimiLine = ""; }
+  // 📜 断章III「伝承の真相」＝成立の報酬（読み物のご褒美・図鑑に全断章が揃う）
+  const lore3 = (typeof dragonLoreUnlock === "function") ? dragonLoreUnlock(d.id, 3) : null;
   showInfoPopup(`🤝 ${d.name} と心が通じた！`,
     `<div class="mm-row"><span class="mm-ic">🐲</span><div><b>${d.name}を龍舎に迎えた。</b><small>${d.portraitTone || d.tone || "言葉はなくても、気持ちは通じた。"}</small></div></div>` +
+    (lore3 ? `<div class="sc-lore new sc-lore--win"><div class="sc-lore-t">📜 断章 III 「伝承の真相」——全断章が図鑑に揃った</div><div class="sc-lore-tx">${lore3}</div></div>` : "") +
     (mimiLine ? `<div class="mm-row"><span class="mm-ic">🐰</span><div><b>ミミ</b><small>「${mimiLine}」</small></div></div>` : "") +
     (isNew ? `<div class="mm-row"><span class="mm-ic">📖</span><div><b>図鑑＆龍舎に登録</b><small>出会いの記録が増えた。</small></div></div>` : "") +
     `<div class="mm-note">※ 表示専用。レースの結果・オッズ・配当は変わりません。</div>`,

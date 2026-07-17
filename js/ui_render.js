@@ -1369,7 +1369,9 @@ function renderCollection() {
   const app = beginScreen();
   app.appendChild(el("h2", null, "竜図鑑"));
   const seenCount = Object.values(state.player.collection || {}).filter(e => e.seen).length;
-  app.appendChild(el("div", "card", `見た竜: <b>${seenCount}</b> / ${DRAGONS.length} 種`));
+  const _ls = (typeof dragonLoreStats === "function") ? dragonLoreStats() : null;
+  app.appendChild(el("div", "card", `見た竜: <b>${seenCount}</b> / ${DRAGONS.length} 種` +
+    (_ls ? `　｜　📜 伝承 <b>${_ls.got}</b> / ${_ls.total}` : "")));
 
   // §37 — 図鑑コンプリート報酬の進捗
   try {
