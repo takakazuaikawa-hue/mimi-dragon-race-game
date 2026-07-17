@@ -240,7 +240,9 @@
   - G6=マクラ実況レイヤ makuraLayer（commentary_engine.js）／G7=maybeStrangerVista（epilogue_engine.js→ui_konron_map結線）
   - G9=空腹ゲートのサケ（ui_render.js）／G10=配信実演ツアー（ui_render.js buyPhoneAndGoLive）／G8=好敵手再来（event_registry.js）
   - D7/D8/D12=手紙3通を別視点に改稿（sns.js FAN_LETTERS）／1ティック1VN予算（event_hooks.js runEventHooks）
-  - 残: D9〜D11の完全時差化（+1レース/+1日）※1ティック1VN予算で同時多重は既に防止／D15時差解禁／小イベント・consult全文の声表スイープ
+  - D9〜D11完全時差化 済（本コミット）: unlockDelayRace/unlockDelayDay（event_hooks.js）＝toast即時→號外+1レース（初勝利/ポロ/食10品/スポット8/皆伝＝data_story_events.js）→SNS投稿・手紙+1日（sns.js p_firstwin/p_poro/p_walker/p_gourmet/l_poro/l_shihan）
+  - N5観光 済（a6c81a6/本コミット）: KM_SPOT_MEALS「ここで食べる」17スポット直結＋KONRON_CONTENT全51件（空マス0）
+  - 残: D15セレスティア時差解禁／小イベント・consult全文の声表スイープ／時間帯結線・フォトミッション3択（任意）
 
 ---
 

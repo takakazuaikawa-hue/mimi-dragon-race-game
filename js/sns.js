@@ -168,12 +168,12 @@ function _snsDailyOk(po) { return _snsCastOk(SNS_DAILY_GATE[po.id]); }
 var SNS_POSTS = [
   { id: "p_firstwin", ic: "🌸", name: "うさ耳ファンクラブ", handle: "@usamimi_fc", base: 240,
     text: function () { return `🎉 ミミちゃん${_snsWins()}勝目おめでとう！ 予想が当たった瞬間のしっぽ、見た？ ぴょんって跳ねたよね！`; },
-    unlock: function () { return _snsWins() >= 1; } },
+    unlock: function () { return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_firstwin", _snsWins() >= 1) : _snsWins() >= 1; } },   // ★D9-11: 勝利当日はVN/toast→投稿は翌日
   { id: "p_rank2", ic: "🎤", name: "実況マクラ", handle: "@makura_live", base: 158,
     text: function () { return `ミミ、ランク${_snsRank()}到達！ 新しい地域のレースにも挑めるぞ。視聴者みんなで応援だ！`; },
     unlock: function () { return _snsRank() >= 2; } },
   { id: "p_poro", ic: "🐉", name: "ポロ", handle: "@poro_naki", base: 311,
-    text: "ぐすっ……ミミお姉ちゃんが、ぼくのこと見つけてくれた日のこと、まだ覚えてる。だいすき。", unlock: function () { return _snsFlag("poroFound"); } },
+    text: "ぐすっ……ミミお姉ちゃんが、ぼくのこと見つけてくれた日のこと、まだ覚えてる。だいすき。", unlock: function () { return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_poro", _snsFlag("poroFound")) : _snsFlag("poroFound"); } },   // ★D9-11
   { id: "p_followers", ic: "🔥", name: "推し竜ガチ勢", handle: "@oshi_dragon", base: 207,
     text: function () { return `フォロワー${_snsFollowers().toLocaleString()}人突破！？ もう立派な“予想界の星”じゃん。最初から見てる俺、誇らしい。`; },
     unlock: function () { return _snsFollowers() >= 3000; } },
@@ -195,10 +195,10 @@ var SNS_POSTS = [
   // ── 暮らし還流（docs/KURASHI_STORY_WEAVE.md B）──
   { id: "p_walker", ic: "📷", name: "聖龍日報・文化面", handle: "@seiryu_bunka", base: 121,
     text: "本日の「島を歩く人」——予想家ミミ。レースのない日、彼女は島のどこかを歩いている。市場の湯気の中に、崖の風の中に。",
-    unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; } },
+    unlock: function () { var c = Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_walker", c) : c; } },   // ★D9-11: 號外(+1レース)とさらに時差
   { id: "p_gourmet", ic: "🍜", name: "屋台のおやじ", handle: "@yatai_oyaji", base: 96,
     text: "また来たよ、あの子。うちの新作、いちばんうまそうに食うんだ。……悪い気はしねえ。（グルメ面『みみしんぼ』連載中）",
-    unlock: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; } }   // ★BUGFIX: 同上（食10品で解禁が実際に動くように）
+    unlock: function () { var c = (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_gourmet", c) : c; } }   // ★D9-11: toast即時→號外+1レース→投稿+1日
 ];
 // ★BUGFIX（マイルストーンだけ素通し）：日替わり(SNS_DAILY_GATE)は守れていたのに、rank/コインだけで解放される
 //   マイルストーン投稿は顧問の登場判定を通っておらず、「日替わりのマクラは出ないのに投稿はする」矛盾が起きていた。
@@ -260,7 +260,7 @@ var FAN_LETTERS = [
     unlock: function () { return _snsMaxCoins() >= 100000; } },
   { id: "l_poro", ic: "🐉", from: "ポロ", subject: "おねえちゃんへ（なみだのあと）",
     body: "ミミおねえちゃん。\nぼく、泣き虫だけど、おねえちゃんといると、ちょっとだけ勇気が出るんだ。\nグルメレース、いっしょに走ってくれてありがとう。\nつぎは、ぼくがおねえちゃんを応援する番だね。ぐすっ、えへへ。",
-    unlock: function () { return _snsFlag("poroFound"); } },
+    unlock: function () { return (typeof unlockDelayDay === "function") ? unlockDelayDay("l_poro", _snsFlag("poroFound")) : _snsFlag("poroFound"); } },   // ★D9-11: 発見の翌日に届く
   { id: "l_rival", ic: "🐲", from: "かつての好敵手より", subject: "次は負けない",
     body: "ミミへ。\nお前の予想に、何度も悔しい思いをさせられた。\nだが、おかげで俺も腕を上げた。お前がいなけりゃ、ここまで来られなかった。\n……礼は言わん。次のレースで、ぜんぶ返す。覚悟しておけ。",
     unlock: function () { return _snsRank() >= 4; } },
@@ -272,7 +272,7 @@ var FAN_LETTERS = [
   // ★D12：免許皆伝の要約読み→誰も見ていない「雑巾がけ」の目撃談（同じ出来事の別視点）に改稿。
   { id: "l_shihan", ic: "🎫", from: "習い事の師範より", subject: "免許皆伝につき",
     body: "ミミ殿。\n免状は渡した。だからこれは師範としてではなく、ただの年寄りの手紙だ。\nあなたは稽古のあと、毎回、道場の雑巾がけをして帰っただろう。誰も見ていないつもりだったようだが。\n才ある者は何人も見てきた。雑巾がけを最後まで続けた者は、あなたで二人目だ。\n一人目は、わたしだ。……つまり、そういうことだ。\n基本に戻りなさい。竜を見て、飯を食い、よく眠ること。",
-    unlock: function () { try { var as = ((typeof state !== "undefined" && state.player) || {}).activeSkills || {}; return typeof ACTIVE_SKILLS !== "undefined" && ACTIVE_SKILLS.some(function (s) { return (as[s.id] || 0) >= s.levels.length; }); } catch (e) { return false; } } },
+    unlock: function () { var c = false; try { var as = ((typeof state !== "undefined" && state.player) || {}).activeSkills || {}; c = typeof ACTIVE_SKILLS !== "undefined" && ACTIVE_SKILLS.some(function (s) { return (as[s.id] || 0) >= s.levels.length; }); } catch (e) { c = false; } return (typeof unlockDelayDay === "function") ? unlockDelayDay("l_shihan", c) : c; } },   // ★D9-11: 皆伝の翌日に届く（號外「師範の日」は+1レース）
   { id: "l_walker", ic: "📷", from: "写真館のばあばより", subject: "あんたの歩いた道",
     body: "ミミちゃんへ。\nうちの店の前を、あんたが何度も通るのを見てたよ。市場も、崖も、温泉も。\n島の人間でも、そんなに歩く子はいない。\nあんたが見てくれた景色はね、みんな、誰かのふるさとなんだ。\nありがとうね。今度、寄っていきな。いちばんいい笑顔を、一枚撮ってあげる。",
     unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 20; } },

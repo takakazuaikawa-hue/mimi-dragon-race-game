@@ -33,13 +33,13 @@ var STORY_EVENTS = [
     title: "親方の渋茶", unlock: function () { return _seRaces() >= 3; },
     body: "「茶、飲むか」\nサケさんが、ぶっきらぼうに湯呑みを差し出してきた。にがい。でも、あったかい。\n「予想は、当てるものじゃない。竜を、ちゃんと見るものだ。……お前は、筋がいい」\n……照れるから、やめてほしい。でも、ちょっと、うれしい。" },
   { id: "se_firstwin", ic: "🎉", who: "ミミ", color: "#e58fb0",
-    title: "初勝利の夜", unlock: function () { return _seWins() >= 1; },
+    title: "初勝利の夜", unlock: function () { return (typeof unlockDelayRace === "function") ? unlockDelayRace("se_firstwin", _seWins() >= 1) : _seWins() >= 1; },   // ★D9-11: 勝利の瞬間はお祝いVN/toastに譲り、號外は翌レース後
     body: "当たった。…当たっちゃった！\nしっぽが勝手にぴょんって跳ねて、気づいたら場内で叫んでた。はずかしい。\nでも、あの竜が一着でゴールした瞬間の景色、ぜったい忘れない。\nわたし、予想家ミミ。…ちょっとだけ、本気で名乗れる気がしてきた。" },
   { id: "se_mizu_market", ic: "💧", who: "ミズ", color: "#5aa0d0", cast: "mizu",
     title: "市場のささやき", unlock: function () { return _seAssets() >= 500000; },
     body: "「ねえ、気づいた？　あの竜、人気のわりに、誰も“ほんとう”を見てない」\nミズが、扇子のかげでくすっと笑う。\n「市場は嘘をつくの。人気も、オッズも、ぜんぶ誰かの願望の影。…あなたの目は、その奥を見ようとする。あはん、わたしの、お気に入り」\nこの人、ほめてるの？　からかってるの？" },
   { id: "se_poro_promise", ic: "🐉", who: "ポロ", color: "#7bbf8a", cast: "poro",
-    title: "ポロとのやくそく", unlock: function () { return _seFlag("poroFound"); },
+    title: "ポロとのやくそく", unlock: function () { return (typeof unlockDelayRace === "function") ? unlockDelayRace("se_poro", _seFlag("poroFound")) : _seFlag("poroFound"); },   // ★D9-11: 発見VN直後の多重を避け+1レース
     body: "ぐすっ、と泣き虫竜のポロが、わたしの袖をつかむ。\n「おねえちゃん…ぼく、つよくなれるかな」\nなれるよ。だって、こんなにやさしいんだもん。\n「じゃあ、やくそく。ぼくがおねえちゃんを応援するから、おねえちゃんも、ぼくを応援して」\nうん。ずっと、いっしょだよ。" },
   { id: "se_rainy_live", ic: "🌧️", who: "ミミ", color: "#e58fb0",
     title: "雨の日の配信", unlock: function () { return _seRaces() >= 15; },
@@ -69,15 +69,17 @@ var STORY_EVENTS = [
     title: "引っ越しの日", unlock: function () { return typeof LIFE_TIERS !== "undefined" && _seAssets() >= LIFE_TIERS[2].min; },
     body: "段ボール、みっつ。わたしの全財産は、意外と軽い。\n新しい部屋は、窓から竜の飛ぶ空が見える。\nスミカが「カーテンはこれ」と譲らず、ポロが箱をひとつ運んで力尽きた。\n夜、まっさらな床に寝転んで思う。\n——借金まみれだったわたしが、屋根の心配をしなくていい。それって、すごいことだ。" },
   { id: "se_gourmet_gaiden", ic: "🍜", who: "ミミ", color: "#e58fb0",
-    title: "みみしんぼ・外伝", unlock: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; },   // ★BUGFIX: player.meals は {eaten,solved} 固定＝旧式は永遠に偽
+    title: "みみしんぼ・外伝", unlock: function () { var c = (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; return (typeof unlockDelayRace === "function") ? unlockDelayRace("se_gourmet", c) : c; },   // ★D9-11: 食10品はtoast即時→號外は+1レース
     body: "グルメ面の隅に、小さな連載が始まった。『みみしんぼ』。\n「うまいものは、勝った日のためにあるんじゃない。明日も走るためにある」\n……これ、わたしが屋台で言ったやつだ。おやじさん、載せたな！？\n恥ずかしい。でも、切り抜いて、部屋に貼った。" },
   { id: "se_island_walker", ic: "📷", who: "ミミ", color: "#e58fb0",
-    title: "島を歩く人", unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; },
+    title: "島を歩く人", unlock: function () { var c = Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; return (typeof unlockDelayRace === "function") ? unlockDelayRace("se_walker", c) : c; },   // ★D9-11
     body: "文化面の投稿欄「島を歩く人」に、わたしの名前があった。\n『あの配信者、レースのない日は島のあちこちにいる。市場で、崖の上で、温泉街で』\n……見られてた。\nでも、いいんだ。この島は、歩くたびに好きになる。それを知ってる人が、また増えた。" },
   { id: "se_shihan_day", ic: "🎫", who: "サケ・ウダダ", color: "#c9a24a", cast: "sake",
     title: "師範の日", unlock: function () {
+      var c = false;
       try { var as = ((typeof state !== "undefined" && state.player) || {}).activeSkills || {};
-        return typeof ACTIVE_SKILLS !== "undefined" && ACTIVE_SKILLS.some(function (s) { return (as[s.id] || 0) >= s.levels.length; }); } catch (e) { return false; }
+        c = typeof ACTIVE_SKILLS !== "undefined" && ACTIVE_SKILLS.some(function (s) { return (as[s.id] || 0) >= s.levels.length; }); } catch (e) { c = false; }
+      return (typeof unlockDelayRace === "function") ? unlockDelayRace("se_shihan", c) : c;   // ★D9-11: 免許皆伝は師範の手紙(+1日)と時差
     },
     body: "「……もう、教えることはねえな」\n習い事の師範が、湯呑みを置いて、ぽつり。\n「いや。ひとつだけある。極めたやつほど、基本に戻れ。竜を見ろ。飯を食え。よく寝ろ」\nそれ、最初の日に言われたやつだ。\n一周まわって、同じ言葉が、ぜんぜん違う重さで届く。" }
 ];
