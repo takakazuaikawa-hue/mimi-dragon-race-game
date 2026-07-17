@@ -55,7 +55,10 @@ function dexUnlocked() {
       img: {
         default: "images/cast/stand/poro.webp",
         cry: "images/cast/stand/poro_cry.webp",
-        surprise: "images/cast/stand/poro_surprise.webp"
+        surprise: "images/cast/stand/poro_surprise.webp",
+        happy: "images/cast/stand/poro_happy.webp",     // Codex納品（CAST_ART_BRIEF §4・欠損はdefaultへFB）
+        eat: "images/cast/stand/poro_eat.webp",
+        sleepy: "images/cast/stand/poro_sleepy.webp"
       }
     });
   }

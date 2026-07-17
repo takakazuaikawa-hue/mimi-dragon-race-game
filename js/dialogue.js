@@ -135,6 +135,11 @@
   var EXPRS = ["default", "smile", "happy", "panic"];
   function inferExpr(t) {
     if (!t) return "smile";
+    // ★新4表情（Codex納品・CAST_ART_BRIEF §5）。panic/happyより先に判定＝専用の感情を優先。
+    if (/悔し|むー|ぷんすか|ずるい|ひどい|もう[!！ー]|怒/.test(t)) return "angry";
+    if (/ぐすっ|うぅ|泣け|なみだ|涙|えぐ|しくしく/.test(t)) return "cry";
+    if (/えへへ|照れ|はずかし|恥ずかし|てへ|ぽっ/.test(t)) return "shy";
+    if (/見てなさい|勝負|受けて立|いざ|覚悟|本気モード|決めて/.test(t)) return "kirin";
     if (/[!！][?？]|[?？][!！]|[?？]{2}|えっ|ええ[ぇっ]|うわ|ひ[っぃ]|やば|まずい|こわ|怖|ピンチ|どうしよ|だめ|ダメ|無理|きゃ/.test(t)) return "panic";
     if (/[!！]|やった|うれし|嬉し|わ[ーぁ]|よっし|最高|だいすき|大好き|ありがと|わくわく|たのし|楽し/.test(t)) return "happy";
     if (/……|‥|ごめん|すみません|ううん|そっか|なるほど|ふぅ|はぁ/.test(t)) return "default";

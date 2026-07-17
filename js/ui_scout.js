@@ -239,7 +239,7 @@ function _maybeEightAssembly(isNew) {
     const inEp = (typeof epilogueOn === "function") && epilogueOn();
     const hasPoro = (typeof poroFound === "function") && poroFound();
     const script = [
-      ["narrator", "龍舎に、八つ目の寝床が埋まった。……その夜。だれに呼ばれたわけでもなく、竜たちが庭に集まってくる。"]
+      { s: "narrator", t: "龍舎に、八つ目の寝床が埋まった。……その夜。だれに呼ばれたわけでもなく、竜たちが庭に集まってくる。", bg: "images/bg/stable.webp" }
     ];
     if (hasPoro) script.push(["narrator", "輪のまんなかで、ポロがうれしそうにころんと転がった。——ここが真ん中だと言わんばかりに。"]);
     script.push(
