@@ -111,42 +111,78 @@ function scoutEnterLocation(locId) {
   _scoutRenderEncounter(true);
 }
 
-// ── 交渉エンカウンター画面 ───────────────────────────────────────────────
-function _scoutBar(label, val, max, cls) {
-  const pct = Math.max(0, Math.min(100, Math.round((val / max) * 100)));
-  return `<div class="sc-meter ${cls}"><span class="sc-meter-l">${label}</span>` +
-    `<span class="sc-meter-t"><i style="width:${pct}%"></i></span></div>`;
+// ── 交渉エンカウンター画面（土台再設計）─────────────────────────────────
+// 商業の定石＝①相手が主役（ポケモン捕獲：竜のHD-2Dスプライトを舞台中央に）②選択のたび相手が
+// 目に見えて反応（ペルソナ交渉：しぐさ吹き出し＋リアクションアニメ）③緊張の可視化（太いデュアル
+// ゲージ＋成立/逃走マーカー＋一手ごとのデルタ演出）。数式（scoutResolve）は一切不変＝表示層のみ。
+const SCOUT_LOC_BG = {
+  grass:   "images/konron/spots/mango_orchard.webp",
+  jungle:  "images/konron/spots/susufuka.webp",
+  cliff:   "images/konron/spots/kibishis.webp",
+  sky:     "images/konron/spots/hoshimi.webp",
+  volcano: "images/konron/spots/bangara.webp",
+  sea:     "images/konron/spots/sena.webp"
+};
+// キー抜き済みHD-2Dスプライトを流し込む（race_canvasのキャッシュ＝_ecSpriteURLを再利用）。
+function _scSpriteInto(imgEl, id) {
+  try { if (typeof _rcDragonSprite === "function") _rcDragonSprite(id); } catch (e) {}
+  let tries = 0;
+  const poll = setInterval(() => {
+    tries++;
+    let u = null;
+    try { u = (typeof _ecSpriteURL === "function") ? _ecSpriteURL(id) : null; } catch (e) {}
+    if (u && imgEl.isConnected) { imgEl.src = u; imgEl.classList.add("on"); clearInterval(poll); }
+    else if (tries > 25 || !imgEl.isConnected) clearInterval(poll);
+  }, 120);
 }
-function _scoutRenderEncounter(first, lastReaction) {
+function _scoutBar(label, val, max, cls, goalLabel, delta, pulse) {
+  const pct = Math.max(0, Math.min(100, Math.round((val / max) * 100)));
+  return `<div class="sc-meter ${cls}${pulse ? " sc-meter--pulse" : ""}">` +
+    `<span class="sc-meter-l">${label}</span>` +
+    `<span class="sc-meter-t"><i style="width:${pct}%"></i><em class="sc-meter-goal">${goalLabel}</em></span>` +
+    (delta ? `<span class="sc-meter-delta ${delta > 0 ? "up" : "down"}">${delta > 0 ? "+" + delta : delta}</span>` : "") +
+    `</div>`;
+}
+// 反応の種類→スプライトのリアクション（表示のみ）。
+const SCOUT_FX_CLASS = { great: "sc-hit-great", good: "sc-hit-good", soothe: "sc-hit-good", bad: "sc-hit-bad", neutral: "sc-hit-neutral", observe: "sc-hit-neutral" };
+function _scoutRenderEncounter(first, lastReaction, fx) {
   const d = _scoutMeetD, sess = _scoutSess, loc = scoutLocation(_scoutMeetLoc);
   if (!d || !sess) { renderScout(); return; }
   state.ui.screen = "scout";
   const app = beginScreen();
+  fx = fx || {};
 
-  // 見出し（出会い）
-  const head = el("div", "sc-meet-head");
-  head.innerHTML =
-    `<span class="sc-meet-dot" style="background:${d.color || "#caa24a"}"></span>` +
-    `<div class="sc-meet-id"><b>${d.name}</b>` +
-    `<small>${loc.ic} ${loc.name}で出会った・気性 ${typeof poroTemperLabel === "function" ? poroTemperLabel(d) : "—"}</small></div>`;
-  app.appendChild(head);
+  // ── 舞台：遠征先の景色 × 竜のスプライト × しぐさ吹き出し ──
+  const mood = SCOUT_MOODS[sess.mood] || {};
+  const bg = SCOUT_LOC_BG[_scoutMeetLoc] || "";
+  const nearWin = sess.trust >= SCOUT_TRUST_GOAL * 0.72;
+  const stage = el("div", "sc-stage");
+  stage.innerHTML =
+    (bg ? `<img class="sc-stage-bg" src="${bg}" alt="" decoding="async" onerror="this.remove()">` : "") +
+    `<div class="sc-stage-vig"></div>` +
+    `<div class="sc-meet-tag"><b>${d.name}</b><small>${loc.ic} ${loc.name}・気性 ${typeof poroTemperLabel === "function" ? poroTemperLabel(d) : "—"}</small></div>` +
+    `<div class="sc-drg-wrap${first ? " sc-reveal" : ""}${fx.outcome ? " " + (SCOUT_FX_CLASS[fx.outcome] || "") : ""}" style="--dc:${(typeof dragonColor === "function") ? dragonColor(d) : (d.color || "#caa24a")}">` +
+      `<img class="sc-drg" alt="">` +
+    `</div>` +
+    `<div class="sc-bubble">` +
+      `<div class="sc-bubble-tx">${sess.gesture}</div>` +
+      (sess.revealed
+        ? `<div class="sc-bubble-read">${mood.ic || ""} <b>${mood.name || "？"}</b>${(mood.reads || [""])[0] ? "──" + (mood.reads || [""])[0] : ""}</div>`
+        : `<div class="sc-bubble-hint">（このしぐさは、何の気持ち……？）</div>`) +
+    `</div>`;
+  app.appendChild(stage);
+  _scSpriteInto(stage.querySelector(".sc-drg"), d.id);
   if (first) app.appendChild(el("div", "sc-discover", `🐾 ${loc.mood.replace(/。$/, "")}——足跡をたどると、<b>${d.name}</b>がそっと姿を見せた。`));
 
-  // メーター
+  // ── 緊張のデュアルゲージ（成立/逃走マーカー＋デルタ演出＋大詰めパルス）──
   const meters = el("div", "sc-meters");
-  meters.innerHTML = _scoutBar("💗 信頼", sess.trust, SCOUT_TRUST_GOAL, "sc-trust") + _scoutBar("⚠️ 警戒", sess.wary, SCOUT_WARY_MAX, "sc-wary");
+  meters.innerHTML =
+    _scoutBar("💗 信頼", sess.trust, SCOUT_TRUST_GOAL, "sc-trust", "成立", fx.dt, nearWin) +
+    _scoutBar("⚠️ 警戒", sess.wary, SCOUT_WARY_MAX, "sc-wary", "逃走", fx.dw, false);
   app.appendChild(meters);
+  if (nearWin) app.appendChild(el("div", "sc-nearwin", "✨ あと少しで、心が通じそう……！"));
 
-  // しぐさ（心情は revealed のときだけ明示）
-  const mood = SCOUT_MOODS[sess.mood] || {};
-  const gbox = el("div", "sc-gesture");
-  gbox.innerHTML =
-    `<div class="sc-gesture-tx">${sess.gesture}</div>` +
-    (sess.revealed ? `<div class="sc-gesture-read">${mood.ic || ""} いまの気持ち：<b>${mood.name || "？"}</b>　${(mood.reads || [""])[0] || ""}</div>`
-                   : `<div class="sc-gesture-hint">（このしぐさは、何の気持ち……？）</div>`);
-  app.appendChild(gbox);
-
-  // 直前の反応
+  // 直前の反応（竜の返事）
   if (lastReaction) app.appendChild(el("div", "sc-react", lastReaction));
 
   // 手札
@@ -181,6 +217,7 @@ function _scoutRenderEncounter(first, lastReaction) {
 // ── 1手の実行 ────────────────────────────────────────────────────────────
 function _scoutAct(approachId) {
   const sess = _scoutSess; if (!sess) return;
+  const t0 = sess.trust, w0 = sess.wary;   // デルタ演出用（表示のみ・数式は scoutResolve のまま）
   const res = scoutResolve(sess, approachId);
   if (res.outcome === "spent") { return; }   // ぱほぱほ使用済み
   // 効果音（存在するものだけ・表示専用）
@@ -192,7 +229,7 @@ function _scoutAct(approachId) {
   }
   if (sess.status === "win") { _scoutWin(); return; }
   if (sess.status === "lose") { _scoutLose(); return; }
-  _scoutRenderEncounter(false, res.reactionText);
+  _scoutRenderEncounter(false, res.reactionText, { outcome: res.outcome, dt: sess.trust - t0, dw: sess.wary - w0 });
 }
 
 // ── 成立＝心を開く → 既存の払い出し ──────────────────────────────────────

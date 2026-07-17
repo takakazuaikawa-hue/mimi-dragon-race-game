@@ -5321,14 +5321,65 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sc-discover { font-size: 12.5px; color: #cfe0e6; background: var(--glass-2); border-radius: 11px; padding: 9px 12px; margin-bottom: 9px; line-height: 1.6; }
 .sc-discover b { color: #ffe6a8; }
 
-/* メーター */
-.sc-meters { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.sc-meter { display: flex; align-items: center; gap: 9px; }
+/* ── 交渉の舞台（竜が主役・遠征先の景色・しぐさ吹き出し） ── */
+.sc-stage { position: relative; border-radius: 16px; overflow: hidden; min-height: 240px; margin-bottom: 9px;
+  background: linear-gradient(180deg, #1c2a30, #101a1f); display: flex; align-items: flex-end; justify-content: center; }
+.sc-stage-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+.sc-stage-vig { position: absolute; inset: 0; background:
+  radial-gradient(120% 90% at 50% 62%, transparent 40%, rgba(8,12,14,.55) 100%),
+  linear-gradient(180deg, rgba(8,12,14,.35), transparent 30%, transparent 62%, rgba(8,12,14,.6)); }
+.sc-meet-tag { position: absolute; left: 10px; top: 10px; z-index: 3; background: rgba(8,12,14,.62);
+  border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 5px 10px; backdrop-filter: blur(3px); }
+.sc-meet-tag b { display: block; font-size: 14px; color: #fff4e0; }
+.sc-meet-tag small { font-size: 10px; color: #cdd8dd; }
+.sc-drg-wrap { position: relative; z-index: 2; margin-bottom: 8px; animation: scBreathe 2.8s ease-in-out infinite; }
+.sc-drg { height: 132px; image-rendering: pixelated; opacity: 0; transition: opacity .3s;
+  filter: drop-shadow(0 0 12px var(--dc, #caa24a)) drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
+.sc-drg.on { opacity: 1; }
+.sc-reveal .sc-drg.on { animation: scReveal .7s ease both; }
+@keyframes scBreathe { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+@keyframes scReveal { from { filter: brightness(0) drop-shadow(0 0 0 transparent); transform: translateY(10px); } }
+.sc-hit-great { animation: scHitGreat .65s cubic-bezier(.2,1.5,.4,1) both !important; }
+.sc-hit-good { animation: scHitGood .5s ease both !important; }
+.sc-hit-bad { animation: scHitBad .5s ease both !important; }
+.sc-hit-neutral { animation: scHitNeutral .5s ease both !important; }
+@keyframes scHitGreat { 0% { transform: translateY(0) } 35% { transform: translateY(-22px) scale(1.06) } 70% { transform: translateY(0) } 85% { transform: translateY(-8px) } 100% { transform: translateY(0) } }
+@keyframes scHitGood { 0% { transform: rotate(0) } 30% { transform: rotate(-4deg) } 60% { transform: rotate(3deg) } 100% { transform: rotate(0) } }
+@keyframes scHitBad { 0% { transform: translateX(0) } 20% { transform: translateX(-10px) } 45% { transform: translateX(8px) } 70% { transform: translateX(-5px) } 100% { transform: translateX(0) } }
+@keyframes scHitNeutral { 0% { transform: rotate(0) } 40% { transform: rotate(4deg) } 100% { transform: rotate(0) } }
+.sc-bubble { position: relative; z-index: 3; margin: 0 10px 10px; align-self: stretch;
+  background: rgba(12,18,22,.78); border: 1px solid rgba(255,255,255,.14); border-radius: 13px;
+  padding: 10px 12px; text-align: center; backdrop-filter: blur(4px); }
+.sc-bubble::before { content: ""; position: absolute; top: -7px; left: 50%; margin-left: -7px;
+  border: 7px solid transparent; border-bottom-color: rgba(255,255,255,.14); border-top: 0; }
+.sc-bubble-tx { font-size: 14.5px; line-height: 1.65; color: #f3ece0; font-weight: 700; }
+.sc-bubble-hint { margin-top: 5px; font-size: 11.5px; color: #9fb0b8; font-style: italic; }
+.sc-bubble-read { margin-top: 6px; font-size: 12.5px; color: #ffe6a8; }
+.sc-bubble-read b { color: #fff; font-size: 13.5px; }
+.sc-nearwin { text-align: center; font-size: 12px; font-weight: 800; color: #ffd76a; margin: -3px 0 8px;
+  animation: scNearwin 1.1s ease-in-out infinite; }
+@keyframes scNearwin { 0%,100% { opacity: .75 } 50% { opacity: 1 } }
+
+/* メーター（太ゲージ＋成立/逃走マーカー＋デルタ＋大詰めパルス） */
+.sc-meters { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+.sc-meter { display: flex; align-items: center; gap: 9px; position: relative; }
 .sc-meter-l { font-size: 11.5px; font-weight: 800; color: #cfe0e6; flex: 0 0 64px; }
-.sc-meter-t { flex: 1 1 auto; height: 11px; border-radius: 999px; background: rgba(0,0,0,.28); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.35); }
-.sc-meter-t i { display: block; height: 100%; border-radius: 999px; transition: width .35s cubic-bezier(.4,1.3,.5,1); }
+.sc-meter-t { flex: 1 1 auto; height: 15px; border-radius: 999px; background: rgba(0,0,0,.32);
+  overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,.4); position: relative; }
+.sc-meter-t i { display: block; height: 100%; border-radius: 999px; transition: width .45s cubic-bezier(.4,1.3,.5,1); }
+.sc-meter-goal { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 9px;
+  font-weight: 800; font-style: normal; color: rgba(255,255,255,.55); letter-spacing: .08em; pointer-events: none; }
 .sc-trust .sc-meter-t i { background: linear-gradient(90deg,#5fc88a,#9be6b0); }
 .sc-wary .sc-meter-t i { background: linear-gradient(90deg,#e0a24a,#e2604a); }
+.sc-meter--pulse .sc-meter-t { box-shadow: inset 0 1px 3px rgba(0,0,0,.4), 0 0 12px rgba(120,230,160,.45); }
+.sc-meter-delta { font-size: 12px; font-weight: 900; flex: 0 0 auto; min-width: 30px; text-align: right;
+  animation: scDelta 1s ease both; }
+.sc-meter-delta.up { color: #9be6b0; } .sc-meter-delta.down { color: #ffb27a; }
+.sc-trust .sc-meter-delta.down { color: #ff8d8d; } .sc-wary .sc-meter-delta.down { color: #9be6b0; }
+@keyframes scDelta { 0% { opacity: 0; transform: translateY(6px) } 25% { opacity: 1; transform: translateY(0) } 80% { opacity: 1 } 100% { opacity: .55 } }
+@media (prefers-reduced-motion: reduce) {
+  .sc-drg-wrap, .sc-reveal .sc-drg.on, .sc-hit-great, .sc-hit-good, .sc-hit-bad, .sc-hit-neutral, .sc-nearwin { animation: none !important; }
+}
 
 /* しぐさ表示 */
 .sc-gesture { background: linear-gradient(180deg, rgba(40,56,64,.55), rgba(24,36,42,.55)); border: 1px solid var(--glass-border);
