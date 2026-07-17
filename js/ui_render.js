@@ -140,7 +140,7 @@ function renderTitle() {
     <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp?v=orig1", "") : ""}</div>
     <div class="title-inner">
       <div class="title-head">
-        <h1 class="title-logo"><span class="tl-main">聖龍爆走録</span> <span class="tl-mimi">ミミ</span></h1>
+        <h1 class="title-logo title-logo--dri"><span class="tl-mimi">ミミの</span><span class="tl-main">ドラゴンレース<br>アイランド</span></h1>
         <div class="title-novel">転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件</div>
         <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
       </div>
@@ -1017,7 +1017,7 @@ function renderSettings() {
     app.appendChild(pgRow);
   }
 
-  app.appendChild(el("div", "set-ver", "聖龍爆走録ミミ"));
+  app.appendChild(el("div", "set-ver", "ミミのドラゴンレースアイランド"));
 
   const actions = el("div", "actions");
   const back = el("button", "secondary", "← ホームへ戻る"); back.onclick = () => renderHome();
@@ -3621,14 +3621,14 @@ const GAME_SHARE_URL = "";  // 公開URLが決まったらここに入れる
 
 function buildGameShareText() {
   const lines = [
-    `【聖龍爆走録ミミ】`,
+    `【ミミのドラゴンレースアイランド】`,
     `転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件`,
     ``,
     `市場のオッズと真の実力のズレを読む、ファンタジー公営龍レース予想カジノ。`,
     `8竜・3賭式（単竜／複竜／ワイド竜）・5レース。`,
     `1番人気が強いとは限らない。読めば勝てる、読まなきゃ負ける。`,
     ``,
-    `#聖龍爆走録ミミ #ぱほぱほ`
+    `#ミミのドラゴンレースアイランド #ぱほぱほ`
   ];
   if (GAME_SHARE_URL) lines.push("", GAME_SHARE_URL);
   return lines.join("\n");
@@ -3636,7 +3636,7 @@ function buildGameShareText() {
 
 async function shareGameInfo() {
   const text = buildGameShareText();
-  const payload = { title: "聖龍爆走録ミミ", text };
+  const payload = { title: "ミミのドラゴンレースアイランド", text };
   if (GAME_SHARE_URL) payload.url = GAME_SHARE_URL;
   if (navigator.share) {
     try {
