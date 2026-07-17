@@ -502,5 +502,23 @@ registerEvent({
   ]
 });
 
+// ===== ★G8（NARRATIVE_DESIGN）: クリア後＝好敵手の再来（ファンレター l_rival の伏線回収）=====
+// 終章クリア（edFlag）後の日常レースに、手紙の主が静かに現れる。顔なし（narrator経由）＝
+// 新キャスト追加なしで cast/gate 契約を守る。表示専用＝予想対決は雰囲気のみ・数値不変。
+registerEvent({
+  id: "g8_rival_return",
+  hook: "afterRaceSelect",
+  condition: { once: true,
+    test: () => !!(state.player && state.player.epilogue && state.player.epilogue.edFlag) },
+  priority: 7,
+  actions: [
+    { type: "dialogue", speaker: "narrator", text: "レース場の出口。予想板の前に、旅装の男がひとり。……ミミの顔を見て、ふっと笑った。" },
+    { type: "dialogue", speaker: "narrator", text: "「手紙は、読んだか。——次のレース、俺は自分の目で選ぶ。お前もそうしろ」　それだけ言って、男は窓口へ歩いていく。" },
+    { type: "dialogue", speaker: "mimi", expr: "panic", text: "え……あの人、まさか、手紙の……！" },
+    { type: "dialogue", speaker: "mimi", expr: "default", text: "……受けて立ちます。わたしは、わたしの目で選ぶだけ！" },
+    { type: "dialogue", speaker: "narrator", text: "好敵手との静かな再戦が、日常のレースに混ざっていく。——島の賭場は、今日も平常運転。" }
+  ]
+});
+
 // ===== EXTENSION POINT — §10 Phase 5+: Full story arcs go here =====
 // Append additional dialogue/story beats for future phases below.

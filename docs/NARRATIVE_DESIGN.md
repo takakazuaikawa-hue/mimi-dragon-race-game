@@ -229,6 +229,19 @@
 
 **横断ルール**: 全ウェーブ表示専用（race-math-immutable厳守）／新規コンテンツは必ず門番（advisorMet/castNameSafe）を通す fail-closed／各ウェーブ末に「機能の核」を実機で実証してから完了宣言（例: W2=表情が実際に切り替わる動画確認、W5=決戦通しプレイ）。
 
+### 実装状況（2026-07-17 更新・編集場所つき）
+- **W1/W2 完了**（8a1445d）: 整合A〜J＋声ブレ4件＋D1/D2/D3/D16＋演出エンジン（fx/se/bg/{w:}・表情登録）。
+- **W4 到着VN 完了**（840e010）: KM_GUIDE＋_kmArrivalScript（ui_konron_map.js）。残: スポット↔MEALS対応表・content空26件・時間帯・フォトミッション3択。
+- **W5 完了**（4988a8a）: scoutedRoster（scout_engine.js）／集結VN G1＋成立ひとこと G2（ui_scout.js）／走馬灯個人化＋見参カットイン＋closing実績拾い=D13/D14（epilogue_engine.js）。エキシビション走のみ未実装（任意）。
+- **W3 主要部 完了**（b5e2f96/b9be0cf/本コミット）:
+  - DLG.CHAPTER全6章書き直し＋G11衣装24着（data_dialogue.js）
+  - D5=storyVoiceLine 3変奏（data_assets.js）／D4=rank intro書き分け（event_registry.js）／D6=神眼集約（ui_render.js celestia-box）
+  - G5=連敗の夜・500万・行政の横槍（event_registry.js 末尾・missRunはstate.js checkEconomyMilestones）
+  - G6=マクラ実況レイヤ makuraLayer（commentary_engine.js）／G7=maybeStrangerVista（epilogue_engine.js→ui_konron_map結線）
+  - G9=空腹ゲートのサケ（ui_render.js）／G10=配信実演ツアー（ui_render.js buyPhoneAndGoLive）／G8=好敵手再来（event_registry.js）
+  - D7/D8/D12=手紙3通を別視点に改稿（sns.js FAN_LETTERS）／1ティック1VN予算（event_hooks.js runEventHooks）
+  - 残: D9〜D11の完全時差化（+1レース/+1日）※1ティック1VN予算で同時多重は既に防止／D15時差解禁／小イベント・consult全文の声表スイープ
+
 ---
 
 # 付録A: ストーリーテリングのリサーチ全文
