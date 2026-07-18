@@ -187,6 +187,18 @@ const RPG_MONS = {
 const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid", "luxe", "hula", "madam", "influencer"];
 const RPG_MONSTERS_MINOR = ["slime", "mannequin", "escalator"];
 const RPG_KUNLUN = ["kowako", "shisa", "kumonosei"];   // 崑崙島の固有モンスター（図鑑・タワー出現に合流）
+
+// ★敵の立ち絵（Codex納品 CODEX_ORDER_SCOUT_MALL §C／images/rpg/*.webp・512×512透過）。
+//   意匠が確実に一致するものだけ結線し、それ以外は従来の絵文字のまま＝取り違えを作らない。
+//   新しい絵が届いたら1行足すだけ（キー＝RPG_ENEMIESのid）。
+const RPG_ENEMY_IMG = {
+  slime:     "en_bagslime",    // マヨイスライム＝袋スライム
+  mannequin: "en_mannequin",   // うごくマネキン
+  escalator: "en_sale_golem",  // 暴走エスカレーター＝機械仕掛けの巨体
+  baku:      "en_cartrat",     // 爆買いツアー客＝カート山盛り
+  madam:     "boss_maison",    // デパ地下マダム
+  boss1:     "boss_donryu"     // 観覧車ゴーレム＝フロアボスの貫禄
+};
 // 🔊 フロア別の環境音（さざ波／ざわめき／上品なベル）。索引＝フロア番号。
 const RPG_AMB = ["amb_wave", "amb_wave", "amb_crowd", "amb_wave", "amb_chime", "amb_chime", "amb_crowd", "amb_wave"];
 function rpgAmbient(force) {
@@ -2292,8 +2304,13 @@ function rpgRenderBattle(app) {
   const tg0 = b.enemies[tgi];
   if (tg0) {
     const seen = d.codex[tg0.id], wk = seen && seen.weak.length ? seen.weak.map(x => RPG_ELEM_IC[x]).join("") : "？";
-    const line = el("div", "foe-line");
-    line.innerHTML = `🎯 ${tg0.ref.ic} <b>${tg0.ref.n}</b> <span class="fl-wk">弱点 ${wk}</span> <span class="fl-hp">HP ${Math.max(0, tg0.hp)}/${tg0.maxhp}</span>`;
+    const line = el("div", "foe-line" + (RPG_ENEMY_IMG[tg0.id] ? " has-art" : ""));
+    // ★敵の顔つき（Codex納品 images/rpg/・未納品や未マッピングは絵文字のまま＝404で崩れない）
+    const art = RPG_ENEMY_IMG[tg0.id]
+      ? `<img class="fl-art" src="images/rpg/${RPG_ENEMY_IMG[tg0.id]}.webp" alt="" decoding="async"` +
+        ` onerror="this.replaceWith(document.createTextNode('${tg0.ref.ic}'))">`
+      : `${tg0.ref.ic}`;
+    line.innerHTML = `🎯 ${art} <b>${tg0.ref.n}</b> <span class="fl-wk">弱点 ${wk}</span> <span class="fl-hp">HP ${Math.max(0, tg0.hp)}/${tg0.maxhp}</span>`;
     foes.appendChild(line);
   }
   if (aliveList.length >= 2) {

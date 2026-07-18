@@ -5399,6 +5399,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sc-react { font-size: 13px; color: #d7e4e9; text-align: center; padding: 7px 10px; margin-bottom: 9px;
   background: rgba(255,230,168,.08); border-radius: 10px; line-height: 1.6; }
 
+/* モール大冒険：敵の立ち絵（Codex納品・未マッピングは絵文字のまま） */
+.foe-line .fl-art { width: 30px; height: 30px; object-fit: contain; vertical-align: -9px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.55)); }
+.foe-line.has-art { line-height: 1.35; }
+
 /* ===== SCOUT_REBORN §A 支度画面（けはい探し＋手土産） ===== */
 .sc-probe-hero { position: relative; border-radius: 16px; overflow: hidden; height: 132px; margin-bottom: 10px;
   background: linear-gradient(180deg,#1c2a30,#101a1f); display: flex; align-items: flex-end; }
