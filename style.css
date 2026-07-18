@@ -5452,6 +5452,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sc-app-memo { position: absolute; top: 6px; right: 7px; font-style: normal; font-size: 9px; font-weight: 900;
   color: #2a2013; background: #ffd76a; border-radius: 99px; padding: 1px 6px; }
 .sc-app { position: relative; }
+.sc-cat-ic { width: 20px; height: 20px; vertical-align: -4px; opacity: .95; }
 .sc-memo-new { font-size: 12px; color: #ffe6a8; text-align: center; padding: 6px 10px; margin-bottom: 8px;
   background: rgba(255,214,120,.12); border-radius: 10px; animation: scLoreIn .5s ease both; }
 .sc-extra--gift { border-color: rgba(255,215,106,.6) !important; color: #ffe6a8 !important;

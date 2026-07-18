@@ -306,8 +306,14 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
   const handWrap = el("div", "sc-hand");
   hand.forEach(a => {
     const known = memo.indexOf(a.cat) >= 0;
+    // カテゴリSVG（Codex納品 images/nav/cat_*.svg）→無ければ従来の絵文字へ自動フォールバック
+    const ck = (typeof SCOUT_CAT_ICON !== "undefined") ? SCOUT_CAT_ICON[a.cat] : null;
+    const icHtml = ck
+      ? `<img class="sc-cat-ic" src="images/nav/cat_${ck}.svg" alt=""` +
+        ` onerror="this.replaceWith(document.createTextNode('${a.ic}'))">`
+      : a.ic;
     const b = el("button", "sc-app" + (known ? " known" : ""),
-      `<span class="sc-app-ic">${a.ic}</span><b>${a.name}</b><small>${a.fl}</small>` +
+      `<span class="sc-app-ic">${icHtml}</span><b>${a.name}</b><small>${a.fl}</small>` +
       (known ? `<i class="sc-app-memo">前回◎</i>` : ""));
     b.style.borderLeftColor = (SCOUT_CAT_COLOR[a.cat] || "#caa24a");
     b.onclick = () => _scoutAct(a.id);
