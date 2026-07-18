@@ -75,6 +75,14 @@ function rpgRenderHub(app) {
   cta.innerHTML = `<span class="scmr-cta-k">🏬</span><span class="scmr-cta-tx"><b>${d.cleared ? "もう一度 冒険する" : "冒険にでかける"}</b><small>1Fから屋上まで・観光客や魔物と戦って衣装GET</small></span><span class="scmr-cta-go">▶</span>`;
   cta.onclick = () => rpgStartRun();
   scm.appendChild(cta);
+  // 🛗 エクスプレス＝3ドア択の短距離ラン（既存の探索ランと併存・別モード／js/mall_express.js）
+  if (typeof rpgStartExpress === "function") {
+    const ex = el("button", "scmr-cta express");
+    ex.innerHTML = `<span class="scmr-cta-k">🛗</span><span class="scmr-cta-tx"><b>エクスプレス</b>` +
+      `<small>6フロア・3つの扉から選ぶ短い冒険。店長を倒して「買い物術」を重ねる</small></span><span class="scmr-cta-go">▶</span>`;
+    ex.onclick = () => rpgStartExpress();
+    scm.appendChild(ex);
+  }
   if (d.cleared) {
     const tw = el("button", "scmr-cta tower");
     tw.innerHTML = `<span class="scmr-cta-k">🌟</span><span class="scmr-cta-tx"><b>エンドレスタワー</b><small>${(rec.depth || 0) ? `最深 ${rec.depth}層 を更新しよう` : "どこまで登れる？"}</small></span><span class="scmr-cta-go">▶</span>`;
