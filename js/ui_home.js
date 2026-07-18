@@ -205,19 +205,24 @@ function renderHome() {
     else im.style.objectPosition = (focusUsed * 100).toFixed(0) + "% 50%";   // 横位置の再フレーミング（画面幅が狭くても主役を切らない）
     let i = 0;
     im.onerror = () => { i++; if (i < chain.length) im.src = chain[i]; };
-    // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±6vh内でだけ動かす）
+    // 接地キャリブレーション：画像の床ラインをミミの足元へ（縦のcover余白=±6%内でだけ動かす）
+    // ★座標系は「枠(#app)基準」。旧実装は window.innerWidth/Height 基準だったため、PCの固定縦枠
+    //   （ウィンドウは横長・枠は453px）では常に「横長クロップ」扱いで早期returnし、接地合わせが
+    //   一度も走らず部屋ティアによって足元が浮いた／めり込んだ（ユーザー報告「キャラが浮いてる」）。
     function calibrate() {
       if (set.portrait) { im.style.top = ""; return; }   // 縦構図はcover任せ＝接地はSVGのfloor(約78%)で設計
       try {
-        const vh = window.innerHeight, vw = window.innerWidth;
-        const boxH = vh * 1.12, boxW = vw * 1.12;
+        const frame = document.getElementById("app");
+        const fb = frame ? frame.getBoundingClientRect()
+                         : { top: 0, width: window.innerWidth, height: window.innerHeight };
+        const boxH = fb.height * 1.12, boxW = fb.width * 1.12;   // .hl-bg-img = 枠の112%
         if (!im.naturalWidth) return;
         if ((boxW / boxH) >= (im.naturalWidth / im.naturalHeight)) { im.style.top = ""; return; }   // 横長クロップ時は既定のまま
         const mimiEl = document.querySelector(".hl-mimi");
         if (!mimiEl) return;
-        const feet = mimiEl.getBoundingClientRect().bottom;
+        const feet = mimiEl.getBoundingClientRect().bottom - fb.top;   // 枠内Y座標
         let top = feet - floorUsed * boxH;                    // 床ライン(floorUsed)が足元に来るtop(px)
-        top = Math.max(-0.12 * vh, Math.min(0, top));         // 画像が画面から剥がれない範囲にクランプ
+        top = Math.max(-0.12 * fb.height, Math.min(0, top));  // 画像が枠から剥がれない範囲にクランプ
         im.style.top = top + "px";
       } catch (e) {}
     }
