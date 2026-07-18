@@ -4029,6 +4029,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   position: relative; z-index: 5;   /* ミミ(z1)より前面＝足元を下げてもメニュー(レース+ナビ)が脚に重なって隠す */
   background: rgba(13,17,23,.82); border: 1px solid var(--gold-line); border-radius: 18px;
   backdrop-filter: blur(7px); box-shadow: 0 -10px 32px -18px rgba(0,0,0,.9); }
+/* ★スマホ実機：ドック下の不自然な余白を解消（ユーザー報告）。原因＝#appの下パディング16px＋
+   内側.tik-barのセーフエリア加算(6924行)の二重構造。12pxグリッドの浮きドックデザインは保ったまま、
+   ①外側の下余白を6pxに詰め ②セーフエリア吸収は#app側に一本化（二重取り防止）。ホームのスマホのみ。 */
+@media (max-width: 539px) {
+  body.home-mode #app { padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
+  .hl-dock .tik-bar { padding-bottom: 9px; }
+}
 /* 進行で出入りする可変要素（コメント/いいね・無心・最終決戦）の独立フロート層（stageと固定dockの間）。
    出入りしても固定ドック（レース+ナビ）を圧縮しない＝stage(flex:1)が伸縮を吸収。js/ui_home.js renderHome */
 .hl-actionbar { flex: 0 0 auto; display: flex; flex-direction: column; gap: 7px; position: relative; z-index: 3; }
