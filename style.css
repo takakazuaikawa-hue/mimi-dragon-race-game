@@ -4034,7 +4034,6 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    ①外側の下余白を6pxに詰め ②セーフエリア吸収は#app側に一本化（二重取り防止）。ホームのスマホのみ。 */
 @media (max-width: 539px) {
   body.home-mode #app { padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
-  .hl-dock .tik-bar { padding-bottom: 9px; }
 }
 /* 進行で出入りする可変要素（コメント/いいね・無心・最終決戦）の独立フロート層（stageと固定dockの間）。
    出入りしても固定ドック（レース+ナビ）を圧縮しない＝stage(flex:1)が伸縮を吸収。js/ui_home.js renderHome */
@@ -6461,7 +6460,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 }
 
 /* ===== H4：タブのスリム化＋ミミ縮小（「ボタンが大きくて不格好/背景が見えない」対応） ===== */
-.tik-bar { gap: 3px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); border-radius: 15px; }
+.tik-bar { gap: 3px; padding: 6px 8px 6px; border-radius: 15px; }   /* env吸収は#app側に一本化（2026-07-18） */
 .tik-tab { padding: 5px 2px 4px; gap: 1px; }
 .tik-tab .ic { font-size: 17px; }
 .tik-tab .lb { font-size: 8.5px; letter-spacing: .02em; }
@@ -6920,7 +6919,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    下部メニュー＝案A「静かなガラスドック」確定版（設計提案→ユーザー選択・docs/FOOTER_DESIGN.md）。
    ゲームで最も触る面。原則：タップ≥48px／高さを規定／アイコン大きめ／ラベル常時／押下で沈む。
    ════════════════════════════════════════════════════════════════════ */
-.hl-dock .tik-bar { padding: 7px 8px calc(9px + env(safe-area-inset-bottom, 0px)); gap: 4px;
+/* ★セーフエリアはここでは取らない（2026-07-18・ユーザー実機報告の根治）：浮きカード型ドックの内側で
+   env()を足すと、ホーム画面追加(フルスクリーン)のiPhoneでアイコン下に9+34=43pxの深い余白が出る。
+   env吸収は #app 側(4035行・max(6px,env))に一本化＝カードは常にインジケータの上に浮く。 */
+.hl-dock .tik-bar { padding: 7px 8px 9px; gap: 4px;
   background: rgba(14,16,30,.62); border: 1px solid rgba(255,255,255,.10); border-radius: 18px;
   -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px);
   box-shadow: 0 -6px 22px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.06); }
@@ -6948,7 +6950,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ── 下メニューの高さ圧縮（無駄な余白/最小高さを詰める・ユーザー指示）。タップ領域は≥44pxを維持・CTAは据え置き。 ── */
 .hl-dock { padding: 5px 8px 6px; gap: 4px; }
-.hl-dock .tik-bar { padding: 5px 8px calc(7px + env(safe-area-inset-bottom, 0px)); margin-top: 0; }
+/* ★最後勝ちの本命行（ユーザー実機の「アイコン下の深い余白」＝ここのenvが 7+34px を金枠の内側に
+   入れていた）。envはここでは取らない＝#app側(max(6px,env))に一本化。 */
+.hl-dock .tik-bar { padding: 5px 8px 7px; margin-top: 0; }
 .hl-dock .tik-tab { min-height: 54px; padding: 4px 2px; }
 
 /* NAV_ICON_SPEC: 高級リゾート案内70% / ゲームUI艶30%。小型タブでも埋もれない表示サイズへ。 */
