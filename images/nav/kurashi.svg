@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="暮らし">
+  <defs><linearGradient id="a" x1="50" y1="35" x2="203" y2="220" gradientUnits="userSpaceOnUse"><stop stop-color="#fff9d6"/><stop offset=".48" stop-color="#e6bd63"/><stop offset="1" stop-color="#a65c39"/></linearGradient><filter id="s" x="-15%" y="-15%" width="130%" height="135%"><feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#020713" flood-opacity=".72"/></filter></defs>
+  <g fill="url(#a)" stroke="#0d1728" stroke-width="9" stroke-linejoin="round" paint-order="stroke fill" filter="url(#s)">
+    <path d="M216 116.69V216h-64v-64h-48v64H40v-99.31l82.34-82.35a8 8 0 0 1 11.32 0Z" fill="#69e4ef" opacity=".78"/>
+    <path d="M240 208h-16v-72l2.34 2.34A8 8 0 0 0 237.66 127l-98.35-98.32a16 16 0 0 0-22.62 0L18.34 127a8 8 0 0 0 11.32 11.31L32 136v72H16a8 8 0 0 0 0 16h224a8 8 0 0 0 0-16M48 120l80-80l80 80v88h-48v-56a8 8 0 0 0-8-8h-48a8 8 0 0 0-8 8v56H48Zm96 88h-32v-48h32Z"/>
+  </g>
+</svg>

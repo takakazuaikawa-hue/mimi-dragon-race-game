@@ -212,17 +212,17 @@ function renderHome() {
     function calibrate() {
       if (set.portrait) { im.style.top = ""; return; }   // 縦構図はcover任せ＝接地はSVGのfloor(約78%)で設計
       try {
-        const frame = document.getElementById("app");
-        const fb = frame ? frame.getBoundingClientRect()
-                         : { top: 0, width: window.innerWidth, height: window.innerHeight };
-        const boxH = fb.height * 1.12, boxW = fb.width * 1.12;   // .hl-bg-img = 枠の112%
-        if (!im.naturalWidth) return;
+        // ★座標系＝背景画像の入れ物(.hl-bg)そのもの。im の top はこの箱基準なので、
+        //   window基準(旧)や#app基準(暫定)のような座標系ズレが原理的に起きない（PC枠/スマホ共通）。
+        const box = im.parentElement.getBoundingClientRect();
+        const boxH = box.height * 1.12, boxW = box.width * 1.12;   // .hl-bg-img = 箱の112%
+        if (!im.naturalWidth || !box.height) return;
         if ((boxW / boxH) >= (im.naturalWidth / im.naturalHeight)) { im.style.top = ""; return; }   // 横長クロップ時は既定のまま
         const mimiEl = document.querySelector(".hl-mimi");
         if (!mimiEl) return;
-        const feet = mimiEl.getBoundingClientRect().bottom - fb.top;   // 枠内Y座標
-        let top = feet - floorUsed * boxH;                    // 床ライン(floorUsed)が足元に来るtop(px)
-        top = Math.max(-0.12 * fb.height, Math.min(0, top));  // 画像が枠から剥がれない範囲にクランプ
+        const feet = mimiEl.getBoundingClientRect().bottom - box.top;   // 箱内Y座標
+        let top = feet - floorUsed * boxH;                     // 床ライン(floorUsed)が足元に来るtop(px)
+        top = Math.max(-0.12 * box.height, Math.min(0, top));  // 画像が箱から剥がれない範囲にクランプ
         im.style.top = top + "px";
       } catch (e) {}
     }
@@ -239,14 +239,27 @@ function renderHome() {
   // ★基準は「実際の枠(#app)の内寸」＝PCの固定9:16フレームでは innerHeight(全ビューポート)より小さい。
   //   旧実装は window.innerHeight-30 で組んでいたため PC枠(#app=836)より高い880になり、はみ出して
   //   スクロールバーが出ていた（ユーザー指摘）。#app の client 高さ−上下padding に合わせる（枠にぴたり収まる）。
+  // ★スマホ実測バグの根治（2026-07-18）：#app はスマホでは高さ指定が無く「中身の高さ」になる。
+  //   それを基準に .hl の高さを決めると自己参照になり、初回描画のたまたまの値（実測555px）で
+  //   固定→UIが上に圧縮・下半分が床だけ・ミミが浮く（ユーザー報告）。
+  //   → PC枠(min-width:540 の 9:16 端末化)のときだけ #app 内寸を使い、スマホは実ビューポート基準。
   function _fitHl() {
     var frame = document.getElementById("app");
+    var framed = !!(window.matchMedia && window.matchMedia("(min-width: 540px)").matches);
     var h;
-    if (frame && frame.clientHeight) {
+    if (framed && frame && frame.clientHeight) {
       var fcs = getComputedStyle(frame);
       h = frame.clientHeight - (parseFloat(fcs.paddingTop) || 0) - (parseFloat(fcs.paddingBottom) || 0);
     } else {
-      h = window.innerHeight - 30;   // フォールバック（枠が取れない場合＝旧挙動）
+      h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+      if (frame) {
+        var fr = frame.getBoundingClientRect();
+        h -= Math.max(0, fr.top);   // ヘッダー等で枠が下がっている分
+        var fcs2 = getComputedStyle(frame);
+        h -= (parseFloat(fcs2.paddingTop) || 0) + (parseFloat(fcs2.paddingBottom) || 0);
+      } else {
+        h -= 30;
+      }
     }
     wrap.style.minHeight = Math.max(420, h) + "px";
   }
