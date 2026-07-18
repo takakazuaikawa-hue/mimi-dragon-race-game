@@ -5328,8 +5328,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sc-discover b { color: #ffe6a8; }
 
 /* ── 交渉の舞台（竜が主役・遠征先の景色・しぐさ吹き出し） ── */
-.sc-stage { position: relative; border-radius: 16px; overflow: hidden; min-height: 240px; margin-bottom: 9px;
-  background: linear-gradient(180deg, #1c2a30, #101a1f); display: flex; align-items: flex-end; justify-content: center; }
+/* 竜が上・しぐさ吹き出しが下（横並びだと375pxで吹き出しが潰れる＝実機で確認） */
+.sc-stage { position: relative; border-radius: 16px; overflow: hidden; min-height: 260px; margin-bottom: 9px;
+  background: linear-gradient(180deg, #1c2a30, #101a1f);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
 .sc-stage-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
 .sc-stage-vig { position: absolute; inset: 0; background:
   radial-gradient(120% 90% at 50% 62%, transparent 40%, rgba(8,12,14,.55) 100%),
@@ -5338,7 +5340,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 5px 10px; backdrop-filter: blur(3px); }
 .sc-meet-tag b { display: block; font-size: 14px; color: #fff4e0; }
 .sc-meet-tag small { font-size: 10px; color: #cdd8dd; }
-.sc-drg-wrap { position: relative; z-index: 2; margin-bottom: 8px; animation: scBreathe 2.8s ease-in-out infinite; }
+.sc-drg-wrap { position: relative; z-index: 2; margin: auto auto 6px; animation: scBreathe 2.8s ease-in-out infinite; }
 .sc-drg { height: 132px; image-rendering: pixelated; opacity: 0; transition: opacity .3s;
   filter: drop-shadow(0 0 12px var(--dc, #caa24a)) drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
 .sc-drg.on { opacity: 1; }
@@ -5353,7 +5355,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @keyframes scHitGood { 0% { transform: rotate(0) } 30% { transform: rotate(-4deg) } 60% { transform: rotate(3deg) } 100% { transform: rotate(0) } }
 @keyframes scHitBad { 0% { transform: translateX(0) } 20% { transform: translateX(-10px) } 45% { transform: translateX(8px) } 70% { transform: translateX(-5px) } 100% { transform: translateX(0) } }
 @keyframes scHitNeutral { 0% { transform: rotate(0) } 40% { transform: rotate(4deg) } 100% { transform: rotate(0) } }
-.sc-bubble { position: relative; z-index: 3; margin: 0 10px 10px; align-self: stretch;
+.sc-bubble { position: relative; z-index: 3; margin: 0 10px 10px; align-self: stretch; flex: none;
   background: rgba(12,18,22,.78); border: 1px solid rgba(255,255,255,.14); border-radius: 13px;
   padding: 10px 12px; text-align: center; backdrop-filter: blur(4px); }
 .sc-bubble::before { content: ""; position: absolute; top: -7px; left: 50%; margin-left: -7px;
@@ -5396,6 +5398,82 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sc-gesture-read b { color: #fff; font-size: 14px; }
 .sc-react { font-size: 13px; color: #d7e4e9; text-align: center; padding: 7px 10px; margin-bottom: 9px;
   background: rgba(255,230,168,.08); border-radius: 10px; line-height: 1.6; }
+
+/* ===== SCOUT_REBORN §A 支度画面（けはい探し＋手土産） ===== */
+.sc-probe-hero { position: relative; border-radius: 16px; overflow: hidden; height: 132px; margin-bottom: 10px;
+  background: linear-gradient(180deg,#1c2a30,#101a1f); display: flex; align-items: flex-end; }
+.sc-probe-hero .sc-stage-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+.sc-probe-t { position: relative; z-index: 2; padding: 10px 12px; }
+.sc-probe-t b { display: block; font-size: 17px; color: #fff4e0; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+.sc-probe-t small { font-size: 11.5px; color: #d5e0e6; text-shadow: 0 1px 6px rgba(0,0,0,.85); }
+.sc-sec { font-size: 11.5px; font-weight: 800; color: #9fb0b8; letter-spacing: .04em; margin: 12px 2px 6px; }
+.sc-gift-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.sc-gift { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+  min-width: 84px; padding: 8px 10px; border-radius: 12px; background: var(--glass-2);
+  border: 1px solid var(--glass-border); color: #eaf1f4; }
+.sc-gift.on { border-color: #ffd76a; background: rgba(255,210,110,.14); box-shadow: 0 0 12px rgba(255,200,90,.2); }
+.sc-gift .sg-ic { font-size: 20px; }
+.sc-gift .sg-nm { font-size: 11px; font-weight: 700; white-space: nowrap; }
+.sc-gift small { font-size: 10px; color: #d9b06a; }
+.sc-probe-list { display: flex; flex-direction: column; gap: 7px; }
+.sc-probe { display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer; width: 100%;
+  padding: 11px 12px; border-radius: 13px; background: var(--glass-2); border: 1px solid var(--glass-border);
+  color: #eaf1f4; transition: transform .07s, box-shadow .14s; }
+.sc-probe:active { transform: scale(.985); }
+.sc-probe.poor { opacity: .5; }
+.sc-probe .sp-ic { font-size: 24px; flex: none; }
+.sc-probe .sp-bd { flex: 1 1 auto; min-width: 0; }
+.sc-probe .sp-bd b { display: block; font-size: 14px; color: #fff4e0; }
+.sc-probe .sp-bd small { font-size: 11px; color: #a7b6bd; }
+.sc-probe .sp-tag { flex: none; font-size: 10px; font-weight: 800; color: #cfe0e6;
+  background: rgba(255,255,255,.07); border-radius: 99px; padding: 3px 8px; white-space: nowrap; }
+.sc-cost { margin-top: 10px; font-size: 12px; color: #cfe0e6; text-align: center; }
+.sc-cost b { color: #ffd98a; }
+.sc-poor-note { display: block; margin-top: 4px; color: #ff9d9d; font-weight: 800; }
+.sc-probe-log { font-size: 12.5px; color: #ffe6a8; background: rgba(255,214,120,.10);
+  border-radius: 10px; padding: 8px 11px; margin-bottom: 7px; line-height: 1.6; }
+.sc-find { font-size: 12px; color: #b9e6c8; background: rgba(120,220,160,.10);
+  border: 1px dashed rgba(120,220,160,.35); border-radius: 10px; padding: 7px 11px; margin-bottom: 8px; }
+
+/* §B 距離演出3段＝警戒が解けるほど竜が近づく */
+.sc-drg-wrap { transition: transform .5s cubic-bezier(.3,1,.4,1); }
+.sc-drg-wrap.sc-far  { transform: scale(.72) translateY(14px); filter: brightness(.72) saturate(.8); }
+.sc-drg-wrap.sc-mid  { transform: scale(.88) translateY(6px); }
+.sc-drg-wrap.sc-near { transform: scale(1.06); }
+/* §B 交渉メモ（学習の可視化） */
+.sc-memo { display: block; margin-top: 3px; font-size: 10.5px; font-weight: 700; color: #cbb890; }
+.sc-memo i { font-style: normal; font-weight: 900; }
+.sc-app.known { box-shadow: inset 0 0 0 1px rgba(255,215,106,.35); }
+.sc-app-memo { position: absolute; top: 6px; right: 7px; font-style: normal; font-size: 9px; font-weight: 900;
+  color: #2a2013; background: #ffd76a; border-radius: 99px; padding: 1px 6px; }
+.sc-app { position: relative; }
+.sc-memo-new { font-size: 12px; color: #ffe6a8; text-align: center; padding: 6px 10px; margin-bottom: 8px;
+  background: rgba(255,214,120,.12); border-radius: 10px; animation: scLoreIn .5s ease both; }
+.sc-extra--gift { border-color: rgba(255,215,106,.6) !important; color: #ffe6a8 !important;
+  background: rgba(255,200,90,.14) !important; font-weight: 800; }
+.sc-lose-read { margin: 8px 0; padding: 10px 12px; border-radius: 11px;
+  background: rgba(120,150,190,.12); border: 1px solid rgba(150,180,220,.3); }
+.sc-lose-read b { display: block; font-size: 13px; color: #cfe0ff; margin-bottom: 3px; }
+.sc-lose-read span { font-size: 11.5px; color: #b9c6d4; line-height: 1.6; }
+
+/* §C 成立の祝祭（駆け寄り＋紙吹雪・1.1秒で自動消滅） */
+.sc-winfx { position: fixed; inset: 0; z-index: 9500; pointer-events: none; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; }
+.scw-burst { position: absolute; width: 60vmin; height: 60vmin; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,220,130,.55), transparent 65%); animation: scwBurst .9s ease-out both; }
+.scw-drg { height: 150px; image-rendering: pixelated; opacity: 0;
+  filter: drop-shadow(0 0 18px rgba(255,210,120,.7)); animation: scwDash .95s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes scwBurst { 0% { transform: scale(.2); opacity: 0; } 35% { opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes scwDash { 0% { opacity: 0; transform: translateY(40px) scale(.55); }
+  45% { opacity: 1; transform: translateY(0) scale(1.12); } 75% { transform: scale(1); } 100% { opacity: 0; transform: scale(1.02); } }
+.scw-conf { position: absolute; inset: 0; }
+.scw-conf i { position: absolute; top: -6%; left: var(--x); width: 7px; height: 11px; background: var(--c);
+  border-radius: 2px; opacity: 0; animation: scwConf 1.05s ease-in both; animation-delay: calc(var(--i) * .025s); }
+@keyframes scwConf { 0% { opacity: 0; transform: translateY(0) rotate(0); }
+  15% { opacity: 1; } 100% { opacity: 0; transform: translateY(105vh) rotate(540deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .sc-drg-wrap, .scw-burst, .scw-drg, .scw-conf i, .sc-memo-new { animation: none !important; transition: none !important; }
+}
 
 /* 📜 伝承（スカウトの読み物・図鑑コレクション） */
 .sc-lore { border-radius: 12px; padding: 11px 13px; margin-bottom: 10px;

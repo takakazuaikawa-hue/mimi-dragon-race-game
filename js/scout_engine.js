@@ -215,3 +215,55 @@ function scoutHand(sess, n) {
   if (typeof poroFound === "function" && poroFound()) extras.push(scoutApproach("interpret"));
   return { hand: hand.filter(Boolean), extras: extras.filter(Boolean) };
 }
+
+// ── 交渉メモ（学習・SCOUT_REBORN §B）───────────────────────────────────
+// 竜ごとに「効いた技カテゴリ」を貯める＝次に会った時の攻略情報。表示専用メタ。
+function scoutMemoGet(dragonId) {
+  try { const e = poroColEntry(dragonId); return (e && e.memo) || []; } catch (err) { return []; }
+}
+function scoutMemoAdd(dragonId, cat) {
+  try {
+    const e = poroColEntry(dragonId); if (!e || !cat) return false;
+    e.memo = e.memo || [];
+    if (e.memo.indexOf(cat) >= 0) return false;
+    e.memo.push(cat);
+    if (typeof saveGame === "function") saveGame();
+    return true;                                  // 新規記録＝UIで「メモした」演出
+  } catch (err) { return false; }
+}
+
+// ── 手土産（1回だけの強カード・SCOUT_REBORN §B）─────────────────────────
+// scoutResolve とは独立の関数＝既存の判定式には一切干渉しない。
+function scoutGift(sess, isFav) {
+  if (!sess || sess.status !== "go") return { outcome: "end" };
+  if (sess.usedGift) return { outcome: "spent" };
+  sess.usedGift = true;
+  const dt = isFav ? 34 : 16, dw = isFav ? -30 : -14;
+  sess.trust = Math.max(0, Math.min(SCOUT_TRUST_GOAL, sess.trust + dt));
+  sess.wary = Math.max(0, Math.min(120, sess.wary + dw));
+  sess.round++;
+  sess.history.push({ approach: "gift", mood: sess.mood, outcome: isFav ? "great" : "good" });
+  if (sess.trust >= SCOUT_TRUST_GOAL) sess.status = "win";
+  else scoutRollGesture(sess, false);
+  return { outcome: isFav ? "great" : "good", dt, dw, status: sess.status, isFav };
+}
+
+// ── 探索の適用（SCOUT_REBORN §A）───────────────────────────────────────
+// probe に応じて「出会う竜」をずらし、初期警戒を補正したセッションを作る。
+// 竜の選択は従来どおり決定的（_scoutTrips＋完走数）＋probe.ofs。
+function scoutStartWithProbe(pool, locId, probe) {
+  const base = ((state.player._scoutTrips || 0) + (state.player.completedRaces || 0));
+  const idx = ((base + ((probe && probe.ofs) || 0)) % pool.length + pool.length) % pool.length;
+  const d = pool[idx];
+  const sess = createScoutSession(d.id, locId);
+  if (probe && probe.wary) sess.wary = Math.max(6, Math.min(90, sess.wary + probe.wary));
+  return { dragon: d, sess: sess };
+}
+// 小発見＝この地に棲む“別の未遭遇の竜”の名を知る（次に来る動機）。決定的。
+function scoutProbeFind(sess, pool, meetId, probe) {
+  if (!probe || !probe.find) return null;
+  if (_scoutRand(sess) >= probe.find) return null;
+  const others = pool.filter(d => d.id !== meetId);
+  if (!others.length) return null;
+  return _scoutPick(sess, others);
+}

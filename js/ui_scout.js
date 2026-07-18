@@ -84,7 +84,9 @@ function renderScout() {
   app.appendChild(actions);
 }
 
-// ── 発見：その場の未スカウト竜から決定的に1頭と遭遇 ─────────────────────
+// ── 探索「けはい探し」＝遭遇の前の1手（SCOUT_REBORN §A）────────────────
+// 「場所をタップ＝即遭遇」の無味乾燥を廃し、“どう探すか”の選択とお供の支度を挟む。
+let _scoutGiftMeal = null;   // 持参する手土産（MEALSの1品・入場時に確定）
 function scoutEnterLocation(locId) {
   const loc = scoutLocation(locId);
   const pool = unscoutedAtLocation(locId);
@@ -93,31 +95,108 @@ function scoutEnterLocation(locId) {
       `<div class="mm-row"><span class="mm-ic">✓</span><div><b>この場の竜とは、もう みんな仲良くなった。</b><small>別の場所をのぞいてみよう。</small></div></div>`);
     return;
   }
-  // 旅費（島の経済＝コインの吸い込み口・表示専用メタ／着順・オッズ・配当には非干渉）。
-  const cost = loc.cost || 0;
-  if ((state.player.coins || 0) < cost) {
-    showInfoPopup(`${loc.ic} ${loc.name}`,
-      `<div class="mm-row"><span class="mm-ic">🪙</span><div><b>旅費が足りません</b><small>${loc.name}への遠征には ${cost.toLocaleString("ja-JP")} コイン必要です（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）。</small></div></div>`);
-    return;
+  _scoutMeetLoc = locId; _scoutGiftMeal = null;
+  _scoutRenderProbe();
+}
+// 支度画面：探し方3択＋手土産。旅費はここでは引かない（出発を選んだ瞬間に精算）。
+function _scoutRenderProbe() {
+  const locId = _scoutMeetLoc, loc = scoutLocation(locId);
+  const probes = (typeof scoutProbes === "function") ? scoutProbes(locId) : [];
+  state.ui.screen = "scout";
+  const app = beginScreen();
+  const bg = _scBgTag(locId, "sc-stage-bg");
+  const head = el("div", "sc-probe-hero");
+  head.innerHTML =
+    bg +
+    `<div class="sc-stage-vig"></div>` +
+    `<div class="sc-probe-t"><b>${loc.ic} ${loc.name}</b><small>${loc.mood}</small></div>`;
+  app.appendChild(head);
+
+  // 手土産＝実食済みメニューから1品（大好物なら特大効果）。持たずに行ってもよい。
+  const eaten = (typeof MEALS !== "undefined" && typeof mealEaten === "function")
+    ? MEALS.filter(m => !m.quiz && mealEaten(m.id)) : [];
+  if (eaten.length) {
+    app.appendChild(el("div", "sc-sec", "🎁 手土産をひとつ持っていく？"));
+    const row = el("div", "sc-gift-row");
+    const mk = (m) => {
+      const price = (m && typeof mealPrice === "function") ? mealPrice(m) : 0;
+      const on = _scoutGiftMeal && m && _scoutGiftMeal.id === m.id;
+      const b = el("button", "sc-gift" + (on ? " on" : ""),
+        m ? `<span class="sg-ic">${m.icon || "🍽"}</span><span class="sg-nm">${m.name}</span><small>−${price.toLocaleString("ja-JP")}</small>`
+          : `<span class="sg-ic">🚫</span><span class="sg-nm">持たない</span><small>0</small>`);
+      b.onclick = () => { _scoutGiftMeal = (on || !m) ? null : m; _scoutRenderProbe(); };
+      return b;
+    };
+    row.appendChild(mk(null));
+    eaten.forEach(m => row.appendChild(mk(m)));
+    app.appendChild(row);
   }
-  if (cost > 0) { state.player.coins -= cost; if (typeof updateHeader === "function") updateHeader(); }
-  state.player._scoutTrips = (state.player._scoutTrips || 0) + 1;   // 遠征回数（表示メタ・出会う竜の巡回に使う）
+
+  // 探し方3択
+  app.appendChild(el("div", "sc-sec", "🔎 どうやって探す？"));
+  const cost = loc.cost || 0;
+  const giftCost = (_scoutGiftMeal && typeof mealPrice === "function") ? mealPrice(_scoutGiftMeal) : 0;
+  const total = cost + giftCost;
+  const canPay = (state.player.coins || 0) >= total;
+  const list = el("div", "sc-probe-list");
+  probes.forEach(p => {
+    const b = el("button", "sc-probe" + (canPay ? "" : " poor"),
+      `<span class="sp-ic">${p.ic}</span>` +
+      `<span class="sp-bd"><b>${p.name}</b><small>${p.fl}</small></span>` +
+      `<span class="sp-tag">${p.wary < 0 ? "🕊️ 警戒うすめ" : p.wary > 0 ? "⚡ 警戒つよめ" : "🎯 素直"}</span>`);
+    b.onclick = () => { if (canPay) _scoutDoProbe(p.id); };
+    list.appendChild(b);
+  });
+  app.appendChild(list);
+  app.appendChild(el("div", "sc-cost",
+    `🪙 旅費 <b>${cost.toLocaleString("ja-JP")}</b>` +
+    (giftCost ? `　＋ 手土産 <b>${giftCost.toLocaleString("ja-JP")}</b>` : "") +
+    `　＝ <b>${total.toLocaleString("ja-JP")}</b>　（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）` +
+    (canPay ? "" : `<span class="sc-poor-note">コインが足りません</span>`)));
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "← 場所をえらび直す"); back.onclick = () => renderScout();
+  actions.appendChild(back);
+  app.appendChild(actions);
+}
+// 出発＝精算して遭遇へ。probe が「誰に会うか」「どれだけ警戒されるか」を変える。
+function _scoutDoProbe(probeId) {
+  const locId = _scoutMeetLoc, loc = scoutLocation(locId);
+  const pool = unscoutedAtLocation(locId);
+  if (!pool.length) { renderScout(); return; }
+  const probe = (typeof scoutProbe === "function") ? scoutProbe(locId, probeId) : null;
+  const cost = loc.cost || 0;
+  const giftCost = (_scoutGiftMeal && typeof mealPrice === "function") ? mealPrice(_scoutGiftMeal) : 0;
+  if ((state.player.coins || 0) < cost + giftCost) return;
+  state.player.coins -= (cost + giftCost);
+  if (typeof updateHeader === "function") updateHeader();
+  state.player._scoutTrips = (state.player._scoutTrips || 0) + 1;   // 遠征回数（表示メタ）
   if (typeof saveGame === "function") saveGame();
-  // その場の未スカウト竜から決定的に1頭（遠征ごとに巡る・旅費でコインが動くため coins は使わない）。
-  const idx = (state.player._scoutTrips + (state.player.completedRaces || 0)) % pool.length;
-  const d = pool[idx];
-  _scoutMeetD = d; _scoutMeetLoc = locId;
-  _scoutSess = createScoutSession(d.id, locId);
-  // 📜 断章I「出会いの噂」＝遭遇で解禁（新規なら演出つきで表示・図鑑に永久収集）
-  const loreNew = (typeof dragonLoreUnlock === "function") ? dragonLoreUnlock(d.id, 1) : null;
-  _scoutRenderEncounter(true, null, loreNew ? { lore: loreNew, loreLv: 1 } : null);
+
+  const started = (typeof scoutStartWithProbe === "function")
+    ? scoutStartWithProbe(pool, locId, probe)
+    : { dragon: pool[0], sess: createScoutSession(pool[0].id, locId) };
+  _scoutMeetD = started.dragon; _scoutSess = started.sess;
+  _scoutSess.gift = _scoutGiftMeal || null;
+  // 小発見＝この地に棲む別の竜の名（次に来る動機）
+  const found = (typeof scoutProbeFind === "function") ? scoutProbeFind(_scoutSess, pool, _scoutMeetD.id, probe) : null;
+  // 📜 断章I「出会いの噂」＝遭遇で解禁（新規なら演出つき・図鑑に永久収集）
+  const loreNew = (typeof dragonLoreUnlock === "function") ? dragonLoreUnlock(_scoutMeetD.id, 1) : null;
+  _scoutRenderEncounter(true, null,
+    { lore: loreNew, loreLv: 1, probe: probe, probeFind: found });
 }
 
 // ── 交渉エンカウンター画面（土台再設計）─────────────────────────────────
 // 商業の定石＝①相手が主役（ポケモン捕獲：竜のHD-2Dスプライトを舞台中央に）②選択のたび相手が
 // 目に見えて反応（ペルソナ交渉：しぐさ吹き出し＋リアクションアニメ）③緊張の可視化（太いデュアル
 // ゲージ＋成立/逃走マーカー＋一手ごとのデルタ演出）。数式（scoutResolve）は一切不変＝表示層のみ。
+// 舞台背景：①専用絵(images/scoutbg/・Codex納品=CODEX_ORDER_SCOUT_MALL.md §A)
+//   ②未納品なら観光写真へ自動フォールバック ③どちらも無ければ静かに消える（404で崩れない）。
 const SCOUT_LOC_BG = {
+  grass: "images/scoutbg/grass.webp", jungle: "images/scoutbg/jungle.webp", cliff: "images/scoutbg/cliff.webp",
+  sky: "images/scoutbg/sky.webp", volcano: "images/scoutbg/volcano.webp", sea: "images/scoutbg/sea.webp"
+};
+const SCOUT_LOC_BG_FB = {
   grass:   "images/konron/spots/mango_orchard.webp",
   jungle:  "images/konron/spots/susufuka.webp",
   cliff:   "images/konron/spots/kibishis.webp",
@@ -125,6 +204,12 @@ const SCOUT_LOC_BG = {
   volcano: "images/konron/spots/bangara.webp",
   sea:     "images/konron/spots/sena.webp"
 };
+function _scBgTag(locId, cls) {
+  const a = SCOUT_LOC_BG[locId], b = SCOUT_LOC_BG_FB[locId];
+  if (!a && !b) return "";
+  return `<img class="${cls}" src="${a || b}" alt="" decoding="async" data-fb="${b || ""}"` +
+    ` onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb='';}else{this.remove();}">`;
+}
 // キー抜き済みHD-2Dスプライトを流し込む（race_canvasのキャッシュ＝_ecSpriteURLを再利用）。
 function _scSpriteInto(imgEl, id) {
   try { if (typeof _rcDragonSprite === "function") _rcDragonSprite(id); } catch (e) {}
@@ -156,14 +241,16 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
 
   // ── 舞台：遠征先の景色 × 竜のスプライト × しぐさ吹き出し ──
   const mood = SCOUT_MOODS[sess.mood] || {};
-  const bg = SCOUT_LOC_BG[_scoutMeetLoc] || "";
+  const bg = _scBgTag(_scoutMeetLoc, "sc-stage-bg");
   const nearWin = sess.trust >= SCOUT_TRUST_GOAL * 0.72;
+  // ★距離演出3段（SCOUT_REBORN §B）：警戒が解けるほど竜が“近づいて”見える＝ゲージを絵で語る。
+  const dist = sess.wary >= 55 ? " sc-far" : (sess.wary >= 28 ? " sc-mid" : " sc-near");
   const stage = el("div", "sc-stage");
   stage.innerHTML =
-    (bg ? `<img class="sc-stage-bg" src="${bg}" alt="" decoding="async" onerror="this.remove()">` : "") +
+    bg +
     `<div class="sc-stage-vig"></div>` +
     `<div class="sc-meet-tag"><b>${d.name}</b><small>${loc.ic} ${loc.name}・気性 ${typeof poroTemperLabel === "function" ? poroTemperLabel(d) : "—"}</small></div>` +
-    `<div class="sc-drg-wrap${first ? " sc-reveal" : ""}${fx.outcome ? " " + (SCOUT_FX_CLASS[fx.outcome] || "") : ""}" style="--dc:${(typeof dragonColor === "function") ? dragonColor(d) : (d.color || "#caa24a")}">` +
+    `<div class="sc-drg-wrap${dist}${first ? " sc-reveal" : ""}${fx.outcome ? " " + (SCOUT_FX_CLASS[fx.outcome] || "") : ""}" style="--dc:${(typeof dragonColor === "function") ? dragonColor(d) : (d.color || "#caa24a")}">` +
       `<img class="sc-drg" alt="">` +
     `</div>` +
     `<div class="sc-bubble">` +
@@ -174,7 +261,13 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
     `</div>`;
   app.appendChild(stage);
   _scSpriteInto(stage.querySelector(".sc-drg"), d.id);
-  if (first) app.appendChild(el("div", "sc-discover", `🐾 ${loc.mood.replace(/。$/, "")}——足跡をたどると、<b>${d.name}</b>がそっと姿を見せた。`));
+  // 探索の手ごたえ→遭遇の一文（“どう探したか”が物語になる）
+  if (first) {
+    if (fx.probe) app.appendChild(el("div", "sc-probe-log", `${fx.probe.ic} ${fx.probe.hit}`));
+    app.appendChild(el("div", "sc-discover", `🐾 ${loc.mood.replace(/。$/, "")}——<b>${d.name}</b>が、そっと姿を見せた。`));
+    if (fx.probeFind) app.appendChild(el("div", "sc-find",
+      `👀 <b>小発見</b>：この地にはもう一頭、<b>${fx.probeFind.name}</b> が棲んでいるらしい。`));
+  }
 
   // ── 緊張のデュアルゲージ（成立/逃走マーカー＋デルタ演出＋大詰めパルス）──
   const meters = el("div", "sc-meters");
@@ -186,6 +279,9 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
 
   // 直前の反応（竜の返事）
   if (lastReaction) app.appendChild(el("div", "sc-react", lastReaction));
+  // 📓 新しくメモできた瞬間＝上達の手ざわり
+  if (fx.memoNew) app.appendChild(el("div", "sc-memo-new",
+    `📓 メモした：<b style="color:${SCOUT_CAT_COLOR[fx.memoNew] || "#caa24a"}">${fx.memoNew}</b> の技が、この子には効く。`));
 
   // 📜 伝承（スカウト体験の核＝竜ごとの読み物が少しずつ解禁され図鑑に集まる）
   //   新規解禁＝金の演出つき／再訪の初手＝既知の断章Iを静かに再掲（読み返せる）。
@@ -203,10 +299,16 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
 
   // 手札
   const { hand, extras } = scoutHand(sess, 5);
-  app.appendChild(el("div", "sc-hand-lbl", "交渉術をえらぶ"));
+  // ★交渉メモ（学習）＝この竜に前回効いた技カテゴリ。再訪ほど有利になる＝上達の可視化。
+  const memo = (typeof scoutMemoGet === "function") ? scoutMemoGet(d.id) : [];
+  app.appendChild(el("div", "sc-hand-lbl",
+    "交渉術をえらぶ" + (memo.length ? `<span class="sc-memo">📓 メモ：${memo.map(c => `<i style="color:${SCOUT_CAT_COLOR[c] || "#caa24a"}">${c}</i>`).join("・")} が効いた</span>` : "")));
   const handWrap = el("div", "sc-hand");
   hand.forEach(a => {
-    const b = el("button", "sc-app", `<span class="sc-app-ic">${a.ic}</span><b>${a.name}</b><small>${a.fl}</small>`);
+    const known = memo.indexOf(a.cat) >= 0;
+    const b = el("button", "sc-app" + (known ? " known" : ""),
+      `<span class="sc-app-ic">${a.ic}</span><b>${a.name}</b><small>${a.fl}</small>` +
+      (known ? `<i class="sc-app-memo">前回◎</i>` : ""));
     b.style.borderLeftColor = (SCOUT_CAT_COLOR[a.cat] || "#caa24a");
     b.onclick = () => _scoutAct(a.id);
     handWrap.appendChild(b);
@@ -214,6 +316,12 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
   app.appendChild(handWrap);
 
   const exWrap = el("div", "sc-extras");
+  // 🎁 手土産＝持参していれば1回だけ切れる強カード（大好物なら特大）
+  if (sess.gift && !sess.usedGift) {
+    const g = el("button", "sc-extra sc-extra--gift", `<span>🎁</span> ${sess.gift.name}を差し出す`);
+    g.onclick = () => _scoutGive();
+    exWrap.appendChild(g);
+  }
   extras.forEach(a => {
     const dis = (a.special === "soothe" && sess.usedPaho);
     const b = el("button", "sc-extra" + (a.id === "pahopaho" ? " sc-extra--paho" : "") + (a.id === "interpret" ? " sc-extra--poro" : ""),
@@ -243,6 +351,12 @@ function _scoutAct(approachId) {
     else if (res.outcome === "bad") { (Sfx.play("buzz") || Sfx.play("click")); }
     else Sfx.play("click");
   }
+  // 📓 交渉メモ＝効いた技のカテゴリを竜ごとに学習（次に会う時の攻略情報）
+  let memoNew = null;
+  if (res.outcome === "great" || res.outcome === "good") {
+    const a = (typeof scoutApproach === "function") ? scoutApproach(approachId) : null;
+    if (a && a.cat && typeof scoutMemoAdd === "function" && scoutMemoAdd(_scoutMeetD.id, a.cat)) memoNew = a.cat;
+  }
   if (sess.status === "win") { _scoutWin(); return; }
   if (sess.status === "lose") { _scoutLose(); return; }
   // 📜 断章II「島の逸話」＝心を開きかけた瞬間（信頼が成立ラインの半分に到達）に解禁
@@ -250,7 +364,43 @@ function _scoutAct(approachId) {
   const lore2 = (sess.trust >= goal * 0.5 && typeof dragonLoreUnlock === "function")
     ? dragonLoreUnlock(_scoutMeetD.id, 2) : null;
   _scoutRenderEncounter(false, res.reactionText,
-    { outcome: res.outcome, dt: sess.trust - t0, dw: sess.wary - w0, lore: lore2, loreLv: 2 });
+    { outcome: res.outcome, dt: sess.trust - t0, dw: sess.wary - w0, lore: lore2, loreLv: 2, memoNew: memoNew });
+}
+
+// 🎁 手土産を差し出す（1回だけ・大好物なら特大）。scoutGift は既存判定式に非干渉。
+function _scoutGive() {
+  const sess = _scoutSess; if (!sess || !sess.gift) return;
+  const t0 = sess.trust, w0 = sess.wary;
+  const fav = (typeof dragonFavFood === "function") ? dragonFavFood(_scoutMeetD) : null;
+  const isFav = !!(fav && fav.id === sess.gift.id);
+  const res = scoutGift(sess, isFav);
+  if (res.outcome === "spent" || res.outcome === "end") return;
+  try { if (window.Sfx) Sfx.play(isFav ? "legendary" : "coin"); } catch (e) {}
+  // 大好物を当てたら図鑑に記録（龍舎のお世話と同じ台帳）
+  if (isFav) { try { const e = poroColEntry(_scoutMeetD.id); if (e && !e.favFound) { e.favFound = true; if (typeof saveGame === "function") saveGame(); } } catch (e2) {} }
+  const line = isFav
+    ? `${_scoutMeetD.name}の鼻がぴくりと動いた——<b>大好物だ！</b> 目つきが、一気にやわらぐ。`
+    : `${_scoutMeetD.name}はおずおずと近づき、${sess.gift.name}のにおいを嗅いだ。`;
+  if (sess.status === "win") { _scoutWin(); return; }
+  _scoutRenderEncounter(false, line,
+    { outcome: res.outcome, dt: sess.trust - t0, dw: sess.wary - w0 });
+}
+
+// 🎉 成立の祝祭（SCOUT_REBORN §C）：竜が画面いっぱいに駆け寄り、紙吹雪が舞う。
+// 純演出＝1.1秒で自動消滅。スプライトは既存のキー抜きキャッシュを再利用。
+function _scoutWinFx(d) {
+  try {
+    if (typeof el !== "function" || typeof document === "undefined") return;
+    const ex = document.getElementById("sc-winfx"); if (ex) ex.remove();
+    const ov = el("div", "sc-winfx"); ov.id = "sc-winfx";
+    ov.innerHTML = `<div class="scw-burst"></div><img class="scw-drg" alt="">` +
+      `<div class="scw-conf">${Array.from({ length: 18 }, (_, i) =>
+        `<i style="--i:${i};--x:${(i * 37) % 100}%;--c:${["#ffd76a", "#ff8db0", "#7fe0b0", "#8fc4ff"][i % 4]}"></i>`).join("")}</div>`;
+    document.body.appendChild(ov);
+    const im = ov.querySelector(".scw-drg");
+    if (typeof _scSpriteInto === "function") _scSpriteInto(im, d.id);
+    setTimeout(() => { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 1150);
+  } catch (e) {}
 }
 
 // ── 成立＝心を開く → 既存の払い出し ──────────────────────────────────────
@@ -272,6 +422,7 @@ function _scoutWin() {
   if (window.Sfx && Sfx.play) Sfx.play("legendary");
   if (typeof saveGame === "function") saveGame();
   _scoutSess = null;
+  _scoutWinFx(d);   // 🎉 成立の祝祭（駆け寄り＋紙吹雪）
   let mimiLine = "";
   try {
     const cat = (typeof scoutPersona === "function") ? scoutPersona(d).favCat : "身";
@@ -317,10 +468,19 @@ function _maybeEightAssembly(isNew) {
 }
 
 // ── 決裂＝逃走（再挑戦可） ────────────────────────────────────────────────
+// ── 決裂＝逃走（再挑戦可）。★挫折を“攻略情報”に変える（SCOUT_REBORN §B）──
 function _scoutLose() {
-  const d = _scoutMeetD;
+  const d = _scoutMeetD, sess = _scoutSess;
+  // 最後まで読めなかった心情を開示＝「今日は何の気分だったのか」が分かって次に活きる
+  const m = (sess && SCOUT_MOODS[sess.mood]) || null;
+  const memo = (typeof scoutMemoGet === "function") ? scoutMemoGet(d.id) : [];
   _scoutSess = null;
   showInfoPopup(`💨 ${d.name} は去っていった……`,
-    `<div class="mm-row"><span class="mm-ic">🍃</span><div><b>警戒を解けなかった。</b><small>でも、また会いにいける。しぐさをよく読んで、気持ちに合う交渉術を選ぼう。</small></div></div>`,
+    `<div class="mm-row"><span class="mm-ic">🍃</span><div><b>警戒を解けなかった。</b><small>竜は逃げただけ。何度でも会いにいける（失うのは旅費だけ）。</small></div></div>` +
+    (m ? `<div class="sc-lose-read"><b>${m.ic || "🐲"} 今日は「${m.name}」の気分だったらしい。</b>` +
+         `<span>${(m.reads || [""])[0] || ""}</span></div>` : "") +
+    (memo.length
+      ? `<div class="mm-row"><span class="mm-ic">📓</span><div><b>メモに残った</b><small>この子には <u>${memo.join("・")}</u> の技が効いた。次はそこから。</small></div></div>`
+      : `<div class="mm-row"><span class="mm-ic">💡</span><div><b>次の一手</b><small>迷ったら「👀観察」で気持ちを確かめてから動くのも手。</small></div></div>`),
     () => renderScout());
 }

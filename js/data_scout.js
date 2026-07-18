@@ -125,6 +125,48 @@ const SCOUT_REACTIONS = {
 
 // カテゴリ→色（手札ボタンの色分け・表示用）
 const SCOUT_CAT_COLOR = { "身": "#7aa0c8", "声": "#e08aa8", "間": "#9a9488", "贈": "#c0883a", "真似": "#5ab0a0", "遊": "#6cc28a", "技": "#d0a24a" };
+// カテゴリ→SVGアイコンのキー（images/nav/cat_<key>.svg・未納品なら ic 絵文字のまま）
+const SCOUT_CAT_ICON = { "身": "mi", "声": "koe", "間": "ma", "贈": "okuri", "真似": "mane", "遊": "asobi", "技": "waza" };
+
+// ── 4. 探索「けはい探し」（遭遇の前の1手・表示メタ）────────────────────
+// ロケごとに3択。ハズレなし＝どれも別種の楽しさ。SCOUT_REBORN_BRIEF §A。
+//   ofs  … 遭遇する竜のずらし幅（pool内index offset）＝「探し方で出会う子が変わる」
+//   wary … 初期警戒の補正（-8/0/+8）＝慎重は易しく、大胆は難しいが別の子に会える
+//   find … 小発見（この地に棲む未遭遇の竜の名を知る）の確率
+const SCOUT_PROBES = {
+  grass: [
+    { id: "track", ic: "🐾", name: "足跡を追う",   fl: "草の倒れかたを読む",     ofs: 0, wary: 0,  find: .55, hit: "露にぬれた足跡。……まだ新しい。" },
+    { id: "lee",   ic: "🍃", name: "風下に回る",   fl: "匂いを届けない猟師の作法", ofs: 1, wary: -8, find: .25, hit: "風下へ。ミミの匂いは、草の海に溶けた。" },
+    { id: "call",  ic: "📣", name: "大声で呼ぶ",   fl: "とにかく叫ぶ",           ofs: 2, wary: 8,  find: .15, hit: "「おーい！」……草むらが一斉にざわめいた。ちょっとやりすぎた。" }
+  ],
+  jungle: [
+    { id: "moss",  ic: "🍄", name: "苔の光をたどる", fl: "光る苔は竜の通り道",   ofs: 0, wary: 0,  find: .55, hit: "苔の光が、点々と奥へ続いている。" },
+    { id: "hush",  ic: "🤫", name: "息をひそめる",   fl: "動かず、ただ待つ",     ofs: 1, wary: -8, find: .25, hit: "葉ずれの音が止んだ。……向こうも、こちらを窺っている。" },
+    { id: "hack",  ic: "🌿", name: "藪を漕ぐ",       fl: "力ずくで進む",         ofs: 2, wary: 8,  find: .15, hit: "蔦に絡まれて三回転んだ。竜より先に、蔦と仲良くなった。" }
+  ],
+  cliff: [
+    { id: "ledge", ic: "🧗", name: "岩棚をよじ登る", fl: "手がかりを探して登る", ofs: 0, wary: 0,  find: .55, hit: "岩棚の上に、抜けた鱗がひとひら。" },
+    { id: "bait",  ic: "🍖", name: "餌場に張る",     fl: "食事どきを待つ",       ofs: 1, wary: -8, find: .25, hit: "餌場の岩に座って待つ。……こういう時間、きらいじゃない。" },
+    { id: "echo",  ic: "🗣️", name: "崖にこだまさせる", fl: "谷へ声を放つ",       ofs: 2, wary: 8,  find: .15, hit: "こだまが七回返ってきた。……最後のは、こだまじゃなかった。" }
+  ],
+  volcano: [
+    { id: "cool",  ic: "🥾", name: "熱の低い道を選ぶ", fl: "地面の色で温度を読む", ofs: 0, wary: 0,  find: .55, hit: "黒い岩と赤い岩。踏んでいいのは、黒いほう。" },
+    { id: "steam", ic: "💨", name: "噴気の陰で待つ",   fl: "湯気にまぎれる",       ofs: 1, wary: -8, find: .25, hit: "噴気の陰は、姿も匂いも隠してくれる。……熱いけど。" },
+    { id: "crate", ic: "🔥", name: "火口へ踏み込む",   fl: "熱源のいちばん近くへ", ofs: 2, wary: 8,  find: .15, hit: "眉毛が少し焦げた。……代わりに、すごいものを見た。" }
+  ],
+  sea: [
+    { id: "bub",   ic: "🫧", name: "泡の跡を追う",   fl: "水面の泡をたどる",     ofs: 0, wary: 0,  find: .55, hit: "泡の列が、岩棚の下へ消えている。" },
+    { id: "reef",  ic: "🪸", name: "岩陰で待つ",     fl: "サンゴの陰に潜む",     ofs: 1, wary: -8, find: .25, hit: "岩陰でじっとしていたら、小魚に髪をつつかれた。" },
+    { id: "dive",  ic: "🤿", name: "潜って近づく",   fl: "息を止めて一気に",     ofs: 2, wary: 8,  find: .15, hit: "青の底。……耳がキーンとして、世界の音が消えた。" }
+  ],
+  sky: [
+    { id: "gap",   ic: "☁️", name: "雲の切れ間を待つ", fl: "視界が開く一瞬を狙う", ofs: 0, wary: 0,  find: .55, hit: "雲が割れた。眼下に、島ぜんぶ。" },
+    { id: "feath", ic: "🪶", name: "落ちた羽根を拾う", fl: "落とし物から辿る",     ofs: 1, wary: -8, find: .25, hit: "拾った羽根は、まだあたたかい。近い。" },
+    { id: "peak",  ic: "🗻", name: "岩峰の頂に立つ",   fl: "いちばん高い場所へ",   ofs: 2, wary: 8,  find: .15, hit: "風が強すぎて、耳が真横に流れた。……でも、見える。" }
+  ]
+};
+function scoutProbes(locId) { return (SCOUT_PROBES && SCOUT_PROBES[locId]) || []; }
+function scoutProbe(locId, pid) { return scoutProbes(locId).find(p => p.id === pid) || null; }
 
 function scoutMood(id) { return SCOUT_MOODS[id] || SCOUT_MOODS.guard; }
 function scoutApproach(id) { return SCOUT_APPROACHES.find(a => a.id === id) || null; }
