@@ -1497,8 +1497,18 @@ function startRaceCanvas(container, ctx) {
          旧 rc-rankbar（1行テキスト）と rc-bet（HUD隅の期待メーター）はここへ置換統合した。 -->
     <div class="rc-board" id="rc-board"></div>
     <!-- ★D2：視聴者コメント（匿名のみ・キャスト名は使わない＝門番問題を構造ごと回避） -->
-    <div class="rc-chat" id="rc-chat"></div>
-    <div class="rc-telop" id="rc-telop"><span class="rc-telop-who"><img id="rc-caster" src="images/race_live/mimi_caster.webp" alt="" decoding="async" onerror="this.remove()">🎙 ミミ</span><div class="lines" id="rc-lines"></div></div>
+    <!-- ★声ゾーン：左=実況ミミ（大きく・表情が読める）／右=視聴者の反応＋ミミの実況。
+         2ブロックを1行に統合して縦を節約し、ワイプを22px→64pxへ拡大（ユーザー指摘）。 -->
+    <div class="rc-voice">
+      <div class="rc-caster-wrap">
+        <img id="rc-caster" src="images/race_live/mimi_caster.webp" alt="" decoding="async" onerror="this.parentNode.classList.add('noimg')">
+        <span class="rc-caster-tag">🎙 ミミ</span>
+      </div>
+      <div class="rc-voice-body">
+        <div class="rc-chat" id="rc-chat"></div>
+        <div class="rc-telop" id="rc-telop"><div class="lines" id="rc-lines"></div></div>
+      </div>
+    </div>
     <div class="rc-controls" id="rc-controls"></div>
     <div class="rc-finishstrip" id="rc-finishstrip" style="display:none"></div>
     <div class="rc-log" id="rc-log" style="display:none"></div>
