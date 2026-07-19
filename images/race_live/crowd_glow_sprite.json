@@ -4,6 +4,8 @@
   "frameHeight": 140,
   "frameCount": 4,
   "layout": "vertical",
-  "frameDurationMs": 160,
-  "loop": true
+  "frameDurationMs": 140,
+  "loop": false,
+  "motion": "rise-from-bottom",
+  "frameYPositions": [140, 92, 53, 15]
 }
