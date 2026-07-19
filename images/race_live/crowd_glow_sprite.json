@@ -1,0 +1,9 @@
+{
+  "image": "crowd_glow_sprite.webp",
+  "frameWidth": 750,
+  "frameHeight": 140,
+  "frameCount": 4,
+  "layout": "vertical",
+  "frameDurationMs": 160,
+  "loop": true
+}
