@@ -3335,7 +3335,16 @@ function startRaceCanvas(container, ctx) {
     }
 
     // HUD updates
-    phaseEl.textContent = ["序盤", "中盤", "展開", "終盤", "ゴール前"][timeline.phaseIndexAt(S.tau)] || "";
+    const _pi = timeline.phaseIndexAt(S.tau);
+    phaseEl.textContent = ["序盤", "中盤", "展開", "終盤", "ゴール前"][_pi] || "";
+    // ★CORE_LOOP_UX B-3「山を3つ」：序盤は静かに→終盤/ゴール前で盤面を締める。
+    //   フェーズを盤面に出してCSSで段階的に強める（従来は全区間ほぼ均質だった）。
+    if (wrap.dataset.phaseIdx !== String(_pi)) {
+      wrap.dataset.phaseIdx = String(_pi);
+      if (_pi >= 3) {   // 終盤(3)/ゴール前(4)へ入る一拍だけ締める（毎回揺らすと安っぽい）
+        wrap.classList.remove("rc-climax"); void wrap.offsetWidth; wrap.classList.add("rc-climax");
+      }
+    }
     const _hudKey = themeKeyAtP(leaderP);
     sectionEl.textContent = rcTerrainInfo(_hudKey).icon + " " + sectionLabelAtP(leaderP);
     sectionEl.style.borderLeftColor = (RC_THEME[_hudKey] || RC_THEME.straight).accent;
@@ -3353,12 +3362,44 @@ function startRaceCanvas(container, ctx) {
     });
     rankbarEl.innerHTML = html;
   }
+  // ★CORE_LOOP_UX B-1/B-2：「自分の竜」アンカー＋期待メーター。
+  //   いまの並びを読んで「的中まであと何頭か」を可視化する＝当落ではなく“期待”の表示
+  //   （パチンコの保留変化に相当）。⚠️着順は timeline で確定済み・ここでは一切触らない。
+  function betExpect(standMap) {
+    const ids = [...betSet];
+    const ranks = ids.map(id => standMap[id] || 99);
+    const gauge = gap => Math.max(8, Math.round(100 - gap * 22));   // 離れるほど短い棒（確率ではない）
+    let gap;
+    if (bet.type === "win") gap = Math.max(0, ranks[0] - 1);
+    else if (bet.type === "place") gap = Math.max(0, ranks[0] - 3);
+    else gap = ranks.reduce((s, r) => s + Math.max(0, r - 3), 0);
+    const inZone = gap === 0;
+    const label = inZone
+      ? (bet.type === "win" ? "🔥 的中圏内！このまま逃げ切れ"
+        : bet.type === "place" ? "🔥 的中圏内！3着以内キープ" : "🔥 2頭とも圏内！")
+      : `的中まで あと${gap}頭`;
+    return { inZone, gap, pct: gauge(gap), label };
+  }
+  let _betInZone = null;   // 圏内に「入った瞬間」だけ光らせるための前回値
   function updateBet(standMap) {
     if (!bet || !betSet.size) { betEl.style.display = "none"; return; }
     betEl.style.display = "";
-    const parts = [...betSet].map(id => `${commentaryName(id)} ${standMap[id] || "-"}番手`);
-    const typeLabel = bet.type === "win" ? "単竜" : bet.type === "place" ? "複竜" : "ワイド竜";
-    betEl.textContent = "🎯 " + typeLabel + "：" + parts.join(" / ");
+    const exp = betExpect(standMap);
+    const chips = [...betSet].map(id => {
+      const r = standMap[id] || 99;
+      const st = r === 1 ? "lead" : r <= 3 ? "safe" : r <= 4 ? "push" : "danger";
+      return `<span class="rcb-drg s-${st}"><i>${r}</i>${commentaryName(id)}</span>`;
+    }).join("");
+    betEl.className = "rc-bet" + (exp.inZone ? " in-zone" : "");
+    betEl.innerHTML =
+      `<span class="rcb-row"><span class="rcb-k">🎫 あなたの予想</span>${chips}</span>` +
+      `<span class="rcb-meter"><span class="rcb-label">${exp.label}</span>` +
+      `<span class="rcb-bar"><i style="width:${exp.pct}%"></i></span></span>`;
+    if (exp.inZone && _betInZone === false) {
+      betEl.classList.remove("zone-hit"); void betEl.offsetWidth; betEl.classList.add("zone-hit");
+      try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
+    }
+    _betInZone = exp.inZone;
   }
 
   // =====================================================================

@@ -2841,6 +2841,8 @@ function updateBroadcastFrame(wrap, c) {
   });
 
   // --- Bet status ---
+  //   ※ここは旧・テロップ式観戦画面（現行の観戦は race_canvas.js の startRaceCanvas）。
+  //     CORE_LOOP_UX B の期待メーターは実際に描画される race_canvas 側に実装している。
   const betEl = wrap.querySelector("#bc-bet");
   if (c.bet && c.bet.selections.length) {
     betEl.style.display = "";

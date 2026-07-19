@@ -920,9 +920,61 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .broadcast-rank-bar .rank-pos.target { color: #80ff80; font-weight: bold; }
 .broadcast-rank-bar .rank-pos.fav { color: #ff8060; }
 
-.broadcast-bet {
-  background: rgba(80,255,80,0.05); border: 1px solid #80ff80;
-  padding: 6px 10px; margin-top: 6px; color: #80ff80; font-size: 13px;
+/* ===== ★CORE_LOOP_UX B-1/B-2：自分の竜アンカー＋期待メーター（実装先＝race_canvas.js の #rc-bet）
+   「いまの並びなら的中まであと何頭か」を常時見せる（当落ではなく“期待”の可視化＝保留変化に相当）。
+   着順は timeline で確定済み＝ここは完全に表示層。 */
+.rc-bet {
+  display: flex !important; flex-direction: column; gap: 6px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px; padding: 7px 9px; color: #eef2f6; font-size: 12px;
+  transition: border-color .25s, background .25s, box-shadow .25s;
+}
+.rc-bet[style*="display: none"] { display: none !important; }
+.rc-bet .rcb-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rc-bet .rcb-k { font-size: 10px; font-weight: 800; color: #9fa8b4; letter-spacing: .04em; white-space: nowrap; }
+.rc-bet .rcb-drg {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 800;
+  background: rgba(255,255,255,.08); border-radius: 99px; padding: 2px 9px 2px 3px; color: #f2f5f9;
+}
+.rc-bet .rcb-drg i {
+  font-style: normal; min-width: 16px; height: 16px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9.5px; font-weight: 900; background: #4a5566; color: #fff;
+}
+.rc-bet .rcb-drg.s-lead i, .rc-bet .rcb-drg.s-safe i { background: #3fbf6a; }
+.rc-bet .rcb-drg.s-push i { background: #d87a3a; }
+.rc-bet .rcb-drg.s-danger i { background: #c04a4a; }
+.rc-bet .rcb-meter { display: flex; align-items: center; gap: 8px; }
+.rc-bet .rcb-label { font-size: 11.5px; font-weight: 800; color: #d4dae2; white-space: nowrap; }
+.rc-bet .rcb-bar { flex: 1; min-width: 40px; height: 5px; border-radius: 99px; background: rgba(0,0,0,.45); overflow: hidden; }
+.rc-bet .rcb-bar i {
+  display: block; height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, #6a8fbf, #4ac07a); transition: width .45s cubic-bezier(.3,1,.4,1);
+}
+/* 圏内＝金色。「見たい状態」が一目で分かる */
+.rc-bet.in-zone {
+  background: rgba(255,214,120,.12); border-color: rgba(255,214,120,.6);
+  box-shadow: 0 0 20px -6px rgba(255,214,120,.55);
+}
+.rc-bet.in-zone .rcb-label { color: #ffe08a; }
+.rc-bet.in-zone .rcb-bar i { background: linear-gradient(90deg, #ffd76a, #ffa53a); }
+/* 圏内に「入った瞬間」だけフラッシュ（常時光らせると麻痺する） */
+.rc-bet.zone-hit { animation: rcbZone .7s ease-out; }
+@keyframes rcbZone {
+  0% { box-shadow: 0 0 0 0 rgba(255,214,120,.85); transform: scale(1); }
+  35% { transform: scale(1.02); }
+  100% { box-shadow: 0 0 34px -4px rgba(255,214,120,.15); transform: scale(1); }
+}
+
+/* ★B-3「山を3つ」＝終盤(3)/ゴール前(4)だけ盤面を締める（序盤は静かに・直線で最厚） */
+.rc-wrap[data-phase-idx="3"] .rc-stage,
+.rc-wrap[data-phase-idx="4"] .rc-stage { filter: contrast(1.05) saturate(1.08); }
+.rc-wrap[data-phase-idx="4"] .rc-phase { background: #c0392b; color: #fff; }
+.rc-wrap.rc-climax { animation: rcClimax .5s cubic-bezier(.3,1.4,.4,1); }
+@keyframes rcClimax { 0% { transform: scale(1); } 40% { transform: scale(1.012); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .rc-bet.zone-hit, .rc-wrap.rc-climax { animation: none; }
+  .rc-bet .rcb-bar i { transition: none; }
 }
 
 .broadcast-mimi {
