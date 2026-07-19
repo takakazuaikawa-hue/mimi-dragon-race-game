@@ -1342,6 +1342,39 @@ function startRaceCanvas(container, ctx) {
         : "さあ、運命のゲートが開く。発走！");
     return lines;
   })();
+  // ★A-2 入場ロールコール：入場の後半を使って1頭ずつ紹介する。
+  //   「斜め整列でも個体が読める」を担保する見せ場＝愛され感の入口。全て表示のみ。
+  //   紹介順＝レーン順（laneOrder）＝画面の手前から奥へ。1頭あたり ROLL_EACH 秒。
+  // 動きを減らす設定（B の呼吸/首かしげ/残像はここで一括OFF）
+  const _reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  const ROLL_EACH = 0.8;
+  const _rollOrder = laneOrder.slice();                       // 手前(ln=0)から順に
+  const ROLL_SPAN = ROLL_EACH * _rollOrder.length;
+  const _rollStart = Math.max(0, ENTRY_DUR - ROLL_SPAN - 0.2); // 入場の終盤に寄せる
+  let _rollShown = -1;
+  function pumpRollCall() {
+    const elapsed = ENTRY_DUR - S.entryT;
+    if (elapsed < _rollStart) { S.roll = -1; return; }
+    const idx = Math.min(_rollOrder.length - 1, Math.floor((elapsed - _rollStart) / ROLL_EACH));
+    S.roll = idx;
+    if (idx === _rollShown) return;
+    _rollShown = idx;
+    const dr = _rollOrder[idx];
+    if (!dr) return;
+    // 実況へ1行差し込む（既存 shownLines/renderTelop の流儀に乗る）
+    const od = (oddsResult.oddsData || []).find(o => o.dragonId === dr.id) || {};
+    shownLines.push(`${od.popularityRank || idx + 1}番人気 ${commentaryName(dr.id)}、入場！`);
+    renderTelop();
+    // 自分の賭け竜の紹介だけ、音と視聴者の反応を足す（依怙贔屓＝プレイヤーの当事者性）
+    if (betSet.has(dr.id)) {
+      try { if (window.Sfx) Sfx.play("tick", 1.25); } catch (e) {}
+      pushChat("mineUp", commentaryName(dr.id));
+      S.pops.push({ x: cw * 0.42 - 10, y: ch * 0.55, tx: "✨", c: "#ffe9a8",
+        t0: performance.now() / 1000, sz: 15 });
+    }
+  }
+
   function entranceBehaviorOf(dr) {
     const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: "serious", lean: 0, dx: 0 };
     const id = dr.id, pd = persoOf(id);
@@ -1627,6 +1660,9 @@ function startRaceCanvas(container, ctx) {
     photoT: 0,          // R8-W1: フォトフィニッシュ静止1拍の残り秒（>0の間 世界を止める・表示のみ）
     photoUsed: false,   // 1着の鼻先ゴールで一度だけ発火
     flyIn: 0,           // R8-W6d: GOからの秒数——地面スタート→各飛行高度へ舞い上がる演出用（表示のみ）
+    tapeAlpha: 1,       // ★A-1 発走テープの不透明度（GOで0へ＝弾けて消える・表示のみ）
+    tapeBurst: false,   // テープ破断の粒を1度だけ出すためのフラグ
+    roll: -1,           // ★A-2 ロールコールの対象index（-1=なし）。入場中に0..N-1へ進む
     lowSpec: false,     // R8-W5: 低速機の自動縮退（パララックス2層・ポップ2件・ストリーク半減）
     prevStand: null,    // {id: place} last frame, for overtake detection
     cheerT: 1.2,        // throttle for cheer-your-pick callouts
@@ -2650,6 +2686,37 @@ function startRaceCanvas(container, ctx) {
       }
     }
 
+    // ★A-1 斜め発走テープ（RACE_START_FAIR_ALIVE）：整列が斜めでも「全頭の鼻先が同じテープに
+    //   触れている」ことで公平さを示す。斜めなのは“遠近”だと目に納得させるため、奥（上）の柱は
+    //   細く淡く描く。x式は待機整列と同一（cw*0.34 − ln*7）＝厳密に一致させること。
+    //   GOでテープが弾けて光の粒になる（S.tapeFx）。表示のみ・着順不変。
+    if (para && S.tapeAlpha > 0.01) {
+      // 全頭の鼻先が触れる「発走テープ」＝1本の垂直線。同一xに並ぶので公平さが目に見える。
+      const tx = cw * 0.42;
+      const tyT = ch * 0.30, tyB2 = ch * 0.92;                           // 飛行帯の上端〜地面
+      const sway = Math.sin(performance.now() / 1000 * 1.3) * 1.2;
+      cctx.save();
+      cctx.globalAlpha = S.tapeAlpha;
+      drawPost3D(tx - 2, tyT - 8, tyB2 + 4, 3.6, "#c9b27a");             // 支柱（地面まで）
+      // テープ2本＝金の光（微かに揺れる）
+      for (let t = 0; t < 2; t++) {
+        const ox = t * 5;
+        cctx.strokeStyle = t === 0 ? "rgba(255,224,138,0.95)" : "rgba(255,190,90,0.5)";
+        cctx.lineWidth = t === 0 ? 2.2 : 1.3;
+        cctx.beginPath();
+        cctx.moveTo(tx + ox, tyT);
+        cctx.quadraticCurveTo(tx + ox + sway, (tyT + tyB2) / 2, tx + ox, tyB2);
+        cctx.stroke();
+      }
+      // 小旗＝お祭り感（テープに沿って等間隔）
+      for (let i = 0; i < 6; i++) {
+        const fy = tyT + ((tyB2 - tyT) / 5) * i, fx = tx + sway * (i % 2 ? 0.6 : 0.3);
+        cctx.fillStyle = (typeof CONFETTI_COLORS !== "undefined") ? CONFETTI_COLORS[i % CONFETTI_COLORS.length] : "#ffcf6a";
+        cctx.beginPath(); cctx.moveTo(fx, fy - 2.6); cctx.lineTo(fx, fy + 2.6); cctx.lineTo(fx + 6, fy); cctx.closePath(); cctx.fill();
+      }
+      cctx.restore();
+    }
+
     // --- leader golden speed trail (world space, behind the field) ---
     if (cam.leaderId && !S.finished && S.preT <= 0) {
       const lp = timeline.progressAt(cam.leaderId, S.tau);
@@ -2742,7 +2809,10 @@ function startRaceCanvas(container, ctx) {
         const k = clamp((S.flyIn - dl) / 1.05, 0, 1);
         const c1 = 1.25, c3 = c1 + 1;
         const eb = k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
-        const gx = cw * 0.34 - ln * 7;                       // 斜め一列＝前後の重なりを僅かにずらす
+        // ★A-1改：全頭の鼻先を「同一x」に揃える真の縦一列＝スタートの公平さが幾何学的に自明。
+        //   高さ(laneY)が竜ごとに違うので縦に積まれ、体は重ならず全員読める。
+        //   x=42%＝スプライトの体が鼻先から左へ伸びるぶんの余白（左端見切れ防止・実測で決定）。
+        const gx = cw * 0.42;
         x = gx + (x - gx) * eb;
         // 待機中のホバリング（ふわり上下）＝浮いたまま生きている感。GOで消える
         if (eb < 1) baseY += Math.sin(performance.now() / 1000 * 1.6 + ln) * 3 * (1 - eb);
@@ -2844,7 +2914,9 @@ function startRaceCanvas(container, ctx) {
       // gait advance handled in update(); draw sprite (depth-scaled). Sized so
       // the whole field reads cleanly at the start without crowding/overlap.
       const dep = laneDepth(dr);
-      const sprScale = _RC_INRACE * dep;
+      // ★A-2：ロールコール中の1頭だけ、ふわりと大きく（1.22倍）＝主役の合図。ease-outで戻る。
+      const _rollOn = (S.roll >= 0 && _rollOrder[S.roll] && _rollOrder[S.roll].id === dr.id);
+      const sprScale = _RC_INRACE * dep * (_rollOn ? 1.22 : 1);
       // per-dragon behavior (entrance walk-in / pre-start fidget / racing / post-goal)
       const beh = (S.entryT > 0) ? entranceBehaviorOf(dr)
                 : (S.preT > 0) ? prestartBehaviorOf(dr)
@@ -2913,14 +2985,43 @@ function startRaceCanvas(container, ctx) {
         cctx.beginPath(); cctx.ellipse(rgx, rgy, rw * 0.86, rw * 0.26, 0, 0, Math.PI * 2); cctx.stroke();
         cctx.restore();
       }
-      rcDrawDragon(cctx, {
+      // ★B 竜を「生きている」ように見せる画像処理（RACE_START_FAIR_ALIVE B）。すべて表示のみ。
+      const _now3 = performance.now() / 1000;
+      const _waiting = (S.entryT > 0 || S.preT > 0);
+      // B-1 呼吸：待機中だけ縦に±1.5%（走行中は既存の gait bob があるので入れない）
+      const _breath = _waiting ? 1 + Math.sin(_now3 * (Math.PI * 2 / 2.2) + dragonPhase(dr.id)) * 0.015 : 1;
+      // B-4 首かしげ：待機中、竜ごとの周期で±2.5°を1往復＝「こちらに気づいた」感
+      let _tilt = 0;
+      if (_waiting && !_reduceMotion) {
+        const cyc = 6.5 + (dragonPhase(dr.id) % 3);
+        const ph4 = (_now3 + dragonPhase(dr.id) * 2) % cyc;
+        if (ph4 < 1.1) _tilt = Math.sin(ph4 / 1.1 * Math.PI) * 2.5 * Math.PI / 180;
+      }
+      const _drawArgs = {
         x: dcx, y: spriteY, scale: sprScale, id: dr.id,
         color: dr.color, style: dr.style, design: dragonDesign(dr.id),
         tint: (S._cmap || (S._cmap = (typeof rcDistinctColors === 'function' ? rcDistinctColors(dragons) : {})))[dr.id],
         gait: S.gait[dr.id], flap: S.gait[dr.id] * 0.6, mood: _mood,
         lean: intensity + (beh.lean || 0), down: down || beh.down, tumble: tumble, glow: glow, effort: effort,
-        bank: bank, spread: spread, spin: beh.spin, squash: beh.squash, grounded: S.entryT > 0
-      });
+        bank: bank, spread: spread, spin: beh.spin, squash: (beh.squash || 1) * _breath, grounded: S.entryT > 0
+      };
+      // B-3 スピード残像：全開の竜だけ後方に2枚（drawImage2回ぶんの低コスト＝キャッシュ不要）
+      if (intensity > 0.85 && !down && !_reduceMotion) {
+        cctx.save();
+        cctx.globalAlpha = _prevAlpha * 0.10;
+        rcDrawDragon(cctx, Object.assign({}, _drawArgs, { x: dcx - 6 }));
+        cctx.globalAlpha = _prevAlpha * 0.05;
+        rcDrawDragon(cctx, Object.assign({}, _drawArgs, { x: dcx - 12 }));
+        cctx.restore();
+      }
+      if (_tilt !== 0) {
+        cctx.save();
+        cctx.translate(bodyCx, spriteY); cctx.rotate(_tilt); cctx.translate(-bodyCx, -spriteY);
+        rcDrawDragon(cctx, _drawArgs);
+        cctx.restore();
+      } else {
+        rcDrawDragon(cctx, _drawArgs);
+      }
       _rcEmitAccent(S, dragonDesign(dr.id), { x: dcx, y: spriteY, dep: dep, color: dr.color, intensity: intensity, grounded: S.entryT > 0, id: dr.id,
         tailW: rcHasDragonSprite(dr.id) ? rcDragonSpriteHalfW(dr.id, _RC_INRACE * laneDepth(dr)) * 2 : 18 });   // 署名は尾の後ろから（位置のこだわり）
 
@@ -2959,6 +3060,48 @@ function startRaceCanvas(container, ctx) {
       cctx.fillText(nm, bodyCx, ply + plh / 2 + 0.5);
       cctx.textBaseline = "alphabetic";
       }   // ← ラベル表示ゲート（_lEb）
+
+      // ★A-2 ロールコール：紹介中の1頭だけ、頭上に大きな名札プレートを出す。
+      //   「⑦｜旋爪竜ロッソ｜差し・単2.9」＋枠色バー。斜め整列でも個体が読める見せ場。
+      if (S.roll >= 0 && _rollOrder[S.roll] && _rollOrder[S.roll].id === dr.id) {
+        const od2 = (oddsResult.oddsData || []).find(o => o.dragonId === dr.id) || {};
+        const d2 = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === dr.id) : null;
+        const styleLb = (d2 && typeof STYLE_LABEL !== "undefined") ? (STYLE_LABEL[d2.style] || "") : "";
+        const nm2 = commentaryName(dr.id);
+        const sub = styleLb + (od2.winOdds != null ? "・単" + od2.winOdds.toFixed(1) : "");
+        cctx.save();
+        cctx.font = "bold 12px system-ui, sans-serif";
+        const w1 = cctx.measureText(nm2).width;
+        cctx.font = "9.5px system-ui, sans-serif";
+        const w2 = cctx.measureText(sub).width;
+        const pw = Math.max(w1, w2) + 34, phh = 30;
+        const px3 = bodyCx - pw / 2, py3 = y - 74 * dep;
+        // 台座
+        cctx.beginPath();
+        if (cctx.roundRect) cctx.roundRect(px3, py3, pw, phh, 8); else cctx.rect(px3, py3, pw, phh);
+        cctx.fillStyle = "rgba(8,11,17,0.88)"; cctx.fill();
+        cctx.lineWidth = 1.4;
+        cctx.strokeStyle = isBet ? "rgba(255,214,106,0.95)" : "rgba(255,255,255,0.28)";
+        cctx.stroke();
+        // 枠色バー（竜のアイデンティティ）
+        cctx.fillStyle = dr.color || "#888";
+        cctx.beginPath();
+        if (cctx.roundRect) cctx.roundRect(px3 + 6, py3 + 6, 3.5, phh - 12, 2); else cctx.rect(px3 + 6, py3 + 6, 3.5, phh - 12);
+        cctx.fill();
+        // 人気番号
+        cctx.textAlign = "left"; cctx.textBaseline = "middle";
+        cctx.font = "bold 12px system-ui, sans-serif";
+        cctx.fillStyle = "#ffd76a";
+        cctx.fillText(String(od2.popularityRank || ""), px3 + 14, py3 + phh / 2);
+        cctx.fillStyle = "#fff";
+        cctx.fillText(nm2, px3 + 26, py3 + 10);
+        cctx.font = "9.5px system-ui, sans-serif";
+        cctx.fillStyle = "#aab4c2";
+        cctx.fillText(sub, px3 + 26, py3 + 22);
+        cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
+        cctx.restore();
+      }
+
       // off-screen-behind indicator
       if (offLeft) {
         cctx.fillStyle = "rgba(255,255,255,0.6)";
@@ -3689,6 +3832,9 @@ function startRaceCanvas(container, ctx) {
       S.entryT -= dt * S.speed;
       if (S.entryT < 0) S.entryT = 0;
       pumpEntranceTelop();   // the 煽り appears in the 実況 (commentary) as the field parades in
+      pumpRollCall();        // ★A-2 入場ロールコール：到着順に1頭ずつ紹介（表示のみ）
+      // 入場が終わったら紹介も終了＝名札を必ず片付ける（消し忘れるとレース中ずっと残る・実測）
+      if (S.entryT <= 0) S.roll = -1;
       // livestream "いいね" pour in during the entrance — more & faster at higher ranks
       S.likeT -= dt * S.speed;
       const likeIv = 1 / (2.5 + rankHype * 7);
@@ -3715,6 +3861,17 @@ function startRaceCanvas(container, ctx) {
 
     // R8-W6d: GOからの経過秒（地面→飛行高度への舞い上がりイージング用・表示のみ）
     if (S.flyIn < 3) S.flyIn += dt * S.speed;
+
+    // ★A-1：GOでテープが弾ける＝光の粒＋急速フェード（ゲート解放の快感）。1度だけ粒を出す。
+    if (S.tapeAlpha > 0) {
+      if (!S.tapeBurst) {
+        S.tapeBurst = true;
+        for (let i = 0; i < 6; i++) {
+          spawnSpark(cw * 0.42, ch * 0.30 + ((ch * 0.92 - ch * 0.30) / 5) * i, "#ffe9a8");
+        }
+      }
+      S.tapeAlpha = Math.max(0, S.tapeAlpha - dt * S.speed * 3.2);
+    }
 
     // --- run-through / pull-up: once the winner crosses, advance the global run-out
     // timer and every crossed dragon's coast clock (visProgress reads these to carry
@@ -4010,6 +4167,18 @@ function startRaceCanvas(container, ctx) {
     finishStripEl.innerHTML = html;
     // ★D1：ゴール確定に合わせてボード上位3行を金銀銅で固める（結果画面への視覚的な橋渡し）
     freezeBoardPodium(timeline.crossings.map(cr => cr.id));
+    // ★B-5 ゴール後のエモート：1着に💕連発・2/3着に👏（既存 S.pops の流儀・popCd間引き不要の一発）
+    try {
+      const _nw5 = performance.now() / 1000;
+      timeline.crossings.slice(0, 3).forEach((cr, i) => {
+        const em = i === 0 ? "💕" : "👏";
+        const n = i === 0 ? 3 : 1;
+        for (let k = 0; k < n; k++) {
+          S.pops.push({ x: cw * (0.42 + i * 0.14) + k * 12, y: ch * (0.46 + k * 0.05),
+            tx: em, c: "#fff", t0: _nw5 + i * 0.15 + k * 0.12, sz: i === 0 ? 17 : 13 });
+        }
+      });
+    } catch (e) {}
     // ★D3：ゴールの瞬間だけ帯を出す（LIVEバッジは終了表示に切り替える）
     const gb = wrap.querySelector("#rc-goalband");
     if (gb) { gb.hidden = false; gb.classList.remove("show"); void gb.offsetWidth; gb.classList.add("show"); }
@@ -4061,6 +4230,9 @@ function startRaceCanvas(container, ctx) {
       //   （駒送り検証で顕在化・実測）。scrub先は常に「レース本編」なので入場は終了扱いにする。
       S.entryT = 0;
       S.flyIn = S.tau > 0.01 ? 3 : 0;
+      // ★A-1/A-2：発走テープとロールコールもスクラブ位置に同期（GO後はテープ無し・紹介終了）
+      S.tapeAlpha = S.tau > 0.01 ? 0 : 1; S.tapeBurst = S.tau > 0.01;
+      S.roll = -1;
       S.crossedSet = new Set(timeline.crossings.filter(c => S.tau >= c.tau).map(c => c.id));
       const _winCross = timeline.crossings.find(c => c.place === 1);
       S.tapeBroken = !!(_winCross && S.tau >= _winCross.tau);
