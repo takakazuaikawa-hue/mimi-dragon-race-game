@@ -1448,6 +1448,9 @@ function startRaceCanvas(container, ctx) {
     </div>
     <div class="rc-stage">
       <canvas id="rc-canvas"></canvas>
+      <!-- ★D3：生中継の徽章。ホーム＝配信・物語＝密着ドキュメンタリーと同じ世界であることを一目で示す -->
+      <span class="rc-live" id="rc-live"><i></i>LIVE</span>
+      <div class="rc-goalband" id="rc-goalband" hidden>🎉 ゴール！</div>
       <button class="rc-play" id="rc-play" title="再生/一時停止">⏸</button>
     </div>
     <!-- ★RACE_SCREEN_LIVE D1：生着順ボード。画面下半分の主役＝8頭の行がFLIPで入れ替わり続ける。
@@ -3982,6 +3985,11 @@ function startRaceCanvas(container, ctx) {
     finishStripEl.innerHTML = html;
     // ★D1：ゴール確定に合わせてボード上位3行を金銀銅で固める（結果画面への視覚的な橋渡し）
     freezeBoardPodium(timeline.crossings.map(cr => cr.id));
+    // ★D3：ゴールの瞬間だけ帯を出す（LIVEバッジは終了表示に切り替える）
+    const gb = wrap.querySelector("#rc-goalband");
+    if (gb) { gb.hidden = false; gb.classList.remove("show"); void gb.offsetWidth; gb.classList.add("show"); }
+    const lv = wrap.querySelector("#rc-live");
+    if (lv) lv.classList.add("ended");
   }
 
   playBtn.onclick = () => {
@@ -4051,6 +4059,10 @@ function startRaceCanvas(container, ctx) {
       //   （そうしないと最後まで飛ばした時にボードだけ走行中の顔のまま残る）。
       if (_done) freezeBoardPodium(timeline.crossings.map(cr => cr.id));
       else unfreezeBoardPodium();
+      // ★D3：LIVE徽章とゴール帯もスクラブ位置に合わせる（戻したら中継中の顔に戻す）
+      { const gb = wrap.querySelector("#rc-goalband"), lv = wrap.querySelector("#rc-live");
+        if (gb) { gb.hidden = !_done; if (!_done) gb.classList.remove("show"); }
+        if (lv) lv.classList.toggle("ended", _done); }
       for (let i = 0; i < 80; i++) updateCamera();
       draw();
     }
