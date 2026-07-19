@@ -1443,6 +1443,7 @@ function startRaceCanvas(container, ctx) {
       <div class="rc-hud-right">
         <span class="rc-weather">${(WEATHERS[race.weather] || {}).label || ""}</span>
         <span class="rc-remain" id="rc-remain">残り ${timeline.distanceMeters}m</span>
+        <span class="rc-viewers" id="rc-viewers" title="視聴者数"><i>👁</i><b>0</b></span>
       </div>
     </div>
     <div class="rc-stage">
@@ -1452,7 +1453,9 @@ function startRaceCanvas(container, ctx) {
     <!-- ★RACE_SCREEN_LIVE D1：生着順ボード。画面下半分の主役＝8頭の行がFLIPで入れ替わり続ける。
          旧 rc-rankbar（1行テキスト）と rc-bet（HUD隅の期待メーター）はここへ置換統合した。 -->
     <div class="rc-board" id="rc-board"></div>
-    <div class="rc-telop" id="rc-telop"><div class="lines" id="rc-lines"></div></div>
+    <!-- ★D2：視聴者コメント（匿名のみ・キャスト名は使わない＝門番問題を構造ごと回避） -->
+    <div class="rc-chat" id="rc-chat"></div>
+    <div class="rc-telop" id="rc-telop"><span class="rc-telop-who">🎙 ミミ</span><div class="lines" id="rc-lines"></div></div>
     <div class="rc-controls" id="rc-controls"></div>
     <div class="rc-finishstrip" id="rc-finishstrip" style="display:none"></div>
     <div class="rc-log" id="rc-log" style="display:none"></div>
@@ -3349,7 +3352,9 @@ function startRaceCanvas(container, ctx) {
     sectionEl.textContent = rcTerrainInfo(_hudKey).icon + " " + sectionLabelAtP(leaderP);
     sectionEl.style.borderLeftColor = (RC_THEME[_hudKey] || RC_THEME.straight).accent;
     remainEl.textContent = "残り " + timeline.distanceRemainingAt(S.tau) + "m";
-    updateBoard(standings, standMap, (typeof performance !== "undefined" ? performance.now() : Date.now()));
+    const _tNow = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    updateBoard(standings, standMap, _tNow);
+    updateChat(standings, standMap, _pi, _tNow);   // ★D2 視聴者レイヤー
   }
 
   // =====================================================================
@@ -3467,11 +3472,73 @@ function startRaceCanvas(container, ctx) {
       if (exp.inZone && boardZoneWas === false) {
         boardEl.classList.remove("zone-hit"); void boardEl.offsetWidth; boardEl.classList.add("zone-hit");
         try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
+        chatOnZone();   // ★D2：圏内突入＝視聴者がざわつく（歓声のピーク）
       }
       boardEl.classList.toggle("in-zone", exp.inZone);
       boardZoneWas = exp.inZone;
     }
   }
+
+  // =====================================================================
+  // ★RACE_SCREEN_LIVE D2：視聴者レイヤー（同接カウンタ＋流れるコメント）
+  //   「無人の中継画面」を「人が見ている配信」に変える層。全て演出＝結果に非干渉。
+  //   コメントは匿名ハンドルのみ（data_race_chat.js）＝キャスト登場門番の事故を構造で防ぐ。
+  // =====================================================================
+  const viewersEl = wrap.querySelector("#rc-viewers");
+  const chatEl = wrap.querySelector("#rc-chat");
+  const CHAT_MAX = 3;                       // 同時表示は3行まで（DOM累積を防ぐ）
+  let viewersBase = 0, viewersShown = 0, viewersTargetAdd = 0;
+  let chatNextAt = 0, chatPrevLead = null, chatPrevMineRank = null, chatGoalDone = false;
+
+  // 同接のベース値＝レースの格（rank）で桁を変える。以降はイベントで積み増す“演出数字”。
+  (function initViewers() {
+    const rk = (race && race.rank) || 1;
+    viewersBase = Math.round((180 + rk * rk * 260) * (0.85 + Math.random() * 0.3));
+    viewersShown = viewersBase;
+  })();
+
+  function pushChat(key, dragonName) {
+    if (typeof rcChatPick !== "function") return;
+    const t = rcChatPick(key, dragonName);
+    if (!t) return;
+    const line = el("div", "rc-chat-line");
+    line.innerHTML = `<b>${(typeof rcChatHandle === "function" ? rcChatHandle() : "視聴者")}</b>${t}`;
+    chatEl.appendChild(line);
+    while (chatEl.children.length > CHAT_MAX) chatEl.removeChild(chatEl.firstChild);
+  }
+
+  // フェーズ/出来事に反応してコメントを流す＋同接を動かす（毎フレームの乱数は使わない）
+  function updateChat(standings, standMap, phaseIdx, tNow) {
+    const leader = standings[0];
+    const mineId = betSet.size ? [...betSet][0] : null;
+    const mineName = mineId ? commentaryName(mineId) : null;
+    const mineRank = mineId ? (standMap[mineId] || 99) : null;
+
+    // 出来事ドリブン（優先度順に1つだけ）
+    let ev = null;
+    if (!chatGoalDone && S.finished) { ev = "goal"; chatGoalDone = true; viewersTargetAdd += Math.round(viewersBase * 0.5); }
+    else if (chatPrevLead && leader !== chatPrevLead) { ev = "lead"; viewersTargetAdd += Math.round(viewersBase * 0.06); }
+    else if (mineRank != null && chatPrevMineRank != null && mineRank < chatPrevMineRank) ev = "mineUp";
+    else if (mineRank != null && chatPrevMineRank != null && mineRank > chatPrevMineRank) ev = "mineDown";
+    if (ev) pushChat(ev, mineName);
+    chatPrevLead = leader; chatPrevMineRank = mineRank;
+
+    // 間が空いたら埋める（フェーズで頻度を変える＝終盤ほど賑やかに）
+    const interval = phaseIdx >= 4 ? 900 : phaseIdx >= 3 ? 1300 : 2000;
+    if (tNow > chatNextAt) {
+      chatNextAt = tNow + interval;
+      pushChat(phaseIdx >= 3 ? "final" : (tNow < 3000 ? "start" : "idle"), mineName);
+      if (phaseIdx >= 3) viewersTargetAdd += Math.round(viewersBase * 0.03);
+    }
+
+    // 同接：目標値へなめらかに寄せる（数字がじわじわ増える＝配信が伸びている感）
+    const target = viewersBase + viewersTargetAdd;
+    if (viewersShown < target) viewersShown += Math.max(1, Math.ceil((target - viewersShown) * 0.12));
+    const b = viewersEl && viewersEl.querySelector("b");
+    if (b) b.textContent = viewersShown.toLocaleString("ja-JP");
+  }
+  // 圏内に入った時だけ呼ぶ（updateBoard から）＝歓声のピーク
+  function chatOnZone() { pushChat("zone", betSet.size ? commentaryName([...betSet][0]) : null); viewersTargetAdd += Math.round(viewersBase * 0.12); }
 
   // ゴール後：上位3行を金銀銅で固める＝結果画面へのつなぎ（遷移の連続性）
   function freezeBoardPodium(standings) {

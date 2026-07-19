@@ -1015,6 +1015,35 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .rc-board.final .rcb-row.podium.p2 { background: linear-gradient(90deg, rgba(200,208,220,.22), transparent); }
 .rc-board.final .rcb-row.podium.p3 { background: linear-gradient(90deg, rgba(205,140,80,.22), transparent); }
 
+/* ===== ★RACE_SCREEN_LIVE D2：視聴者レイヤー（同接＋流れるコメント）=====
+   「無人の中継画面」を「人が見ている配信」に変える層。すべて演出＝結果に非干渉。 */
+.rc-viewers {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;
+  font-size: 11px; font-weight: 800; color: #d8dee6; font-variant-numeric: tabular-nums;
+}
+.rc-viewers i { font-style: normal; font-size: 10px; opacity: .8; }
+.rc-chat {
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 3px;
+  min-height: 54px; padding: 4px 2px 2px; overflow: hidden;
+}
+.rc-chat-line {
+  font-size: 11px; line-height: 1.45; color: #cfd6e0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: rcChatIn .32s ease both;
+}
+.rc-chat-line b {
+  font-weight: 800; color: #8fa2bb; margin-right: 6px; font-size: 10px;
+}
+@keyframes rcChatIn { from { opacity: 0; transform: translateX(-8px); } }
+/* 実況（ミミの声）と視聴者コメントを見た目で分ける＝誰が喋っているか迷わせない */
+.rc-telop { position: relative; }
+.rc-telop-who {
+  display: inline-block; font-size: 9px; font-weight: 900; letter-spacing: .08em;
+  color: #2a2013; background: linear-gradient(180deg,#ffe08a,#e8b455);
+  border-radius: 99px; padding: 1px 8px; margin-bottom: 3px;
+}
+@media (prefers-reduced-motion: reduce) { .rc-chat-line { animation: none; } }
+
 /* ★B-3「山を3つ」＝終盤(3)/ゴール前(4)だけ盤面を締める（序盤は静かに・直線で最厚） */
 .rc-wrap[data-phase-idx="3"] .rc-stage,
 .rc-wrap[data-phase-idx="4"] .rc-stage { filter: contrast(1.05) saturate(1.08); }
