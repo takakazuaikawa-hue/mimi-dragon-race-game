@@ -2,10 +2,11 @@
   "image": "crowd_glow_sprite.webp",
   "frameWidth": 750,
   "frameHeight": 140,
-  "frameCount": 4,
+  "frameCount": 12,
   "layout": "vertical",
-  "frameDurationMs": 140,
+  "frameDurationMs": 55,
   "loop": false,
   "motion": "rise-from-bottom",
-  "frameYPositions": [140, 92, 53, 15]
+  "easing": "ease-in-out-sine",
+  "frameYPositions": [140, 137, 130, 118, 103, 86, 69, 52, 37, 25, 18, 15]
 }
