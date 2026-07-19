@@ -1923,15 +1923,8 @@ function renderRaceDetail(race) {
       <span class="wager-quick" id="wager-chips"></span>
     </div>
     <div class="payout-box empty" id="expected-payout"><div class="po-hint">本命と賭金を選ぶと払戻が出ます</div></div>
-    <div class="bet-reason" id="bet-reason">
-      <span class="br-q">どうしてこの子？</span>
-      <span class="br-chips">
-        <button type="button" class="br-chip chosen" data-r="kan">🔥 直感</button>
-        <button type="button" class="br-chip" data-r="data">📊 データ</button>
-        <button type="button" class="br-chip" data-r="tell">👀 気配</button>
-        <button type="button" class="br-chip" data-r="value">💰 うまみ</button>
-      </span>
-    </div>
+    <!-- ★根拠(どうしてこの子?)はここから撤去。スキップできる位置だと「選ばない」が大多数になり
+         C-3の答え合わせが育たないため、出走確定の投票券ダイアログで必ず選ばせる方式に変更。 -->
     <div class="slip-actions"><button id="bet-confirm" type="button" disabled>🔔 出走直前！この予想で観る ▶</button></div>
     <div class="condition-line slip-note">所持 ${fmtCoins(state.player.coins)} ／ この一戦の上限 ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
   `;
@@ -2077,21 +2070,8 @@ function renderRaceDetail(race) {
   $("bet-confirm").onclick = () => onConfirmBet();
   $("back-race-select").onclick = renderRaceSelect;
 
-  // ★A-2 予想の根拠を1タップ宣言（表示専用メタ・結果画面で答え合わせ＝C-3）。
-  //   既定は🔥直感＝押さなくても成立する（スキップ可）。レース跨ぎで前回の選択を引き継ぐ。
-  (function wireBetReason() {
-    const box = $("bet-reason"); if (!box) return;
-    const cur = state.current.betReason || state.player.betReason || "kan";
-    state.current.betReason = cur;
-    box.querySelectorAll(".br-chip").forEach(c => {
-      c.classList.toggle("chosen", c.dataset.r === cur);
-      c.onclick = () => {
-        state.current.betReason = c.dataset.r;
-        box.querySelectorAll(".br-chip").forEach(x => x.classList.toggle("chosen", x === c));
-        if (window.Sfx) Sfx.play("tick");
-      };
-    });
-  })();
+  // ※根拠の宣言はスリップから投票券ダイアログ（showBetConfirm）へ移設した。
+  //   スリップ上だと「選ばない」で通過できてしまい、C-3の答え合わせが育たなかったため。
 
   renderPickState();
   updateExpected();   // initial payout hint + confirm-disabled state
@@ -2619,7 +2599,17 @@ function showBetConfirm() {
       `</div>` +
       `<div class="tix-stub"><span>半券</span><b>${typeLabel}</b><i>${odds.toFixed(1)}</i></div>` +
     `</div>` +
-    `<div class="bcf-q">千切ると、出走が確定します。</div>`;
+    // ★根拠の宣言をここへ移設（スリップ上ではスキップされ「選ばない」が大多数になっていた）。
+    //   選ばないと出走ボタンが押せない＝必ず1つ選ぶ。結果画面C-3の答え合わせの材料になる。
+    `<div class="bcf-reason" id="bcf-reason">` +
+      `<div class="bcf-q">どうしてこの子？<small>選ぶと出走できます</small></div>` +
+      `<div class="bcf-chips">` +
+        `<button type="button" class="bcf-chip" data-r="kan">🔥 直感</button>` +
+        `<button type="button" class="bcf-chip" data-r="data">📊 データ</button>` +
+        `<button type="button" class="bcf-chip" data-r="tell">👀 気配</button>` +
+        `<button type="button" class="bcf-chip" data-r="value">💰 うまみ</button>` +
+      `</div>` +
+    `</div>`;
   // Swap close button for two buttons（出走＝主ボタン／やめる＝副）
   const closeBtn = document.getElementById("event-close");
   closeBtn.style.display = "none";
@@ -2630,7 +2620,22 @@ function showBetConfirm() {
   const no = document.createElement("button"); no.textContent = "やめる"; no.className = "secondary";
   no.onclick = () => { closeBetConfirm(); };
   const yes = document.createElement("button"); yes.textContent = "🎫 千切って出走"; yes.className = "bcf-go";
+  // ★根拠を選ぶまで出走できない（必ず1つ選ばせる）。選んだ瞬間に解禁＋券面に理由が刻まれる。
+  yes.disabled = true;
+  state.current.betReason = null;
+  (function wireReasonChips() {
+    const host = document.getElementById("bcf-reason"); if (!host) return;
+    host.querySelectorAll(".bcf-chip").forEach(chip => {
+      chip.onclick = () => {
+        state.current.betReason = chip.dataset.r;
+        host.querySelectorAll(".bcf-chip").forEach(x => x.classList.toggle("chosen", x === chip));
+        yes.disabled = false;
+        try { if (window.Sfx) Sfx.play("tick"); } catch (e) {}
+      };
+    });
+  })();
   yes.onclick = () => {
+    if (!state.current.betReason) return;   // 二重防御：未選択なら出走させない
     // E1（docs/HUNGER_ECONOMY_DESIGN.md）：おなかが空っぽなら出走できない（表示ゲートのみ・
     // レース数値不変・FTUE=最初の3レースは素通し）。ごはんへ誘導して中止。
     if (typeof hungerCanRace === "function" && !hungerCanRace()) {

@@ -2232,7 +2232,29 @@ table.entry-table {
 @keyframes poBump { 0% { transform: scale(1); } 38% { transform: scale(1.13); color: #ffe98a; } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .payout-box .pl-v.bump { animation: none; } }
 
-/* ===== ★CORE_LOOP_UX A-2：予想の根拠（表示専用メタ・結果でC-3の答え合わせに使う） ===== */
+/* ===== ★予想の根拠：投票券ダイアログ内で必ず1つ選ばせる（スリップ上の任意選択から移設）=====
+   選ぶまで「千切って出走」は押せない。結果画面C-3の答え合わせの材料になる。 */
+.bcf-reason { margin-top: 12px; }
+.bcf-reason .bcf-q {
+  font-size: 12.5px; font-weight: 900; color: #ffe08a; margin-bottom: 7px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.bcf-reason .bcf-q small { font-size: 10px; font-weight: 700; color: #b0a070; }
+.bcf-chips { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.bcf-chip {
+  font-size: 12.5px; font-weight: 800; cursor: pointer; padding: 10px 8px;
+  color: #e8dfc8; background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.16); border-radius: 10px;
+  transition: transform .1s, background .15s, border-color .15s;
+}
+.bcf-chip:active { transform: scale(.96); }
+.bcf-chip.chosen {
+  color: #2a2013; background: linear-gradient(180deg, #ffe08a, #e8b455);
+  border-color: transparent; box-shadow: 0 2px 12px rgba(255,214,120,.35);
+}
+#bet-confirm-actions .bcf-go:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(.5); }
+
+/* （旧）スリップ内の根拠チップ — 現在は未使用。将来の参照用に残置 */
 .bet-reason { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; flex-wrap: wrap; }
 .bet-reason .br-q { font-size: 10.5px; font-weight: 800; color: #b0a070; white-space: nowrap; }
 .bet-reason .br-chips { display: flex; gap: 5px; flex-wrap: wrap; }
