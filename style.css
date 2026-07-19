@@ -6760,6 +6760,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border-top: 2px solid var(--gold-line); box-shadow: 0 -12px 30px -14px rgba(0,0,0,.95); }
 .bd-slip .bet-sel-sum { display: flex; align-items: center; gap: 7px; min-height: 20px; margin-bottom: 6px;
   font-size: 12px; color: var(--mist); }
+/* 竜を選ぶ前は中身が空＝枠だけが浮いて見えるので、行ごと畳む（ユーザー指摘）。
+   ★2030行の .bet-sel-sum:empty と同specificityのため、後勝ちでこちらが必要。 */
+.bd-slip .bet-sel-sum:empty { display: none; margin-bottom: 0; min-height: 0; }
 .bss-tix { font-size: 14px; }
 .bss-nm { font-size: 13.5px; color: #fff2d5; }
 .bss-odds { margin-left: auto; font-size: 11px; color: #ffce8a; }
