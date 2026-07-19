@@ -1,21 +1,27 @@
 // =============================================================================
 // ui_story.js — 物語・相談の画面（CODEMAP §6・分割第3弾）。
 // =============================================================================
-// ★見た目を「異世界新聞（聖龍日報）」風に統一＝明朝体・クリーム紙・罫線・号外コラム・
-//   ハーフトーン写真。renderStory / renderStoryChapter / renderConsult / showStoryEvent。
-//   参照（STORY_CHAPTERS/STORY_CAST/Dialogue/DLG/getStoryFlag/epilogueStart/playShinganCutin/
-//   photoOr/showStoryArt/chapterDisplayTitle/storyUnlockAt/castUnlockAt/fmtCoins 等）は不変。
+// ★2026-07-18 コンセプト一新：「異世界新聞・聖龍日報」→ 密着ドキュメンタリー『ミミ、爆走中。』
+//   リサーチ（推し活プラットフォームWeverse/bubble・Netflixの話数閲覧・FUDGE系WEBマガジン）より、
+//   若い読者が熱心に読む3要素＝①推しとの距離の近さ ②大サムネ＋EP番号の「次を見たくなる」導線
+//   ③余白と太い短い見出し。ホーム＝TikTok配信と同じ世界（ミミは配信者）なので、物語＝
+//   「彼女の公式密着ドキュメンタリー」が最も自然。章＝EPISODE・小イベント＝OFF SHOT・
+//   相談役＝MENTORS（証言者）。記事体の本文は「取材ノート＋証言」としてそのまま活きる。
+//   renderStory / renderStoryChapter / renderConsult / showStoryEvent。クラス名（.news-*）は
+//   互換のため維持（スキンはstyle.cssで全面刷新）。参照（STORY_CHAPTERS/STORY_CAST/Dialogue/DLG/
+//   getStoryFlag/epilogueStart/playShinganCutin/photoOr/showStoryArt/chapterDisplayTitle/
+//   storyUnlockAt/castUnlockAt/fmtCoins 等）は不変。
 //   ★完全に表示専用＝着順・オッズ・配当・経済に非干渉（[[race-math-immutable]]）。
 // =============================================================================
 
-// 新聞の題字（マストヘッド）。leftMeta=號数、rightMeta=面の種類など。
+// シリーズヒーロー（旧・新聞題字）。leftMeta/rightMeta＝ロゴ下のメタ情報チップ2つ。
 function _newsMast(leftMeta, rightMeta) {
   const m = el("div", "news-mast");
   m.innerHTML =
-    `<div class="news-mast-top"><span>${leftMeta || ""}</span><span>聖龍暦 二三七年</span><span>${rightMeta || ""}</span></div>` +
-    `<div class="news-title"><span class="crest">🐲</span><span>聖龍日報</span><span class="crest">🐉</span></div>` +
-    `<div class="news-sub">THE&nbsp;SACRED&nbsp;DRAGON&nbsp;TIMES</div>` +
-    `<div class="news-mast-rule"><span>霧島本社</span><span>◆</span><span>発行 ミミ通信社</span><span>◆</span><span>天候 霧のち快晴</span></div>`;
+    `<div class="news-mast-top"><span>MIMI&nbsp;OFFICIAL</span><span class="live-dot"></span><span>DOCUMENTARY&nbsp;SERIES</span></div>` +
+    `<div class="news-title">ミミ、爆走中<span class="ttl-dot">。</span></div>` +
+    `<div class="news-sub">RUN,&nbsp;BUNNY,&nbsp;RUN</div>` +
+    `<div class="news-mast-rule">${leftMeta ? `<span>${leftMeta}</span>` : ""}${rightMeta ? `<span>${rightMeta}</span>` : ""}</div>`;
   return m;
 }
 // 見出し罫（rubric）。labelHTML はHTML可（件数バッジ等）。
@@ -39,20 +45,20 @@ function renderStory() {
   const issue = (state.player.completedRaces || 0) + 1;
   const unlockedCount = STORY_CHAPTERS.filter(ch => (typeof chapterAvailable === "function") ? chapterAvailable(ch.id) : (total >= storyUnlockAt(ch.id))).length;
 
-  // 題字
-  news.appendChild(_newsMast(`第 ${issue} 號`, `本紙連載 ${unlockedCount}／${STORY_CHAPTERS.length} 話`));
+  // シリーズヒーロー
+  news.appendChild(_newsMast(`配信 ${issue} 日目`, `EP ${unlockedCount}／${STORY_CHAPTERS.length} 公開中`));
 
-  // 発行のことば（リード・ドロップキャップ）
+  // シノプシス（あらすじ）
   const lead = el("div", "news-lead");
   lead.innerHTML =
-    `<span class="news-dropcap">霧</span>けむる聖龍レース島より、本紙が綴る——借金まみれのバニー娘ミミが、島で出会う五人の証言と、五つの視点。` +
-    `総資産を積むほど、未公開の続報が解禁される。`;
+    `借金まみれで島に流れ着いたバニー娘が、竜レースで人生を取り返すまで。` +
+    `本人も知らなかった舞台裏を、<b>5人の証言</b>と未公開映像で追う。総資産を積むほど、次のエピソードが公開される。`;
   news.appendChild(lead);
 
-  // 連載（章一覧）＝記事の見出し群
-  news.appendChild(_newsRubric("聖龍五人衆 ・ 連載記事"));
+  // EPISODES（章一覧）＝話数カード
+  news.appendChild(_newsRubric(`EPISODES <span class="news-rub-n">本編・全${STORY_CHAPTERS.length}話</span>`));
   const arts = el("div", "news-arts");
-  STORY_CHAPTERS.forEach(ch => {
+  STORY_CHAPTERS.forEach((ch, _ci) => {
     // ★「解禁（＝読める）」と「登場（＝読んだ）」は別物。ここを混同していたのが本丸の穴。
     //   新規スタートの総資産は 1000+村2000＝3000＝第2話のしきい値ちょうど。旧コードは unlocked だけで
     //   カードを開いていたため、1行も読まないうちに chapterDisplayTitle（＝STORY_CAST.name の本名）で
@@ -71,21 +77,23 @@ function renderStory() {
         ? `<span class="news-photo-s">${photoOr("images/story/" + ch.id + ".jpg", `<span class="sym">${cast ? _csSym(ch.cast) : "🐲"}</span>`)}</span>`
         // 未読＝顔写真を出さない。記号は門番経由（❓／セレスティアの伏線段階だけ🌌）。
         : `<span class="news-photo-s"><span class="sym">${cast ? _csSym(ch.cast) : "🐲"}</span></span>`;
-    const kicker = !unlocked ? "未公開"
-      : met ? (cast ? cast.tag : (ch.id === "ED" ? "最終回" : "特報"))
-      : "未読";
+    // EP番号＝カードの主役（Netflix式の話数導線）。EDはFINAL。
+    const epNo = ch.id === "ED" ? "FINAL" : `EP.${String(_ci + 1).padStart(2, "0")}`;
+    const kicker = !unlocked ? `${epNo} ─ COMING SOON`
+      : met ? `${epNo} ─ ${cast ? cast.tag : (ch.id === "ED" ? "最終回" : "特報")}`
+      : `${epNo} <span class="news-stamp">NEW</span>`;
     const head = !unlocked ? `<span class="news-censor">■■■■■■</span>`
       : met ? chapterDisplayTitle(ch)
-      // 未読の見出しは「第N話」だけ（ED は元から名を含まない）。固有名を出さずに予告する（R7）。
+      // 未視聴の見出しは「第N話」だけ（ED は元から名を含まない）。固有名を出さずに予告する（R7）。
       : (ch.id === "ED" ? "エンディング" : `第${ch.id}話　<span class="news-censor">■■■■</span>`);
     const lead2 = !unlocked
-      ? `次號予告 ／ ${(typeof chapterUnlockHint === "function" && chapterUnlockHint(ch.id)) || ("総資産 " + fmtCoins(storyUnlockAt(ch.id)) + " にて解禁")}`
-      : met ? (ch.id === "ED" ? "次なる物語へ——結びの一面。" : ch.title)
-      : "本紙未読 ／ タップで記事を読む";
+      ? `公開条件 ／ ${(typeof chapterUnlockHint === "function" && chapterUnlockHint(ch.id)) || ("総資産 " + fmtCoins(storyUnlockAt(ch.id)) + " で公開")}`
+      : met ? (ch.id === "ED" ? "次なる物語へ——最終話。" : ch.title)
+      : "未視聴 ／ タップで再生";
     art.innerHTML = photo +
       `<span class="news-art-tx"><span class="news-kicker">${kicker}</span>` +
         `<span class="news-head">${head}</span><span class="news-lead2">${lead2}</span></span>` +
-      (unlocked ? `<span class="news-art-go">▸</span>` : `<span class="news-art-seal">未</span>`);
+      (unlocked ? `<span class="news-art-go">▶</span>` : `<span class="news-art-seal">🔒</span>`);
     if (unlocked) art.onclick = () => renderStoryChapter(ch.id);
     arts.appendChild(art);
   });
@@ -98,7 +106,7 @@ function renderStory() {
   const _edReached = (typeof epData === "function") ? !!epData().edFlag
     : !!(state.player && state.player.epilogue && state.player.epilogue.edFlag);
   if (typeof STORY_EXTRA_ISSUE !== "undefined" && _edReached) {
-    news.appendChild(_newsRubric("特別號 ・ クリア後の島"));
+    news.appendChild(_newsRubric(`SPECIAL <span class="news-rub-n">クリア後の島</span>`));
     const ex = el("div", "news-lead");
     ex.textContent = STORY_EXTRA_ISSUE.lead;
     news.appendChild(ex);
@@ -107,7 +115,7 @@ function renderStory() {
       const art = el("button", "news-art");
       art.innerHTML =
         `<span class="news-photo-s"><span class="sym">${a.icon}</span></span>` +
-        `<span class="news-art-tx"><span class="news-kicker">クリア後</span>` +
+        `<span class="news-art-tx"><span class="news-kicker">AFTER STORY</span>` +
           `<span class="news-head">${a.title}</span><span class="news-lead2">${a.body}</span></span>` +
         `<span class="news-art-go">▸</span>`;
       art.onclick = () => { if (typeof goto === "function") goto(a.go); };
@@ -121,17 +129,17 @@ function renderStory() {
   if (typeof storyEvents === "function") {
     const evs = storyEvents();
     const st = (typeof storyEventsStats === "function") ? storyEventsStats() : { got: evs.length, total: evs.length, unread: 0 };
-    news.appendChild(_newsRubric(`<img class="news-men" src="images/kurashi/men_bunka.webp" alt="文化面" onerror="this.remove()">號外コラム ・ 島の小話 <span class="news-rub-n">${st.got}／${st.total}${st.unread ? `・速報 ${st.unread}` : ""}</span>`));
+    news.appendChild(_newsRubric(`OFF SHOT <span class="news-rub-n">こぼれ話 ${st.got}／${st.total}${st.unread ? `・NEW ${st.unread}` : ""}</span>`));
     if (!evs.length) {
-      news.appendChild(el("div", "news-empty", "——続報を待て。物語を進めると、小さな記事が舞い込む。"));
+      news.appendChild(el("div", "news-empty", "——撮れ高はこれから。物語が進むと、カメラに映らなかった小さな話が届く。"));
     } else {
       const briefs = el("div", "news-briefs");
       evs.forEach(e => {
         const read = (typeof storyEventRead === "function") ? storyEventRead(e.id) : true;
         const b = el("button", "news-brief" + (read ? "" : " unread"));
         b.innerHTML =
-          `<span class="news-brief-h">${read ? "" : `<span class="news-stamp">速報</span>`}<span class="news-brief-ic">${e.ic || "✨"}</span>${e.title}</span>` +
-          (e.who ? `<span class="news-brief-b">── ${e.who} 談</span>` : "");
+          `<span class="news-brief-h">${read ? "" : `<span class="news-stamp">NEW</span>`}<span class="news-brief-ic">${e.ic || "✨"}</span>${e.title}</span>` +
+          (e.who ? `<span class="news-brief-b">── ${e.who}</span>` : "");
         b.onclick = () => showStoryEvent(e);
         briefs.appendChild(b);
       });
@@ -139,11 +147,10 @@ function renderStory() {
     }
   }
 
-  // 発行欄（フッター＝操作ボタン）
+  // フッター（操作ボタン）
   const foot = el("div", "news-foot");
-  foot.appendChild(el("div", "news-foot-pub", "聖龍日報　発行：ミミ通信社　◆　無断転載を禁ず"));
   const btns = el("div", "news-btns");
-  const consultBtn = el("button", "news-btn", "💬 寄稿者に相談"); consultBtn.onclick = () => renderConsult();
+  const consultBtn = el("button", "news-btn", "🎙 MENTORS ─ 証言者たち"); consultBtn.onclick = () => renderConsult();
   btns.appendChild(consultBtn);
   if (state.ui && state.ui.debug && typeof Dialogue !== "undefined") {
     const demoBtn = el("button", "news-btn", "▶ 立ち絵デモ"); demoBtn.onclick = () => Dialogue.demo();
@@ -164,10 +171,10 @@ function showStoryEvent(e) {
   const box = el("div", "navpop news-clip");
   const close = () => { ov.remove(); if (state.ui.screen === "story" && typeof renderStory === "function") renderStory(); };
   box.innerHTML =
-    `<div class="news-clip-mast"><span>號外</span><span>聖龍日報</span><span>島の小話</span></div>` +
+    `<div class="news-clip-mast"><span>OFF&nbsp;SHOT</span><span>ミミ、爆走中。</span><span>こぼれ話</span></div>` +
     `<div class="news-clip-ic">${e.ic || "✨"}</div>` +
     `<div class="news-clip-head">${e.title}</div>` +
-    (e.who ? `<div class="news-clip-by">── ${e.who} 談</div>` : "") +
+    (e.who ? `<div class="news-clip-by">── ${e.who}</div>` : "") +
     `<div class="news-clip-body">${String(e.body || "").replace(/[<>&]/g, m => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[m])).replace(/\n/g, "<br>")}</div>`;
   const btns = el("div", "news-btns");
   const ok = el("button", "news-btn prim", "とじる"); ok.onclick = () => close();
@@ -221,35 +228,34 @@ function renderStoryChapter(chId) {
 
   const app = beginScreen();   // 上部に「← 物語」
   const news = el("div", "news news-article");
-  const issue = (state.player.completedRaces || 0) + 1;
-  news.appendChild(_newsMast(`第 ${issue} 號`, ch.id === "ED" ? "最終一面" : "特集一面"));
 
-  // 大見出し＝記事の芸（headline・2026-07全面再執筆）。旧タイトルは肩の subhead に降ろす。
-  const kicker = cast ? cast.tag : (ch.id === "ED" ? "最終回" : "特報");
-  news.appendChild(el("div", "news-kicker news-kicker-lg", kicker));
+  // EPバッジ（話数）＋エピソードタイトル（headline）。旧タイトルは肩の subhead に降ろす。
+  const _epIdx = STORY_CHAPTERS.findIndex(c => c.id === ch.id);
+  const _epNo = ch.id === "ED" ? "FINAL EPISODE" : `EPISODE ${String(_epIdx + 1).padStart(2, "0")}`;
+  news.appendChild(el("div", "news-kicker news-kicker-lg",
+    `${_epNo}${cast ? `<span class="ep-cast"> ─ ${cast.tag}</span>` : ""}`));
   news.appendChild(el("div", "news-headline", ch.headline || chapterDisplayTitle(ch)));
   news.appendChild(el("div", "news-subhead", ch.title));
-  if (cast) news.appendChild(el("div", "news-byline", `寄稿：${cast.name}（${cast.tag}）　◆　授けるもの＝${cast.gives}`));
-  // リード＝旧「一文・件。」スタイルの継承枠（本文の前に太らせず1段で）
+  if (cast) news.appendChild(el("div", "news-byline", `出演：${cast.name}（${cast.tag}）　／　授けるもの＝${cast.gives}`));
+  // リード＝あらすじ（本文の前に1段）
   if (ch.lead) news.appendChild(el("div", "news-lead", ch.lead));
 
-  // 本紙写真（ハーフトーン枠・タップで全画面）
+  // キービジュアル（タップで全画面）
   const photo = el("div", "news-photo viewable");
   photo.innerHTML =
     `<div class="news-photo-img">${photoOr("images/story/" + ch.id + ".jpg", `<span class="sym">${cast ? cast.symbol : "🐲"}</span>`)}` +
       `<span class="news-photo-zoom">🔍 全画面</span></div>` +
-    `<div class="news-cap"><span class="news-cap-tag">本紙写真部</span>${ch.scene || ""}</div>`;
+    `<div class="news-cap"><span class="news-cap-tag">SCENE</span>${ch.scene || ""}</div>`;
   photo.onclick = () => showStoryArt(ch);
   news.appendChild(photo);
 
-  // 本文（明朝・両端揃え・ドロップキャップ）
+  // 本文（明朝＝ナレーションの声・両端揃え）
   news.appendChild(el("div", "news-text", ch.body));
 
-  // 発行欄
+  // フッター
   const foot = el("div", "news-foot");
-  foot.appendChild(el("div", "news-foot-pub", "聖龍日報　発行：ミミ通信社"));
   const btns = el("div", "news-btns");
-  const back = el("button", "news-btn prim", "◀ 一面へ戻る"); back.onclick = () => renderStory();
+  const back = el("button", "news-btn prim", "◀ エピソード一覧へ"); back.onclick = () => renderStory();
   btns.appendChild(back);
   foot.appendChild(btns);
   news.appendChild(foot);
@@ -257,7 +263,7 @@ function renderStoryChapter(chId) {
 }
 
 // =========================================================================
-// 相談 (consult)：新聞の「論説・寄稿者名簿」面。出会った顧問の視点を載せる。
+// 相談 (consult)：ドキュメンタリーの「MENTORS＝証言者」名鑑。出会った顧問の視点を載せる。
 // Flavor only; never affects race math.
 // =========================================================================
 function renderConsult() {
@@ -267,14 +273,13 @@ function renderConsult() {
   const app = beginScreen();
 
   const news = el("div", "news");
-  news.appendChild(_newsMast("論説 ・ 寄稿", "識者に問う"));
+  news.appendChild(_newsMast("MENTORS", "5人の証言者"));
   const lead = el("div", "news-lead");
   lead.innerHTML =
-    `<span class="news-dropcap">識</span>者に問う——相談は「答え合わせ」ではなく「視点の切り替え」。` +
-    `出会った論説委員が、それぞれの眼で島を読み解く。`;
+    `答えではなく、<b>視点</b>をくれる人たち。ミミが島で出会った5人が、それぞれの眼でレースと暮らしを読み解く。`;
   news.appendChild(lead);
 
-  news.appendChild(_newsRubric("論説委員 ・ 寄稿者名簿"));
+  news.appendChild(_newsRubric(`MENTORS <span class="news-rub-n">証言者名鑑</span>`));
   // C5解消：各顧問の「機能としての効果」を1行明記（特に神眼1.1倍の在り処＝レース詳細画面）。
   const CONSULT_EFFECT = {
     celestia: "🔮 効果：レース詳細の「1着を聞く」＝その竜の単勝・複勝が最低1.1倍で確実（答えは知れ渡り配当は縮む・使うかは任意）",
@@ -315,9 +320,8 @@ function renderConsult() {
   news.appendChild(arts);
 
   const foot = el("div", "news-foot");
-  foot.appendChild(el("div", "news-foot-pub", "聖龍日報　論説部"));
   const btns = el("div", "news-btns");
-  const storyBtn = el("button", "news-btn", "📜 一面へ"); storyBtn.onclick = () => renderStory();
+  const storyBtn = el("button", "news-btn", "🎬 エピソード一覧へ"); storyBtn.onclick = () => renderStory();
   const back = el("button", "news-btn prim", "🏠 ホームへ"); back.onclick = () => renderHome();
   btns.appendChild(storyBtn); btns.appendChild(back);
   foot.appendChild(btns);

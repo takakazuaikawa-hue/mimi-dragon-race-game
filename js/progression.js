@@ -181,9 +181,9 @@ function _showStoryCutin(ch) {
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop infopop");
   box.innerHTML =
-    `<div class="navpop-t">📖 新しい話が届いた</div>` +
-    `<div class="infopop-body"><div class="mm-row"><span class="mm-ic">📰</span>` +
-    `<div><b>${_title}</b><small>聖龍日報に続報がとどきました。〈物語〉から読めます。</small></div></div></div>`;
+    `<div class="navpop-t">🎬 新しいエピソード公開</div>` +
+    `<div class="infopop-body"><div class="mm-row"><span class="mm-ic">🎬</span>` +
+    `<div><b>${_title}</b><small>密着ドキュメンタリー『ミミ、爆走中。』の続きが公開されました。〈物語〉から見られます。</small></div></div></div>`;
   const btns = el("div", "navpop-btns");
   const later = el("button", "navpop-x", "あとで"); later.onclick = function () { ov.remove(); };
   const go = el("button", "navpop-go", "読む ▸");
