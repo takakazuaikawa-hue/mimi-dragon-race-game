@@ -2252,7 +2252,17 @@ table.entry-table {
   color: #2a2013; background: linear-gradient(180deg, #ffe08a, #e8b455);
   border-color: transparent; box-shadow: 0 2px 12px rgba(255,214,120,.35);
 }
-#bet-confirm-actions .bcf-go:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(.5); }
+/* 根拠を選ぶ前は操作ボタンごと消す（灰色の押せないボタンを見せない）。
+   選択した瞬間に .pending が外れ、下からせり出して現れる。 */
+#bet-confirm-actions.pending { display: none; }
+#bet-confirm-actions:not(.pending) { animation: bcfActionsIn .26s ease-out both; }
+@keyframes bcfActionsIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #bet-confirm-actions:not(.pending) { animation: none; }
+}
 
 /* （旧）スリップ内の根拠チップ — 現在は未使用。将来の参照用に残置 */
 .bet-reason { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; flex-wrap: wrap; }
@@ -6749,6 +6759,15 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .bd-head-top { display: flex; align-items: center; gap: 9px; }
 .bd-back { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,.22);
   background: rgba(0,0,0,.3); color: #fff; font-size: 16px; cursor: pointer; }
+
+/* ★ICON-BTN CENTERING：記号ひと文字だけのボタンは、必ず flex で字形そのものを中央に置く。
+   固定サイズの箱に padding や line-height の実測値で寄せる書き方は、フォントの
+   ascent/descent や文字幅が変わった瞬間に光学中心がズレる（← が右下に寄って見えていた原因）。
+   箱の位置ではなく「中身の位置」を揃えるルールなので、新しいアイコンボタンもここに足すこと。 */
+.bd-back, .rc-play, .sv-close, .dex-detail-x, .mv-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; line-height: 1; text-align: center;
+}
 .bd-title { min-width: 0; }
 .bd-title b { display: block; font-size: 16.5px; color: #fff6e6; line-height: 1.25; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
 .bd-sub { display: block; font-size: 10.5px; color: rgba(255,246,230,.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

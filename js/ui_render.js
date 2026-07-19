@@ -2620,8 +2620,11 @@ function showBetConfirm() {
   const no = document.createElement("button"); no.textContent = "やめる"; no.className = "secondary";
   no.onclick = () => { closeBetConfirm(); };
   const yes = document.createElement("button"); yes.textContent = "🎫 千切って出走"; yes.className = "bcf-go";
-  // ★根拠を選ぶまで出走できない（必ず1つ選ばせる）。選んだ瞬間に解禁＋券面に理由が刻まれる。
-  yes.disabled = true;
+  // ★根拠を選ぶまで「操作ボタンそのものを出さない」。
+  //   以前は disabled で灰色表示していたが、押せないボタンが見えている状態は
+  //   規制されている感じ＝心理的ストレスになる。選んだ瞬間に下からせり出させて、
+  //   「選んだから次に進める」という前向きな因果として見せる。
+  actions.classList.add("pending");
   state.current.betReason = null;
   (function wireReasonChips() {
     const host = document.getElementById("bcf-reason"); if (!host) return;
@@ -2629,7 +2632,7 @@ function showBetConfirm() {
       chip.onclick = () => {
         state.current.betReason = chip.dataset.r;
         host.querySelectorAll(".bcf-chip").forEach(x => x.classList.toggle("chosen", x === chip));
-        yes.disabled = false;
+        actions.classList.remove("pending");
         try { if (window.Sfx) Sfx.play("tick"); } catch (e) {}
       };
     });
