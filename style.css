@@ -1253,10 +1253,40 @@ table.entry-table {
 .bet-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .bet-pick-card {
   position: relative; display: flex; align-items: center; gap: 8px;
-  padding: 9px 10px; text-align: left; width: 100%;
+  padding: 9px 10px 9px; text-align: left; width: 100%;
   background: #241c44; border: 2px solid #3a3060; border-radius: 10px;
   color: #f0e8d0; cursor: pointer; transition: border-color .12s, background .12s, transform .05s;
+  flex-wrap: wrap;   /* ★A-1：段階開示のドロワーを下段へ折り返すため */
 }
+/* ===== ★CORE_LOOP_UX A-1：出走カードの段階開示（ぱっと見→気配→データ） =====
+   カード本体のタップは「選ぶ」のまま。開示はこの小ボタンだけが担当する。 */
+.bet-pick-card .bp-more {
+  flex: none; margin-left: auto; align-self: center; cursor: pointer;
+  font-size: 10px; font-weight: 800; letter-spacing: .04em; color: #c9bff0;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+  border-radius: 99px; padding: 4px 9px; white-space: nowrap;
+}
+.bet-pick-card .bp-more:hover { background: rgba(255,255,255,.13); color: #fff; }
+.bet-pick-card.expanded { background: #2b2252; }
+.bet-pick-card .bp-drawer {
+  flex-basis: 100%; display: flex; flex-direction: column; gap: 6px;
+  margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,.16);
+  animation: bpDrawer .22s ease both;
+}
+/* author の display:flex が UA の [hidden]{display:none} に勝ってしまい、
+   閉じていても罫線ぶん(9px)が残っていた（実測）。明示的に打ち消す。 */
+.bet-pick-card .bp-drawer[hidden] { display: none; }
+@keyframes bpDrawer { from { opacity: 0; transform: translateY(-4px); } }
+.bet-pick-card .bp-tell { font-size: 11.5px; line-height: 1.6; color: #e6dcff; }
+.bet-pick-card .bp-data { display: flex; flex-direction: column; gap: 5px; }
+.bet-pick-card .bpd-row { font-size: 11px; color: #cfc6ea; }
+.bet-pick-card .bpd-row i { font-style: normal; font-size: 9.5px; font-weight: 800; color: #9a8fc4; margin-right: 4px; }
+.bet-pick-card .bpd-stats { display: flex; flex-wrap: wrap; gap: 4px; }
+.bet-pick-card .bpd-stats b {
+  font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 99px;
+  background: rgba(255,255,255,.07); color: #e8e0ff;
+}
+@media (prefers-reduced-motion: reduce) { .bet-pick-card .bp-drawer { animation: none; } }
 .bet-pick-card:hover { border-color: #5a4f86; background: #2a2150; }
 .bet-pick-card:active { transform: translateY(1px); }
 .bet-pick-card.selected { border-color: #ffd34d; background: #3a2f18; box-shadow: 0 0 0 1px #ffd34d inset; }
@@ -1956,6 +1986,26 @@ table.entry-table {
 .payout-box .po-profit .pl-v { color: #80ff80; }
 .payout-box .po-hint { font-size: 12px; color: #c8a060; }
 .payout-box.invalid .po-hint { color: #ff9a8a; }
+/* ★A-3：払戻が変わった瞬間だけ数字を弾ませる（常時光らせない＝麻痺を防ぐ） */
+.payout-box .pl-v.bump { animation: poBump .34s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes poBump { 0% { transform: scale(1); } 38% { transform: scale(1.13); color: #ffe98a; } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .payout-box .pl-v.bump { animation: none; } }
+
+/* ===== ★CORE_LOOP_UX A-2：予想の根拠（表示専用メタ・結果でC-3の答え合わせに使う） ===== */
+.bet-reason { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; flex-wrap: wrap; }
+.bet-reason .br-q { font-size: 10.5px; font-weight: 800; color: #b0a070; white-space: nowrap; }
+.bet-reason .br-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.bet-reason .br-chip {
+  font-size: 10.5px; font-weight: 800; cursor: pointer; white-space: nowrap;
+  color: #cfc6ea; background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.14); border-radius: 99px; padding: 5px 10px;
+  transition: transform .1s, background .15s, border-color .15s;
+}
+.bet-reason .br-chip:active { transform: scale(.94); }
+.bet-reason .br-chip.chosen {
+  color: #2a2013; background: linear-gradient(180deg, #ffe08a, #e8b455);
+  border-color: transparent; box-shadow: 0 2px 10px rgba(255,214,120,.3);
+}
 
 .debug-info {
   background: rgba(0,0,0,0.5); border: 1px dashed #604040;

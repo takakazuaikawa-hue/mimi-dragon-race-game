@@ -1918,7 +1918,16 @@ function renderRaceDetail(race) {
       <span class="wager-quick" id="wager-chips"></span>
     </div>
     <div class="payout-box empty" id="expected-payout"><div class="po-hint">本命と賭金を選ぶと払戻が出ます</div></div>
-    <div class="slip-actions"><button id="bet-confirm" type="button" disabled>🎫 投票券を切る</button></div>
+    <div class="bet-reason" id="bet-reason">
+      <span class="br-q">どうしてこの子？</span>
+      <span class="br-chips">
+        <button type="button" class="br-chip chosen" data-r="kan">🔥 直感</button>
+        <button type="button" class="br-chip" data-r="data">📊 データ</button>
+        <button type="button" class="br-chip" data-r="tell">👀 気配</button>
+        <button type="button" class="br-chip" data-r="value">💰 うまみ</button>
+      </span>
+    </div>
+    <div class="slip-actions"><button id="bet-confirm" type="button" disabled>🔔 出走直前！この予想で観る ▶</button></div>
     <div class="condition-line slip-note">所持 ${fmtCoins(state.player.coins)} ／ この一戦の上限 ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
   `;
   app.appendChild(slip);
@@ -1984,8 +1993,37 @@ function renderRaceDetail(race) {
         <span class="bp-win"><b>${od.winOdds.toFixed(1)}</b><small>単</small></span>
         <span class="bp-place"><b>${od.placeOdds.toFixed(1)}</b><small>複</small></span>
       </span>
+      <span class="bp-more" role="button" tabindex="0" aria-label="この竜をもっと見る">▾ 見る</span>
+      <span class="bp-drawer" hidden></span>
     `;
     card.onclick = () => togglePick(d.id);
+    // ★A-1 段階開示：カード本体のタップは「選ぶ」のまま。ここだけ別ボタンにして
+    //   ①ぱっと見 →②気配 →③データ を1段ずつ開く（伝播を止めないと選択と二重発火する）。
+    const moreBtn = card.querySelector(".bp-more");
+    const drawer = card.querySelector(".bp-drawer");
+    let lv = 0;   // 0=閉 1=気配 2=気配+データ
+    const openTo = (n) => {
+      lv = n;
+      if (n === 0) { drawer.hidden = true; drawer.innerHTML = ""; moreBtn.textContent = "▾ 見る"; card.classList.remove("expanded"); return; }
+      const f = state.current.trialForms[d.id];
+      let html = `<span class="bp-tell">👀 ${paddockTell(d, f)}</span>`;
+      if (n >= 2) {
+        // ③データ＝既存の出走表の内容をここへ“移設”（新規データは作らない）
+        const S = [["速", d.stats.speed], ["耐", d.stats.stamina], ["回", d.stats.turn],
+                   ["翼", d.stats.wing], ["火", d.stats.fire], ["気", d.stats.nerve]];
+        html += `<span class="bp-data">` +
+          `<span class="bpd-row"><i>近走</i>${recentResultLabel(d.recentResult)}　<i>脚質</i>${STYLE_LABEL[d.style]}${d.newspaperMark ? `　<i>印</i>${d.newspaperMark}` : ""}</span>` +
+          `<span class="bpd-stats">${S.map(([k, v]) => `<b class="rank-${statRank(v)}">${k}${statRank(v)}</b>`).join("")}</span>` +
+          (f ? `<span class="bpd-row"><i>試走</i>${trialNote(d, f)}</span>` : "") +
+          `</span>`;
+      }
+      drawer.innerHTML = html; drawer.hidden = false;
+      moreBtn.textContent = n >= 2 ? "▴ とじる" : "▾ データも見る";
+      card.classList.add("expanded");
+    };
+    const step = (ev) => { ev.stopPropagation(); ev.preventDefault(); openTo(lv >= 2 ? 0 : lv + 1); };
+    moreBtn.onclick = step;
+    moreBtn.onkeydown = (ev) => { if (ev.key === "Enter" || ev.key === " ") step(ev); };
     pickCardById[d.id] = card;
     pickGrid.appendChild(card);
   });
@@ -2033,6 +2071,22 @@ function renderRaceDetail(race) {
   //   （潜在バグが常設スリップ化で顕在化＝ラッパで明示的に引数なし呼び出し）。
   $("bet-confirm").onclick = () => onConfirmBet();
   $("back-race-select").onclick = renderRaceSelect;
+
+  // ★A-2 予想の根拠を1タップ宣言（表示専用メタ・結果画面で答え合わせ＝C-3）。
+  //   既定は🔥直感＝押さなくても成立する（スキップ可）。レース跨ぎで前回の選択を引き継ぐ。
+  (function wireBetReason() {
+    const box = $("bet-reason"); if (!box) return;
+    const cur = state.current.betReason || state.player.betReason || "kan";
+    state.current.betReason = cur;
+    box.querySelectorAll(".br-chip").forEach(c => {
+      c.classList.toggle("chosen", c.dataset.r === cur);
+      c.onclick = () => {
+        state.current.betReason = c.dataset.r;
+        box.querySelectorAll(".br-chip").forEach(x => x.classList.toggle("chosen", x === c));
+        if (window.Sfx) Sfx.play("tick");
+      };
+    });
+  })();
 
   renderPickState();
   updateExpected();   // initial payout hint + confirm-disabled state
@@ -2167,6 +2221,30 @@ function trialNote(d, f) {
   if (f.riderSync >= 80) notes.push("呼吸◎");
   if (notes.length === 0) notes.push("並み");
   return notes.join("／");
+}
+
+// ★CORE_LOOP_UX A-1：パドックの「気配」＝1行の観察文。
+//   ⚠️新情報の捏造は禁止。trialForm（体調/集中/発走/旋回/終い/呼吸）と脚質という
+//   “既に開示されている数値”を、擬人的な観察の言葉に言い換えるだけ（trialNote の情緒版）。
+//   同じ竜・同じレースでは常に同じ文＝毎回変わるとオカルトになり信頼を損ねるため決定的に選ぶ。
+function paddockTell(d, f) {
+  if (!f) return "係の人と並んで、ゲートを見ている。";
+  const t = [];
+  if (f.focus >= 78) t.push("ゲートの一点だけを見つめて、微動だにしない。");
+  else if (f.focus < 48) t.push("観客席のほうを何度も見ている。気が散っているみたい。");
+  if (f.bodyCondition >= 78) t.push("鱗が陽に光って、歩くたび筋肉が波打つ。");
+  else if (f.bodyCondition < 48) t.push("足取りがどこか重い。歩幅がいつもより狭い。");
+  if (f.trialStart >= 80) t.push("前脚で地面を掻いて、飛び出したそうにしている。");
+  else if (f.trialStart < 48) t.push("まだ寝ぼけた顔。号砲で起きるタイプかも。");
+  if (f.trialFinish >= 80) t.push("尻尾がゆっくり大きく振れている。余力を隠している。");
+  else if (f.trialFinish < 48) t.push("時々、息を大きく吐いている。");
+  if (f.riderSync >= 80) t.push("騎手が首を撫でると、耳がぴくりと応えた。");
+  if (!t.length) t.push(d.style === "nige" ? "落ち着いている。逃げる子にしては、静かすぎるくらい。"
+    : d.style === "oikomi" ? "列の後ろで、じっと順番を待っている。"
+      : "特に変わった様子はない。いつもどおり。");
+  // 決定的に1つ選ぶ（竜ID×体調でインデックス固定）
+  let h = 0; for (let i = 0; i < d.id.length; i++) h = (h * 31 + d.id.charCodeAt(i)) >>> 0;
+  return t[(h + Math.round(f.bodyCondition)) % t.length];
 }
 
 function generateValueHints(race, oddsResult, trialForms) {
@@ -2329,8 +2407,14 @@ function updateExpected() {
   }
   // 払戻をヒーロー数字に（リスク＝ハズレ時も対で明示）
   box.innerHTML =
-    `<div class="po-hero"><span class="pl-k">的中時払戻</span><span class="pl-v">${fmtCoins(payout)}<small>コイン</small></span></div>` +
+    `<div class="po-hero"><span class="pl-k">的中なら</span><span class="pl-v">${fmtCoins(payout)}<small>コイン</small></span></div>` +
     `<div class="po-sub"><span class="po-profit">利益 +${fmtCoins(payout - c.bet.wager)}</span><span class="po-loss">ハズレ時 −${fmtCoins(c.bet.wager)}</span></div>`;
+  // ★A-3 ライブ化：金額が前回と変わった時だけ弾ませる（毎回光ると麻痺するので変化時のみ）。
+  if (box._lastPayout !== payout) {
+    const v = box.querySelector(".pl-v");
+    if (v) { v.classList.remove("bump"); void v.offsetWidth; v.classList.add("bump"); }
+    box._lastPayout = payout;
+  }
   if (confirmBtn) confirmBtn.disabled = false;
 }
 
@@ -2347,6 +2431,10 @@ function onConfirmBet(skipDialog) {
     showBetConfirm();
     return;
   }
+  // ★A-2→C-3：この一戦の「根拠」を確定。state.current は永続しないので player 側にも写す
+  //   （リロードを跨いでも結果画面で答え合わせできるように）。表示専用メタ＝数値に非干渉。
+  c.betReasonUsed = c.betReason || state.player.betReason || "kan";
+  state.player.betReason = c.betReasonUsed;
   // Deduct wager up-front
   state.player.coins -= c.bet.wager;
   updateHeader();
