@@ -2726,12 +2726,21 @@ function startRaceCanvas(container, ctx) {
       // ばらける（easeOutBack＝勢い＋ちょい行き過ぎ→すっと収まる）。表示のみ・進行/着順不変。
       if (para) {
         const ln = laneOf[dr.id] || 0;
-        const groundY = ch * 0.88 + (ln % 2) * 5 - 2;                       // 2列の前後感で整然と
+        // ★2026-07-18 スタート整列の修正：旧実装は「レース座標から ln*18px ずつ左へずらす」だけ
+        //   だったため、左端クランプ(5%)に押し付けられた竜の体（鼻先アンカー＝体は左へ伸びる）が
+        //   画面外へ見切れてバラバラに見えた。地上待機中は画面幅に対する明示的な2列×4頭の
+        //   グリッド座標に置き、離陸(eb)で本来のレース座標へ収束させる（表示のみ・着順不変）。
+        const row = Math.floor(ln / 4);
+        const groundY = ch * 0.88 + row * 11 - 5;                           // 2列の前後感（後列は少し下＝手前）
         const dl = ln * 0.055 + ((((ln + 3) * 2654435761) >>> 0) % 100) / 100 * 0.16;
         const k = clamp((S.flyIn - dl) / 1.05, 0, 1);
         const c1 = 1.25, c3 = c1 + 1;
         const eb = k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
-        // 離陸の一瞬＝光の礫＋巻き上がる砂塵（HD-2Dの「発光の瞬間」）
+        // 全員の体が収まる格子：左端30%（体幅ぶんの余白）から19%刻みで4列。
+        // 後列は半列ぶん右へずらす市松配置＝真後ろに立つと前列に隠れて見えない（実測）ため。
+        const gx = cw * (0.30 + (ln % 4) * 0.19 + row * 0.095);
+        x = gx + (x - gx) * eb;
+        // 離陸の一瞬＝光の礫＋巻き上がる砂塵（HD-2Dの「発光の瞬間」）※格子座標に置いた後に出す
         const prevEb = (S._launchEb && S._launchEb[dr.id]) || 0;
         if (prevEb <= 0 && eb > 0) {
           spawnDust(x - 10, groundY + 10, 3, 1.1);
@@ -2739,8 +2748,6 @@ function startRaceCanvas(container, ctx) {
         }
         (S._launchEb = S._launchEb || {})[dr.id] = eb;
         baseY = groundY + (baseY - groundY) * eb;
-        // 地上ではスターティンググリッド＝斜め後ろへ広めにずらして並ぶ（団子回避）。離陸で0へ収束。
-        x -= Math.max(0, 1 - eb) * (ln * 18 + 4);
         // 地上の待機中だけ、たまに感情エモート（眠雲竜💤・泣き虫💧・火竜🔥・他♪✨＝愛らしさ）
         if (eb <= 0 && (S.entryT > 0 || S.preT > 0)) {
           const nw2 = performance.now() / 1000;
@@ -4030,6 +4037,12 @@ function startRaceCanvas(container, ctx) {
       // fixed by the timeline; this only touches visuals.
       S.floats = [];
       S.overT = 0;
+      // ★スタート整列と対：flyIn（地面→飛行の離陸イージング）と entryT（入場パレード）も
+      //   スクラブ位置に同期。両方 update() でしか進まないため、入場中に seek すると
+      //   入場ウォークの巨大なdxオフセット(-46%cw)が乗ったまま＝全員が左端に団子で描かれる
+      //   （駒送り検証で顕在化・実測）。scrub先は常に「レース本編」なので入場は終了扱いにする。
+      S.entryT = 0;
+      S.flyIn = S.tau > 0.01 ? 3 : 0;
       S.crossedSet = new Set(timeline.crossings.filter(c => S.tau >= c.tau).map(c => c.id));
       const _winCross = timeline.crossings.find(c => c.place === 1);
       S.tapeBroken = !!(_winCross && S.tau >= _winCross.tau);

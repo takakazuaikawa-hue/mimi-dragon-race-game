@@ -1056,7 +1056,7 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .rc-viewers i { font-style: normal; font-size: 10px; opacity: .8; }
 .rc-chat {
   display: flex; flex-direction: column; justify-content: flex-end; gap: 3px;
-  min-height: 54px; padding: 4px 2px 2px; overflow: hidden;
+  min-height: 54px; padding: 4px 9px 2px; overflow: hidden;   /* 左をボードの文字位置に揃える */
 }
 .rc-chat-line {
   font-size: 11px; line-height: 1.45; color: #cfd6e0;
@@ -1148,54 +1148,55 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .broadcast-log .log-line { color: #c0a070; margin-left: 12px; }
 
 /* ===== Canvas race player (continuous race visualisation) ===== */
+/* ===== ★2026-07-18 統一スキン「生配信ダーク」＝レース画面の全ゾーンを同じ言語に =====
+   地=ほぼ黒のガラス(rgba(8,11,17,.9)系)／罫=白8%／主役色=金(#ffd76a)／LIVE=赤。
+   旧来のえんじ枠(#604040)・紫箱(#1a1430)・青チップ等のバラつきを一掃し、
+   「HUD＋ステージ＝1枚の中継カード」→「生着順ボード」→「声（チャット＋実況）」→「操作ピル」の
+   4ブロックが同じ角丸(10px)・同じ余白(6px)のリズムで縦に並ぶ。 */
 .rc-wrap { margin-top: 6px; }
 .rc-hud {
   display: flex; justify-content: space-between; align-items: center;
-  background: #0a0820; border: 1px solid #604040; border-bottom: none;
-  padding: 6px 10px; font-size: 12px; color: #c0a070; gap: 8px;
+  background: rgba(10,13,19,.92); border: 1px solid rgba(255,255,255,.08); border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  padding: 7px 10px; font-size: 12px; color: #c8ccd4; gap: 8px;
 }
 .rc-hud-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .rc-phase {
-  background: #d4a850; color: #1a1430; font-weight: 700;
-  padding: 2px 8px; border-radius: 3px; white-space: nowrap;
+  background: linear-gradient(180deg,#ffe08a,#e8b455); color: #2a2013; font-weight: 900;
+  padding: 2px 9px; border-radius: 99px; white-space: nowrap;
 }
 .rc-section {
-  background: #2a3550; color: #eaf2ff; font-weight: 700;
-  border: 1px solid #44608a; border-left-width: 4px;
-  padding: 2px 8px; border-radius: 3px; white-space: nowrap; font-size: 11px;
+  background: rgba(255,255,255,.06); color: #e6ebf2; font-weight: 700;
+  border: 1px solid rgba(255,255,255,.12); border-left-width: 4px;
+  padding: 2px 9px; border-radius: 99px; white-space: nowrap; font-size: 11px;
 }
 .rc-section:empty { display: none; }
-.rc-race { color: #e8d0a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-race { color: #b9c4d2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-hud-right { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-.rc-weather { color: #9fd0ff; }
-.rc-remain { color: #ffd870; font-weight: 700; }
+.rc-weather { color: #9fb6cc; }
+.rc-remain { color: #ffd76a; font-weight: 800; font-variant-numeric: tabular-nums; }
 
-.rc-rankbar {
-  background: #0a0820; border: 1px solid #604040; border-top: none; border-bottom: none;
-  padding: 5px 10px; font-size: 11px; color: #c0a070;
-  display: flex; flex-wrap: wrap; gap: 7px;
-}
-.rc-rankbar .rc-pos { white-space: nowrap; }
-.rc-rankbar .rc-pos.t { color: #ffd34d; font-weight: 700; }
-.rc-rankbar .rc-pos.f { color: #7fd1ff; }
+/* （旧 .rc-rankbar は D1 生着順ボードへ置換済み＝スタイルも撤去） */
 
 .rc-stage { position: relative; line-height: 0; }
 .rc-stage canvas {
   display: block; width: 100%;
-  border: 1px solid #604040; background: #10162e;
+  border: 1px solid rgba(255,255,255,.08); border-top: none;
+  border-radius: 0 0 10px 10px; background: #10162e;
 }
-/* （旧 .rc-bet ＝ HUD隅の賭け表示は D1 生着順ボードへ置換統合したため削除） */
 .rc-play {
   position: absolute; right: 8px; bottom: 8px;
   width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(10,8,32,0.7); border: 1px solid #d4a850; color: #ffe0a0;
+  background: rgba(8,11,17,.72); border: 1px solid rgba(255,214,120,.55); color: #ffe0a0;
   font-size: 16px; cursor: pointer; padding: 0;
 }
-.rc-play:hover { background: rgba(212,168,80,0.25); }
+.rc-play:hover { background: rgba(255,214,120,.22); }
 
+/* 声ゾーン：視聴者チャット（素の流し）＋実況（🎙ミミのガラスカード）。紫箱と金縁は撤去 */
 .rc-telop {
-  display: flex; background: #1a1430; border: 1px solid #d4a850; border-top: none;
-  padding: 8px 10px; min-height: 64px; align-items: flex-start;
+  display: flex; background: rgba(8,11,17,.62); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px; margin-top: 2px;
+  padding: 8px 11px; min-height: 64px; align-items: flex-start;
 }
 .rc-telop .lines {
   flex: 1; color: #ffe0a0; font-size: 13px; line-height: 1.6;
@@ -1221,31 +1222,37 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   opacity: 0.42; font-size: 12px; line-height: 1.5; color: #d8c08a;
 }
 
-.rc-controls { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
-.rc-controls button { padding: 8px 14px; font-size: 13px; }
-.rc-controls .speed-active { background: #ff8060; }
+/* 操作＝ダークピルで統一（オレンジ/紫のバラつきを廃止・選択中だけ金） */
+.rc-controls { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+.rc-controls button {
+  padding: 8px 14px; font-size: 12.5px; font-weight: 800;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+  color: #e8eaef; border-radius: 99px; cursor: pointer;
+}
+.rc-controls button:active { transform: scale(.96); }
+.rc-controls .speed-active { background: linear-gradient(180deg,#ffe08a,#e8b455); color: #2a2013; border-color: transparent; }
 
 /* segmented speed control (1× / 2× / 3×) — clearer than a cycling button */
 .rc-speedgrp { display: inline-flex; align-items: center; gap: 6px; }
-.rc-ctl-label { font-size: 12px; color: #cbb890; font-weight: bold; }
+.rc-ctl-label { font-size: 12px; color: #9aa2ae; font-weight: bold; }
 .rc-speedseg {
-  display: inline-flex; border: 1px solid #6a5a8c; border-radius: 8px;
-  overflow: hidden; background: rgba(0,0,0,0.28);
+  display: inline-flex; border: 1px solid rgba(255,255,255,.14); border-radius: 99px;
+  overflow: hidden; background: rgba(255,255,255,.05);
 }
 .rc-speedseg button.rc-spd {
   padding: 8px 15px; font-size: 13px; font-weight: bold;
-  background: transparent; color: #cfc3e6;
-  border: none; border-left: 1px solid #6a5a8c; border-radius: 0;
+  background: transparent; color: #c4cad4;
+  border: none; border-left: 1px solid rgba(255,255,255,.1); border-radius: 0;
 }
 .rc-speedseg button.rc-spd:first-child { border-left: none; }
-.rc-speedseg button.rc-spd.on { background: #ff8060; color: #241018; }
-.rc-controls .rc-skip { background: #5a3f7a; color: #f4ecff; }
+.rc-speedseg button.rc-spd.on { background: linear-gradient(180deg,#ffe08a,#e8b455); color: #2a2013; }
+.rc-controls .rc-skip { background: rgba(255,255,255,.07); color: #e8eaef; }
 .rc-controls .rc-mute { min-width: 46px; padding-left: 12px; padding-right: 12px; font-size: 16px; line-height: 1; margin-left: auto; }
 @media (max-width: 420px) { .rc-speedseg button.rc-spd { padding: 8px 12px; } .rc-controls .rc-mute { margin-left: 0; } }
 
 .rc-finishstrip {
-  background: rgba(0,0,0,0.4); border: 1px solid #d4a850;
-  padding: 8px 10px; margin-top: 8px; font-size: 13px;
+  background: rgba(8,11,17,.62); border: 1px solid rgba(255,255,255,.08); border-radius: 10px;
+  padding: 8px 10px; margin-top: 6px; font-size: 13px;
   display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center;
 }
 .rc-finishstrip .rc-fs-winner { width: 100%; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
@@ -1264,12 +1271,12 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .rc-finishstrip .rc-fs-row.t { color: #ffd34d; font-weight: 700; }
 
 .rc-log {
-  background: rgba(0,0,0,0.4); border: 1px solid #604040;
-  padding: 10px; margin-top: 8px; max-height: 200px; overflow-y: auto;
+  background: rgba(8,11,17,.62); border: 1px solid rgba(255,255,255,.08); border-radius: 10px;
+  padding: 10px; margin-top: 6px; max-height: 200px; overflow-y: auto;
   font-size: 12px; line-height: 1.7;
 }
-.rc-log .log-phase { color: #ffd870; font-weight: bold; margin-top: 6px; }
-.rc-log .log-line { color: #c0a070; margin-left: 12px; }
+.rc-log .log-phase { color: #ffd76a; font-weight: bold; margin-top: 6px; }
+.rc-log .log-line { color: #aab0bb; margin-left: 12px; }
 
 @media (max-width: 480px) {
   .rc-hud { flex-wrap: wrap; }
