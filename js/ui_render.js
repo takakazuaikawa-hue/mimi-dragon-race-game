@@ -48,6 +48,11 @@ function beginScreen() {
   const prev = _prevScreen;
   app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip");   // 観光(.kt-page)/暮らし(.lr-page)の明色テーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
   if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
+  // ★BUGFIX：title-mode は body を position:fixed / overflow:hidden にする全画面レイアウト。
+  //   従来 renderHome でしか外しておらず、タイトルからホームを経由せずに他画面へ入ると
+  //   固定レイアウトが残り、内容が画面より長い画面（結果＝答え合わせ等）が**スクロール不能**になっていた。
+  //   全画面共通の入口であるここで外すのが正しい（home-mode と同じ扱い）。
+  if (screen !== "title") document.body.classList.remove("title-mode");
   if (typeof syncVolumeFab === "function") syncVolumeFab();              // 🔊 全画面常設の音量ボタンを画面に合わせて表示/非表示
   var _scmBn = document.getElementById("scm-bnav-host"); if (_scmBn) _scmBn.remove();   // モールのフロート下部ナビ(body直下fixed)を毎遷移で外す（モールで再設置）
   if (prev !== screen) window.scrollTo(0, 0);   // start every new screen at the top
