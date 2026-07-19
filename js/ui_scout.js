@@ -269,8 +269,17 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
   if (first) {
     if (fx.probe) app.appendChild(el("div", "sc-probe-log", `${fx.probe.ic} ${fx.probe.hit}`));
     app.appendChild(el("div", "sc-discover", `🐾 ${loc.mood.replace(/。$/, "")}——<b>${d.name}</b>が、そっと姿を見せた。`));
-    if (fx.probeFind) app.appendChild(el("div", "sc-find",
-      `👀 <b>小発見</b>：この地にはもう一頭、<b>${fx.probeFind.name}</b> が棲んでいるらしい。`));
+    if (fx.probeFind) {
+      const fd = el("div", "sc-find",
+        `👀 <b>小発見</b>：この地にはもう一頭、<b>${fx.probeFind.name}</b> が棲んでいるらしい。`);
+      // P2-10：見つけた相手をその場で図鑑に確認できる（既知の断章があれば読める）
+      if (typeof showDragonDetail === "function") {
+        const b = el("button", "sc-find-go", "📖 図鑑で見る");
+        b.onclick = () => showDragonDetail(fx.probeFind.id);
+        fd.appendChild(b);
+      }
+      app.appendChild(fd);
+    }
   }
 
   // ── 緊張のデュアルゲージ（成立/逃走マーカー＋デルタ演出＋大詰めパルス）──

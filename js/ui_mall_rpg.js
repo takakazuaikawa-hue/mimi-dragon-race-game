@@ -78,8 +78,13 @@ function rpgRenderHub(app) {
   // 🛗 エクスプレス＝3ドア択の短距離ラン（既存の探索ランと併存・別モード／js/mall_express.js）
   if (typeof rpgStartExpress === "function") {
     const ex = el("button", "scmr-cta express");
+    // 記録があれば実績を出す（P2-9）＝「また潜る理由」を入口で見せる
+    const _mc = rec.mexClears || 0, _mg = rec.mexGold || 0;
+    const _sub = _mc
+      ? `制覇 ${_mc}回・自己ベスト 🪙${_mg.toLocaleString("ja-JP")}${rec.mexBestSteps ? `・最短${rec.mexBestSteps}フロア` : ""}`
+      : "6フロア・3つの扉から選ぶ短い冒険。店長を倒して「買い物術」を重ねる";
     ex.innerHTML = `<span class="scmr-cta-k">🛗</span><span class="scmr-cta-tx"><b>エクスプレス</b>` +
-      `<small>6フロア・3つの扉から選ぶ短い冒険。店長を倒して「買い物術」を重ねる</small></span><span class="scmr-cta-go">▶</span>`;
+      `<small>${_sub}</small></span><span class="scmr-cta-go">▶</span>`;
     ex.onclick = () => rpgStartExpress();
     scm.appendChild(ex);
   }

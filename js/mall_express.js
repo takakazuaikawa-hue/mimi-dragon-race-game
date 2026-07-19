@@ -145,11 +145,26 @@ function mexOpen(i) {
   const ex = RPG.express, dr = ex.doors[i];
   if (!dr) return;
   try { if (window.Sfx) Sfx.play("click"); } catch (e) {}
-  if (dr.k === "battle") { mexEnterBattle(false); return; }
-  if (dr.k === "loot")   { mexLoot(); return; }
-  if (dr.k === "shop")   { mexShop(); return; }
-  if (dr.k === "rest")   { mexRest(); return; }
-  mexEvent();
+  const go = () => {
+    if (dr.k === "battle") { mexEnterBattle(false); return; }
+    if (dr.k === "loot")   { mexLoot(); return; }
+    if (dr.k === "shop")   { mexShop(); return; }
+    if (dr.k === "rest")   { mexRest(); return; }
+    mexEvent();
+  };
+  // 🚪P2-8 開扉演出：選んだ扉だけ正体を見せて開く（他は静かに引く）。reduced-motion では即遷移。
+  const btns = document.querySelectorAll(".mex-door");
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!btns.length || reduce) { go(); return; }
+  btns.forEach((b, k) => {
+    if (k === i) {
+      b.classList.add("opening");
+      const ic = b.querySelector(".mex-d-ic"), nm = b.querySelector(".mex-d-n");
+      if (ic) ic.textContent = dr.ic;      // 開けた瞬間に正体が分かる
+      if (nm) nm.textContent = dr.n;
+    } else b.classList.add("fading");
+  });
+  setTimeout(go, 460);
 }
 // 戦闘＝既存エンジンをそのまま使う。
 // ★難度スケール：6フロアの短距離ランなので、探索ラン(1F=fi0…7F=fi6)と同じ刻みだと
@@ -301,6 +316,15 @@ function mexFinish(how) {
   const earned = d.gold - ex.gold0;
   let outfit = null;
   if (how === "clear" && typeof rpgGrantOutfit === "function") outfit = rpgGrantOutfit(Math.random() < 0.3 ? "r" : "c");
+  // 🏅P2-9 記録：クリア回数・最高獲得G・最短クリア手数（＝開けた扉の数）を残す。表示専用。
+  const rec = (d.records = d.records || {});
+  const best = {};
+  if (earned > (rec.mexGold || 0)) { rec.mexGold = earned; best.gold = true; }
+  if (how === "clear") {
+    rec.mexClears = (rec.mexClears || 0) + 1;
+    const steps = ex.floor - 1;   // 通過したフロア数
+    if (!rec.mexBestSteps || steps < rec.mexBestSteps) { rec.mexBestSteps = steps; best.steps = true; }
+  }
   RPG = null;
   if (typeof rpgSave === "function") rpgSave();
   const body = el("div");
@@ -311,6 +335,7 @@ function mexFinish(how) {
       (ex.build.length ? `<span>🛒 ${ex.build.length}つの買い物術</span>` : "") +
     `</div>` +
     (outfit ? `<div class="mex-outfit">👗 <b>${outfit.name}</b> を持ち帰った！</div>` : "") +
+    (best.gold || best.steps ? `<div class="mex-best">🏅 自己ベスト更新！${best.gold ? " 獲得ゴールド" : ""}${best.steps ? " 最短クリア" : ""}</div>` : "") +
     (ex.loot.length ? `<div class="mex-lootlist">${ex.loot.slice(0, 8).map(l => `<span>${l}</span>`).join("")}</div>` : "") +
     `<div class="mex-mimi">${how === "clear" ? "「ふぅ……戦利品、両手いっぱい！」" : "「……また来よう。ワゴンは逃げない」"}</div>`;
   const row = el("div", "mex-picks");
