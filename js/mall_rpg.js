@@ -177,15 +177,21 @@ const RPG_MONS = {
   slime:    { n: "マヨイスライム", ic: "🟢", kind: "monster", hp: 20, atk: 7, exp: 9, gold: 10, weak: ["fire"], resist: ["ice"], nul: [], el: "phys", act: "ベタベタ体当たり！" },
   mannequin:{ n: "うごくマネキン", ic: "🤖", kind: "monster", hp: 28, atk: 9, exp: 14, gold: 16, weak: ["elec"], resist: ["phys"], nul: [], el: "phys", act: "マネキンチョップ！" },
   escalator:{ n: "暴走エスカレーター", ic: "🛗", kind: "monster", hp: 36, atk: 11, exp: 18, gold: 20, weak: ["elec"], resist: ["phys"], nul: [], el: "phys", act: "逆走して巻き込んだ！" },
+  // ★QUALITY_PASS P1-6：納品済みの絵（en_pricetag/en_coupon）に合わせた新種2体。
+  //   弱点は既存分布の薄い「氷/力」を埋める＝属性を覚える意味を強くする。
+  pricetag: { n: "値札ゴースト", ic: "🏷️", kind: "monster", hp: 26, atk: 8, exp: 12, gold: 22, weak: ["ice"], resist: ["phys"], nul: [], el: "phys", act: "「本日限り」の値札がひらひら舞う！", sp: { name: "二重価格", status: "defdown", dur: 2, chance: 0.32, msg: "どっちが本当か分からず、守りが揺らいだ…" } },
+  coupon:   { n: "クーポン鳥",   ic: "🎟️", kind: "monster", hp: 20, atk: 9, exp: 11, gold: 26, weak: ["force"], resist: ["elec"], nul: [], el: "phys", act: "期限切れクーポンをばら撒いて突進！", sp: { name: "有効期限切れ", status: "seal", dur: 2, chance: 0.3, msg: "「使えません」と言われて技が出せない！" } },
   // 🐲 崑崙島の住人（ドラゴンモールならではの固有モンスター）
   kowako:   { n: "はぐれ子竜",     ic: "🐲", kind: "monster", hp: 24, atk: 8, exp: 12, gold: 14, weak: ["ice"], resist: ["fire"], nul: [], el: "fire", act: "ちいさな火の息を「ぷしゅー」！", sp: { name: "甘えん坊ブレス", status: "dazzle", dur: 2, chance: 0.3, msg: "可愛さに見とれて目がチカチカ…！" } },
   shisa:    { n: "門番の石獅子",   ic: "🦁", kind: "monster", hp: 34, atk: 10, exp: 16, gold: 18, weak: ["force"], resist: ["phys"], nul: [], el: "phys", act: "石の前足でドンと一撃！", sp: { name: "睨みの構え", status: "stun", dur: 1, chance: 0.28, msg: "睨まれて足がすくんだ！" } },
   kumonosei:{ n: "雲の精",         ic: "☁️", kind: "monster", hp: 22, atk: 9, exp: 13, gold: 12, weak: ["elec"], resist: ["ice"], nul: [], el: "ice", act: "ひんやりした霧で包んできた！", sp: { name: "もやもや化", status: "seal", dur: 2, chance: 0.3, msg: "霧で技が見えない…！" } },
   // 🎡 ボス（屋上）
   boss1:    { n: "観覧車ゴーレム", ic: "🎡", kind: "monster", hp: 110, atk: 13, exp: 80, gold: 200, weak: ["elec"], resist: ["fire", "ice"], nul: [], el: "phys", boss: true, act: "巨大ゴンドラが回転しながら突撃！", sp: { name: "大回転プレス", status: "defdown", dur: 3, chance: 0.4, msg: "おしつぶされて守りが下がった…", dmg: true } },
+  // ★QUALITY_PASS P1-7：エクスプレス3Fの専用店長。観覧車ゴーレム(力押し)と対照的な“上品な圧”。
+  maison:   { n: "マダム・メゾン", ic: "👛", kind: "tourist", hp: 78, atk: 11, exp: 55, gold: 150, weak: ["force"], resist: ["phys", "ice"], nul: [], el: "phys", boss: true, act: "「お客様、こちらへ」——優雅に伝票を差し出した！", sp: { name: "お会計", status: "seal", dur: 2, chance: 0.35, msg: "金額を見て、言葉が出ない…！" } },
 };
 const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid", "luxe", "hula", "madam", "influencer"];
-const RPG_MONSTERS_MINOR = ["slime", "mannequin", "escalator"];
+const RPG_MONSTERS_MINOR = ["slime", "mannequin", "escalator", "pricetag", "coupon"];
 const RPG_KUNLUN = ["kowako", "shisa", "kumonosei"];   // 崑崙島の固有モンスター（図鑑・タワー出現に合流）
 
 // ★敵の立ち絵（Codex納品 CODEX_ORDER_SCOUT_MALL §C／images/rpg/*.webp・512×512透過）。
@@ -197,7 +203,10 @@ const RPG_ENEMY_IMG = {
   escalator: "en_sale_golem",  // 暴走エスカレーター＝機械仕掛けの巨体
   baku:      "en_cartrat",     // 爆買いツアー客＝カート山盛り
   madam:     "boss_maison",    // デパ地下マダム
-  boss1:     "boss_donryu"     // 観覧車ゴーレム＝フロアボスの貫禄
+  boss1:     "boss_donryu",    // 観覧車ゴーレム＝フロアボスの貫禄
+  pricetag:  "en_pricetag",    // 値札ゴースト（P1-6で新設）
+  coupon:    "en_coupon",      // クーポン鳥（同上）
+  maison:    "boss_maison"     // マダム・メゾン（エクスプレス3Fの専用店長・P1-7）
 };
 // 🔊 フロア別の環境音（さざ波／ざわめき／上品なベル）。索引＝フロア番号。
 const RPG_AMB = ["amb_wave", "amb_wave", "amb_crowd", "amb_wave", "amb_chime", "amb_chime", "amb_crowd", "amb_wave"];

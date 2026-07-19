@@ -533,6 +533,14 @@ function showDragonDetail(id) {
         `<div class="dd-row"><span>絆</span><b>${af}</b><div class="stable-aff-bar dd-aff"><i style="width:${af}%"></i></div></div>` +
         `<div class="dd-row"><span>大好物</span><b>${e.favFound && fav ? `${fav.icon || "🍽"} ${fav.name}` : "？？？"}</b></div>` +
         (e.favFound ? "" : `<div class="dd-hint">🍽 ごはんの差し入れで、大好物が見つかるかも。</div>`) +
+        // 📓 交渉メモ（QUALITY_PASS P0-1）＝スカウトで効いた技のカテゴリ。次に会う時の攻略情報。
+        ((function () {
+          const memo = (typeof scoutMemoGet === "function") ? scoutMemoGet(id) : [];
+          if (!memo.length) return "";
+          const cc = (typeof SCOUT_CAT_COLOR !== "undefined") ? SCOUT_CAT_COLOR : {};
+          return `<div class="dd-memo">📓 効いた技：` +
+            memo.map(c => `<b style="color:${cc[c] || "#caa24a"}">${c}</b>`).join("・") + `</div>`;
+        })()) +
         // 📜 伝承コレクション（スカウト体験で解禁した断章の永久保管棚）
         ((typeof dragonLoreTexts === "function" && dragonLoreTexts(id)) ? (function () {
           const L = dragonLoreTexts(id), lv = (typeof dragonLoreLv === "function") ? dragonLoreLv(id) : 0;

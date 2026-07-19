@@ -5219,6 +5219,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .stable-card.ghostly { opacity: .62; }
 .dragon-care .dd-aff { display: inline-block; width: 90px; margin-left: 8px; vertical-align: middle; }
 .dragon-care .dd-hint { font-size: 11px; color: #cbb890; margin: 6px 0 2px; }
+.dd-memo { font-size: 11.5px; color: #cbb890; margin: 8px 0 2px; padding: 6px 10px; border-radius: 9px;
+  background: rgba(255,214,120,.09); border: 1px solid rgba(255,215,106,.22); }
+.dd-memo b { font-weight: 900; }
 .dragon-care .dd-react { margin-top: 8px; padding: 8px 10px; border-radius: 10px; font-size: 12px;
   background: rgba(255,200,90,.1); border: 1px solid rgba(255,200,90,.25); color: #ffe9bd; }
 .dd-btns { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -5430,6 +5433,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .mex-boss-s { font-size: 11.5px; color: #d8bfa8; margin-top: 4px; line-height: 1.6; }
 .mex-go { width: 100%; padding: 14px; border-radius: 13px; cursor: pointer; font-size: 15px; font-weight: 900;
   color: #2a1a10; background: linear-gradient(180deg, #ffd76a, #e2901f); border: none; }
+.mex-ev-art { display: block; width: 132px; height: 132px; object-fit: contain; margin: 0 auto 8px;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.55)); animation: mexEvIn .45s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes mexEvIn { from { opacity: 0; transform: translateY(10px) scale(.85); } }
 .mex-pop .mex-ev-b { font-size: 13px; line-height: 1.75; color: #f0e6d0; }
 .mex-got { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0; }
 .mex-got span { font-size: 12px; font-weight: 800; color: #ffe6a8;

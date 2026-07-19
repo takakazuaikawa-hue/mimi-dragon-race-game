@@ -18,10 +18,14 @@ function showScoutHelp() {
     ? Object.keys(SCOUT_CAT_COLOR).map(k => `<span style="border-left:3px solid ${SCOUT_CAT_COLOR[k]};padding-left:5px;margin-right:8px;white-space:nowrap">${k}</span>`).join("")
     : "";
   showInfoPopup("🔍 スカウトの読み合い（ルール）",
-    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>① しぐさ＝気持ちのヒント</b><small>竜は言葉を話さない代わりに、しぐさで「いまの気持ち」（不安・警戒・甘え・遊びたい…）を見せる。まず読む。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🤝</span><div><b>② 気持ちに合う交渉術を選ぶ</b><small>合う技＝<u>信頼が上がり警戒が下がる</u>。合わない技は逆効果（決裂は運ではなく読み違い）。「観察」で気持ちを確かめてから動くのも手。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🎨</span><div><b>③ 色＝技の系統</b><small>${legend}</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🍃</span><div><b>④ 決裂しても失うのは旅費だけ</b><small>竜は逃げない。何度でも会いにいける（レースの結果には影響しません）。</small></div></div>`);
+    // ★QUALITY_PASS P0-2：新フロー（けはい探し／手土産／メモ）を先頭に。旧ルール説明はその後ろへ。
+    `<div class="mm-row"><span class="mm-ic">🔎</span><div><b>① まず「どう探すか」を選ぶ</b><small>探し方で<u>出会う竜が変わり</u>、相手の警戒の強さも変わる。慎重に近づけば警戒はうすく、大胆に呼べば強気な子に会える。運ではなく<u>選択</u>。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🎁</span><div><b>② 手土産は1回だけの切り札</b><small>出発前に、food＝食べ歩きで覚えた料理をひとつ持てる。交渉中に差し出すと大きく心を開く。<u>その子の大好物なら特大</u>（当てると図鑑に記録）。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">📓</span><div><b>③ 効いた技はメモに残る</b><small>うまくいった技の系統は竜ごとに記録され、次に会った時カードに「前回◎」と出る。<u>会うほど攻略が楽になる</u>（図鑑からも読める）。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>④ しぐさ＝気持ちのヒント</b><small>竜は言葉を話さない代わりに、しぐさで「いまの気持ち」（不安・警戒・甘え・遊びたい…）を見せる。まず読む。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🤝</span><div><b>⑤ 気持ちに合う交渉術を選ぶ</b><small>合う技＝<u>信頼が上がり警戒が下がる</u>。合わない技は逆効果（決裂は運ではなく読み違い）。「観察」で気持ちを確かめてから動くのも手。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🎨</span><div><b>⑥ 色＝技の系統</b><small>${legend}</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🍃</span><div><b>⑦ 決裂しても失うのは旅費だけ</b><small>竜は逃げない。何度でも会いにいける。断られた時は<u>その子の気持ちが明かされる</u>ので、次の手がかりになる（レースの結果には影響しません）。</small></div></div>`);
 }
 
 function renderScout() {

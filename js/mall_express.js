@@ -36,14 +36,15 @@ const MEX_DOORS = [
 ];
 
 // ── ハプニング（コメディ・崑崙島の世界観／声表準拠）──────────────────────
+// img＝Codex納品のイベント絵（images/rpg/ev_*.webp・512透過）。無い項目は絵なしでよい。
 const MEX_EVENTS = [
-  { t: "試食の山", ic: "🍢", body: "試食コーナーの店員に囲まれた。気づけば両手いっぱい。",
+  { t: "試食の山", ic: "🍢", img: "ev_1", body: "試食コーナーの店員に囲まれた。気づけば両手いっぱい。",
     mimi: "「た、食べ切れない……いや、食べるけど」", eff: "heal", n: 14 },
-  { t: "迷子の子竜", ic: "🐲", body: "泣いている子竜。抱っこして案内所まで送り届けた。",
+  { t: "迷子の子竜", ic: "🐲", img: "ev_2", body: "泣いている子竜。抱っこして案内所まで送り届けた。",
     mimi: "「だいじょうぶ。おねえちゃんも、迷子の先輩だから」", eff: "gold", n: 40 },
-  { t: "福引きガラポン", ic: "🎰", body: "商店会の福引き。カラカラ……カラン、と音。",
+  { t: "福引きガラポン", ic: "🎰", img: "ev_3", body: "商店会の福引き。カラカラ……カラン、と音。",
     mimi: "「鳴った！　鳴ったよね今！？」", eff: "gold", n: 90 },
-  { t: "閉店セールの群衆", ic: "🏃", body: "「閉店5分前」の放送。群衆に飲まれて反対側まで運ばれた。",
+  { t: "閉店セールの群衆", ic: "🏃", img: "ev_4", body: "「閉店5分前」の放送。群衆に飲まれて反対側まで運ばれた。",
     mimi: "「わたし、いま何メートル進んだ？」", eff: "hp", n: -8 },
   { t: "マッサージ椅子", ic: "💺", body: "無料体験の椅子に座ったら、動けなくなった。",
     mimi: "「あと3分……あと3分だけ……」", eff: "heal", n: 20 },
@@ -166,7 +167,27 @@ function mexEnterBoss() {
   if (d.hp < d.maxhp) { d.hp = Math.min(d.maxhp, d.hp + heal); rpgSave(); }
   RPG.fi = mexTier();
   RPG.mode = "battle";
-  rpgEncounter(ex.floor >= MEX_FLOORS ? "boss" : "nushi");
+  // ★P1-7：3F＝マダム・メゾン（専用店長）／6F＝観覧車ゴーレム。同じ「主」の使い回しをやめる。
+  if (ex.floor >= MEX_FLOORS) { rpgEncounter("boss"); return; }
+  mexEncounterNamed("maison");
+}
+// 指定IDのボスを1体だけ出す（rpgEncounterの"boss"分岐はboss1固定のため、専用店長用に用意）。
+// 生成物の形は rpgEncounter と同一＝以降の戦闘処理はすべて既存エンジンのまま。
+function mexEncounterNamed(id) {
+  const m = RPG_MONS[id]; if (!m) { rpgEncounter("nushi"); return; }
+  const e = { id, ref: m, hp: m.hp, maxhp: m.hp, alive: true, atk: m.atk, exp: m.exp, gold: m.gold };
+  RPG.battle = { enemies: [e], target: 0, extra: false, acts: 1, combo: 0, gauge: 0, guard: false, log: [],
+    boss: true, nushi: false, phase: "cmd", sub: null, rare: false,
+    introT0: (typeof performance !== "undefined" ? performance.now() : Date.now()),
+    pstatus: { stun: 0, defdown: 0, dazzle: 0, seal: 0 } };
+  RPG.mode = "battle"; RPG.busy = false;
+  if (typeof rpgComputeIntents === "function") rpgComputeIntents();
+  rpgBLog(`👑 ${m.n} が立ちはだかった！`);
+  rpgSfx("alert");
+  rpgFx.encounter("boss");
+  rpgFx.cutins([m], true);
+  rpgFx.shakeApp();
+  renderMallRpg();
 }
 // ワゴン＝ゴールドと消耗品（福袋体質で1つ増える）
 function mexLoot() {
@@ -235,7 +256,10 @@ function mexEvent() {
   else if (ev.eff === "hp") { d.hp = Math.max(1, d.hp + ev.n); line = `<span>💔 ${ev.n}</span>`; }
   else if (ev.eff === "buff") { d.mp = d.maxmp; line = `<span>💧 全回復</span>`; }
   rpgSave();
-  mexPopup(`${ev.ic} ${ev.t}`, `<div class="mex-ev-b">${ev.body}</div>` +
+  const art = ev.img
+    ? `<img class="mex-ev-art" src="images/rpg/${ev.img}.webp" alt="" decoding="async" onerror="this.remove()">`
+    : "";
+  mexPopup(`${ev.ic} ${ev.t}`, art + `<div class="mex-ev-b">${ev.body}</div>` +
     (line ? `<div class="mex-got">${line}</div>` : "") +
     `<div class="mex-mimi">${ev.mimi}</div>`, mexNextFloor);
 }
