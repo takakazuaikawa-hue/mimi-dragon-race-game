@@ -90,14 +90,24 @@ const VILLAGE_MULT = { 1:1.0, 2:1.5, 3:2.0, 4:3.0, 5:5.0, 6:8.0, 7:12.0, 8:20.0,
 // §08 §13 Rescue coins by village level.
 const RESCUE_COINS = { 1:300, 2:1000, 3:5000, 4:30000, 5:100000, 6:1000000, 7:10000000, 8:100000000, 9:1000000000, 10:10000000000 };
 
-// §08 §11 Rank unlock thresholds (placeholder; balance later).
+// §08 §11 ランク解放しきい値 ★2026-07-18 設計確定（docs/GAME_DESIGN_NUMBERS.md §9 が正本）。
+// 3本レールのOR＝どれか1つ満たせば昇格。着順/オッズ/配当には一切非干渉（進行の門だけ）。
+//   ①実力レール hitsAtLowerRank：現ランク帯のレースで的中（式別不問）。昇格の“主役”＝腕前の証明。
+//   ②皆勤レール completedAtLowerRank：現ランク帯の完走数。①の約2.5倍に設定＝平均的な的中率(45%前後)なら
+//     ①が先に発火し、不運な人だけを静かに救う保険（「負けても物語が戻らない」spec#30 の心臓を守る）。
+//     旧値(3/3/5/5/7/7)は上位ほど実質唯一の近道になっており、昇格が消化試合化していたのを是正。
+//   ③大勝レール coins：所持コイン。各値=「前ランクの上限賭金×オッズ10倍を1発」で届く=“次の時代の元手を
+//     自力で作った”証明。旧値のまま変更なし（この対応関係が既にきれいなため）。
+//     所持金なので散財すると遠のくが、それは「高い舞台には元手が要る」という賭博の道理として意図的に残す。
+// 想定ペース（実測でなく設計目標）：平均的中で累計約165戦・全敗でも約187戦でR7。1戦約2分＝レースだけで6〜7時間、
+// 島時間込みでメイン10〜15時間級。安全に複勝を刻む人は早く上がるが儲からず、勝負師は遅くとも富んで上がる＝両立。
 const RANK_UNLOCK = {
-  2: { coins: 2000,        completedAtLowerRank: 3 },
-  3: { coins: 10000,       completedAtLowerRank: 3 },
-  4: { coins: 100000,      completedAtLowerRank: 5 },
-  5: { coins: 10000000,    completedAtLowerRank: 5 },
-  6: { coins: 1000000000,  completedAtLowerRank: 7 },
-  7: { coins: 1000000000000, completedAtLowerRank: 7 }
+  2: { coins: 2000,          hitsAtLowerRank: 2,  completedAtLowerRank: 5 },
+  3: { coins: 10000,         hitsAtLowerRank: 4,  completedAtLowerRank: 10 },
+  4: { coins: 100000,        hitsAtLowerRank: 7,  completedAtLowerRank: 17 },
+  5: { coins: 10000000,      hitsAtLowerRank: 12, completedAtLowerRank: 30 },
+  6: { coins: 1000000000,    hitsAtLowerRank: 20, completedAtLowerRank: 50 },
+  7: { coins: 1000000000000, hitsAtLowerRank: 30, completedAtLowerRank: 75 }
 };
 
 // §08 §6 §20 Allowed maximum wager.

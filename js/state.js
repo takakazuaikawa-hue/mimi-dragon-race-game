@@ -27,6 +27,7 @@ const state = {
     wins: 0,
     // §08 §17 progression
     completedByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
+    hitsByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },   // ★ランク実力レール：帯別の的中数（式別不問）
     featuredDoneDay: null, collectionRewards: [],   // §37 注目レース日次ボーナス + 図鑑コンプ報酬
     winsByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
     biggestPayout: 0,
@@ -131,6 +132,10 @@ function loadGame() {
       // §30 migration: pre-1.1 saves lack maxCoinsReached — seed it from coins
       // so an existing player's progression isn't reset to zero.
       if (state.player.maxCoinsReached == null) state.player.maxCoinsReached = state.player.coins || 0;
+      // ★ランク3本レール移行：旧セーブは hitsByRank を持たない。過去の的中履歴は帯別に
+      //   復元できないため 0 から積む（獲得済みランクは下がらない設計なので不利益は「次の昇格が
+      //   新基準になる」ことのみ＝リリース前につき許容・progression-redesign 方針）。
+      if (!state.player.hitsByRank) state.player.hitsByRank = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 };
       // §37 migration: pre-streak saves lack the streak fields.
       if (state.player.streak == null) state.player.streak = 0;
       if (state.player.bestStreak == null) state.player.bestStreak = 0;
@@ -190,6 +195,7 @@ function resetGame() {
     rank: 1, villageLevel: 1,
     completedRaces: 0, wins: 0,
     completedByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
+    hitsByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },   // ★ランク実力レール：帯別の的中数（式別不問）
     featuredDoneDay: null, collectionRewards: [],   // §37 注目レース日次ボーナス + 図鑑コンプ報酬
     winsByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
     biggestPayout: 0,
@@ -329,13 +335,18 @@ function gainVillageExp(race, hit, newDragonsThisRace) {
 }
 
 // §08 §11 Check rank unlock after race.
+// ★3本レールのOR（data_ranks.js RANK_UNLOCK・正本=docs/GAME_DESIGN_NUMBERS.md §9）：
+//   実力（帯別の的中）／皆勤（帯別の完走・保険）／大勝（所持コイン・近道）。
 function checkRankProgression() {
   const p = state.player;
   for (let r = p.rank + 1; r <= 7; r++) {
     const cond = RANK_UNLOCK[r];
     if (!cond) break;
     const completedLower = p.completedByRank[r - 1] || 0;
-    if (p.coins >= cond.coins || completedLower >= cond.completedAtLowerRank) {
+    const hitsLower = (p.hitsByRank && p.hitsByRank[r - 1]) || 0;
+    if (p.coins >= cond.coins
+        || (cond.hitsAtLowerRank != null && hitsLower >= cond.hitsAtLowerRank)
+        || completedLower >= cond.completedAtLowerRank) {
       p.rank = r;
       runEventHooks("onRankUp", { newRank: r });
       saveGame();

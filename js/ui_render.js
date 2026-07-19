@@ -2492,6 +2492,11 @@ function settleRace() {
   state.player.coins += betResult.payout;
   state.player.completedRaces += 1;
   state.player.completedByRank[c.race.rank] = (state.player.completedByRank[c.race.rank] || 0) + 1;
+  // ★ランク実力レール：的中（式別不問）を帯別に記録（RANK_UNLOCK.hitsAtLowerRank の材料）。
+  if (betResult.hit) {
+    if (!state.player.hitsByRank) state.player.hitsByRank = {};
+    state.player.hitsByRank[c.race.rank] = (state.player.hitsByRank[c.race.rank] || 0) + 1;
+  }
   if (betResult.hit && c.bet.type === "win") {
     state.player.wins += 1;
     state.player.winsByRank[c.race.rank] = (state.player.winsByRank[c.race.rank] || 0) + 1;
@@ -3398,14 +3403,25 @@ function nextGoals(state) {
   const nr = p.rank + 1;
   if (typeof RANK_UNLOCK !== "undefined" && RANK_UNLOCK[nr]) {
     const u = RANK_UNLOCK[nr];
+    // ★3本レール表示：主語を明示（「いまのR帯のレースで」）＋一番近いレールを主役に据える。
+    //   従来の「あと◯戦 または ◯コイン」は、①どのレースが対象か不明 ②実力レール不在、の2点が不正確だった。
     const racesDone = (p.completedByRank && p.completedByRank[p.rank]) || 0;
+    const hitsDone = (p.hitsByRank && p.hitsByRank[p.rank]) || 0;
+    const byHits = u.hitsAtLowerRank != null ? Math.max(0, u.hitsAtLowerRank - hitsDone) : Infinity;
     const byRaces = Math.max(0, u.completedAtLowerRank - racesDone);
     const byCoins = Math.max(0, u.coins - coins);
     const rl = (RANKS[nr] && RANKS[nr].label) || "";
-    if (byRaces === 0 || byCoins === 0) {
+    if (byHits === 0 || byRaces === 0 || byCoins === 0) {
       goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub: "次のレースで解放！", pct: 100 });
     } else {
-      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub: `あと ${byRaces}戦 または ${fmtCoins(byCoins)}コイン`, pct: clamp(coins / u.coins * 100, 2, 99) });
+      // 進捗%＝3レールのうち最も進んでいるもの（ゴールグラデーション：常に一番近い道を見せる）
+      const pcts = [
+        u.hitsAtLowerRank != null ? hitsDone / u.hitsAtLowerRank : 0,
+        racesDone / u.completedAtLowerRank,
+        coins / u.coins
+      ];
+      const sub = `R${p.rank}戦で 的中あと${byHits}回（完走あと${byRaces}戦／所持${fmtCoins(u.coins)}でも解放）`;
+      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub, pct: clamp(Math.max(...pcts) * 100, 2, 99) });
     }
   }
   // next life stage (総資産)
