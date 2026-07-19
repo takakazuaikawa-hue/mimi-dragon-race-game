@@ -1483,8 +1483,8 @@ function startRaceCanvas(container, ctx) {
       <canvas id="rc-canvas"></canvas>
       <!-- ★D3：生中継の徽章。ホーム＝配信・物語＝密着ドキュメンタリーと同じ世界であることを一目で示す -->
       <span class="rc-live" id="rc-live"><i></i>LIVE</span>
-      <!-- ※「🎉ゴール！」帯は撤去：canvasが同じ意味の「ゴールイン！」を出しており重複だった（ユーザー指摘）。
-           ゴールの合図は canvas の見出し1本に統一する。 -->
+      <!-- ゴールの合図＝このデザインされた帯に一本化（canvas側の素の「ゴールイン！」は撤去した）。 -->
+      <div class="rc-goalband" id="rc-goalband" hidden>🎉 ゴール！</div>
       <!-- ★CODEX納品：ゴール後に座席から立ち上がる観客の背中（12フレーム・1回再生） -->
       <div class="rc-crowdglow" aria-hidden="true">
         <img src="images/race_live/crowd_glow_sprite.webp" alt="" decoding="async" onerror="this.parentNode.remove()">
@@ -3452,8 +3452,9 @@ function startRaceCanvas(container, ctx) {
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
       // headline fades in first（カット時は「1着〈名前〉」行を省略＝金リボンと重複するため）
       cctx.globalAlpha = Math.min(1, rtd / 0.22);
+      // ※「ゴールイン！」の素テキストは撤去（デザイン済みの .rc-goalband 帯と重複するため）。
+      //   ゴールの合図は帯に一本化し、canvas側は「1着 ◯◯」と配当プレートに専念する。
       cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 25px system-ui, sans-serif";
-      cctx.fillText("ゴールイン！", cw / 2, ch * 0.14);
       if (!hasCut) {
         cctx.fillStyle = "#fff"; cctx.font = "bold 15px system-ui, sans-serif";
         cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.14 + 24);
@@ -4209,6 +4210,9 @@ function startRaceCanvas(container, ctx) {
     // ★ゴール後の状態へ切り替える（ユーザー指摘：走行中の賑やかさが鳴り止まないと不自然）。
     //   ①LIVE→中継終了 ②同接カウンタは伸びを止めて確定値で固定 ③観客はスタンディングで1度だけ沸き、
     //   以後は静止 ④視聴者コメントは「余韻」プールへ切替 ⑤盤面をゴール後モードに（着順は畳む）。
+    // ゴールの合図＝デザイン済みの帯（赤橙グラデ＋スケールイン）。これが本編の見出し。
+    const gb = wrap.querySelector("#rc-goalband");
+    if (gb) { gb.hidden = false; gb.classList.remove("show"); void gb.offsetWidth; gb.classList.add("show"); }
     const lv = wrap.querySelector("#rc-live");
     if (lv) lv.classList.add("ended");
     const crowdGlow = wrap.querySelector(".rc-crowdglow");
@@ -4299,7 +4303,8 @@ function startRaceCanvas(container, ctx) {
       if (_done) freezeBoardPodium(timeline.crossings.map(cr => cr.id));
       else unfreezeBoardPodium();
       // ★LIVE徽章・観客・ゴール後レイアウトもスクラブ位置に合わせる（戻したら中継中の顔に戻す）
-      { const lv = wrap.querySelector("#rc-live"), crowdGlow = wrap.querySelector(".rc-crowdglow");
+      { const gb = wrap.querySelector("#rc-goalband"), lv = wrap.querySelector("#rc-live"), crowdGlow = wrap.querySelector(".rc-crowdglow");
+        if (gb) { gb.hidden = !_done; if (!_done) gb.classList.remove("show"); }
         if (lv) lv.classList.toggle("ended", _done);
         if (crowdGlow) crowdGlow.classList.toggle("is-standing", _done);
         wrap.classList.toggle("rc-ended", _done);
