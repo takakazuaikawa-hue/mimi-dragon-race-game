@@ -2726,29 +2726,20 @@ function startRaceCanvas(container, ctx) {
       // ばらける（easeOutBack＝勢い＋ちょい行き過ぎ→すっと収まる）。表示のみ・進行/着順不変。
       if (para) {
         const ln = laneOf[dr.id] || 0;
-        // ★2026-07-18 スタート整列の修正：旧実装は「レース座標から ln*18px ずつ左へずらす」だけ
-        //   だったため、左端クランプ(5%)に押し付けられた竜の体（鼻先アンカー＝体は左へ伸びる）が
-        //   画面外へ見切れてバラバラに見えた。地上待機中は画面幅に対する明示的な2列×4頭の
-        //   グリッド座標に置き、離陸(eb)で本来のレース座標へ収束させる（表示のみ・着順不変）。
-        const row = Math.floor(ln / 4);
-        const groundY = ch * 0.88 + row * 11 - 5;                           // 2列の前後感（後列は少し下＝手前）
+        // ★2026-07-18改（ユーザー決定）：「最初から浮いていても許容・整列を優先」。
+        //   待機中＝スタートラインに沿った斜め縦一列（x=34%cw から奥レーンほど僅かに左、
+        //   y=最初から各飛行高度=laneY）＝ゲートの横並びがきれいに揃い全員の体が見える。
+        //   GO(eb)でその場から本来のレース座標へ加速して散る。地上グリッド・離陸演出は撤去。
+        //   表示のみ＝着順/オッズ/配当は不変。
         const dl = ln * 0.055 + ((((ln + 3) * 2654435761) >>> 0) % 100) / 100 * 0.16;
         const k = clamp((S.flyIn - dl) / 1.05, 0, 1);
         const c1 = 1.25, c3 = c1 + 1;
         const eb = k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
-        // 全員の体が収まる格子：左端30%（体幅ぶんの余白）から19%刻みで4列。
-        // 後列は半列ぶん右へずらす市松配置＝真後ろに立つと前列に隠れて見えない（実測）ため。
-        const gx = cw * (0.30 + (ln % 4) * 0.19 + row * 0.095);
+        const gx = cw * 0.34 - ln * 7;                       // 斜め一列＝前後の重なりを僅かにずらす
         x = gx + (x - gx) * eb;
-        // 離陸の一瞬＝光の礫＋巻き上がる砂塵（HD-2Dの「発光の瞬間」）※格子座標に置いた後に出す
-        const prevEb = (S._launchEb && S._launchEb[dr.id]) || 0;
-        if (prevEb <= 0 && eb > 0) {
-          spawnDust(x - 10, groundY + 10, 3, 1.1);
-          spawnSpark(x - 6, groundY + 2, "#ffe9a8");
-        }
-        (S._launchEb = S._launchEb || {})[dr.id] = eb;
-        baseY = groundY + (baseY - groundY) * eb;
-        // 地上の待機中だけ、たまに感情エモート（眠雲竜💤・泣き虫💧・火竜🔥・他♪✨＝愛らしさ）
+        // 待機中のホバリング（ふわり上下）＝浮いたまま生きている感。GOで消える
+        if (eb < 1) baseY += Math.sin(performance.now() / 1000 * 1.6 + ln) * 3 * (1 - eb);
+        // 待機中だけ、たまに感情エモート（眠雲竜💤・泣き虫💧・火竜🔥・他♪✨＝愛らしさ）
         if (eb <= 0 && (S.entryT > 0 || S.preT > 0)) {
           const nw2 = performance.now() / 1000;
           if (nw2 > (S.popCd[dr.id] || 0)) {
@@ -2756,7 +2747,7 @@ function startRaceCanvas(container, ctx) {
             if (Math.random() < 0.5) {
               const em = dr.id === "momu" ? "💤" : dr.id === "poro" ? "💧"
                 : ({ susu: 1, hibana: 1, benio: 1, shaku: 1, guren: 1, enma: 1, gouka: 1, phenix: 1 }[dr.id] ? "🔥" : (ln % 2 ? "♪" : "✨"));
-              S.pops.push({ x: x - 8, y: groundY - 40, tx: em, c: "#ffffff", t0: nw2, sz: 13 });
+              S.pops.push({ x: x - 8, y: baseY - 40, tx: em, c: "#ffffff", t0: nw2, sz: 13 });
             }
           }
         }
