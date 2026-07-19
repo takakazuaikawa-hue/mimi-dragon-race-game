@@ -1451,6 +1451,13 @@ function startRaceCanvas(container, ctx) {
       <!-- ★D3：生中継の徽章。ホーム＝配信・物語＝密着ドキュメンタリーと同じ世界であることを一目で示す -->
       <span class="rc-live" id="rc-live"><i></i>LIVE</span>
       <div class="rc-goalband" id="rc-goalband" hidden>🎉 ゴール！</div>
+      <!-- ★CODEX納品：観客ペンライト帯（4フレーム循環・終盤/ゴール前だけCSSでフェードイン・演出のみ） -->
+      <div class="rc-crowdglow" aria-hidden="true">
+        <img src="images/race_live/crowd_glow_00.webp" alt="" decoding="async" onerror="this.parentNode.remove()">
+        <img src="images/race_live/crowd_glow_01.webp" alt="" decoding="async">
+        <img src="images/race_live/crowd_glow_02.webp" alt="" decoding="async">
+        <img src="images/race_live/crowd_glow_03.webp" alt="" decoding="async">
+      </div>
       <button class="rc-play" id="rc-play" title="再生/一時停止">⏸</button>
     </div>
     <!-- ★RACE_SCREEN_LIVE D1：生着順ボード。画面下半分の主役＝8頭の行がFLIPで入れ替わり続ける。
@@ -1458,7 +1465,7 @@ function startRaceCanvas(container, ctx) {
     <div class="rc-board" id="rc-board"></div>
     <!-- ★D2：視聴者コメント（匿名のみ・キャスト名は使わない＝門番問題を構造ごと回避） -->
     <div class="rc-chat" id="rc-chat"></div>
-    <div class="rc-telop" id="rc-telop"><span class="rc-telop-who">🎙 ミミ</span><div class="lines" id="rc-lines"></div></div>
+    <div class="rc-telop" id="rc-telop"><span class="rc-telop-who"><img id="rc-caster" src="images/race_live/mimi_caster.webp" alt="" decoding="async" onerror="this.remove()">🎙 ミミ</span><div class="lines" id="rc-lines"></div></div>
     <div class="rc-controls" id="rc-controls"></div>
     <div class="rc-finishstrip" id="rc-finishstrip" style="display:none"></div>
     <div class="rc-log" id="rc-log" style="display:none"></div>
@@ -3487,6 +3494,22 @@ function startRaceCanvas(container, ctx) {
   // =====================================================================
   const viewersEl = wrap.querySelector("#rc-viewers");
   const chatEl = wrap.querySelector("#rc-chat");
+  // ★CODEX納品：実況ワイプの表情（base/happy/panic/serious/surprised）。
+  //   出来事で一瞬変わり（先頭交代=驚き・自分の竜が後退=あせり）、平常は文脈の基礎表情
+  //   （圏内=にこにこ・決着=的中なら喜び/外れなら真剣）へ戻る。すべて演出＝結果に非干渉。
+  const casterEl = wrap.querySelector("#rc-caster");
+  let _casterCur = "", _casterHoldUntil = 0;
+  function setCaster(expr) {
+    if (!casterEl || _casterCur === expr) return;
+    _casterCur = expr;
+    casterEl.src = "images/race_live/mimi_caster" + (expr ? "_" + expr : "") + ".webp";
+  }
+  function casterFlash(expr, tNow, ms) { setCaster(expr); _casterHoldUntil = tNow + ms; }
+  function casterTick(tNow) {
+    if (tNow < _casterHoldUntil) return;          // 一瞬の表情を保持中
+    setCaster(S.finished ? (computeBetHit() === true ? "happy" : "serious")
+      : boardZoneWas ? "happy" : "");
+  }
   const CHAT_MAX = 3;                       // 同時表示は3行まで（DOM累積を防ぐ）
   let viewersBase = 0, viewersShown = 0, viewersTargetAdd = 0;
   let chatNextAt = 0, chatPrevLead = null, chatPrevMineRank = null, chatGoalDone = false;
@@ -3522,6 +3545,10 @@ function startRaceCanvas(container, ctx) {
     else if (mineRank != null && chatPrevMineRank != null && mineRank < chatPrevMineRank) ev = "mineUp";
     else if (mineRank != null && chatPrevMineRank != null && mineRank > chatPrevMineRank) ev = "mineDown";
     if (ev) pushChat(ev, mineName);
+    // 実況ワイプの表情：出来事で一瞬変え、平常は文脈の基礎表情へ（casterTick）
+    if (ev === "lead") casterFlash("surprised", tNow, 1600);
+    else if (ev === "mineDown") casterFlash("panic", tNow, 1600);
+    casterTick(tNow);
     chatPrevLead = leader; chatPrevMineRank = mineRank;
 
     // 間が空いたら埋める（フェーズで頻度を変える＝終盤ほど賑やかに）

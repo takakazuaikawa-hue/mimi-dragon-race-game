@@ -1070,9 +1070,39 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 /* 実況（ミミの声）と視聴者コメントを見た目で分ける＝誰が喋っているか迷わせない */
 .rc-telop { position: relative; }
 .rc-telop-who {
-  display: inline-block; font-size: 9px; font-weight: 900; letter-spacing: .08em;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 9px; font-weight: 900; letter-spacing: .08em;
   color: #2a2013; background: linear-gradient(180deg,#ffe08a,#e8b455);
-  border-radius: 99px; padding: 1px 8px; margin-bottom: 3px;
+  border-radius: 99px; padding: 2px 9px 2px 2px; margin-bottom: 3px;
+}
+/* ★CODEX納品：実況ワイプ（丸顔・表情はJSがsrc切替）。名札の中に小さく収める */
+.rc-telop-who img {
+  width: 22px; height: 22px; border-radius: 50%; object-fit: cover;
+  background: #1a141f; border: 1px solid rgba(42,32,19,.35); flex: none;
+}
+
+/* ★CODEX納品：観客ペンライト帯＝4フレーム循環（各25%窓・160ms/コマ相当）。
+   終盤(3)/ゴール前(4)だけフェードイン＝「山を3つ」の最厚部を観客の熱で支える。演出のみ。 */
+.rc-crowdglow {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 36%; z-index: 2;
+  pointer-events: none; opacity: 0; transition: opacity .9s ease;
+  border-radius: 0 0 10px 10px; overflow: hidden;
+}
+.rc-crowdglow img {
+  position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: top; opacity: 0;
+  animation: rcCgFrame .64s steps(1, end) infinite;
+}
+.rc-crowdglow img:nth-child(1) { animation-delay: 0s; }
+.rc-crowdglow img:nth-child(2) { animation-delay: .16s; }
+.rc-crowdglow img:nth-child(3) { animation-delay: .32s; }
+.rc-crowdglow img:nth-child(4) { animation-delay: .48s; }
+@keyframes rcCgFrame { 0% { opacity: 1; } 25% { opacity: 0; } 100% { opacity: 0; } }
+.rc-wrap[data-phase-idx="3"] .rc-crowdglow { opacity: .34; }
+.rc-wrap[data-phase-idx="4"] .rc-crowdglow { opacity: .55; }
+@media (prefers-reduced-motion: reduce) {
+  .rc-crowdglow img { animation: none; }
+  .rc-crowdglow img:first-child { opacity: 1; }   /* 1コマ目だけ静止表示 */
 }
 @media (prefers-reduced-motion: reduce) { .rc-chat-line { animation: none; } }
 
