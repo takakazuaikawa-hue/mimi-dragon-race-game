@@ -1483,13 +1483,11 @@ function startRaceCanvas(container, ctx) {
       <canvas id="rc-canvas"></canvas>
       <!-- ★D3：生中継の徽章。ホーム＝配信・物語＝密着ドキュメンタリーと同じ世界であることを一目で示す -->
       <span class="rc-live" id="rc-live"><i></i>LIVE</span>
-      <div class="rc-goalband" id="rc-goalband" hidden>🎉 ゴール！</div>
-      <!-- ★CODEX納品：観客ペンライト帯（4フレーム循環・終盤/ゴール前だけCSSでフェードイン・演出のみ） -->
+      <!-- ※「🎉ゴール！」帯は撤去：canvasが同じ意味の「ゴールイン！」を出しており重複だった（ユーザー指摘）。
+           ゴールの合図は canvas の見出し1本に統一する。 -->
+      <!-- ★CODEX納品：ゴール後に座席から立ち上がる観客の背中（12フレーム・1回再生） -->
       <div class="rc-crowdglow" aria-hidden="true">
-        <img src="images/race_live/crowd_glow_00.webp" alt="" decoding="async" onerror="this.parentNode.remove()">
-        <img src="images/race_live/crowd_glow_01.webp" alt="" decoding="async">
-        <img src="images/race_live/crowd_glow_02.webp" alt="" decoding="async">
-        <img src="images/race_live/crowd_glow_03.webp" alt="" decoding="async">
+        <img src="images/race_live/crowd_glow_sprite.webp" alt="" decoding="async" onerror="this.parentNode.remove()">
       </div>
       <button class="rc-play" id="rc-play" title="再生/一時停止">⏸</button>
     </div>
@@ -3666,6 +3664,7 @@ function startRaceCanvas(container, ctx) {
   const CHAT_MAX = 3;                       // 同時表示は3行まで（DOM累積を防ぐ）
   let viewersBase = 0, viewersShown = 0, viewersTargetAdd = 0;
   let chatNextAt = 0, chatPrevLead = null, chatPrevMineRank = null, chatGoalDone = false;
+  let _goalChatLeft = 0;   // ゴール後に流す「余韻」コメントの残り本数（0で打ち止め＝静かになる）
 
   // 同接のベース値＝レースの格（rank）で桁を変える。以降はイベントで積み増す“演出数字”。
   (function initViewers() {
@@ -3704,18 +3703,33 @@ function startRaceCanvas(container, ctx) {
     casterTick(tNow);
     chatPrevLead = leader; chatPrevMineRank = mineRank;
 
-    // 間が空いたら埋める（フェーズで頻度を変える＝終盤ほど賑やかに）
-    const interval = phaseIdx >= 4 ? 900 : phaseIdx >= 3 ? 1300 : 2000;
-    if (tNow > chatNextAt) {
-      chatNextAt = tNow + interval;
-      pushChat(phaseIdx >= 3 ? "final" : (tNow < 3000 ? "start" : "idle"), mineName);
-      if (phaseIdx >= 3) viewersTargetAdd += Math.round(viewersBase * 0.03);
+    if (S.finished) {
+      // ★ゴール後：余韻コメントを数本だけ、ゆっくり流して打ち止める（走行中の賑やかさを持ち越さない）
+      if (_goalChatLeft > 0 && tNow > chatNextAt) {
+        chatNextAt = tNow + 1500;
+        _goalChatLeft--;
+        pushChat("goal", mineName);
+      }
+    } else {
+      // 間が空いたら埋める（フェーズで頻度を変える＝終盤ほど賑やかに）
+      const interval = phaseIdx >= 4 ? 900 : phaseIdx >= 3 ? 1300 : 2000;
+      if (tNow > chatNextAt) {
+        chatNextAt = tNow + interval;
+        pushChat(phaseIdx >= 3 ? "final" : (tNow < 3000 ? "start" : "idle"), mineName);
+        if (phaseIdx >= 3) viewersTargetAdd += Math.round(viewersBase * 0.03);
+      }
     }
 
-    // 同接：目標値へなめらかに寄せる（数字がじわじわ増える＝配信が伸びている感）
+    // 同接：目標値へなめらかに寄せる（数字がじわじわ増える＝配信が伸びている感）。
+    // ★ゴール後は伸ばさず確定値で止める（中継が終わったのに数字だけ回り続けるのは嘘になる）。
+    const b = viewersEl && viewersEl.querySelector("b");
+    if (S.finished) {
+      if (viewersEl) viewersEl.classList.add("fixed");
+      if (b && !viewersEl._fixed) { viewersEl._fixed = true; b.textContent = viewersShown.toLocaleString("ja-JP"); }
+      return;
+    }
     const target = viewersBase + viewersTargetAdd;
     if (viewersShown < target) viewersShown += Math.max(1, Math.ceil((target - viewersShown) * 0.12));
-    const b = viewersEl && viewersEl.querySelector("b");
     if (b) b.textContent = viewersShown.toLocaleString("ja-JP");
   }
   // 圏内に入った時だけ呼ぶ（updateBoard から）＝歓声のピーク
@@ -4152,7 +4166,10 @@ function startRaceCanvas(container, ctx) {
     // 音声操作は全画面共通の🔊FAB（右下）へ一本化——ボタン二重のUX混乱を解消（ユーザー指摘）。
     // ミュート/音量は showVolumePanel が担い、BGM復帰は RaceBgm.setMuted(false) が面倒を見る。
     if (S.finished) {
-      controlsEl.appendChild(makeBtn("結果を見る", () => { stopRacePlayer(); if (typeof renderResult === "function") renderResult(); }));
+      // ★ゴール後の主役CTA。CSSは .rc-next で狙う（:last-child依存は全ログ等の追加で壊れる）
+      const nx = makeBtn("結果を見る ▶", () => { stopRacePlayer(); if (typeof renderResult === "function") renderResult(); });
+      nx.classList.add("rc-next");
+      controlsEl.appendChild(nx);
     }
   }
   function renderLog() {
@@ -4189,11 +4206,20 @@ function startRaceCanvas(container, ctx) {
         }
       });
     } catch (e) {}
-    // ★D3：ゴールの瞬間だけ帯を出す（LIVEバッジは終了表示に切り替える）
-    const gb = wrap.querySelector("#rc-goalband");
-    if (gb) { gb.hidden = false; gb.classList.remove("show"); void gb.offsetWidth; gb.classList.add("show"); }
+    // ★ゴール後の状態へ切り替える（ユーザー指摘：走行中の賑やかさが鳴り止まないと不自然）。
+    //   ①LIVE→中継終了 ②同接カウンタは伸びを止めて確定値で固定 ③観客はスタンディングで1度だけ沸き、
+    //   以後は静止 ④視聴者コメントは「余韻」プールへ切替 ⑤盤面をゴール後モードに（着順は畳む）。
     const lv = wrap.querySelector("#rc-live");
     if (lv) lv.classList.add("ended");
+    const crowdGlow = wrap.querySelector(".rc-crowdglow");
+    if (crowdGlow) {
+      crowdGlow.classList.remove("is-standing");
+      void crowdGlow.offsetWidth;
+      crowdGlow.classList.add("is-standing");
+    }
+    wrap.classList.add("rc-ended");     // CSS側でゴール後レイアウトに切替（着順を畳む・操作を主役に）
+    _goalChatLeft = 3;                  // 余韻コメントを3本だけ流して打ち止め
+    chatNextAt = 0;
   }
 
   playBtn.onclick = () => {
@@ -4272,10 +4298,14 @@ function startRaceCanvas(container, ctx) {
       //   （そうしないと最後まで飛ばした時にボードだけ走行中の顔のまま残る）。
       if (_done) freezeBoardPodium(timeline.crossings.map(cr => cr.id));
       else unfreezeBoardPodium();
-      // ★D3：LIVE徽章とゴール帯もスクラブ位置に合わせる（戻したら中継中の顔に戻す）
-      { const gb = wrap.querySelector("#rc-goalband"), lv = wrap.querySelector("#rc-live");
-        if (gb) { gb.hidden = !_done; if (!_done) gb.classList.remove("show"); }
-        if (lv) lv.classList.toggle("ended", _done); }
+      // ★LIVE徽章・観客・ゴール後レイアウトもスクラブ位置に合わせる（戻したら中継中の顔に戻す）
+      { const lv = wrap.querySelector("#rc-live"), crowdGlow = wrap.querySelector(".rc-crowdglow");
+        if (lv) lv.classList.toggle("ended", _done);
+        if (crowdGlow) crowdGlow.classList.toggle("is-standing", _done);
+        wrap.classList.toggle("rc-ended", _done);
+        if (viewersEl) { viewersEl.classList.toggle("fixed", _done); if (!_done) viewersEl._fixed = false; }
+        if (!_done) { chatGoalDone = false; _goalChatLeft = 0; } }
+      renderControls();   // スクラブ先が決着後なら「結果を見る」を出す（seekはonAllFinishedを通らない）
       for (let i = 0; i < 80; i++) updateCamera();
       draw();
     }
