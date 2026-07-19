@@ -940,51 +940,80 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 /* ★C-4：主CTAに連勝の熱を乗せる */
 .actions .rs-next { font-weight: 900; }
 
-/* ===== ★CORE_LOOP_UX B-1/B-2：自分の竜アンカー＋期待メーター（実装先＝race_canvas.js の #rc-bet）
-   「いまの並びなら的中まであと何頭か」を常時見せる（当落ではなく“期待”の可視化＝保留変化に相当）。
-   着順は timeline で確定済み＝ここは完全に表示層。 */
-.rc-bet {
-  display: flex !important; flex-direction: column; gap: 6px;
-  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14);
-  border-radius: 10px; padding: 7px 9px; color: #eef2f6; font-size: 12px;
-  transition: border-color .25s, background .25s, box-shadow .25s;
+/* ===== ★RACE_SCREEN_LIVE D1：生着順ボード（実装先＝race_canvas.js の #rc-board）=====
+   画面下半分の主役。8頭の行がFLIPで入れ替わり続ける＝「数字が生きている」感の本体。
+   的中ライン＝賭式ごとの境界に金の破線を引き「あと何人抜けば的中か」を常時見せる（射幸性の核）。
+   期待の可視化(betExpect)は自分の行の in-zone 表示＋ライブ配当チップが担う（旧 .rc-bet は統合・撤去）。
+   ⚠️着順は timeline で確定済み＝ここは完全に表示層。 */
+.rc-board {
+  --rcb-h: 27px;                    /* JS の BOARD_ROW_H と一致させること */
+  position: relative; margin: 6px 0 4px; overflow: hidden;
+  border-radius: 10px; background: rgba(6,10,16,.5);
+  border: 1px solid rgba(255,255,255,.08);
+  transition: border-color .25s, box-shadow .25s;
 }
-.rc-bet[style*="display: none"] { display: none !important; }
-.rc-bet .rcb-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.rc-bet .rcb-k { font-size: 10px; font-weight: 800; color: #9fa8b4; letter-spacing: .04em; white-space: nowrap; }
-.rc-bet .rcb-drg {
-  display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 800;
-  background: rgba(255,255,255,.08); border-radius: 99px; padding: 2px 9px 2px 3px; color: #f2f5f9;
+.rc-board .rcb-row {
+  position: absolute; left: 0; right: 0; top: 5px;
+  height: var(--rcb-h); display: flex; align-items: center; gap: 6px;
+  padding: 0 9px; font-size: 12px; color: #e6ebf2;
+  transition: transform .34s cubic-bezier(.3,1,.35,1), background .2s, box-shadow .25s;
+  will-change: transform;
 }
-.rc-bet .rcb-drg i {
-  font-style: normal; min-width: 16px; height: 16px; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 9.5px; font-weight: 900; background: #4a5566; color: #fff;
+.rc-board .rcb-pos {
+  flex: none; width: 19px; text-align: center;
+  font-size: 12px; font-weight: 900; color: #93a0b0; font-variant-numeric: tabular-nums;
 }
-.rc-bet .rcb-drg.s-lead i, .rc-bet .rcb-drg.s-safe i { background: #3fbf6a; }
-.rc-bet .rcb-drg.s-push i { background: #d87a3a; }
-.rc-bet .rcb-drg.s-danger i { background: #c04a4a; }
-.rc-bet .rcb-meter { display: flex; align-items: center; gap: 8px; }
-.rc-bet .rcb-label { font-size: 11.5px; font-weight: 800; color: #d4dae2; white-space: nowrap; }
-.rc-bet .rcb-bar { flex: 1; min-width: 40px; height: 5px; border-radius: 99px; background: rgba(0,0,0,.45); overflow: hidden; }
-.rc-bet .rcb-bar i {
-  display: block; height: 100%; border-radius: 99px;
-  background: linear-gradient(90deg, #6a8fbf, #4ac07a); transition: width .45s cubic-bezier(.3,1,.4,1);
+.rc-board .rcb-row.top3 .rcb-pos { color: #ffd76a; }
+.rc-board .rcb-waku { flex: none; width: 3px; height: 15px; border-radius: 2px; }
+.rc-board .rcb-nm { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-board .rcb-style { flex: none; font-size: 10px; color: #8b96a5; }
+.rc-board .rcb-odds {
+  flex: none; min-width: 32px; text-align: right;
+  font-size: 11.5px; font-weight: 800; color: #b9c4d2; font-variant-numeric: tabular-nums;
 }
-/* 圏内＝金色。「見たい状態」が一目で分かる */
-.rc-bet.in-zone {
-  background: rgba(255,214,120,.12); border-color: rgba(255,214,120,.6);
-  box-shadow: 0 0 20px -6px rgba(255,214,120,.55);
+.rc-board .rcb-mv { flex: none; width: 12px; font-size: 10px; font-weight: 900; }
+.rc-board .rcb-mv.up { color: #4ad07a; }
+.rc-board .rcb-mv.down { color: #d0604a; }
+/* 自分の竜＝金枠で常時アンカー（画面のどこを見ても自分を見失わない） */
+.rc-board .rcb-row.mine {
+  background: linear-gradient(90deg, rgba(255,214,120,.16), rgba(255,214,120,.04));
+  box-shadow: inset 2px 0 0 #ffd76a;
 }
-.rc-bet.in-zone .rcb-label { color: #ffe08a; }
-.rc-bet.in-zone .rcb-bar i { background: linear-gradient(90deg, #ffd76a, #ffa53a); }
-/* 圏内に「入った瞬間」だけフラッシュ（常時光らせると麻痺する） */
-.rc-bet.zone-hit { animation: rcbZone .7s ease-out; }
+.rc-board .rcb-row.mine .rcb-nm { color: #fff3d0; }
+.rc-board .rcb-pay {
+  flex: none; font-size: 10px; font-weight: 900; color: #2a2013;
+  background: linear-gradient(180deg,#ffe08a,#e8b455); border-radius: 99px; padding: 2px 8px;
+  animation: rcbPayIn .3s ease both;
+}
+@keyframes rcbPayIn { from { opacity: 0; transform: scale(.8); } }
+/* 圏内に入った自分の行＝金に発光 */
+.rc-board .rcb-row.mine.in-zone {
+  background: linear-gradient(90deg, rgba(255,214,120,.34), rgba(255,214,120,.08));
+  box-shadow: inset 2px 0 0 #ffd76a, 0 0 18px -4px rgba(255,214,120,.6);
+}
+/* 的中ライン＝「ここより上なら的中」。射幸性の本丸なので常時見える金の破線。 */
+.rc-board .rcb-hitline {
+  position: absolute; left: 0; right: 0; top: 5px; height: 0; z-index: 3;
+  border-top: 1px dashed rgba(255,214,120,.75); pointer-events: none;
+  transition: box-shadow .3s;
+}
+/* ラベルは線の“上側”に出す（下に出すと境界直下の行の文字に被る＝実測で確認） */
+.rc-board .rcb-hl-tag {
+  position: absolute; right: 7px; bottom: 1px;
+  font-size: 8.5px; font-weight: 900; letter-spacing: .06em; color: #2a2013;
+  background: rgba(255,214,120,.92); border-radius: 99px; padding: 1px 7px;
+}
+.rc-board.in-zone .rcb-hitline { box-shadow: 0 0 14px 1px rgba(255,214,120,.55); }
+/* ラインを越えた「瞬間」だけ盤面ごとフラッシュ（常時光らせると麻痺する＝B-2で実証済みの作法） */
+.rc-board.zone-hit { animation: rcbZone .7s ease-out; }
 @keyframes rcbZone {
-  0% { box-shadow: 0 0 0 0 rgba(255,214,120,.85); transform: scale(1); }
-  35% { transform: scale(1.02); }
-  100% { box-shadow: 0 0 34px -4px rgba(255,214,120,.15); transform: scale(1); }
+  0% { box-shadow: 0 0 0 0 rgba(255,214,120,.8); }
+  100% { box-shadow: 0 0 30px -4px rgba(255,214,120,.12); }
 }
+/* ゴール後＝上位3行を金銀銅で固める（結果画面への視覚的な橋渡し） */
+.rc-board.final .rcb-row.podium.p1 { background: linear-gradient(90deg, rgba(255,214,106,.3), transparent); }
+.rc-board.final .rcb-row.podium.p2 { background: linear-gradient(90deg, rgba(200,208,220,.22), transparent); }
+.rc-board.final .rcb-row.podium.p3 { background: linear-gradient(90deg, rgba(205,140,80,.22), transparent); }
 
 /* ★B-3「山を3つ」＝終盤(3)/ゴール前(4)だけ盤面を締める（序盤は静かに・直線で最厚） */
 .rc-wrap[data-phase-idx="3"] .rc-stage,
@@ -993,8 +1022,9 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .rc-wrap.rc-climax { animation: rcClimax .5s cubic-bezier(.3,1.4,.4,1); }
 @keyframes rcClimax { 0% { transform: scale(1); } 40% { transform: scale(1.012); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {
-  .rc-bet.zone-hit, .rc-wrap.rc-climax { animation: none; }
-  .rc-bet .rcb-bar i { transition: none; }
+  .rc-board.zone-hit, .rc-wrap.rc-climax { animation: none; }
+  .rc-board .rcb-row { transition: none; }   /* FLIPの流れも止める＝静的な並び替えに */
+  .rc-board .rcb-pay { animation: none; }
 }
 
 .broadcast-mimi {
@@ -1093,13 +1123,7 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   display: block; width: 100%;
   border: 1px solid #604040; background: #10162e;
 }
-.rc-bet {
-  /* lives in the HUD beside 残り距離 (not over the canvas), so the player's pick info
-     never overlaps the minimap / standings / running surface. */
-  display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 7px;
-  background: rgba(12,30,14,0.6); border: 1px solid rgba(128,255,128,0.45);
-  color: #9bffa0; font-size: 12px; font-weight: 600; white-space: nowrap; vertical-align: middle;
-}
+/* （旧 .rc-bet ＝ HUD隅の賭け表示は D1 生着順ボードへ置換統合したため削除） */
 .rc-play {
   position: absolute; right: 8px; bottom: 8px;
   width: 40px; height: 40px; border-radius: 50%;

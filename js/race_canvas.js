@@ -1443,14 +1443,15 @@ function startRaceCanvas(container, ctx) {
       <div class="rc-hud-right">
         <span class="rc-weather">${(WEATHERS[race.weather] || {}).label || ""}</span>
         <span class="rc-remain" id="rc-remain">残り ${timeline.distanceMeters}m</span>
-        <span class="rc-bet" id="rc-bet" style="display:none"></span>
       </div>
     </div>
-    <div class="rc-rankbar" id="rc-rankbar"></div>
     <div class="rc-stage">
       <canvas id="rc-canvas"></canvas>
       <button class="rc-play" id="rc-play" title="再生/一時停止">⏸</button>
     </div>
+    <!-- ★RACE_SCREEN_LIVE D1：生着順ボード。画面下半分の主役＝8頭の行がFLIPで入れ替わり続ける。
+         旧 rc-rankbar（1行テキスト）と rc-bet（HUD隅の期待メーター）はここへ置換統合した。 -->
+    <div class="rc-board" id="rc-board"></div>
     <div class="rc-telop" id="rc-telop"><div class="lines" id="rc-lines"></div></div>
     <div class="rc-controls" id="rc-controls"></div>
     <div class="rc-finishstrip" id="rc-finishstrip" style="display:none"></div>
@@ -1470,8 +1471,7 @@ function startRaceCanvas(container, ctx) {
   const remainEl = wrap.querySelector("#rc-remain");
   const phaseEl = wrap.querySelector("#rc-phase");
   const sectionEl = wrap.querySelector("#rc-section");
-  const rankbarEl = wrap.querySelector("#rc-rankbar");
-  const betEl = wrap.querySelector("#rc-bet");
+  const boardEl = wrap.querySelector("#rc-board");
   const linesEl = wrap.querySelector("#rc-lines");
   const controlsEl = wrap.querySelector("#rc-controls");
   const finishStripEl = wrap.querySelector("#rc-finishstrip");
@@ -3349,18 +3349,143 @@ function startRaceCanvas(container, ctx) {
     sectionEl.textContent = rcTerrainInfo(_hudKey).icon + " " + sectionLabelAtP(leaderP);
     sectionEl.style.borderLeftColor = (RC_THEME[_hudKey] || RC_THEME.straight).accent;
     remainEl.textContent = "残り " + timeline.distanceRemainingAt(S.tau) + "m";
-    updateRankbar(standings, standMap);
-    updateBet(standMap);
+    updateBoard(standings, standMap, (typeof performance !== "undefined" ? performance.now() : Date.now()));
   }
 
-  function updateRankbar(standings, standMap) {
-    let html = "";
-    standings.forEach((id, i) => {
-      const isT = betSet.has(id);
-      const cls = isT ? "t" : (popRank[id] === 1 ? "f" : "");
-      html += `<span class="rc-pos ${cls}">${i + 1} ${commentaryName(id)}</span>`;
+  // =====================================================================
+  // ★RACE_SCREEN_LIVE D1：生着順ボード
+  //   8頭ぶんの行DOMを一度だけ作り、以後は「並び替え＋中身の差分更新」だけ行う。
+  //   並び替えは FLIP（First-Last-Invert-Play）＝transformのみで動かす＝レイアウト計算を
+  //   毎フレーム走らせない。行が入れ替わる動きこそ「数字が生きている」感の本体。
+  //   ⚠️着順は timeline で確定済み。ここは standings/standMap を読むだけの表示層。
+  // =====================================================================
+  const BOARD_ROW_H = 27;                  // 1行の高さ(px)。CSSの --rcb-h と一致させること
+  const boardRow = {};                     // dragonId -> 行要素
+  let boardPrevRank = {};                  // 直前の順位（▲▼と発光の判定用）
+  let boardLastArrange = -1;               // 並び替えの間引き用タイムスタンプ
+  let boardHitLineEl = null;               // 的中ラインの要素
+  let boardZoneWas = null;                 // 圏内フラグの前回値（入った瞬間だけ光らせる）
+
+  // 賭式ごとの「ここより上なら的中」の境界順位。単勝=1着まで／複勝・ワイド=3着まで。
+  const HIT_LINE_RANK = !bet ? 0 : (bet.type === "win" ? 1 : 3);
+
+  function buildBoard() {
+    boardEl.innerHTML = "";
+    boardEl.style.height = (BOARD_ROW_H * dragons.length + 10) + "px";
+    // 的中ライン（賭けているときだけ）＝射幸性の本丸。常に「あと何人抜けば的中か」が線で見える。
+    if (bet && betSet.size && HIT_LINE_RANK > 0 && HIT_LINE_RANK < dragons.length) {
+      boardHitLineEl = el("div", "rcb-hitline");
+      boardHitLineEl.innerHTML = `<span class="rcb-hl-tag">ここより上で的中</span>`;
+      boardHitLineEl.style.transform = `translateY(${BOARD_ROW_H * HIT_LINE_RANK}px)`;
+      boardEl.appendChild(boardHitLineEl);
+    }
+    dragons.forEach(dr => {
+      const row = el("div", "rcb-row");
+      row.dataset.id = dr.id;
+      if (betSet.has(dr.id)) row.classList.add("mine");
+      const od = (oddsResult.oddsData || []).find(o => o.dragonId === dr.id) || {};
+      const d = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === dr.id) : null;
+      const col = (typeof dragonColor === "function" && d) ? dragonColor(d) : "#888";
+      const styleLb = (d && typeof STYLE_LABEL !== "undefined") ? (STYLE_LABEL[d.style] || "") : "";
+      row.innerHTML =
+        `<span class="rcb-pos"></span>` +
+        `<span class="rcb-waku" style="background:${col}"></span>` +
+        `<span class="rcb-nm">${commentaryName(dr.id)}</span>` +
+        `<span class="rcb-style">${styleLb}</span>` +
+        `<span class="rcb-odds">${od.winOdds != null ? od.winOdds.toFixed(1) : "-"}</span>` +
+        `<span class="rcb-mv"></span>` +
+        (betSet.has(dr.id) ? `<span class="rcb-pay"></span>` : "");
+      boardEl.appendChild(row);
+      boardRow[dr.id] = row;
     });
-    rankbarEl.innerHTML = html;
+  }
+
+  function updateBoard(standings, standMap, tNow) {
+    // --- 並び替え（FLIP）: 4〜5回/秒に間引く。毎フレームやると重いだけで見た目も変わらない ---
+    const doArrange = (tNow - boardLastArrange) > 220;
+    standings.forEach((id, i) => {
+      const row = boardRow[id]; if (!row) return;
+      const rank = i + 1;
+      const prev = boardPrevRank[id];
+
+      if (doArrange) {
+        const toY = BOARD_ROW_H * i;
+        const fromY = row._y != null ? row._y : toY;
+        if (fromY !== toY) {
+          // Invert→Play：一旦もとの位置に置いてから、次フレームで新しい位置へ流す
+          row.style.transition = "none";
+          row.style.transform = `translateY(${fromY}px)`;
+          void row.offsetWidth;
+          row.style.transition = "";
+          row.style.transform = `translateY(${toY}px)`;
+        } else {
+          row.style.transform = `translateY(${toY}px)`;
+        }
+        row._y = toY;
+      }
+
+      // --- 中身の差分更新（変わった時だけ触る＝無駄な再描画を避ける） ---
+      if (row._rank !== rank) {
+        row._rank = rank;
+        row.querySelector(".rcb-pos").textContent = rank;
+        row.classList.toggle("top3", rank <= 3);
+        // 順位変動の矢印：上がった＝▲（緑）／下がった＝▼（赤）。1.2秒で自然に消す。
+        if (prev != null && prev !== rank) {
+          const mv = row.querySelector(".rcb-mv");
+          const up = rank < prev;
+          mv.textContent = up ? "▲" : "▼";
+          mv.className = "rcb-mv " + (up ? "up" : "down");
+          clearTimeout(row._mvT);
+          row._mvT = setTimeout(() => { mv.textContent = ""; mv.className = "rcb-mv"; }, 1200);
+        }
+      }
+      boardPrevRank[id] = rank;
+    });
+    if (doArrange) boardLastArrange = tNow;
+
+    // --- 自分の竜：期待メーター＋ライブ配当（圏内のときだけ）---
+    if (bet && betSet.size) {
+      const exp = betExpect(standMap);
+      betSet.forEach(id => {
+        const row = boardRow[id]; if (!row) return;
+        row.classList.toggle("in-zone", exp.inZone);
+        const pay = row.querySelector(".rcb-pay");
+        if (!pay) return;
+        // 圏内のときだけ「いま的中なら +N」を出す（常時出すと的中の重みが薄れる）
+        if (exp.inZone) {
+          if (row._payShown !== true) {
+            row._payShown = true;
+            let amt = 0;
+            try { amt = Math.floor(bet.wager * betOdds(bet, oddsResult)); } catch (e) { amt = 0; }
+            pay.textContent = amt > 0 ? `いま的中なら +${fmtCoins(amt)}` : "";
+          }
+        } else if (row._payShown !== false) {
+          row._payShown = false; pay.textContent = "";
+        }
+      });
+      // 的中ラインを越えた「瞬間」だけ光らせる＋SE（常時光ると麻痺する＝B-2で実証済みの作法）
+      if (exp.inZone && boardZoneWas === false) {
+        boardEl.classList.remove("zone-hit"); void boardEl.offsetWidth; boardEl.classList.add("zone-hit");
+        try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
+      }
+      boardEl.classList.toggle("in-zone", exp.inZone);
+      boardZoneWas = exp.inZone;
+    }
+  }
+
+  // ゴール後：上位3行を金銀銅で固める＝結果画面へのつなぎ（遷移の連続性）
+  function freezeBoardPodium(standings) {
+    standings.forEach((id, i) => {
+      const row = boardRow[id]; if (!row) return;
+      if (i < 3) row.classList.add("podium", "p" + (i + 1));
+    });
+    boardEl.classList.add("final");
+  }
+  // 決着前へスクラブし戻した時に確定表示を解除（走行中の顔に戻す）
+  function unfreezeBoardPodium() {
+    if (!boardEl.classList.contains("final")) return;
+    boardEl.classList.remove("final");
+    Object.keys(boardRow).forEach(id => boardRow[id].classList.remove("podium", "p1", "p2", "p3"));
   }
   // ★CORE_LOOP_UX B-1/B-2：「自分の竜」アンカー＋期待メーター。
   //   いまの並びを読んで「的中まであと何頭か」を可視化する＝当落ではなく“期待”の表示
@@ -3380,27 +3505,8 @@ function startRaceCanvas(container, ctx) {
       : `的中まで あと${gap}頭`;
     return { inZone, gap, pct: gauge(gap), label };
   }
-  let _betInZone = null;   // 圏内に「入った瞬間」だけ光らせるための前回値
-  function updateBet(standMap) {
-    if (!bet || !betSet.size) { betEl.style.display = "none"; return; }
-    betEl.style.display = "";
-    const exp = betExpect(standMap);
-    const chips = [...betSet].map(id => {
-      const r = standMap[id] || 99;
-      const st = r === 1 ? "lead" : r <= 3 ? "safe" : r <= 4 ? "push" : "danger";
-      return `<span class="rcb-drg s-${st}"><i>${r}</i>${commentaryName(id)}</span>`;
-    }).join("");
-    betEl.className = "rc-bet" + (exp.inZone ? " in-zone" : "");
-    betEl.innerHTML =
-      `<span class="rcb-row"><span class="rcb-k">🎫 あなたの予想</span>${chips}</span>` +
-      `<span class="rcb-meter"><span class="rcb-label">${exp.label}</span>` +
-      `<span class="rcb-bar"><i style="width:${exp.pct}%"></i></span></span>`;
-    if (exp.inZone && _betInZone === false) {
-      betEl.classList.remove("zone-hit"); void betEl.offsetWidth; betEl.classList.add("zone-hit");
-      try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
-    }
-    _betInZone = exp.inZone;
-  }
+  // ※旧 updateBet（HUD隅の1行メーター）は D1 生着順ボードへ置換統合したため撤去。
+  //   期待の可視化は betExpect() のまま＝自分の行の in-zone 表示とライブ配当チップが担う。
 
   // =====================================================================
   // UPDATE
@@ -3807,6 +3913,8 @@ function startRaceCanvas(container, ctx) {
       html += `<div class="rc-fs-row ${isT ? "t" : ""}"><b>${cr.place}</b> ${commentaryName(cr.id)}${isT ? " 🎯" : ""}</div>`;
     });
     finishStripEl.innerHTML = html;
+    // ★D1：ゴール確定に合わせてボード上位3行を金銀銅で固める（結果画面への視覚的な橋渡し）
+    freezeBoardPodium(timeline.crossings.map(cr => cr.id));
   }
 
   playBtn.onclick = () => {
@@ -3815,6 +3923,7 @@ function startRaceCanvas(container, ctx) {
   };
 
   renderControls();
+  buildBoard();     // ★D1：行DOMを一度だけ生成（以後は並び替えと差分更新のみ）
 
   // =====================================================================
   // controller
@@ -3870,6 +3979,11 @@ function startRaceCanvas(container, ctx) {
         const ownU = dr.finishTau ? Math.min(1, S.tau / dr.finishTau) : 1;
         for (const ev of dr.events) ev._shouted = ownU >= ev.u;
       }
+      // ★D1：スクラブ先が「決着後」なら生着順ボードも確定表示（金銀銅）に、戻したら解除。
+      //   seek は onAllFinished を通らず状態を直接組み直す設計なので、ボードもここで揃える
+      //   （そうしないと最後まで飛ばした時にボードだけ走行中の顔のまま残る）。
+      if (_done) freezeBoardPodium(timeline.crossings.map(cr => cr.id));
+      else unfreezeBoardPodium();
       for (let i = 0; i < 80; i++) updateCamera();
       draw();
     }
