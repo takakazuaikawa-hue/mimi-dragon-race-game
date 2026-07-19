@@ -245,15 +245,19 @@ function wearOutfit(id) {
 // it is NOT a gate — actual availability uses castUnlockAt() → STORY_UNLOCK_AT.
 const STORY_CAST = {
   sake:     { key: "sake",     name: "サケ・ウダダ",                 tag: "竜王女",       level: 0, gives: "竜を見る目",       focus: "現場・竜・気配",        color: "#e0584a", symbol: "🐲",
-              consult: "うぐぐ……まず食え、泣くな。息を見ろ、竜は脚より先に息で崩れる。人気じゃなく、現場の気配で選べ。" },
+              // ★声表スイープ（NARRATIVE_DESIGN §2）：ここは日報「論説委員名簿」の決めゼリフ＝各人の“構え”。
+              //   相談ハブの挨拶（storyVoiceLine consult）とは別文にする（D13＝持ちネタの多面再演を禁止）。
+              consult: "竜は脚より先に、息で崩れる。……見えなかったか？　なら、明日も来い。飯は出す。" },
   mizu:     { key: "mizu",     name: "ミズ・アオラ",                 tag: "エコノミスト", level: 1, gives: "市場を見る目",     focus: "市場・オッズ・期待値",  color: "#3f7fd0", symbol: "📊",
-              consult: "このオッズは勝率ではない。観客の願望が価格に混入した市場反応であるわ、あはん。人気と価値を混同した時点で、賭けは投資ではなく祈りになる。" },
+              // ※名簿では「」で囲まれて表示されるため、本文の鉤括弧は〈〉にして入れ子を避ける
+              consult: "みんなが〈来ない〉と決めた値段には、たいてい、来る理由が置き去りにされているの。……拾う？" },
   sumika:   { key: "sumika",   name: "スミカ・ラグナ",               tag: "行政秘書",     level: 2, gives: "生活を立て直す土台", focus: "生活・住居・総資産",    color: "#6ac06a", symbol: "🏠",
-              consult: "ミミ様、現在の生活状態は貧困ではなく遭難です。手持ちだけでなく、住居・食事・施設・名声まで含めた総資産を育ててください。" },
+              consult: "賭けは水物。ですが、屋根と食事は帳簿に残ります。……ミミ様の欄が埋まっていくのを見るのが、わたくしの楽しみでして。" },
   makura:   { key: "makura",   name: "マクラ・クラウン・バズーカー", tag: "配信者",       level: 3, gives: "声を届ける力",     focus: "観客・実況・熱狂",      color: "#caa44a", symbol: "🎤",
-              consult: "賭けてる？ 生きてる？ 当てるだけなら予想、叫ばせたらショー、名前を覚えさせたら物語だぜ？ その人気、実力か物語か、見極めな。" },
+              consult: "同接は数字、歓声は熱、名前は記憶。三つ揃って、はじめて“いい日”だ。……なに真面目な顔してんだ、おれが。" },
   celestia: { key: "celestia", name: "セレスティア・ブラックメテオ", tag: "世界の天井",   level: 4, gives: "世界の大きさ",     focus: "神眼・淘汰・市場の歪み", color: "#9a6ad0", symbol: "☄️",
-              consult: "勝つ竜の名なら、教えてあげる。……でもね、その答えが配当を消すの。1着を知ることと、価値を残すことは違うわ。" }
+              // ※神眼1.1倍の“説明”はここでは書かない（D6＝レース詳細のセレスティア台詞1本＋メーターヘルプに集約済み）
+              consult: "高いところから見ていると、勝ち負けって、天気に似ているの。……ところで。下の屋台の、あの匂いは何？" }
 };
 
 // spec 32 §9 — story chapters unlock by 総資産 (DECOUPLED from the lifestyle

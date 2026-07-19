@@ -111,7 +111,8 @@ function _igStories(ci) {
   const npc = [
     { ic: "🐰", nm: "mimi", h: "@mimi_yosou", t: "きょうも配信するよ〜！見にきてね🐰" },
     { ic: "🔥", nm: "推し竜", h: "@oshi_dragon", t: "本命は決めた。…当たるとは言ってない。" },
-    { ic: "🐉", nm: "ポロ", h: "@poro_naki", t: "おねえちゃん、きょうもみにきたよ。ぐすっ", gate: "@poroFound" },
+    // ★声表：ポロは喋らない＝代筆でしぐさを伝える（sns.js の d_poro と同じ体で統一）
+    { ic: "🐉", nm: "ポロ（代筆・ミミ）", h: "@poro_naki", t: "（代筆）今日も配信の前に陣取ってます。しっぽ、さっきから止まりません", gate: "@poroFound" },
     { ic: "🎤", nm: "マクラ", h: "@makura_live", t: "さあ今日も竜が駆ける——！🐉🔥", gate: "makura" }
   ].filter(n => !n.gate || ((typeof _snsCastOk === "function") ? _snsCastOk(n.gate) : false));   // fail-closed
   npc.forEach((n, i) => {

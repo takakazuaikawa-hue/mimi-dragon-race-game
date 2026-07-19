@@ -242,7 +242,12 @@
   - D7/D8/D12=手紙3通を別視点に改稿（sns.js FAN_LETTERS）／1ティック1VN予算（event_hooks.js runEventHooks）
   - D9〜D11完全時差化 済（本コミット）: unlockDelayRace/unlockDelayDay（event_hooks.js）＝toast即時→號外+1レース（初勝利/ポロ/食10品/スポット8/皆伝＝data_story_events.js）→SNS投稿・手紙+1日（sns.js p_firstwin/p_poro/p_walker/p_gourmet/l_poro/l_shihan）
   - N5観光 済（a6c81a6/本コミット）: KM_SPOT_MEALS「ここで食べる」17スポット直結＋KONRON_CONTENT全51件（空マス0）
-  - 残: D15セレスティア時差解禁／小イベント・consult全文の声表スイープ／時間帯結線・フォトミッション3択（任意）
+  - D15セレスティア時差解禁 済（ca1804f）
+  - **声表スイープ 済（2026-07-18）**：
+    - consult（STORY_CAST・日報「論説委員名簿」の決めゼリフ）5本を全面改稿。相談ハブの挨拶（storyVoiceLine consult）とは**別文**にしてD13＝持ちネタの多面再演を回避。セレスティアからは神眼1.1倍の説明を除去（D6の集約先を守る）。
+    - 小イベント4本を改稿：**se_poro_promise＝ポロが喋っていた（声表の絶対禁止）** をしぐさ3層＋ミミの〔読み〕へ／se_mizu_market＝D7で手紙から外した持ちネタと重複していたため「市場で値を読む実演」へ／se_celestia_shadow＝手紙 l_celestia とほぼ同文だったため「星を数える会話」へ／se_makura_backstage＝配信用語と数字＋急に素、に。
+    - **ポロ発話の全ファイル根絶**：SNS投稿 p_poro・手紙 l_poro・デイリー投稿 d_poro・タイムライン npc・島づくり react の計5箇所でポロが一人称で喋っていた → すべて「（代筆・ミミ）＝しぐさの翻訳」に統一。「言葉を持たない相棒」という設定を全画面で守る形にした。
+  - 残: 時間帯結線・フォトミッション3択（任意）
 
 ---
 

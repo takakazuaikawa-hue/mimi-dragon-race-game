@@ -129,9 +129,11 @@ var SNS_DAILY = [
     text: "脚質ってのはな、性格だ。逃げる奴、待つ奴、差す奴。竜にも生き方がある。…よく見てやれ。" },
   { id: "d_mizu", ic: "💧", name: "ミズ", handle: "@mizu_market", base: 134,
     text: "人気が集まる竜ほど、配当はしぼむ。…みんなが見てない“価値”は、いつも端っこに落ちてるわ。あはん。" },
-  { id: "d_poro", ic: "🐉", name: "ポロ", handle: "@poro_naki", base: 240,
-    text: "きょうもおねえちゃんのはいしん、みにきたよ。ぐすっ、たのしみ……！",
-    replies: [{ choice: "ポロえらい！", back: "えへへ……っ、ぼく、がんばる！" }, { choice: "なでなで", back: "ふぁ……きもちいい。ありがと、おねえちゃん。" }] },
+  // ★声表スイープ：ポロは言葉を持たない。アカウントは「代筆・ミミ」＝しぐさの翻訳という体で統一。
+  { id: "d_poro", ic: "🐉", name: "ポロ（代筆・ミミ）", handle: "@poro_naki", base: 240,
+    text: "（代筆）配信の準備をしていたら、ポロが画面の前に座り込んで動かなくなりました。……たぶん、いちばん前で見たいらしい。",
+    replies: [{ choice: "ポロえらい！", back: "（代筆）褒められた言葉が分かるのか、耳がぴんと立ちました。しっぽ、高速。" },
+              { choice: "なでなで", back: "（代筆）首すじを撫でたら、目を細めて体重を全部あずけてきました。……重い。しあわせ。" }] },
   { id: "d_gohan", ic: "🍙", name: "島ごはん部", handle: "@shima_gohan", base: 73,
     text: "レース場の屋台、今日は焼きとうもろこしの日！ 醤油の焦げる匂い、罪すぎる……🌽" },
   { id: "d_makura", ic: "🎤", name: "実況マクラ", handle: "@makura_live", base: 198,
@@ -173,7 +175,9 @@ var SNS_POSTS = [
     text: function () { return `ミミ、ランク${_snsRank()}到達！ 新しい地域のレースにも挑めるぞ。視聴者みんなで応援だ！`; },
     unlock: function () { return _snsRank() >= 2; } },
   { id: "p_poro", ic: "🐉", name: "ポロ", handle: "@poro_naki", base: 311,
-    text: "ぐすっ……ミミお姉ちゃんが、ぼくのこと見つけてくれた日のこと、まだ覚えてる。だいすき。", unlock: function () { return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_poro", _snsFlag("poroFound")) : _snsFlag("poroFound"); } },   // ★D9-11
+    // ★声表スイープ：ポロは言葉を持たない（セリフ禁止）。SNSも例外にしない＝しぐさをミミが代筆する体に。
+    text: "（代筆・ミミ）ポロが、拾われた日の毛布をまだ離さない。ぐすっと鼻を鳴らして、尻尾で三回わたしの膝を叩く。……たぶん「おぼえてる」。",
+    unlock: function () { return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_poro", _snsFlag("poroFound")) : _snsFlag("poroFound"); } },   // ★D9-11
   { id: "p_followers", ic: "🔥", name: "推し竜ガチ勢", handle: "@oshi_dragon", base: 207,
     text: function () { return `フォロワー${_snsFollowers().toLocaleString()}人突破！？ もう立派な“予想界の星”じゃん。最初から見てる俺、誇らしい。`; },
     unlock: function () { return _snsFollowers() >= 3000; } },
@@ -260,8 +264,10 @@ var FAN_LETTERS = [
   { id: "l_rescued", ic: "🏘️", from: "串屋のおやじより", subject: "串、2枚に戻します",
     body: "ミミ様へ。\nむずかしいことはわかりません。ただ、うちの炭が、去年より早く減ります。\nレース帰りの客が増えたからです。あなたが勝った日も、負けた日も、みんな寄ってくれる。\n女房と話して、串を2枚に戻すことにしました。2枚です。1枚に減らした、あの冬からやっと。\nそれだけ、お伝えしたくて。",
     unlock: function () { return _snsMaxCoins() >= 100000; } },
-  { id: "l_poro", ic: "🐉", from: "ポロ", subject: "おねえちゃんへ（なみだのあと）",
-    body: "ミミおねえちゃん。\nぼく、泣き虫だけど、おねえちゃんといると、ちょっとだけ勇気が出るんだ。\nグルメレース、いっしょに走ってくれてありがとう。\nつぎは、ぼくがおねえちゃんを応援する番だね。ぐすっ、えへへ。",
+  // ★声表スイープ：ポロは字も書けない（セリフ禁止の徹底）。ミミの代筆＝しぐさの翻訳という体にする。
+  //   「言葉を持たない相棒」という設定こそがポロの魅力なので、手紙でも崩さない。
+  { id: "l_poro", ic: "🐉", from: "ポロ（代筆・ミミ）", subject: "おねえちゃんへ（なみだのあと）",
+    body: "——と、ポロが言ったわけではありません。字が書けないので、わたしが代わりに書いています。\n\n今日、ポロは龍舎の入口でずっと外を見ていました。\nわたしの足音が聞こえた瞬間、耳がぴんと立って、尻尾が三回、地面を叩きました。\n毎日、きっかり三回です。たぶんそれが「おかえり」。\n\nグルメレースを走った日は、四回叩きました。\n一回ぶんだけ、うれしかったんだと思います。\n\n——以上、ポロからの手紙でした。　代筆：ミミ",
     unlock: function () { return (typeof unlockDelayDay === "function") ? unlockDelayDay("l_poro", _snsFlag("poroFound")) : _snsFlag("poroFound"); } },   // ★D9-11: 発見の翌日に届く
   { id: "l_rival", ic: "🐲", from: "かつての好敵手より", subject: "次は負けない",
     body: "ミミへ。\nお前の予想に、何度も悔しい思いをさせられた。\nだが、おかげで俺も腕を上げた。お前がいなけりゃ、ここまで来られなかった。\n……礼は言わん。次のレースで、ぜんぶ返す。覚悟しておけ。",
