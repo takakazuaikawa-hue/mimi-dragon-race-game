@@ -2452,6 +2452,9 @@ function onConfirmBet(skipDialog) {
   // Spec #29: recap is rebuilt per race; result-screen hooks fire once.
   // Spec #37: the win-moment celebration also re-arms for the new race.
   c.recap = null; c.recapTab = "result"; c.resultHooksRan = false; c.celebrated = false;
+  // ★C-3の門番も再武装。state.current はレース間で使い回されるため、ここで戻さないと
+  //   2戦目以降の「根拠の通算成績」が記録されない（実プレイで発見・1戦目だけ記録されていた）。
+  c._reasonScored = false;
   c.raceResult = raceResult;
   c._fixedResult = null; c._celestiaRevealed = null;   // consult is consumed by the run
   const betResult = resolveBet(c.bet, raceResult, c.oddsResult);
@@ -3199,6 +3202,21 @@ function drawRecapScreen() {
   const ps = recap.payoutSummary;
   if (ps) {
     app.appendChild(buildResultHero(ps, resultTierOf(ps), c));
+    // ★C-3 根拠の答え合わせ（A-2の宣言と対）＋C-2 不的中の敗因1行。
+    //   記録は1レース1回だけ（タブ切替の再描画で二重計上しないよう c._reasonScored で門番）。
+    const rk = c.betReasonUsed || state.player.betReason;
+    const R = BET_REASONS[rk];
+    if (R) {
+      if (!c._reasonScored) { c._reasonScored = recordReasonResult(rk, !!ps.hit) || true; }
+      const st = (state.player.reasonStats || {})[rk] || { w: 0, l: 0 };
+      const box = el("div", "rs-reason" + (ps.hit ? " hit" : " miss"));
+      box.innerHTML =
+        `<div class="rsr-top"><span class="rsr-ic">${R.ic}</span>` +
+        `<span class="rsr-msg">${ps.hit ? R.win : R.lose}</span></div>` +
+        (!ps.hit ? `<div class="rsr-miss">${missReasonLine(c)}</div>` : "") +
+        `<div class="rsr-stat">${R.ic} ${R.name}での予想　<b>${st.w}勝${st.l}敗</b></div>`;
+      app.appendChild(box);
+    }
   }
   // 📦 今回の獲得（リワード台帳）：配当以外も含め「このレースで何が増えたか」を1枚に明示。
   // ボーナス系バナーもここに統合（桜井流「ごほうびは分かりやすく・まとめて見せる」）。
@@ -3288,7 +3306,10 @@ function drawRecapScreen() {
     const detail = el("button", "secondary", "詳しい分析"); detail.onclick = renderAnalysis;
     actions.appendChild(detail);
   }
-  const next = el("button", null, "次のレースへ ▶"); next.onclick = renderRaceSelect;
+  // ★C-4：主役は「次のレースへ」1本。連勝中はその熱をボタンに乗せる（次を打ちたくなる導線）。
+  const _sk = (c.streakInfo && c.streakInfo.streak) || 0;
+  const next = el("button", "rs-next", _sk >= 2 ? `🔥 ${_sk}連勝中　次のレースへ ▶` : "次のレースへ ▶");
+  next.onclick = renderRaceSelect;
   actions.appendChild(next);
   app.appendChild(actions);
 }
@@ -3297,6 +3318,43 @@ function drawRecapScreen() {
 // Spec #37 Tier 1 — the WIN MOMENT. The race result/odds/payout are NEVER
 // changed here; this is pure presentation that makes the payout reveal land.
 // =========================================================================
+
+// ★CORE_LOOP_UX C-3：予想の根拠（A-2で宣言）の答え合わせ＋通算成績。
+//   「自分の予想スタイルが育つ」＝リピートの核。完全に表示専用メタ＝配当や着順に非干渉。
+const BET_REASONS = {
+  kan:   { ic: "🔥", name: "直感",   win: "直感が的中！　その勘、信じていい。", lose: "直感は空振り。……次はデータも覗いてみる？" },
+  data:  { ic: "📊", name: "データ", win: "データ派の勝ち。数字は嘘をつかなかった。", lose: "データ派、今日は裏目。数字の外側に何かあった。" },
+  tell:  { ic: "👀", name: "気配",   win: "気配読み、大当たり。見る目が育ってる。", lose: "気配は読み違い。パドックは奥が深い。" },
+  value: { ic: "💰", name: "うまみ", win: "うまみを拾った！　人気の裏をかいた一撃。", lose: "うまみ狙いは不発。妙味と無謀は紙一重。" }
+};
+// 通算成績を1件記録して返す（state.player.reasonStats[key] = {w,l}）。
+function recordReasonResult(key, hit) {
+  if (!key || !BET_REASONS[key]) return null;
+  const st = (state.player.reasonStats = state.player.reasonStats || {});
+  const e = (st[key] = st[key] || { w: 0, l: 0 });
+  if (hit) e.w++; else e.l++;
+  return e;
+}
+// ★CORE_LOOP_UX C-2：不的中の「敗因1行」＝罰ではなく学びに変える。
+//   timeline/raceResult の“確定済みの事実”を読み替えるだけ（新しい判定は作らない）。
+function missReasonLine(c) {
+  try {
+    const myId = c.bet && c.bet.selections && c.bet.selections[0];
+    if (!myId) return "";
+    const ordered = c.raceResult.entries;               // 着順どおり
+    const myIdx = ordered.findIndex(e => e.dragon.id === myId);
+    if (myIdx < 0) return "";
+    const need = c.bet.type === "win" ? 1 : 3;          // 何着以内が必要だったか
+    const my = ordered[myIdx], border = ordered[need - 1];
+    const nm = my.dragon.name;
+    if (myIdx + 1 === need + 1 && border) {             // ちょうど1つ届かなかった
+      return `${nm} は${myIdx + 1}着。あと1頭ぶん、届かなかった。`;
+    }
+    if (my.collapse) return `${nm} は途中で失速。展開が合わなかった。`;
+    if (myIdx + 1 <= need + 2) return `${nm} は${myIdx + 1}着。惜しいところまでは来ていた。`;
+    return `${nm} は${myIdx + 1}着。今日は流れに乗れなかった。`;
+  } catch (e) { return ""; }
+}
 
 // Win tier from the payout odds — the thrill scales with the 穴 you cracked.
 function resultTierOf(ps) {

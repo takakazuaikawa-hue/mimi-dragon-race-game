@@ -920,6 +920,26 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .broadcast-rank-bar .rank-pos.target { color: #80ff80; font-weight: bold; }
 .broadcast-rank-bar .rank-pos.fav { color: #ff8060; }
 
+/* ===== ★CORE_LOOP_UX C-3：根拠の答え合わせ（A-2の宣言と対）＋C-2 敗因1行 =====
+   外れを罰しない＝静かに「なぜ届かなかったか」を1行で返し、通算成績で予想スタイルを育てる。 */
+.rs-reason {
+  margin: 8px 0 10px; padding: 11px 13px; border-radius: 12px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+}
+.rs-reason.hit { background: rgba(255,214,120,.1); border-color: rgba(255,214,120,.42); }
+.rs-reason .rsr-top { display: flex; align-items: flex-start; gap: 9px; }
+.rs-reason .rsr-ic { font-size: 20px; line-height: 1.2; flex: none; }
+.rs-reason .rsr-msg { font-size: 13.5px; font-weight: 800; line-height: 1.5; color: #f2ede0; }
+.rs-reason.hit .rsr-msg { color: #ffe8a8; }
+.rs-reason .rsr-miss {
+  font-size: 12px; line-height: 1.6; color: #bfc6d0; margin-top: 7px;
+  padding-top: 7px; border-top: 1px dashed rgba(255,255,255,.14);
+}
+.rs-reason .rsr-stat { font-size: 11px; color: #9aa2ae; margin-top: 8px; }
+.rs-reason .rsr-stat b { color: #e2e6ec; font-variant-numeric: tabular-nums; }
+/* ★C-4：主CTAに連勝の熱を乗せる */
+.actions .rs-next { font-weight: 900; }
+
 /* ===== ★CORE_LOOP_UX B-1/B-2：自分の竜アンカー＋期待メーター（実装先＝race_canvas.js の #rc-bet）
    「いまの並びなら的中まであと何頭か」を常時見せる（当落ではなく“期待”の可視化＝保留変化に相当）。
    着順は timeline で確定済み＝ここは完全に表示層。 */
