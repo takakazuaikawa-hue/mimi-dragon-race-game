@@ -617,7 +617,12 @@ function buildBroadcast(timeline, ctx, opts) {
   }
   // ★最後の一行＝決め台詞。ここで終わる。
   say(D + 0.020, "call", pick(poolOf("climax", dm.headline || "solid", "call"), "call"), dv, "goal");
-  say(D + 0.006, "color", pick(poolOf("decide", A.pattern, "color"), "color"), dv, "goal");
+  // ★解説のゴール台詞は「讃える」。自分の見立ての話はしない。
+  //   大写しになっているのは勝った竜。その走りを、その人の物差しで讃える。
+  //   （物差しが違うから、讃え方も6人で違う＝それが描き分けになる）
+  say(D + 0.006, "color",
+      pick(poolOf("praise", (dm.score >= 70 ? "big" : "normal"), "color"), "color"),
+      dv, "goal");
 
   // ★予言の答え合わせ。当たれば勝ち誇り、外れれば自爆する。
   //   判定は確定済みの結果を読むだけ（新しい判定は作らない）。
@@ -646,8 +651,12 @@ function buildBroadcast(timeline, ctx, opts) {
       }
     })();
     A.prophecyHit = hit;
+    // ★答え合わせは決着では言わない。
+    //   画面には勝った竜が大写しになっている。そこで解説が自分の予想の採点を
+    //   始めるのは筋違い（ユーザー指摘）。見立ての当否は、決着の少し前に
+    //   一言だけ触れて済ませる。決着の場は、竜を讃えるために空ける。
     const vv = { n: nameOf(A.winner), t: prophecy.targetName, st: prophecy.targetStyle };
-    say(D + 0.030, "color", pick(poolOf("verdict", hit ? "hit" : "miss", "color"), "color"), vv, "goal");
+    say(D - 0.030, "color", pick(poolOf("verdict", hit ? "hit" : "miss", "color"), "color"), vv, "final");
   }
 
   // ── カットイン ──────────────────────────────────────────────────
