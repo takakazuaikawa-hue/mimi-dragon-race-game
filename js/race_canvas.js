@@ -1961,6 +1961,14 @@ function startRaceCanvas(container, ctx) {
     const frac = (P - S.camL) / WINW;
     return usableLeft + frac * (usableRight - usableLeft);
   }
+  // ★発走ライン（＝ワールド座標0）の画面x。STARTゲート・発走テープ・待機整列は
+  //   すべてこの1つの式を使う。以前はテープと整列だけ cw*0.42 の決め打ちだったため、
+  //   カメラ位置によってゲートと別の場所に立ち、黄色い線が2本見えていた。
+  //   S._winw はカメラ更新時に保存されるカメラ幅（updateCamera 参照）。
+  function startTapeX() {
+    const WINW = S._winw || 0.135;
+    return screenX(0, WINW);
+  }
   // Near the goal, lanes (and the dragons in them) funnel toward the track centre
   // so the climactic battle gathers mid-frame and stays visible under the finish
   // zoom. `convAtP` is the funnel amount at a track fraction P; because a dragon's
@@ -2756,7 +2764,11 @@ function startRaceCanvas(container, ctx) {
     //   GOでテープが弾けて光の粒になる（S.tapeFx）。表示のみ・着順不変。
     if (para && S.tapeAlpha > 0.01) {
       // 全頭の鼻先が触れる「発走テープ」＝1本の垂直線。同一xに並ぶので公平さが目に見える。
-      const tx = cw * 0.42;
+      // ★BUGFIX（座標系の取り違え）：以前は cw*0.42 という「画面幅の割合」で置いていたため、
+      //   ワールド座標に立つ本物のSTARTゲート（screenX(0,WINW)）とカメラ位置によってズレ、
+      //   黄色いテープとSTARTポールが別々の場所に2本立って見えていた（実機スクショで判明）。
+      //   ゲートと同じ式で位置を出す＝カメラがどこにあっても必ず重なる。
+      const tx = startTapeX();
       const tyT = ch * 0.30, tyB2 = ch * 0.92;                           // 飛行帯の上端〜地面
       const sway = Math.sin(performance.now() / 1000 * 1.3) * 1.2;
       cctx.save();
@@ -2875,8 +2887,9 @@ function startRaceCanvas(container, ctx) {
         const eb = k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
         // ★A-1改：全頭の鼻先を「同一x」に揃える真の縦一列＝スタートの公平さが幾何学的に自明。
         //   高さ(laneY)が竜ごとに違うので縦に積まれ、体は重ならず全員読める。
-        //   x=42%＝スプライトの体が鼻先から左へ伸びるぶんの余白（左端見切れ防止・実測で決定）。
-        const gx = cw * 0.42;
+        //   ★整列するxは発走ラインそのもの（startTapeX）＝テープ・STARTゲートと必ず一致する。
+        //     以前は cw*0.42 の決め打ちで、ワールド座標に立つゲートとカメラ次第でズレていた。
+        const gx = startTapeX();
         x = gx + (x - gx) * eb;
         // 待機中のホバリング（ふわり上下）＝浮いたまま生きている感。GOで消える
         if (eb < 1) baseY += Math.sin(performance.now() / 1000 * 1.6 + ln) * 3 * (1 - eb);
