@@ -96,6 +96,34 @@ function bcAnalyze(timeline, ctx) {
     }
   }
 
+  // ★自分の賭け竜への言及は、レース中はしない（ユーザー指定）。
+  //   限られた行数を賭け竜に使うと、そのぶん隊列や競り合いの話が消え、
+  //   レース展開が見えなくなる。実況が伝えるべきは着順の行方であって、
+  //   誰に賭けたかではない。（入場での紹介だけは、走る前なので別枠で残す）
+
+  // 先頭と2番手の差の推移＝レース展開そのもの。
+  // ★「誰が前か」だけでは平坦なので、その差が開いているのか詰まっているのかを
+  //   語れるようにする。これが分かると、逃げ切りそうなのか捕まりそうなのかが伝わる。
+  A.gaps = [];
+  A.samples.forEach(s => {
+    const p1 = timeline.progressAt(s.order[0], s.tau);
+    const p2 = timeline.progressAt(s.order[1], s.tau);
+    A.gaps.push({ tau: s.tau, gap: Math.max(0, p1 - p2), first: s.order[0], second: s.order[1] });
+  });
+  // 中盤〜終盤で、差がはっきり動いた瞬間を1つだけ拾う（多用すると数字の実況になる）
+  A.gapMove = null;
+  for (let i = 0; i < A.gaps.length; i++) {
+    const g = A.gaps[i];
+    if (g.tau < 0.36 || g.tau > 0.80) continue;
+    const prev = A.gaps[Math.max(0, i - 6)];
+    if (!prev || prev.first !== g.first) continue;
+    const d = g.gap - prev.gap;
+    if (Math.abs(d) < 0.010) continue;
+    if (!A.gapMove || Math.abs(d) > Math.abs(A.gapMove.d)) {
+      A.gapMove = { tau: g.tau, d, widening: d > 0, first: g.first, second: g.second };
+    }
+  }
+
   // 決着の形＝どう決まったか。実況の決め手を選ぶために使う。
   const wd = (timeline.byId && timeline.byId[A.winner]) || {};
   const sd = (timeline.byId && timeline.byId[A.second]) || {};
@@ -233,6 +261,13 @@ function buildBroadcast(timeline, ctx, opts) {
     color(sh.tau + 0.014, "shape", key, vars, "shape");
   });
 
+  // 差が開いた／詰まった＝展開が動いた瞬間を1本だけ。
+  if (A.gapMove) {
+    const gv = { n1: nameOf(A.gapMove.first), n2: nameOf(A.gapMove.second) };
+    call(A.gapMove.tau, "gap", A.gapMove.widening ? "widen" : "close", gv, "gap");
+    color(A.gapMove.tau + 0.014, "gap", A.gapMove.widening ? "widen" : "close", gv, "gap");
+  }
+
   // 中盤で語る入れ替わりは「1位が替わったとき」だけ。
   A.leadChanges.filter(c => c.tau > BC_EARLY_END && c.tau <= BC_MID_END).slice(0, 2).forEach(c => {
     call(c.tau, "lead", "change",
@@ -294,8 +329,9 @@ function buildBroadcast(timeline, ctx, opts) {
 //   ★体感を人質に取らない：計算が速く終わっても最低限は見せる（一瞬の点滅を防ぐ）が、
 //     遅くても上限で打ち切って必ず走り出す（待たせ続けない）。
 const RC_LOAD_MIN_MS = 700;    // これ以下だと点滅して見えるので最低限見せる
-const RC_LOAD_MAX_MS = 2400;   // 何かが詰まっても、ここで必ず走り出す
-const RC_LOAD_IMG_MS = 1100;   // 画像の先読みを待つ上限（返事が来ない実装でも止まらない）
+const RC_LOAD_MAX_MS = 3600;   // 何かが詰まっても、ここで必ず走り出す
+const RC_LOAD_IMG_MS = 1100;   // 背景の先読みを待つ上限（返事が来ない実装でも止まらない）
+const RC_LOAD_DRAGON_MS = 1600;// 出走竜のスプライトを待つ上限（揃わないと別の竜が一瞬映る）
 
 function showRaceLoading(host, c, onReady) {
   // ★ここで落ちるとロード画面のまま止まって復帰できないので、必ず先へ進める。
@@ -346,6 +382,31 @@ function showRaceLoading(host, c, onReady) {
   };
 
   // ── ②背景画像の先読み ──────────────────────────────────
+  // 出走する竜のスプライトを先に読む。
+  // ★これが無いと、レース開始の一瞬だけ「別の竜」が出る（ユーザー指摘）。
+  //   竜の絵は images/dragons/<id>.png を非同期で読み、間に合わない間は
+  //   手続き描画の竜で代用する作りになっている。つまり読み込みが終わる前に
+  //   走り出すと、最初の数フレームだけ違う姿の竜が描かれてしまう。
+  //   ロード画面はまさにこれを解消するための場所なので、ここで待つ。
+  const preloadDragons = (cb) => {
+    try {
+      const ids = ((c.timeline && c.timeline.dragons) || []).map(d => d.id).filter(Boolean);
+      if (!ids.length || typeof _rcDragonSprite !== "function") { cb(); return; }
+      setNote("出走竜を呼んでいます……");
+      ids.forEach(id => { try { _rcDragonSprite(id); } catch (e) {} });
+      const t0 = Date.now();
+      const tick = () => {
+        const ready = ids.every(id => {
+          const e = (typeof RC_DSPRITE !== "undefined") ? RC_DSPRITE[id] : null;
+          return e && (e.ok || e.bad);          // 読めた／無い のどちらかで決着
+        });
+        if (ready || Date.now() - t0 > RC_LOAD_DRAGON_MS) { cb(); return; }
+        setTimeout(tick, 40);
+      };
+      tick();
+    } catch (e) { cb(); }
+  };
+
   const preload = (cb) => {
     let pending = 2, fired = false;
     const finish = () => { if (!fired) { fired = true; cb(); } };
@@ -371,9 +432,13 @@ function showRaceLoading(host, c, onReady) {
   setTimeout(() => {
     build();
     preload(() => {
-      const rest = Math.max(0, RC_LOAD_MIN_MS - (Date.now() - started));
-      setNote("まもなく発走です");
-      setTimeout(go, rest);
+      // ★竜のスプライトは背景より優先度が高い。ここが揃う前に走り出すと
+      //   「最初の一瞬だけ別の竜」になるので、必ず待ってから発走する。
+      preloadDragons(() => {
+        const rest = Math.max(0, RC_LOAD_MIN_MS - (Date.now() - started));
+        setNote("まもなく発走です");
+        setTimeout(go, rest);
+      });
     });
   }, 60);
 
