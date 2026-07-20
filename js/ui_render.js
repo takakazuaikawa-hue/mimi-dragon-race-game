@@ -2842,7 +2842,10 @@ function renderRaceRun() {
       race: c.race, raceResult: c.raceResult, oddsResult: c.oddsResult, bet: c.bet,
       betResult: c.betResult, trialForms: c.trialForms,
       timeline: c.timeline, commentary: c.commentary, broadcast: c.broadcast,
-      broadcastScript: c.broadcastScript
+      broadcastScript: c.broadcastScript,
+      // ★台本を書いたときの解説者をそのまま渡す。ここを渡さないとレース画面が
+      //   独自に抽選し直し、名前と顔だけ別人になる（ウンメの札でサケが喋る）。
+      raceCommentator: c.raceCommentator
     });
   };
   showRaceLoading(host, c, startNow);

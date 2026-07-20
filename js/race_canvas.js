@@ -1710,8 +1710,12 @@ function startRaceCanvas(container, ctx) {
   // ---- ゆっくり実況：解説者をこのレース1回だけ抽選する ----
   // ★門番は data_commentators 側（availableCommentators）。ここでは結果を受け取るだけ。
   //   直前の解説者は state に覚えておき、同じ人が連続しにくくする（表示専用メタ）。
-  const _commentator = (typeof pickCommentator === "function")
-    ? pickCommentator(state.player && state.player.lastCommentator) : null;
+  // ★解説者は「台本を書いたときの人」をそのまま使う。
+  //   ここで抽選し直すと、名前と顔だけ別人になり、ウンメの札でサケが喋る——という
+  //   食い違いが起きる（ユーザー指摘）。抽選はロード画面(showRaceLoading)で1回だけ。
+  const _commentator = ctx.raceCommentator ||
+    ((typeof pickCommentator === "function")
+      ? pickCommentator(state.player && state.player.lastCommentator) : null);
   if (_commentator) {
     try { state.player.lastCommentator = _commentator.key; } catch (e) {}
   }

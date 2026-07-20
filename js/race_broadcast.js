@@ -318,6 +318,7 @@ function buildBroadcast(timeline, ctx, opts) {
   const cand = [];
   const PRI = {
     goal: 100,     // 決着＝絶対に落とさない／必ず決着点に置く
+    cutin: 95,     // ★割り込み＝上位を争う追い抜き。待たせる価値がない
     final: 88,     // 終盤の攻防
     lead: 76,      // 1位交代
     start: 70,     // 発走
@@ -646,6 +647,47 @@ function buildBroadcast(timeline, ctx, opts) {
     const vv = { n: nameOf(A.winner), t: prophecy.targetName, st: prophecy.targetStyle };
     say(D + 0.030, "color", pick(poolOf("verdict", hit ? "hit" : "miss", "color"), "color"), vv, "goal");
   }
+
+  // ── カットイン ──────────────────────────────────────────────────
+  // ★通常の流れに割り込んで、その瞬間だけ叫ぶ（ユーザー提案）。
+  //   台本は先に組んであるので、大事な瞬間が「順番待ち」で埋もれることがある。
+  //   上位を争う追い抜きは待たせる価値がないので、優先度を最上位にして
+  //   その時刻に割り込ませる（詰め込みの段で他の行を押しのける）。
+  //   ★条件は厳しくする。多用すると割り込みの価値が消える。
+  (() => {
+    const cuts = [];
+    let prevOrder = null;
+    A.samples.forEach(s => {
+      if (s.tau < 0.25 || s.tau > A.decideTau - 0.02) { prevOrder = s.order; return; }
+      if (prevOrder) {
+        for (let r = 0; r < 3; r++) {          // 1〜3番手に入る動きだけを見る
+          const now = s.order[r], was = prevOrder[r];
+          if (now && was && now !== was) {
+            const from = prevOrder.indexOf(now) + 1;
+            if (from > r + 1) cuts.push({ tau: s.tau, id: now, to: r + 1, from, jump: from - (r + 1) });
+            break;
+          }
+        }
+      }
+      prevOrder = s.order;
+    });
+    // いちばん大きい動きを最大2つだけ。近すぎるものは1つに絞る。
+    cuts.sort((a, b) => b.jump - a.jump || a.tau - b.tau);
+    const chosen = [];
+    cuts.forEach(c => {
+      if (chosen.length >= 2) return;
+      if (chosen.some(x => Math.abs(x.tau - c.tau) < 0.10)) return;
+      chosen.push(c);
+    });
+    A.cutins = chosen;
+    chosen.forEach((c, i) => {
+      const vars = { n: nameOf(c.id), to: c.to, from: c.from };
+      say(c.tau, "call", pick(poolOf("cutin", c.to === 1 ? "toLead" : "toPodium", "call"), "call"), vars, "cutin");
+      // ★解説が受けるのは最初の1回だけ。2回とも受けさせると同じ驚き方を
+      //   繰り返すことになり、割り込みの価値が薄れる（実測で重複した）。
+      if (i === 0) color(c.tau + 0.016, "cutin", c.to === 1 ? "toLead" : "toPodium", vars, "cutin");
+    });
+  })();
 
   // ── 詰め込み ────────────────────────────────────────────────────
   // 時間は有限。読める時間を確保しながら、入らない行は優先度の低いものから捨てる。
