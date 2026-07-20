@@ -25,7 +25,9 @@ const ROOT = path.resolve(__dirname, "..");
 const DIR = path.join(ROOT, "images/cast/mimi");
 const DRY = process.argv.includes("--dry");
 const OUT_W = 512;            // 元は1024x1536と大きい。表示は小さいので半分に縮める
-const WHITE = 238;            // これ以上明るければ「白」とみなす（縁からの連結のみ背景）
+const WHITE = 238;            // これ以上明るければ「白」＝確実な背景（縁からの連結のみ）
+const SOFT  = 186;            // これ以上明るい縁の画素は、白さに応じて半透明にする
+const EDGE_PASSES = 8;        // にじみを食う回数（多すぎると本体を削る）
 
 // ── PNG を読む（8bit・非インタレース限定） ──────────────────────
 function decodePng(buf) {
@@ -105,15 +107,24 @@ function crc32(buf) {
 }
 
 // ── 縁から繋がった白だけを背景として塗りつぶす ────────────────────
-function backgroundMask(w, h, ch, data) {
+// 返り値は不透明度（0=完全に背景／255=完全に前景）。
+//
+// ★2段構え。
+//   ①真っ白（WHITE以上）を縁から塗りつぶす＝確実な背景。
+//   ②その縁に接している「白っぽい」画素を、白さに応じた半透明にしながら
+//     少しずつ食い込ませる（SOFT まで）。これがアンチエイリアスの縁で、
+//     ①だけだと髪のまわりに白い輪郭が残る（ユーザー報告の症状）。
+//     食い込むのは背景と地続きの画素だけなので、服の中の白には届かない。
+function backgroundAlpha(w, h, ch, data) {
   const isWhite = i => data[i] >= WHITE && data[i + 1] >= WHITE && data[i + 2] >= WHITE;
-  const bg = new Uint8Array(w * h);
+  const alpha = new Uint8Array(w * h).fill(255);
+  const bg = new Uint8Array(w * h);            // 完全な背景（さらに広げる起点）
   const stack = [];
   const push = (x, y) => {
     if (x < 0 || y < 0 || x >= w || y >= h) return;
     const k = y * w + x; if (bg[k]) return;
     if (!isWhite(k * ch)) return;
-    bg[k] = 1; stack.push(k);
+    bg[k] = 1; alpha[k] = 0; stack.push(k);
   };
   for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
   for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
@@ -121,11 +132,43 @@ function backgroundMask(w, h, ch, data) {
     const k = stack.pop(), x = k % w, y = (k / w) | 0;
     push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
   }
-  return bg;
+
+  // ②縁のにじみを段階的に食う（数回で収束する。行き過ぎないよう回数で止める）
+  for (let pass = 0; pass < EDGE_PASSES; pass++) {
+    const add = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      if (bg[k]) continue;
+      // 背景に接しているか
+      if (!((x > 0 && bg[k - 1]) || (x < w - 1 && bg[k + 1]) ||
+            (y > 0 && bg[k - w]) || (y < h - 1 && bg[k + w]))) continue;
+      const i = k * ch, mn = Math.min(data[i], data[i + 1], data[i + 2]);
+      if (mn < SOFT) continue;                 // もう十分に濃い＝ここが本当の輪郭
+      // 白いほど透明に。SOFT で不透明、WHITE で透明。
+      const a = Math.max(0, Math.min(255, Math.round(255 * (WHITE - mn) / (WHITE - SOFT))));
+      add.push([k, 255 - a]);
+    }
+    if (!add.length) break;
+    add.forEach(([k, a]) => { alpha[k] = Math.min(alpha[k], a); if (a < 40) bg[k] = 1; });
+  }
+  return alpha;
 }
 
-// ── 縮小（背景を混ぜないよう、透明ぶんを除いて平均する） ────────────
-function shrink(w, h, ch, data, bg, nw) {
+// ── 縮小（不透明度で重みづけして平均する） ─────────────────────────
+// ★背景の白を色に混ぜないこと。素直に平均すると縁が白っぽくなり、
+//   せっかく抜いた輪郭にまた白いふちが戻ってしまう。
+//
+// ★もう一手：半透明の画素は「白と混ざった色」がそのまま入っている。
+//   白を差し引いて元の色に戻す（逆合成）。これをしないと、髪の縁が
+//   白ボケしたまま残る。C = a*F + (1-a)*255 を F について解く。
+function unmixWhite(r, g, b, a) {
+  if (a <= 0) return [255, 255, 255];
+  if (a >= 250) return [r, g, b];
+  const k = a / 255, inv = (1 - k) * 255;
+  const f = v => Math.max(0, Math.min(255, Math.round((v - inv) / k)));
+  return [f(r), f(g), f(b)];
+}
+function shrink(w, h, ch, data, alpha, nw) {
   const nh = Math.max(1, Math.round(h * nw / w));
   const out = Buffer.alloc(nw * nh * 4);
   const sx = w / nw, sy = h / nh;
@@ -133,16 +176,18 @@ function shrink(w, h, ch, data, bg, nw) {
     for (let x = 0; x < nw; x++) {
       const x0 = Math.floor(x * sx), x1 = Math.min(w, Math.ceil((x + 1) * sx));
       const y0 = Math.floor(y * sy), y1 = Math.min(h, Math.ceil((y + 1) * sy));
-      let r = 0, g = 0, b = 0, n = 0, tot = 0;
+      let r = 0, g = 0, b = 0, aw = 0, asum = 0, tot = 0;
       for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) {
-        const k = yy * w + xx; tot++;
-        if (bg[k]) continue;                       // 背景の白は色に混ぜない
-        const i = k * ch; r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+        const k = yy * w + xx, a = alpha[k]; tot++; asum += a;
+        if (!a) continue;
+        const i = k * ch;
+        const [fr, fg, fb] = unmixWhite(data[i], data[i + 1], data[i + 2], a);
+        r += fr * a; g += fg * a; b += fb * a; aw += a;   // 不透明度で重みづけ
       }
       const o = (y * nw + x) * 4;
-      if (!n) { out[o] = out[o + 1] = out[o + 2] = 255; out[o + 3] = 0; continue; }
-      out[o] = (r / n) | 0; out[o + 1] = (g / n) | 0; out[o + 2] = (b / n) | 0;
-      out[o + 3] = Math.round(255 * n / tot);      // 縁は面積比でなめらかに
+      if (!aw) { out[o] = out[o + 1] = out[o + 2] = 255; out[o + 3] = 0; continue; }
+      out[o] = (r / aw) | 0; out[o + 1] = (g / aw) | 0; out[o + 2] = (b / aw) | 0;
+      out[o + 3] = Math.round(asum / tot);
     }
   }
   return { w: nw, h: nh, data: out };
@@ -160,17 +205,18 @@ files.forEach(f => {
   let img;
   try { img = decodePng(buf); } catch (e) { console.log("  ⚠ " + f + " 読めない: " + e.message); skip++; return; }
   if (img.ch === 4) { console.log("  ・" + f + " すでに透過"); skip++; after += buf.length; return; }
-  const bg = backgroundMask(img.w, img.h, img.ch, img.data);
-  let bgN = 0; for (let i = 0; i < bg.length; i++) if (bg[i]) bgN++;
-  const pct = Math.round(bgN / bg.length * 100);
+  const alpha = backgroundAlpha(img.w, img.h, img.ch, img.data);
+  let clear = 0, soft = 0;
+  for (let i = 0; i < alpha.length; i++) { if (!alpha[i]) clear++; else if (alpha[i] < 250) soft++; }
+  const pct = Math.round(clear / alpha.length * 100);
   if (pct < 5) { console.log("  ⚠ " + f + " 背景らしき白が" + pct + "%しかない→触らない"); skip++; after += buf.length; return; }
-  const sm = shrink(img.w, img.h, img.ch, img.data, bg, OUT_W);
+  const sm = shrink(img.w, img.h, img.ch, img.data, alpha, OUT_W);
   const outBuf = encodePng(sm.w, sm.h, sm.data);
   if (!DRY) fs.writeFileSync(p, outBuf);
   after += outBuf.length;
   done++;
   console.log("  ✓ " + f.padEnd(30) + img.w + "x" + img.h + " → " + sm.w + "x" + sm.h +
-              "  背景" + pct + "%  " + (buf.length / 1024 | 0) + "KB → " + (outBuf.length / 1024 | 0) + "KB");
+              "  背景" + pct + "% 縁" + soft + "  " + (buf.length / 1024 | 0) + "KB → " + (outBuf.length / 1024 | 0) + "KB");
 });
 console.log("");
 console.log((DRY ? "【下見のみ】" : "") + "変換 " + done + "枚 ／ 触らず " + skip + "枚 ／ 合計 " +
