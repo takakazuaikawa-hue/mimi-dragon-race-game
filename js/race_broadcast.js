@@ -312,11 +312,14 @@ function buildBroadcast(timeline, ctx, opts) {
   //   そしてミミが口火を切り、解説が受ける（解説が黙って始まらないように）。
   const weather = (typeof WEATHERS !== "undefined" && WEATHERS[race.weather]) || null;
   const dist    = (typeof DISTANCE !== "undefined" && DISTANCE[race.distance]) || null;
+  // ★解説は一言ごとに相槌を打たない。
+  //   実況1行につき解説1行を機械的に返すと、掛け合いではなく往復の作業になり、
+  //   解説が実況の影になる。解説が口を開くのは「言うべきことがある時」だけ。
+  //   ここでは、ミミが場と条件を続けて言い切ってから、解説が一度だけ受ける。
   call(0.000, "entry", "venue", { label: race.region || "" }, "entry");
-  color(0.004, "entry", "venue", { label: race.region || "" }, "entry");
   call(0.008, "entry", "condition",
        { w: weather ? weather.label : "", d: dist ? dist.label : "" }, "entry");
-  color(0.012, "entry", "condition",
+  color(0.014, "entry", "condition",
         { w: weather ? weather.label : "", s: (weather ? Object.keys(weather.weights || {}).slice(0, 1) : []).join("") }, "entry");
 
   // 注目の竜＝人気上位2頭だけ。★誰に賭けたかは一切参照しない。
@@ -334,16 +337,20 @@ function buildBroadcast(timeline, ctx, opts) {
   pops.forEach((id, i) => {
     const t = 0.016 + i * 0.008;
     call(t, "entry", i === 0 ? "favorite" : "rival", { n: nameOf(id), st: styleJP(id) }, "entry");
-    color(t + 0.004, "entry", i === 0 ? "favorite" : "rival", { n: nameOf(id), st: styleJP(id) }, "entry");
+    // ★解説は2頭とも論評しない。1番人気に一度だけ見立てを述べる＝
+    //   「この人はこういう物差しで見る」が伝わればそれで足りる。
+    if (i === 0) color(t + 0.006, "entry", "favorite", { n: nameOf(id), st: styleJP(id) }, "entry");
   });
 
   // ── 序盤（〜0.30）＝隊列が決まるまで ────────────────────────────
   // ★「並んでいる」は言わない。序盤に並んでいるのは当たり前で報せる価値がない。
   //   空いた時間で、今日のコースがどういう舞台なのかを解説に語らせる。
+  // ★発走に解説は付けない。ゲートが開く瞬間は実況の一言だけで持つ場面で、
+  //   ここに相槌を挟むと緊張が薄まる。
   call(0.045, "start", "go", {}, "start");
-  color(0.055, "start", "go", {}, "start");
+  // 序盤はコースの説明を解説に預ける（実況は名前を告げるだけ）
   call(0.10, "course", "intro", { label: early.label }, "course");
-  color(0.115, "course", "detail",
+  color(0.125, "course", "detail",
         { label: early.label, s: (early.stats || []).join("と") }, "course");
 
   // 逃げ竜が主張しているなら、それは隊列の話なので序盤に言う価値がある
@@ -351,38 +358,41 @@ function buildBroadcast(timeline, ctx, opts) {
   if (sigFront) {
     call(0.20, "signature", "front",
          { n: nameOf(sigFront.id), st: styleJP(sigFront.id) }, "signature");
-    color(0.215, "signature", "front",
-          { n: nameOf(sigFront.id), st: styleJP(sigFront.id) }, "signature");
   }
 
   // ── 中盤（0.30〜0.62）＝展開を語る ───────────────────────────────
   // ★いちばん要るのは「いま上位が誰か」。抜いた抜かれたより、隊列の形。
   call(0.31, "course", "intro", { label: mid.label }, "course");
-  color(0.325, "course", "detail",
-        { label: mid.label, s: (mid.stats || []).join("と") }, "course");
 
   A.shape.forEach((sh, i) => {
     const vars = { n1: nameOf(sh.first), n2: nameOf(sh.second), n3: nameOf(sh.third),
                    st1: styleJP(sh.first) };
-    // ★解説は実況と同じ局面の引き出しから引く。以前は毎回 "why" 固定で、
-    //   3回とも同じ台詞になっていた（実測で発覚）。
-    const key = i === 0 ? "first" : (i === 1 ? "update" : "why");
     call(sh.tau, "shape", i === 0 ? "first" : "update", vars, "shape");
-    color(sh.tau + 0.014, "shape", key, vars, "shape");
+    // ★隊列は3回示すが、解説が受けるのは最初の1回だけ。
+    //   毎回論評させると「実況が言う→解説が言い直す」の往復になり、
+    //   同じ情報を二度読まされることになる。
+    if (i === 0) color(sh.tau + 0.016, "shape", "first", vars, "shape");
   });
 
   // 差が開いた／詰まった＝展開が動いた瞬間を1本だけ。
   if (A.gapMove) {
     const gv = { n1: nameOf(A.gapMove.first), n2: nameOf(A.gapMove.second) };
     call(A.gapMove.tau, "gap", A.gapMove.widening ? "widen" : "close", gv, "gap");
-    color(A.gapMove.tau + 0.014, "gap", A.gapMove.widening ? "widen" : "close", gv, "gap");
+    // ★ここは解説が入る価値がある場面。差が動いた「理由」は実況が言えないので、
+    //   解説にしか出せない情報になる（相槌ではなく仕事）。
+    color(A.gapMove.tau + 0.020, "gap", A.gapMove.widening ? "widen" : "close", gv, "gap");
   }
+  // 中盤の締めに、解説がレース全体の読みを一度だけ入れる（実況とは独立した拍）
+  color(0.55, "shape", "why", {
+    n1: nameOf(A.shape[1] ? A.shape[1].first : A.winner)
+  }, "shape");
 
   // 中盤で語る入れ替わりは「1位が替わったとき」だけ。
   A.leadChanges.filter(c => c.tau > BC_EARLY_END && c.tau <= BC_MID_END).slice(0, 2).forEach(c => {
     call(c.tau, "lead", "change",
          { n: nameOf(c.to), n2: nameOf(c.from) }, "lead");
-    color(c.tau + 0.014, "lead", "change",
+    // 先頭交代は「なぜ替わったか」を解説が言える数少ない場面なので受ける
+    color(c.tau + 0.020, "lead", "change",
           { n: nameOf(c.to), n2: nameOf(c.from) }, "lead");
   });
 
@@ -394,9 +404,10 @@ function buildBroadcast(timeline, ctx, opts) {
   // 位置は決着点からの逆算（レースごとに決着点が違うので固定τでは合わない）
   const back = (sec) => Math.max(BC_MID_END + 0.01, D - sec / raceSec);
 
+  // ★終盤に入ったら解説はほぼ黙る。ここから先は実況が続けて刻む場面で、
+  //   一言ごとに相槌が入ると畳みかけの速度が殺される。
+  //   解説が口を開くのは、差し竜が来た一度と、決着の締めだけ。
   call(back(11.0), "course", "intro", { label: late.label }, "course");
-  color(back(10.4), "course", "detail",
-        { label: late.label, s: (late.stats || []).join("と") }, "course");
 
   // 逃げている竜（先頭を長く守っていれば）
   if (A.frontRunnerShare > 0.35) {
