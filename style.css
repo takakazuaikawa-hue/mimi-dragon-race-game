@@ -927,8 +927,15 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
 }
 .rs-reason.hit { background: rgba(255,214,120,.1); border-color: rgba(255,214,120,.42); }
-.rs-reason .rsr-top { display: flex; align-items: flex-start; gap: 9px; }
-.rs-reason .rsr-ic { font-size: 20px; line-height: 1.2; flex: none; }
+/* ★ICON-ROW BASELINE：絵文字アイコン＋本文を「1行目で揃える」行の共通作法。
+   アイコンは本文より font-size が大きいぶん行ボックスも高くなるので、align-items:flex-start
+   だけでは箱の上端が揃っても“字の中心”は下にずれる（実測 +2.5px）。
+   アイコンの line-height を詰めると字の中心が上がり、本文1行目と揃う。
+   ★--iconlh は計算で出る値ではなく「実測で dy≈0 になった値」。絵文字は書体ごとに
+     ink box の位置が違うので、font-size × line-height の理屈で置き換えないこと。
+     変更したら必ずブラウザで字形中心の差を測り直す（±1px 以内が合格）。 */
+.rs-reason .rsr-top { display: flex; align-items: flex-start; gap: 9px; --iconlh: 20.25px; }   /* 13.5px × 1.5 */
+.rs-reason .rsr-ic { font-size: 20px; line-height: var(--iconlh); flex: none; }
 .rs-reason .rsr-msg { font-size: 13.5px; font-weight: 800; line-height: 1.5; color: #f2ede0; }
 .rs-reason.hit .rsr-msg { color: #ffe8a8; }
 .rs-reason .rsr-miss {
@@ -1967,9 +1974,10 @@ table.entry-table {
 .infopop-body { margin-top: 10px; }
 .mm-flow { text-align: center; font-size: 13px; font-weight: 900; color: var(--gold-bright);
   background: rgba(255,216,119,.08); border: 1px solid var(--gold-line); border-radius: 10px; padding: 8px; margin-bottom: 10px; }
-.mm-row { display: flex; gap: 9px; align-items: flex-start; padding: 7px 2px; border-top: 1px dashed rgba(255,255,255,.08); }
+/* ICON-ROW BASELINE（上の .rsr-top と同じ作法）。修正前は +2.5px 下にずれていた。 */
+.mm-row { display: flex; gap: 9px; align-items: flex-start; padding: 7px 2px; border-top: 1px dashed rgba(255,255,255,.08); --iconlh: 20.5px; }
 .mm-row:first-of-type { border-top: 0; }
-.mm-ic { flex: none; width: 24px; text-align: center; font-size: 16px; }
+.mm-ic { flex: none; width: 24px; text-align: center; font-size: 16px; line-height: var(--iconlh); }
 .mm-row b { font-size: 12.5px; color: var(--mist); display: block; }
 .mm-row small { font-size: 11px; color: var(--mist-soft); line-height: 1.55; display: block; margin-top: 1px; }
 .mm-row u { text-decoration: none; color: var(--gold-bright); }
@@ -7668,3 +7676,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   /* 静かな磨きはアニメを持たない（影の切替のみ）。念のため遷移も切る＝既存の作法(.tix 等)に合わせる。 */
   .hl .hl-race, .hl .hl-nextrace { transition: none; }
 }
+
+/* 初戦の着替えポップアップ：新しい立ち絵を見せる枠。縦横比は必ず保つ（歪めない）。 */
+.rs-fit { display: flex; justify-content: center; margin: 2px 0 10px; }
+.rs-fit img { width: auto; height: 190px; max-width: 100%; object-fit: contain;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.45)); }
