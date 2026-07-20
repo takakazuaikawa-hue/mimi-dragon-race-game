@@ -124,22 +124,30 @@ function buildRaceBeats(timeline, ctx) {
   });
 
   // --- 順位の入れ替わり・接戦（確定済みの standings を時間で走査するだけ）---
-  const STEP = 0.02;
+  // ★全頭・全順位を見る（上位4頭だけでは後方の攻防が丸ごと落ちる）。
+  //   実況が拾える素材は多いほどよく、選ぶのは後段の仕事＝ここでは取りこぼさない。
+  const STEP = 0.015;
   let prev = null;
   for (let tau = 0.08; tau <= 0.99; tau += STEP) {
     let st; try { st = timeline.standingsAt(tau); } catch (e) { break; }
     if (prev) {
-      for (let i = 0; i < Math.min(4, st.length); i++) {
+      for (let i = 0; i < st.length; i++) {
         const id = st[i], now = i + 1, was = prev.indexOf(id) + 1;
-        if (was > 0 && now < was && (was - now) >= 1 && now <= 3) {
-          push(tau, BEAT_KIND.OVERTAKE, id, Math.min(1, (was - now) / 3), { from: was, to: now });
+        if (was > 0 && now < was) {
+          // 前で起きた入れ替わりほど大きく扱う（mag が演出と言葉の熱量になる）
+          const rankW = now <= 3 ? 1 : now <= 5 ? 0.7 : 0.45;
+          push(tau, BEAT_KIND.OVERTAKE, id, Math.min(1, ((was - now) / 3) * rankW), { from: was, to: now });
         }
       }
-      // 接戦＝先頭2頭の距離が非常に近い
-      try {
-        const a = timeline.progressAt(st[0], tau), b = timeline.progressAt(st[1], tau);
-        if (Math.abs(a - b) < 0.006) push(tau, BEAT_KIND.BATTLE, st[0], 0.8, { rival: st[1] });
-      } catch (e) {}
+      // 接戦＝隣り合う2頭が肉薄している。先頭だけでなく上位5組まで見る。
+      for (let i = 0; i + 1 < Math.min(6, st.length); i++) {
+        try {
+          const a = timeline.progressAt(st[i], tau), b = timeline.progressAt(st[i + 1], tau);
+          if (Math.abs(a - b) < 0.006) {
+            push(tau, BEAT_KIND.BATTLE, st[i], i === 0 ? 0.9 : 0.55, { rival: st[i + 1], place: i + 1 });
+          }
+        } catch (e) {}
+      }
     }
     prev = st;
   }
@@ -188,30 +196,18 @@ function buildRaceBeats(timeline, ctx) {
 
   beats.sort((a, b) => a.tau - b.tau);
 
-  // ★間引き：接戦のように「続いている状態」は毎ステップ立つので、そのままだと
-  //   同じ話を12回繰り返すことになる（実測）。同種＋同じ主役が近い時刻に並んだら
-  //   最初の1件だけ残す。出来事の“重さ”は kind ごとに変える。
-  const COOLDOWN = { battle: 0.22, overtake: 0.10, surge: 0.12, stumble: 0.08, section: 0.20 };
+  // ★間引きは「同じ竜の同じ話が連続で潰れる」最小限だけに留める（ユーザー決定：濃く）。
+  //   レース中継は本来うるさいもので、接戦なら「まだ並んでる！」「離れない！」と
+  //   繰り返し煽るのが自然。読み切れないぶんは流れてよい、と割り切る。
+  //   ★初版で 35→16 まで削ったのは私の誤りだった。厚くする依頼に対して薄くしていた。
+  const COOLDOWN = { battle: 0.05, overtake: 0.03, surge: 0.04, stumble: 0.03 };
   const lastAt = {};
-  const thinned = beats.filter(b => {
+  return beats.filter(b => {
     const cd = COOLDOWN[b.kind];
-    if (!cd) return true;                                  // 一度きりの出来事はそのまま
+    if (!cd) return true;
     const key = b.kind + "|" + (b.id || "");
     if (lastAt[key] != null && b.tau - lastAt[key] < cd) return false;
     lastAt[key] = b.tau;
     return true;
   });
-
-  // 同じ瞬間に出来事が重なりすぎると読めないので、近接する山は強い方を優先して薄める。
-  const MIN_GAP = 0.035;
-  const out = [];
-  for (const b of thinned) {
-    const prevB = out[out.length - 1];
-    if (prevB && b.tau - prevB.tau < MIN_GAP && b.kind !== "goal") {
-      if ((b.mag || 0) > (prevB.mag || 0)) out[out.length - 1] = b;   // 強い方に差し替え
-      continue;
-    }
-    out.push(b);
-  }
-  return out;
 }
