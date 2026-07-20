@@ -7676,8 +7676,3 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   /* 静かな磨きはアニメを持たない（影の切替のみ）。念のため遷移も切る＝既存の作法(.tix 等)に合わせる。 */
   .hl .hl-race, .hl .hl-nextrace { transition: none; }
 }
-
-/* 初戦の着替えポップアップ：新しい立ち絵を見せる枠。縦横比は必ず保つ（歪めない）。 */
-.rs-fit { display: flex; justify-content: center; margin: 2px 0 10px; }
-.rs-fit img { width: auto; height: 190px; max-width: 100%; object-fit: contain;
-  filter: drop-shadow(0 6px 18px rgba(0,0,0,.45)); }

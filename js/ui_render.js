@@ -2545,16 +2545,8 @@ function settleRace() {
   state.player.coins += betResult.payout;
   state.player.completedRaces += 1;
   state.player.completedByRank[c.race.rank] = (state.player.completedByRank[c.race.rank] || 0) + 1;
-  // ★初戦の着替え：開始時のボロ布（素寒貧）のままだと初勝利までミミの見た目が変わらず、
-  //   「何も進んでいない」体感が続く。勝敗を問わず1レース走った時点で、無料の普段着へ。
-  //   賭けに勝ったご褒美ではなく「働いた初日が終わった」印なので、負けても着替える。
-  c.outfitSwapped = null;
-  try {
-    if (state.player.completedRaces === 1 && currentOutfitId() === DEFAULT_OUTFIT) {
-      state.player.outfit = "buniqro";                 // free:true＝所持済みなので購入処理は不要
-      c.outfitSwapped = outfitById("buniqro");
-    }
-  } catch (e) {}
+  // ※衣装の初回付与は playMallIntroVN（サケの開店祝いVN→『ジャングルバニー』贈与）が正本。
+  //   ここで勝手に着替えさせると、その見せ場を先に潰してしまうので何もしない。
   // ★ランク実力レール：的中（式別不問）を帯別に記録（RANK_UNLOCK.hitsAtLowerRank の材料）。
   if (betResult.hit) {
     if (!state.player.hitsByRank) state.player.hitsByRank = {};
@@ -2641,8 +2633,7 @@ function settleRace() {
       // ★台帳の「📜 物語が解放」も章題をそのまま出すと未登場の名が漏れる（例「第5話　セレスティアの神眼」）。
       //   ここに載る章は必ず未読なので、章番号だけの見出しに伏せる（R7）。
       storyUnlocked: justUnlocked.map(ch => chapterTeaseTitle(ch)),
-      mission: _mission,
-      outfitSwapped: c.outfitSwapped ? c.outfitSwapped.name : null
+      mission: _mission
     };
   } catch (e) { c.gainLedger = null; }
   saveGame();
@@ -3331,31 +3322,12 @@ function drawRecapScreen() {
       // ★解放は結果画面では静かに1行だけ（章題は出さず「新しい話が届いた」）。詳しい案内は物語ナビ/ホーム側で。
       if (g.storyUnlocked && g.storyUnlocked.length) R("📖", "新しい話が届いた", "〈物語〉へ", "rankup");
       if (g.mission) R("📋", "デイリーミッション「出走」", "達成！", "asset");
-      if (g.outfitSwapped) R("👗", "着替えた", g.outfitSwapped, "rankup");
       const box = el("div", "rs-ledger");
       box.innerHTML = `<div class="rs-lg-t">📦 今回の獲得</div>` + rows.join("");
       app.appendChild(box);
     } else {
       if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));
       (c.collectionAwards || []).forEach(a => app.appendChild(el("div", "rs-bonus rs-bonus-dex", `📖 ${a.label} 達成！　<b>＋${fmtCoins(a.reward)}</b>`)));
-    }
-  } catch (e) {}
-  // ★初戦の着替えは、台帳の1行だけだと見落とされる（ミミの見た目が変わったことが伝わらない）。
-  //   新しい立ち絵を実際に見せるポップアップで1回だけ祝う。c._outfitShown で二重表示を防ぐ。
-  try {
-    if (c.gainLedger && c.gainLedger.outfitSwapped && !c._outfitShown) {
-      c._outfitShown = true;
-      const _oid = currentOutfitId();
-      setTimeout(() => {
-        if (typeof showInfoPopup !== "function") return;
-        showInfoPopup("👗 着替えた！",
-          `<div class="rs-fit"><img src="${outfitImg(_oid, "smile")}" alt="${c.gainLedger.outfitSwapped}"` +
-            ` onerror="this.src='${outfitImg(_oid, "default")}'"></div>` +
-          `<div class="mm-row"><span class="mm-ic">🐰</span><div><b>${c.gainLedger.outfitSwapped}</b>` +
-            `<small>「ボロ布は、もう卒業！　……ぱほぱほ。初日ぶんの働きで、ちゃんと着るものを買いました」</small></div></div>` +
-          `<div class="mm-row"><span class="mm-ic">🏬</span><div><b>着替えはいつでも</b>` +
-            `<small>お買い物モールで、持っている服に着替えられます。</small></div></div>`);
-      }, 700);
     }
   } catch (e) {}
   // ★撤去：結果画面の相談役ひとことカード（旧 .rs-advisor / spec #37）。
