@@ -1074,92 +1074,13 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   ctx.restore();
   return true;
 }
-// 竜の本体描画（3系統のうち使えるものを選ぶ）。リムライトはこの外側で足す。
-function _rcDrawDragonBody(ctx, o) {
+function rcDrawDragon(ctx, o) {
   if (typeof window !== 'undefined' && window.RC_USE_RIG === false) return rcDrawDragonPixel(ctx, o);
   if (o.id && rcHasDragonSprite(o.id)) return rcDrawDragonSprite(ctx, o);   // 3D絵が用意済み＝最優先（表示専用）
   if (o.id) _rcDragonSprite(o.id);                                          // 先読みkick（次フレームから3D絵に）
   if (RC_RIG) return rcDrawDragonRig(ctx, o);
   _rcEnsureRig();
   return rcDrawDragonPixel(ctx, o);   // ロード完了までグリッド竜で繋ぐ
-}
-
-// =========================================================================
-// B-2 リムライト（縁光）— HD-2Dの命。夕景の光が竜の輪郭を舐める。
-// =========================================================================
-// ★竜はリグ（頭/胴/翼/尾/目が別パーツ）で毎フレーム姿が変わるため、シルエットは
-//   キャッシュできない。そこで「本体を1回だけオフスクリーンへ描き、その1枚から
-//   縁光を作る」方式にする。竜そのものを複数回描き直すより桁違いに安い。
-//   コスト＝本体描画1回 ＋ drawImage 数回（オフスクリーンは使い回し・毎フレーム確保しない）。
-// ★スプライトには一切触れない＝色も形も不変。合成だけで光らせる（表示専用）。
-const _RIM_COLOR = '#ffb36a';        // 夕景の暖色（ブリーフ指定）
-// ★動きを減らす設定では縁光を静的にする＝ブリーフの「2は静的縁光のみ」。
-//   ここでは滲みの2枚目を省き、揺れない1枚だけにする（消しはしない＝立体感は残す）。
-//   startRaceCanvas 内の _reduceMotion は別スコープなので、モジュール側で独立に判定する。
-function _rimReduceMotion() {
-  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
-  catch (e) { return false; }
-}
-let _rimA = null, _rimB = null;      // 使い回すオフスクリーン（A=本体・B=シルエット）
-// 低速機で立つ縮退フラグ。startRaceCanvas の frame() が S.lowSpec を立てたときに同期する。
-// （rcDrawDragon はモジュール関数で S を見られないため、こちらへ写す）
-let _RIM_OFF = false;
-function _rimCanvas(which, w, h) {
-  const cur = which === 'a' ? _rimA : _rimB;
-  if (cur && cur.width >= w && cur.height >= h) return cur;
-  const c = document.createElement('canvas');
-  c.width = Math.max(w, cur ? cur.width : 0); c.height = Math.max(h, cur ? cur.height : 0);
-  if (which === 'a') _rimA = c; else _rimB = c;
-  return c;
-}
-function rcDrawDragon(ctx, o) {
-  // 出さない条件：
-  //  ① 低速機（既存の自動検知 S.lowSpec。実測でフレームが落ちている端末では真っ先に切る）
-  //     ★スマホ実機では検証できないため、こちらから止めるのではなく端末に判断させる。
-  //     縁光は本体描画の約3.7倍（実測 0.68ms → 2.54ms／8頭・1フレーム）＝縮退の第一候補。
-  //  ② 極端に小さい表示（潰れて見えない上に無駄）
-  if (_RIM_OFF) return _rcDrawDragonBody(ctx, o);
-  const px = (o.scale || 1) * RC_DRG.px;
-  if (px < 0.35) return _rcDrawDragonBody(ctx, o);
-  const _rmo = _rimReduceMotion();
-  // オフスクリーンの寸法＝竜の footprint ＋ 翼のしなり/オーラぶんの余白。
-  // ★ここを大きく取りすぎると、clearRect と合成のコストがそのまま増える（実測で効いた）。
-  //   竜の実寸は GW*px × GH*px。翼と尾のしなりを見込んで幅1.7倍・高さ2.6倍に留める。
-  const W = Math.ceil(RC_DRG.GW * px * 1.7) + 16;
-  const H = Math.ceil(RC_DRG.GH * px * 2.6) + 16;
-  if (W <= 0 || H <= 0 || W > 900 || H > 900) return _rcDrawDragonBody(ctx, o);   // 想定外は素通し
-  const ca = _rimCanvas('a', W, H), cb = _rimCanvas('b', W, H);
-  const xa = ca.getContext('2d'), xb = cb.getContext('2d');
-  const ox = Math.round(W * 0.5), oy = Math.round(H * 0.68);   // 竜の基準点を置く場所（下寄り＝脚もと）
-  // ★clear / fill は「今回使う W×H」だけに限定する。オフスクリーンは使い回しで
-  //   過去の最大サイズを保持しているため、全面を対象にすると毎回そのぶん無駄が出る。
-  xa.setTransform(1, 0, 0, 1, 0, 0); xa.clearRect(0, 0, W, H);
-  // 本体を「原点をオフスクリーン内へ移した状態」で1回だけ描く
-  _rcDrawDragonBody(xa, Object.assign({}, o, { x: ox, y: oy }));
-
-  // シルエット化：本体をコピー → source-in で暖色に塗りつぶす
-  xb.setTransform(1, 0, 0, 1, 0, 0); xb.clearRect(0, 0, W, H);
-  xb.globalCompositeOperation = 'source-over';
-  xb.drawImage(ca, 0, 0, W, H, 0, 0, W, H);
-  xb.globalCompositeOperation = 'source-in';
-  xb.fillStyle = _RIM_COLOR;
-  xb.fillRect(0, 0, W, H);
-  xb.globalCompositeOperation = 'source-over';
-
-  // 合成：シルエットを光源方向へ1〜2pxずらして「本体の下」に敷く＝はみ出た分だけが縁光になる。
-  // ★全方向に広げると「白フチのステッカー」になって安っぽい。夕陽は左上からなので左上寄りだけ強く。
-  const dx = o.dir === -1 ? 1.4 : -1.4;     // 進行方向と逆＝顔側から光が当たる見え方
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';  // 加算＝発光。暗い背景で縁だけが浮く
-  ctx.globalAlpha = 0.55;
-  ctx.drawImage(cb, 0, 0, W, H, o.x - ox + dx, o.y - oy - 1.4, W, H);
-  if (!_rmo) {                                              // reduced-motion では滲みを省く＝静的な縁光1枚
-    ctx.globalAlpha = 0.30;
-    ctx.drawImage(cb, 0, 0, W, H, o.x - ox + dx * 0.5, o.y - oy - 2.2, W, H); // 薄い2枚目＝光の滲み
-  }
-  ctx.restore();
-  // 本体を上に置く（縁光は本体の外側にだけ残る）
-  ctx.drawImage(ca, 0, 0, W, H, o.x - ox, o.y - oy, W, H);
 }
 
 // =========================================================================
@@ -4268,9 +4189,6 @@ function startRaceCanvas(container, ctx) {
         else S._slowT = 0;
       }
     }
-    // ★B-2 リムライトの縮退：低速機と判定されたら縁光を落とす（本体描画の約3.7倍のコスト＝
-    //   真っ先に切るべき飾り）。モジュール側のフラグへ写す＝rcDrawDragon が S を見られないため。
-    if (S.lowSpec && !_RIM_OFF) _RIM_OFF = true;
     S.last = now;
     update(dt);
     draw();
