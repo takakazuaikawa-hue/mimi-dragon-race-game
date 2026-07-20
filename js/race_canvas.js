@@ -1805,18 +1805,51 @@ function startRaceCanvas(container, ctx) {
     //   高さも文字量で動いてレイアウトが揺れる原因になっていた。
     while (arr.length > 1) arr.shift();
     bub.innerHTML = "";
-    arr.forEach((s, i) => {
-      const d = document.createElement("div");
-      d.className = (i === arr.length - 1) ? "rcy-now" : "rcy-prev";
-      d.textContent = s;
-      bub.appendChild(d);
-    });
+    const d = document.createElement("div");
+    d.className = "rcy-now";
+    bub.appendChild(d);
+    // ★一文字ずつ素早く出す。
+    //   読む速さ(9字/秒)より速い30字/秒で打つので、打ち終わってから読む時間が残る。
+    //   逆に言えば「打ち終わる前に次の行が来た」＝その行は長すぎる、と目で分かる。
+    //   ユーザー提案：出方そのものが可読性の確認になる。
+    //   ★倍速(2×/3×)ではタイムライン全体が縮むので、打つ速さも同じだけ上げる。
+    typeInto(d, line, key);
     bub.classList.toggle("is-hot", isL && TELOP_HOT.test(line));
     // 喋った側を前に出し、もう片方を沈める＝どちらが今しゃべっているか一目で分かる
     if (_ytEl.l) _ytEl.l.classList.toggle("talking", isL);
     if (_ytEl.r) _ytEl.r.classList.toggle("talking", !isL);
     host.classList.remove("pop"); void host.offsetWidth; host.classList.add("pop");
   }
+  // ── 一文字ずつ打つ（実況の出方）────────────────────────────────
+  // ★速さは「読む速さ」より上に置く。打ち終わってから読む時間が残る配分。
+  //   打ち切れなかった行は _typeCut に数える＝読めていない行の機械的な証拠になる。
+  const TYPE_CPS = 30;                     // 打つ速さ（字/秒）
+  const _typeT = { call: null, color: null };
+  const _typeCut = { call: 0, color: 0 };  // 打ち終わる前に差し替わった回数
+  function typeInto(el, text, key) {
+    if (_typeT[key]) { clearInterval(_typeT[key]); _typeT[key] = null; }
+    const s = String(text || "");
+    // 速度倍率ぶんだけ速く打つ（倍速でタイムラインが縮むのに歩調を合わせる）
+    const cps = TYPE_CPS * Math.max(1, S.speed || 1);
+    const step = 1000 / cps;
+    let i = 0;
+    el.textContent = "";
+    _typeT[key] = setInterval(() => {
+      i++;
+      el.textContent = s.slice(0, i);
+      if (i >= s.length) { clearInterval(_typeT[key]); _typeT[key] = null; }
+    }, step);
+    el.dataset.full = s;
+  }
+  // 差し替え時、前の行が打ち終わっていたかを見る（読めたかの計測）
+  function noteTypeCut(key, bub) {
+    const cur = bub.querySelector(".rcy-now");
+    if (cur && cur.dataset.full && cur.textContent.length < cur.dataset.full.length) {
+      _typeCut[key]++;
+    }
+  }
+  // 検証用：打ち切れなかった行の件数を外から読む
+  try { window.__telopCut = _typeCut; } catch (e) {}
   function renderTelop() {
     const last = shownLines[shownLines.length - 1];
     if (last) speak(last.side, last.line);
