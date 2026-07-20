@@ -334,7 +334,10 @@ function buildBroadcast(timeline, ctx, opts) {
     if (!tpl) return false;
     const line = String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : ""));
     cand.push({ tau, side, line, tag, pri: PRI[tag] != null ? PRI[tag] : 50 });
-    used[side].push(line);   // ★1レース内で同じ文は二度使わない（直近4本だけでは足りなかった）
+    // ★記録するのは「差し込み前の型」。
+    //   pick() は型を照合しているのに、ここで差し込み後の文を記録していたため、
+    //   {n} を含む行では一度も一致せず、重複防止が効いていなかった（実測で発覚）。
+    used[side].push(tpl);
     return true;
   };
   // 旧経路（未使用・参照が残っていた場合の保険）
@@ -500,7 +503,7 @@ function buildBroadcast(timeline, ctx, opts) {
 
   // ★序盤から中盤へ渡る隙間を埋める（実測でここに3.5秒の無言が残っていた）。
   //   隊列の速報を2本挟む。情報は落とさず、間だけを埋める。
-  [0.22, 0.27].forEach((t) => {
+  [0.22, 0.27].forEach((t, idx) => {
     const d = A.samples.reduce((b, x) => Math.abs(x.tau - t) < Math.abs(b.tau - t) ? x : b, A.samples[0]);
     const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
     call(t, "midway", "lead", {
@@ -593,8 +596,13 @@ function buildBroadcast(timeline, ctx, opts) {
   //   ただの叫びではなく「誰が前・誰が来た・差はいくつ」を毎回載せる。
   //   （畳みかける＝文字を減らすことではない、というユーザー指摘への対応）
   let prevGap = null;
-  for (let sec = 15.0; sec >= 1.0; sec -= 1.1) {
-    const t = back(sec);
+  for (let sec = 18.0; sec >= 1.0; sec -= 1.0) {
+    // ★下限で頭打ちにしない。back() は BC_MID_END で clamp するので、
+    //   決着まで遠い回は全部そこへ潰れ、同じ位置に積まれて packing で落ちる。
+    //   結果 τ0.7 付近に穴が空いていた（実測：無言3.5秒）。
+    //   届かない回は素直に飛ばし、入る位置からだけ刻む。
+    const t = A.decideTau - sec / raceSec;
+    if (t < BC_MID_END) continue;
     const d = A.drive.reduce((best, x) =>
       Math.abs(x.tau - t) < Math.abs(best.tau - t) ? x : best, A.drive[0]);
     if (!d) break;
@@ -739,8 +747,16 @@ function buildBroadcast(timeline, ctx, opts) {
     let cursor = -1;
     rest.forEach(c => {
       const hold = bcHoldTau(c.line, beatOf(c.tag), raceSec);
-      const at = Math.max(c.tau, cursor);
-      if (at + hold > goalStart - 0.004) { dropped.push(c); return; }  // 決着に食い込む
+      let at = Math.max(c.tau, cursor);
+      // ★決着枠に食い込むなら、まず「前へ詰められないか」を試す。
+      //   従来は即座に捨てていたため、終盤の行が1レースで14件も落ち、
+      //   決着直前に3秒以上の無言が空いていた（実測）。
+      //   終盤は最も埋めたい区間なので、捨てるのは本当に入らない時だけにする。
+      if (at + hold > goalStart - 0.004) {
+        const fit = goalStart - 0.004 - hold;
+        if (fit >= cursor && fit >= c.tau - hold * 2) at = fit;
+        else { dropped.push(c); return; }
+      }
       // ★「本来の位置から離れすぎ」で捨ててよいのは、時機を外すと意味を失う
       //   低優先の行だけ（コース説明・差の開閉・本領発揮）。
       //   入場は τ が名目値で、実際はパレード側が間合いを取り直すので対象外。
