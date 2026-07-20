@@ -7702,11 +7702,14 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rc-yt-side[hidden] { display: none; }
 /* 喋っている側だけをはっきりさせる＝どちらの発言か一目で分かる */
 .rc-yt-side.talking { opacity: 1; }
-/* ★高さは2行ぶんで固定する。実況は行ごとに文字数が変わるので、高さを
+/* ★高さは4行ぶんで固定する（ユーザー判断：可読性のために文章の質を落とすくらいなら、
+   枠を3〜4行にしてよい）。1行に収めようとしていたことが、実況を素っ気なくし、
+   行を捨てさせていた原因だった。
+   もとの説明：実況は行ごとに文字数が変わるので、高さを
    内容任せにすると1行→2行の切り替わりで枠が伸縮し、レース中ずっと画面が
    ガタつく（ユーザー指摘）。中身は下寄せにして、短い一言でも位置が動かない。 */
 .rc-yt-bub {
-  height: 52px; padding: 6px 9px; border-radius: 10px;
+  height: 78px; padding: 6px 9px; border-radius: 10px;
   background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
   border-left: 3px solid var(--c, #888);
   font-size: 11.5px; font-weight: 700; line-height: 1.45; color: #eef2f7;
