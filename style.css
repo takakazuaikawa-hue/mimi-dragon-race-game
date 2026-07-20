@@ -1009,7 +1009,15 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   position: absolute; right: 7px; bottom: 1px;
   font-size: 8.5px; font-weight: 900; letter-spacing: .06em; color: #2a2013;
   background: rgba(255,214,120,.92); border-radius: 99px; padding: 1px 7px;
+  transition: opacity .2s;
 }
+/* ★圏内のあいだはラベルを引っ込める。理由は2つ：
+   ①ラベルは線の“上側”＝境界のすぐ上の行に重なる位置にあり、その行こそ圏内時に
+     ライブ配当チップ「いま的中なら +N」が出る行なので、単勝では必ず衝突する
+     （実測 85×13px の重なり）。
+   ②そもそも圏内に入っていれば「ここより上で的中」は自明で、読む必要がない。
+   線そのものは出したままなので、境界の位置は変わらず見える。 */
+.rc-board.in-zone .rcb-hl-tag { opacity: 0; }
 .rc-board.in-zone .rcb-hitline { box-shadow: 0 0 14px 1px rgba(255,214,120,.55); }
 /* ラインを越えた「瞬間」だけ盤面ごとフラッシュ（常時光らせると麻痺する＝B-2で実証済みの作法） */
 .rc-board.zone-hit { animation: rcbZone .7s ease-out; }
