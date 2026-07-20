@@ -449,8 +449,11 @@ function buildBeatTelop(beats, topics, opts) {
     // ★間合いは「実況が実際に喋った時刻」で測る。詰まって後ろへずらした場合、
     //   ずらす前の時刻で測ると解説だけ過去に取り残され、掛け合いが痩せる（実測で発覚）。
     const atNow = spoke ? lastCall : tau;
-    if (colorPool && atNow - lastColor >= TELOP_GAP_COLOR) {
-      say(atNow + (spoke ? 0.012 : 0), "color", freshFrom(colorPool, seed * 3, "color"));
+    // ★ゴールは解説にも必ず締めさせる。間合いの都合で黙ると、決着したのに
+    //   直前の接戦の台詞が残り、解説だけ話が止まって見える（実測で発覚）。
+    const closing = (b.kind === "goal");
+    if (colorPool && (closing || atNow - lastColor >= TELOP_GAP_COLOR)) {
+      say(atNow + (spoke ? 0.012 : 0), "color", freshFrom(colorPool, seed * 3, "color"), closing);
     }
   }
 

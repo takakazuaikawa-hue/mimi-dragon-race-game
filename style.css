@@ -7711,7 +7711,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   border-left: 3px solid var(--c, #888);
   font-size: 11.5px; font-weight: 700; line-height: 1.45; color: #eef2f7;
   overflow: hidden;
-  display: flex; flex-direction: column; justify-content: flex-end;
+  /* ★1行のときに上へ大きな空白ができるのを防ぐため中央に置く。
+     下寄せ(flex-end)だと短い一言のたびに枠の上半分が空いて間が抜けて見える。 */
+  display: flex; flex-direction: column; justify-content: center;
 }
 /* 出すのは「いまの一言」だけ（過去行は実況が厚くなったので廃止）。 */
 .rc-yt-bub .rcy-now  { color: #fff; }

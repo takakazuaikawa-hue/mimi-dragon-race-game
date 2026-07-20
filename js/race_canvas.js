@@ -1822,6 +1822,21 @@ function startRaceCanvas(container, ctx) {
     const last = shownLines[shownLines.length - 1];
     if (last) speak(last.side, last.line);
   }
+  // 決着時に、まだ言っていない行（＝ゴールの決め台詞と、その直前の一言）を吐き出す。
+  // ★実況側と解説側の「最後の1本ずつ」だけを出す。全部まとめて流すと一瞬で
+  //   上書きされて読めないので、決め台詞が残るようにする。
+  function flushTelop() {
+    const rest = telopSchedule.filter(t => !t.fired);
+    if (!rest.length) return;
+    rest.forEach(t => { t.fired = true; });
+    const lastOf = (side) => {
+      for (let i = rest.length - 1; i >= 0; i--) if (rest[i].side === side) return rest[i];
+      return null;
+    };
+    const c = lastOf("color"), l = lastOf("call");
+    if (c) { shownLines.push({ line: c.line, side: "color" }); speak("color", c.line); }
+    if (l) { shownLines.push({ line: l.line, side: "call" });  speak("call",  l.line); }
+  }
   function pumpTelop() {
     let changed = false;
     for (const t of telopSchedule) {
@@ -4215,6 +4230,12 @@ function startRaceCanvas(container, ctx) {
     S.finished = true;
     S.finishedAnnounced = true;
     S.shake = Math.max(S.shake, 4);
+    // ★決め台詞を必ず言い切る。
+    //   ゴール直前の一言（「セラムが上がった、4番手！」など）を出したまま
+    //   実況が止まってしまっていた（ユーザー指摘）。原因は、勝者が走り切った
+    //   瞬間にここへ直接飛ぶ経路があり、テロップを進める処理を通らないため。
+    //   τ の到達に頼らず、決着したこの場で残りを吐き出す。
+    flushTelop();
     // celebration! confetti rain + a triple firework over the winner's line
     if (!S.celebrated) {
       S.celebrated = true;
