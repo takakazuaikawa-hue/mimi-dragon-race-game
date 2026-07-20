@@ -1479,6 +1479,11 @@ function startRaceCanvas(container, ctx) {
         <span class="rc-viewers" id="rc-viewers" title="視聴者数"><i>👁</i><b>0</b></span>
       </div>
     </div>
+    <!-- ★MY BET バー：自分の賭けた竜の「いまの着順・的中まで・いま的中なら」を常時表示。
+         ボードは順位で並び替わるので自分の行が画面内を動き回るが、ここは動かない＝
+         レース中どこを見ていても「自分の勝負」が視界に入る。上部固定（スコアバグ）。
+         ★純表示：standMap/betExpect を読むだけで、着順・オッズ・配当には一切干渉しない。 -->
+    <div class="rc-mybet" id="rc-mybet" hidden></div>
     <div class="rc-stage">
       <canvas id="rc-canvas"></canvas>
       <!-- ★D3：生中継の徽章。ホーム＝配信・物語＝密着ドキュメンタリーと同じ世界であることを一目で示す -->
@@ -3514,6 +3519,7 @@ function startRaceCanvas(container, ctx) {
     remainEl.textContent = "残り " + timeline.distanceRemainingAt(S.tau) + "m";
     const _tNow = (typeof performance !== "undefined" ? performance.now() : Date.now());
     updateBoard(standings, standMap, _tNow);
+    updateMyBet(standMap);                          // ★上部固定の MY BET バー（純表示）
     updateChat(standings, standMap, _pi, _tNow);   // ★D2 視聴者レイヤー
   }
 
@@ -3559,7 +3565,7 @@ function startRaceCanvas(container, ctx) {
         `<span class="rcb-style">${styleLb}</span>` +
         `<span class="rcb-odds">${od.winOdds != null ? od.winOdds.toFixed(1) : "-"}</span>` +
         `<span class="rcb-mv"></span>` +
-        (betSet.has(dr.id) ? `<span class="rcb-pay"></span>` : "");
+        ""   /* 旧ライブ配当チップは MY BET バーへ一本化（重複＋境界ラベルとの重なりのため撤去） */;
       boardEl.appendChild(row);
       boardRow[dr.id] = row;
     });
@@ -3608,25 +3614,17 @@ function startRaceCanvas(container, ctx) {
     });
     if (doArrange) boardLastArrange = tNow;
 
-    // --- 自分の竜：期待メーター＋ライブ配当（圏内のときだけ）---
+    // --- 自分の竜：圏内ハイライト ---
+    // ★ライブ配当チップ（旧 .rcb-pay「いま的中なら +N」）は撤去した。理由は2つ：
+    //   ① MY BET バーが同じ金額を固定位置で常時出すので、情報が二重になった。
+    //   ② 行の右端に伸びるチップが、圏内の境界線ラベル「ここより上で的中」と
+    //      実測 85×13px 重なっていた（順位で行が動くため、重なる位置も動く）。
+    //   金額は上のバーへ一本化し、ボードは「順位」と「圏内かどうか」に専念させる。
     if (bet && betSet.size) {
       const exp = betExpect(standMap);
       betSet.forEach(id => {
         const row = boardRow[id]; if (!row) return;
         row.classList.toggle("in-zone", exp.inZone);
-        const pay = row.querySelector(".rcb-pay");
-        if (!pay) return;
-        // 圏内のときだけ「いま的中なら +N」を出す（常時出すと的中の重みが薄れる）
-        if (exp.inZone) {
-          if (row._payShown !== true) {
-            row._payShown = true;
-            let amt = 0;
-            try { amt = Math.floor(bet.wager * betOdds(bet, oddsResult)); } catch (e) { amt = 0; }
-            pay.textContent = amt > 0 ? `いま的中なら +${fmtCoins(amt)}` : "";
-          }
-        } else if (row._payShown !== false) {
-          row._payShown = false; pay.textContent = "";
-        }
       });
       // 的中ラインを越えた「瞬間」だけ光らせる＋SE（常時光ると麻痺する＝B-2で実証済みの作法）
       if (exp.inZone && boardZoneWas === false) {
@@ -3770,6 +3768,53 @@ function startRaceCanvas(container, ctx) {
   }
   // ※旧 updateBet（HUD隅の1行メーター）は D1 生着順ボードへ置換統合したため撤去。
   //   期待の可視化は betExpect() のまま＝自分の行の in-zone 表示とライブ配当チップが担う。
+
+  // ---- MY BET バー（上部固定のスコアバグ）------------------------------
+  // ボードは順位で並び替わるため、自分の行は画面内を上下に動く。目で追わせると
+  // 「自分の勝負がどうなっているか」を見失うので、動かない場所に同じ情報を置く。
+  // 表示は3つだけ：いまの着順／的中まであと何頭（＝圏内か）／いま的中ならいくら。
+  let myBetEl = null, myBetPrevRank = null, myBetZoneWas = null;
+  function updateMyBet(standMap) {
+    if (!myBetEl) myBetEl = wrap.querySelector("#rc-mybet");
+    if (!myBetEl) return;
+    if (!bet || !betSet.size) { myBetEl.hidden = true; return; }   // 賭けていないレースでは出さない
+    myBetEl.hidden = false;
+
+    const ids = [...betSet];
+    const exp = betExpect(standMap);
+    // 単勝/複勝＝1頭、ワイド＝2頭。頭数ぶんチップを並べる（着順の良い順）。
+    const chips = ids
+      .map(id => ({ id, rank: standMap[id] || 99, name: shortDragonName(id) }))
+      .sort((a, b) => a.rank - b.rank);
+    const rankHTML = chips.map(c =>
+      `<span class="rcm-one"><span class="rcm-rk">${c.rank <= 20 ? c.rank : "-"}</span>` +
+      `<span class="rcm-nm">${c.name}</span></span>`).join("");
+    let amt = 0;
+    try { amt = Math.floor(bet.wager * betOdds(bet, oddsResult)); } catch (e) { amt = 0; }
+    myBetEl.innerHTML =
+      `<span class="rcm-k">MY BET</span>${rankHTML}` +
+      `<span class="rcm-gap">${exp.label}</span>` +
+      (exp.inZone && amt > 0 ? `<span class="rcm-pay">+${fmtCoins(amt)}</span>` : "");
+    myBetEl.classList.toggle("in-zone", exp.inZone);
+
+    // 圏内に入った/出た「瞬間」だけ弾ませる（常時光らせない＝ボードと同じ作法）。
+    if (myBetZoneWas !== null && exp.inZone !== myBetZoneWas) {
+      myBetEl.classList.remove("pulse"); void myBetEl.offsetWidth; myBetEl.classList.add("pulse");
+    }
+    myBetZoneWas = exp.inZone;
+    // 順位が動いた瞬間も小さく反応（▲▼はボード側が出すので、ここは弾みだけ）。
+    const r0 = chips[0] ? chips[0].rank : null;
+    if (myBetPrevRank !== null && r0 !== null && r0 !== myBetPrevRank) {
+      myBetEl.classList.remove("bump"); void myBetEl.offsetWidth; myBetEl.classList.add("bump");
+    }
+    myBetPrevRank = r0;
+  }
+  // 竜名は短く（バーは1行固定なので溢れさせない）。
+  function shortDragonName(id) {
+    const dr = dragons.find(d => d.id === id);
+    const nm = (dr && dr.dragon && dr.dragon.name) || "";
+    return nm.length > 5 ? nm.slice(-3) : nm;   // 「赤翼竜ルベル」→「ルベル」
+  }
 
   // =====================================================================
   // UPDATE
@@ -4310,6 +4355,13 @@ function startRaceCanvas(container, ctx) {
         wrap.classList.toggle("rc-ended", _done);
         if (viewersEl) { viewersEl.classList.toggle("fixed", _done); if (!_done) viewersEl._fixed = false; }
         if (!_done) { chatGoalDone = false; _goalChatLeft = 0; } }
+      // ★MY BET バーもスクラブ位置へ同期（seek は update() を通らないので明示的に呼ぶ）。
+      //   これを忘れると駒送り時にバーだけ前の着順で固まる（ボードで同じ事故があった）。
+      try {
+        const _st = timeline.standingsAt(S.tau);
+        const _sm = {}; _st.forEach((id, i) => { _sm[id] = i + 1; });
+        updateMyBet(_sm);
+      } catch (e) {}
       renderControls();   // スクラブ先が決着後なら「結果を見る」を出す（seekはonAllFinishedを通らない）
       for (let i = 0; i < 80; i++) updateCamera();
       draw();
