@@ -68,7 +68,7 @@ const FILES = [
   "js/commentary_data.js",    // commentaryName
   "js/race_timeline_engine.js",
   "js/data_commentators.js",
-  "js/race_broadcast.js", "js/data_broadcast_lines.js"
+  "js/race_broadcast.js", "js/data_broadcast_lines.js", "js/data_broadcast_rare.js"
 ];
 // ★全ファイルを「1つのスクリプト」として評価する。
 //   ファイルごとに実行すると、トップレベルの const / let が
@@ -95,6 +95,9 @@ parts.push(`
   buildRaceTimeline: typeof buildRaceTimeline !== "undefined" ? buildRaceTimeline : undefined,
   buildBroadcast: typeof buildBroadcast !== "undefined" ? buildBroadcast : undefined,
   bcEntrySchedule: typeof bcEntrySchedule !== "undefined" ? bcEntrySchedule : undefined,
+  BC_RARE: typeof BC_RARE !== "undefined" ? BC_RARE : undefined,
+  BC_CATCHPHRASE: typeof BC_CATCHPHRASE !== "undefined" ? BC_CATCHPHRASE : undefined,
+  BC_RARE_SEAL: typeof BC_RARE_SEAL !== "undefined" ? BC_RARE_SEAL : undefined,
   BC_LINES: typeof BC_LINES !== "undefined" ? BC_LINES : undefined,
   RACE_COMMENTATORS: typeof RACE_COMMENTATORS !== "undefined" ? RACE_COMMENTATORS : undefined,
   commentaryName: typeof commentaryName !== "undefined" ? commentaryName : undefined
@@ -289,6 +292,7 @@ function structureChecks() {
 // ── 実行 ────────────────────────────────────────────────────────
 const fails = [];
 const stats = [];
+const rareSeq = [];   // レア台詞の封印はレースを跨ぐので、並び順に記録しておく
 const t0 = Date.now();
 
 for (let i = 0; i < N; i++) {
@@ -321,7 +325,50 @@ for (let i = 0; i < N; i++) {
   });
   stats.push({ 行: ctx.script.length, 実況: ctx.call.length, 解説: ctx.color.length,
                決着: bc.analysis.drama.headline });
+  rareSeq.push({ cmKey: cmt && cmt.key,
+                 goalColor: bc.script.filter(x => x.tag === "goal" && x.side === "color")
+                              .map(x => x.line) });
 }
+
+// ── レア台詞の検査（レースを跨ぐので、規則ではなくここで見る）──────
+// ★封印はレース1本ずつ数える約束。1レース内では確かめられない。
+function rareChecks(seq) {
+  const bad = [];
+  const R = S.BC_RARE || [], C = S.BC_CATCHPHRASE || [];
+  const byLine = {};
+  R.forEach(r => byLine[r.line] = { id: r.id, fixed: false, cm: r.cm });
+  C.forEach(r => byLine[r.line] = { id: r.id, fixed: true, cm: r.cm });
+  const lastAt = {}, count = {};
+  seq.forEach((s, i) => {
+    const hit = s.goalColor.map(l => byLine[l]).filter(Boolean)[0];
+    if (!hit) return;
+    count[hit.id] = (count[hit.id] || 0) + 1;
+    if (hit.cm !== s.cmKey) bad.push("担当外の解説者が喋った: " + hit.id + " を " + s.cmKey);
+    if (!hit.fixed) {
+      const prev = lastAt[hit.id];
+      if (prev != null && i - prev < S.BC_RARE_SEAL)
+        bad.push("封印が効いていない: " + hit.id + " が " + (i - prev) + "レース間隔で再出（" +
+                 S.BC_RARE_SEAL + "レース封印のはず）");
+      lastAt[hit.id] = i;
+    }
+  });
+  // ★一度も出ない台詞＝書いた意味がない。
+  //   実際に "big"（大差）を待つ台詞が3本、永久に出ない状態で入っていた
+  //   （レース側が大差まで開かないため）。同じことを繰り返さないための検査。
+  //   少ない本数では偶然出ないだけなので、300本以上のときだけ違反にする。
+  const never = R.concat(C).filter(r => !count[r.id]).map(r => r.id);
+  if (never.length && seq.length >= 300)
+    bad.push("一度も出ないレア台詞がある（条件が現実に起きない疑い）: " + never.join(","));
+  else if (never.length > R.concat(C).length * 0.5)
+    bad.push("半分以上のレア台詞が一度も出ていない: " + never.join(",") + " ほか");
+  const used = Object.values(count).reduce((a, b) => a + b, 0);
+  console.log("■ レア台詞: " + seq.length + "レース中 " + used + "本発火（" +
+    Object.keys(count).length + "種／全" + (R.length + C.length) + "種）" +
+    (never.length ? " ／未発火 " + never.length + "種: " + never.join(",") : ""));
+  return bad;
+}
+const rareBad = rareChecks(rareSeq);
+rareBad.forEach(d => fails.push({ race: "(レア)", rule: "レア台詞の運用", detail: d }));
 
 const structBad = structureChecks();
 structBad.forEach(d => fails.push({ race: "(構造)", rule: "実装の形", detail: d }));

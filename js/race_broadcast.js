@@ -286,8 +286,12 @@ function bcAnalyze(timeline, ctx) {
       : (d.marginKey === "nose")                     ? "photo"      // 鼻先の死闘
       : (d.leadChanges >= 4)                         ? "warOfAttrition" // 荒れた叩き合い
       : (d.popRank >= 4)                             ? "upset"      // 伏兵
-      : (d.wire && d.marginKey === "big")            ? "perfect"    // 完全逃走
-      : (d.popRank === 1 && d.marginKey === "big")   ? "dominant"   // 王者の圧勝
+      // ★「大差(big)」で判定してはいけない。着差の目盛りでは big は
+      //   finishTau差0.055超だが、レース側がそこまで開くことが実際には無く
+      //   （300レース測って0本）、この2つの決め台詞は一度も出ていなかった。
+      //   実際に出る中でいちばん開く「一体(body)」を圧勝の線として使う。
+      : (d.wire && d.marginKey === "body")           ? "perfect"    // 完全逃走
+      : (d.popRank === 1 && d.marginKey === "body")  ? "dominant"   // 王者の圧勝
       : (d.marginKey === "neck" || d.marginKey === "half") ? "hardFought" // 競り勝ち
       : "solid";
     return d;
@@ -305,6 +309,8 @@ function buildBroadcast(timeline, ctx, opts) {
   const cmt = opts.commentator;
   const ckey = cmt && cmt.key;
   const A = bcAnalyze(timeline, ctx);
+  // ★レア台詞の封印は「レース数」で数える。台本を組むこの1点だけで進める。
+  if (typeof bcRareTick === "function") bcRareTick();
   const race = ctx.race || {};
   // ★ctx.bet はここで一切読まない。賭け情報を持ち込まなければ、うっかり
   //   賭け竜を主役にする実装ミスが構造上できなくなる。
@@ -681,9 +687,18 @@ function buildBroadcast(timeline, ctx, opts) {
   // ★解説のゴール台詞は「讃える」。自分の見立ての話はしない。
   //   大写しになっているのは勝った竜。その走りを、その人の物差しで讃える。
   //   （物差しが違うから、讃え方も6人で違う＝それが描き分けになる）
-  say(D + 0.006, "color",
-      pick(poolOf("praise", (dm.score >= 70 ? "big" : "normal"), "color"), "color"),
-      dv, "goal");
+  // ★滅多に出ない決着なら、汎用の讃辞ではなくレア台詞に差し替える。
+  //   条件が合わない・封印中・台帳が壊れている、のいずれでも null が返るので
+  //   その場合は今まで通り汎用の讃辞で締まる（出なくても破綻しない作り）。
+  const rare = (typeof bcRarePick === "function") ? bcRarePick(cmt.key, dm) : null;
+  if (rare) {
+    say(D + 0.006, "color", rare.rec.line, dv, "goal");
+    if (typeof bcRareMark === "function") bcRareMark(rare.rec.id, rare.fixed);
+  } else {
+    say(D + 0.006, "color",
+        pick(poolOf("praise", (dm.score >= 70 ? "big" : "normal"), "color"), "color"),
+        dv, "goal");
+  }
 
   // ★予言の答え合わせ。当たれば勝ち誇り、外れれば自爆する。
   //   判定は確定済みの結果を読むだけ（新しい判定は作らない）。
