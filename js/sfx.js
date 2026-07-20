@@ -335,7 +335,11 @@ var Sfx = (function () {
     },
     setVolume: setVolume,
     getVolume: getVolume,
-    unlock: unlock
+    unlock: unlock,
+    // ★BGM(HTML audio)を Web Audio 経由へ流し込むために共有する。
+    //   iOS は HTML audio だけサイレントスイッチを無視するので、Web Audio を通せば
+    //   BGMも本体の消音に従うようになる（bgm.js の routeThroughWebAudio が使う）。
+    context: function () { try { return ensure(); } catch (e) { return null; } }
   };
 })();
 if (typeof window !== "undefined") window.Sfx = Sfx;

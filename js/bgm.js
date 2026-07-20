@@ -43,6 +43,39 @@ var RaceBgm = (function () {
   // 「一度消すと二度と鳴らない」バグだった）。stop()/fadeOut() で消える。
   var pending = null;   // null | {kind:'race'} | {kind:'file', path:string}
 
+  // ── iPhoneの消音でBGMだけ鳴ってしまう問題への二段構えの対処 ──────────────
+  // iOS Safari は「HTML <audio> はサイレントスイッチを無視／Web Audio は従う」という
+  // 非対称な仕様を持つ。本作は BGM だけが HTML <audio> なので、そこだけ消音を無視していた。
+  //   ① 新しめのiOS(16.4+) … sfx.js が navigator.audioSession.type="ambient" を宣言済み。
+  //      これでページ全体が消音に従うので、追加の細工は不要（むしろ触らない方が安全）。
+  //   ② それ以前のiOS       … ①のAPIが無い。そこで BGM の音を Web Audio へ通す。
+  //      Web Audio は消音に従うので、経由させるだけでBGMも従うようになる。
+  // ★保険は「効かない環境」だけに当てる。効いている環境で二重に細工すると、
+  //   AudioContext が未解錠のときに無音になる等の別事故を招くため。
+  function _isIOS() {
+    try {
+      var ua = navigator.userAgent || "";
+      return /iPad|iPhone|iPod/.test(ua) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);   // iPadOS
+    } catch (e) { return false; }
+  }
+  function _audioSessionOK() {
+    try { return !!(navigator.audioSession && "type" in navigator.audioSession); } catch (e) { return false; }
+  }
+  var _routed = new WeakSet ? new WeakSet() : null;   // 同じ要素に二度つなぐと例外になるので記録
+  function routeThroughWebAudio(a) {
+    if (!_isIOS() || _audioSessionOK()) return;        // ①で足りる環境／iOS以外は何もしない
+    try {
+      if (_routed && _routed.has(a)) return;
+      var c = (typeof Sfx !== "undefined" && Sfx.context) ? Sfx.context() : null;
+      if (!c || !c.createMediaElementSource) return;
+      var src = c.createMediaElementSource(a);
+      src.connect(c.destination);
+      if (_routed) _routed.add(a);
+      if (c.state === "suspended" && c.resume) { try { c.resume(); } catch (e) {} }
+    } catch (e) { /* 失敗しても素の再生に落ちるだけ＝音が消えることはない */ }
+  }
+
   function isMuted() {
     try {
       if (typeof Sfx !== "undefined" && Sfx.isMuted) return Sfx.isMuted();
@@ -95,6 +128,7 @@ var RaceBgm = (function () {
       var a = new Audio(RACE_BGM_DIR + encodeURIComponent(RACE_BGM_TRACKS[idx]));
       a.loop = true;                     // レースの長さに合わせてループ
       a.volume = BGM_BASE * bgmLevel;    // 効果音(Sfx master 0.42)に埋もれない程度（×ユーザー音量）
+      routeThroughWebAudio(a);             // ★旧iOS向けの保険（新APIがある環境では何もしない）
       var p = a.play();
       if (p && p.catch) p.catch(function () {});   // 自動再生がブロックされても無視
       audio = a;
@@ -138,6 +172,7 @@ var RaceBgm = (function () {
       var a = new Audio(parts.join("/"));
       a.loop = !opts.once;   // once=true＝ループしない単発ジングル（結果画面のファンファーレ等）
       a.volume = BGM_BASE * bgmLevel;
+      routeThroughWebAudio(a);             // ★旧iOS向けの保険（新APIがある環境では何もしない）
       var p = a.play(); if (p && p.catch) p.catch(function () {});
       audio = a;
     } catch (e) { audio = null; }
