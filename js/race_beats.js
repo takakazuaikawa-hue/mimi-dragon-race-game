@@ -494,8 +494,11 @@ function buildBeatTelop(beats, topics, opts) {
       };
       // 話題も実況と解説の掛け合いで出す＝ひとりごとにしない
       say(g, "call", fillLine(pickLine(set.call, ti), vars));
-      if (set.color && g - lastColor >= TELOP_GAP_COLOR) {
-        say(g + 0.016, "color", fillLine(pickLine(set.color, ti * 5), vars));
+      // ★話題の解説も、その解説者の声で言う。共通文にすると誰が喋っても
+      //   同じ台詞になり、6人を出し分けている意味が消える。
+      const tcol = set.color && cmt ? set.color[cmt.key] : null;
+      if (tcol && g - lastColor >= TELOP_GAP_COLOR) {
+        say(g + 0.016, "color", fillLine(pickLine(tcol, ti * 5), vars));
       }
     }
   }
