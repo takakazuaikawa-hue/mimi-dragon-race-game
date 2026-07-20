@@ -298,6 +298,8 @@ const RC_LOAD_MAX_MS = 2400;   // 何かが詰まっても、ここで必ず走�
 const RC_LOAD_IMG_MS = 1100;   // 画像の先読みを待つ上限（返事が来ない実装でも止まらない）
 
 function showRaceLoading(host, c, onReady) {
+  // ★ここで落ちるとロード画面のまま止まって復帰できないので、必ず先へ進める。
+  if (!c) { try { onReady(); } catch (e) {} return; }
   const started = Date.now();
   let done = false;
   const go = () => {
@@ -378,20 +380,31 @@ function showRaceLoading(host, c, onReady) {
   setTimeout(go, RC_LOAD_MAX_MS);   // 最終防衛線：何があっても走り出す
 }
 
-// ロード画面に出す一枚絵。今日の舞台に近い風景を選ぶ。
-// ★素材は既存のものだけを使う（新規生成しない）。読めなければ枠ごと消えるので崩れない。
-// EXTENSION POINT: 地域を足したら1行足すだけ。無い地域は競走場の絵に落ちる。
-var RC_LOAD_ART = {
-  "カルデラ地域":       "images/konron/area_cliff.webp",
-  "ミストレイク地域":   "images/konron/area_falls.webp",
-  "グランドクロック地域": "images/konron/area_city.webp",
-  "シーサイド地域":     "images/konron/area_beach.webp",
-  "オンセン地域":       "images/konron/area_onsen.webp",
-  "サンクタム地域":     "images/konron/area_sanctum.webp",
-  "奥地":               "images/konron/area_okuchi.webp"
-};
+// ロード画面の一枚絵。ミミのロード用イラスト（images/cast/mimi/loading*）。
+// ★この 46 枚はロード画面のために用意された素材。毎回ランダムで1枚出す。
+// EXTENSION POINT: 絵を足したらファイル名をこの配列に1行足すだけ。
+var RC_LOAD_DIR = "images/cast/mimi/";
+var RC_LOAD_ARTS = [
+  "loading1.png", "loading2.png", "loading3.png", "loading4.png",
+  "loading5.png", "loading6.png", "loading7.png", "loading8.png",
+  "loading9.webp", "loading10.png", "loading11.png", "loading12.png",
+  "loading13.png", "loading14.png", "loading15.png", "loading16.png",
+  "loading17.png", "loading18.png", "loading19.png", "loading20.png",
+  "loading21.png", "loading22.png", "loading23.png", "loading24.png",
+  "loading25.png", "loading26.png", "loading27.png", "loading28.png",
+  "loading29.png", "loading30.png", "loading31.png", "loading32.webp",
+  "loading33.png", "loading34.png", "loading35.png", "loading36.png",
+  "loading37.png", "loading38.png", "loading39.png", "loading40.png",
+  "loading41.png", "loading42.png", "loading43.png", "loading44.png",
+  "loading45.png", "loading46.png"
+];
+var _rcLoadLast = -1;
 function rcLoadArtFor(race) {
   try {
-    return RC_LOAD_ART[race && race.region] || "images/konron/area_race.webp";
-  } catch (e) { return "images/konron/area_race.webp"; }
+    if (!RC_LOAD_ARTS.length) return null;
+    var i = Math.floor(Math.random() * RC_LOAD_ARTS.length);
+    if (i === _rcLoadLast && RC_LOAD_ARTS.length > 1) i = (i + 1) % RC_LOAD_ARTS.length;   // 直前と同じ絵を避ける
+    _rcLoadLast = i;
+    return RC_LOAD_DIR + RC_LOAD_ARTS[i];
+  } catch (e) { return null; }
 }

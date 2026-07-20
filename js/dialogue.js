@@ -276,16 +276,21 @@
     return out;
   }
 
-  // ★検証用の抑止スイッチ。ONの間は立ち絵セリフを一切出さず、即座に解決する。
-  //   自動検証がVNに阻まれて先へ進めない問題があったため（毎回スキップを
-  //   押し続ける必要があり、取りこぼすと検証そのものが失敗していた）。
-  //   ゲーム進行のフラグには触れない＝「表示を飛ばすだけ」。
-  var suppressed = false;
-  try { if (location.search.indexOf("novn=1") >= 0) suppressed = true; } catch (e) {}
+  // ★検証用の「早送り」スイッチ。
+  //   ONの間もセリフは通常どおり描画する。変わるのは、クリックを待たずに
+  //   自分で次へ進むことだけ。
+  //   ★消してしまう作りにはしない：それだとVN自体の検証ができなくなる。
+  //     （一度その実装をして、VNの中身を確認する手段を失った）
+  //   ?vnfast=1 でも有効。倍率で速さを変えられる（既定=1行あたり0.25秒）。
+  var fastMs = 0;
+  try {
+    var m = location.search.match(/vnfast=(\d*)/);
+    if (m) fastMs = m[1] ? parseInt(m[1], 10) : 250;
+  } catch (e) {}
 
   function play(script, options) {
-    if (suppressed) return Promise.resolve();
     var lines = normalize(script);
+    if (fastMs > 0) options = assign(assign({}, options || {}), { instant: true, autoAdvance: true, autoMs: fastMs });
     chain = chain.then(function () {
       if (!lines.length) return Promise.resolve();
       return run(lines, options || {});
@@ -421,7 +426,9 @@
   function maybeAuto() {
     if (!opts.autoAdvance) return;
     clearTimeout(autoTimer);
-    autoTimer = setTimeout(function () { if (queue && !typing) advance(); }, 900 + full.length * 42);
+    // ★検証用の早送りでは autoMs で待ち時間を上書きできる（既定は読み切りサイズに応じた自然な間）。
+    var wait = (opts.autoMs != null) ? opts.autoMs : (900 + full.length * 42);
+    autoTimer = setTimeout(function () { if (queue && !typing) advance(); }, wait);
   }
 
   function advance() {
@@ -474,9 +481,12 @@
     inferExpr: inferExpr,             // 文面→表情の推定（②表情差分）
     isOpen: function () { return !!(dom && !dom.overlay.classList.contains("hidden")); },
     dismiss: function () { try { finish(); } catch (e) {} },   // 開いているセリフを閉じる（レース開始時など）
-    // 検証用：立ち絵セリフを丸ごと出さなくする（?novn=1 でも同じ）。進行フラグには触れない。
-    setSuppressed: function (v) { suppressed = !!v; if (v) { try { finish(); } catch (e) {} } },
-    isSuppressed: function () { return suppressed; },
+    // 検証用：セリフは通常どおり描画したまま、クリックを待たず自動で先へ進める。
+    //   ★「出さない」ではなく「早送り」にする。消す作りにするとVN自体を
+    //     検証できなくなるため（一度その実装をして中身を確認する手段を失った）。
+    //   setFast(true)=1行250ms / setFast(120)=120ms / setFast(false)=通常。?vnfast=1 でも可。
+    setFast: function (v) { fastMs = (v === true) ? 250 : (v ? (+v || 250) : 0); },
+    isFast: function () { return fastMs > 0; },
     demo: function () { return play("demo"); }
   };
   global.Dialogue = Dialogue;

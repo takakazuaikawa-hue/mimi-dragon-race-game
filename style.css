@@ -7785,14 +7785,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .rcload-bar > i { animation: none; width: 100%; }
 }
 
-/* ロード画面の一枚絵。文字より下に、帯状に見せる（主役は「準備中」の情報）。 */
+/* ロード画面の一枚絵＝ミミのロード用イラスト。
+   ★これはロード画面のために描かれた絵なので、主役として大きく見せる。
+   （帯に切って暗く沈めるのは素材の扱いとして間違い） */
 .rcload-art {
-  margin-top: 18px; border-radius: 10px; overflow: hidden;
+  margin-top: 16px; border-radius: 12px; overflow: hidden;
   border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  box-shadow: 0 10px 26px rgba(0,0,0,.42);
+  background: rgba(255,255,255,.03);
 }
 .rcload-art img {
-  display: block; width: 100%; height: 108px; object-fit: cover;
-  /* 明るすぎると文字と competing するので少し沈める */
-  filter: saturate(.92) brightness(.82);
+  display: block; width: 100%; height: auto; max-height: 46vh;
+  object-fit: contain;   /* 縦横比を歪めない */
 }
