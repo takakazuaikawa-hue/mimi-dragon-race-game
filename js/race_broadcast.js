@@ -638,8 +638,10 @@ function buildBroadcast(timeline, ctx, opts) {
           return (A.drama && A.drama.popRank >= 4);
         case "closerWins":         // 後ろから来た竜が勝ったか
           return (A.drama && A.drama.comeback >= 2);
-        case "namedWins":          // 名指しの竜が勝ったか
-          return prophecy.target === A.winner;
+        case "namedWins":          // 期待した竜が3着以内に来たか
+          // ★「勝つ」の断定ではなく「期待できる」なので、判定も甘くする。
+          //   1着かどうかで裁くと、解説がプレイヤーの予想と張り合う形になる。
+          return [A.winner, A.second, A.third].indexOf(prophecy.target) >= 0;
         default: return false;
       }
     })();
