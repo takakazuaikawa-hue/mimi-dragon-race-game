@@ -284,8 +284,35 @@ var Sfx = (function () {
   }
   function getVolume() { return sfxLevel; }
 
+  // ── iPhone のサイレントスイッチを尊重させる ───────────────────────────
+  // ★実機で「本体を消音にしてもBGMだけ鳴る」報告への対処。
+  //   iOS Safari の仕様（調査済み・出典 adactio.com/journal/19929 ほか）：
+  //     ・Web Audio API   … サイレントスイッチに従う（消音なら鳴らない）
+  //     ・HTML <audio> 要素 … サイレントスイッチを無視して鳴る
+  //   このゲームは 効果音=Web Audio / BGM=new Audio() なので、BGMだけが鳴り続けていた。
+  //   Audio Session API（iOS 16.4+）で種別を "ambient" にすると、ページ全体が
+  //   iOS の AVAudioSessionCategoryAmbient 相当＝サイレントスイッチに従い、
+  //   他アプリの音楽とも共存する（ゲームのBGMとして望ましい既定）。
+  //   ★非対応環境では何も起こらない安全な no-op。
+  function applyAudioSession() {
+    try {
+      if (navigator.audioSession && "type" in navigator.audioSession) {
+        navigator.audioSession.type = "ambient";
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  applyAudioSession();
+  // 復帰時に既定へ戻る実装があるため、画面が戻るたびに念のため貼り直す。
+  try {
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) applyAudioSession();
+    });
+  } catch (e) {}
+
   // self-installing unlock on first user gesture
-  function unlock() { try { ensure(); resume(); } catch (e) {} }
+  function unlock() { try { applyAudioSession(); ensure(); resume(); } catch (e) {} }
   try {
     ["pointerdown", "keydown", "touchstart"].forEach(function (ev) {
       window.addEventListener(ev, unlock, { passive: true });
@@ -298,6 +325,14 @@ var Sfx = (function () {
     stopCrowd: stopCrowd,
     setMuted: setMuted,
     isMuted: function () { return muted; },
+    // 実機診断用：iOSのサイレントスイッチ対応が効いているかを外から確認できるようにする。
+    //   supported=false … iOS 16.4 未満など未対応（BGMは消音でも鳴る可能性が残る）
+    //   type="ambient"  … 適用済み＝本体の消音に従う
+    audioSessionInfo: function () {
+      var t = null, sup = false;
+      try { sup = !!(navigator.audioSession && "type" in navigator.audioSession); if (sup) t = navigator.audioSession.type; } catch (e) {}
+      return { supported: sup, type: t };
+    },
     setVolume: setVolume,
     getVolume: getVolume,
     unlock: unlock

@@ -1158,8 +1158,14 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 
 /* ★CODEX納品：元は座って画面外にいた観客が、ゴール後に立ち上がって背中を見せる。
    12フレームを55ms刻みで一度だけ送り、最終コマをそのまま保持する。 */
+/* ★観客はキャンバスの「背面」に置く（ユーザー指摘：観客が結果パネルの前に出ていた）。
+   キャンバスには z-index が無く（＝auto）、観客が z:2 だったため、canvas に描く
+   「🏆1着◯◯」「的中！+N コイン」の上へ観客のシルエットが被さっていた。
+   観客は雰囲気の背景なので 0、canvas を 1 にして前後を明示する。
+   ★position を持たない要素は z-index が効かないので、canvas 側にも position を与える。 */
+.rc-stage > #rc-canvas { position: relative; z-index: 1; }
 .rc-crowdglow {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 36%; z-index: 2;
+  position: absolute; left: 0; right: 0; bottom: 0; height: 36%; z-index: 0;
   pointer-events: none; opacity: 0; transition: opacity .18s ease;
   border-radius: 0 0 10px 10px; overflow: hidden;
 }
