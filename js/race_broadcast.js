@@ -319,7 +319,20 @@ function buildBroadcast(timeline, ctx, opts) {
   let lastCall = -1, lastColor = -1;
   let lastCallNeed = 0, lastColorNeed = 0;   // 直前の行が読み終わるまでに要る時間（τ）
   const used = { call: [], color: [] };
-  let seed = 3;
+  // ★引き出しのどこから取るかは、レースごとに変える。
+  //   ここが固定値(3)だったため、変化形を何本足しても毎レース同じ位置の
+  //   1本しか選ばれず、入場の台詞は600行出て205種のままだった。
+  //   台詞を増やしても数字が動かず、原因を探してここに行き着いた。
+  //   レースを1本組むたびに1つ進めるので、同じ人・同じ局面でも
+  //   次に担当したときは別の行から始まる。
+  let seed = (() => {
+    try {
+      const p = (typeof state !== "undefined" && state && state.player) ? state.player : null;
+      if (!p) return 3;
+      p.bcSeed = ((p.bcSeed || 0) + 1) % 9973;   // 素数で回して偏りを避ける
+      return p.bcSeed;
+    } catch (e) { return 3; }
+  })();
 
   const pick = (pool, side) => {
     if (!pool || !pool.length) return null;

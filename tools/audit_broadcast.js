@@ -329,6 +329,7 @@ for (let i = 0; i < N; i++) {
   stats.push({ 行: ctx.script.length, 実況: ctx.call.length, 解説: ctx.color.length,
                決着: bc.analysis.drama.headline });
   rareSeq.push({ cmKey: cmt && cmt.key,
+                 call: ctx.call.map(x => x.line), color: ctx.color.map(x => x.line),
                  chat: bc.script.filter(x => x.tag === "chat" || (x.tag === "entry" && x.side === "color")).map(x => x.line),
                  goalColor: bc.script.filter(x => x.tag === "goal" && x.side === "color")
                               .map(x => x.line) });
@@ -411,6 +412,54 @@ function chatterChecks(seq) {
   });
 
   // 実際にどれだけ出たか。出ないなら置いた意味がない。
+  // ★声が崩れていないか。本数を増やすほど、ここが最初に壊れる。
+  //   各人の口調の印が出ているか／他人の一人称を使っていないかを見る。
+  // ★印は「その人らしさが1つでも出ているか」を見るためのもの。
+  //   狭く書くと正しい台詞を弾く。丁寧語の「ます／いたします」や
+  //   女性語尾の「〜わ。」を入れ忘れて、正しい43本を誤検出した。
+  const VOICE = {
+    sake:     { mark: /じゃ|のう|わし|とる|わい|でな|んじゃ/,
+                ng: /あたくし|オレ|わたくし|ございます|ですよぉ/ },
+    mizu:     { mark: /わ。|のよ|わね|かしら|あたくし|あはん|なさい|だけよ|のね/,
+                ng: /わし|オレ|わたくし|ございます|じゃよ/ },
+    sumika:   { mark: /ござい|ます|です|いたし|私|くださいませ/,
+                ng: /わし|オレ|あたくし|知らんけど|じゃん/ },
+    makura:   { mark: /じゃん|って|オレ|マジ|ヤバ|だよ|くない|んだ|すぎ/,
+                ng: /わし|あたくし|わたくし|ございます|のじゃ/ },
+    celestia: { mark: /のね|のよ|我|ふふ|こと。|なのよ/,
+                ng: /わし|オレ|あたくし|わたくし|ございます/ },
+    unme:     { mark: /です|ますぅ|わたくし|知らんけど|ましたぁ|ですって|ねぇ|よぉ/,
+                ng: /わし|オレ|あたくし|ございます|じゃよ/ }
+  };
+  const noMark = {}, wrongVoice = [];
+  C.forEach(r => {
+    const v = VOICE[r.cm]; if (!v) return;
+    const L = String(r.line || "");
+    if (!v.mark.test(L)) noMark[r.cm] = (noMark[r.cm] || 0) + 1;
+    if (v.ng.test(L)) wrongVoice.push(r.id + ": " + L.slice(0, 22));
+  });
+  wrongVoice.slice(0, 4).forEach(x => bad.push("他の解説者の口調が混じっている " + x));
+  Object.keys(noMark).forEach(k => {
+    const tot = C.filter(r => r.cm === k).length;
+    // 3割を超えて口調の印が無いなら、その人らしさが薄れている
+    if (noMark[k] > tot * 0.3)
+      bad.push("口調の印が薄い: " + k + " の " + noMark[k] + "/" + tot + "本に語尾も一人称も出ていない");
+  });
+
+  // ★似すぎた台詞が無いか。数を追うと、言い回しだけ変えた重複が増える。
+  //   二文字の並びをどれだけ共有しているかで測る（人手で読み比べるのは無理）。
+  const bg = s => { const a = new Set(); for (let i = 0; i < s.length - 1; i++) a.add(s.substr(i, 2)); return a; };
+  const grams = C.map(r => ({ id: r.id, cm: r.cm, line: r.line, g: bg(String(r.line || "")) }));
+  const dup = [];
+  for (let i = 0; i < grams.length; i++) for (let j = i + 1; j < grams.length; j++) {
+    if (grams[i].cm !== grams[j].cm) continue;
+    let share = 0;
+    grams[i].g.forEach(x => { if (grams[j].g.has(x)) share++; });
+    const r = share / Math.max(1, Math.min(grams[i].g.size, grams[j].g.size));
+    if (r >= 0.62) dup.push(grams[i].id + " と " + grams[j].id + "（" + Math.round(r * 100) + "%一致）: " + grams[j].line.slice(0, 20));
+  }
+  dup.slice(0, 5).forEach(x => bad.push("台詞が似すぎている " + x));
+
   // ★数えるのは雑談として登録された行だけ。
   //   入場の解説行をまとめて数えていたため、1レース6行という
   //   実態とかけ離れた数字が出ていた（実際に置いた枠は2つ）。
@@ -434,6 +483,86 @@ function chatterChecks(seq) {
     bad.push("連続するレースで雑談が繰り返されている: " + repeat + "/" + seq.length + "回");
   return bad;
 }
+// ── ★同じ解説者に再び当たったとき、どれだけ中身が変わるか ──────
+// これがプレイヤーの「また同じだ」に直結する、いちばん大事な指標。
+//
+// ★以前は「連続する2レース」を比べて重複0%と報告していた。だが連続する
+//   レースは担当者が違うので、違うことを言うのは当たり前で、あの数字は
+//   何も証明していなかった。その誤った指標のせいで、実際には解説の45%が
+//   前回と同じままなのに「解決した」と報告してしまった（ユーザーが実機で
+//   「最初の一言が変わってるだけ」と気づいた）。
+//   比べるべきは、同じ人が再び担当した回どうしである。
+function sameCasterChecks(seq) {
+  const bad = [];
+  const BY = {};
+  seq.forEach(s => { if (s.cmKey) (BY[s.cmKey] = BY[s.cmKey] || []).push(s); });
+  let sumCall = 0, sumColor = 0, n = 0;
+  Object.keys(BY).forEach(k => {
+    const rs = BY[k]; if (rs.length < 2) return;
+    let sc = 0, so = 0, m = 0;
+    for (let i = 1; i < rs.length; i++) {
+      const pc = new Set(rs[i - 1].call), po = new Set(rs[i - 1].color);
+      sc += rs[i].call.filter(x => pc.has(x)).length / Math.max(1, rs[i].call.length);
+      so += rs[i].color.filter(x => po.has(x)).length / Math.max(1, rs[i].color.length);
+      m++;
+    }
+    sumCall += sc / m; sumColor += so / m; n++;
+  });
+  if (!n) return bad;
+  const call = sumCall / n * 100, color = sumColor / n * 100;
+  console.log("■ 同じ解説者の前回と比べて同じ台詞: 実況 " + call.toFixed(0) +
+              "% ／ 解説 " + color.toFixed(0) + "%");
+  if (color > 20) bad.push("解説が前回と " + color.toFixed(0) + "% 同じ（20%以下にすること）");
+  if (call > 20) bad.push("実況が前回と " + call.toFixed(0) + "% 同じ（20%以下にすること）");
+  return bad;
+}
+// ── ★プレイヤーの賭けに触れていないか ──────────────────────────
+// ★この規則の範囲を一度取り違えた。
+//   禁じられていたのは「オッズ・配当・人気という語」ではない。
+//   それは賭けレースの実況そのもので、とくにミズの物差し（倍率と確率）は
+//   6人の描き分けの根拠になっている。実際いちど全部消してしまい、
+//   ミズを無味乾燥にした（ユーザーの指摘で復元）。
+//
+//   本当に禁じられているのは次の2つ：
+//     ・プレイヤーが賭けた竜を主役として扱うこと
+//       → これは ctx.bet をエンジンに渡さないことで構造的に防いである
+//     ・解説者がゴールで自分の予想の当たり外れを採点すること
+//       → 大写しになっているのは勝った竜であって、解説者ではない
+function bettingWordCheck() {
+  const bad = [];
+  // 観客に向かって的中・不的中を語る形だけを弾く
+  const RE = /あなたの(賭け|買っ)|お客さまの馬券|的中おめでとう|はずれ(ました|です)/;
+  const B = S.BC_LINES || {};
+  const K = ["sake", "mizu", "sumika", "makura", "celestia", "unme", "_"];
+  Object.keys(B).forEach(g => Object.keys(B[g]).forEach(u => {
+    const s = B[g][u];
+    (s.call || []).forEach(l => { if (RE.test(l)) bad.push("実況 " + g + "." + u + ": " + l); });
+    if (s.color) K.forEach(k => (s.color[k] || []).forEach(l => {
+      if (RE.test(l)) bad.push("解説 " + g + "." + u + "[" + k + "]: " + l); }));
+  }));
+  (S.BC_RARE || []).concat(S.BC_CATCHPHRASE || []).forEach(r => {
+    if (RE.test(r.line)) bad.push("レア " + r.id + ": " + r.line); });
+
+  // ★決着の解説で、自分の見立ての採点をしていないか。
+  //   大写しになっているのは勝った竜であって解説者ではない、というのが
+  //   ユーザーの指示（「最後の決め台詞も自分の話をされても困る」）。
+  const SELF = /予想が?(当た|外れ)|見立てが?(当た|外れ)|わたしの読み|言ったとおり|申し上げたとおり/;
+  ["praise", "climax", "decide", "margin"].forEach(g => {
+    const grp = B[g]; if (!grp) return;
+    Object.keys(grp).forEach(u => {
+      const co = grp[u].color; if (!co) return;
+      K.forEach(k => (co[k] || []).forEach(l => {
+        if (SELF.test(l)) bad.push("決着で自分語り " + g + "." + u + "[" + k + "]: " + l); }));
+    });
+  });
+  return bad;
+}
+bettingWordCheck().forEach(d =>
+  fails.push({ race: "(データ)", rule: "賭けへの言及", detail: d }));
+
+const sameBad = sameCasterChecks(rareSeq);
+sameBad.forEach(d => fails.push({ race: "(繰り返し)", rule: "同じ解説者の使い回し", detail: d }));
+
 const chatBad = chatterChecks(rareSeq);
 chatBad.forEach(d => fails.push({ race: "(雑談)", rule: "雑談の作法", detail: d }));
 
