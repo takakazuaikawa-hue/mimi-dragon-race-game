@@ -30,8 +30,57 @@ const BC_EARLY_END = 0.30;   // 序盤＝隊列が決まるまで
 const BC_MID_END   = 0.62;   // 中盤＝展開を語る時間
 // 終盤は BC_MID_END 〜 最終直線、そこからゴールまでが決着。
 
-const BC_GAP_CALL  = 0.040;  // 実況の最短間隔（読める速さの下限）
+// ── 読める速さ（P1の核心）────────────────────────────────────────
+// ★従来は「1行30字を1.0秒」で出していた。これは映像字幕の実務基準(約4字/秒)の
+//   7.5倍、黙読の上限(約10字/秒)の3倍で、物理的に読めていない。
+//   行数を増減するのではなく、1行を短くして表示時間を字数に比例させる。
+const BC_READ_CPS   = 9;     // 読める速さ（字/秒）。字幕基準より速いが、短文＋既知語彙なので成立する
+const BC_HOLD_MIN   = 0.85;  // 最短表示秒。これを割ると何字であっても読めない
+const BC_BEAT       = { calm: 0.9, normal: 0.6, rush: 0.35 };  // 行間の“間”。局面で使い分ける
+const BC_LEN_TARGET = { entry: 16, course: 14, shape: 16, gap: 14, lead: 13, final: 9, goal: 20 };
+
+// 表示に要る秒数 → τ。読める時間を必ず確保するための換算。
+function bcHoldTau(text, beat, raceSec) {
+  const chars = String(text || "").length;
+  const sec = Math.max(BC_HOLD_MIN, chars / BC_READ_CPS) + (beat || BC_BEAT.normal);
+  return sec / Math.max(1, raceSec || 46);
+}
+
+// 着差の5段階目盛り。★実況・着順ボードで同じ語を使うために一元化する。
+// 「接戦」「混戦」は情報量ゼロなので語彙から外した。
+const BC_MARGIN_TIER = [
+  { max: 0.004, key: "nose",   label: "鼻先" },
+  { max: 0.010, key: "neck",   label: "首差" },
+  { max: 0.022, key: "half",   label: "半身" },
+  { max: 0.055, key: "body",   label: "一体" },
+  { max: 99,    key: "big",    label: "大差" }
+];
+function marginTier(dTau) {
+  const d = Math.abs(+dTau || 0);
+  for (const t of BC_MARGIN_TIER) if (d <= t.max) return t;
+  return BC_MARGIN_TIER[BC_MARGIN_TIER.length - 1];
+}
+
+const BC_GAP_CALL  = 0.040;  // 実況の最短間隔（下限。実際は字数から算出した値が優先される）
 const BC_GAP_COLOR = 0.050;  // 解説は一拍置く
+
+// 区間キー → 「そこで効く能力」。data_courses の weights から機械的に出す。
+// ★旧 race_beats.js から移設。あちらの buildRaceBeats は「自分の賭けが的中圏内へ
+//   入った/外れた」を最優先級のビートとして持っており、レース中に賭け竜へ言及しない
+//   という方針に構造的に反していた。生きていたのはこの1関数だけなので引き取り、
+//   旧ファイルごと読み込みから外す（禁句チェックでは拾えない“構造の違反”を根から断つ）。
+function beatSectionStats(race, phaseKey) {
+  try {
+    const sec = getSection(phaseKey, race[phaseKey]);
+    if (!sec || !sec.weights) return { label: "", stats: [], terrain: null };
+    const JP = { speed: "速さ", stamina: "底力", fire: "闘志", wing: "翼", turn: "旋回", nerve: "気性" };
+    const stats = Object.keys(sec.weights)
+      .filter(k => sec.weights[k] > 0)
+      .sort((a, b) => sec.weights[b] - sec.weights[a])
+      .slice(0, 2).map(k => JP[k] || k);
+    return { label: sec.label || "", stats, terrain: sec.terrain || null };
+  } catch (e) { return { label: "", stats: [], terrain: null }; }
+}
 
 // -----------------------------------------------------------------------------
 // 1) 解析 — レースを最初に全部読む
@@ -148,9 +197,11 @@ function buildBroadcast(timeline, ctx, opts) {
   const ckey = cmt && cmt.key;
   const A = bcAnalyze(timeline, ctx);
   const race = ctx.race || {};
-  const mine = (ctx.bet && ctx.bet.selections) || [];
+  // ★ctx.bet はここで一切読まない。賭け情報を持ち込まなければ、うっかり
+  //   賭け竜を主役にする実装ミスが構造上できなくなる。
   const script = [];
   let lastCall = -1, lastColor = -1;
+  let lastCallNeed = 0, lastColorNeed = 0;   // 直前の行が読み終わるまでに要る時間（τ）
   const used = { call: [], color: [] };
   let seed = 3;
 
@@ -162,16 +213,31 @@ function buildBroadcast(timeline, ctx, opts) {
     }
     return pool[seed % pool.length];
   };
+  // レースの実尺（秒）。表示時間を字数から決めるのに要る。
+  const raceSec = (timeline && timeline.durationSecHint) || 46;
+  // 局面ごとの“間”。終盤は詰めて畳みかけ、入場と余韻はゆったり。
+  const beatOf = (tag) =>
+    (tag === "final" || tag === "goal") ? BC_BEAT.rush
+    : (tag === "entry" || tag === "course") ? BC_BEAT.calm
+    : BC_BEAT.normal;
+
   const say = (tau, side, tpl, vars, tag) => {
     if (!tpl) return false;
     const line = String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : ""));
-    const gap = side === "color" ? BC_GAP_COLOR : BC_GAP_CALL;
+    // ★表示時間は字数から決める。固定間隔だと、長い行は読めず短い行は間延びする。
+    const need = bcHoldTau(line, beatOf(tag), raceSec);
     const lastT = side === "color" ? lastColor : lastCall;
-    let at = Math.max(tau, lastT + gap);
+    const lastNeed = side === "color" ? lastColorNeed : lastCallNeed;
+    let at = Math.max(tau, lastT + lastNeed);
+    // ★実況と解説を同時に切り替えない。52px×2段が同時に変わると
+    //   一瞬の認知負荷が倍になり、どちらを読めばいいか分からなくなる。
+    const otherT = side === "color" ? lastCall : lastColor;
+    if (Math.abs(at - otherT) < 0.012) at = otherT + 0.014;
     if (at > 0.995 && tag !== "goal") return false;
     used[side].push(line); if (used[side].length > 4) used[side].shift();
-    script.push({ tau: at, side, line, tag });
-    if (side === "color") lastColor = at; else lastCall = at;
+    script.push({ tau: at, side, line, tag, hold: need });
+    if (side === "color") { lastColor = at; lastColorNeed = need; }
+    else { lastCall = at; lastCallNeed = need; }
     return true;
   };
   // ★実況と解説は別の引き出しから引く。同じ配列を共有すると、解説が
@@ -211,20 +277,22 @@ function buildBroadcast(timeline, ctx, opts) {
   color(0.012, "entry", "condition",
         { w: weather ? weather.label : "", s: (weather ? Object.keys(weather.weights || {}).slice(0, 1) : []).join("") }, "entry");
 
-  // 注目の竜＝1番人気と、自分が賭けた竜。最大2頭まで。
-  const favId = (() => {
-    try { return (ctx.oddsResult.oddsData.find(o => o.popularityRank === 1) || {}).dragonId; } catch (e) { return null; }
+  // 注目の竜＝人気上位2頭だけ。★誰に賭けたかは一切参照しない。
+  //   以前は「1番人気＋自分の賭け竜」を選んでいた。中立的な言葉で描写していても、
+  //   賭け竜を主役に選出している時点で構造的な違反になる（禁句チェックでは拾えない）。
+  //   実況が伝えるのは着順の行方であって、誰に賭けたかではない。
+  const pops = (() => {
+    try {
+      return (ctx.oddsResult.oddsData || [])
+        .slice().sort((a, b) => (a.popularityRank || 99) - (b.popularityRank || 99))
+        .slice(0, 2).map(o => o.dragonId).filter(Boolean);
+    } catch (e) { return []; }
   })();
-  const notable = [];
-  if (favId) notable.push({ id: favId, why: "fav" });
-  mine.forEach(id => { if (id !== favId && notable.length < 2) notable.push({ id, why: "mine" }); });
-  A.notable = notable.map(x => x.id);
-  notable.forEach((nb, i) => {
+  A.notable = pops;
+  pops.forEach((id, i) => {
     const t = 0.016 + i * 0.008;
-    call(t, "entry", nb.why === "fav" ? "favorite" : "mine",
-         { n: nameOf(nb.id), st: styleJP(nb.id) }, "entry");
-    color(t + 0.004, "entry", nb.why === "fav" ? "favorite" : "mine",
-          { n: nameOf(nb.id), st: styleJP(nb.id) }, "entry");
+    call(t, "entry", i === 0 ? "favorite" : "rival", { n: nameOf(id), st: styleJP(id) }, "entry");
+    color(t + 0.004, "entry", i === 0 ? "favorite" : "rival", { n: nameOf(id), st: styleJP(id) }, "entry");
   });
 
   // ── 序盤（〜0.30）＝隊列が決まるまで ────────────────────────────
