@@ -41,6 +41,19 @@ function showAssetBreakdown() {
 // 🎯 目標（クエスト）／🍽️ 食事（みみしんぼ）の画面は js/ui_meta.js へ抽出済み（CODEMAP §6・分割第1弾）。
 //   renderGoals / renderMeals / showMealDetail / _mealTab はそちら。ロジックは無改変で移動しただけ。
 
+// お部屋のミミのミニ絵＝いま着ている衣装のもの。
+// ★衣装idとファイル名が同名という約束（images/cast/mimi/mimi_<id>_mini.png）。
+//   衣装の取得に失敗しても、絵が欠けていても、既定の1枚に落として必ず何かを返す。
+function _lrRoomMimiSrc() {
+  const FALLBACK = "images/cast/mini/mimi_loading1_mini.png";
+  try {
+    const id = (typeof currentOutfitId === "function")
+      ? currentOutfitId()
+      : (state && state.player ? state.player.outfit : null);
+    return id ? `images/cast/mimi/mimi_${id}_mini.png` : FALLBACK;
+  } catch (e) { return FALLBACK; }
+}
+
 function renderAssets() {
   state.ui.screen = "assets";
   recomputeAssets(state);
@@ -65,7 +78,13 @@ function renderAssets() {
   hero.style.backgroundImage = `url('images/homebg/myroom_t${_roomT}_${_dn}.webp')`;
   hero.innerHTML =
     `<span class="lr-room-seal">${(typeof roomName === "function") ? roomName(_roomT) : "いまのお部屋"}<b>Lv.${_roomT}</b></span>` +
-    `<img class="lr-room-mimi" src="images/cast/mini/mimi_loading1_mini.png" alt="ミミ" decoding="async">` +
+    // ★お部屋のミミは、いま着ている衣装のミニ絵にする。
+    //   ここは mimi_loading1_mini.png を直書きしていたため、モールで
+    //   着替えても暮らし画面だけ昔の服のままだった（ユーザー指摘）。
+    //   ミニ絵は images/cast/mimi/mimi_<衣装id>_mini.png（衣装idと同名）。
+    //   未納品の衣装があるので onerror で既定の1枚に落とす（欠けても壊さない）。
+    `<img class="lr-room-mimi" src="${_lrRoomMimiSrc()}" alt="ミミ" decoding="async"` +
+      ` onerror="this.onerror=null;this.src='images/cast/mini/mimi_loading1_mini.png'">` +
     `<div class="lr-room-info"><div class="lr-room-lbl">資産</div>` +
       `<div class="lr-room-total">${fmtCoins(total)}</div>` +
       `<div class="lr-room-p">内訳を見る ▸</div></div>`;
