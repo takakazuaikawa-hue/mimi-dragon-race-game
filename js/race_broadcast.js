@@ -412,6 +412,43 @@ function buildBroadcast(timeline, ctx, opts) {
     } catch (e) { return []; }
   })();
   A.notable = pops;
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 予言 — 解説者が入場で見立てを言い切り、決着で答え合わせする
+  // ═══════════════════════════════════════════════════════════════════
+  // ★これが解説の描き分けと笑いの両方を担う中核。
+  //   ・見立ての「中身」が人によって違う＝物差しの違いがそのまま個性になる
+  //     （性格の形容詞ではなく、何で世界を測るかで分ける）
+  //   ・オチはレース結果が毎回無料で供給する。台詞を足さなくても摩耗しない
+  //   ★公正であること：予言は入場時点で分かる情報（人気・脚質）だけで選ぶ。
+  //     結果を見てから当たる予言を選んだら、ただのやらせになる。
+  const prophecy = (() => {
+    if (!cmt) return null;
+    const fav = pops[0], rival = pops[1];
+    if (!fav) return null;
+    const styleOf = (id) => { const d = timeline.byId && timeline.byId[id]; return d ? d.style : null; };
+    // 解説者ごとに「何を予言するか」が違う＝物差しの違い
+    const P = {
+      // 気配で見る → この竜は前で受けて立つ、と言う
+      sake:     { target: fav,   kind: "leadsAtSomePoint" },
+      // 市場の歪みで見る → 人気は過大評価だ、と言う
+      mizu:     { target: fav,   kind: "favFlops" },
+      // 消耗で見る → 前で使う竜は最後に沈む、と言う
+      sumika:   { target: null,  kind: "frontFades" },
+      // 熱で見る → 今日は荒れる、と言う
+      makura:   { target: null,  kind: "chaos" },
+      // 俯瞰で見る → 後ろから来た子が主役になる、と言う
+      celestia: { target: null,  kind: "closerWins" },
+      // 運で見る → 勘で1頭を名指しする
+      unme:     { target: rival || fav, kind: "namedWins" }
+    };
+    const p = P[cmt.key];
+    if (!p) return null;
+    p.targetName = p.target ? nameOf(p.target) : "";
+    p.targetStyle = p.target ? styleJP(p.target) : "";
+    return p;
+  })();
+  A.prophecy = prophecy;
   pops.forEach((id, i) => {
     const t = 0.016 + i * 0.008;
     call(t, "entry", i === 0 ? "favorite" : "rival", { n: nameOf(id), st: styleJP(id) }, "entry");
@@ -419,6 +456,16 @@ function buildBroadcast(timeline, ctx, opts) {
     //   「この人はこういう物差しで見る」が伝わればそれで足りる。
     if (i === 0) color(t + 0.006, "entry", "favorite", { n: nameOf(id), st: styleJP(id) }, "entry");
   });
+
+  // ★解説者の自己紹介＝「この人は何で世界を測るか」を毎回名乗る。
+  //   6人をランダムで出すのに名乗りが無いと、誰が喋っているのか分からない。
+  color(0.032, "intro", "self", {}, "entry");
+  // ★そして見立てを言い切る。これが決着で答え合わせされる＝第二の賭け。
+  if (prophecy) {
+    color(0.040, "prophecy", cmt.key, {
+      t: prophecy.targetName, st: prophecy.targetStyle
+    }, "entry");
+  }
 
   // ── 序盤（〜0.30）＝隊列が決まるまで ────────────────────────────
   // ★「並んでいる」は言わない。序盤に並んでいるのは当たり前で報せる価値がない。
@@ -570,6 +617,35 @@ function buildBroadcast(timeline, ctx, opts) {
   // ★最後の一行＝決め台詞。ここで終わる。
   say(D + 0.020, "call", pick(poolOf("climax", dm.headline || "solid", "call"), "call"), dv, "goal");
   say(D + 0.006, "color", pick(poolOf("decide", A.pattern, "color"), "color"), dv, "goal");
+
+  // ★予言の答え合わせ。当たれば勝ち誇り、外れれば自爆する。
+  //   判定は確定済みの結果を読むだけ（新しい判定は作らない）。
+  if (prophecy) {
+    const hit = (() => {
+      switch (prophecy.kind) {
+        case "leadsAtSomePoint":   // 名指しの竜が一度でも先頭に立ったか
+          return A.samples.some(s => s.order[0] === prophecy.target);
+        case "favFlops":           // 1番人気が3着を外したか
+          return [A.winner, A.second, A.third].indexOf(prophecy.target) < 0;
+        case "frontFades":         // 序盤の先頭が3着を外したか
+          return (() => {
+            const early = A.samples.find(s => s.tau >= 0.15);
+            const lead = early ? early.order[0] : null;
+            return lead ? [A.winner, A.second, A.third].indexOf(lead) < 0 : false;
+          })();
+        case "chaos":              // 4番人気以下が勝ったか
+          return (A.drama && A.drama.popRank >= 4);
+        case "closerWins":         // 後ろから来た竜が勝ったか
+          return (A.drama && A.drama.comeback >= 2);
+        case "namedWins":          // 名指しの竜が勝ったか
+          return prophecy.target === A.winner;
+        default: return false;
+      }
+    })();
+    A.prophecyHit = hit;
+    const vv = { n: nameOf(A.winner), t: prophecy.targetName, st: prophecy.targetStyle };
+    say(D + 0.030, "color", pick(poolOf("verdict", hit ? "hit" : "miss", "color"), "color"), vv, "goal");
+  }
 
   // ── 詰め込み ────────────────────────────────────────────────────
   // 時間は有限。読める時間を確保しながら、入らない行は優先度の低いものから捨てる。

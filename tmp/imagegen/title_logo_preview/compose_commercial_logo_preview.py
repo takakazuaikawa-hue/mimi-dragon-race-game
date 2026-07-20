@@ -15,7 +15,7 @@ def crop_alpha(image):
     return image.crop(box)
 
 
-def draw_centered_text(draw, xy, text, font, fill, stroke_width=3):
+def draw_centered_text(draw, xy, text, font, fill, stroke_width=2):
     draw.text(xy, text, font=font, anchor="mm", fill=fill,
               stroke_width=stroke_width, stroke_fill=(29, 13, 30, 240))
 
@@ -40,10 +40,10 @@ def build_lockup():
     d.ellipse((cx - 25, y0 - 2, cx - 19, y0 + 4), fill=(224, 172, 82, 240))
     d.ellipse((cx + 19, y0 - 2, cx + 25, y0 + 4), fill=(224, 172, 82, 240))
 
-    f1 = ImageFont.truetype(FONT_SERIF, 31)
-    f2 = ImageFont.truetype(FONT_SERIF, 36)
-    draw_centered_text(d, (cx, y0 + 46), SUB_LINE_1, f1, (246, 232, 201, 255), 3)
-    draw_centered_text(d, (cx, y0 + 92), SUB_LINE_2, f2, (224, 174, 83, 255), 3)
+    f1 = ImageFont.truetype(FONT_SERIF, 34)
+    f2 = ImageFont.truetype(FONT_SERIF, 40)
+    draw_centered_text(d, (cx, y0 + 47), SUB_LINE_1, f1, (255, 244, 216, 255), 2)
+    draw_centered_text(d, (cx, y0 + 96), SUB_LINE_2, f2, (239, 196, 106, 255), 2)
 
     path = OUT / "title_logo_k_commercial_lockup.png"
     canvas.save(path)
@@ -60,7 +60,7 @@ def build_mockup(lockup):
     veil = veil.filter(ImageFilter.GaussianBlur(56))
     bg = Image.alpha_composite(bg, veil)
 
-    target_w = 780
+    target_w = 790
     target_h = round(lockup.height * target_w / lockup.width)
     small = lockup.resize((target_w, target_h), Image.Resampling.LANCZOS)
     bg.alpha_composite(small, ((bg.width - target_w) // 2, 39))

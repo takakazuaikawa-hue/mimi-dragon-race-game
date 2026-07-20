@@ -1823,7 +1823,7 @@ function startRaceCanvas(container, ctx) {
   // ── 一文字ずつ打つ（実況の出方）────────────────────────────────
   // ★速さは「読む速さ」より上に置く。打ち終わってから読む時間が残る配分。
   //   打ち切れなかった行は _typeCut に数える＝読めていない行の機械的な証拠になる。
-  const TYPE_CPS = 30;                     // 打つ速さ（字/秒）
+  const TYPE_CPS = 45;                     // 打つ速さ（字/秒）
   const _typeT = { call: null, color: null };
   const _typeCut = { call: 0, color: 0 };  // 打ち終わる前に差し替わった回数
   function typeInto(el, text, key) {
@@ -3753,7 +3753,9 @@ function startRaceCanvas(container, ctx) {
     // 的中ライン（賭けているときだけ）＝射幸性の本丸。常に「あと何人抜けば的中か」が線で見える。
     if (bet && betSet.size && HIT_LINE_RANK > 0 && HIT_LINE_RANK < dragons.length) {
       boardHitLineEl = el("div", "rcb-hitline");
-      boardHitLineEl.innerHTML = `<span class="rcb-hl-tag">ここより上で的中</span>`;
+      // ★「ここより上で的中」の札は撤去（ユーザー指摘：点線があれば分かる）。
+      //   点線そのものが境界の表現なので、言葉で重ねると盤面が言葉に埋まる。
+      boardHitLineEl.innerHTML = "";
       boardHitLineEl.style.transform = `translateY(${BOARD_ROW_H * HIT_LINE_RANK}px)`;
       boardEl.appendChild(boardHitLineEl);
     }
