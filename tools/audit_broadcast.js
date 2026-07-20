@@ -192,6 +192,39 @@ const RULES = [
         if (over) return "パレード" + dur + "秒で入場の行が発走にはみ出す";
       }
       return null; } },
+  // ★解説が「誰がやっても同じ」になっていないか。
+  //   ユーザーの指摘「解説はキャラごとの差異もちゃんと出てない」に対応する規則。
+  //   BC_LINES の color は解説者キーごとの引き出しと、共通の受け皿 _ を持つ。
+  //   _ ばかりが流れているなら、6人いる意味が無い。
+  //   差し込み枠 {n} は何にでも化けるので、型に戻してから照合する。
+  { key: "解説が誰でも同じ", fn: c => {
+      if (!c.cmKey) return null;
+      const B = S.BC_LINES;
+      const esc = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const toRe = t => new RegExp("^" + esc(t).replace(/\\\{[a-z0-9]+\\\}/g, ".+") + "$");
+      let own = 0, gen = 0;
+      const genTags = {};
+      c.color.forEach(x => {
+        let hit = "";
+        for (const g of Object.keys(B)) for (const u of Object.keys(B[g])) {
+          const co = B[g][u] && B[g][u].color; if (!co) continue;
+          // ★prophecy は use のキー自体が解説者名（prophecy.sake のような形）。
+          //   その場合は _ に入っていても「その人固有」なので、汎用に数えない。
+          const own = (co[c.cmKey] || []).concat(u === c.cmKey ? (co._ || []) : []);
+          if (own.some(t => toRe(t).test(x.line))) hit = "own";
+          else if (hit !== "own" && (co._ || []).some(t => toRe(t).test(x.line))) hit = "gen";
+        }
+        if (hit === "own") own++;
+        else if (hit === "gen") { gen++; genTags[x.tag] = (genTags[x.tag] || 0) + 1; }
+      });
+      const tot = own + gen;
+      if (tot < 4) return null;
+      const rate = own / tot;
+      if (rate >= 0.80) return null;   // 実測90〜92%。落ちたら気づけるように締めてある
+      const worst = Object.entries(genTags).sort((a, b) => b[1] - a[1])
+        .slice(0, 3).map(x => x[0] + "×" + x[1]).join(" ");
+      return "固有" + own + "／汎用" + gen + "（固有率" +
+        Math.round(rate * 100) + "%）汎用が多い局面: " + worst; } },
   { key: "解説が相槌になっている", fn: c =>
       c.color.length > c.call.length * 0.75
         ? "実況" + c.call.length + "／解説" + c.color.length : null },
@@ -275,6 +308,7 @@ for (let i = 0; i < N; i++) {
   }
   const ctx = {
     race, script: bc.script, A: bc.analysis,
+    cmKey: cmt && cmt.key,
     sec: tl.durationSecHint,
     call: bc.script.filter(x => x.side === "call"),
     color: bc.script.filter(x => x.side === "color"),
