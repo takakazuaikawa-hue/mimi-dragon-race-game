@@ -36,7 +36,7 @@
 //   「豆知識が抜いた抜かれたを押しのける」ことが起きないようにしている。
 const BEAT_PRI = {
   goal: 100, zoneIn: 98, zoneOut: 96,      // ①勝敗
-  overtake: 90, battle: 86, lastSpurt: 84, // ②抜いた抜かれた・競り合い
+  overtake: 90, lastSpurt: 84, battle: 80, // ②抜いた抜かれた・競り合い
   collapse: 74, stumble: 72, surge: 70,    // ③レースの出来事
   goodStart: 62, slowStart: 60, start: 58,
   section: 50, underdog: 48, favorite: 46,
@@ -106,7 +106,8 @@ function buildRaceTopics(timeline, ctx) {
   } catch (e) {}
   ["early", "mid", "late"].forEach(k => {
     const s = beatSectionStats(race, k);
-    if (s.label) add(TOPIC_SUBJECT.TERRAIN, null, { phaseKey: k, label: s.label, stats: s.stats, terrain: s.terrain });
+    if (s.label) { const win = k === "early" ? [0, 0.34] : k === "mid" ? [0.34, 0.67] : [0.67, 1];
+      add(TOPIC_SUBJECT.TERRAIN, null, { phaseKey: k, label: s.label, stats: s.stats, terrain: s.terrain, win }); }
   });
 
   // 出走者の背景（1頭ずつ）
@@ -310,4 +311,187 @@ function buildRaceBeats(timeline, ctx) {
     lastAt[key] = b.tau;
     return true;
   });
+}
+
+// =============================================================================
+// buildBeatTelop — 台帳（出来事＋話題）を、実況／解説の2本の口に配る
+// =============================================================================
+// ★ここが「三つが織りなす」の結び目。竜の動きとエフェクトは、すでに同じ瞬間を
+//   キャンバス側が自前で検知して弾けている（かわした！／仕掛けた！／画面揺れ）。
+//   同じ出来事から言葉も生やすことで、揺れ・叫び・理由が同じ瞬間に重なる。
+//
+// ★読める速さの上限がある。出来事は毎レース90件以上あるが、全部を喋ると
+//   1行0.5秒で流れて誰も読めない。そこで「間引く」のではなく「配る」：
+//     ・実況と解説は別々の口＝それぞれ独立した間隔予算を持つ
+//     ・勝敗と抜いた抜かれたは必ず実況の口へ（落とさない。詰まったら後ろへずらす）
+//     ・それ以外は空いている口へ
+//     ・どちらの口も長く黙ったら、そこへ話題を差し込む＝沈黙を知識で埋める
+//   厚みは行数ではなく「毎行が今この瞬間の話である」ことから出る。
+// =============================================================================
+const TELOP_GAP_CALL  = 0.040;   // 実況の最短間隔（τ）。読める速さの下限。
+const TELOP_GAP_COLOR = 0.052;   // 解説は一拍置く＝掛け合いに聞こえる。
+const TELOP_QUIET     = 0.070;   // これだけ黙ったら話題を差す。
+
+// 配列から決定的に1本選ぶ（同じレースを見直しても同じ台詞＝録画と食い違わない）。
+function pickLine(arr, seed) {
+  if (!arr || !arr.length) return null;
+  return arr[Math.abs(seed | 0) % arr.length];
+}
+function fillLine(tpl, vars) {
+  return String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : ""));
+}
+
+function buildBeatTelop(beats, topics, opts) {
+  opts = opts || {};
+  const nameOf = opts.nameOf || (id => id);
+  const cmt = opts.commentator;
+  const colorSet = (cmt && typeof COLOR_LINES !== "undefined") ? COLOR_LINES[cmt.key] : null;
+  const out = [];
+  let seed = 7;
+  let lastCall = -1, lastColor = -1;
+
+  // ★同じ台詞の連発を防ぐ。接戦が続くと「まだ並んでる」ばかりになり、
+  //   実況が本当に薄く聞こえる（実測で発覚）。直近に言った文は使わない。
+  const recent = { call: [], color: [] };
+  const say = (tau, side, line, force) => {
+    if (!line) return false;
+    const key = side === "color" ? "color" : "call";
+    // ★force＝勝敗と抜いた抜かれた。ここだけは重複でも言い切る。
+    //   同じ言い回しが続く不格好さより、抜いた事実が消える害の方がはるかに大きい。
+    if (!force && recent[key].includes(line)) return false;
+    recent[key].push(line); if (recent[key].length > 3) recent[key].shift();
+    // ★上限で潰さない。0.999 で頭打ちにすると複数行が同じ位置に重なり、
+    //   間隔ゼロ＝一瞬で流れて読めなくなる（実測で発覚）。入らないなら言わない。
+    if (tau > 0.995 && !force) return false;
+    out.push({ tau: Math.max(0, tau), line, side, fired: false });
+    if (key === "color") lastColor = tau; else lastCall = tau;
+    return true;
+  };
+
+  const sorted = beats.slice().sort((a, b) => a.tau - b.tau);
+  for (const b of sorted) {
+    seed++;
+    const vars = {
+      n: b.id ? nameOf(b.id) : "", n2: b.data.rival ? nameOf(b.data.rival) : "",
+      from: b.data.from, to: b.data.to, r: b.data.place || b.rank || "",
+      label: b.data.label || "", s: (b.data.stats || []).join("と")
+    };
+    const mustKeep = b.pri >= 84;          // ①勝敗 と ②抜いた抜かれた
+    let tau = b.tau;
+    // ★連発防止で「抜いた」が黙らされては本末転倒。同じ文になりそうなら別の言い回しを探す。
+    const freshFrom = (pool, sd, side) => {
+      if (!pool || !pool.length) return null;
+      for (let k = 0; k < pool.length; k++) {
+        const cand = fillLine(pool[(Math.abs(sd | 0) + k) % pool.length], vars);
+        if (!recent[side].includes(cand)) return cand;
+      }
+      return fillLine(pickLine(pool, sd), vars);
+    };
+
+    // --- 実況側 ---
+    // ★ゴールだけは決着の「形」で言葉を変える（独走/大接戦/差し切り/大波乱/的中…）。
+    let callPool = (typeof CALL_LINES !== "undefined") ? CALL_LINES[b.kind] : null;
+    if (b.kind === "goal" && opts.goalSit && typeof GOAL_CALL !== "undefined") {
+      callPool = GOAL_CALL[opts.goalSit] || GOAL_CALL.normal || callPool;
+    }
+    let spoke = false;
+    if (callPool) {
+      if (tau - lastCall >= TELOP_GAP_CALL) {
+        spoke = say(tau, "call", freshFrom(callPool, seed, "call"), mustKeep);
+      } else if (mustKeep) {
+        // ★落とさない。詰まっているだけなので、読める間隔まで後ろへずらして必ず言う。
+        spoke = say(lastCall + TELOP_GAP_CALL, "call", freshFrom(callPool, seed, "call"), true);
+      }
+    }
+
+    // --- 解説側 ---
+    let colorPool = colorSet && colorSet[b.kind];
+    if (b.kind === "goal" && opts.goalSit && cmt && typeof GOAL_COLOR !== "undefined") {
+      const gc = GOAL_COLOR[cmt.key];
+      if (gc && gc[opts.goalSit]) colorPool = gc[opts.goalSit];
+    }
+    // ★間合いは「実況が実際に喋った時刻」で測る。詰まって後ろへずらした場合、
+    //   ずらす前の時刻で測ると解説だけ過去に取り残され、掛け合いが痩せる（実測で発覚）。
+    const atNow = spoke ? lastCall : tau;
+    if (colorPool && atNow - lastColor >= TELOP_GAP_COLOR) {
+      say(atNow + (spoke ? 0.012 : 0), "color", freshFrom(colorPool, seed * 3, "color"));
+    }
+  }
+
+  // --- 沈黙へ話題を差し込む ---
+  // 実況が黙っている区間を探し、そこへ「今日の場」「この竜の売り」を置く。
+  if (topics && topics.length && typeof TOPIC_LINES !== "undefined") {
+    const marks = out.filter(o => o.side === "call").map(o => o.tau).sort((a, b) => a - b);
+    const gaps = [];
+    let prev = 0.03;
+    for (const m of marks.concat([1.0])) {
+      if (m - prev >= TELOP_QUIET) gaps.push(prev + (m - prev) / 2);
+      prev = m;
+    }
+    let ti = 0;
+    const usedTopic = new Set();
+    for (const g of gaps) {
+      // ★その時刻に言って“事実として正しい”話題だけを選ぶ。
+      //   地形の話題は自分の区間の中でしか言わない（実測で「大旋回を走りながら
+      //   『ここは長直線スタート』」という嘘が出た）。一度使った話題も繰り返さない。
+      let tp = null;
+      for (let k = 0; k < topics.length; k++) {
+        const cand = topics[(ti + k) % topics.length];
+        if (usedTopic.has(cand)) continue;
+        const w = cand.data && cand.data.win;
+        if (w && (g < w[0] || g > w[1])) continue;
+        tp = cand; ti = ti + k + 1; break;
+      }
+      if (!tp) continue;
+      usedTopic.add(tp);
+      const set = TOPIC_LINES[tp.subject];
+      if (!set) continue;
+      const d = tp.data || {};
+      const vars = {
+        n: tp.id ? nameOf(tp.id) : "", label: d.label || d.region || "",
+        s: (d.stats || []).join("と"), t: (d.traits || [])[0] || "",
+        mark: d.mark || "", f: d.form || "", seen: d.seen || 0, text: d.text || ""
+      };
+      // 話題も実況と解説の掛け合いで出す＝ひとりごとにしない
+      say(g, "call", fillLine(pickLine(set.call, ti), vars));
+      if (set.color && g - lastColor >= TELOP_GAP_COLOR) {
+        say(g + 0.016, "color", fillLine(pickLine(set.color, ti * 5), vars));
+      }
+    }
+  }
+
+  return out.sort((a, b) => a.tau - b.tau);
+}
+
+// ゴールの決着の「形」を判定する。珍しい形ほど優先＝毎回同じ叫びにならない。
+// ★純粋な観測。着順・配当には一切触れない（表示専用）。
+function goalSituation(ctx, timeline) {
+  const cr = (ctx.raceResult && ctx.raceResult.results) || [];
+  if (!cr.length) return "normal";
+  const w = cr[0], second = cr[1];
+  const bet = ctx.bet, hit = ctx.betHit;
+  try {
+    // ★finishTau は timeline.dragons の各要素が持つ（メソッドではない）。
+    const tauOf = (id) => {
+      const d = (timeline.dragons || []).find(x => x.id === id);
+      return d ? d.finishTau : null;
+    };
+    const t1 = tauOf(w.id), t2 = second ? tauOf(second.id) : null;
+    if (t1 != null && t2 != null) {
+      if (t2 - t1 < 0.006) return "photo";
+      if (t2 - t1 > 0.055) return "runaway";
+    }
+  } catch (e) {}
+  if (hit === true) return "hit";
+  if (hit === false) {
+    const sel = (bet && bet.selections) || [];
+    if (cr.slice(1, 3).some(r => sel.includes(r.id))) return "nearMiss";
+    return "miss";
+  }
+  try {
+    const pr = (ctx.oddsResult.oddsData.find(o => o.dragonId === w.id) || {}).popularityRank;
+    if (pr >= 5) return "upset";
+    if (pr === 1) return "chalk";
+  } catch (e) {}
+  return "normal";
 }

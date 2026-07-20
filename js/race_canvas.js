@@ -1716,9 +1716,28 @@ function startRaceCanvas(container, ctx) {
     try { state.player.lastCommentator = _commentator.key; } catch (e) {}
   }
 
-  // ---- telop scheduling: spread each phase's commentary across its τ-span ----
-  const telopSchedule = [];
-  if (commentary && commentary.length) {
+  // ---- telop scheduling ----
+  // ★本流＝出来事台帳から生やす（race_beats.js）。竜の動きとエフェクトが弾ける
+  //   まさにその瞬間に、実況と解説の言葉も出る＝三つが同じ拍で織り合う。
+  //   台帳が作れない場合だけ、従来のフェーズ単位の割り付けへ落ちる（安全側）。
+  let telopSchedule = [];
+  let _beatCount = 0;
+  try {
+    if (typeof buildRaceBeats === "function" && typeof buildBeatTelop === "function") {
+      const _cx = { race, bet, oddsResult, raceResult, trialForms: ctx.trialForms };
+      const _beats = buildRaceBeats(timeline, _cx);
+      const _topics = (typeof buildRaceTopics === "function") ? buildRaceTopics(timeline, _cx) : [];
+      telopSchedule = buildBeatTelop(_beats, _topics, {
+        commentator: _commentator,
+        goalSit: (typeof goalSituation === "function")
+          ? goalSituation({ raceResult, bet, oddsResult, betHit: computeBetHit() }, timeline) : null,
+        nameOf: (id) => (typeof commentaryName === "function" ? commentaryName(id) : id)
+      });
+      _beatCount = _beats.length;
+    }
+  } catch (e) { telopSchedule = []; }
+
+  if (!telopSchedule.length && commentary && commentary.length) {
     let prevT = 0;
     for (let p = 0; p < commentary.length; p++) {
       const endT = (p < TL_PHASE_TAU.length) ? TL_PHASE_TAU[p] : 1.0;
