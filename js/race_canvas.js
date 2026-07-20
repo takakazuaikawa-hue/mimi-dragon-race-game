@@ -1370,7 +1370,7 @@ function startRaceCanvas(container, ctx) {
     if (betSet.has(dr.id)) {
       try { if (window.Sfx) Sfx.play("tick", 1.25); } catch (e) {}
       pushChat("mineUp", commentaryName(dr.id));
-      S.pops.push({ x: cw * 0.42 - 10, y: ch * 0.55, tx: "✨", c: "#ffe9a8",
+      S.pops.push({ x: startTapeX() - 10, y: ch * 0.55, tx: "✨", c: "#ffe9a8",
         t0: performance.now() / 1000, sz: 15 });
     }
   }
@@ -3964,7 +3964,7 @@ function startRaceCanvas(container, ctx) {
       if (!S.tapeBurst) {
         S.tapeBurst = true;
         for (let i = 0; i < 6; i++) {
-          spawnSpark(cw * 0.42, ch * 0.30 + ((ch * 0.92 - ch * 0.30) / 5) * i, "#ffe9a8");
+          spawnSpark(startTapeX(), ch * 0.30 + ((ch * 0.92 - ch * 0.30) / 5) * i, "#ffe9a8");   // ★テープと同じ位置で弾ける
         }
       }
       S.tapeAlpha = Math.max(0, S.tapeAlpha - dt * S.speed * 3.2);
