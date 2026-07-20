@@ -987,6 +987,12 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   box-shadow: inset 2px 0 0 #ffd76a;
 }
 .rc-board .rcb-row.mine .rcb-nm { color: #fff3d0; }
+.rc-board .rcb-pay {
+  flex: none; font-size: 10px; font-weight: 900; color: #2a2013;
+  background: linear-gradient(180deg,#ffe08a,#e8b455); border-radius: 99px; padding: 2px 8px;
+  animation: rcbPayIn .3s ease both;
+}
+@keyframes rcbPayIn { from { opacity: 0; transform: scale(.8); } }
 /* 圏内に入った自分の行＝金に発光 */
 .rc-board .rcb-row.mine.in-zone {
   background: linear-gradient(90deg, rgba(255,214,120,.34), rgba(255,214,120,.08));
@@ -1164,6 +1170,7 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .rc-board.zone-hit, .rc-wrap.rc-climax { animation: none; }
   .rc-board .rcb-row { transition: none; }   /* FLIPの流れも止める＝静的な並び替えに */
+  .rc-board .rcb-pay { animation: none; }
 }
 
 .broadcast-mimi {
@@ -7668,62 +7675,4 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @media (prefers-reduced-motion: reduce) {
   /* 静かな磨きはアニメを持たない（影の切替のみ）。念のため遷移も切る＝既存の作法(.tix 等)に合わせる。 */
   .hl .hl-race, .hl .hl-nextrace { transition: none; }
-}
-
-/* ── MY BET バー（レース画面・上部固定のスコアバグ）────────────────────
-   自分の賭けた竜の状況だけを、動かない場所に常時出す。着順で並び替わるボードと違い
-   位置が固定なので、レース中どこを見ていても「自分の勝負」が視界の端に入る。
-   ★純表示＝着順・オッズ・配当には非干渉（standMap と betExpect を読むだけ）。 */
-.rc-mybet {
-  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
-  background: linear-gradient(90deg, rgba(255,214,106,.20), rgba(255,214,106,.05));
-  border-bottom: 1px solid rgba(255,214,106,.4);
-  box-shadow: inset 3px 0 0 #ffd66a;
-  overflow: hidden; white-space: nowrap;
-}
-.rc-mybet[hidden] { display: none; }   /* UAの[hidden]がauthorのflexに負けるのを明示的に打ち消す */
-.rc-mybet .rcm-k {
-  font-size: 9px; font-weight: 900; letter-spacing: .1em; color: #ffe08a; flex: none;
-}
-.rc-mybet .rcm-one { display: flex; align-items: center; gap: 5px; min-width: 0; }
-.rc-mybet .rcm-rk {
-  font-size: 10px; font-weight: 900; background: #49c89c; color: #06210f;
-  border-radius: 50%; width: 18px; height: 18px; flex: none;
-  display: flex; align-items: center; justify-content: center; line-height: 1;
-}
-.rc-mybet .rcm-nm {
-  font-size: 13px; font-weight: 900; color: #fff;
-  overflow: hidden; text-overflow: ellipsis; min-width: 0;
-}
-.rc-mybet .rcm-gap {
-  font-size: 11px; font-weight: 900; color: #ffe08a;
-  margin-left: auto; flex: none;
-  overflow: hidden; text-overflow: ellipsis; max-width: 46%;
-}
-.rc-mybet .rcm-pay {
-  font-size: 10.5px; font-weight: 900; flex: none;
-  background: linear-gradient(180deg, #ffe08a, #e8b455); color: #2a2013;
-  border-radius: 99px; padding: 2px 8px;
-}
-/* 圏内は帯ごと温度を上げる（常時ではなく状態表示） */
-.rc-mybet.in-zone {
-  background: linear-gradient(90deg, rgba(73,200,156,.28), rgba(255,214,106,.08));
-  border-bottom-color: rgba(73,200,156,.6);
-  box-shadow: inset 3px 0 0 #49c89c;
-}
-/* 圏内の出入り＝大きく1回だけ弾む／順位変動＝小さく1回だけ */
-.rc-mybet.pulse { animation: rcmPulse .5s ease-out; }
-.rc-mybet.bump  { animation: rcmBump .28s ease-out; }
-@keyframes rcmPulse {
-  0%   { transform: scale(1);    filter: brightness(1); }
-  35%  { transform: scale(1.03); filter: brightness(1.5); }
-  100% { transform: scale(1);    filter: brightness(1); }
-}
-@keyframes rcmBump {
-  0%   { transform: translateY(0); }
-  40%  { transform: translateY(-2px); }
-  100% { transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .rc-mybet.pulse, .rc-mybet.bump { animation: none; }
 }
