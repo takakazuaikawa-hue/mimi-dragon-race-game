@@ -1650,6 +1650,72 @@ function uiCollapsible(headerHTML, openByDefault) {
   return { wrap, body };
 }
 
+// ── レース条件の用語ヘルプ ────────────────────────────────────────────
+// 格・距離・天候・地形のチップをタップすると開く説明。
+// ★重要：文章は data_ranks / data_weather / data_courses の実データから機械的に
+//   導出する（weights の上位2つ＝効く能力）。手で書いた説明文を別に持つと、
+//   コースや天候を足したときに説明だけ古くなって嘘をつくため。
+const TERM_STAT_JP = { speed: "速さ", stamina: "底力", fire: "闘志", wing: "翼", turn: "旋回", nerve: "気性" };
+
+// weights マップ（合計1.0）から、効く能力を重い順に n 個返す。
+function termTopStats(weights, n) {
+  return Object.keys(weights || {})
+    .filter(k => weights[k] > 0)
+    .sort((a, b) => weights[b] - weights[a])
+    .slice(0, n || 2)
+    .map(k => TERM_STAT_JP[k] || k);
+}
+
+function termRow(ic, label, sub) {
+  return `<div class="mm-row"><span class="mm-ic">${ic}</span><div><b>${label}</b><small>${sub}</small></div></div>`;
+}
+
+function showRaceTermInfo(kind, race) {
+  if (kind === "rank") {
+    const r = RANKS[race.rank] || {};
+    showInfoPopup(`🏅 ${r.label}（格 R${race.rank}）`,
+      termRow("🏅", "レースの格", "数字が大きいほど格上。強い竜が集まり、上の格ほど賭けられる額も配当の上限も跳ね上がります。") +
+      termRow("💰", `1回に賭けられる上限　${fmtCoins(r.maxWager)}コイン`, "格が上がるほど大きく張れます。無理に上限まで張る必要はありません。") +
+      termRow("📈", `単勝オッズの上限　${r.capsWin}倍`, "大穴が出たときに配当がどこまで伸びるかの天井です。") +
+      termRow("👀", "格が上がると人気の付き方が変わる", "下の格では見た目の実力どおりに人気が動きますが、上の格ほど戦績や評判で人気が決まり、実力とのズレ＝狙い目が生まれます。"));
+    return;
+  }
+  if (kind === "distance") {
+    const d = DISTANCE[race.distance] || {};
+    const heavy = d.mult > 1;
+    showInfoPopup(`📏 ${d.label}`,
+      termRow("📏", "走る距離", "長いほどスタミナの消耗が激しくなります。") +
+      termRow("🫀", heavy ? "底力が重要" : (d.mult < 1 ? "底力より速さ" : "バランス型"),
+        heavy
+          ? `距離が長いぶんスタミナの減りが約${Math.round(d.mult * 100)}%。底力の低い竜は終盤で失速しやすくなります。`
+          : (d.mult < 1
+            ? "短いのでスタミナ切れは起きにくく、速さと出だしがそのまま結果になりやすい条件です。"
+            : "極端に有利不利の出にくい標準の距離です。竜の総合力が素直に出ます。")));
+    return;
+  }
+  if (kind === "weather") {
+    const w = WEATHERS[race.weather] || {};
+    const top = termTopStats(w.weights, 2);
+    showInfoPopup(`${w.label}`,
+      termRow("🌤", "当日の天候", "天候によって、どの能力が結果に効くかが変わります。") +
+      termRow("✨", `この天候で効くのは「${top.join("・")}」`, `${w.label}の日は、この能力が高い竜ほど本来の力を出せます。出走表で見比べてみてください。`));
+    return;
+  }
+  // early / mid / late ＝ コースの地形
+  const phaseJP = { early: "序盤", mid: "中盤", late: "終盤" }[kind];
+  const s = getSection(kind, race[kind]);
+  if (!s) return;
+  const top = termTopStats(s.weights, 2);
+  let body =
+    termRow("🗺", `${phaseJP}の地形`, "コースは序盤・中盤・終盤で地形が変わり、区間ごとに効く能力が違います。") +
+    termRow("✨", `ここで効くのは「${top.join("・")}」`, `${s.label}では、この能力が高い竜が前に出やすくなります。`);
+  if (s.terrain) {
+    body += termRow("🫀", `${TERM_STAT_JP[s.terrain.stat] || s.terrain.stat}が低いと消耗する`,
+      `${s.label}は走るだけでスタミナを削る地形です。${TERM_STAT_JP[s.terrain.stat] || ""}が足りない竜は、ここで消耗して後半に響きます。`);
+  }
+  showInfoPopup(`🗺 ${s.label}`, body);
+}
+
 function renderRaceDetail(race) {
   state.ui.screen = "race_detail";
   runEventHooks("afterRaceSelect", { race });
@@ -1712,14 +1778,16 @@ function renderRaceDetail(race) {
       <div class="bd-title"><b>${raceFullName(race)}</b><span class="bd-sub">${race.purpose || ""}</span></div>
     </div>
     <div class="bd-chips">
-      <span class="bd-chip">🏅 R${race.rank} ${RANKS[race.rank].label}</span>
-      <span class="bd-chip">📏 ${DISTANCE[race.distance].label}</span>
-      <span class="bd-chip">${WEATHERS[race.weather].label}</span>
+      <button type="button" class="bd-chip" data-term="rank">🏅 R${race.rank} ${RANKS[race.rank].label}</button>
+      <button type="button" class="bd-chip" data-term="distance">📏 ${DISTANCE[race.distance].label}</button>
+      <button type="button" class="bd-chip" data-term="weather">${WEATHERS[race.weather].label}</button>
     </div>
-    <div class="bd-course">序盤 ${getSection("early", race.early).label} ▸ 中盤 ${getSection("mid", race.mid).label} ▸ 終盤 ${getSection("late", race.late).label}</div>`;
+    <div class="bd-course">序盤 <button type="button" class="bd-seg" data-term="early">${getSection("early", race.early).label}</button> ▸ 中盤 <button type="button" class="bd-seg" data-term="mid">${getSection("mid", race.mid).label}</button> ▸ 終盤 <button type="button" class="bd-seg" data-term="late">${getSection("late", race.late).label}</button></div>`;
   app.appendChild(head);
-  const _sakeV = advVoiceHeader("sake");
-  if (_sakeV) { _sakeV.classList.add("bd-sake"); app.appendChild(_sakeV); }
+  // 格・距離・天候・地形はタップで意味を開く（用語を覚えていなくても賭けの判断ができるように）。
+  head.querySelectorAll("[data-term]").forEach(b => {
+    b.onclick = () => { try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} showRaceTermInfo(b.dataset.term, race); };
+  });
 
   // -- advisor voice line, shown atop a panel once that advisor has been met --
   function advVoiceHeader(key) {
@@ -3262,19 +3330,11 @@ function drawRecapScreen() {
       (c.collectionAwards || []).forEach(a => app.appendChild(el("div", "rs-bonus rs-bonus-dex", `📖 ${a.label} 達成！　<b>＋${fmtCoins(a.reward)}</b>`)));
     }
   } catch (e) {}
-  // living advisor reaction — a character speaks to what just happened (spec #37)
-  try {
-    const ar = (typeof pickAdvisorReaction === "function") ? pickAdvisorReaction(ps, c) : null;
-    if (ar && ar.cast) {
-      const card = el("div", "rs-advisor");
-      card.style.setProperty("--ac", ar.cast.color || "#2ea884");
-      card.innerHTML =
-        `<div class="rs-adv-face">${ar.cast.symbol || "🐲"}</div>` +
-        `<div class="rs-adv-tx"><div class="rs-adv-name">${ar.cast.name}<span>${ar.cast.tag || ""}</span></div>` +
-        `<div class="rs-adv-line">${ar.line}</div></div>`;
-      app.appendChild(card);
-    }
-  } catch (e) {}
+  // ★撤去：結果画面の相談役ひとことカード（旧 .rs-advisor / spec #37）。
+  //   「調子いいときほど気配を見ろ」のような情緒だけの台詞で、次に何をすればいいかの
+  //   判断材料がゼロだった。毎レース必ず出るぶん、獲得明細と次の目標の間に挟まって
+  //   読み飛ばす癖をつけてしまう。キャラの声は、立ち絵つきの物語と各相談役パネル
+  //   （分析予想／出走表／財政）＝そのキャラが実際に情報を持っている場所に集約する。
   // next-goal nudge (north star) — keep a target in view after every race
   try {
     const goals = (typeof nextGoals === "function") ? nextGoals(state) : [];
@@ -3455,111 +3515,6 @@ function nextGoals(state) {
     }
   }
   return goals;
-}
-
-// §37 — living advisor reactions. The 5 advisors unlock with 総資産 (sake from
-// the start, the rest later), and each owns a domain; on the result screen the
-// one whose domain best fits what just happened speaks, with a varied line so it
-// never feels canned. sake closes every situation list, so the early game always
-// has a voice and the chorus fills in as advisors are met. "{n}" → streak count.
-const ADVISOR_LINES = {
-  legendary: [
-    { key: "mizu", lines: [
-      "市場のズレ、完璧に突いたわね。これが期待値の勝ちよ、あはん。",
-      "誰も見ていない価値を、あなたは見た。お見事であるわ。",
-      "人気と実力の差――そこにしかお金は落ちていないの。よく拾ったわね。" ] },
-    { key: "celestia", lines: [
-      "世界の天井から見ても、見事な一撃。価値の残る賭けだったわね。",
-      "市場の歪みを射抜いた。これが神眼に届く予想よ。" ] },
-    { key: "sake", lines: [
-      "気配だけで選んだな。数字じゃ説明できねぇ、いい目だ。" ] }
-  ],
-  bigwin: [
-    { key: "sumika", lines: [
-      "大きいですね。住居も食事も、これで一段と潤います。",
-      "総資産がぐっと伸びました。再起の土台が固まりますね。" ] },
-    { key: "makura", lines: [
-      "うおおお盛り上がってきたァ！今の的中、配信なら切り抜き確定だぜ！",
-      "観客のボルテージ最高潮！この熱、視聴者にも伝わってるぜ！" ] },
-    { key: "sake", lines: [
-      "派手に獲ったな。気配を読み切った証だ。" ] }
-  ],
-  streak: [
-    { key: "makura", lines: [
-      "{n}連勝うおおお！会場のボルテージやばいぞ、止まんねぇ！",
-      "{n}連勝だ！この流れ、視聴者が見逃すわけねぇ！乗ってけ！" ] },
-    { key: "celestia", lines: [
-      "{n}連勝――悪くないわ。波に乗っているうちは、的を絞りなさい。" ] },
-    { key: "sake", lines: [
-      "{n}連勝か。調子いいときほど、竜の気配をよく見ろよ。" ] }
-  ],
-  favorite_hit: [
-    { key: "sake", lines: [
-      "本命が順当に。コースの空気も味方したな。",
-      "堅く取ったな。こういう積み重ねが土台になる。" ] },
-    { key: "mizu", lines: [
-      "順当な的中。確実に拾うのも、立派な戦略であるわ。" ] },
-    { key: "sumika", lines: [
-      "堅実な勝ち。こういう一戦が、暮らしを支えます。" ] }
-  ],
-  narrow_miss: [
-    { key: "makura", lines: [
-      "うわー惜しい！あの子、最後まで諦めてなかったぜ…！次だ次！",
-      "あと一歩ォ！今のは悔しいが、いい勝負だった！" ] },
-    { key: "sake", lines: [
-      "際どかったな。展開が少し違えば獲れていた。悪い読みじゃない。" ] },
-    { key: "celestia", lines: [
-      "惜しい。けれど一着と二着の間には、深い谷があるの。次に活かしなさい。" ] }
-  ],
-  upset_loss: [
-    { key: "sake", lines: [
-      "荒れたな。こういう日は誰にも読み切れねぇ。引きずるな。",
-      "波乱だ。気配が乱れる日もある。次のレースだ。" ] },
-    { key: "celestia", lines: [
-      "市場が歪んだわね。読めない波乱もある。価値を見失わないことよ。" ] },
-    { key: "mizu", lines: [
-      "人気が裏切られたわね。…でも長い目で見れば、期待値は嘘をつかないわ。" ] }
-  ],
-  miss: [
-    { key: "mizu", lines: [
-      "今回は外れ。でも一回の結果に意味はないの。試行を重ねれば、価値が効いてくるわ。",
-      "ハズレ。大事なのは、その賭けに価値があったかどうかよ、あはん。" ] },
-    { key: "sake", lines: [
-      "外したか。気にするな、次の竜の気配を見ろ。" ] },
-    { key: "sumika", lines: [
-      "負けても大丈夫。総資産という土台がある限り、何度でも立て直せます。" ] }
-  ]
-};
-
-function pickAdvisorReaction(ps, c) {
-  if (!ps || typeof STORY_CAST === "undefined") return null;
-  // ★BUGFIX：顧問の登場は「章を読んだ」ことも要る（advisorMet）。総資産だけの旧判定だと
-  //   出会う前のミズ等が結果画面で喋ってしまう。
-  const met = k => (typeof advisorMet === "function") && advisorMet(k);   // fail-closed：判定できなければ喋らせない
-  const tier = (typeof resultTierOf === "function") ? resultTierOf(ps) : 0;
-  const streak = state.player.streak || 0;
-  let winnerPopRank = 1;
-  try {
-    const w = c.raceResult.entries[0];
-    const od = c.oddsResult.oddsData.find(o => o.dragonId === w.dragon.id);
-    winnerPopRank = (od && od.popularityRank) || 1;
-  } catch (e) {}
-  const pickRank = (ps.selections && ps.selections[0] && ps.selections[0].rank) || 99;
-  let situation;
-  if (ps.hit && streak >= 3) situation = "streak";
-  else if (ps.hit && tier >= 3) situation = "legendary";
-  else if (ps.hit && tier === 2) situation = "bigwin";
-  else if (ps.hit) situation = "favorite_hit";
-  else if (pickRank <= 4) situation = "narrow_miss";
-  else if (winnerPopRank >= 4) situation = "upset_loss";
-  else situation = "miss";
-  const cands = ADVISOR_LINES[situation] || ADVISOR_LINES.miss;
-  let chosen = cands.find(cand => met(cand.key));
-  if (!chosen) chosen = ADVISOR_LINES.miss.find(x => x.key === "sake");
-  const cast = STORY_CAST[chosen.key];
-  let line = chosen.lines[Math.floor(Math.random() * chosen.lines.length)];
-  line = line.replace("{n}", streak);
-  return { cast, line, situation };
 }
 
 function buildResultHero(ps, tier, c) {

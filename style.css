@@ -1703,17 +1703,6 @@ table.entry-table {
   background: rgba(231,242,236,0.05); border: 1px solid rgba(231,242,236,0.1); border-radius: 10px; }
 .rs-nextgoal b { color: var(--gold-bright); }
 
-/* === living advisor reaction (spec #37) === */
-.rs-advisor { display: flex; gap: 11px; align-items: flex-start; margin: 0 0 12px; padding: 12px 13px;
-  border-radius: 12px; background: rgba(231,242,236,0.05);
-  border: 1px solid rgba(231,242,236,0.12); border-left: 3px solid var(--ac, var(--jade)); }
-.rs-adv-face { flex: 0 0 38px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
-  font-size: 20px; border-radius: 50%; background: rgba(0,0,0,0.3); border: 1.5px solid var(--ac, var(--jade)); }
-.rs-adv-tx { min-width: 0; }
-.rs-adv-name { font-size: 12px; font-weight: 700; color: var(--ac, var(--jade-bright)); }
-.rs-adv-name span { margin-left: 6px; font-size: 10px; font-weight: 400; color: var(--mist-soft); opacity: .8; }
-.rs-adv-line { font-size: 13px; color: var(--cream); line-height: 1.55; margin-top: 3px; }
-
 /* === 本日の注目レース (spec #37) === */
 .feat-race { position: relative; margin-bottom: 16px; padding: 16px 16px 14px; border-radius: 14px; overflow: hidden;
   background: linear-gradient(135deg, rgba(214,69,47,0.22), rgba(40,34,22,0.92) 62%), var(--plate);
@@ -6773,9 +6762,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .bd-sub { display: block; font-size: 10.5px; color: rgba(255,246,230,.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bd-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .bd-chip { font-size: 10.5px; font-weight: 800; color: #ffe9c4; padding: 3px 9px; border-radius: 999px;
-  background: rgba(0,0,0,.32); border: 1px solid rgba(255,214,120,.35); }
+  background: rgba(0,0,0,.32); border: 1px solid rgba(255,214,120,.35);
+  /* 押せることを示す：点線の下線＋?マーク。チップ自体は小さいので装飾は最小限に。 */
+  font-family: inherit; line-height: 1.5; cursor: pointer; }
+.bd-chip::after { content: " ？"; font-size: 9px; opacity: .55; }
+.bd-chip:active { background: rgba(255,214,120,.2); }
 .bd-course { margin-top: 7px; font-size: 10.5px; color: rgba(255,246,230,.85); letter-spacing: .01em; }
-.bd-sake { margin: 0 0 8px; }
+/* 地形名は本文中の語なので、押せる語＝点線下線というリンクの作法で示す。 */
+.bd-seg { font: inherit; color: #ffe9c4; background: none; border: none; padding: 0 1px; cursor: pointer;
+  border-bottom: 1px dotted rgba(255,214,120,.6); }
+.bd-seg:active { color: #fff; border-bottom-color: #fff; }
 
 /* 賭式タブ＝大きく・現在形が一目 */
 .bet-tabs.bd-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 8px;
