@@ -7684,3 +7684,52 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   /* 静かな磨きはアニメを持たない（影の切替のみ）。念のため遷移も切る＝既存の作法(.tix 等)に合わせる。 */
   .hl .hl-race, .hl .hl-nextrace { transition: none; }
 }
+
+/* ── ゆっくり実況ゾーン（レース画面・着順ボードの上）────────────────────
+   左＝実況ミミ（事実）／右＝解説（毎レース抽選・解釈）。
+   様式は「顔は小さく、テキストが主役」。饅頭立ち絵を大きくすると縦を食うので、
+   吹き出しを上、饅頭を下に置いて横幅を使い切る。 */
+.rc-yt {
+  display: flex; gap: 8px; padding: 7px 8px 5px;
+  background: rgba(8,11,17,.62);
+  border-top: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.rc-yt-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px;
+  opacity: .55; transition: opacity .18s; }
+.rc-yt-side[hidden] { display: none; }
+/* 喋っている側だけをはっきりさせる＝どちらの発言か一目で分かる */
+.rc-yt-side.talking { opacity: 1; }
+.rc-yt-bub {
+  min-height: 40px; padding: 6px 9px; border-radius: 10px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+  border-left: 3px solid var(--c, #888);
+  font-size: 11.5px; font-weight: 700; line-height: 1.45; color: #eef2f7;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+}
+.rc-yt-r .rc-yt-bub { border-left: 0; border-right: 3px solid var(--c, #888); }
+.rc-yt-side.talking .rc-yt-bub { background: rgba(255,255,255,.10); color: #fff; }
+/* 山場の実況だけ金に振る（解説は落ち着かせたままにして、熱の担当を分ける） */
+.rc-yt-bub.is-hot { color: #ffe8a8; text-shadow: 0 0 10px rgba(255,214,120,.45); }
+.rc-yt-manju { display: flex; align-items: center; gap: 6px; }
+.rc-yt-r .rc-yt-manju { flex-direction: row-reverse; }
+.rc-yt-manju img {
+  width: 40px; height: 40px; flex: none; object-fit: contain;   /* 饅頭は正方形・比率は歪めない */
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+}
+.rc-yt-manju.noimg img { display: none; }
+.rc-yt-name {
+  font-size: 9.5px; font-weight: 900; letter-spacing: .04em;
+  color: #2a2013; background: var(--c, #ccc); border-radius: 99px; padding: 1px 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 喋った瞬間だけ饅頭が小さく跳ねる（ゆっくり実況の“口パク”の代わり） */
+.rc-yt-side.pop .rc-yt-manju img { animation: rcYtPop .26s ease-out; }
+@keyframes rcYtPop {
+  0%   { transform: translateY(0)   scale(1); }
+  40%  { transform: translateY(-3px) scale(1.06); }
+  100% { transform: translateY(0)   scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rc-yt-side.pop .rc-yt-manju img { animation: none; }
+}

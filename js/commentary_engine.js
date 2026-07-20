@@ -151,37 +151,37 @@ function composeEarly(phase, prevPhase, ctx) {
     if (slow) lines.push(`${commentaryName(slow.dragon.id)}は出遅れた。`);
   }
   lines.push(...positionBeats(phase, 3));
-  lines.push(...popularityBeats(phase, ctx));
-  if (ctx.race.weather !== "clear") lines.push(weatherFlavor(ctx.race.weather));
-  lines.push(traitBeat(phase));
+  lines.push(..._asColor(popularityBeats(phase, ctx)));
+  if (ctx.race.weather !== "clear") lines.push(_asColor(weatherFlavor(ctx.race.weather)));
+  lines.push(_asColor(traitBeat(phase)));
   return lines;
 }
 
 function composeMid(phase, prevPhase, ctx) {
   const lines = [];
-  lines.push(...sectionBeats(ctx.race, phase.label, "mid"));
-  if (ctx.race.weather !== "clear") lines.push(weatherFlavor(ctx.race.weather));
+  lines.push(..._asColor(sectionBeats(ctx.race, phase.label, "mid")));
+  if (ctx.race.weather !== "clear") lines.push(_asColor(weatherFlavor(ctx.race.weather)));
   lines.push(...moverBeats(phase, prevPhase, 1, 0));
-  lines.push(traitBeat(phase));
+  lines.push(_asColor(traitBeat(phase)));
   lines.push(...positionBeats(phase, 3));
-  lines.push(...popularityBeats(phase, ctx));
+  lines.push(..._asColor(popularityBeats(phase, ctx)));
   return lines;
 }
 
 function composeDevelopment(phase, prevPhase, ctx) {
   const lines = [];
   const pace = ctx.raceResult && ctx.raceResult.pace;
-  if (pace) paceFlavor(pace.type).forEach(l => lines.push(l));
+  if (pace) _asColor(paceFlavor(pace.type)).forEach(l => lines.push(l));
   if (phase.tags.includes("favorite_fade")) {
     const fav = favoriteEntry(phase, ctx);
     if (fav) lines.push(`${commentaryName(fav.dragon.id)}、苦しくなってきた。`);
   }
   lines.push(...moverBeats(phase, prevPhase, 2, 1));
-  lines.push(...staminaBeats(phase));
-  lines.push(traitBeat(phase));
+  lines.push(..._asColor(staminaBeats(phase)));
+  lines.push(_asColor(traitBeat(phase)));
   lines.push(...positionBeats(phase, 2));
   lines.push(essentialBetBeat(phase, ctx));
-  lines.push(...popularityBeats(phase, ctx));
+  lines.push(..._asColor(popularityBeats(phase, ctx)));
   return lines;
 }
 
@@ -194,7 +194,7 @@ function composeLate(phase, prevPhase, ctx) {
   const holder = phase.orderedEntries.slice(0, 2).find(e => !e.collapse);
   if (holder) lines.push(personaLine(holder.dragon.id, "holding")
     || `${commentaryName(holder.dragon.id)}、まだ粘る。`);
-  lines.push(...staminaBeats(phase));
+  lines.push(..._asColor(staminaBeats(phase)));
   lines.push(essentialBetBeat(phase, ctx));
   if (phase.tags.includes("late_surge") || phase.tags.includes("close_finish")) {
     lines.push("後ろから脚が来る。");
@@ -264,17 +264,23 @@ const MAKURA_PHRASES = {
   late:        ["声出していこう、ここからだよ！", "推しの名前、叫んでけ！"],
   finish:      ["アーカイブ残留、確定だァ！", "今日も見に来てくれて、あざした〜！"]
 };
+// ★ゆっくり実況の担当分け（実況＝事実／解説＝解釈）。
+//   行そのものは文字列のまま流す（既存の消費者4か所を壊さないため）。代わりに
+//   「解釈を述べる関数が出した文字列」をここに登録しておき、あとから照合して右側へ振る。
+//   finalizeLines は文字列を並べ替え・間引くだけで中身を書き換えないので、この照合で足りる。
+const _colorSink = new Set();
+function _asColor(arr) {                       // 解釈ビートの出力を登録して素通しする
+  (Array.isArray(arr) ? arr : [arr]).forEach(s => { if (s) _colorSink.add(String(s).trim()); });
+  return arr;
+}
+// この行は解説（右）か？ 未登録＝実況（左）＝fail-safe。
+function lineIsColor(s) { return _colorSink.has(String(s || "").trim()); }
+
+// ★マクラの合いの手の差し込みは撤去した。解説席は data_commentators.js の抽選が担うので、
+//   ここで彼だけを特別扱いすると、他の解説者の回にもマクラが混ざる二重人格になる。
+//   語尾を強める演出（late/finish の「ッ！」）だけ残す＝これは話者に依らない盛り上げ。
 function makuraLayer(lines, phaseId) {
-  try { if (!(typeof advisorMet === "function" && advisorMet("makura"))) return lines; }
-  catch (e) { return lines; }
   const out = lines.slice();
-  const pool = MAKURA_PHRASES[phaseId] || [];
-  if (pool.length) {
-    const ph = pool[out.length % pool.length];
-    if (phaseId === "early") out.splice(1, 0, ph);              // スタート宣言の直後
-    else if (phaseId === "finish") out.push(ph);                // 着順の後ろ＝事実行に触れない
-    else out.splice(Math.min(2, out.length), 0, ph);
-  }
   if (phaseId === "late" || phaseId === "finish") {
     for (let i = 0; i < out.length; i++) {
       const s = out[i];
@@ -307,6 +313,9 @@ function buildPhaseCommentary(phase, prevPhase, ctx) {
     phaseId: phase.id,
     tempoMs: PHASE_TEMPO[phase.id] || 1000,
     lines: makuraLayer(finalizeLines(raw, phase.id), phase.id),
+    // ★ゆっくり実況：各行の担当（"color"＝解説/右・"call"＝実況/左）。
+    //   lines と同じ長さ・同じ順。既存の消費者は lines しか見ないので後方互換。
+    get sides() { return this.lines.map(s => (lineIsColor(s) ? "color" : "call")); },
     focusDragonIds: phase.focusDragonIds || [],
     tags: phase.tags || [],
     visualMode: phase.visualMode

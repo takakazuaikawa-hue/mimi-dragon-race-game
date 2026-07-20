@@ -1364,7 +1364,7 @@ function startRaceCanvas(container, ctx) {
     if (!dr) return;
     // 実況へ1行差し込む（既存 shownLines/renderTelop の流儀に乗る）
     const od = (oddsResult.oddsData || []).find(o => o.dragonId === dr.id) || {};
-    shownLines.push(`${od.popularityRank || idx + 1}番人気 ${commentaryName(dr.id)}、入場！`);
+    shownLines.push({ line: `${od.popularityRank || idx + 1}番人気 ${commentaryName(dr.id)}、入場！`, side: "call" });
     renderTelop();
     // 自分の賭け竜の紹介だけ、音と視聴者の反応を足す（依怙贔屓＝プレイヤーの当事者性）
     if (betSet.has(dr.id)) {
@@ -1493,20 +1493,28 @@ function startRaceCanvas(container, ctx) {
     </div>
     <!-- ★RACE_SCREEN_LIVE D1：生着順ボード。画面下半分の主役＝8頭の行がFLIPで入れ替わり続ける。
          旧 rc-rankbar（1行テキスト）と rc-bet（HUD隅の期待メーター）はここへ置換統合した。 -->
-    <div class="rc-board" id="rc-board"></div>
-    <!-- ★D2：視聴者コメント（匿名のみ・キャスト名は使わない＝門番問題を構造ごと回避） -->
-    <!-- ★声ゾーン：左=実況ミミ（大きく・表情が読める）／右=視聴者の反応＋ミミの実況。
-         2ブロックを1行に統合して縦を節約し、ワイプを22px→64pxへ拡大（ユーザー指摘）。 -->
-    <div class="rc-voice">
-      <div class="rc-caster-wrap">
-        <img id="rc-caster" src="images/race_live/mimi_caster.webp" alt="" decoding="async" onerror="this.parentNode.classList.add('noimg')">
-        <span class="rc-caster-tag">🎙 ミミ</span>
+    <!-- ★ゆっくり実況ゾーン：左=実況（ミミ固定・事実）／右=解説（毎レース抽選・解釈）。
+         ★着順ボードより「上」に置く（ユーザー指示）。走っている絵のすぐ下で二人が喋り、
+           その下に順位表が来る＝視線が 絵→声→順位 の順に落ちる。
+         ★旧・視聴者コメント（rc-chat）は撤去。匿名の短文は情報も感情も薄く、
+           二人の掛け合いに置き換えたほうが読む価値が出るため。 -->
+    <div class="rc-yt" id="rc-yt">
+      <div class="rc-yt-side rc-yt-l" id="rc-yt-l">
+        <div class="rc-yt-bub" id="rc-yt-bub-l"></div>
+        <div class="rc-yt-manju">
+          <img id="rc-yt-img-l" alt="" decoding="async" onerror="this.parentNode.classList.add('noimg')">
+          <span class="rc-yt-name" id="rc-yt-name-l"></span>
+        </div>
       </div>
-      <div class="rc-voice-body">
-        <div class="rc-chat" id="rc-chat"></div>
-        <div class="rc-telop" id="rc-telop"><div class="lines" id="rc-lines"></div></div>
+      <div class="rc-yt-side rc-yt-r" id="rc-yt-r">
+        <div class="rc-yt-bub" id="rc-yt-bub-r"></div>
+        <div class="rc-yt-manju">
+          <img id="rc-yt-img-r" alt="" decoding="async" onerror="this.parentNode.classList.add('noimg')">
+          <span class="rc-yt-name" id="rc-yt-name-r"></span>
+        </div>
       </div>
     </div>
+    <div class="rc-board" id="rc-board"></div>
     <div class="rc-controls" id="rc-controls"></div>
     <div class="rc-finishstrip" id="rc-finishstrip" style="display:none"></div>
     <div class="rc-log" id="rc-log" style="display:none"></div>
@@ -1526,7 +1534,6 @@ function startRaceCanvas(container, ctx) {
   const phaseEl = wrap.querySelector("#rc-phase");
   const sectionEl = wrap.querySelector("#rc-section");
   const boardEl = wrap.querySelector("#rc-board");
-  const linesEl = wrap.querySelector("#rc-lines");
   const controlsEl = wrap.querySelector("#rc-controls");
   const finishStripEl = wrap.querySelector("#rc-finishstrip");
   const logEl = wrap.querySelector("#rc-log");
@@ -1700,6 +1707,15 @@ function startRaceCanvas(container, ctx) {
     return null;
   }
 
+  // ---- ゆっくり実況：解説者をこのレース1回だけ抽選する ----
+  // ★門番は data_commentators 側（availableCommentators）。ここでは結果を受け取るだけ。
+  //   直前の解説者は state に覚えておき、同じ人が連続しにくくする（表示専用メタ）。
+  const _commentator = (typeof pickCommentator === "function")
+    ? pickCommentator(state.player && state.player.lastCommentator) : null;
+  if (_commentator) {
+    try { state.player.lastCommentator = _commentator.key; } catch (e) {}
+  }
+
   // ---- telop scheduling: spread each phase's commentary across its τ-span ----
   const telopSchedule = [];
   if (commentary && commentary.length) {
@@ -1708,30 +1724,70 @@ function startRaceCanvas(container, ctx) {
       const endT = (p < TL_PHASE_TAU.length) ? TL_PHASE_TAU[p] : 1.0;
       const lines = (commentary[p] && commentary[p].lines) || [];
       const span = Math.max(0.0001, endT - prevT);
+      const sides = (commentary[p] && commentary[p].sides) || [];
       lines.forEach((line, i) => {
         const at = prevT + span * ((i + 0.5) / Math.max(1, lines.length));
-        telopSchedule.push({ tau: Math.min(0.999, at), line, fired: false });
+        // side は engine が付けた担当（color=解説/右・call=実況/左）。未指定なら実況側へ。
+        telopSchedule.push({ tau: Math.min(0.999, at), line, side: sides[i] || "call", fired: false });
       });
+      // ★解説者の合いの手：そのフェーズの真ん中あたりで1本だけ差し込む。
+      //   engine の行に混ぜず独立させることで、抽選で解説者が変わっても
+      //   「その人が言いそうなこと」だけが確実にその人の口から出る。
+      if (_commentator) {
+        const pool = (_commentator.phrases && _commentator.phrases[commentary[p].phaseId]) || [];
+        if (pool.length) {
+          const ph = pool[(p + (race.id || "").length) % pool.length];   // レースごとに決定的に選ぶ
+          telopSchedule.push({ tau: Math.min(0.999, prevT + span * 0.35), line: ph, side: "color", fired: false });
+        }
+      }
       prevT = endT;
     }
   }
   const shownLines = [];
   // R8-W3 実況の強弱：山場ワードを含む最新行は「絶叫」スタイル（金・大きめ）＝表示のみ
   const TELOP_HOT = /先頭|差し切|抜け出|かわし|接戦|並ん|仕掛け|伸び|ゴール|突き放|猛追|一気|捕らえ/;
+  // ---- ゆっくり実況の描画：左右それぞれ「最新の一言」だけを吹き出しに出す ----
+  // ★1本ずつしか出さないのは、二人ぶんの履歴を並べると読み切れずに視線が止まるから。
+  //   直前の行はテロップ史ではなく「間」で表現する（喋っていない側は吹き出しを薄くする）。
+  const _ytEl = {
+    l: wrap.querySelector("#rc-yt-l"), r: wrap.querySelector("#rc-yt-r"),
+    bl: wrap.querySelector("#rc-yt-bub-l"), br: wrap.querySelector("#rc-yt-bub-r")
+  };
+  (function setupYukkuri() {
+    const imgL = wrap.querySelector("#rc-yt-img-l"), nmL = wrap.querySelector("#rc-yt-name-l");
+    const imgR = wrap.querySelector("#rc-yt-img-r"), nmR = wrap.querySelector("#rc-yt-name-r");
+    const caster = (typeof RACE_CASTER !== "undefined") ? RACE_CASTER : { name: "ミミ", img: "", color: "#e6b24a" };
+    if (imgL) imgL.src = caster.img;
+    if (nmL) { nmL.textContent = caster.name; }
+    if (_ytEl.l) _ytEl.l.style.setProperty("--c", caster.color);
+    if (_commentator) {
+      if (imgR) imgR.src = _commentator.img;
+      if (nmR) nmR.textContent = _commentator.name;
+      if (_ytEl.r) _ytEl.r.style.setProperty("--c", _commentator.color);
+    } else if (_ytEl.r) {
+      _ytEl.r.hidden = true;      // 解説者が誰も出せない＝実況一人（fail-closed の見た目）
+    }
+  })();
+  function speak(side, line) {
+    const isL = side !== "color";
+    const bub = isL ? _ytEl.bl : _ytEl.br;
+    const host = isL ? _ytEl.l : _ytEl.r;
+    if (!bub || !host || host.hidden) return;
+    bub.textContent = line;
+    bub.classList.toggle("is-hot", isL && TELOP_HOT.test(line));
+    // 喋った側を前に出し、もう片方を沈める＝どちらが今しゃべっているか一目で分かる
+    if (_ytEl.l) _ytEl.l.classList.toggle("talking", isL);
+    if (_ytEl.r) _ytEl.r.classList.toggle("talking", !isL);
+    host.classList.remove("pop"); void host.offsetWidth; host.classList.add("pop");
+  }
   function renderTelop() {
-    linesEl.innerHTML = "";
-    shownLines.slice(-3).forEach((line, i, arr) => {
-      const d = document.createElement("div");
-      const latest = i === arr.length - 1;
-      d.className = latest ? ("line is-latest" + (TELOP_HOT.test(line) ? " is-hot" : "")) : "line-prev";
-      d.textContent = line;
-      linesEl.appendChild(d);
-    });
+    const last = shownLines[shownLines.length - 1];
+    if (last) speak(last.side, last.line);
   }
   function pumpTelop() {
     let changed = false;
     for (const t of telopSchedule) {
-      if (!t.fired && S.tau >= t.tau) { t.fired = true; shownLines.push(t.line); changed = true; }
+      if (!t.fired && S.tau >= t.tau) { t.fired = true; shownLines.push({ line: t.line, side: t.side }); changed = true; }
     }
     if (changed) renderTelop();
   }
@@ -1741,7 +1797,7 @@ function startRaceCanvas(container, ctx) {
     if (S.entryT <= 0) return;
     const ent = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);
     let changed = false;
-    for (const h of _entHype) { if (!h.fired && ent >= h.at) { h.fired = true; shownLines.push(h.line); changed = true; } }
+    for (const h of _entHype) { if (!h.fired && ent >= h.at) { h.fired = true; shownLines.push({ line: h.line, side: "call" }); changed = true; } }
     if (changed) renderTelop();
   }
 
@@ -3514,7 +3570,6 @@ function startRaceCanvas(container, ctx) {
     remainEl.textContent = "残り " + timeline.distanceRemainingAt(S.tau) + "m";
     const _tNow = (typeof performance !== "undefined" ? performance.now() : Date.now());
     updateBoard(standings, standMap, _tNow);
-    updateChat(standings, standMap, _pi, _tNow);   // ★D2 視聴者レイヤー
   }
 
   // =====================================================================
@@ -3674,7 +3729,11 @@ function startRaceCanvas(container, ctx) {
     viewersShown = viewersBase;
   })();
 
+  // ★視聴者コメントの「表示」は撤去済み（ゆっくり実況の二人に置換）。
+  //   ただし同接の増減はこの経路の副作用として生きているので、関数ごとは消さず
+  //   描画先が無いときは黙って何もしない（chatEl は null になる）。
   function pushChat(key, dragonName) {
+    if (!chatEl) return;
     if (typeof rcChatPick !== "function") return;
     const t = rcChatPick(key, dragonName);
     if (!t) return;
@@ -4310,6 +4369,27 @@ function startRaceCanvas(container, ctx) {
         wrap.classList.toggle("rc-ended", _done);
         if (viewersEl) { viewersEl.classList.toggle("fixed", _done); if (!_done) viewersEl._fixed = false; }
         if (!_done) { chatGoalDone = false; _goalChatLeft = 0; } }
+      // ★ゆっくり実況もスクラブ位置へ同期。seek は update() を通らないため pumpTelop が
+      //   走らず、駒送りすると二人の吹き出しが入場時の台詞のまま固まる（実測で確認）。
+      //   スクラブ先までの行を「もう喋った」ことにして、左右それぞれ最後の一言を復元する。
+      try {
+        shownLines.length = 0;
+        telopSchedule.forEach(t => {
+          t.fired = S.tau >= t.tau;
+          if (t.fired) shownLines.push({ line: t.line, side: t.side });
+        });
+        const lastOf = sd => {
+          for (let i = shownLines.length - 1; i >= 0; i--) {
+            if ((shownLines[i].side === "color") === (sd === "color")) return shownLines[i];
+          }
+          return null;
+        };
+        const lc = lastOf("call"), rc = lastOf("color");
+        if (lc) speak("call", lc.line);
+        if (rc) speak("color", rc.line);
+        const last = shownLines[shownLines.length - 1];
+        if (last) speak(last.side, last.line);   // 最後に喋った側を前面へ
+      } catch (e) {}
       renderControls();   // スクラブ先が決着後なら「結果を見る」を出す（seekはonAllFinishedを通らない）
       for (let i = 0; i < 80; i++) updateCamera();
       draw();
