@@ -27,6 +27,23 @@
 //   文言は data_commentary_lines.js 側で kind をキーに書く（ここには文章を置かない）。
 // =============================================================================
 
+// ★優先順位（ユーザー指定）。同じ瞬間に複数の出来事が競合したとき、これで決める。
+//   ① 勝敗に関わること（自分の賭けの成否・決着）が最優先
+//   ② 抜いた抜かれた＝レースの骨格。ここは絶対に落とさない
+//   ③ それ以外の出来事
+//   ④ 合間の話題（場・条件・竜の豆知識）＝空いた時間にだけ入る「詰め物」
+//   数字が大きいほど強い。話題(TOPIC)を20台に置くことで、構造上
+//   「豆知識が抜いた抜かれたを押しのける」ことが起きないようにしている。
+const BEAT_PRI = {
+  goal: 100, zoneIn: 98, zoneOut: 96,      // ①勝敗
+  overtake: 90, battle: 86, lastSpurt: 84, // ②抜いた抜かれた・競り合い
+  collapse: 74, stumble: 72, surge: 70,    // ③レースの出来事
+  goodStart: 62, slowStart: 60, start: 58,
+  section: 50, underdog: 48, favorite: 46,
+  topic: 20                                // ④合間の話題（詰め物）
+};
+function beatPri(kind) { return BEAT_PRI[kind] != null ? BEAT_PRI[kind] : 40; }
+
 const BEAT_KIND = {
   START:      "start",       // ゲートが開いた
   GOOD_START: "goodStart",   // 好発進
@@ -42,8 +59,85 @@ const BEAT_KIND = {
   UNDERDOG:   "underdog",    // 人気薄が上位に来ている
   FAVORITE:   "favorite",    // 1番人気が先頭を守っている
   LAST_SPURT: "lastSpurt",   // 最終直線に入った
-  GOAL:       "goal"         // 決着
+  GOAL:       "goal",        // 決着
+  TOPIC:      "topic"        // ★合間の話題（場・条件・竜の豆知識）＝レース外の素材
 };
+
+// ── 合間の話題（TOPIC）の材料 ────────────────────────────────────────
+// ★実際のレース中継は、順位の読み上げだけでなく、合間に「今日の馬場」「この馬の血統」
+//   「厩舎の話」などを絶えず織り込んでいる（調査済み）。それが無いと、順位を読むだけの
+//   痩せた実況になる。ここではゲーム内に既にある素材を話題として棚卸しする。
+//   ★あくまで詰め物。優先度20なので、抜いた抜かれた等を押しのけることはない。
+//   data には「何について話すか」だけを入れ、文章は手順4で書く（ここに文言は置かない）。
+const TOPIC_SUBJECT = {
+  VENUE:     "venue",      // この地域・コースの成り立ち
+  WEATHER:   "weather",    // 今日の天候と、効いてくる能力
+  DISTANCE:  "distance",   // 距離帯と、消耗の出方
+  TERRAIN:   "terrain",    // いま走っている区間の地形
+  LORE:      "lore",       // その竜の伝承（図鑑で解禁済みのものだけ）
+  TRAIT:     "trait",      // その竜の売り（脚質・二つ名・得意条件）
+  FORM:      "form",       // 当日の気配（試走の出来）＝パドックに相当
+  HISTORY:   "history",    // 自分とその竜の因縁（過去に当てた/外した）
+  POPULARITY:"popularity"  // 人気の理由（新聞印・話題性・前走）
+};
+
+/**
+ * 合間に挟む話題を集める。tau は持たせない（空いた時間に後段が差し込む）。
+ * ★門番：伝承は図鑑で解禁済みのものだけ＝未解禁の物語を先に喋らない。
+ */
+function buildRaceTopics(timeline, ctx) {
+  const out = [];
+  const race = ctx.race || {};
+  const add = (subject, id, data) => out.push({ kind: BEAT_KIND.TOPIC, subject, id: id || null, data: data || {} });
+
+  // 場と条件（レース開始前〜序盤に効く）
+  if (race.region) add(TOPIC_SUBJECT.VENUE, null, { region: race.region, cup: race.cup });
+  try {
+    const w = (typeof WEATHERS !== "undefined") && WEATHERS[race.weather];
+    if (w) {
+      const JP = { speed: "速さ", stamina: "底力", fire: "闘志", wing: "翼", turn: "旋回", nerve: "気性" };
+      const top = Object.keys(w.weights || {}).sort((a, b) => w.weights[b] - w.weights[a]).slice(0, 2).map(k => JP[k] || k);
+      add(TOPIC_SUBJECT.WEATHER, null, { label: w.label, stats: top });
+    }
+  } catch (e) {}
+  try {
+    const d = (typeof DISTANCE !== "undefined") && DISTANCE[race.distance];
+    if (d) add(TOPIC_SUBJECT.DISTANCE, null, { label: d.label, mult: d.mult });
+  } catch (e) {}
+  ["early", "mid", "late"].forEach(k => {
+    const s = beatSectionStats(race, k);
+    if (s.label) add(TOPIC_SUBJECT.TERRAIN, null, { phaseKey: k, label: s.label, stats: s.stats, terrain: s.terrain });
+  });
+
+  // 出走者の背景（1頭ずつ）
+  const col = (state && state.player && state.player.collection) || {};
+  for (const dr of (timeline.dragons || [])) {
+    const d = dr.dragon || {};
+    if (d.traits && d.traits.length) add(TOPIC_SUBJECT.TRAIT, dr.id, { traits: d.traits, style: dr.style, tone: d.portraitTone });
+    if (d.newspaperMark || d.publicImage != null) {
+      add(TOPIC_SUBJECT.POPULARITY, dr.id, { mark: d.newspaperMark, fame: d.publicImage, recent: d.recentResult });
+    }
+    // 伝承＝図鑑で解禁済みの断章だけ（未解禁の物語を先に漏らさない）
+    try {
+      const lv = (col[dr.id] && col[dr.id].loreLv) || 0;
+      const lore = (typeof DRAGON_LORE !== "undefined") && DRAGON_LORE[dr.id];
+      if (lv > 0 && lore && lore.length) add(TOPIC_SUBJECT.LORE, dr.id, { text: lore[Math.min(lv, lore.length) - 1] });
+    } catch (e) {}
+    // 当日の気配＝賭け画面で見せている試走の出来（パドックに相当）
+    try {
+      const tf = (ctx.trialForms || {})[dr.id];
+      if (tf != null) add(TOPIC_SUBJECT.FORM, dr.id, { form: tf });
+    } catch (e) {}
+    // 自分とこの竜の因縁
+    try {
+      const rec = col[dr.id] && col[dr.id].records;
+      if (rec && (rec.top3Seen || rec.betHit || rec.betMiss)) {
+        add(TOPIC_SUBJECT.HISTORY, dr.id, { seen: rec.top3Seen || 0, hit: rec.betHit || 0, miss: rec.betMiss || 0 });
+      }
+    } catch (e) {}
+  }
+  return out;
+}
 
 // 区間キー → 「そこで効く能力」。data_courses の weights から機械的に出す。
 // ★手書きの対応表を別に持たない＝コースを足しても説明が古びない。
@@ -88,7 +182,9 @@ function buildRaceBeats(timeline, ctx) {
   const dragons = timeline.dragons || [];
   const push = (tau, kind, id, mag, data) => {
     beats.push({ tau: Math.max(0, Math.min(1, tau)), kind, id: id || null,
-                 rank: null, mag: mag == null ? 0.5 : mag, data: data || {} });
+                 rank: null, mag: mag == null ? 0.5 : mag,
+                 pri: beatPri(kind),          // ★競合したときの強さ（勝敗＞抜いた抜かれた＞その他＞話題）
+                 data: data || {} });
   };
 
   // 人気順の索引（人気と実力のズレを語るために使う）
@@ -200,9 +296,13 @@ function buildRaceBeats(timeline, ctx) {
   //   レース中継は本来うるさいもので、接戦なら「まだ並んでる！」「離れない！」と
   //   繰り返し煽るのが自然。読み切れないぶんは流れてよい、と割り切る。
   //   ★初版で 35→16 まで削ったのは私の誤りだった。厚くする依頼に対して薄くしていた。
-  const COOLDOWN = { battle: 0.05, overtake: 0.03, surge: 0.04, stumble: 0.03 };
+  // ★「抜いた抜かれた」は絶対に落とさない（ユーザー指定）。overtake は間引きの対象外にする。
+  //   接戦のような“状態”だけ、同じ組み合わせが連続で潰れるぶんをまとめる。
+  const NEVER_THIN = { overtake: true, goal: true, zoneIn: true, zoneOut: true };
+  const COOLDOWN = { battle: 0.05, surge: 0.04, stumble: 0.03 };
   const lastAt = {};
   return beats.filter(b => {
+    if (NEVER_THIN[b.kind]) return true;
     const cd = COOLDOWN[b.kind];
     if (!cd) return true;
     const key = b.kind + "|" + (b.id || "");
