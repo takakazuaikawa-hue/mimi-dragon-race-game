@@ -210,8 +210,8 @@ var Sfx = (function () {
   // ゴールで「ワーッ」と湧き、結果を見る（stopCrowd）まで鳴り続ける厚い歓声。
   // 帯域の違うループノイズを重ね、各層をゆっくり揺らして“生きた群衆”にする。
   // 歓声の長さ（秒）。うるさければ CROWD_HOLD を縮めるだけでよい。
-  var CROWD_HOLD = 6.6;    // 湧いてから持続する長さ＝主LFO 約2.2秒/波 × 3波
-  var CROWD_TAIL = 1.6;    // そこから引くまでの余韻
+  var CROWD_HOLD = 4.4;    // 湧いてから持続する長さ（主LFO 約2.2秒/波 × 2波・ユーザー指定）
+  var CROWD_TAIL = 2.0;    // そこから引くまでの余韻（長めに取って余韻を残す・ユーザー指定）
   var _crowdEndT = null;   // 自動終了のタイマー（音源の後始末用）
   function startCrowd() {
     if (muted) return;
