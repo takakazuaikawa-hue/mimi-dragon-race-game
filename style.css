@@ -7784,3 +7784,15 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @media (prefers-reduced-motion: reduce) {
   .rcload-bar > i { animation: none; width: 100%; }
 }
+
+/* ロード画面の一枚絵。文字より下に、帯状に見せる（主役は「準備中」の情報）。 */
+.rcload-art {
+  margin-top: 18px; border-radius: 10px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.rcload-art img {
+  display: block; width: 100%; height: 108px; object-fit: cover;
+  /* 明るすぎると文字と competing するので少し沈める */
+  filter: saturate(.92) brightness(.82);
+}

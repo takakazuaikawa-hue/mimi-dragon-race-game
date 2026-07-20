@@ -276,7 +276,15 @@
     return out;
   }
 
+  // ★検証用の抑止スイッチ。ONの間は立ち絵セリフを一切出さず、即座に解決する。
+  //   自動検証がVNに阻まれて先へ進めない問題があったため（毎回スキップを
+  //   押し続ける必要があり、取りこぼすと検証そのものが失敗していた）。
+  //   ゲーム進行のフラグには触れない＝「表示を飛ばすだけ」。
+  var suppressed = false;
+  try { if (location.search.indexOf("novn=1") >= 0) suppressed = true; } catch (e) {}
+
   function play(script, options) {
+    if (suppressed) return Promise.resolve();
     var lines = normalize(script);
     chain = chain.then(function () {
       if (!lines.length) return Promise.resolve();
@@ -466,6 +474,9 @@
     inferExpr: inferExpr,             // 文面→表情の推定（②表情差分）
     isOpen: function () { return !!(dom && !dom.overlay.classList.contains("hidden")); },
     dismiss: function () { try { finish(); } catch (e) {} },   // 開いているセリフを閉じる（レース開始時など）
+    // 検証用：立ち絵セリフを丸ごと出さなくする（?novn=1 でも同じ）。進行フラグには触れない。
+    setSuppressed: function (v) { suppressed = !!v; if (v) { try { finish(); } catch (e) {} } },
+    isSuppressed: function () { return suppressed; },
     demo: function () { return play("demo"); }
   };
   global.Dialogue = Dialogue;

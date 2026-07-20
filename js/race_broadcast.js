@@ -315,6 +315,12 @@ function showRaceLoading(host, c, onReady) {
       '<div class="rcload-ttl">出走準備中</div>' +
       '<div class="rcload-bar"><i></i></div>' +
       '<div class="rcload-note">実況席、準備しています……</div>' +
+      // ★下部に一枚絵。素材はすでにあるので、待ち時間を絵で持たせる。
+      //   今日の舞台に近い風景を選ぶ（読めなければ枠ごと消えるので崩れない）。
+      (rcLoadArtFor(c.race)
+        ? '<div class="rcload-art"><img src="' + rcLoadArtFor(c.race) +
+          '" alt="" onerror="this.closest(&quot;.rcload-art&quot;).remove()"></div>'
+        : "") +
     '</div>';
   host.appendChild(box);
   const note = box.querySelector(".rcload-note");
@@ -339,12 +345,21 @@ function showRaceLoading(host, c, onReady) {
 
   // ── ②背景画像の先読み ──────────────────────────────────
   const preload = (cb) => {
-    let pending = 1, fired = false;
+    let pending = 2, fired = false;
     const finish = () => { if (!fired) { fired = true; cb(); } };
     const one = () => { if (--pending <= 0) finish(); };
     try {
       setNote("コースを用意しています……");
       if (typeof rcBgFor === "function") { rcBgFor(c.race, one); } else { one(); }
+      // ★ロード画面に出す一枚絵も、実際に読めるまで待つ。
+      //   待たずに進むと「絵が出ないままロードが終わり、走り出してから
+      //   背景が入れ替わる」状態になる（ユーザー指摘）。
+      const art = rcLoadArtFor(c.race);
+      if (art) {
+        const im = new Image();
+        im.onload = one; im.onerror = one;
+        im.src = art;
+      } else { one(); }
     } catch (e) { finish(); }
     setTimeout(finish, RC_LOAD_IMG_MS);   // ★先読みの完了通知が返らない実装でも、ここで切り上げる
                                           //   （実測：待ち切ると毎レース3.6秒待たされていた）
@@ -361,4 +376,22 @@ function showRaceLoading(host, c, onReady) {
   }, 60);
 
   setTimeout(go, RC_LOAD_MAX_MS);   // 最終防衛線：何があっても走り出す
+}
+
+// ロード画面に出す一枚絵。今日の舞台に近い風景を選ぶ。
+// ★素材は既存のものだけを使う（新規生成しない）。読めなければ枠ごと消えるので崩れない。
+// EXTENSION POINT: 地域を足したら1行足すだけ。無い地域は競走場の絵に落ちる。
+var RC_LOAD_ART = {
+  "カルデラ地域":       "images/konron/area_cliff.webp",
+  "ミストレイク地域":   "images/konron/area_falls.webp",
+  "グランドクロック地域": "images/konron/area_city.webp",
+  "シーサイド地域":     "images/konron/area_beach.webp",
+  "オンセン地域":       "images/konron/area_onsen.webp",
+  "サンクタム地域":     "images/konron/area_sanctum.webp",
+  "奥地":               "images/konron/area_okuchi.webp"
+};
+function rcLoadArtFor(race) {
+  try {
+    return RC_LOAD_ART[race && race.region] || "images/konron/area_race.webp";
+  } catch (e) { return "images/konron/area_race.webp"; }
 }

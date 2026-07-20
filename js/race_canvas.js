@@ -1843,11 +1843,33 @@ function startRaceCanvas(container, ctx) {
     }
     if (changed) renderTelop();
   }
-  // ★入場の煽りは廃止した。
-  //   従来は「8番人気 モム、入場！」と出走8頭ぜんぶを読み上げていたが、
-  //   入場で語るべきは場・今日の条件・注目の竜だけ（8頭の点呼は情報が多すぎて
-  //   誰が主役か分からなくなる）。いまは放送台本の entry ブロックが担当する。
-  function pumpEntranceTelop() { /* 台本側（race_broadcast.js の entry）に一本化 */ }
+  // ★入場〜発走前の実況。
+  //   従来ここは「8番人気 モム、入場！」と8頭を点呼していた（情報過多で誰が主役か
+  //   分からない）ので廃止し、放送台本の entry ブロックに一本化した。
+  //   ただし入場中とカウントダウン中は、メインループがテロップ処理へ進む前に
+  //   return してしまうため、発走まで実況が無言になり、走り出した瞬間に入場の
+  //   台詞が一気に流れて消えていた（ユーザー指摘）。ここで入場ぶんだけを
+  //   パレードの進み具合に合わせて自前で送り出す。
+  const _entryLines = telopSchedule.filter(t => t.tag === "entry");
+  function pumpEntranceTelop() {
+    if (!_entryLines.length) return;
+    // 入場（パレード）とカウントダウンを合わせて 0→1 の進み具合にする
+    const PRE_DUR = 3.0;   // カウントダウンの長さ（S.preT の初期値と揃える）
+    const total = ENTRY_DUR + PRE_DUR;
+    const spent = (S.entryT > 0) ? (ENTRY_DUR - S.entryT) : (ENTRY_DUR + (PRE_DUR - S.preT));
+    const prog = clamp(spent / Math.max(0.001, total), 0, 1);
+    let changed = false;
+    _entryLines.forEach((t, i) => {
+      // 最後の1本が発走直前に来るよう、頭から順に等間隔で置く
+      const at = (i + 0.6) / _entryLines.length;
+      if (!t.fired && prog >= at) {
+        t.fired = true;
+        shownLines.push({ line: t.line, side: t.side });
+        changed = true;
+      }
+    });
+    if (changed) renderTelop();
+  }
 
   // ---- ゴール後に立ち上がる観客（キャンバス描画版）----
   // 画像そのものは既存のDOM <img>（.rc-crowdglow img）を供給元として使い回す。
@@ -4022,6 +4044,7 @@ function startRaceCanvas(container, ctx) {
     // --- pre-start 3-2-1 countdown: hold τ at the gate, then fire GO ---
     if (S.preT > 0) {
       S.preT -= dt * S.speed;
+      pumpEntranceTelop();   // ★カウントダウン中も実況を進める（ここも return するため無言になっていた）
       if (S.preT <= 0) {
         S.preT = 0;
         S.goFlash = 0.85;
