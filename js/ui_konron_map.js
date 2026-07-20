@@ -742,7 +742,18 @@ function _kmRenderPanel() {
         const mid = b.getAttribute("data-meal");
         const m = (typeof MEALS !== "undefined") && MEALS.find(function (x) { return x.id === mid; });
         if (!m) return;
-        if (m.quiz) { if (typeof renderMeals === "function") renderMeals(); return; }
+        // ★名物あては、その料理を開いた状態でごはん画面へ。
+        //   これまで renderMeals() を呼ぶだけで、押した名物とは無関係の
+        //   一覧が出ていた（どれを押しても同じ＝押した意味が無い）。
+        //   その料理が属する段のタブに合わせてから、詳細を開く。
+        if (m.quiz) {
+          if (typeof renderMeals === "function") {
+            if (typeof _mealTab !== "undefined" && m.tier) _mealTab = m.tier;
+            renderMeals();
+          }
+          if (typeof showMealDetail === "function") showMealDetail(m);
+          return;
+        }
         const first = !((typeof mealEaten === "function") && mealEaten(mid));
         if (typeof eatMeal === "function") eatMeal(mid);   // hungerラップ経由（課金/満腹/おごり）
         // 実食が成立した初回だけ、ミミのコメントを一言（満腹/金欠で不成立なら eaten 不変＝出ない）

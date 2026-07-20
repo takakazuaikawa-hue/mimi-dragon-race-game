@@ -32,6 +32,59 @@ function _scmScrollTo(sel) { var e = document.querySelector(sel); if (e) e.scrol
 var _mallFilter = "all";        // all / new / locked / owned
 var _scmHeroTimer = null;       // ヒーロー自動送りのタイマー
 
+// ── モールへ入るときの読み込み画面 ────────────────────────────────
+// ★なぜ要るか
+//   モールは試着室の大きな立ち絵＋衣装カード37枚を一度に並べる。描画は
+//   一瞬で終わるが画像は後から流れ込むので、入った直後は絵が虫食いのまま
+//   になる（着替えビューアから入ると特に目立つ＝ユーザー指摘）。
+//   主役の絵だけ先に読み終えてから見せる。カードは lazy のままでよい。
+//
+// ★止まらない作りにすること。読めない絵があっても必ず先へ進む
+//   （上限時間で打ち切り／例外は握って通す）。レース側と同じ約束。
+const MALL_LOAD_MIN_MS = 260;    // これ未満だと一瞬光って逆に目障り
+const MALL_LOAD_MAX_MS = 2600;   // これを過ぎたら待たずに見せる
+function showMallLoading(host, onReady) {
+  let done = false;
+  const go = () => {
+    if (done) return; done = true;
+    const w = host.querySelector(".mallload"); if (w) w.remove();
+    try { onReady(); } catch (e) { /* 描画で落ちても画面は戻す */ }
+  };
+  try {
+    const box = document.createElement("div");
+    box.className = "mallload";
+    box.innerHTML =
+      '<div class="mallload-in">' +
+        '<div class="mallload-ic">🛍️</div>' +
+        '<div class="mallload-ttl">ショッピングモール</div>' +
+        '<div class="mallload-bar"><i></i></div>' +
+        '<div class="mallload-note">試着室を用意しています……</div>' +
+      '</div>';
+    host.appendChild(box);
+
+    // 先に読むもの＝試着室に出る一枚と、その予備（表情違いで失敗したとき用）
+    const sel = (typeof outfitById === "function")
+      ? outfitById(state.ui.mallSel || (typeof currentOutfitId === "function" ? currentOutfitId() : null)) : null;
+    const srcs = [];
+    if (sel && typeof outfitImg === "function") {
+      srcs.push(outfitImg(sel.id, (state.ui && state.ui.mallExpr) || "smile"));
+      srcs.push(outfitImg(sel.id, "smile"));
+    }
+    const uniq = srcs.filter((s, i) => s && srcs.indexOf(s) === i);
+    if (!uniq.length) { setTimeout(go, MALL_LOAD_MIN_MS); return; }
+
+    let left = uniq.length;
+    const one = () => { if (--left <= 0) setTimeout(go, MALL_LOAD_MIN_MS); };
+    uniq.forEach(s => {
+      const im = new Image();
+      im.onload = one; im.onerror = one;     // 読めなくても数を減らす＝止まらない
+      im.src = s;
+      if (im.complete) one();                // 既に持っている絵は即座に消化
+    });
+    setTimeout(go, MALL_LOAD_MAX_MS);        // 保険：何があっても開く
+  } catch (e) { go(); }
+}
+
 function renderMall() {
   if (typeof mallUnlocked === "function" && !mallUnlocked()) {
     renderHome();
@@ -43,7 +96,15 @@ function renderMall() {
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>服が一着買えるだけ稼ぐと開きます（${fmtCoins(_need)}／これまでの最高 ${fmtCoins(_have)}）。</small></div></div>`);
     return;
   }
+  // ★読み込み画面はモールへ「入るとき」だけ。モールの中での再描画
+  //   （表情切替・フィルタ・着替え）で毎回挟むと、かえって鬱陶しい。
+  const entering = state.ui.screen !== "mall";
   state.ui.screen = "mall";
+  if (entering) { showMallLoading(beginScreen(), _renderMallBody); return; }
+  _renderMallBody();
+}
+
+function _renderMallBody() {
   if (window.Dialogue && Dialogue.dismiss) Dialogue.dismiss();
   // 初訪問＝サケの開店祝いVN（衣装ギフト）。ホームではVNを出さない鉄則のためここで再生（1回だけ）。
   if (typeof playMallIntroVN === "function" && !(state.player.flags || {}).mallIntroSeen) {

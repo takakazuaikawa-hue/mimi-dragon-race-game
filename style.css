@@ -6780,8 +6780,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ★ICON-BTN CENTERING：記号ひと文字だけのボタンは、必ず flex で字形そのものを中央に置く。
    固定サイズの箱に padding や line-height の実測値で寄せる書き方は、フォントの
    ascent/descent や文字幅が変わった瞬間に光学中心がズレる（← が右下に寄って見えていた原因）。
-   箱の位置ではなく「中身の位置」を揃えるルールなので、新しいアイコンボタンもここに足すこと。 */
-.bd-back, .rc-play, .sv-close, .dex-detail-x, .mv-x {
+   箱の位置ではなく「中身の位置」を揃えるルールなので、新しいアイコンボタンもここに足すこと。
+   ★このルールに登録し忘れると、そのボタンだけ静かにズレる。実際に表情ボタン
+     （.mv-expr / .scm-expr-b）が未登録で、横10〜11px・縦2.5〜6pxずれていた。
+     全画面のボタンを実測して洗い出した結果を反映してある。 */
+.bd-back, .rc-play, .sv-close, .dex-detail-x, .mv-x,
+.mv-expr, .scm-expr-b {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0; line-height: 1; text-align: center;
 }
@@ -7811,3 +7815,26 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   display: block; width: 100%; height: auto; max-height: 46vh;
   object-fit: contain;   /* 縦横比を歪めない */
 }
+
+/* モールへ入るときの読み込み画面（レースの .rcload と同じ考え方）。
+   ★主役の絵（試着室の立ち絵）だけ先に読み終えてから見せる。カードは lazy のまま。
+     入った直後に絵が虫食いで並ぶのを防ぐ（着替えビューアから入ると目立つ）。 */
+.mallload {
+  position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #fbf7ef, #f2ece0); padding: 20px;
+}
+.mallload-in { width: 100%; max-width: 300px; text-align: center; }
+.mallload-ic { font-size: 40px; line-height: 1; }
+.mallload-ttl { margin-top: 12px; font-size: 16px; font-weight: 800; color: #4a3b28; letter-spacing: .08em; }
+.mallload-bar {
+  margin: 14px auto 0; width: 180px; height: 5px; border-radius: 3px;
+  background: rgba(74,59,40,.14); overflow: hidden;
+}
+.mallload-bar > i {
+  display: block; width: 40%; height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, #e0b84a, #d46aa8);
+  animation: mallloadSlide 1.05s ease-in-out infinite;
+}
+@keyframes mallloadSlide { 0% { transform: translateX(-110%); } 100% { transform: translateX(360%); } }
+.mallload-note { margin-top: 10px; font-size: 12px; color: #7b6a52; }
+@media (prefers-reduced-motion: reduce) { .mallload-bar > i { animation: none; width: 100%; } }
