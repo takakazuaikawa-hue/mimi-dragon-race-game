@@ -7738,3 +7738,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @media (prefers-reduced-motion: reduce) {
   .rc-yt-side.pop .rc-yt-manju img { animation: none; }
 }
+
+/* 「本体が消音でも鳴らす」行：ラベルが長いので .vol-lb の固定幅56pxを解除する。
+   固定のままだと3行に折れて不格好だった（実機で確認）。トグルは右端へ寄せる。 */
+.vol-row.vol-force { padding-top: 6px; }
+.vol-row.vol-force .vol-force-lb { width: auto; flex: 1 1 auto; min-width: 0; font-size: 12.5px; }
+.vol-row.vol-force .vol-force-btn { flex: none; margin-left: auto; }

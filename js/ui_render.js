@@ -390,6 +390,7 @@ function showVolumePanel() {
   const isMuted = () => !!(window.Sfx && Sfx.isMuted && Sfx.isMuted());
   const bgmV = Math.round(((window.RaceBgm && RaceBgm.getVolume) ? RaceBgm.getVolume() : 1) * 100);
   const sfxV = Math.round(((window.Sfx && Sfx.getVolume) ? Sfx.getVolume() : 1) * 100);
+  const forceOn = !!(window.Sfx && Sfx.isForceSound && Sfx.isForceSound());
   box.innerHTML =
     `<div class="navpop-t">🔊 音量</div>` +
     `<div class="vol-mute-row"><span class="vol-mute-lb">${isMuted() ? "🔇 ミュート中" : "🔊 サウンド ON"}</span>` +
@@ -398,6 +399,13 @@ function showVolumePanel() {
       `<input type="range" class="vol-slider vol-bgm" min="0" max="100" value="${bgmV}"><span class="vol-pct vol-bgm-pct">${bgmV}%</span></div>` +
     `<div class="vol-row"><span class="vol-ic">🔊</span><span class="vol-lb">効果音</span>` +
       `<input type="range" class="vol-slider vol-sfx" min="0" max="100" value="${sfxV}"><span class="vol-pct vol-sfx-pct">${sfxV}%</span></div>` +
+    // ★端末の消音スイッチとの主導権。Webから消音状態は読めないので「いま消音中」とは出せない。
+    //   代わりに、どちらを上位にするかを本人に選ばせる（既定＝端末を尊重）。
+    `<div class="vol-row vol-force"><span class="vol-ic">📱</span>` +
+      `<span class="vol-lb vol-force-lb">本体が消音でも鳴らす</span>` +
+      `<button class="set-toggle${forceOn ? " on" : ""} vol-force-btn">${forceOn ? "ON" : "OFF"}</button></div>` +
+    `<div class="vol-note">スマホを消音（マナーモード）にしていると、通常このゲームの音も鳴りません。` +
+      `消音のままでも音を聞きたいときは、上を ON にしてください。</div>` +
     `<div class="vol-note">レースの結果・オッズ・配当には影響しません</div>`;
   const btns = el("div", "navpop-btns");
   const ok = el("button", "navpop-go", "とじる"); ok.onclick = () => ov.remove();
@@ -409,6 +417,15 @@ function showVolumePanel() {
   const bgmS = box.querySelector(".vol-bgm"), sfxS = box.querySelector(".vol-sfx");
   const bgmP = box.querySelector(".vol-bgm-pct"), sfxP = box.querySelector(".vol-sfx-pct");
   const muteBtn = box.querySelector(".vol-mute-btn");
+  const forceBtn = box.querySelector(".vol-force-btn");
+  if (forceBtn) forceBtn.onclick = () => {
+    const on = !(window.Sfx && Sfx.isForceSound && Sfx.isForceSound());
+    if (window.Sfx && Sfx.setForceSound) Sfx.setForceSound(on);
+    forceBtn.textContent = on ? "ON" : "OFF";
+    forceBtn.classList.toggle("on", on);
+    // ONにした直後は「鳴るようになった」ことが分かるよう1音鳴らす（ミュート中は鳴らさない）
+    if (on && window.Sfx && Sfx.play && !isMuted()) { try { Sfx.play("click"); } catch (e) {} }
+  };
   const syncMuted = () => { const m = isMuted(); bgmS.disabled = m; sfxS.disabled = m; box.classList.toggle("vol-muted", m); };
   syncMuted();
   bgmS.oninput = () => { const v = +bgmS.value; bgmP.textContent = v + "%"; if (window.RaceBgm && RaceBgm.setVolume) RaceBgm.setVolume(v / 100); };

@@ -64,6 +64,9 @@ var RaceBgm = (function () {
   }
   var _routed = new WeakSet ? new WeakSet() : null;   // 同じ要素に二度つなぐと例外になるので記録
   function routeThroughWebAudio(a) {
+    // ★「端末が消音でも鳴らす」がONなら保険を当てない＝HTML audio のまま＝消音を無視して鳴る。
+    //   （旧iOSではこれが唯一の「鳴らす」手段になる）
+    try { if (typeof Sfx !== "undefined" && Sfx.isForceSound && Sfx.isForceSound()) return; } catch (e) {}
     if (!_isIOS() || _audioSessionOK()) return;        // ①で足りる環境／iOS以外は何もしない
     try {
       if (_routed && _routed.has(a)) return;
@@ -186,6 +189,14 @@ var RaceBgm = (function () {
     setVolume: setVolume,
     getVolume: getVolume,
     playFile: playFile,
+    // 「端末が消音でも鳴らす」を切り替えた直後に呼ばれる。旧iOSでは経路（Web Audio経由か否か）
+    // が変わるため、鳴らし直さないと新しい設定が効かない。意図(pending)から作り直す。
+    reapplySession: function () {
+      if (!audio || !pending) return;
+      var k = pending.kind, p = pending.path, o = pending.once;
+      stop();
+      if (k === "file" && p) playFile(p, { once: o }); else start();
+    },
     isPlaying: function () { return !!audio; },
     trackCount: function () { return RACE_BGM_TRACKS.length; }
   };

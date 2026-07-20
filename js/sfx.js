@@ -312,15 +312,31 @@ var Sfx = (function () {
   //   iOS の AVAudioSessionCategoryAmbient 相当＝サイレントスイッチに従い、
   //   他アプリの音楽とも共存する（ゲームのBGMとして望ましい既定）。
   //   ★非対応環境では何も起こらない安全な no-op。
+  // ★どちらを上位にするかはプレイヤーが決める（Webに消音スイッチの状態を読むAPIは無いので、
+  //   「いま消音中です」と正確に出すことはできない。できるのは主導権を選ばせることだけ）。
+  //   既定は OFF＝端末を尊重（マナーモードなのに突然鳴る事故を起こさない）。
+  //   ON にすると "playback"＝消音スイッチを無視して鳴らす（本人が明示的に選んだ場合のみ）。
+  var OVR_KEY = "mimi_force_sound";
+  var forceSound = false;
+  try { forceSound = localStorage.getItem(OVR_KEY) === "1"; } catch (e) {}
   function applyAudioSession() {
     try {
       if (navigator.audioSession && "type" in navigator.audioSession) {
-        navigator.audioSession.type = "ambient";
+        navigator.audioSession.type = forceSound ? "playback" : "ambient";
         return true;
       }
     } catch (e) {}
     return false;
   }
+  // 「端末が消音でも鳴らす」の切り替え。即座に反映し、保存する。
+  function setForceSound(on) {
+    forceSound = !!on;
+    try { localStorage.setItem(OVR_KEY, forceSound ? "1" : "0"); } catch (e) {}
+    applyAudioSession();
+    try { if (typeof RaceBgm !== "undefined" && RaceBgm.reapplySession) RaceBgm.reapplySession(); } catch (e) {}
+    return forceSound;
+  }
+  function isForceSound() { return forceSound; }
   applyAudioSession();
   // 復帰時に既定へ戻る実装があるため、画面が戻るたびに念のため貼り直す。
   try {
@@ -346,6 +362,8 @@ var Sfx = (function () {
     // 実機診断用：iOSのサイレントスイッチ対応が効いているかを外から確認できるようにする。
     //   supported=false … iOS 16.4 未満など未対応（BGMは消音でも鳴る可能性が残る）
     //   type="ambient"  … 適用済み＝本体の消音に従う
+    setForceSound: setForceSound,
+    isForceSound: isForceSound,
     audioSessionInfo: function () {
       var t = null, sup = false;
       try { sup = !!(navigator.audioSession && "type" in navigator.audioSession); if (sup) t = navigator.audioSession.type; } catch (e) {}
