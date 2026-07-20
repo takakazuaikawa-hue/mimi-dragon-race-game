@@ -1362,10 +1362,10 @@ function startRaceCanvas(container, ctx) {
     _rollShown = idx;
     const dr = _rollOrder[idx];
     if (!dr) return;
-    // 実況へ1行差し込む（既存 shownLines/renderTelop の流儀に乗る）
-    const od = (oddsResult.oddsData || []).find(o => o.dragonId === dr.id) || {};
-    shownLines.push({ line: `${od.popularityRank || idx + 1}番人気 ${commentaryName(dr.id)}、入場！`, side: "call" });
-    renderTelop();
+    // ★入場の点呼（「◯番人気 ◯◯、入場！」を1頭ずつ）は実況から外した。
+    //   8頭を順に読み上げると情報が多すぎて、誰が主役なのか分からなくなる
+    //   （ユーザー指摘）。入場で語るのは場・条件・注目の竜だけ＝放送台本の
+    //   entry ブロックが担当する。ここは絵として竜が入場するのを見せるだけ。
     // 自分の賭け竜の紹介だけ、音と視聴者の反応を足す（依怙贔屓＝プレイヤーの当事者性）
     if (betSet.has(dr.id)) {
       try { if (window.Sfx) Sfx.play("tick", 1.25); } catch (e) {}
@@ -1720,21 +1720,20 @@ function startRaceCanvas(container, ctx) {
   // ★本流＝出来事台帳から生やす（race_beats.js）。竜の動きとエフェクトが弾ける
   //   まさにその瞬間に、実況と解説の言葉も出る＝三つが同じ拍で織り合う。
   //   台帳が作れない場合だけ、従来のフェーズ単位の割り付けへ落ちる（安全側）。
+  // ★本流＝放送台本（race_broadcast.js）。レースを最初に全部読み切ってから
+  //   局面ごとに「何を語るか」を決めた台本を、そのまま流す。
+  //   ロード画面の裏で組み立てておいたものがあれば、それを使う（再計算しない）。
   let telopSchedule = [];
-  let _beatCount = 0;
+  let _bcAnalysis = null;
   try {
-    if (typeof buildRaceBeats === "function" && typeof buildBeatTelop === "function") {
-      const _cx = { race, bet, oddsResult, raceResult, trialForms: ctx.trialForms };
-      const _beats = buildRaceBeats(timeline, _cx);
-      const _topics = (typeof buildRaceTopics === "function") ? buildRaceTopics(timeline, _cx) : [];
-      telopSchedule = buildBeatTelop(_beats, _topics, {
-        commentator: _commentator,
-        betIds: (bet && bet.selections) || [],   // ★最後の直線でも自分の賭けた竜だけは追い続ける
-        goalSit: (typeof goalSituation === "function")
-          ? goalSituation({ raceResult, bet, oddsResult, betHit: computeBetHit() }, timeline) : null,
-        nameOf: (id) => (typeof commentaryName === "function" ? commentaryName(id) : id)
-      });
-      _beatCount = _beats.length;
+    if (typeof buildBroadcast === "function") {
+      const pre = ctx.broadcastScript;
+      const bc = pre || buildBroadcast(timeline,
+        { race, bet, oddsResult, raceResult, trialForms: ctx.trialForms },
+        { commentator: _commentator,
+          nameOf: (id) => (typeof commentaryName === "function" ? commentaryName(id) : id) });
+      telopSchedule = (bc.script || []).map(x => ({ tau: x.tau, line: x.line, side: x.side, tag: x.tag, fired: false }));
+      _bcAnalysis = bc.analysis || null;
     }
   } catch (e) { telopSchedule = []; }
 
@@ -1844,15 +1843,11 @@ function startRaceCanvas(container, ctx) {
     }
     if (changed) renderTelop();
   }
-  // entrance 煽り — fed into the SAME 実況 telop so the hype reads as live commentary
-  const _entHype = _hypeLines.map((line, i) => ({ at: (i + 0.4) / _hypeLines.length, line, fired: false }));
-  function pumpEntranceTelop() {
-    if (S.entryT <= 0) return;
-    const ent = clamp(1 - S.entryT / ENTRY_DUR, 0, 1);
-    let changed = false;
-    for (const h of _entHype) { if (!h.fired && ent >= h.at) { h.fired = true; shownLines.push({ line: h.line, side: "call" }); changed = true; } }
-    if (changed) renderTelop();
-  }
+  // ★入場の煽りは廃止した。
+  //   従来は「8番人気 モム、入場！」と出走8頭ぜんぶを読み上げていたが、
+  //   入場で語るべきは場・今日の条件・注目の竜だけ（8頭の点呼は情報が多すぎて
+  //   誰が主役か分からなくなる）。いまは放送台本の entry ブロックが担当する。
+  function pumpEntranceTelop() { /* 台本側（race_broadcast.js の entry）に一本化 */ }
 
   // ---- ゴール後に立ち上がる観客（キャンバス描画版）----
   // 画像そのものは既存のDOM <img>（.rc-crowdglow img）を供給元として使い回す。

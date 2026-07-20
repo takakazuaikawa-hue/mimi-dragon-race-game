@@ -7749,3 +7749,38 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .vol-row.vol-force { padding-top: 6px; }
 .vol-row.vol-force .vol-force-lb { width: auto; flex: 1 1 auto; min-width: 0; font-size: 12.5px; }
 .vol-row.vol-force .vol-force-btn { flex: none; margin-left: auto; }
+
+/* ── 出走前のロード画面 ───────────────────────────────────────────
+   放送台本の組み立てと背景画像の先読みを、走り出す前に済ませるための間。
+   ★ここは「待たされている」ではなく「準備が整っていく」と感じさせたいので、
+     進捗バーは実測ではなく一定速で走らせ、上限で必ず打ち切る（race_broadcast.js）。 */
+.rcload {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-height: 320px; padding: 28px 16px;
+  background: linear-gradient(180deg, #10131b 0%, #171b26 100%);
+  border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
+}
+.rcload-in { width: 100%; max-width: 320px; text-align: center; }
+.rcload-cup {
+  display: inline-block; padding: 3px 12px; border-radius: 999px;
+  background: rgba(230,178,74,.14); border: 1px solid rgba(230,178,74,.35);
+  color: #e6b24a; font-size: 11px; font-weight: 800; letter-spacing: .04em;
+}
+.rcload-ttl { margin-top: 14px; font-size: 17px; font-weight: 800; color: #eef2f7; letter-spacing: .08em; }
+.rcload-bar {
+  margin: 16px auto 0; width: 100%; height: 4px; border-radius: 999px;
+  background: rgba(255,255,255,.08); overflow: hidden;
+}
+.rcload-bar > i {
+  display: block; height: 100%; width: 40%; border-radius: 999px;
+  background: linear-gradient(90deg, #e6b24a, #ffd98a);
+  animation: rcloadSlide 1.1s ease-in-out infinite;
+}
+@keyframes rcloadSlide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(260%); }
+}
+.rcload-note { margin-top: 12px; font-size: 11.5px; font-weight: 700; color: #96a3b4; min-height: 16px; }
+@media (prefers-reduced-motion: reduce) {
+  .rcload-bar > i { animation: none; width: 100%; }
+}

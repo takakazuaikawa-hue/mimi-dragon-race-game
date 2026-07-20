@@ -2832,11 +2832,20 @@ function renderRaceRun() {
   const app = beginScreen();
   const host = el("div"); host.id = "race-canvas-host";
   app.appendChild(host);
-  startRaceCanvas(host, {
-    race: c.race, raceResult: c.raceResult, oddsResult: c.oddsResult, bet: c.bet,
-    betResult: c.betResult,
-    timeline: c.timeline, commentary: c.commentary, broadcast: c.broadcast
-  });
+
+  // ★出走前のロード画面。ここで2つを裏で済ませてから走り出す：
+  //   ①実況の放送台本を組み立てる（レースを最初から最後まで読み切る計算）
+  //   ②背景画像を先読みする（従来は走り出してから間に合わず、後から絵が差し替わっていた）
+  //   どちらも「走りながら」やると、序盤がガタつくか、絵が出ないまま始まってしまう。
+  const startNow = () => {
+    startRaceCanvas(host, {
+      race: c.race, raceResult: c.raceResult, oddsResult: c.oddsResult, bet: c.bet,
+      betResult: c.betResult, trialForms: c.trialForms,
+      timeline: c.timeline, commentary: c.commentary, broadcast: c.broadcast,
+      broadcastScript: c.broadcastScript
+    });
+  };
+  showRaceLoading(host, c, startNow);
   // （レース隅のマスコット竜は撤去：レース画面には不要。音量ボタンはグローバル常設 mountVolumeFab）
 }
 
