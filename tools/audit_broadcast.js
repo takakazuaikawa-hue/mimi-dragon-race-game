@@ -94,6 +94,7 @@ parts.push(`
   simulateMarket: typeof simulateMarket !== "undefined" ? simulateMarket : undefined,
   buildRaceTimeline: typeof buildRaceTimeline !== "undefined" ? buildRaceTimeline : undefined,
   buildBroadcast: typeof buildBroadcast !== "undefined" ? buildBroadcast : undefined,
+  bcEntrySchedule: typeof bcEntrySchedule !== "undefined" ? bcEntrySchedule : undefined,
   BC_LINES: typeof BC_LINES !== "undefined" ? BC_LINES : undefined,
   RACE_COMMENTATORS: typeof RACE_COMMENTATORS !== "undefined" ? RACE_COMMENTATORS : undefined,
   commentaryName: typeof commentaryName !== "undefined" ? commentaryName : undefined
@@ -107,7 +108,7 @@ try {
   process.exit(1);
 }
 const need = ["RACES", "runRace", "simulateMarket", "buildRaceTimeline",
-              "buildBroadcast", "BC_LINES", "RACE_COMMENTATORS", "commentaryName"];
+              "buildBroadcast", "bcEntrySchedule", "BC_LINES", "RACE_COMMENTATORS", "commentaryName"];
 const missing = need.filter(k => typeof S[k] === "undefined");
 if (missing.length) {
   console.error("必要なものが読めていない: " + missing.join(", "));
@@ -147,9 +148,50 @@ const RULES = [
       const late = (Math.max(...g.map(x => x.tau)) - c.A.decideTau) * c.sec;
       return late > 3.0 ? late.toFixed(1) + "秒遅れ" : null; } },
   { key: "無言が長い", fn: c => {
-      const ts = c.script.map(x => x.tau).filter(t => t <= c.A.decideTau).sort((a, b) => a - b);
-      let mx = 0; for (let i = 1; i < ts.length; i++) mx = Math.max(mx, ts[i] - ts[i - 1]);
-      return mx * c.sec > 3.0 ? (mx * c.sec).toFixed(1) + "秒" : null; } },
+      // ★実機の流れに合わせて測る。台本のτをそのまま並べると測り漏らす：
+      //   ・入場ぶんはパレード中に別の間合いで流れる（レース中の無言ではない）
+      //   ・スタートの行はゲート開放の瞬間に発火する（台本のτ0.045ではなくτ=0）
+      //   これを補正せずに測っていたため、発走直後の10.4秒の無言を
+      //   「違反なし」と報告していた（ユーザーが体感で気づいた）。
+      // ★スタートの行だけをτ=0へ動かすと、そこから次の行までが「無言」に見える。
+      //   実際にはゲート開放の直後に発走直後の実況が続く。
+      //   正しくは「ゲート開放を起点として、その後の行の間隔」を測ること。
+      //   最初の実装はτ=0へ移すだけで並べ替えておらず、全レースで
+      //   9.9秒の無言を誤検出していた（台本は埋まっているのに）。
+      const ts = c.script
+        .filter(x => x.tag !== "entry" && x.tag !== "countdown" && x.tag !== "start")
+        .map(x => x.tau)
+        .filter(t => t <= c.A.decideTau)
+        .sort((a, b) => a - b);
+      // ゲート開放（τ=0）から最初の実況までも測る
+      if (ts.length) ts.unshift(0);
+      let mx = 0, at = 0;
+      for (let i = 1; i < ts.length; i++) {
+        if (ts[i] - ts[i - 1] > mx) { mx = ts[i] - ts[i - 1]; at = ts[i - 1]; }
+      }
+      return mx * c.sec > 3.0
+        ? (mx * c.sec).toFixed(1) + "秒 @τ" + at.toFixed(2) : null; } },
+  // ★発走までの間合いを実機と同じ計算で測る。
+  //   入場→カウントダウン→ゲート開放の継ぎ目は台本のτには現れないので、
+  //   この規則が無かった間は実機を1分ずつ回して確かめるしかなかった。
+  //   パレード尺(ENTRY_DUR)はコースで変わるので、短い場合と長い場合の
+  //   両端で確かめる。
+  { key: "発走前に無言がある", fn: c => {
+      const ent = c.script.filter(x => x.tag === "entry");
+      if (!ent.length) return null;
+      for (const dur of [7, 10, 14, 18]) {
+        const at = S.bcEntrySchedule(ent, dur);
+        const ev = at.map((t, i) => ({ t, hold: Math.max(1.5, ent[i].line.length / 13 + 0.5) }));
+        ev.push({ t: dur + 0.1, hold: 2 });     // カウントダウンの煽り
+        ev.push({ t: dur + 3.0, hold: 1 });     // ゲート開放＝スタートの行
+        ev.sort((a, b) => a.t - b.t);
+        let mx = 0, prev = 0;
+        for (const e of ev) { if (e.t - prev > mx) mx = e.t - prev; prev = Math.max(prev, e.t + e.hold); }
+        if (mx > 3.0) return "パレード" + dur + "秒で" + mx.toFixed(1) + "秒の無言";
+        const over = at[at.length - 1] > dur - 0.3;
+        if (over) return "パレード" + dur + "秒で入場の行が発走にはみ出す";
+      }
+      return null; } },
   { key: "解説が相槌になっている", fn: c =>
       c.color.length > c.call.length * 0.75
         ? "実況" + c.call.length + "／解説" + c.color.length : null },

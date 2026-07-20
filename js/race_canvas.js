@@ -1902,18 +1902,46 @@ function startRaceCanvas(container, ctx) {
   //   台詞が一気に流れて消えていた（ユーザー指摘）。ここで入場ぶんだけを
   //   パレードの進み具合に合わせて自前で送り出す。
   const _entryLines = telopSchedule.filter(t => t.tag === "entry");
+  // ★カウントダウン中の1本は入場とは別枠で持つ。
+  //   入場ぶんと一緒に均等配分すると、パレード中に言い終えてしまい
+  //   カウントダウンの3秒がまた無言になる（実測7.8秒の空白の正体）。
+  const _cdLines = telopSchedule.filter(t => t.tag === "countdown");
   function pumpEntranceTelop() {
+    // カウントダウンに入ったら（パレード終了・発走前）煽りを1本置く。
+    // 「位置について…」が出ている3秒を無言のまま通さないための1本。
+    if (S.entryT <= 0 && S.preT > 0 && S.preT <= 2.9) {
+      let cdChanged = false;
+      // 取りこぼした入場の行はここで出し切る。レース側へ持ち越さない。
+      _entryLines.forEach(t => {
+        if (t.fired) return;
+        t.fired = true;
+        shownLines.push({ line: t.line, side: t.side });
+        cdChanged = true;
+      });
+      _cdLines.forEach(t => {
+        if (t.fired) return;
+        t.fired = true;
+        shownLines.push({ line: t.line, side: t.side });
+        cdChanged = true;
+      });
+      if (cdChanged) renderTelop();
+    }
     if (!_entryLines.length) return;
     // 入場（パレード）とカウントダウンを合わせて 0→1 の進み具合にする
     const PRE_DUR = 3.0;   // カウントダウンの長さ（S.preT の初期値と揃える）
-    const total = ENTRY_DUR + PRE_DUR;
-    const spent = (S.entryT > 0) ? (ENTRY_DUR - S.entryT) : (ENTRY_DUR + (PRE_DUR - S.preT));
-    const prog = clamp(spent / Math.max(0.001, total), 0, 1);
+    // ★入場はパレード中に言い終える。カウントダウンまで引っ張らない。
+    //   以前はパレード＋カウントダウン（約12秒）に8行を均等配分していたため、
+    //   1行1.5秒とゆっくりで、しかも最後の行が発走直前に来る。そこからレース側の
+    //   刻みに移る継ぎ目が空き、実機で6.6秒の無言になっていた（ユーザー指摘）。
+    //   カウントダウンの3秒は「静かに待つ」時間として空けておく方が締まる。
+    const spent = (S.entryT > 0) ? (ENTRY_DUR - S.entryT) : ENTRY_DUR;
+    // ★間合いの計算は race_broadcast.js の bcEntrySchedule に一本化してある。
+    //   画面側で持つと確かめるのに実機を回すことになるため。
+    if (!_entryLines._at) _entryLines._at = bcEntrySchedule(_entryLines, ENTRY_DUR);
     let changed = false;
     _entryLines.forEach((t, i) => {
-      // 最後の1本が発走直前に来るよう、頭から順に等間隔で置く
-      const at = (i + 0.6) / _entryLines.length;
-      if (!t.fired && prog >= at) {
+      const at = _entryLines._at[i];
+      if (!t.fired && spent >= at) {
         t.fired = true;
         shownLines.push({ line: t.line, side: t.side });
         changed = true;

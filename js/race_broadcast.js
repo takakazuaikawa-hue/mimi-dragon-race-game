@@ -46,6 +46,25 @@ function bcHoldTau(text, beat, raceSec) {
   return sec / Math.max(1, raceSec || 46);
 }
 
+// 入場（パレード）中の行を、いつ送り出すかを決める。
+// ★純関数にしてある理由：レース画面と監査の両方がこの1本を使うため。
+//   ここが画面側にベタ書きだった間は、間合いを確かめるのに毎回実機を回す
+//   必要があり、しかも実機は1回1分かかるので直しが遅かった。
+//   返り値は「パレード開始からの秒数」の配列（行と同じ並び）。
+// 決め方：読み上げに要る時間ぶんずつ間を取り、最後の1本がゲート開放の
+//   0.4秒前までに出るように後ろへ揃える。入り切らないときは詰める
+//   （はみ出させると入場の行が発走後に遅れて出てしまう）。
+function bcEntrySchedule(lines, entryDur) {
+  const arr = lines || [];
+  if (!arr.length) return [];
+  const holds = arr.map(t => Math.max(1.5, String((t && t.line) || t || "").length / 13 + 0.5));
+  const need  = holds.reduce((a, b) => a + b, 0) - holds[holds.length - 1];
+  const room  = Math.max(0.6, (entryDur || 0) - 0.4);
+  const k     = (need > room - 0.6) ? (room - 0.6) / Math.max(0.001, need) : 1;
+  let acc     = (k < 1) ? 0.6 : Math.max(0.6, room - need);
+  return holds.map(h => { const a = acc; acc += h * k; return a; });
+}
+
 // 着差の5段階目盛り。★実況・着順ボードで同じ語を使うために一元化する。
 // 「接戦」「混戦」は情報量ゼロなので語彙から外した。
 const BC_MARGIN_TIER = [
@@ -310,7 +329,7 @@ function buildBroadcast(timeline, ctx, opts) {
   // 局面ごとの“間”。終盤は詰めて畳みかけ、入場と余韻はゆったり。
   const beatOf = (tag) =>
     (tag === "final" || tag === "goal") ? BC_BEAT.rush
-    : (tag === "entry" || tag === "course") ? BC_BEAT.calm
+    : (tag === "entry" || tag === "countdown" || tag === "course") ? BC_BEAT.calm
     : BC_BEAT.normal;
 
   // ★候補を貯めてから詰める（budgetPack）。
@@ -323,7 +342,8 @@ function buildBroadcast(timeline, ctx, opts) {
     cutin: 95,     // ★割り込み＝上位を争う追い抜き。待たせる価値がない
     final: 88,     // 終盤の攻防
     lead: 76,      // 1位交代
-    start: 70,     // 発走
+    start: 70,     // 発走＋発走直後（getaway）。押し出しで消えると10秒の無言になる
+    getaway: 70,   // 同上（tagを分けたくなった時のため）
     entry: 64,     // 入場
     shape: 58,     // 展開（いま上位が誰か）
     gap: 52,       // 差の開閉
@@ -478,16 +498,36 @@ function buildBroadcast(timeline, ctx, opts) {
   //   空いた時間で、今日のコースがどういう舞台なのかを解説に語らせる。
   // ★発走に解説は付けない。ゲートが開く瞬間は実況の一言だけで持つ場面で、
   //   ここに相槌を挟むと緊張が薄まる。
+  // ★カウントダウン中を埋める。
+  //   入場を言い終えてからゲートが開くまでの約3秒が丸ごと無言だった
+  //   （実測7.8秒の空白の正体）。ここは緊張が高まる時間なので、
+  //   煽りを1本だけ置いて締める。パレード側が入場ぶんと一緒に送り出す。
+  call(0.030, "countdown", "hold", {}, "countdown");
+
   call(0.045, "start", "go", {}, "start");
-  // 序盤はコースの説明を解説に預ける（実況は名前を告げるだけ）
-  // 発走直後の空きを埋める（誰が出たかは、この時点でいちばん知りたい情報）
-  call(0.075, "midway", "lead", (function () {
-    const d = A.samples.reduce((b, x) => Math.abs(x.tau - 0.075) < Math.abs(b.tau - 0.075) ? x : b, A.samples[0]);
+
+  // ★発走直後を埋める。
+  //   スタートの行はゲート開放（τ=0）で発火するので、次の行までが実測10秒の
+  //   無言になっていた（ユーザーが体感で指摘）。台本のτだけを見ていた監査は
+  //   これを測り漏らしていた。
+  //   ここは「誰が出たか」がいちばん知りたい時間なので、隊列を短い間隔で刻む。
+  //   優先度は start と同じにして、穴埋めや押し出しで消えないようにする。
+  // ★スタートの一言より後ろに置く。ゲートが開く前に「好スタートは◯◯」と
+  //   言ってしまうと順序が壊れる（実測で発生）。
+  [0.030, 0.062, 0.094, 0.126, 0.158, 0.190].forEach((t, i) => {
+    const d = A.samples.reduce((b, x) => Math.abs(x.tau - t) < Math.abs(b.tau - t) ? x : b, A.samples[0]);
     const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
-    return { n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]), m: marginTier(g).label };
-  })(), "shape");
-  call(0.13, "course", "intro", { label: early.label }, "course");
-  color(0.125, "course", "detail",
+    call(t, "getaway", ["out", "lead", "third", "settle", "lead", "third"][i], {
+      n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]),
+      m: marginTier(g).label
+    // ★タグは "getaway"。ゲート開放の一言（"start"）とは別物にしておく。
+    //   同じタグにすると、監査で「開放の瞬間」を除外したときに
+    //   発走直後の実況まで一緒に消えて、無言を誤検出する（実際にやらかした）。
+    }, "getaway");
+  });
+
+  call(0.20, "course", "intro", { label: early.label }, "course");
+  color(0.21, "course", "detail",
         { label: early.label, s: (early.stats || []).join("と") }, "course");
 
   // 逃げ竜が主張しているなら、それは隊列の話なので序盤に言う価値がある
@@ -729,7 +769,26 @@ function buildBroadcast(timeline, ctx, opts) {
   ["call", "color"].forEach(side => {
     const mine = cand.filter(c => c.side === side).sort((a, b) => a.tau - b.tau);
     const goals = mine.filter(c => c.tag === "goal");
-    const rest  = mine.filter(c => c.tag !== "goal");
+    // ★入場は詰め込みの対象から外す。
+    //   入場の8行はパレード中に別の間合いで流れる（pumpEntranceTelop）ので、
+    //   台本のτは名目値でしかない。それを他の行と一緒に時間順へ詰めていたため、
+    //   入場がτ0〜0.17を占有し、発走以降の行を丸ごと後ろへ押し出していた。
+    //   結果、ゲート開放から最初の実況まで実測10秒の無言（ユーザー指摘）。
+    const entries = mine.filter(c => c.tag === "entry" || c.tag === "countdown");
+    // ★ゲート開放の一言は τ=0 に固定する。
+    //   これは時刻ではなく「ゲートが開いた事実」で発火する行なので、
+    //   他の行と一緒に詰めると押し出され、発走直後の実況より後に出る
+    //   （実測：「好スタートは◯◯」のあとに「ゲートが開きました！」）。
+    const starts = mine.filter(c => c.tag === "start");
+    const rest  = mine.filter(c => c.tag !== "goal" && c.tag !== "entry" && c.tag !== "countdown" && c.tag !== "start");
+    entries.forEach(e => {
+      e.at = e.tau; e.hold = bcHoldTau(e.line, BC_BEAT.calm, raceSec);
+      packed.push(e);
+    });
+    starts.forEach(st => {
+      st.at = 0; st.hold = bcHoldTau(st.line, BC_BEAT.rush, raceSec);
+      packed.push(st);
+    });
 
     // ①決着を先に確定（決着点から順に、読める間隔で並べる）
     let gAt = A.decideTau;
