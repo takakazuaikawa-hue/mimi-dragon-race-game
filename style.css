@@ -1158,31 +1158,17 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 
 /* ★CODEX納品：元は座って画面外にいた観客が、ゴール後に立ち上がって背中を見せる。
    12フレームを55ms刻みで一度だけ送り、最終コマをそのまま保持する。 */
-/* ★観客はキャンバスの「背面」に置く（ユーザー指摘：観客が結果パネルの前に出ていた）。
-   キャンバスには z-index が無く（＝auto）、観客が z:2 だったため、canvas に描く
-   「🏆1着◯◯」「的中！+N コイン」の上へ観客のシルエットが被さっていた。
-   観客は雰囲気の背景なので 0、canvas を 1 にして前後を明示する。
-   ★position を持たない要素は z-index が効かないので、canvas 側にも position を与える。 */
-.rc-stage > #rc-canvas { position: relative; z-index: 1; }
+/* ★観客の「描画」はキャンバス側（race_canvas.js の drawCrowdStand）へ移した。
+   理由：観客はキャンバスの前面に出す必要がある（背面だと不透明なキャンバスに隠れて消える）が、
+   DOMで前面に置くと、キャンバスへ描く結果プレート「的中！/ハズレ」の上にも被さる。
+   プレートは ch*0.82＝観客帯のまん中なので、z-index では両立できなかった。
+   この要素は画像の読み込み口としてだけ残す（描画には使わないので見えない位置に置く）。 */
 .rc-crowdglow {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 36%; z-index: 0;
-  pointer-events: none; opacity: 0; transition: opacity .18s ease;
-  border-radius: 0 0 10px 10px; overflow: hidden;
+  position: absolute; left: 0; bottom: 0; width: 1px; height: 1px;
+  pointer-events: none; opacity: 0; overflow: hidden;
 }
-.rc-crowdglow img {
-  position: absolute; left: 0; top: 0; width: 100%; height: 1200%;
-  transform: translateY(-91.6666667%);
-  will-change: transform;
-}
-.rc-crowdglow.is-standing { opacity: .55; }
-.rc-crowdglow.is-standing img { animation: rcCrowdStand .66s steps(11, end) forwards; }
-@keyframes rcCrowdStand {
-  from { transform: translateY(0); }
-  to { transform: translateY(-91.6666667%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .rc-crowdglow.is-standing img { animation: none; } /* 最終コマの静止画で表示 */
-}
+/* 画像は素のまま置くだけ（コマ送りはキャンバス側が担う）。表示はしないので寸法は最小。 */
+.rc-crowdglow img { position: absolute; left: 0; top: 0; width: 1px; height: 1px; }
 @media (prefers-reduced-motion: reduce) { .rc-chat-line { animation: none; } }
 
 /* ★B-3「山を3つ」＝終盤(3)/ゴール前(4)だけ盤面を締める（序盤は静かに・直線で最厚） */

@@ -1801,6 +1801,26 @@ function startRaceCanvas(container, ctx) {
     if (changed) renderTelop();
   }
 
+  // ---- ゴール後に立ち上がる観客（キャンバス描画版）----
+  // 画像そのものは既存のDOM <img>（.rc-crowdglow img）を供給元として使い回す。
+  // CSSアニメでコマを送っていたのを、ここで経過時間からコマ番号を出す方式に置き換えた。
+  const CROWD_FRAMES = 12, CROWD_STEP_MS = 60;   // 12コマ・1コマ60ms（旧CSSの steps(11,end)/.66s と同等）
+  let _crowdT0 = 0;
+  function drawCrowdStand() {
+    if (!S.finished) { _crowdT0 = 0; return; }          // 走行中は出さない（席は静か）
+    const host = wrap.querySelector(".rc-crowdglow");
+    const img = host && host.querySelector("img");
+    if (!img || !img.complete || !img.naturalWidth) return;   // 未ロード／画像なしは黙って何もしない
+    if (!_crowdT0) _crowdT0 = performance.now();
+    const fi = Math.min(CROWD_FRAMES - 1, Math.floor((performance.now() - _crowdT0) / CROWD_STEP_MS));
+    const fh = img.naturalHeight / CROWD_FRAMES;
+    const bandH = ch * 0.36, bandY = ch - bandH;              // 旧CSSと同じ「下36%」
+    cctx.save();
+    cctx.globalAlpha = 0.55;                                   // 旧 .is-standing と同じ濃さ
+    cctx.drawImage(img, 0, fi * fh, img.naturalWidth, fh, 0, bandY, cw, bandH);
+    cctx.restore();
+  }
+
   // ---- floating shout / placement text ----
   function addFloat(x, y, text, color, big) {
     S.floats.push({ x, y, text, color: color || "#fff", life: 1, vy: -18, big: !!big });
@@ -3507,6 +3527,14 @@ function startRaceCanvas(container, ctx) {
       cctx.restore(); cctx.globalAlpha = 1;
     }
 
+    // --- ゴール後に立ち上がる観客（手前の席）---
+    // ★DOMのオーバーレイからキャンバス描画へ移した理由：
+    //   観客はキャンバスの前面に置く必要がある（背面だと不透明なキャンバスに隠れて消える）が、
+    //   DOMで前面に置くと、この直後にキャンバスへ描く「🏆1着◯◯」「的中！/ハズレ」プレートの
+    //   上にも被さってしまう（プレートは ch*0.82＝観客帯の中）。z-index では両立できない。
+    //   描画順に組み込めば「観客の手前にプレート」が自然に成立する。
+    //   スプライトは12コマ縦積み。ゴールから 0.06s ごとに1コマ進み、最終コマで静止。
+    drawCrowdStand();
     // --- finish celebration + goal-moment reward reveal (spec #37) ---
     if (S.finished) {
       const winner = timeline.crossings[0];
