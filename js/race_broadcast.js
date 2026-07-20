@@ -766,6 +766,41 @@ function buildBroadcast(timeline, ctx, opts) {
       c.at = at; c.hold = hold; cursor = at + hold;
       packed.push(c);
     });
+
+    // ③隙間の穴埋め。
+    // ★時間順に詰める貪欲法は、一度でも入らない行が出ると、それ以降が
+    //   すべて「決着枠に食い込む」判定になって落ちる。結果、決着直前の
+    //   いちばん熱い区間（τ0.75〜0.82）が丸ごと空いていた（実測3.4秒の無言）。
+    //   詰め終わったあとに空白を探し、捨てた候補から近いものを戻す。
+    const mineP = packed.filter(p => p.side === side).sort((a, b) => a.at - b.at);
+    const holdOf = (c) => bcHoldTau(c.line, beatOf(c.tag), raceSec);
+    for (let k = 1; k < mineP.length; k++) {
+      const prev = mineP[k - 1], next = mineP[k];
+      const gapSec = (next.at - (prev.at + prev.hold)) * raceSec;
+      if (gapSec < 1.6) continue;                 // 詰まっている＝埋める必要なし
+      // その空白に入る候補を、捨てた中から探す（優先度が高く、位置が近いもの）
+      const room = next.at - (prev.at + prev.hold) - 0.004;
+      let best = null;
+      dropped.forEach(c => {
+        if (c._used) return;
+        const h = holdOf(c);
+        if (h > room) return;
+        // ★穴の場所に「そぐう」行だけを戻す。
+        //   ここを見ないと、終盤用の「並んだ！」が序盤の穴に入り込み、
+        //   序盤に並走を語ってしまう（実測で17件出た）。
+        //   元の位置から離れた行は、その局面の話ではない。
+        const slot = prev.at + prev.hold + 0.002;
+        if (Math.abs(c.tau - slot) > 0.12) return;
+        const score = c.pri - Math.abs(c.tau - slot) * 300;
+        if (!best || score > best.score) best = { c, h, score };
+      });
+      if (!best) continue;
+      best.c._used = true;
+      best.c.at = prev.at + prev.hold + 0.002;
+      best.c.hold = best.h;
+      packed.push(best.c);
+      mineP.splice(k, 0, best.c);                 // 埋めた行も次の判定に含める
+    }
   });
   // 実況と解説が同時に切り替わらないよう、解説側だけ微調整する
   const callTaus = packed.filter(p => p.side === "call").map(p => p.at);
