@@ -1800,7 +1800,11 @@ function startRaceCanvas(container, ctx) {
     if (!bub || !host || host.hidden) return;
     const arr = _said[key];
     if (arr[arr.length - 1] !== line) arr.push(line);
-    while (arr.length > 2) arr.shift();
+    // ★出す行は「いまの一言」だけ。
+    //   以前は直近2行を出して厚みを補っていたが、実況が台帳駆動で厚くなった今は
+    //   「セラムが3番手／セラムが2番手」のような似た行が並ぶだけで、読みにくく冗長。
+    //   高さも文字量で動いてレイアウトが揺れる原因になっていた。
+    while (arr.length > 1) arr.shift();
     bub.innerHTML = "";
     arr.forEach((s, i) => {
       const d = document.createElement("div");
