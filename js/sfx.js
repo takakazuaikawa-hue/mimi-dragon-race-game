@@ -209,6 +209,10 @@ var Sfx = (function () {
   // ---- sustained crowd roar (goal celebration) — loops until stopCrowd() ----
   // ゴールで「ワーッ」と湧き、結果を見る（stopCrowd）まで鳴り続ける厚い歓声。
   // 帯域の違うループノイズを重ね、各層をゆっくり揺らして“生きた群衆”にする。
+  // 歓声の長さ（秒）。うるさければ CROWD_HOLD を縮めるだけでよい。
+  var CROWD_HOLD = 6.6;    // 湧いてから持続する長さ＝主LFO 約2.2秒/波 × 3波
+  var CROWD_TAIL = 1.6;    // そこから引くまでの余韻
+  var _crowdEndT = null;   // 自動終了のタイマー（音源の後始末用）
   function startCrowd() {
     if (muted) return;
     if (!ensure()) return;
@@ -217,9 +221,15 @@ var Sfx = (function () {
     try {
       var now = ctx.currentTime;
       var out = ctx.createGain();
+      // ★歓声は「湧いて・3回うねって・引く」で終わらせる（ユーザー指摘：ループだとうるさい）。
+      //   実体は連続ノイズなので“回数”は主LFO（約0.45Hz≒2.2秒/波）のうねりで数える。
+      //   3波ぶん＝約6.6秒を持続させ、そのあと1.6秒かけて自然に引く。
+      //   ★包絡線で書く（JSタイマーではなく）＝フレーム落ちや裏画面でもズレない。
       out.gain.setValueAtTime(0.0001, now);
       out.gain.exponentialRampToValueAtTime(0.58, now + 0.35);  // ワーッ！と湧く頂点（前に出す）
       out.gain.exponentialRampToValueAtTime(0.40, now + 1.4);   // 持続レベル（前に出す）
+      out.gain.setValueAtTime(0.40, now + CROWD_HOLD);          // ここまで持続（3波ぶん）
+      out.gain.exponentialRampToValueAtTime(0.0001, now + CROWD_HOLD + CROWD_TAIL);   // 余韻を残して引く
       out.connect(master);
       var len = Math.floor(ctx.sampleRate * 2);                 // 2秒ループのホワイトノイズ
       var buf = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -250,6 +260,14 @@ var Sfx = (function () {
         nodes.push(src, lfo);
       });
       crowd = { out: out, nodes: nodes };
+      // 包絡線が引き切ったら音源を止めて片付ける（鳴らないノードを回し続けない）。
+      // 明示的な stopCrowd が先に走った場合は crowd が差し替わっているので何もしない。
+      var mine = crowd;
+      nodes.forEach(function (n) { try { n.stop(now + CROWD_HOLD + CROWD_TAIL + 0.1); } catch (e) {} });
+      if (_crowdEndT) clearTimeout(_crowdEndT);
+      _crowdEndT = setTimeout(function () {
+        if (crowd === mine) crowd = null;   // 自然終了：以後の stopCrowd は何もしない
+      }, (CROWD_HOLD + CROWD_TAIL + 0.2) * 1000);
     } catch (e) { crowd = null; }
   }
   function stopCrowd(immediate) {
