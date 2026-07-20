@@ -1175,10 +1175,14 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .rc-wrap[data-phase-idx="3"] .rc-stage,
 .rc-wrap[data-phase-idx="4"] .rc-stage { filter: contrast(1.05) saturate(1.08); }
 .rc-wrap[data-phase-idx="4"] .rc-phase { background: #c0392b; color: #fff; }
-.rc-wrap.rc-climax { animation: rcClimax .5s cubic-bezier(.3,1.4,.4,1); }
+/* ★山場の強調は「レース盤面だけ」を拡げる。
+   以前は .rc-wrap（実況の吹き出し・着順ボードまで含む親）に scale を掛けていたため、
+   ズームのたびに画面全体が揺らいでいた（ユーザー指摘）。読んでいる文字や
+   着順表が動くのは、盛り上げどころか、ただ読みにくいだけ。 */
+.rc-wrap.rc-climax .rc-stage { animation: rcClimax .5s cubic-bezier(.3,1.4,.4,1); }
 @keyframes rcClimax { 0% { transform: scale(1); } 40% { transform: scale(1.012); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {
-  .rc-board.zone-hit, .rc-wrap.rc-climax { animation: none; }
+  .rc-board.zone-hit, .rc-wrap.rc-climax .rc-stage { animation: none; }
   .rc-board .rcb-row { transition: none; }   /* FLIPの流れも止める＝静的な並び替えに */
   .rc-board .rcb-pay { animation: none; }
 }

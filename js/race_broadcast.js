@@ -791,9 +791,9 @@ function buildBroadcast(timeline, ctx, opts) {
 //   ★体感を人質に取らない：計算が速く終わっても最低限は見せる（一瞬の点滅を防ぐ）が、
 //     遅くても上限で打ち切って必ず走り出す（待たせ続けない）。
 const RC_LOAD_MIN_MS = 700;    // これ以下だと点滅して見えるので最低限見せる
-const RC_LOAD_MAX_MS = 3600;   // 何かが詰まっても、ここで必ず走り出す
-const RC_LOAD_IMG_MS = 1100;   // 背景の先読みを待つ上限（返事が来ない実装でも止まらない）
-const RC_LOAD_DRAGON_MS = 1600;// 出走竜のスプライトを待つ上限（揃わないと別の竜が一瞬映る）
+const RC_LOAD_MAX_MS = 6000;   // 何かが詰まっても、ここで必ず走り出す
+const RC_LOAD_IMG_MS = 3500;   // 背景の先読みを待つ上限（返事が来ない実装でも止まらない）
+const RC_LOAD_DRAGON_MS = 3000;// 出走竜のスプライトを待つ上限（揃わないと別の竜が一瞬映る）
 
 function showRaceLoading(host, c, onReady) {
   // ★ここで落ちるとロード画面のまま止まって復帰できないので、必ず先へ進める。
@@ -870,12 +870,25 @@ function showRaceLoading(host, c, onReady) {
   };
 
   const preload = (cb) => {
-    let pending = 2, fired = false;
+    // ★待つ対象：一枚絵の背景／視差背景3層／ロード画面の絵。
+    //   以前は視差背景（images/racebg_v2_time/ の L1〜L3）を待っていなかったため、
+    //   走り出してから背景が差し替わっていた（ユーザー指摘の再発分）。
+    let pending = 3, fired = false;
     const finish = () => { if (!fired) { fired = true; cb(); } };
     const one = () => { if (--pending <= 0) finish(); };
     try {
       setNote("コースを用意しています……");
       if (typeof rcBgFor === "function") { rcBgFor(c.race, one); } else { one(); }
+      // ★視差背景も待つ。時間帯フォルダは本編と同じ引き方をする
+      //   （違うフォルダを先読みしても、本番が使う絵は温まらない）。
+      try {
+        const tdir = (typeof rcRaceTime === "function" && typeof RC_TIME_DIR !== "undefined")
+          ? (RC_TIME_DIR[rcRaceTime(c.race)] || "night") : "night";
+        if (typeof rcParaFor === "function") {
+          const pe = rcParaFor(c.race, one, tdir);
+          if (pe && (pe.ok || pe.fail)) one();   // 既に温まっている／その地域に絵が無い
+        } else { one(); }
+      } catch (e2) { one(); }
       // ★ロード画面に出す一枚絵も、実際に読めるまで待つ。
       //   待たずに進むと「絵が出ないままロードが終わり、走り出してから
       //   背景が入れ替わる」状態になる（ユーザー指摘）。
