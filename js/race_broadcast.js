@@ -212,6 +212,68 @@ function bcAnalyze(timeline, ctx) {
             : wonFromBehind ? "late"
             : finalLeadChange ? "duel" : "steady";
   A.leadChangeCount = A.leadChanges.length;
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 決め手の算出 — 「この勝ち方は何がすごいのか」を数値から決める
+  // ═══════════════════════════════════════════════════════════════════
+  // ★ゴール後に大写しになるのは1着の竜。だから語るべきは「2着との差」ではなく
+  //   「どんな勝ち方だったか」。大穴だったのか、大逆転だったのか、死闘だったのか。
+  //   それを毎回その場の勘で選ぶのではなく、観測値から機械的に決める。
+  //   （ここまで台詞の選択が場当たりで、同じ言い方が続いていた）
+  A.drama = (() => {
+    const d = {};
+    // ①人気（何番人気が勝ったか）とオッズ＝波乱の度合い
+    try {
+      const od = (ctx.oddsResult && ctx.oddsResult.oddsData) || [];
+      const w = od.find(o => o.dragonId === A.winner) || {};
+      d.popRank = w.popularityRank || 4;
+      d.odds = w.odds || 5;
+    } catch (e) { d.popRank = 4; d.odds = 5; }
+    // ②どこまで下がっていたか＝逆転の大きさ
+    let worst = 1;
+    A.samples.forEach(s => {
+      if (s.tau < 0.10 || s.tau > 0.95) return;
+      const r = s.order.indexOf(A.winner) + 1;
+      if (r > worst) worst = r;
+    });
+    d.worstRank = worst;
+    d.comeback = worst - 1;                    // 何番手から巻き返したか
+    // ③先頭が何回替わったか＝レースの荒れ具合
+    d.leadChanges = A.leadChanges.length;
+    // ④着差
+    d.marginKey = marginTier(
+      (() => {
+        const wd = (timeline.byId || {})[A.winner] || {};
+        const sd = (timeline.byId || {})[A.second] || {};
+        return (sd.finishTau != null && wd.finishTau != null) ? sd.finishTau - wd.finishTau : 0.02;
+      })()
+    ).key;
+    // ⑤ずっと先頭だったか
+    d.wire = (A.frontRunner === A.winner && A.frontRunnerShare > 0.75);
+
+    // ── 盛り上がり度（0-100）。表示はしないが、決め手の選択と語気に使う ──
+    d.score = Math.min(100, Math.round(
+      (d.popRank - 1) * 9                                  // 人気薄ほど盛り上がる（最大63）
+      + Math.min(3, d.comeback) * 8                        // 巻き返しの大きさ（最大24）
+      + Math.min(4, d.leadChanges) * 4                     // 先頭交代の多さ（最大16）
+      + (d.marginKey === "nose" ? 18 : d.marginKey === "neck" ? 12 : d.marginKey === "half" ? 6 : 0)
+    ));
+
+    // ── 決め手の見出し＝いちばん珍しい事実を1つ選ぶ ──
+    //   複数当てはまるときは、珍しい順（＝観客がいちばん驚く順）に優先する。
+    d.headline =
+        (d.popRank >= 6 || d.odds >= 15)            ? "bigUpset"   // 大穴
+      : (d.comeback >= 4)                            ? "comeback"   // 大逆転
+      : (d.marginKey === "nose")                     ? "photo"      // 鼻先の死闘
+      : (d.leadChanges >= 4)                         ? "warOfAttrition" // 荒れた叩き合い
+      : (d.popRank >= 4)                             ? "upset"      // 伏兵
+      : (d.wire && d.marginKey === "big")            ? "perfect"    // 完全逃走
+      : (d.popRank === 1 && d.marginKey === "big")   ? "dominant"   // 王者の圧勝
+      : (d.marginKey === "neck" || d.marginKey === "half") ? "hardFought" // 競り勝ち
+      : "solid";
+    return d;
+  })();
+
   return A;
 }
 
@@ -491,9 +553,22 @@ function buildBroadcast(timeline, ctx, opts) {
   // ── 決着＝どう決まったのかを言う ────────────────────────────────
   // ★位置は決着点そのもの。τ=1.0（最下位のゴール）に置くと、実測で8秒以上
   //   遅れて出る台本になっていた。
-  const dv = { n: nameOf(A.winner), n2: nameOf(A.second), st: styleJP(A.winner) };
+  // ★大写しになるのは1着の竜。だから最後に叫ぶのは「どんな勝ち方だったか」。
+  //   2着との差で締めると、画面の主役と言葉の主役がずれる（ユーザー指摘）。
+  //   順番：①決まり方（逃げ切った/差し切った）→②着差（際どい時だけ）→
+  //         ③決め台詞＝A.drama から算出した「この勝ちの何がすごいか」
+  const dm = A.drama || {};
+  const dv = {
+    n: nameOf(A.winner), n2: nameOf(A.second), st: styleJP(A.winner),
+    p: dm.popRank, o: dm.odds, w: dm.worstRank, lc: dm.leadChanges
+  };
   say(D, "call", pick(poolOf("decide", A.pattern, "call"), "call"), dv, "goal");
-  say(D + 0.012, "call", pick(poolOf("margin", A.margin, "call"), "call"), dv, "goal");
+  // 着差は「際どかった時」だけ言う。大差の時に差を語っても盛り上がらない。
+  if (dm.marginKey === "nose" || dm.marginKey === "neck") {
+    say(D + 0.010, "call", pick(poolOf("margin", A.margin, "call"), "call"), dv, "goal");
+  }
+  // ★最後の一行＝決め台詞。ここで終わる。
+  say(D + 0.020, "call", pick(poolOf("climax", dm.headline || "solid", "call"), "call"), dv, "goal");
   say(D + 0.006, "color", pick(poolOf("decide", A.pattern, "color"), "color"), dv, "goal");
 
   // ── 詰め込み ────────────────────────────────────────────────────

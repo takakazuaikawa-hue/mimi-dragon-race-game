@@ -1850,6 +1850,20 @@ function startRaceCanvas(container, ctx) {
   }
   // 検証用：打ち切れなかった行の件数を外から読む
   try { window.__telopCut = _typeCut; } catch (e) {}
+  // ★ゲートが開いた瞬間に「スタート！」を言う。
+  //   時刻(τ)で待つと、τが動き出すのは開放の後なので必ず遅れて出る。
+  //   絵と声を合わせるには、時刻ではなく事実を合図にするしかない。
+  function fireStartCall() {
+    let changed = false;
+    telopSchedule.forEach(t => {
+      if (t.tag === "start" && !t.fired) {
+        t.fired = true;
+        shownLines.push({ line: t.line, side: t.side });
+        changed = true;
+      }
+    });
+    if (changed) renderTelop();
+  }
   function renderTelop() {
     const last = shownLines[shownLines.length - 1];
     if (last) speak(last.side, last.line);
@@ -4084,6 +4098,11 @@ function startRaceCanvas(container, ctx) {
         S.shake = Math.max(S.shake, 4);
         spawnSpark(cw / 2, ch * 0.40, "#ffe06a");
         if (window.Sfx) Sfx.play("start");   // スタートの「ドン」
+        // ★実況の「スタート！」はこの瞬間に出す。
+        //   台本ではτ0.045に置いていたが、これはゲートが開いてから約2秒後にあたり、
+        //   絵と声がはっきりずれて見えていた（ユーザー指摘：明らかにバグに見える）。
+        //   時刻ではなく「ゲートが開いた事実」を合図にする。
+        fireStartCall();
       }
       return;   // the field stays on the line until "GO！"
     }
