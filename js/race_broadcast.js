@@ -173,6 +173,18 @@ function bcAnalyze(timeline, ctx) {
     }
   }
 
+  // ★決着点＝1着がゴールした瞬間。台本の基準はここ。
+  //   τ=1.0 は「最下位が着くまで」であって勝負の終わりではない。基準を取り違えると、
+  //   決め台詞が決着の8秒後に出る台本になる（実測で発覚：1着37.7秒／τ1.0は46秒）。
+  A.decideTau = (() => {
+    try {
+      const w = (timeline.dragons || []).find(d => d.id === A.winner);
+      return (w && w.finishTau) || 0.9;
+    } catch (e) { return 0.9; }
+  })();
+  // 決着直前の「山場」＝ここが最も熱く、いちばん行を厚くすべき区間。
+  A.climaxFrom = Math.max(BC_MID_END, A.decideTau - 0.20);
+
   // 決着の形＝どう決まったか。実況の決め手を選ぶために使う。
   const wd = (timeline.byId && timeline.byId[A.winner]) || {};
   const sd = (timeline.byId && timeline.byId[A.second]) || {};
@@ -221,14 +233,44 @@ function buildBroadcast(timeline, ctx, opts) {
     : (tag === "entry" || tag === "course") ? BC_BEAT.calm
     : BC_BEAT.normal;
 
+  // ★候補を貯めてから詰める（budgetPack）。
+  //   従来は say() が「必ず後ろへずらす・絶対に落とさない」設計だったため、
+  //   終盤が混むと押し出しが連鎖し、決着の台詞が決着の6〜8秒後に出ていた（実測）。
+  //   正しくは「時間は有限。入らない行は優先度の低いものから捨てる」。
+  const cand = [];
+  const PRI = {
+    goal: 100,     // 決着＝絶対に落とさない／必ず決着点に置く
+    final: 88,     // 終盤の攻防
+    lead: 76,      // 1位交代
+    start: 70,     // 発走
+    entry: 64,     // 入場
+    shape: 58,     // 展開（いま上位が誰か）
+    gap: 52,       // 差の開閉
+    signature: 46, // 本領発揮
+    course: 34     // コース説明＝いちばん先に削ってよい
+  };
   const say = (tau, side, tpl, vars, tag) => {
+    if (!tpl) return false;
+    const line = String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : ""));
+    cand.push({ tau, side, line, tag, pri: PRI[tag] != null ? PRI[tag] : 50 });
+    used[side].push(line); if (used[side].length > 4) used[side].shift();
+    return true;
+  };
+  // 旧経路（未使用・参照が残っていた場合の保険）
+  const _sayImmediate = (tau, side, tpl, vars, tag) => {
     if (!tpl) return false;
     const line = String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : ""));
     // ★表示時間は字数から決める。固定間隔だと、長い行は読めず短い行は間延びする。
     const need = bcHoldTau(line, beatOf(tag), raceSec);
     const lastT = side === "color" ? lastColor : lastCall;
     const lastNeed = side === "color" ? lastColorNeed : lastCallNeed;
-    let at = Math.max(tau, lastT + lastNeed);
+    // ★決着の3行は、押し出さずに決着点のそばへ置く。
+    //   通常どおり「前の行を読み終わるまで」待たせると、解説の締めが決着の
+    //   8秒後に飛ぶ（実測48.4秒／決着40.4秒）。決着は畳みかけて言い切る場面なので、
+    //   ここだけは最小間隔で詰める。
+    let at = (tag === "goal")
+      ? Math.max(tau, lastT + 0.008)
+      : Math.max(tau, lastT + lastNeed);
     // ★実況と解説を同時に切り替えない。52px×2段が同時に変わると
     //   一瞬の認知負荷が倍になり、どちらを読めばいいか分からなくなる。
     const otherT = side === "color" ? lastCall : lastColor;
@@ -344,44 +386,100 @@ function buildBroadcast(timeline, ctx, opts) {
           { n: nameOf(c.to), n2: nameOf(c.from) }, "lead");
   });
 
-  // ── 終盤（0.62〜）＝逃げる竜と差す竜を盛り上げる ────────────────
-  call(0.64, "course", "intro", { label: late.label }, "course");
-  color(0.655, "course", "detail",
+  // ── 終盤（0.62〜決着点）＝いちばん熱い区間。ここを最も厚くする ──────
+  // ★従来ここは条件つきの数本しか置いておらず、実測で「9.2秒に2行・最長8.3秒の沈黙」
+  //   になっていた。盛り上がる場所が最も静かという逆立ちした配分だったので、
+  //   決着点(A.decideTau)から逆算して、必ず埋まる形に組み直す。
+  const D = A.decideTau;
+  // 位置は決着点からの逆算（レースごとに決着点が違うので固定τでは合わない）
+  const back = (sec) => Math.max(BC_MID_END + 0.01, D - sec / raceSec);
+
+  call(back(11.0), "course", "intro", { label: late.label }, "course");
+  color(back(10.4), "course", "detail",
         { label: late.label, s: (late.stats || []).join("と") }, "course");
 
-  // 逃げている竜
-  if (A.frontRunnerShare > 0.4) {
-    call(0.70, "final", "escape",
+  // 逃げている竜（先頭を長く守っていれば）
+  if (A.frontRunnerShare > 0.35) {
+    call(back(8.6), "final", "escape",
          { n: nameOf(A.frontRunner), st: styleJP(A.frontRunner) }, "final");
-    color(0.715, "final", "escape",
-          { n: nameOf(A.frontRunner), st: styleJP(A.frontRunner) }, "final");
+    // ★終盤に解説を重ねない。ここは実況が短く畳みかける場面で、解説を挟むと
+    //   押し出しが連鎖し、決着の締めが決着点を8秒も越えてしまう（実測48.4秒／
+    //   決着40.4秒）。終盤の解説は差し竜の1本と、決着の締めだけに絞る。
   }
   // 差してきている竜
   if (A.closer && A.closerGain >= 1) {
-    call(0.76, "final", "closing",
+    call(back(6.8), "final", "closing",
          { n: nameOf(A.closer), st: styleJP(A.closer) }, "final");
-    color(0.775, "final", "closing",
+    color(back(6.2), "final", "closing",
           { n: nameOf(A.closer), st: styleJP(A.closer) }, "final");
   }
-  // 最終直線の宣言と、1位2位の攻防
-  call(0.82, "final", "straight", {}, "final");
-  color(0.835, "final", "straight", {}, "final");
-  A.leadChanges.filter(c => c.tau > 0.82).slice(-1).forEach(c => {
-    call(Math.min(0.93, c.tau), "final", "leadFlip",
+  // ★直線宣言は必ず出す（区切りの合図）
+  call(back(5.0), "final", "straight", {}, "final");
+
+  // 直線に入ってからの先頭交代（あれば最後の1回）
+  A.leadChanges.filter(c => c.tau > back(5.0) && c.tau < D).slice(-1).forEach(c => {
+    call(Math.min(D - 0.02, c.tau), "final", "leadFlip",
          { n: nameOf(c.to), n2: nameOf(c.from) }, "final");
   });
-  call(0.90, "final", "duel",
+  // ★決着直前の畳みかけ。1着2着の綱引きを、短い行で刻む。
+  //   ここが実測で空白だった箇所なので、条件をつけずに必ず置く。
+  call(back(3.2), "final", "duel",
+       { n1: nameOf(A.winner), n2: nameOf(A.second) }, "final");
+  call(back(1.8), "final", "duel",
        { n1: nameOf(A.winner), n2: nameOf(A.second) }, "final");
 
-  // ── ゴール＝どう決まったのかを言う ──────────────────────────────
-  // ★「ゴールイン！」だけでは決め手にならない。決着の形（逃げ切り/差し切り/
-  //   叩き合い）と着差（大差/明確/際どい/ほぼ同時）を組み合わせて言う。
+  // ── 決着＝どう決まったのかを言う ────────────────────────────────
+  // ★位置は決着点そのもの。τ=1.0（最下位のゴール）に置くと、実測で8秒以上
+  //   遅れて出る台本になっていた。
   const dv = { n: nameOf(A.winner), n2: nameOf(A.second), st: styleJP(A.winner) };
-  say(0.985, "call", pick(poolOf("decide", A.pattern, "call"), "call"), dv, "goal");
-  say(0.992, "call", pick(poolOf("margin", A.margin, "call"), "call"), dv, "goal");
-  say(0.996, "color", pick(poolOf("decide", A.pattern, "color"), "color"), dv, "goal");
+  say(D, "call", pick(poolOf("decide", A.pattern, "call"), "call"), dv, "goal");
+  say(D + 0.012, "call", pick(poolOf("margin", A.margin, "call"), "call"), dv, "goal");
+  say(D + 0.006, "color", pick(poolOf("decide", A.pattern, "color"), "color"), dv, "goal");
 
+  // ── 詰め込み ────────────────────────────────────────────────────
+  // 時間は有限。読める時間を確保しながら、入らない行は優先度の低いものから捨てる。
+  // ★決着の3行は先に場所を押さえる（あとから来た行に押し出されないように）。
+  const packed = [];
+  const dropped = [];
+  ["call", "color"].forEach(side => {
+    const mine = cand.filter(c => c.side === side).sort((a, b) => a.tau - b.tau);
+    const goals = mine.filter(c => c.tag === "goal");
+    const rest  = mine.filter(c => c.tag !== "goal");
+
+    // ①決着を先に確定（決着点から順に、読める間隔で並べる）
+    let gAt = A.decideTau;
+    goals.forEach(g => {
+      g.at = gAt;
+      g.hold = bcHoldTau(g.line, BC_BEAT.rush, raceSec);
+      gAt = g.at + g.hold;
+      packed.push(g);
+    });
+    const goalStart = goals.length ? goals[0].at : 2;
+
+    // ②残りを時間順に詰める。決着枠に食い込む行と、前の行と重なる行は捨てる。
+    let cursor = -1;
+    rest.forEach(c => {
+      const hold = bcHoldTau(c.line, beatOf(c.tag), raceSec);
+      const at = Math.max(c.tau, cursor);
+      if (at + hold > goalStart - 0.004) { dropped.push(c); return; }  // 決着に食い込む
+      // ★「本来の位置から離れすぎ」で捨ててよいのは、時機を外すと意味を失う
+      //   低優先の行だけ（コース説明・差の開閉・本領発揮）。
+      //   入場は τ が名目値で、実際はパレード側が間合いを取り直すので対象外。
+      //   発走・終盤・1位交代は多少ずれても価値が残るので落とさない。
+      if (c.tag !== "entry" && c.pri < 70 && at - c.tau > hold * 1.6) { dropped.push(c); return; }
+      c.at = at; c.hold = hold; cursor = at + hold;
+      packed.push(c);
+    });
+  });
+  // 実況と解説が同時に切り替わらないよう、解説側だけ微調整する
+  const callTaus = packed.filter(p => p.side === "call").map(p => p.at);
+  packed.filter(p => p.side === "color" && p.tag !== "goal").forEach(p => {
+    if (callTaus.some(t => Math.abs(t - p.at) < 0.010)) p.at += 0.012;
+  });
+
+  packed.forEach(p => script.push({ tau: p.at, side: p.side, line: p.line, tag: p.tag, hold: p.hold }));
   script.sort((a, b) => a.tau - b.tau);
+  A.dropped = dropped.map(d => ({ tag: d.tag, line: d.line }));   // 何を捨てたかは検証で見る
   return { script, analysis: A };
 }
 
