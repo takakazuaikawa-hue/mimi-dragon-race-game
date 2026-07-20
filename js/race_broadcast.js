@@ -301,7 +301,9 @@ function buildBroadcast(timeline, ctx, opts) {
       const c = pool[(seed + k) % pool.length];
       if (!used[side].includes(c)) return c;
     }
-    return pool[seed % pool.length];
+    // ★引き出しが枯れたら黙る。既出を返すと同じ台詞が二度出る（実測で8件）。
+    //   同じことを繰り返すくらいなら、その行は無い方がよい。
+    return null;
   };
   // レースの実尺（秒）。表示時間を字数から決めるのに要る。
   const raceSec = (timeline && timeline.durationSecHint) || 46;
@@ -348,7 +350,7 @@ function buildBroadcast(timeline, ctx, opts) {
     //   8秒後に飛ぶ（実測48.4秒／決着40.4秒）。決着は畳みかけて言い切る場面なので、
     //   ここだけは最小間隔で詰める。
     let at = (tag === "goal")
-      ? Math.max(tau, lastT + 0.008)
+      ? Math.max(tau, lastT + 0.006)
       : Math.max(tau, lastT + lastNeed);
     // ★実況と解説を同時に切り替えない。52px×2段が同時に変わると
     //   一瞬の認知負荷が倍になり、どちらを読めばいいか分からなくなる。
@@ -476,7 +478,7 @@ function buildBroadcast(timeline, ctx, opts) {
   call(0.045, "start", "go", {}, "start");
   // 序盤はコースの説明を解説に預ける（実況は名前を告げるだけ）
   // 発走直後の空きを埋める（誰が出たかは、この時点でいちばん知りたい情報）
-  call(0.075, "drive", "lead", (function () {
+  call(0.075, "midway", "lead", (function () {
     const d = A.samples.reduce((b, x) => Math.abs(x.tau - 0.075) < Math.abs(b.tau - 0.075) ? x : b, A.samples[0]);
     const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
     return { n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]), m: marginTier(g).label };
@@ -496,6 +498,17 @@ function buildBroadcast(timeline, ctx, opts) {
   // ★いちばん要るのは「いま上位が誰か」。抜いた抜かれたより、隊列の形。
   call(0.31, "course", "intro", { label: mid.label }, "course");
 
+  // ★序盤から中盤へ渡る隙間を埋める（実測でここに3.5秒の無言が残っていた）。
+  //   隊列の速報を2本挟む。情報は落とさず、間だけを埋める。
+  [0.22, 0.27].forEach((t) => {
+    const d = A.samples.reduce((b, x) => Math.abs(x.tau - t) < Math.abs(b.tau - t) ? x : b, A.samples[0]);
+    const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
+    call(t, "midway", "lead", {
+      n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]),
+      m: marginTier(g).label
+    }, "shape");
+  });
+
   A.shape.forEach((sh, i) => {
     const vars = { n1: nameOf(sh.first), n2: nameOf(sh.second), n3: nameOf(sh.third),
                    st1: styleJP(sh.first) };
@@ -511,7 +524,7 @@ function buildBroadcast(timeline, ctx, opts) {
       const d = A.samples.reduce((best, x) =>
         Math.abs(x.tau - mid2) < Math.abs(best.tau - mid2) ? x : best, A.samples[0]);
       const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
-      call(mid2, "drive", i % 2 === 0 ? "lead" : "third", {
+      call(mid2, "midway", i % 3 === 0 ? "lead" : (i % 3 === 1 ? "third" : "tight"), {
         n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]),
         m: marginTier(g).label
       }, "shape");
@@ -580,7 +593,7 @@ function buildBroadcast(timeline, ctx, opts) {
   //   ただの叫びではなく「誰が前・誰が来た・差はいくつ」を毎回載せる。
   //   （畳みかける＝文字を減らすことではない、というユーザー指摘への対応）
   let prevGap = null;
-  for (let sec = 11.0; sec >= 1.0; sec -= 1.3) {
+  for (let sec = 15.0; sec >= 1.0; sec -= 1.1) {
     const t = back(sec);
     const d = A.drive.reduce((best, x) =>
       Math.abs(x.tau - t) < Math.abs(best.tau - t) ? x : best, A.drive[0]);
@@ -616,7 +629,7 @@ function buildBroadcast(timeline, ctx, opts) {
     say(D + 0.010, "call", pick(poolOf("margin", A.margin, "call"), "call"), dv, "goal");
   }
   // ★最後の一行＝決め台詞。ここで終わる。
-  say(D + 0.020, "call", pick(poolOf("climax", dm.headline || "solid", "call"), "call"), dv, "goal");
+  say(D + 0.014, "call", pick(poolOf("climax", dm.headline || "solid", "call"), "call"), dv, "goal");
   // ★解説のゴール台詞は「讃える」。自分の見立ての話はしない。
   //   大写しになっているのは勝った竜。その走りを、その人の物差しで讃える。
   //   （物差しが違うから、讃え方も6人で違う＝それが描き分けになる）
@@ -714,7 +727,9 @@ function buildBroadcast(timeline, ctx, opts) {
     let gAt = A.decideTau;
     goals.forEach(g => {
       g.at = gAt;
-      g.hold = bcHoldTau(g.line, BC_BEAT.rush, raceSec);
+      // ★決着は畳みかけて言い切る場面。字数ぶんの尺を取ると3行で3秒以上に
+      //   なり、決め台詞が決着から離れる（実測3.2秒遅れ）。ここは固定で詰める。
+      g.hold = 0.9 / raceSec;
       gAt = g.at + g.hold;
       packed.push(g);
     });
