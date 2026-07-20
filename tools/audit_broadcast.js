@@ -170,6 +170,47 @@ const RULES = [
       return m ? m[0] : null; } }
 ];
 
+// ── 構造の検査（台本ではなく実装そのものを見る）──────────────
+// ★台本のデータ検査では拾えない種類の不具合がある。実際に2件出した：
+//   ①視差背景を先読みしていなくて、走り出してから絵が差し替わる
+//   ②山場の演出を親要素に掛けていて、画面全体が揺れる
+//   どちらも「見れば分かるが、データには出ない」。だからコードの形を検査する。
+//   再発したらここで落ちる。
+function structureChecks() {
+  const bad = [];
+  const read = f => { try { return fs.readFileSync(path.join(ROOT, f), "utf8"); } catch (e) { return ""; } };
+  const bc = read("js/race_broadcast.js");
+  const css = read("style.css");
+
+  // ①発走前に待つべきもの：竜スプライト・一枚絵背景・視差背景
+  // ★「その名前が出てくるか」だけでは甘い。実際に呼んで待っているかを見る。
+  //   （故意に壊す試験で、呼び出しを消しても素通りしたため厳しくした）
+  const preloadBlock = (bc.match(/const preload = \(cb\) => \{[\s\S]*?\n  \};/) || [""])[0];
+  const dragonBlock  = (bc.match(/const preloadDragons = \(cb\) => \{[\s\S]*?\n  \};/) || [""])[0];
+  [[preloadBlock, /rcBgFor\s*\(/,        "一枚絵背景"],
+   [preloadBlock, /rcParaFor\s*\(/,      "視差背景"],
+   [dragonBlock,  /_rcDragonSprite\s*\(/, "竜スプライト"]]
+    .forEach(([block, re, name]) => {
+      if (!block) { bad.push("先読みの処理そのものが無い: " + name); return; }
+      if (!re.test(block)) bad.push("発走前に待っていない: " + name);
+    });
+
+  // ②山場の演出は盤面だけに掛ける（親に掛けると画面全体が揺れる）
+  const climax = css.match(/\.rc-wrap\.rc-climax[^{]*\{/g) || [];
+  climax.forEach(sel => {
+    if (!/\.rc-stage/.test(sel)) bad.push("山場の演出が盤面の外に及ぶ: " + sel.trim());
+  });
+
+  // ③解説者は1回だけ抽選する（2回引くと名前と台詞が別人になる）
+  const canvas = read("js/race_canvas.js");
+  const picks = (canvas.match(/pickCommentator\(/g) || []).length;
+  if (picks > 1) bad.push("レース画面で解説者を複数回抽選している（" + picks + "回）");
+  if (!canvas.includes("ctx.raceCommentator")) {
+    bad.push("台本を書いたときの解説者を受け取っていない");
+  }
+  return bad;
+}
+
 // ── 実行 ────────────────────────────────────────────────────────
 const fails = [];
 const stats = [];
@@ -206,6 +247,8 @@ for (let i = 0; i < N; i++) {
                決着: bc.analysis.drama.headline });
 }
 
+const structBad = structureChecks();
+structBad.forEach(d => fails.push({ race: "(構造)", rule: "実装の形", detail: d }));
 const ms = Date.now() - t0;
 const byRule = {};
 fails.forEach(f => { (byRule[f.rule] = byRule[f.rule] || []).push(f); });
