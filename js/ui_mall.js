@@ -37,9 +37,10 @@ function renderMall() {
     renderHome();
     // ★ロック案内で章題（＝未登場の顧問名）は出さない。予告は「第N話を読むと開放」までに留める。
     // 解禁条件の文は chapterUnlockHint（data_assets.js・実績ゲートの正本）から引く＝化石テキスト防止。
-    const _mallH2 = (typeof chapterUnlockHint === "function" && chapterUnlockHint("2")) || "";
+    const _need = (typeof buniqroPrice === "function") ? buniqroPrice() : 2000;
+    const _have = (state.player && state.player.maxCoinsReached) || 0;
     if (typeof showInfoPopup === "function") showInfoPopup("🛍️ ショッピングモール",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第2話</u>を読むと解放されます${_mallH2 ? `（第2話は${_mallH2}）` : ""}。</small></div></div>`);
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>服が一着買えるだけ稼ぐと開きます（${fmtCoins(_need)}／これまでの最高 ${fmtCoins(_have)}）。</small></div></div>`);
     return;
   }
   state.ui.screen = "mall";

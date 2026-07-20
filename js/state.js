@@ -51,7 +51,8 @@ const state = {
       everHit: false,              // 初的中（📖図鑑の解放条件・settleRace で set）
       firstWideHit: false,         // 単勝以外の初的中（目標「ワイド/複勝を当てる」）
       firstRankUp: false,
-      mallIntroSeen: false,        // サケの開店祝いVN再生済み（ゲート条件ではない）
+      mallIntroSeen: false,        // モール初訪問VN再生済み（ゲート条件ではない）
+      sakeGiftSeen: false,         // 初陣祝いVN（サケ→ジャングルバニー贈与）再生済み
       // ▼旧設計の名残（実運用は storyFlags 側）＝予約。
       poroFound: false,
       poroAppraisalStarted: false,
@@ -138,6 +139,17 @@ function loadGame() {
       //   recomputeAssets() で現在の純資産として計算し直されるため、ここでは触らない。
       //   これを忘れると、既存プレイヤーの解放済みの章・スポットが一斉に閉じる。
       if (state.player.assetsPeak == null) state.player.assetsPeak = state.player.totalAssets || 0;
+      // ★ブニクロ普段着の有料化 移行：旧仕様では free だったので、既に第2話まで進んだ
+      //   セーブは「持っていたのに買った履歴が無い」状態になる。そのままだと手持ちの服が
+      //   消え、さらに第2話の新条件（購入済み）も満たせなくなるため、購入済みとして引き継ぐ。
+      if (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2")) {
+        if (!Array.isArray(state.player.outfitsBought)) state.player.outfitsBought = [];
+        if (state.player.outfitsBought.indexOf("buniqro") < 0) state.player.outfitsBought.push("buniqro");
+      }
+      // 旧「サケの開店祝いVN」を見ている＝勝負服はもう受け取っている。初陣祝いを再生しない。
+      if ((state.player.flags || {}).mallIntroSeen && state.player.flags.sakeGiftSeen == null) {
+        state.player.flags.sakeGiftSeen = true;
+      }
       // ★ランク3本レール移行：旧セーブは hitsByRank を持たない。過去の的中履歴は帯別に
       //   復元できないため 0 から積む（獲得済みランクは下がらない設計なので不利益は「次の昇格が
       //   新基準になる」ことのみ＝リリース前につき許容・progression-redesign 方針）。
@@ -211,7 +223,7 @@ function resetGame() {
     flags: {   // ★初期定義（上の台帳コメント）と同一リストに揃える（E1）
       seenFirstRaceTutorial:false, seenFirstWideTutorial:false,
       reachedCoins_10000:false, reachedCoins_100000000:false,
-      everHit:false, firstWideHit:false, firstRankUp:false, mallIntroSeen:false,
+      everHit:false, firstWideHit:false, firstRankUp:false, mallIntroSeen:false, sakeGiftSeen:false,
       poroFound:false, poroAppraisalStarted:false, poroAppraisalCompleted:false,
       poroConfirmedNotSacredDragon:false, dragonScoutUnlocked:false, dragonStableUnlocked:false,
       metMakura:false, gameCleared:false, poroGourmetRaceUnlocked:false

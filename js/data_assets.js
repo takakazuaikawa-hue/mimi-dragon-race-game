@@ -162,7 +162,10 @@ const ACTIVE_SKILLS = [
 // images/cast/mimi/mimi_<id>_<expr>.png（expr: default / smile / panic / happy …）。
 // 表示専用：着順・オッズ・配当には非干渉（コイン購入は既存の生活資産と同じ買い物方式の消費）。
 const OUTFITS = [
-  { id: "buniqro",   name: "ブニクロ普段着",   flavor: "トートとスニーカーの、肩の力が抜けた休日コーデ。", acquire: { free: true } },
+  // ★ブニクロ普段着は「モールで最初に買う服」＝進行の節目。無料配布をやめて有料にした。
+  //   この価格がモール解放のしきい値も兼ねる（mallUnlocked／buniqroPrice）ので、
+  //   序盤のテンポを変えたいときは、ここ1か所だけを動かせばよい。
+  { id: "buniqro",   name: "ブニクロ普段着",   flavor: "トートとスニーカーの、肩の力が抜けた休日コーデ。", acquire: { price: 2000 } },
   { id: "newspaper", name: "予想新聞ドレス",   flavor: "競竜新聞をまとった、予想家ミミの正装。",         acquire: { assets: 50000 } },
   { id: "dara",      name: "きれいめコーデ",   flavor: "ジャケットを羽織って、ちょっとおでかけ気分。",   acquire: { price: 5000 } },
   { id: "jungle",    name: "ジャングルバニー", flavor: "葉っぱと馬券で武装した、探検スタイル。",         acquire: { price: 15000 } },
@@ -295,13 +298,25 @@ function advisorMet(castKey) {
 //     （1話サケの基礎→数レース走って勘に詰まる→2話ミズ→初勝利→3話スミカ→島がリゾート→4話マクラ→世界の天井→5話）。
 // 章の解放判定は全画面この chapterAvailable() を唯一の入口にする（storyUnlockAt は表示テキスト用に残す）。
 function chapterRead(id) { try { return typeof getStoryFlag === "function" && !!getStoryFlag("_chapter_intro_" + id); } catch (e) { return false; } }
+// ブニクロ普段着の値段＝「モールが開く額」でもある序盤テンポの単一ノブ（OUTFITS から引く）。
+function buniqroPrice() {
+  try { const o = OUTFITS.find(x => x.id === "buniqro"); return (o && o.acquire && o.acquire.price) || 2000; }
+  catch (e) { return 2000; }
+}
 function chapterAvailable(chId) {
   try {
     const p = state.player || {};
+    // ★不変条件：一度読んだ章は、条件が後から変わっても必ず読み返せる。
+    //   解放条件を足すたびに既存プレイヤーの既読章が消える事故を、ここで構造的に防ぐ。
+    if (chapterRead(chId)) return true;
     const total = assetsPeak(state), races = p.completedRaces || 0, wins = p.wins || 0;   // ★章の解放＝到達最高
     switch (String(chId)) {
       case "1":  return true;                                       // サケ＝島に着いた最初から
-      case "2":  return chapterRead("1") && races >= 3;             // ミズ＝1話を読み、数レース走って勘に詰まってから
+      // ミズ＝1話を読み、数戦こなし、さらに「初めて自分の服を買う」ところまで到達してから。
+      // ★序盤を長く取るための要（ユーザー指示）：初陣→サケの勝負服→稼ぐ→モールが開く→
+      //   ブニクロ普段着を買う、という一連の暮らしの立ち上げを、2話より前に置き切る。
+      case "2":  return chapterRead("1") && races >= 3
+                        && (typeof outfitOwned === "function") && outfitOwned(OUTFITS.find(o => o.id === "buniqro"));
       case "3":  return chapterRead("2") && wins >= 1;             // スミカ＝2話を読み、初勝利で勝ち分の守り方に直面してから
       case "4":  return chapterRead("3") && total >= 1000000;      // マクラ＝島がリゾートに育つ頃（総資産100万）
       case "5":  return chapterRead("4") && total >= 100000000;    // セレスティア＝世界の天井が見える頃（総資産1億）
@@ -313,7 +328,7 @@ function chapterAvailable(chId) {
 // 解放の人間向け条件テキスト（次號予告・目標ヒント用）。固有名は出さない（未登場ゲートR7）。
 function chapterUnlockHint(chId) {
   switch (String(chId)) {
-    case "2":  return "第1話を読み、レースを数戦こなすと解禁";
+    case "2":  return "第1話を読み、数戦こなして「ブニクロ普段着」を買うと解禁";
     case "3":  return "第2話を読み、はじめて単勝を当てると解禁";
     case "4":  return "第3話を読み、総資産 " + fmtCoins(1000000) + " で解禁";
     case "5":  return "第4話を読み、総資産 " + fmtCoins(100000000) + " で解禁";

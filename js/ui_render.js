@@ -234,12 +234,61 @@ function showTitleSwitcher() {
 // 🛍️ モール解放判定：レースで初めて的中すると解放（flags.everHit）。既存セーブ救済として
 // 単勝勝利歴・衣装の購入/入手歴・着替え歴があれば解放済み扱い（巻き戻さない）。表示専用。
 function mallUnlocked() {
-  // ★第2話「ミズの分析」を読むと開放＝単一条件（E3解消・docs/GAME_FLOW_REDESIGN.md §1）。
-  //   mallIntroSeen は「サケの衣装ギフトVNを再生済み」の印としてだけ使う（ゲート条件ではない）。
+  // ★解放条件を「第2話読了」から「ブニクロ普段着が買えるだけ稼いだ」へ変更（ユーザー指示）。
+  //   順序が逆転した：旧＝2話→モール／新＝モール→ブニクロ購入→2話。
+  //   これで2話の手前に「稼いで、初めて自分の服を買う」という助走区間が生まれる。
+  //   ★現在の所持コインではなく maxCoinsReached（史上最高額＝減らない）で見る。
+  //     所持額で見ると、服を買った瞬間にモールが閉じるという最悪の挙動になる。
+  const p = (state && state.player) || {};
+  if ((p.maxCoinsReached || 0) >= ((typeof buniqroPrice === "function") ? buniqroPrice() : 2000)) return true;
+  // 旧仕様で既に開いていたセーブは開いたまま（巻き戻さない）。
+  if ((p.flags || {}).mallIntroSeen) return true;
   return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2"));
 }
 
-// 🛍️ モール開通のお祝いVN（サケが使い方を解説→『ジャングルバニー』贈与→着替えお披露目）。
+// 👗 初陣祝いVN（サケが『ジャングルバニー』を贈る＝勝負服第一号）。
+// ★モールより前に置く（ユーザー指示）。初レースを走り切った時点で、勝敗を問わず1回だけ。
+//   モールはまだ開いていないので、台詞で店に言及してはいけない。代わりに「銭が貯まったら
+//   ちゃんとした店で選べる」と予告し、モール解放（＝ブニクロが買える額）への動機にする。
+// 呼び出し＝結果画面（renderResult）。サケは第1話固定＝最初から登場済みなので門番は素通し。
+function playSakeOutfitGiftVN() {
+  const f = state.player.flags || (state.player.flags = {});
+  if (f.sakeGiftSeen || !window.Dialogue) return false;
+  if (!(typeof advisorMet === "function" && advisorMet("sake"))) return false;   // fail-closed（門番）
+  f.sakeGiftSeen = true;
+  // ★所持だけは VN の完走を待たずに確定させる。
+  //   VN の .then() で贈ると、途中でタブを閉じる・演出キューが詰まる等で会話が終わらなかった
+  //   場合に「フラグは立ったのに服は手に入らない」＝二度と受け取れない状態になる。
+  //   演出（着替えのお披露目）は完走時、所持は即時、と分けるのが安全側。
+  try {
+    if (!state.player.outfitsWon) state.player.outfitsWon = [];
+    if (state.player.outfitsWon.indexOf("jungle") < 0) state.player.outfitsWon.push("jungle");
+    if (typeof saveGame === "function") saveGame();
+  } catch (e) {}
+  Dialogue.play([
+    ["sake", "……おい。初陣、走り切ったな。"],
+    ["mimi", "は、はいっ。……足が、まだ震えてます", "panic"],
+    ["sake", "上等だ。だがミミ、いつまでそのボロを着てるつもりだ？"],
+    ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
+    ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ほらよ、初陣祝いだ。『ジャングルバニー』。葉っぱと馬券で武装した、お前の勝負服第一号だ。", "happy"]
+  ]).then(() => {
+    try {
+      if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
+      if (typeof saveGame === "function") saveGame();
+      try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+      Dialogue.play([
+        ["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"],
+        ["sake", "……悪くねえ。服はいずれ、ちゃんとした店で自分で選べるようになる。銭が貯まったらな。"]
+      ]);
+      if (typeof rerenderCurrent === "function") rerenderCurrent();
+    } catch (e) {}
+  });
+  if (typeof saveGame === "function") saveGame();
+  return true;
+}
+
+// 🛍️ モール開通のお祝いVN（サケが使い方を解説）。衣装ギフトは初陣祝いへ移したので、
+// ここは「約束していた店に、ようやく手が届いた」という到達の一幕に徹する。
 // 呼び出し＝モール初訪問時（ui_mall.js）。ホームではVNを出さない鉄則があるため、
 // ホーム側は cut-in（progression.js）→「今すぐ見る▸」→ここ、の順で繋ぐ。表示メタのみ・コイン非消費。
 function playMallIntroVN() {
@@ -247,21 +296,10 @@ function playMallIntroVN() {
   if (f.mallIntroSeen || !window.Dialogue) return false;
   f.mallIntroSeen = true;
   Dialogue.play([
-    ["sake", "オッズの読み方、覚えてきたな。……ところでミミ、いつまでそのボロを着てるつもりだ？"],
-    ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
-    ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ここがそのモールだ。稼いだコインで好きに選べ。試着は自由、着替えは無料だ。"],
-    ["sake", "それと、開店祝いだ。『ジャングルバニー』──葉っぱと馬券で武装した、お前の勝負服第一号だ。受け取れ。", "happy"]
-  ]).then(() => {
-    try {
-      if (!state.player.outfitsWon) state.player.outfitsWon = [];
-      if (state.player.outfitsWon.indexOf("jungle") < 0 && !outfitOwned(outfitById("jungle"))) state.player.outfitsWon.push("jungle");
-      if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
-      if (typeof saveGame === "function") saveGame();
-      try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
-      Dialogue.play([["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"]]);
-      if (typeof rerenderCurrent === "function") rerenderCurrent();
-    } catch (e) {}
-  });
+    ["sake", "銭が貯まったな。──約束通りだ。ここが、島のモールだ。"],
+    ["mimi", "わぁ……っ。ちゃんとした、お店……！", "happy"],
+    ["sake", "稼いだコインで好きに選べ。試着は自由、着替えは無料だ。まずは一着、自分の銭で買ってみろ。それが一番でかい。"]
+  ]);
   if (typeof saveGame === "function") saveGame();
   return true;
 }
@@ -2545,8 +2583,8 @@ function settleRace() {
   state.player.coins += betResult.payout;
   state.player.completedRaces += 1;
   state.player.completedByRank[c.race.rank] = (state.player.completedByRank[c.race.rank] || 0) + 1;
-  // ※衣装の初回付与は playMallIntroVN（サケの開店祝いVN→『ジャングルバニー』贈与）が正本。
-  //   ここで勝手に着替えさせると、その見せ場を先に潰してしまうので何もしない。
+  // ※衣装の初回付与＝サケの初陣祝いVN（playSakeOutfitGiftVN）。発火は結果画面の描画後。
+  //   ここ（settleRace）ではフラグも立てない＝VN側の sakeGiftSeen 一本で管理する。
   // ★ランク実力レール：的中（式別不問）を帯別に記録（RANK_UNLOCK.hitsAtLowerRank の材料）。
   if (betResult.hit) {
     if (!state.player.hitsByRank) state.player.hitsByRank = {};
@@ -3328,6 +3366,14 @@ function drawRecapScreen() {
     } else {
       if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));
       (c.collectionAwards || []).forEach(a => app.appendChild(el("div", "rs-bonus rs-bonus-dex", `📖 ${a.label} 達成！　<b>＋${fmtCoins(a.reward)}</b>`)));
+    }
+  } catch (e) {}
+  // 👗 初陣祝い：初レースを走り切った直後、勝敗を問わずサケが勝負服を贈る（1回だけ）。
+  //   条件を「1戦以上かつ未再生」にしてあるので、何かの拍子に初回で出そびれても次戦で拾える
+  //   （＝取り逃しでミミがボロのまま止まる事故が起きない）。結果の描画が終わってから重ねる。
+  try {
+    if ((state.player.completedRaces || 0) >= 1 && !(state.player.flags || {}).sakeGiftSeen) {
+      setTimeout(() => { try { playSakeOutfitGiftVN(); } catch (e) {} }, 900);
     }
   } catch (e) {}
   // ★撤去：結果画面の相談役ひとことカード（旧 .rs-advisor / spec #37）。
