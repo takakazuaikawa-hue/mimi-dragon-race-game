@@ -174,10 +174,17 @@ function renderAssets() {
     app.appendChild(td);
   }
   // ── できること：常設機能。担当師範がいる行はminiを添える（images/cast/mini/・第◯話で会うと表示）。 ──
-  const _chNowMini = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
+  // ★門番は advisorMet() に一本化する。
+  //   ここだけ「章番号が進んでいるか」で判定していたため、同じ画面の中で
+  //   判定が二通りに分かれていた（すぐ下の相談行は advisorMet を使っている）。
+  //   章が解放されただけで“まだ読んでいない”顧問のミニキャラが出てしまう。
+  //   advisorMet は章を読了したフラグで判定し、読めない時は false に倒れる
+  //   （fail-closed）ので、未登場のキャラが漏れることが構造的に無くなる。
   const _shihanMini = (skillId) => {
     const m = (typeof _shihanOf === "function") ? _shihanOf(skillId) : null;
-    return (m && _chNowMini >= m.ch) ? `images/cast/mini/${m.id}_mini.png` : null;
+    if (!m) return null;
+    const met = (typeof advisorMet === "function") ? advisorMet(m.id) : false;
+    return met ? `images/cast/mini/${m.id}_mini.png` : null;
   };
   // 🏦 島の経済：島の景気・名声・フォロワー・レース経済を一望（終章中は絶滅メーター本体もここに）。js/ui_economy.js
   if (typeof renderEconomy === "function") {

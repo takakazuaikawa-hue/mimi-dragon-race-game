@@ -60,23 +60,23 @@ const BC_RARE = [
   { id: "sumika_nose", cm: "sumika", when: { margin: ["nose"] },
     line: "この差に、あれだけの日々が要るのですね。……いえ、二頭ともねぎらいたい。" },
 
-  // ── マクラ（配信者・熱と観客・オレ）────────────────────────
+  // ── マクラ（配信者・熱と観客・アタシ）────────────────────────
   { id: "makura_bigupset", cm: "makura", when: { popRankMin: 6 },
-    line: "うわ、うわ、うわ！ 今の見た!? 見たよね!? オレ今日のこと一生言うわ！" },
+    line: "うわ、うわ、うわ！ 今の見た!? 見たよね!? アタシ今日のこと一生言うわ！" },
   { id: "makura_comeback", cm: "makura", when: { comebackMin: 4 },
     line: "後ろから、後ろから来たって！ こんなん声出るって！ 出るに決まってるって！" },
   { id: "makura_nose", cm: "makura", when: { margin: ["nose"] },
     line: "ちょ、待って、待って、今の……無理、語彙が、語彙が消えた。すご。" },
 
-  // ── セレスティア（神話スケール・俯瞰・我）───────────────────
+  // ── セレスティア（神話スケール・俯瞰・私）───────────────────
   { id: "celestia_wire", cm: "celestia", when: { wire: true },
     line: "先頭を守り続けるというのは、ずっと風に削られ続けるということ。……よく耐えたこと。" },
   { id: "celestia_bigupset", cm: "celestia", when: { popRankMin: 6 },
-    line: "誰も名を呼ばなかった一頭が、今日の名前になったのね。……そういう日を、我は好むわ。" },
+    line: "誰も名を呼ばなかった一頭が、今日の名前になったのね。……そういう日を、私は好むわ。" },
   { id: "celestia_war", cm: "celestia", when: { leadChgMin: 4 },
     line: "何度も入れ替わって、それでも終わりは一つ。……今日も、きちんと決まったのね。" },
 
-  // ── ウンメ（既知感と運・わたくし）─────────────────────────
+  // ── ウンメ（既知感と運・ウンメちゃん）─────────────────────────
   { id: "unme_comeback", cm: "unme", when: { comebackMin: 4 },
     line: "後ろにいる時点でこうなる運命だったんですよぉ。……いや今考えました。知らんけど！" },
   { id: "unme_bigupset", cm: "unme", when: { popRankMin: 6 },
@@ -96,7 +96,7 @@ const BC_CATCHPHRASE = [
   { id: "sumika_fixed_rout", cm: "sumika", when: { margin: ["body"], wire: true },
     line: "……危なげのない、良い勝ち方でございました。今夜は少し良いお肉を出します。" },
   { id: "unme_fixed_nose", cm: "unme", when: { margin: ["nose"] },
-    line: "はい、鼻先ぃ！ こういうのを運命って言うんですよぉ。わたくし、詳しいので！" }
+    line: "はい、鼻先ぃ！ こういうのを運命って言うんですよぉ。ウンメちゃん、詳しいので！" }
 ];
 
 // ── 封印の台帳 ──────────────────────────────────────────────

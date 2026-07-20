@@ -48,6 +48,29 @@ const KONRON_SPOTS = {
   sena:      { name: "サナ湾／セナ浜",   cat: "view", tier: 2, time: "昼", photo: "images/konron/spots/sena.webp", gourmet: "images/konron/spots/sena_gourmet.webp", shoot: "白砂とラグーン・ミストラソーダ・ファイヤマンゴーアイス", line: "白砂と青い海、旅気分が一気に高まる開放的ビーチ。" },
   bangara:   { name: "バンガラ溶岩海岸", cat: "view", tier: 2, time: "夕方", photo: "images/konron/spots/bangara.webp", shoot: "黒い溶岩と白波・遊歩道・アニキ岩礁遠景", line: "黒い溶岩と荒波がぶつかる、野性味むき出しの絶景海岸。" },
   hoshiuo:   { name: "エサナ入江／ホシウオ村", cat: "port", tier: 2, time: "朝", photo: "images/konron/spots/hoshiuo.webp", shoot: "小舟・干物・魚箱・竜餌用の魚", line: "観光地の奥に、島の暮らしがある。素朴な漁村。" },
+  // ── レースの8地域（data_races.js の region と1対1） ──────────────
+  // ★レースは8つの地域で行われるのに、島の地図には「中央聖龍レース場」しか
+  //   置かれておらず、走った土地を島の上で確かめられなかった。
+  //   写真は未納品なので photo は持たせない（描画側が (open && s.photo) で
+  //   分岐するため、無い場合はエリアの俯瞰図に落ちる＝壊れない）。
+  //   region はレース側の表記そのまま。ここを変えると突き合わせが切れる。
+  rg_clock:  { name: "グランドクロック大時計走路", cat: "race", tier: 0, region: "グランドクロック地域", portal: "renderRaceSelect", time: "昼",
+               shoot: "真鍮の大歯車・時報の鐘・金色に光る直線", line: "島の時を刻む大時計の足元を走る。鐘が鳴ると、観客が一斉に時計を見上げる。" },
+  rg_lumina: { name: "ルミナ光条コース", cat: "race", tier: 0, region: "ルミナ地域", portal: "renderRaceSelect", time: "午前",
+               shoot: "空色の壁・照り返す白砂・滝から流れる霧", line: "光がよく回る谷あいの走路。影が薄く、竜の翼の色がいちばん綺麗に出る。" },
+  rg_rosso:  { name: "リングロッソ闘技走路", cat: "race", tier: 1, region: "リングロッソ地域", portal: "renderRaceSelect", time: "夕",
+               shoot: "赤と黒の石壁・すり鉢状の観客席・爪跡の残る柵", line: "声が丸く溜まるすり鉢の底。歓声が倍になって返ってくる、島でいちばん熱い場所。" },
+  rg_caldera:{ name: "カルデラ火口周回路", cat: "race", tier: 1, region: "カルデラ地域", portal: "renderRaceSelect", time: "昼",
+               shoot: "溶岩の赤い照り返し・黒い砂利・立ちのぼる陽炎", line: "地面が熱を抱えたまま冷めない。下から炙られながら走る、島でもっとも過酷な走路。" },
+  rg_mist:   { name: "ミストレイク湖畔走路", cat: "race", tier: 1, region: "ミストレイク地域", portal: "renderRaceSelect", time: "早朝",
+               shoot: "霧に沈む湖面・縄を引く整備の人・輪郭だけの竜", line: "霧が濃い日は三十歩先も見えない。音だけが先に届く、静かで難しい走路。" },
+  rg_vento:  { name: "ヴェント峡谷風洞コース", cat: "race", tier: 2, region: "ヴェント峡谷地域", portal: "renderRaceSelect", time: "午後",
+               shoot: "切り立つ岩壁・吹き上げる風・飛ばされた帽子", line: "上からも下からも風が来る。谷が声を二度返す、翼の扱いを試される走路。" },
+  rg_notte:  { name: "ノッテムーンライト夜間走路", cat: "race", tier: 2, region: "ノッテムーンライト地域", portal: "renderRaceSelect", time: "夜",
+               shoot: "月あかりに浮かぶ白線・落とした照明・青く見える足元", line: "明るくしすぎない決まりがある。月の色に合わせた灯りの下を、影だけが走る。" },
+  rg_lapan:  { name: "ラパン祭典特設走路", cat: "race", tier: 2, region: "ラパン祭典地域", portal: "renderRaceSelect", time: "祭りの三日",
+               shoot: "舞う金の紙吹雪・だらんとした旗・掃除の人の背中", line: "年に三日だけ組まれる特設の走路。金の紙が舞い、視界がまるごときらきらする。" },
+
   // ── 奥地・霧の彼方（聖典：簡単に入れない神秘＝終盤解放のteaser・遠景のみ・出しすぎない） ──
   dadake:    { name: "ダダケ村",     cat: "okuchi", tier: 3, time: "—", photo: "images/konron/spots/dadake.webp", shoot: "段々畑と古い竜小屋・無口な村人（遠景）", line: "市街と火山のあいだ、霧に隠れた古い村。地図には載るが、道はすぐ霧に消える。" },
   susufuka:  { name: "スス深回廊",   cat: "okuchi", tier: 3, time: "—", photo: "images/konron/spots/susufuka.webp", shoot: "黒い岩の回廊・苔と燐光（遠景）", line: "火山の体内へ続く黒い回廊。奥から熱と、低い唸りが届く。踏み込む者は少ない。" },
@@ -92,7 +115,7 @@ const KONRON_SPOTS = {
 const KONRON_AREAS = [
   { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro", "oyakata", "furununo", "left_wing", "ushiome_dora", "wagashi"] },
   { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina", "lodge"] },
-  { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "oshigoods", "jogai", "ennichi", "yokukatown", "amazake_chaya", "backlot"] },
+  { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "rg_clock", "rg_lumina", "rg_rosso", "rg_caldera", "rg_mist", "rg_vento", "rg_notte", "rg_lapan", "oshigoods", "jogai", "ennichi", "yokukatown", "amazake_chaya", "backlot"] },
   { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
   { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 46, my: 63, spots: ["uroko"] },
   { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis", "hoshimi"] },
@@ -592,7 +615,11 @@ const KM_SPOT_MEALS = {
   lodge:         ["g_risotto"],
   quaybar:       ["g_ajillo", "g_chowder"],
   wagashi:       ["s_castella"],
-  mango:         ["t_kakigori"]
+  mango:         ["t_kakigori"],
+  // ★分類が「食べ歩き」なのに料理が結ばれておらず、この2軒だけ
+  //   「ここで食べる」欄が出ないままだった（結線検査で発覚）。
+  lounge:        ["g_acqua", "s_cheese"],   // 屋上バー＝夜の一皿と締めの甘味
+  gelato:        ["t_kakigori", "s_cheese"] // ジェラート店＝冷たい甘味
 };
 function _kmMealHtml(spotId) {
   try {
