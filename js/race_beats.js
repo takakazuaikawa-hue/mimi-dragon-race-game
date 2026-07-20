@@ -331,6 +331,23 @@ function buildRaceBeats(timeline, ctx) {
 const TELOP_GAP_CALL  = 0.040;   // 実況の最短間隔（τ）。読める速さの下限。
 const TELOP_GAP_COLOR = 0.052;   // 解説は一拍置く＝掛け合いに聞こえる。
 const TELOP_QUIET     = 0.070;   // これだけ黙ったら話題を差す。
+// ★最後の直線＝ここから先は「決着を争っている話」だけにする。
+const FINAL_FROM      = 0.72;
+
+// その出来事は、最後の直線で言う価値があるか。
+//   言う  … 決着そのもの／自分の賭けの成否／自分が賭けた竜の話／上位争いの入れ替わりと競り合い
+//   言わない … 下位の入れ替わり、場や豆知識の説明、人気や区間の解説
+function isFinalWorthy(b, opts) {
+  if (b.kind === "goal" || b.kind === "zoneIn" || b.kind === "zoneOut" || b.kind === "lastSpurt") return true;
+  const mine = (opts && opts.betIds) || [];
+  if (b.id && mine.includes(b.id)) return true;                 // 自分が賭けた竜は最後まで追う
+  if (b.data && mine.includes(b.data.rival)) return true;
+  const CONTEND = 4;                                            // 上位争い＝4番手以内
+  if (b.kind === "overtake") return (b.data.to || 99) <= CONTEND;
+  if (b.kind === "battle")   return (b.data.place || 99) <= CONTEND;
+  if (b.kind === "surge" || b.kind === "collapse" || b.kind === "stumble") return false;
+  return false;                                                 // 区間説明・人気・話題はここでは黙る
+}
 
 // 配列から決定的に1本選ぶ（同じレースを見直しても同じ台詞＝録画と食い違わない）。
 function pickLine(arr, seed) {
@@ -369,6 +386,11 @@ function buildBeatTelop(beats, topics, opts) {
   };
 
   const sorted = beats.slice().sort((a, b) => a.tau - b.tau);
+  // ★「最後の直線」は決め打ちせず、台帳の lastSpurt から取る。
+  //   定数で決めると実際の直線開始とズレ、「直線に入った！」が終盤の8番目に
+  //   出るような順序の破綻が起きる（実測で発覚）。
+  const _ls = sorted.find(b => b.kind === "lastSpurt");
+  const finalFrom = _ls ? _ls.tau : FINAL_FROM;
   for (const b of sorted) {
     seed++;
     const vars = {
@@ -376,8 +398,12 @@ function buildBeatTelop(beats, topics, opts) {
       from: b.data.from, to: b.data.to, r: b.data.place || b.rank || "",
       label: b.data.label || "", s: (b.data.stats || []).join("と")
     };
-    const mustKeep = b.pri >= 84;          // ①勝敗 と ②抜いた抜かれた
+    const mustKeep = b.pri >= 84;          // ①勝敗 と ②勝敗を分ける入れ替わり
     let tau = b.tau;
+    // ★最後の直線では、決着を争っている話だけをする。
+    //   ここで7番手→6番手の入れ替わりや豆知識を挟むと、いちばん見たい競り合いから
+    //   目と耳が逸れる。実況が下位の説明をしないのは実際の中継でも同じ。
+    if (tau >= finalFrom && !isFinalWorthy(b, opts)) continue;
     // ★連発防止で「抜いた」が黙らされては本末転倒。同じ文になりそうなら別の言い回しを探す。
     const freshFrom = (pool, sd, side) => {
       if (!pool || !pool.length) return null;
@@ -396,11 +422,21 @@ function buildBeatTelop(beats, topics, opts) {
     }
     let spoke = false;
     if (callPool) {
-      if (tau - lastCall >= TELOP_GAP_CALL) {
+      // ★「最後の直線！」は区切りの合図。ずらすと他の行の後ろへ回り、
+      //   直線に入って9行目に「直線に入った！」と言う破綻が起きる（実測）。
+      //   ここだけは必ずその時刻に、間隔を無視して置く。
+      if (b.kind === "lastSpurt") {
+        spoke = say(tau, "call", freshFrom(callPool, seed, "call"), true);
+      } else if (tau - lastCall >= TELOP_GAP_CALL) {
         spoke = say(tau, "call", freshFrom(callPool, seed, "call"), mustKeep);
       } else if (mustKeep) {
         // ★落とさない。詰まっているだけなので、読める間隔まで後ろへずらして必ず言う。
-        spoke = say(lastCall + TELOP_GAP_CALL, "call", freshFrom(callPool, seed, "call"), true);
+        //   ただし「ずらした先」が最後の直線に食い込むなら、そこで下位の入れ替わりを
+        //   喋ることになるので言わない（実測で7件も紛れ込んでいた）。
+        const at = lastCall + TELOP_GAP_CALL;
+        if (at < finalFrom || isFinalWorthy(b, opts)) {
+          spoke = say(at, "call", freshFrom(callPool, seed, "call"), true);
+        }
       }
     }
 
@@ -442,6 +478,7 @@ function buildBeatTelop(beats, topics, opts) {
         if (w && (g < w[0] || g > w[1])) continue;
         tp = cand; ti = ti + k + 1; break;
       }
+      if (g >= finalFrom) continue;   // ★最後の直線に豆知識は差さない
       if (!tp) continue;
       usedTopic.add(tp);
       const set = TOPIC_LINES[tp.subject];

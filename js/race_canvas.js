@@ -1729,6 +1729,7 @@ function startRaceCanvas(container, ctx) {
       const _topics = (typeof buildRaceTopics === "function") ? buildRaceTopics(timeline, _cx) : [];
       telopSchedule = buildBeatTelop(_beats, _topics, {
         commentator: _commentator,
+        betIds: (bet && bet.selections) || [],   // ★最後の直線でも自分の賭けた竜だけは追い続ける
         goalSit: (typeof goalSituation === "function")
           ? goalSituation({ raceResult, bet, oddsResult, betHit: computeBetHit() }, timeline) : null,
         nameOf: (id) => (typeof commentaryName === "function" ? commentaryName(id) : id)
