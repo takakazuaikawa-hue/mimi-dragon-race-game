@@ -7703,12 +7703,15 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* 喋っている側だけをはっきりさせる＝どちらの発言か一目で分かる */
 .rc-yt-side.talking { opacity: 1; }
 .rc-yt-bub {
-  min-height: 40px; padding: 6px 9px; border-radius: 10px;
+  min-height: 52px; padding: 6px 9px; border-radius: 10px;
   background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
   border-left: 3px solid var(--c, #888);
   font-size: 11.5px; font-weight: 700; line-height: 1.45; color: #eef2f7;
-  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+/* 直近2行＝最新をはっきり、ひとつ前を薄く小さく。流れが目で追える。 */
+.rc-yt-bub .rcy-now  { color: #fff; }
+.rc-yt-bub .rcy-prev { color: #96a3b4; font-size: 10.5px; font-weight: 600; margin-bottom: 2px; }
 .rc-yt-r .rc-yt-bub { border-left: 0; border-right: 3px solid var(--c, #888); }
 .rc-yt-side.talking .rc-yt-bub { background: rgba(255,255,255,.10); color: #fff; }
 /* 山場の実況だけ金に振る（解説は落ち着かせたままにして、熱の担当を分ける） */

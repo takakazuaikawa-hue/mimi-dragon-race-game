@@ -1768,12 +1768,26 @@ function startRaceCanvas(container, ctx) {
       _ytEl.r.hidden = true;      // 解説者が誰も出せない＝実況一人（fail-closed の見た目）
     }
   })();
+  // ★各サイドの直近2行を保持して見せる（最新＋ひとつ前）。
+  //   1行だけにすると画面上の文字量が一気に減り「実況が薄い」と感じられた（ユーザー指摘）。
+  //   ひとつ前を薄く残すと、目を離していても流れが拾える＝読み物としての厚みが出る。
+  const _said = { call: [], color: [] };
   function speak(side, line) {
     const isL = side !== "color";
+    const key = isL ? "call" : "color";
     const bub = isL ? _ytEl.bl : _ytEl.br;
     const host = isL ? _ytEl.l : _ytEl.r;
     if (!bub || !host || host.hidden) return;
-    bub.textContent = line;
+    const arr = _said[key];
+    if (arr[arr.length - 1] !== line) arr.push(line);
+    while (arr.length > 2) arr.shift();
+    bub.innerHTML = "";
+    arr.forEach((s, i) => {
+      const d = document.createElement("div");
+      d.className = (i === arr.length - 1) ? "rcy-now" : "rcy-prev";
+      d.textContent = s;
+      bub.appendChild(d);
+    });
     bub.classList.toggle("is-hot", isL && TELOP_HOT.test(line));
     // 喋った側を前に出し、もう片方を沈める＝どちらが今しゃべっているか一目で分かる
     if (_ytEl.l) _ytEl.l.classList.toggle("talking", isL);
@@ -4415,19 +4429,21 @@ function startRaceCanvas(container, ctx) {
       //   スクラブ先までの行を「もう喋った」ことにして、左右それぞれ最後の一言を復元する。
       try {
         shownLines.length = 0;
+        _said.call.length = 0; _said.color.length = 0;   // 2行バッファも巻き戻す（前の行が残らないように）
         telopSchedule.forEach(t => {
           t.fired = S.tau >= t.tau;
           if (t.fired) shownLines.push({ line: t.line, side: t.side });
         });
-        const lastOf = sd => {
-          for (let i = shownLines.length - 1; i >= 0; i--) {
-            if ((shownLines[i].side === "color") === (sd === "color")) return shownLines[i];
+        // ★左右それぞれ「直近2行」を復元する（1行だけ渡すと駒送り後だけ薄くなる）。
+        const lastNOf = (sd, n) => {
+          const out = [];
+          for (let i = shownLines.length - 1; i >= 0 && out.length < n; i--) {
+            if ((shownLines[i].side === "color") === (sd === "color")) out.unshift(shownLines[i].line);
           }
-          return null;
+          return out;
         };
-        const lc = lastOf("call"), rc = lastOf("color");
-        if (lc) speak("call", lc.line);
-        if (rc) speak("color", rc.line);
+        lastNOf("call", 2).forEach(s => speak("call", s));
+        lastNOf("color", 2).forEach(s => speak("color", s));
         const last = shownLines[shownLines.length - 1];
         if (last) speak(last.side, last.line);   // 最後に喋った側を前面へ
       } catch (e) {}
