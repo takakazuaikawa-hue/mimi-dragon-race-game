@@ -321,7 +321,7 @@ function showRaceLoading(host, c, onReady) {
       //   今日の舞台に近い風景を選ぶ（読めなければ枠ごと消えるので崩れない）。
       (rcLoadArtFor(c.race)
         ? '<div class="rcload-art"><img src="' + rcLoadArtFor(c.race) +
-          '" alt="" onerror="this.closest(&quot;.rcload-art&quot;).remove()"></div>'
+          '" alt="" onerror="rcLoadArtRetry(this)"></div>'
         : "") +
     '</div>';
   host.appendChild(box);
@@ -407,4 +407,22 @@ function rcLoadArtFor(race) {
     _rcLoadLast = i;
     return RC_LOAD_DIR + RC_LOAD_ARTS[i];
   } catch (e) { return null; }
+}
+
+// 画像が読めなかったとき、別の絵に差し替える。
+// ★ユーザーが「良くない画像はフォルダから削除する」運用のため、
+//   配列に残ったまま消えたファイルを引くことが起きる。そのとき枠ごと消すと
+//   「ロード画面に絵が無い」状態になるので、別の絵を引き直す。
+//   数回試して全部だめなら、そのときだけ枠を畳む（崩れない）。
+function rcLoadArtRetry(img) {
+  try {
+    const tried = (+img.dataset.tried || 0) + 1;
+    img.dataset.tried = tried;
+    if (tried > 4) { const f = img.closest(".rcload-art"); if (f) f.remove(); return; }
+    const next = rcLoadArtFor(null);
+    if (next && next !== img.getAttribute("src")) { img.src = next; return; }
+    const f2 = img.closest(".rcload-art"); if (f2) f2.remove();
+  } catch (e) {
+    try { const f = img.closest(".rcload-art"); if (f) f.remove(); } catch (e2) {}
+  }
 }
