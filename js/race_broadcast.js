@@ -36,7 +36,7 @@ const BC_MID_END   = 0.62;   // 中盤＝展開を語る時間
 //   行数を増減するのではなく、1行を短くして表示時間を字数に比例させる。
 const BC_READ_CPS   = 9;     // 読める速さ（字/秒）。字幕基準より速いが、短文＋既知語彙なので成立する
 const BC_HOLD_MIN   = 0.85;  // 最短表示秒。これを割ると何字であっても読めない
-const BC_BEAT       = { calm: 0.9, normal: 0.6, rush: 0.35 };  // 行間の“間”。局面で使い分ける
+const BC_BEAT       = { calm: 0.5, normal: 0.3, rush: 0.15 };   // ★無言を作らないため詰めた  // 行間の“間”。局面で使い分ける
 const BC_LEN_TARGET = { entry: 16, course: 14, shape: 16, gap: 14, lead: 13, final: 9, goal: 20 };
 
 // 表示に要る秒数 → τ。読める時間を必ず確保するための換算。
@@ -123,10 +123,26 @@ function bcAnalyze(timeline, ctx) {
   A.closerGain = bestGain;
 
   // 展開スナップショット＝「いま上位が誰か」。中盤で必ず語るための素材。
-  [0.34, 0.46, 0.58].forEach(t => {
+  [0.34, 0.42, 0.50, 0.58].forEach(t => {
     const s = A.samples.reduce((best, x) => Math.abs(x.tau - t) < Math.abs(best.tau - t) ? x : best, A.samples[0]);
     A.shape.push({ tau: t, first: s.order[0], second: s.order[1], third: s.order[2] });
   });
+
+  // ★終盤の「実況の連続記録」。
+  //   畳みかけるとは文字を減らすことではなく、中身のある情報を速く続けて出すこと。
+  //   誰が前で、誰が来ていて、差がどれだけか——を一定間隔で読み上げられるよう、
+  //   決着までの区間を細かく刻んで素材にする（無言の時間を作らないため）。
+  A.drive = [];
+  for (let i = 0; i < A.samples.length; i++) {
+    const s = A.samples[i];
+    if (s.tau < 0.60) continue;
+    const p1 = timeline.progressAt(s.order[0], s.tau);
+    const p2 = timeline.progressAt(s.order[1], s.tau);
+    A.drive.push({
+      tau: s.tau, first: s.order[0], second: s.order[1], third: s.order[2],
+      gap: Math.max(0, p1 - p2)
+    });
+  }
 
   // 本領発揮＝「その竜の脚質が、いちばん活きる場面で活きた」瞬間。
   //   逃げ/先行 … 序盤で先頭に立っている
@@ -253,7 +269,7 @@ function buildBroadcast(timeline, ctx, opts) {
     if (!tpl) return false;
     const line = String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : ""));
     cand.push({ tau, side, line, tag, pri: PRI[tag] != null ? PRI[tag] : 50 });
-    used[side].push(line); if (used[side].length > 4) used[side].shift();
+    used[side].push(line);   // ★1レース内で同じ文は二度使わない（直近4本だけでは足りなかった）
     return true;
   };
   // 旧経路（未使用・参照が残っていた場合の保険）
@@ -276,7 +292,7 @@ function buildBroadcast(timeline, ctx, opts) {
     const otherT = side === "color" ? lastCall : lastColor;
     if (Math.abs(at - otherT) < 0.012) at = otherT + 0.014;
     if (at > 0.995 && tag !== "goal") return false;
-    used[side].push(line); if (used[side].length > 4) used[side].shift();
+    used[side].push(line);   // ★1レース内で同じ文は二度使わない（直近4本だけでは足りなかった）
     script.push({ tau: at, side, line, tag, hold: need });
     if (side === "color") { lastColor = at; lastColorNeed = need; }
     else { lastCall = at; lastCallNeed = need; }
@@ -349,7 +365,13 @@ function buildBroadcast(timeline, ctx, opts) {
   //   ここに相槌を挟むと緊張が薄まる。
   call(0.045, "start", "go", {}, "start");
   // 序盤はコースの説明を解説に預ける（実況は名前を告げるだけ）
-  call(0.10, "course", "intro", { label: early.label }, "course");
+  // 発走直後の空きを埋める（誰が出たかは、この時点でいちばん知りたい情報）
+  call(0.075, "drive", "lead", (function () {
+    const d = A.samples.reduce((b, x) => Math.abs(x.tau - 0.075) < Math.abs(b.tau - 0.075) ? x : b, A.samples[0]);
+    const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
+    return { n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]), m: marginTier(g).label };
+  })(), "shape");
+  call(0.13, "course", "intro", { label: early.label }, "course");
   color(0.125, "course", "detail",
         { label: early.label, s: (early.stats || []).join("と") }, "course");
 
@@ -368,10 +390,22 @@ function buildBroadcast(timeline, ctx, opts) {
     const vars = { n1: nameOf(sh.first), n2: nameOf(sh.second), n3: nameOf(sh.third),
                    st1: styleJP(sh.first) };
     call(sh.tau, "shape", i === 0 ? "first" : "update", vars, "shape");
-    // ★隊列は3回示すが、解説が受けるのは最初の1回だけ。
+    // ★隊列は4回示すが、解説が受けるのは最初の1回だけ。
     //   毎回論評させると「実況が言う→解説が言い直す」の往復になり、
     //   同じ情報を二度読まされることになる。
     if (i === 0) color(sh.tau + 0.016, "shape", "first", vars, "shape");
+    // ★隊列と隊列のあいだが空くので、そこに差の状況を入れて無言を作らない。
+    //   数字ではなく着差の目盛り（鼻先/首差/半身/一体/大差）で言う。
+    if (i < A.shape.length - 1) {
+      const mid2 = (sh.tau + A.shape[i + 1].tau) / 2;
+      const d = A.samples.reduce((best, x) =>
+        Math.abs(x.tau - mid2) < Math.abs(best.tau - mid2) ? x : best, A.samples[0]);
+      const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
+      call(mid2, "drive", i % 2 === 0 ? "lead" : "third", {
+        n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]),
+        m: marginTier(g).label
+      }, "shape");
+    }
   });
 
   // 差が開いた／詰まった＝展開が動いた瞬間を1本だけ。
@@ -432,12 +466,27 @@ function buildBroadcast(timeline, ctx, opts) {
     call(Math.min(D - 0.02, c.tau), "final", "leadFlip",
          { n: nameOf(c.to), n2: nameOf(c.from) }, "final");
   });
-  // ★決着直前の畳みかけ。1着2着の綱引きを、短い行で刻む。
-  //   ここが実測で空白だった箇所なので、条件をつけずに必ず置く。
-  call(back(3.2), "final", "duel",
-       { n1: nameOf(A.winner), n2: nameOf(A.second) }, "final");
-  call(back(1.8), "final", "duel",
-       { n1: nameOf(A.winner), n2: nameOf(A.second) }, "final");
+  // ★決着までの連続記録。無言の時間を作らないよう、一定間隔で必ず埋める。
+  //   ただの叫びではなく「誰が前・誰が来た・差はいくつ」を毎回載せる。
+  //   （畳みかける＝文字を減らすことではない、というユーザー指摘への対応）
+  let prevGap = null;
+  for (let sec = 11.0; sec >= 1.0; sec -= 1.3) {
+    const t = back(sec);
+    const d = A.drive.reduce((best, x) =>
+      Math.abs(x.tau - t) < Math.abs(best.tau - t) ? x : best, A.drive[0]);
+    if (!d) break;
+    const m = marginTier(d.gap).label;
+    // 差が詰まっているのか、動かないのか、開いているのかで言い方を変える
+    let key = "lead";
+    if (prevGap != null) {
+      if (d.gap < prevGap - 0.004) key = "chase";
+      else if (Math.abs(d.gap - prevGap) <= 0.002) key = "locked";
+    }
+    prevGap = d.gap;
+    call(t, "drive", key, {
+      n1: nameOf(d.first), n2: nameOf(d.second), n3: nameOf(d.third), m
+    }, "final");
+  }
 
   // ── 決着＝どう決まったのかを言う ────────────────────────────────
   // ★位置は決着点そのもの。τ=1.0（最下位のゴール）に置くと、実測で8秒以上
@@ -477,7 +526,7 @@ function buildBroadcast(timeline, ctx, opts) {
       //   低優先の行だけ（コース説明・差の開閉・本領発揮）。
       //   入場は τ が名目値で、実際はパレード側が間合いを取り直すので対象外。
       //   発走・終盤・1位交代は多少ずれても価値が残るので落とさない。
-      if (c.tag !== "entry" && c.pri < 70 && at - c.tau > hold * 1.6) { dropped.push(c); return; }
+      if (c.tag !== "entry" && c.pri < 70 && at - c.tau > hold * 3.0) { dropped.push(c); return; }
       c.at = at; c.hold = hold; cursor = at + hold;
       packed.push(c);
     });
