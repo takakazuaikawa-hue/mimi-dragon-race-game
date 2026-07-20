@@ -28,6 +28,7 @@ const OUT_W = 512;            // 元は1024x1536と大きい。表示は小さ�
 const WHITE = 238;            // これ以上明るければ「白」＝確実な背景（縁からの連結のみ）
 const SOFT  = 186;            // これ以上明るい縁の画素は、白さに応じて半透明にする
 const EDGE_PASSES = 8;        // にじみを食う回数（多すぎると本体を削る）
+const THIN_R = 2.5;           // 縁と地続きでない白のうち、この太さ以下＝髪などの隙間として抜く
 
 // ── PNG を読む（8bit・非インタレース限定） ──────────────────────
 function decodePng(buf) {
@@ -119,18 +120,63 @@ function backgroundAlpha(w, h, ch, data) {
   const isWhite = i => data[i] >= WHITE && data[i + 1] >= WHITE && data[i + 2] >= WHITE;
   const alpha = new Uint8Array(w * h).fill(255);
   const bg = new Uint8Array(w * h);            // 完全な背景（さらに広げる起点）
-  const stack = [];
-  const push = (x, y) => {
-    if (x < 0 || y < 0 || x >= w || y >= h) return;
-    const k = y * w + x; if (bg[k]) return;
-    if (!isWhite(k * ch)) return;
-    bg[k] = 1; alpha[k] = 0; stack.push(k);
-  };
-  for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
-  for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
-  while (stack.length) {
-    const k = stack.pop(), x = k % w, y = (k / w) | 0;
-    push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
+
+  // ①白い画素を連結成分に分け、成分ごとに「背景か否か」を決める。
+  //   ★縁から届く白だけを抜く方式では、髪束の隙間の白が残る。隙間は
+  //     髪に囲まれていて画像の縁と地続きでないため、塗りつぶしが届かない
+  //     （ユーザー指摘「髪の毛回りが抜けてない」の正体）。
+  //   ★かといって白を一律に抜くと、白い服（バニーのパーカー等）が消える。
+  //   ★区別は「面積」ではなく「太さ」でつける。
+  //     面積で切ると白い服まで穴だらけになった（服の白も陰影で細かく
+  //     割れていて、ひとつひとつは小さい）。実測すると差は太さに出る：
+  //       髪の隙間 … 細い筋。内接半径2以下が1613個
+  //       服の白   … 太い塊。内接半径3超が69個
+  //     ・画像の縁に触れている          → 背景
+  //     ・触れていなくて細い（筋）      → 髪などの隙間 → 背景
+  //     ・触れていなくて太い（塊）      → 服 → 残す
+  //   太さは距離変換（白でない場所からの距離）の最大値で測る。
+  const INF = 1e9;
+  const dist = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) dist[i] = isWhite(i * ch) ? INF : 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const k = y * w + x; let v = dist[k];
+    if (x > 0) v = Math.min(v, dist[k - 1] + 1);
+    if (y > 0) v = Math.min(v, dist[k - w] + 1);
+    if (x > 0 && y > 0) v = Math.min(v, dist[k - w - 1] + 1.414);
+    if (x < w - 1 && y > 0) v = Math.min(v, dist[k - w + 1] + 1.414);
+    dist[k] = v;
+  }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+    const k = y * w + x; let v = dist[k];
+    if (x < w - 1) v = Math.min(v, dist[k + 1] + 1);
+    if (y < h - 1) v = Math.min(v, dist[k + w] + 1);
+    if (x < w - 1 && y < h - 1) v = Math.min(v, dist[k + w + 1] + 1.414);
+    if (x > 0 && y < h - 1) v = Math.min(v, dist[k + w - 1] + 1.414);
+    dist[k] = v;
+  }
+
+  const seen = new Uint8Array(w * h);
+  for (let sy = 0; sy < h; sy++) for (let sx = 0; sx < w; sx++) {
+    const s = sy * w + sx;
+    if (seen[s] || !isWhite(s * ch)) continue;
+    const comp = [];
+    const st = [s]; seen[s] = 1;
+    let touchesEdge = false, maxR = 0;
+    while (st.length) {
+      const k = st.pop(), x = k % w, y = (k / w) | 0;
+      comp.push(k);
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touchesEdge = true;
+      if (dist[k] > maxR) maxR = dist[k];
+      const nb = [];
+      if (x > 0) nb.push(k - 1);
+      if (x < w - 1) nb.push(k + 1);
+      if (y > 0) nb.push(k - w);
+      if (y < h - 1) nb.push(k + w);
+      for (const n of nb) { if (!seen[n] && isWhite(n * ch)) { seen[n] = 1; st.push(n); } }
+    }
+    if (touchesEdge || maxR <= THIN_R) {
+      for (const k of comp) { bg[k] = 1; alpha[k] = 0; }
+    }
   }
 
   // ②縁のにじみを段階的に食う（数回で収束する。行き過ぎないよう回数で止める）
