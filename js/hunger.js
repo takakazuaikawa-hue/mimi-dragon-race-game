@@ -25,7 +25,7 @@ function hungerCanRace() { return hungerFtueSafe() || hungerGet() > 0; }
 // ── 価格（生活段位スケール＝暮らしが上がると外食も高級化・HUNGER_ECONOMY_DESIGN §2） ──
 function hungerBaseUnit() {
   try {
-    const a = (state.player && state.player.totalAssets) || 0;
+    const a = assetsPeak(state);   // ★物価は到達最高で決める（散財で急に安くなる往復を防ぐ）
     if (a >= 100000000) return 10000;
     if (a >= 1000000) return 2000;
     if (a >= 100000) return 300;
@@ -50,7 +50,7 @@ var MEAL_HEAL_TIER = { track: 40, home: 45, gourman: 80, shinbo: 100 };      // 
 function hungerScale() {  // 生活段位（総資産）で外食が少しだけ高級化＝緩め。基本価格は現実的なまま維持。
   // ★崖の位置を ASSET_LEVELS（1万/10万/100万/1億）と揃える＝生活ステージが上がる瞬間と物価が動く瞬間を一致（§7-J）。
   try {
-    const a = (state.player && state.player.totalAssets) || 0;
+    const a = assetsPeak(state);   // ★物価は到達最高で決める（散財で急に安くなる往復を防ぐ）
     if (a >= 100000000) return 2.5;
     if (a >= 1000000) return 2.0;
     if (a >= 100000) return 1.5;

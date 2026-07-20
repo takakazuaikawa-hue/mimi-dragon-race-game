@@ -12,7 +12,7 @@
  * the new field changes save layout in a non-backwards-compatible way.
  */
 const SAVE_KEY = "mimi_dragon_race_v0_1";
-const SAVE_VERSION = "1.1.0";  // #30: + maxCoinsReached/totalAssets + state.assets
+const SAVE_VERSION = "1.2.0";  // 資産の二値化: totalAssets=現在の純資産 / assetsPeak=到達最高（解放判定）
 
 const state = {
   player: {
@@ -20,7 +20,8 @@ const state = {
     // §30 §3.1 — progression uses the all-time coin high-water mark, never the
     // current (bettable) balance, so a losing bet never rolls back the story.
     maxCoinsReached: 1000,
-    totalAssets: 0,   // recomputed by recomputeAssets(); high-water (never drops)
+    totalAssets: 0,   // 現在の純資産（recomputeAssetsが再計算・増減する＝表示用）
+    assetsPeak: 0,    // 到達最高（解放判定の正本・減らない）
     rank: 1,
     villageLevel: 1,  // shortcut to village.level (kept for backwards compat)
     completedRaces: 0,
@@ -132,6 +133,11 @@ function loadGame() {
       // §30 migration: pre-1.1 saves lack maxCoinsReached — seed it from coins
       // so an existing player's progression isn't reset to zero.
       if (state.player.maxCoinsReached == null) state.player.maxCoinsReached = state.player.coins || 0;
+      // ★資産の二値化 移行：旧セーブの totalAssets は「到達最高」の意味だったので、
+      //   そのまま assetsPeak（解放判定の正本）へ引き継ぐ。totalAssets は直後の
+      //   recomputeAssets() で現在の純資産として計算し直されるため、ここでは触らない。
+      //   これを忘れると、既存プレイヤーの解放済みの章・スポットが一斉に閉じる。
+      if (state.player.assetsPeak == null) state.player.assetsPeak = state.player.totalAssets || 0;
       // ★ランク3本レール移行：旧セーブは hitsByRank を持たない。過去の的中履歴は帯別に
       //   復元できないため 0 から積む（獲得済みランクは下がらない設計なので不利益は「次の昇格が
       //   新基準になる」ことのみ＝リリース前につき許容・progression-redesign 方針）。
@@ -191,7 +197,7 @@ function claimDailyLogin(info) {
 
 function resetGame() {
   state.player = {
-    coins: 1000, maxCoinsReached: 1000, totalAssets: 0,
+    coins: 1000, maxCoinsReached: 1000, totalAssets: 0, assetsPeak: 0,
     rank: 1, villageLevel: 1,
     completedRaces: 0, wins: 0,
     completedByRank: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },

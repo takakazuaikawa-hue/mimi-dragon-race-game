@@ -2,15 +2,21 @@
  * assets_engine.js — total-asset, lifestyle & rescue ENGINE (spec #30).
  *
  * Reads data_assets.js tables + the live `state` and computes:
- *   - the six asset components (village/facility/living/fame/dragon + maxCoins)
- *   - 総資産 (calculateTotalAssets) with a high-water guard so it never drops
+ *   - the six asset components (village/facility/living/fame/dragon + coins)
+ *   - 資産 (calculateTotalAssets) — いま持っているものの合計。使えば減る。
+ *   - 到達最高 (assetsPeak) — 解放判定の正本。減らない。
  *   - the asset level / unlocked story chapter / lifestyle stage
  *   - the bankruptcy rescue amount (calculateRescueCoins)
  *
+ * ★二値構成（ここが最重要）:
+ *   表示に出る「資産」＝ totalAssets ＝ 現在の純資産。島に投資すればコインが減って
+ *   施設の価値が増える＝合計はおおむね保たれ、食事などの消費でだけ本当に減る。
+ *   一方、章・スポット・段位などの解放判定は必ず assetsPeak(state) を読む。
+ *   この分離がないと「資産を使ったせいで読めた話が閉じる」事故が起きる（§16）。
+ *
  * Hard guarantees (spec #30 §15/§16):
- *   - Never reads current coins for 総資産 — only maxCoinsReached (§3.1).
- *   - 総資産 / unlockedLifeStages are monotonic high-water marks → no story
- *     rollback when a bet loses (§16).
+ *   - unlockedLifeStages / assetsPeak are monotonic high-water marks → no story
+ *     rollback when a bet loses or when the player invests (§16).
  *   - Nothing here touches race results, payouts, or 《ぱほぱほ》 (§12).
  *   - Lifestyle assets only feed 総資産 + rescue, never race victory (§5.5).
  *
@@ -95,15 +101,28 @@ function isLifeAssetUnlocked(state, item, level) {
   return level >= item.unlockAssetLevel;
 }
 
-// §13.3 — pure sum of the six components (uses maxCoinsReached, never coins).
+// §13.3 — 資産＝いま持っているものの合計（六成分の素直な足し算）。
+// ★設計変更：コイン成分を maxCoinsReached（史上最高額）から coins（現在額）へ。
+//   旧仕様では島に何億投資しても資産が1円も減らず、「資産」という語からプレイヤーが
+//   期待する挙動と逆だった。現在額にすることで、島に投資する＝コインが減って施設の
+//   価値が上がる＝お金が資産に形を変えただけ、という動きが数字の上で見える。
+//   進行の巻き戻り（＝一度開いた話が資産を使ったせいで閉じる）は assetsPeak が防ぐ。
 function calculateTotalAssets(state) {
   const p = state.player, a = state.assets;
-  return (p.maxCoinsReached || 0)
+  return (p.coins || 0)
     + (a.villageValue || 0)
     + (a.facilityValue || 0)
     + (a.livingValue || 0)
     + (a.fameValue || 0)
     + (a.dragonValue || 0);
+}
+
+// ★進行判定の正本＝「これまでに到達した資産の最高額」。
+//   表示用の totalAssets は減るので、解放条件にこれを使うと一度開いた話・スポット・
+//   段位が閉じてしまう。解放を見るコードは必ずこちらを読むこと（assets_engine の外も同様）。
+function assetsPeak(st) {
+  const p = (st || state).player || {};
+  return Math.max(p.assetsPeak || 0, p.totalAssets || 0);
 }
 
 /**
@@ -126,24 +145,30 @@ function recomputeAssets(state) {
   a.fameValue     = computeFameValue(state);
   a.dragonValue   = computeDragonValue(state);
 
-  let level = a.unlockedLifeStages || 0;           // start from the high-water level
-  let total = state.player.totalAssets || 0;       // high-water total
+  // 生活資産の解放段位は「到達最高」で決める（＝一度手に入れた暮らしは失わない）。
+  // totalAssets そのものは現在値なので、段位の決定権を持たせてはいけない。
+  let level = a.unlockedLifeStages || 0;
+  let peak  = assetsPeak(state);
+  let total = 0;
   for (let i = 0; i < 8; i++) {
     recomputeLiving(state, level);
-    total = Math.max(total, calculateTotalAssets(state));
-    const lv = assetLevelOf(total);
+    total = calculateTotalAssets(state);
+    peak  = Math.max(peak, total);
+    const lv = assetLevelOf(peak);
     if (lv <= level) break;
-    level = lv;                                     // monotonic climb only
+    level = lv;                                     // 上がる方向にだけ動く
   }
   // finalize at the settled level
   recomputeLiving(state, level);
-  total = Math.max(total, calculateTotalAssets(state));
-  level = Math.max(level, assetLevelOf(total));
+  total = calculateTotalAssets(state);
+  peak  = Math.max(peak, total);
+  level = Math.max(level, assetLevelOf(peak));
 
-  state.player.totalAssets = total;                // high-water (never drops)
-  a.unlockedLifeStages = level;                    // high-water (no story rollback)
+  state.player.totalAssets = total;                // 現在の純資産（増えも減りもする）
+  state.player.assetsPeak  = peak;                 // 到達最高（進行判定の正本・減らない）
+  a.unlockedLifeStages = level;                    // 高水位（暮らしは巻き戻らない）
 
-  return { total, level, unlockedStory: currentStoryChapter(total) };
+  return { total, peak, level, unlockedStory: currentStoryChapter(peak) };
 }
 
 // §7 — the highest story chapter unlocked at this 総資産 (spec 32 §9 thresholds).

@@ -7,7 +7,7 @@
  *
  * Design rules from spec #30:
  *   - 手持ちコイン (betting) is SEPARATE from 総資産 (progression). (§2.1)
- *   - 総資産 uses maxCoinsReached, never current coins, so a losing bet never
+ *   - 解放判定は assetsPeak（到達最高）を使うので、負けても解放は巻き戻らない。旧: 総資産 uses maxCoinsReached, never current coins, so a losing bet never
  *     rolls back the story. (§3.1, §16)
  *   - Lifestyle assets must NOT affect race results — only 総資産 + rescue. (§5.5)
  *   - 《ぱほぱほ》 must NOT affect money/rescue/results. (§12) — nothing here ties
@@ -51,7 +51,7 @@ const ROOM_NAMES = ["下宿の一間", "小さな借家", "陽当たりの家", 
 
 function roomLevel() {
   const p = state.player;
-  if (typeof p.roomLevel !== "number") p.roomLevel = assetLevelOf(p.totalAssets || 0);   // 移行：今の部屋を維持
+  if (typeof p.roomLevel !== "number") p.roomLevel = assetLevelOf(assetsPeak(state));   // 移行：今の部屋を維持
   return Math.max(0, Math.min(5, p.roomLevel));
 }
 function roomName(lv) { return ROOM_NAMES[Math.max(0, Math.min(5, lv))]; }
@@ -214,7 +214,7 @@ function outfitOwned(o) {
   if (o.acquire.free) return true;
   const won = (state.player && state.player.outfitsWon) || [];   // モールお買い物ダンジョンの戦利品（表示メタ）
   if (won.indexOf(o.id) >= 0) return true;
-  if (o.acquire.assets != null) return ((state.player && state.player.totalAssets) || 0) >= o.acquire.assets;
+  if (o.acquire.assets != null) return assetsPeak(state) >= o.acquire.assets;   // ★解放判定＝到達最高
   const bought = (state.player && state.player.outfitsBought) || [];
   return bought.indexOf(o.id) >= 0;
 }
@@ -298,7 +298,7 @@ function chapterRead(id) { try { return typeof getStoryFlag === "function" && !!
 function chapterAvailable(chId) {
   try {
     const p = state.player || {};
-    const total = p.totalAssets || 0, races = p.completedRaces || 0, wins = p.wins || 0;
+    const total = assetsPeak(state), races = p.completedRaces || 0, wins = p.wins || 0;   // ★章の解放＝到達最高
     switch (String(chId)) {
       case "1":  return true;                                       // サケ＝島に着いた最初から
       case "2":  return chapterRead("1") && races >= 3;             // ミズ＝1話を読み、数レース走って勘に詰まってから

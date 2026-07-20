@@ -9,6 +9,33 @@
 
 let _lifeTab = null;   // 選択中の枝（null は自動選択）
 
+// 🏦 資産の内訳＝計算式をそのまま見せるポップアップ。
+// ★これが「資産」という数字への唯一の説明責任。合計だけ大きく出して中身を隠すと、
+//   増えた/減った理由が分からず、プレイヤーは数字を追うのをやめてしまう。
+//   六成分を実データから並べ、足すと合計に一致することを目で確認できるようにする。
+function showAssetBreakdown() {
+  if (typeof recomputeAssets === "function") recomputeAssets(state);
+  const p = state.player, a = state.assets;
+  const rows = [
+    ["🪙", "手持ちのコイン", p.coins || 0, "いま賭けに使えるお金。"],
+    ["🏘", "村", a.villageValue || 0, "村のレベルが上がると増える。"],
+    ["🏗", "施設", a.facilityValue || 0, "島に建てた施設の価値。投資するとここが増える。"],
+    ["🛋", "暮らし", a.livingValue || 0, "手に入れた生活用品や住まいの価値。"],
+    ["📣", "名声", a.fameValue || 0, "ランク・勝利数・最高配当から決まる評判の値打ち。"],
+    ["🐲", "竜", a.dragonValue || 0, "図鑑に載せた竜・推し竜の数。"]
+  ];
+  const sum = rows.reduce((s, r) => s + r[2], 0);
+  const body =
+    rows.map(r =>
+      `<div class="mm-row"><span class="mm-ic">${r[0]}</span><div><b>${r[1]}　${fmtCoins(r[2])}</b><small>${r[3]}</small></div></div>`
+    ).join("") +
+    `<div class="mm-row mm-sum"><span class="mm-ic">🏦</span><div><b>合計＝資産　${fmtCoins(sum)}</b>` +
+      `<small>この6つを足しただけの数字です。コインを使って施設を建てれば、コインが減って施設が増える＝合計はほとんど変わりません。ごはんなどで使い切った分だけ、本当に減ります。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🔓</span><div><b>お話やお店が開く条件は、減りません</b>` +
+      `<small>解放の判定には「これまでに届いた最高額（${fmtCoins((typeof assetsPeak === "function") ? assetsPeak(state) : sum)}）」を使います。資産を使ったせいで、読めた話が読めなくなることはありません。</small></div></div>`;
+  if (typeof showInfoPopup === "function") showInfoPopup("🏦 資産の内訳", body);
+}
+
 // 暮らし＝コンパクトなダッシュボード。状態は小さくグラフィカルに、情報量の多いもの
 //（スキルツリー＝約200ノード／コレクション＝約200点）は専用画面へ遷移させてスクロールを抑える。
 // 🎯 目標（クエスト）／🍽️ 食事（みみしんぼ）の画面は js/ui_meta.js へ抽出済み（CODEMAP §6・分割第1弾）。
@@ -39,21 +66,15 @@ function renderAssets() {
   hero.innerHTML =
     `<span class="lr-room-seal">${(typeof roomName === "function") ? roomName(_roomT) : "いまのお部屋"}<b>Lv.${_roomT}</b></span>` +
     `<img class="lr-room-mimi" src="images/cast/mini/mimi_loading1_mini.png" alt="ミミ" decoding="async">` +
-    `<div class="lr-room-info"><div class="lr-room-lbl">ミミの再起度（総資産）</div>` +
+    `<div class="lr-room-info"><div class="lr-room-lbl">資産</div>` +
       `<div class="lr-room-total">${fmtCoins(total)}</div>` +
-      `<div class="lr-room-p">暮らしP ◇${st.available}</div></div>`;
+      `<div class="lr-room-p">内訳を見る ▸</div></div>`;
   app.appendChild(hero);
-  // 暮らしP表示：タップで反映（解放済みならくらしツリーへ・未解放なら他の箇所と同じ🔒案内）。
+  // 旧「暮らしP ◇n」の枠を、資産の内訳（計算式）への入口に置き換え。
+  // 残高が出るのに減らない指標を見せるより、「何がいくらで合計いくらか」を開ける方が役に立つ。
   const _roomPEl = hero.querySelector(".lr-room-p");
   _roomPEl.style.cursor = "pointer";
-  _roomPEl.onclick = () => {
-    if (_ch3unlocked) { renderLifeTree(); return; }
-    // ★この案内が出る＝第3話未読＝スミカ未登場。章の副題（＝顧問の固有名）は出さず「第3話」までに留める（R7）。
-    // 解禁条件の文は chapterUnlockHint（実績ゲートの正本）から引く＝旧「総資産3万」の化石テキスト排除。
-    const _lpH3 = (typeof chapterUnlockHint === "function" && chapterUnlockHint("3")) || "";
-    if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます${_lpH3 ? `（第3話は${_lpH3}）` : ""}。</small></div></div>`);
-  };
+  _roomPEl.onclick = () => { if (typeof showAssetBreakdown === "function") showAssetBreakdown(); };
 
   // ★引っ越し：コインで部屋を一段上げる（総資産では自動で上がらない）。くらしツリーと同じ「コインで解放」の作法。
   if (typeof canMoveRoom === "function") {
@@ -91,7 +112,7 @@ function renderAssets() {
 
   // 内訳（小さなセグメントバー＝グラフィカル）
   const parts = [
-    ["最大到達", p.maxCoinsReached, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
+    ["コイン", p.coins, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
     ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
   ].filter(x => x[1] > 0);
   const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
@@ -179,7 +200,7 @@ function renderAssets() {
   }
   // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。_ch3unlocked は上（すべきこと判定）で確定済み。
   if (_ch3unlocked) {
-    ent.appendChild(entry("🌳", "くらしスキルツリー", `暮らしP ◇${st.available} 残り ・ 解放 ${st.unlockedCount}/${st.totalNodes}`, ready ? "振れる!" : "", () => renderLifeTree()));
+    ent.appendChild(entry("🌳", "くらしスキルツリー", `解放 ${st.unlockedCount}/${st.totalNodes} ・ いま取れる ${st.readyCount}`, ready ? "振れる!" : "", () => renderLifeTree()));
     ent.appendChild(entry("🎁", "生活資産コレクション", `${colOwned} / ${LIFE_ASSETS.length} 解放`, "", () => renderLifeCollection()));
   } else {
     // ★同上：第3話未読＝スミカ未登場なので、章の副題（固有名）を伏せた予告にする（R7）。
@@ -187,7 +208,7 @@ function renderAssets() {
       // 解禁条件の文は chapterUnlockHint（実績ゲートの正本）から引く＝旧「総資産3万」の化石テキスト排除。
       const _enH3 = (typeof chapterUnlockHint === "function" && chapterUnlockHint("3")) || "";
       if (typeof showInfoPopup === "function") showInfoPopup("🌱 くらしツリー・生活資産",
-        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリー（暮らしP）と生活資産が開放されます${_enH3 ? `（第3話は${_enH3}）` : ""}。</small></div></div>`);
+        `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small><u>第3話</u>を読むと、くらしツリーと生活資産が開放されます${_enH3 ? `（第3話は${_enH3}）` : ""}。</small></div></div>`);
     }));
   }
   // 習い事：次に通える師範のミニ肖像を添える（未登場の師範なら無し＝ネタバレしない）。
@@ -250,7 +271,7 @@ function _shihanOf(skillId) {
 }
 
 // 専用画面：習い事（アクティブスキル）。通うとレベルが上がり、効果テキストと称号がつくだけの
-// 完全な表示専用メタ進行。コイン・総資産・暮らしP・着順・オッズ・配当には一切触れない。
+// 完全な表示専用メタ進行。コイン・資産・着順・オッズ・配当には一切触れない。
 function renderActiveSkills() {
   state.ui.screen = "active_skills";
   if (!state.player.activeSkills) state.player.activeSkills = {};
@@ -411,7 +432,7 @@ function renderLifeTree() {
   const st = lifeTreeStats();
   const app = beginScreen();   // 上部に「← 暮らし」が付く
   app.appendChild(el("h2", null, "くらしスキルツリー"));
-  app.appendChild(el("div", "as-hint2", `暮らしP ◇<b>${st.available}</b> 残り ／ 解放 ${st.unlockedCount}/${st.totalNodes}　<span class="as-hint">レースで総資産が増える＝暮らしPが貯まる</span>`));
+  app.appendChild(el("div", "as-hint2", `解放 <b>${st.unlockedCount}</b>/${st.totalNodes} ／ いま取れる <b>${st.readyCount}</b>　<span class="as-hint">レースで稼いだコインで、ひとつずつ暮らしを買っていく</span>`));
 
   // ── スミカの宿題（章連動・表示のみ）──
   try {
@@ -510,7 +531,7 @@ function renderLifeTree() {
 
   const respec = el("button", "lt-respec", "↺ いつでも無料で振り直す");
   respec.onclick = () => {
-    if (confirm("解放をすべて解除して、暮らしPを振り直しますか？\n（総資産・コインはそのまま。ノードはいつでも取り直せます）")) {
+    if (confirm("解放をすべて解除して、選び直しますか？\n（資産・コインはそのまま。ノードはいつでも取り直せます）")) {
       respecLifeTree(); renderLifeTree();
     }
   };

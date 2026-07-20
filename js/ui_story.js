@@ -38,7 +38,7 @@ function _csStranger()  { return (typeof castStrangerSeen === "function") ? !!ca
 function renderStory() {
   state.ui.screen = "story";
   recomputeAssets(state);
-  const total = state.player.totalAssets;
+  const total = assetsPeak(state);   // 公開条件の進捗＝解放判定と同じ到達最高で見せる（バーとロックがズレない）
   const app = beginScreen();
 
   const news = el("div", "news");
@@ -188,14 +188,14 @@ function showStoryEvent(e) {
 function renderStoryChapter(chId) {
   const ch = STORY_CHAPTERS.find(c => c.id === chId);
   recomputeAssets(state);
-  if (!ch || ((typeof chapterAvailable === "function") ? !chapterAvailable(ch.id) : (state.player.totalAssets < storyUnlockAt(ch.id)))) { renderStory(); return; }
+  if (!ch || ((typeof chapterAvailable === "function") ? !chapterAvailable(ch.id) : (assetsPeak(state) < storyUnlockAt(ch.id)))) { renderStory(); return; }
   // 読み飛ばしガード：手前に“解禁済みなのに未読”の話が残っていたら、先にそこから読んでもらう（順番厳守）。
   //   ＝総資産だけで終章へ飛び、配信も体験しないまま結末のセリフを踏む断絶を防ぐ（表示のみ・レース数値に非干渉）。
   if (typeof getStoryFlag === "function") {
     var _order = ["1", "2", "3", "4", "5", "ED"], _i = _order.indexOf(chId);
     for (var _k = 0; _k < _i; _k++) {
       var _pid = _order[_k];
-      if ((typeof chapterAvailable === "function") ? !chapterAvailable(_pid) : (state.player.totalAssets < storyUnlockAt(_pid))) continue;   // まだ解禁前の話は飛ばして良い
+      if ((typeof chapterAvailable === "function") ? !chapterAvailable(_pid) : (assetsPeak(state) < storyUnlockAt(_pid))) continue;   // まだ解禁前の話は飛ばして良い
       if (!getStoryFlag("_chapter_intro_" + _pid)) {
         if (typeof showInfoPopup === "function") showInfoPopup("📖 先に前のお話を",
           `<div class="mm-row"><span class="mm-ic">📖</span><div><b>ちょっと待って！</b><small>いきなり結末まで飛ぶと、ミミが置いてけぼりで泣いちゃう。まずは手前のお話から、順番にどうぞ。</small></div></div>`);
@@ -269,7 +269,7 @@ function renderStoryChapter(chId) {
 function renderConsult() {
   state.ui.screen = "consult";
   recomputeAssets(state);
-  const total = state.player.totalAssets;
+  const total = assetsPeak(state);   // 公開条件の進捗＝解放判定と同じ到達最高で見せる（バーとロックがズレない）
   const app = beginScreen();
 
   const news = el("div", "news");

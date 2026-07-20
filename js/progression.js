@@ -34,7 +34,7 @@ const UNLOCKS = [
     cond: function () { return (typeof getStoryFlag === "function") && !!getStoryFlag("_chapter_intro_3"); },
     teaser: "第3話を読むと解放",
     notifyTitle: "🌱 くらしツリーが解放！",
-    notifyBody: "暮らしポイントで生活を育てる「くらしツリー」と生活資産が使えるようになりました。負けた夜にも人生が終わらない、本当の準備を。" },
+    notifyBody: "レースで稼いだコインで生活を育てる「くらしツリー」と生活資産が使えるようになりました。負けた夜にも人生が終わらない、本当の準備を。" },
   // --- toast（既存画面への追加。モーダルは出さない） ---
   // ★M3 余白の尊重：ロケ名と生息竜はスカウト画面が ？？？ で伏せて「行って確かめる」発見にしている
   //   （ui_scout.js）。toast でロケ名まで先に明かすと発見を先食いするので、「新しい行き先が増えた」だけ告知。
@@ -87,10 +87,10 @@ const KURASHI_WATCH = [
     notifyBody: "🌳 くらしツリーが30節目！！　枝の先まで灯りがともる。日報いわく「島でいちばん豊かな木」。" },
   // 暮らし向上＝LIFE_TIERS（総資産の生活段位）到達。島の経済の景気ティアと同じ物差し。
   { id: "k_tier2", tier: "toast",
-    cond: function () { return typeof LIFE_TIERS !== "undefined" && ((state.player && state.player.totalAssets) || 0) >= LIFE_TIERS[2].min; },
+    cond: function () { return typeof LIFE_TIERS !== "undefined" && assetsPeak(state) >= LIFE_TIERS[2].min; },
     notifyBody: "🏠 暮らしが「" + (typeof LIFE_TIERS !== "undefined" ? LIFE_TIERS[2].name : "慎ましい暮らし") + "」に！　聖龍日報・暮らし面「あの新人、屋根のある暮らしへ」。" },
   { id: "k_tier3", tier: "toast",
-    cond: function () { return typeof LIFE_TIERS !== "undefined" && LIFE_TIERS[3] && ((state.player && state.player.totalAssets) || 0) >= LIFE_TIERS[3].min; },
+    cond: function () { return typeof LIFE_TIERS !== "undefined" && LIFE_TIERS[3] && assetsPeak(state) >= LIFE_TIERS[3].min; },
     notifyBody: "🏡 暮らしがまた一段上がりました。日報いわく「崑崙の丘に、竜の見える家」。ご近所さんが増えました。" },
   { id: "k_meals10", tier: "toast",
     cond: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; },   // ★BUGFIX: player.meals は {eaten,solved} の2キー固定＝旧式は永遠に偽だった

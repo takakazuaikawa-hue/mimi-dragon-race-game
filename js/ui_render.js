@@ -413,13 +413,13 @@ function syncVolumeFab() {
 }
 
 // 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
-// 設計：1通貨1役割／コイン→総資産→解放（物語・ランク・暮らしP）の一方向の流れを見せる。
+// 設計：1通貨1役割／コイン→資産→解放（物語・衣装・お店）の一方向の流れを見せる。
 function showMoneyMap() {
   showInfoPopup("💰 お金のしくみ", `
     <div class="mm-flow">🪙 勝つ → 🏦 育つ → 🔓 解放される</div>
-    <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・ログボで増え、賭け・お買い物で減る。<u>減っても物語は戻らない</u>。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">🏦</span><div><b>総資産</b><small>人生の最高到達点（下がらない）。コインの最高記録＋生活資産＋名声。<u>物語・衣装・ランクを解放するカギ</u>。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">🌱</span><div><b>暮らしP</b><small>総資産が伸びると貯まる、暮らしの充実度。くらしツリーの解放は<u>コイン</u>で行う。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・ログボで増え、賭け・お買い物で減る。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🏦</span><div><b>資産</b><small>いま持っているものの合計＝コイン＋村＋施設＋暮らし＋名声＋竜。<u>使えば減り、島に投資すればコインが施設に変わるだけで合計は保たれる</u>。内訳はいつでも開けます。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🔓</span><div><b>解放は「これまでの最高額」で判定</b><small>お話やお店が開く条件だけは、<u>これまでに届いた一番高い資産</u>で見ます。だから資産を使っても、読めた話が読めなくなることはありません。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🏅</span><div><b>ランク</b><small>出走と勝利で昇格。新しいレースが解放される。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🎫</span><div><b>メダル・かけら</b><small>モール探検専用。常連特典と衣装交換に。コインとは別のお財布。</small></div></div>
     <div class="mm-row"><span class="mm-ic">💗</span><div><b>視聴者・いいね</b><small>配信のにぎわい（飾り）。勝負には影響しない。</small></div></div>`);
@@ -582,7 +582,7 @@ function playShinganCutin() {
 
 // §30/§38 — 暮らしと資産：総資産から貯まる「暮らしポイント」を生活の方向（食/住/装/移/遊/格）に
 // 振り分けて、約200の生活アップグレードを解放していく“くらしスキルツリー”。完全に表示専用のメタ進行で、
-// コイン・着順・オッズ・配当・賭け経済には一切触れない（暮らしPは総資産＝再起度から導出するだけ）。
+// コイン・着順・オッズ・配当・賭け経済には一切触れない。
 
 // 章の“予告用”タイトル。章題そのものに顧問の名が入っている（例「第5話　セレスティアの神眼」）ので、
 // まだ出会っていない相手の章は章番号だけに伏せる（R7＝予告はしてよいが固有名は出さない）。読めば本来の章題に戻る。
@@ -2596,11 +2596,10 @@ function settleRace() {
   const _rank0 = state.player.rank;
   checkRankProgression();
   // §30 — update total-asset progression from the payout (after coins/village/
-  // rank/collection have settled). maxCoinsReached + 総資産 only ever rise.
+  // rank/collection have settled). 資産は現在の純資産・assetsPeak だけが単調増加。
   bumpMaxCoins();
   const prevStage = state.assets.unlockedLifeStages || 0;
   const prevTotal = state.player.totalAssets || 0;
-  const _lifeP0 = (typeof lifeTreeStats === "function") ? lifeTreeStats().earned : 0;
   const ra = recomputeAssets(state);
   const newTotal = state.player.totalAssets || 0;
   // (a) story: このレースの実績で「新しく読めるようになった」章（前は読めず、今は読める・未読）。
@@ -2619,7 +2618,6 @@ function settleRace() {
   }
   // 📦 獲得台帳（このレースで増えたもの一覧＝結果画面の「今回の獲得」。表示専用・数値はここまでで確定済み）
   try {
-    const _lifeP1 = (typeof lifeTreeStats === "function") ? lifeTreeStats().earned : _lifeP0;
     let _mission = false;
     if (state.player.dailyM && (state.player.completedRaces - state.player.dailyM.races0) === 1) _mission = true;   // この1走でデイリー「出走」を達成
     c.gainLedger = {
@@ -2627,8 +2625,8 @@ function settleRace() {
       streakBonus, featuredBonus: c.featuredBonus || 0,
       collectionCoins: (c.collectionAwards || []).reduce((a, x) => a + (x.reward || 0), 0),
       collectionLabels: (c.collectionAwards || []).map(x => x.label),
-      assetsDelta: Math.max(0, newTotal - prevTotal),
-      lifePDelta: Math.max(0, _lifeP1 - _lifeP0),
+      // ★資産は純資産になったので増減どちらもありうる（負ければ減る）。符号ごと持つ。
+      assetsDelta: newTotal - prevTotal,
       rankUp: state.player.rank > _rank0 ? state.player.rank : 0,
       // ★台帳の「📜 物語が解放」も章題をそのまま出すと未登場の名が漏れる（例「第5話　セレスティアの神眼」）。
       //   ここに載る章は必ず未読なので、章番号だけの見出しに伏せる（R7）。
@@ -3316,8 +3314,8 @@ function drawRecapScreen() {
       if (g.streakBonus > 0) R("🔥", "連勝ボーナス", "＋" + fmtCoins(g.streakBonus), "gain");
       if (g.featuredBonus > 0) R("★", "注目レース達成", "＋" + fmtCoins(g.featuredBonus), "gain");
       g.collectionLabels.forEach((lb, i) => R("📖", lb, "＋" + fmtCoins(c.collectionAwards[i].reward), "gain"));
-      if (g.assetsDelta > 0) R("🏦", "総資産（最高記録更新）", "＋" + fmtCoins(g.assetsDelta), "asset");
-      if (g.lifePDelta > 0) R("🌱", "暮らしP（総資産で貯まる指標）", "＋" + g.lifePDelta, "asset");
+      if (g.assetsDelta > 0) R("🏦", "資産", "＋" + fmtCoins(g.assetsDelta), "asset");
+      else if (g.assetsDelta < 0) R("🏦", "資産", "−" + fmtCoins(-g.assetsDelta), "loss");
       if (g.rankUp) R("🏅", "ランク昇格！", "ランク" + g.rankUp, "rankup");
       // ★解放は結果画面では静かに1行だけ（章題は出さず「新しい話が届いた」）。詳しい案内は物語ナビ/ホーム側で。
       if (g.storyUnlocked && g.storyUnlocked.length) R("📖", "新しい話が届いた", "〈物語〉へ", "rankup");
@@ -3471,7 +3469,7 @@ function streakLineHtml(si) {
 // (bridges the geometric dead zones between life-stage thresholds).
 function nextGoals(state) {
   const p = state.player, goals = [];
-  const coins = p.coins, total = p.totalAssets || 0;
+  const coins = p.coins, total = assetsPeak(state);   // 次の目標の残り＝到達最高（解放条件と同じ物差し）
   // rank up
   const nr = p.rank + 1;
   if (typeof RANK_UNLOCK !== "undefined" && RANK_UNLOCK[nr]) {

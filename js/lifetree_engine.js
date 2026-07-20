@@ -1,11 +1,15 @@
 // =========================================================================
 // §38 — 暮らしスキルツリー（くらしツリー）エンジン
-// 「ばかばかしいけど真面目」な仕様：総資産から貯まる “暮らしポイント(暮らしP)” を、
-// 生活の方向ごとの枝（食・住まい・装い・移動&旅・趣味&遊び・格&世界）に振り分けて、
-// 約200個の生活アップグレード（＝LIFE_MILESTONES）を解放していく。
+// 「ばかばかしいけど真面目」な仕様：生活の方向ごとの枝（食・住まい・装い・移動&旅・
+// 趣味&遊び・格&世界）に沿って、約200個の生活アップグレード（＝LIFE_MILESTONES）を
+// レースで稼いだコインでひとつずつ買っていく。
 //
-// 重要：完全に表示専用のメタ進行。暮らしP は総資産（＝再起度）から導出するだけで、
-//       コイン・着順・オッズ・配当・賭け経済には一切干渉しない（HARD制約を厳守）。
+// ★かつては「暮らしP」という専用ポイントで買う設計だったが、支払いをコイン一本に
+//   統一した時点で暮らしPは残高が減らない飾りになったため、指標ごと廃止した。
+//   ノードの cost は「コイン価格の係数」と「資産帯ゲートの段」として現役なので残す。
+//
+// 重要：完全に表示専用のメタ進行。コイン残高以外——着順・オッズ・配当・賭け経済には
+//       一切干渉しない（HARD制約を厳守）。
 //       解放はノードのフラグ（state.lifeTree.unlocked[title]=true）を立てるだけ。
 // =========================================================================
 
@@ -78,10 +82,8 @@ function lifeBranchOf(title) {
 }
 
 // 経済パラメータ（あとから調整しやすいよう定数に集約）。
-// 総資産マイルストーン全踏破で earned≈1000、全ノード総コスト≈780 → 終盤は完全制覇可能。
 // 序盤は枝の浅いノード（安い）を広く取れるが、深い“いい暮らし”はコスト増で取捨選択になる。
-const LIFE_P_PER_STEP = 5;   // 総資産マイルストーンを1段越えるごとに貯まる暮らしP
-const LIFE_COST_STEP  = 6;   // 枝の中で何ノードごとにコストが+1されるか（深いほど高い）
+const LIFE_COST_STEP  = 6;   // 枝の中で何ノードごとにコストが+1されるか（深いほど高い＝コイン価格も上がる）
 
 // ツリー本体：LIFE_MILESTONES を枝ごとに分け、枝内は総資産しきい値(at)順＝安い順に並べる。
 // 各ノードに branch / pos / cost / nodeId を付与（共有オブジェクトを直接拡張）。
@@ -187,19 +189,13 @@ const LIFE_NODE_BY_TITLE = {};
   });
 })();
 
-// ---- 暮らしポイント ----
-function lifePointsEarned(total) {
-  return (typeof lifeMilestoneReached === "function" ? lifeMilestoneReached(total) : 0) * LIFE_P_PER_STEP;
-}
-function lifePointsSpent() {
-  const u = (state.lifeTree && state.lifeTree.unlocked) || {};
-  let s = 0;
-  for (const t in u) { if (u[t] && LIFE_NODE_BY_TITLE[t]) s += LIFE_NODE_BY_TITLE[t].cost; }
-  return s;
-}
-function lifePointsAvailable() {
-  return Math.max(0, lifePointsEarned(state.player.totalAssets) - lifePointsSpent());
-}
+// ---- 暮らしポイント：★廃止 ----
+// かつては くらしツリー の支払い手段だったが、解放をコイン一本にした改修で役目を失い、
+// 「残高が表示されるのに絶対に減らない通貨」＝プレイヤーを悩ませるだけの表示になっていた
+// （実際の支払いは hunger.js の unlockLifeNode ラップがコインを引く）。
+// 中身は総資産の単調変換（マイルストーン1段＝5P）で情報量ゼロだったため、指標ごと削除。
+// ★node.cost は残すこと：暮らしPのコストではなく、コイン価格の係数（hunger.js の
+//   lifeNodePrice）と資産帯ゲート（lifeNodeBandAt）の根拠として現役。
 
 // ---- ノード状態 ----
 function lifeNodeUnlocked(node) {
@@ -228,7 +224,7 @@ function lifeNodeBandAt(node) {
 function lifeNodeState(node) {
   if (lifeNodeUnlocked(node)) return "unlocked";
   if (!lifeNodePrereqMet(node)) return "prereq";
-  try { if (((state.player && state.player.totalAssets) || 0) < lifeNodeBandAt(node)) return "prereq"; } catch (e) {}
+  try { if (assetsPeak(state) < lifeNodeBandAt(node)) return "prereq"; } catch (e) {}   // ★帯ゲート＝到達最高（資産を使っても閉じない）
   return "ready";
 }
 function unlockLifeNode(node) {
@@ -246,13 +242,14 @@ function respecLifeTree() {
 
 // ---- 集計・枝ごとの進捗 ----
 function lifeTreeStats() {
-  const total = state.player.totalAssets;
-  const earned = lifePointsEarned(total);
-  const spent = lifePointsSpent();
   let unlockedCount = 0;
   const u = (state.lifeTree && state.lifeTree.unlocked) || {};
   for (const t in u) if (u[t] && LIFE_NODE_BY_TITLE[t]) unlockedCount++;
-  return { earned, spent, available: Math.max(0, earned - spent), unlockedCount, totalNodes: LIFE_MILESTONES.length };
+  // ★暮らしP廃止に伴い earned/spent/available は返さない。
+  //   「いま取れるノードがあるか」は readyCount で表す（次の一手サジェスト等が使う）。
+  let readyCount = 0;
+  LIFE_MILESTONES.forEach(n => { if (lifeNodeState(n) === "ready") readyCount++; });
+  return { unlockedCount, readyCount, totalNodes: LIFE_MILESTONES.length };
 }
 function lifeBranchProgress(branchId) {
   const arr = LIFE_TREE[branchId] || [];

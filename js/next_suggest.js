@@ -19,7 +19,7 @@ var NEXT_SUGGEST = [
     cond: function (ctx) { return !(ctx && ctx.hit); }, go: function () { renderMeals(); } },
   { at: "result", weight: 70, icon: "🌳", label: "くらしツリーに一節", sub: "勝敗の外に、育つものがある",
     cond: function (ctx) {
-      try { return !(ctx && ctx.hit) && getStoryFlag("_chapter_intro_3") && lifeTreeStats().available > 0; } catch (e) { return false; }
+      try { return !(ctx && ctx.hit) && getStoryFlag("_chapter_intro_3") && lifeTreeStats().readyCount > 0; } catch (e) { return false; }
     }, go: function () { renderLifeTree(); } },
   // ★M3 重複告知の削減：「今日の一枚」は崑崙マップ内のストリップと食事あとの導線で押し出す。
   //   結果画面からも出すと同じミニ発見を3口で告知＝出し過ぎになるので、結果画面からは外した（勝ち飯/SNS/負け飯で十分）。

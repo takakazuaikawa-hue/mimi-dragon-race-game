@@ -104,7 +104,7 @@ var GOALS = [
   { id: "readCh3",    phase: 3, icon: "🏠", title: "スミカと総資産（第3話）",   hint: "第2話を読み、はじめて単勝を当てると第3話 → 🌱くらしツリー・生活資産が開放。", cast: "sumika", maskTitle: "？？？と総資産（第3話）", done: function () { return _gFlag("_chapter_intro_3"); } },
   // hides:"poro" ＝ 発見前は名前「ポロ」を出さない（命名オチを潰さないため。発見条件の2勝は仕様どおり不変）。
   { id: "buddy",      phase: 3, icon: "🐲", title: "相棒を見つける（2勝）",     hint: "2勝するとポロと出会い、🐲龍舎・竜スカウトが開く。", hides: "poro", maskHint: "2勝すると相棒と出会い、🐲龍舎・竜スカウトが開く。", done: function (s) { return (s.player.wins || 0) >= 2; } },
-  { id: "lifeTree",   phase: 3, icon: "🌱", title: "くらしツリーを育てはじめる", hint: "暮らしポイントで生活を解放する。",         done: function () { return _gLifeNodes() >= 1; } },
+  { id: "lifeTree",   phase: 3, icon: "🌱", title: "くらしツリーを育てはじめる", hint: "レースで稼いだコインで生活を解放する。",         done: function () { return _gLifeNodes() >= 1; } },
   { id: "oneRoom",    phase: 3, icon: "🛏️", title: "ワンルームへ引っ越す",       hint: "🌳暮らしで、コインを払って引っ越す。",     done: function () { return (typeof roomLevel === "function") && roomLevel() >= 1; } },   // ★実際に引っ越したかで判定（引っ越しはコイン制）
 
   // ── 第四話：配信者になる ── 📱スマホ購入でホーム放送化・SNS解禁 ──

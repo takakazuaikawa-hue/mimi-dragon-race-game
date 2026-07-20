@@ -104,7 +104,7 @@ const KONRON_AREAS = [
 // ★観光は「初勝利」で解放（進行組み込み・ユーザー確定 2026-07・docs/GAME_FLOW_REDESIGN.md §1）。
 //   序盤3目標（出走→的中→勝利）の締めのご褒美として島が開く。ロックは条件明示（ホームの🔒枠）。
 function konronMapUnlocked() { return ((state.player && state.player.wins) || 0) >= 1; }
-function _kmTotal() { return (state.player && state.player.totalAssets) || 0; }
+function _kmTotal() { return assetsPeak(state); }   // ★解放判定＝到達最高
 function _kmSpotOpen(s) { return _kmTotal() >= (KM_TIER_AT[(s && s.tier) || 0] || 0); }
 function _kmTierLabel(t) { return ["序盤", "中盤", "後半", "終盤"][t] || ""; }
 

@@ -13,7 +13,7 @@ function _seP() { return (typeof state !== "undefined" && state.player) ? state.
 function _seWins() { return _seP().wins || 0; }
 function _seRaces() { return _seP().completedRaces || 0; }
 function _seRank() { return _seP().rank || 1; }
-function _seAssets() { return _seP().maxCoinsReached || _seP().totalAssets || 0; }
+function _seAssets() { return assetsPeak(state); }   // ★解放判定＝到達最高
 function _seFlag(f) { return (typeof getStoryFlag === "function") ? !!getStoryFlag(f) : false; }
 
 // 配列の後ろほど“新しい”。who=語り手の表示名・色は accent。

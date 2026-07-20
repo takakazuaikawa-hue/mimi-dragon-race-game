@@ -51,7 +51,8 @@ function renderEconomy() {
   state.ui.screen = "economy";
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   const p = state.player, a = state.assets || {};
-  const total = p.totalAssets || 0;
+  const total = p.totalAssets || 0;          // 表示する資産＝いまの純資産
+  const gate  = (typeof assetsPeak === "function") ? assetsPeak(state) : total;   // 景気ティア＝到達最高（下がらない）
   const app = beginScreen();   // 上部に「← 暮らし」
 
   const _h2 = el("h2", null, `🏦 島の経済 <button class="info-q" title="お金のしくみ">？</button>`);
@@ -105,25 +106,25 @@ function renderEconomy() {
   }
 
   // ── 島の景気（総資産ティア＋次の段階への進捗）──
-  const tier = _ecoTierOf(total);
-  const nextTh = (typeof nextAssetThreshold === "function") ? nextAssetThreshold(total) : null;
+  const tier = _ecoTierOf(gate);
+  const nextTh = (typeof nextAssetThreshold === "function") ? nextAssetThreshold(gate) : null;
   const curFloor = (tier.lv >= 1 && typeof ASSET_LEVELS !== "undefined") ? ASSET_LEVELS[tier.lv - 1].threshold : 0;
-  const pct = nextTh ? Math.max(2, Math.min(100, Math.round((total - curFloor) / (nextTh - curFloor) * 100))) : 100;
+  const pct = nextTh ? Math.max(2, Math.min(100, Math.round((gate - curFloor) / (nextTh - curFloor) * 100))) : 100;
   const nextTier = nextTh ? _ecoTierOf(nextTh).t : null;
   const hero = el("div", "card eco-hero eco-hero--" + tier.lv);
   hero.innerHTML =
     `<div class="eco-hero-top"><span class="eco-hero-ic">${tier.t.ic}</span>` +
       `<div class="eco-hero-id"><div class="eco-hero-k">島の景気　Lv ${tier.lv} / 5</div>` +
       `<div class="eco-hero-name">${tier.t.name}</div></div></div>` +
-    `<div class="eco-hero-total"><span class="eco-hero-tl">島の総資産（ミミの再起度）</span><b>${fmtCoins(total)}</b></div>` +
+    `<div class="eco-hero-total"><span class="eco-hero-tl">島の資産</span><b>${fmtCoins(total)}</b></div>` +
     `<div class="eco-hero-bar"><i style="width:${pct}%"></i></div>` +
-    `<div class="eco-hero-next">${nextTh ? `あと <b>${fmtCoins(nextTh - total)}</b> で「${nextTier.name}」へ` : "🌃 最高景気に到達。島の灯りは、もう消えない。"}</div>` +
+    `<div class="eco-hero-next">${nextTh ? `あと <b>${fmtCoins(nextTh - gate)}</b> で「${nextTier.name}」へ` : "🌃 最高景気に到達。島の灯りは、もう消えない。"}</div>` +
     `<div class="eco-hero-note">${tier.t.note}</div>`;
   app.appendChild(hero);
 
   // ── 経済の内訳（6成分のセグメントバー＝暮らし画面と同じ見せ方）──
   const parts = [
-    ["最大到達", p.maxCoinsReached, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
+    ["コイン", p.coins, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
     ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
   ].filter(x => (x[1] || 0) > 0);
   const sum = parts.reduce((s, x) => s + x[1], 0) || 1;

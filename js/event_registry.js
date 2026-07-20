@@ -475,7 +475,7 @@ registerEvent({
   id: "g5_mid_5m",
   hook: "afterRaceResult",
   condition: { once: true, requiredFlag: "_chapter_intro_4",
-    test: () => ((state.player && state.player.totalAssets) || 0) >= 5000000 },
+    test: () => assetsPeak(state) >= 5000000 },
   priority: 6,
   actions: [
     { type: "dialogue", speaker: "sake_udada", text: "総資産500万。……ハッ、あの行き倒れがな。" },
@@ -490,7 +490,7 @@ registerEvent({
   id: "g5_admin_audit",
   hook: "afterRaceResult",
   condition: { once: true, requiredFlag: "_chapter_intro_4",
-    test: () => ((state.player && state.player.totalAssets) || 0) >= 50000000 },
+    test: () => assetsPeak(state) >= 50000000 },
   priority: 6,
   actions: [
     { type: "dialogue", speaker: "sumika", text: "ミミ様。行政より通達です。……『個人資産の急拡大について、聴取を行う』と。" },

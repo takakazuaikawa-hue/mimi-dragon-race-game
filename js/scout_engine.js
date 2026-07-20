@@ -33,7 +33,7 @@ function _scoutWPick(sess, pairs) {               // pairs=[[key,weight]...] →
 }
 
 // ── ロケ開放（マスター＝2勝、その上に章/総資産で段階） ───────────────────
-function _scoutTotalAssets() { return (state.player && state.player.totalAssets) || 0; }
+function _scoutTotalAssets() { return assetsPeak(state); }   // ★解放判定＝到達最高（資産を使っても閉じない）
 function _scoutChap(flag) { return typeof getStoryFlag === "function" && getStoryFlag(flag); }
 function scoutLocationUnlocked(locId) {
   if (typeof poroScoutUnlocked === "function" && !poroScoutUnlocked()) return false;  // マスター解放（2勝）

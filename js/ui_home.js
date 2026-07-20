@@ -121,7 +121,7 @@ function renderHome() {
   }
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
   const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : 0;
-  const total = p.totalAssets || 0;
+  const total = assetsPeak(state);   // 次の解放までの進捗＝到達最高（解放条件と同じ物差し）
   const nextT = (typeof nextAssetThreshold === "function") ? nextAssetThreshold(total) : null;
   const fillPct = nextT ? Math.max(5, Math.min(100, total / nextT * 100)) : 100;
 

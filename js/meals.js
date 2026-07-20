@@ -323,7 +323,7 @@ function mealEndgameOpen() {
 }
 function mealTierUnlocked(tierId) {
   if (tierId === "shinbo") return mealEndgameOpen();                                   // みみしんぼ＝終章
-  if (tierId === "gourman") { try { return (state.player.totalAssets || 0) >= 1000000; } catch (e) { return false; } }   // グルマン＝100万
+  if (tierId === "gourman") { try { return assetsPeak(state) >= 1000000; } catch (e) { return false; } }   // グルマン＝100万
   return true;   // 基本ティアは常時
 }
 if (typeof window !== "undefined") { window.MEALS = MEALS; window.MEAL_TIERS = MEAL_TIERS; }
