@@ -309,6 +309,7 @@ function buildBroadcast(timeline, ctx, opts) {
   const cmt = opts.commentator;
   const ckey = cmt && cmt.key;
   const A = bcAnalyze(timeline, ctx);
+  const _chatChosen = [];   // 選んだ雑談。実際に画面に出た分だけ後で記録する
   // ★レア台詞の封印は「レース数」で数える。台本を組むこの1点だけで進める。
   if (typeof bcRareTick === "function") bcRareTick();
   const race = ctx.race || {};
@@ -352,6 +353,7 @@ function buildBroadcast(timeline, ctx, opts) {
     getaway: 70,   // 同上（tagを分けたくなった時のため）
     entry: 64,     // 入場
     shape: 58,     // 展開（いま上位が誰か）
+    chat: 44,      // 雑談・うんちく。情報ではないので、詰まっている時は譲る
     gap: 52,       // 差の開閉
     signature: 46, // 本領発揮
     course: 34     // コース説明＝いちばん先に削ってよい
@@ -426,11 +428,25 @@ function buildBroadcast(timeline, ctx, opts) {
   //   実況1行につき解説1行を機械的に返すと、掛け合いではなく往復の作業になり、
   //   解説が実況の影になる。解説が口を開くのは「言うべきことがある時」だけ。
   //   ここでは、ミミが場と条件を続けて言い切ってから、解説が一度だけ受ける。
+  // 雑談・うんちくの絞り込みに使う。地域・天気・出走した竜だけを渡す。
+  // ★賭けの情報は入れない。持ち込まなければ、うっかり参照する実装ミスができない。
+  const situation = {
+    region: race.region || "",
+    weather: weather ? weather.label : "",
+    dragons: (timeline.order || []).slice()
+  };
+
   call(0.000, "entry", "venue", { label: race.region || "" }, "entry");
   call(0.008, "entry", "condition",
        { w: weather ? weather.label : "", d: dist ? dist.label : "" }, "entry");
   color(0.014, "entry", "condition",
         { w: weather ? weather.label : "", s: (weather ? Object.keys(weather.weights || {}).slice(0, 1) : []).join("") }, "entry");
+
+  // ★パレード中の雑談枠。ここは展開が動かないので、うんちくや世間話が入る。
+  if (typeof bcChatterPick === "function") {
+    const che = bcChatterPick(ckey, "entry", situation);
+    if (che) { say(0.020, "color", che.line, {}, "entry"); _chatChosen.push(che); }
+  }
 
   // 注目の竜＝人気上位2頭だけ。★誰に賭けたかは一切参照しない。
   //   以前は「1番人気＋自分の賭け竜」を選んでいた。中立的な言葉で描写していても、
@@ -592,6 +608,16 @@ function buildBroadcast(timeline, ctx, opts) {
   color(0.55, "shape", "why", {
     n1: nameOf(A.shape[1] ? A.shape[1].first : A.winner)
   }, "shape");
+
+  // ★雑談・うんちくの枠。中盤の谷に1本。
+  //   局面の台詞が解説者あたり1本しかなく、同じ人だと毎回同じ内容になっていた
+  //   （120レース測って、連続する2レースで中身が約50%重複）。
+  //   ここは展開を説明しない枠なので、竜・レース場・島・食・世間話を置ける。
+  //   引き出しが空でも null が返るだけで、その場合は今まで通り進む。
+  if (typeof bcChatterPick === "function") {
+    const ch = bcChatterPick(ckey, "mid", situation);
+    if (ch) { say(0.615, "color", ch.line, {}, "chat"); _chatChosen.push(ch); }
+  }
 
   // 中盤で語る入れ替わりは「1位が替わったとき」だけ。
   A.leadChanges.filter(c => c.tau > BC_EARLY_END && c.tau <= BC_MID_END).slice(0, 2).forEach(c => {
@@ -885,6 +911,16 @@ function buildBroadcast(timeline, ctx, opts) {
   packed.forEach(p => script.push({ tau: p.at, side: p.side, line: p.line, tag: p.tag, hold: p.hold }));
   script.sort((a, b) => a.tau - b.tau);
   A.dropped = dropped.map(d => ({ tag: d.tag, line: d.line }));   // 何を捨てたかは検証で見る
+
+  // ★雑談を「使った」と記録するのは、詰め込みを生き残って画面に出る分だけ。
+  //   選んだ時点で記録していたため、詰め込みで捨てられた行まで
+  //   使用済み扱いになり、直近除外だけが進んでいた。
+  //   結果、330本用意しても実際に出るのは48種だけという状態だった。
+  if (typeof bcChatterMark === "function") {
+    const shown = {};
+    script.forEach(x => shown[x.line] = 1);
+    _chatChosen.forEach(c => { if (shown[c.line]) bcChatterMark(c.id); });
+  }
   return { script, analysis: A };
 }
 

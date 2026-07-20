@@ -68,7 +68,8 @@ const FILES = [
   "js/commentary_data.js",    // commentaryName
   "js/race_timeline_engine.js",
   "js/data_commentators.js",
-  "js/race_broadcast.js", "js/data_broadcast_lines.js", "js/data_broadcast_rare.js"
+  "js/race_broadcast.js", "js/data_broadcast_lines.js", "js/data_broadcast_rare.js",
+  "js/data_broadcast_chatter.js"
 ];
 // ★全ファイルを「1つのスクリプト」として評価する。
 //   ファイルごとに実行すると、トップレベルの const / let が
@@ -98,6 +99,8 @@ parts.push(`
   BC_RARE: typeof BC_RARE !== "undefined" ? BC_RARE : undefined,
   BC_CATCHPHRASE: typeof BC_CATCHPHRASE !== "undefined" ? BC_CATCHPHRASE : undefined,
   BC_RARE_SEAL: typeof BC_RARE_SEAL !== "undefined" ? BC_RARE_SEAL : undefined,
+  BC_CHATTER: typeof BC_CHATTER !== "undefined" ? BC_CHATTER : undefined,
+  BC_CHATTER_WINDOW: typeof BC_CHATTER_WINDOW !== "undefined" ? BC_CHATTER_WINDOW : undefined,
   BC_LINES: typeof BC_LINES !== "undefined" ? BC_LINES : undefined,
   RACE_COMMENTATORS: typeof RACE_COMMENTATORS !== "undefined" ? RACE_COMMENTATORS : undefined,
   commentaryName: typeof commentaryName !== "undefined" ? commentaryName : undefined
@@ -326,6 +329,7 @@ for (let i = 0; i < N; i++) {
   stats.push({ 行: ctx.script.length, 実況: ctx.call.length, 解説: ctx.color.length,
                決着: bc.analysis.drama.headline });
   rareSeq.push({ cmKey: cmt && cmt.key,
+                 chat: bc.script.filter(x => x.tag === "chat" || (x.tag === "entry" && x.side === "color")).map(x => x.line),
                  goalColor: bc.script.filter(x => x.tag === "goal" && x.side === "color")
                               .map(x => x.line) });
 }
@@ -369,6 +373,69 @@ function rareChecks(seq) {
 }
 const rareBad = rareChecks(rareSeq);
 rareBad.forEach(d => fails.push({ race: "(レア)", rule: "レア台詞の運用", detail: d }));
+
+// ── 雑談・うんちくの検査 ──────────────────────────────────────
+// ★ここは本数が多く、しかも人の手で書き足していく場所なので、
+//   書いた端から機械が見る形にしておく。作法違反の混入が一番起きやすい。
+function chatterChecks(seq) {
+  const bad = [];
+  const C = S.BC_CHATTER || [];
+  const CM = ["sake", "mizu", "sumika", "makura", "celestia", "unme"];
+  const REG = ["グランドクロック", "ルミナ", "リングロッソ", "カルデラ",
+               "ミストレイク", "ヴェント峡谷", "ノッテムーンライト", "ラパン祭典"];
+  if (!C.length) { console.log("■ 雑談: まだ1本も入っていない"); return bad; }
+
+  const ids = {};
+  C.forEach(r => {
+    const at = "雑談[" + (r.id || "id無し") + "] ";
+    if (!r.id) bad.push(at + "id が無い");
+    else if (ids[r.id]) bad.push(at + "id が重複している");
+    ids[r.id] = 1;
+    if (CM.indexOf(r.cm) < 0) bad.push(at + "解説者キーが不正: " + r.cm);
+    if (r.at !== "entry" && r.at !== "mid") bad.push(at + "出す場所が不正: " + r.at);
+    const L = String(r.line || "");
+    if (!L) bad.push(at + "台詞が空");
+    if (L.length > 56) bad.push(at + "長すぎる（" + L.length + "文字）: " + L.slice(0, 20));
+    if (/[Ѐ-ӿ가-힣]|[A-Za-z]{3,}/.test(L)) bad.push(at + "非日本語が混じっている: " + L.slice(0, 24));
+    if (/\{|\}/.test(L)) bad.push(at + "差し込み枠は使えない: " + L.slice(0, 24));
+    // ★賭けの話は禁止。レース中に賭けへ言及しない約束はここにも掛かる。
+    if (/オッズ|配当|当た|外れ|人気|賭け|儲/.test(L))
+      bad.push(at + "賭けに触れている: " + L.slice(0, 24));
+    // ★展開の説明は実況の仕事。雑談枠が事実を語ると二重になる。
+    // ★「抜い」だけを見ると「朝ごはんを抜いてきた」まで拾ってしまう。
+    //   実況が使う語に絞る。広く網を張ると、正しい台詞を弾いて損をする。
+    if (/先頭|追い上げ|追い抜|抜き去|番手|着差|逃げ切/.test(L))
+      bad.push(at + "レース展開を説明している: " + L.slice(0, 24));
+    if (r.region && !REG.some(x => r.region.indexOf(x) >= 0))
+      bad.push(at + "知らない地域名: " + r.region);
+  });
+
+  // 実際にどれだけ出たか。出ないなら置いた意味がない。
+  // ★数えるのは雑談として登録された行だけ。
+  //   入場の解説行をまとめて数えていたため、1レース6行という
+  //   実態とかけ離れた数字が出ていた（実際に置いた枠は2つ）。
+  const lines = {};
+  C.forEach(r => lines[r.line] = r.id);
+  const used = {};
+  seq.forEach(s => s.chat.forEach(l => { if (lines[l]) used[l] = (used[l] || 0) + 1; }));
+  const fired = Object.keys(used).length;
+  const per = seq.length ? (Object.values(used).reduce((a, b) => a + b, 0) / seq.length).toFixed(1) : 0;
+  console.log("■ 雑談: 全" + C.length + "本中 " + fired + "種が発火（1レースあたり" + per + "行）");
+  if (seq.length >= 60 && fired === 0)
+    bad.push("雑談が1本も出ていない（枠が繋がっていない疑い）");
+
+  // ★同じ話を続けて聞かされないこと。これが今回の眼目。
+  let repeat = 0;
+  for (let i = 1; i < seq.length; i++) {
+    const prev = new Set(seq[i - 1].chat.filter(l => lines[l]));
+    if (seq[i].chat.filter(l => lines[l]).some(l => prev.has(l))) repeat++;
+  }
+  if (seq.length > 10 && repeat > seq.length * 0.1)
+    bad.push("連続するレースで雑談が繰り返されている: " + repeat + "/" + seq.length + "回");
+  return bad;
+}
+const chatBad = chatterChecks(rareSeq);
+chatBad.forEach(d => fails.push({ race: "(雑談)", rule: "雑談の作法", detail: d }));
 
 const structBad = structureChecks();
 structBad.forEach(d => fails.push({ race: "(構造)", rule: "実装の形", detail: d }));
