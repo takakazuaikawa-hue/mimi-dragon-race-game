@@ -119,8 +119,15 @@ const mkSess = (fickle, favCat) => ({ trust: 0, wary: 30, rng: 12345,
   if (same > 0) bad.push("譜面で同じ方向が連続している: " + same + "回");
   const total = c[c.length - 1].at;
   if (total < 6000 || total > 20000) bad.push("ダンスの尺が不自然: " + Math.round(total / 1000) + "秒");
-  const early = c[1].at - c[0].at, late = c[c.length - 1].at - c[c.length - 2].at;
-  if (!(late < early)) bad.push("終盤で加速していない: " + early + " → " + late);
+  // ★1組の間隔だけを比べてはいけない。譜面はわざと「溜め」を混ぜるので、
+  //   最後の1拍がたまたま溜めだと「加速していない」と誤判定する（実際に誤検出した）。
+  //   前半と後半の平均で見る。
+  const half = Math.floor(c.length / 2);
+  const avg = (from, to) => { let s2 = 0, n2 = 0;
+    for (let i = from + 1; i < to; i++) { s2 += c[i].at - c[i - 1].at; n2++; }
+    return s2 / Math.max(1, n2); };
+  const early = Math.round(avg(0, half)), late = Math.round(avg(half, c.length));
+  if (!(late < early)) bad.push("終盤で加速していない: 前半平均" + early + "ms → 後半平均" + late + "ms");
   console.log("ダンス " + c.length + "歩 / 全体" + (total / 1000).toFixed(1) + "秒 / 拍 " + early + "ms→" + late + "ms");
 }
 
