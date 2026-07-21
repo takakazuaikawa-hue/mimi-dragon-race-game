@@ -264,10 +264,14 @@ function renderStoryChapter(chId) {
   news.appendChild(foot);
   app.appendChild(news);
 
-  // ★読み上げは「画面に載せたあと」に始める。載せる前に始めると、本文がまだ
-  //   親に繋がっておらず「画面から消えた」と誤判定して即終了する（実際そうなった）。
+  // ★本文の読み方。小さい縦画面に記事レイアウト（見出し＋写真＋小さな本文）を
+  //   詰めても読みにくいだけなので（ユーザー指摘）、初読は<全画面の絵＋大きな文字>で
+  //   1段落ずつ読ませる。読み終えたらこの記事ページに戻り、以後は全文を読み返せる。
   if (typeof srRevealInto === "function") srRevealInto(bodyEl, ch.body, ch.id);
   else bodyEl.textContent = ch.body || "";
+  if (typeof srOpenReader === "function" && typeof srRead === "function" && !srRead(ch.id)) {
+    srOpenReader(ch, (finished) => { if (finished) renderStoryChapter(ch.id); });
+  }
 }
 
 // =========================================================================

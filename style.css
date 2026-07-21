@@ -8007,3 +8007,62 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .sr-cue.ready { animation: none; }
   .sr-scroll { scroll-behavior: auto; }
 }
+
+/* 物語の全画面リーダー（js/story_reveal.js）
+   ★小さい縦画面に記事レイアウトを詰めると読みにくい（ユーザー指摘）。
+     章の絵を画面いっぱいに敷き、その上に大きな字を1段落ずつ置く。
+     入れ替えで出すのでスクロールが要らない＝目線が動かない。 */
+.sr-reader {
+  position: fixed; inset: 0; z-index: 120; overflow: hidden;
+  background: #06080c; animation: srIn .28s ease-out;
+  display: flex; flex-direction: column; cursor: pointer; user-select: none;
+}
+.sr-reader.out { animation: srOut .22s ease-in forwards; }
+@keyframes srIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes srOut { to { opacity: 0; } }
+.sr-art { position: absolute; inset: 0; }
+.sr-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; }
+/* 下半分を沈めて、文字の地をつくる（絵は上半分で見せる） */
+.sr-scrim {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(6,8,12,.30) 0%, rgba(6,8,12,0) 22%,
+              rgba(6,8,12,.72) 48%, rgba(6,8,12,.95) 62%, #06080c 78%);
+}
+.sr-head {
+  position: relative; z-index: 2; padding: max(14px, env(safe-area-inset-top)) 18px 0;
+  display: flex; flex-direction: column; gap: 2px;
+  text-shadow: 0 2px 10px rgba(0,0,0,.85);
+}
+.sr-ep { font-size: 13px; font-weight: 800; color: #fff2d8; letter-spacing: .04em; }
+.sr-cast { font-size: 11.5px; color: var(--cg, #caa24a); font-weight: 700; }
+/* 文字の面＝下半分。ここが主役なので大きく、行間を広く。 */
+.sr-panel {
+  position: relative; z-index: 2; margin-top: auto;
+  padding: 0 20px calc(6px + env(safe-area-inset-bottom));
+  min-height: 44vh; display: flex; align-items: center;
+}
+.sr-line {
+  margin: 0; font-size: clamp(16px, 4.6vw, 20px); line-height: 2.0;
+  color: #f2f6fa; font-weight: 500; letter-spacing: .02em;
+  text-shadow: 0 2px 12px rgba(0,0,0,.9);
+}
+.sr-cue {
+  position: relative; z-index: 2; text-align: center;
+  padding: 0 0 calc(16px + env(safe-area-inset-bottom));
+  min-height: 1.6em; font-size: 13px; font-weight: 800; color: #ffe08a;
+  opacity: 0; transition: opacity .25s; text-shadow: 0 2px 8px rgba(0,0,0,.9);
+}
+.sr-cue.ready { opacity: 1; animation: srCue 1.2s ease-in-out infinite; }
+@keyframes srCue { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+.sr-x {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px; z-index: 3;
+  width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1;
+  border: 1px solid rgba(255,255,255,.22); background: rgba(10,14,20,.55); color: #fff; font-size: 19px;
+}
+/* 記事ページ側（読み返し）＝素直な本文 */
+.sr-body { }
+.sr-p { margin: 0 0 .9em; }
+@media (prefers-reduced-motion: reduce) {
+  .sr-reader, .sr-reader.out, .sr-cue.ready { animation: none !important; }
+}
