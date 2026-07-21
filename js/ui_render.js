@@ -128,10 +128,9 @@ function flipExpand(app, from) {
 }
 
 // =========================================================================
-// Title screen — the commercial first impression. No image files (hard
-// constraint): the key art is pure CSS (night sky, moon, stars, gradient
-// logo) plus an animated pixel-dragon mascot rendered on a canvas by reusing
-// the race sprite. Hides the dev HUD header for a clean opening beat.
+// Title screen — the commercial first impression. The painted background and
+// transparent title-logo asset sit over the CSS sky fallback. Hides the dev
+// HUD header for a clean opening beat.
 // =========================================================================
 function renderTitle() {
   state.ui.screen = "title";
@@ -145,8 +144,9 @@ function renderTitle() {
     <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp?v=orig1", "") : ""}</div>
     <div class="title-inner">
       <div class="title-head">
-        <h1 class="title-logo title-logo--main"><span class="tl-mimi">ミミの</span><span class="tl-main">ドラゴンレース<br><span class="tl-kikou">紀行</span></span></h1>
-        <div class="title-novel">転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件</div>
+        <h1 class="title-logo title-logo--image">
+          <img class="title-logo-art" src="images/title_logo.webp?v=20260725b" width="1240" height="1023" alt="ミミのドラゴンレース紀行　転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件" decoding="async">
+        </h1>
         <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
       </div>
       <div class="title-actions"></div>
@@ -835,28 +835,40 @@ function renderVillage() {
     stat("🐉", "解放した竜", `${(v.unlockedDragonIds || []).length}/${DRAGONS.length}`, "図鑑と連動");
   app.appendChild(stats);
 
-  // 施設ロードマップ（解放済み＝色／未解放＝灰）
-  app.appendChild(el("div", "as-sec", "村の施設"));
-  const facMeta = [
-    ["paddock", "竜見せ広場", "🐉", "出走前の竜をじっくり観察できる"],
-    ["newspaper", "予想新聞社", "📰", "新聞印と予想記事が読める"],
-    ["grandstand", "応援席", "📣", "推し竜の応援で士気が上がる"],
-    ["riderPost", "ライダー詰所", "🏇", "騎手情報と詰所の助言"],
-    ["dragonStable", "竜舎", "🏚️", "竜の体調・気性を知る"],
-    ["exchange", "交換所", "💱", "コインと品を交換する"]
-  ];
-  const facGrid = el("div", "vil-facs");
-  facMeta.forEach(([k, name, ic, desc]) => {
-    const lv = (v.facilities && v.facilities[k]) || 0;
-    const open = lv > 0;
-    facGrid.appendChild(el("div", "vil-fac" + (open ? "" : " locked"),
-      `<div class="vil-fac-ic">${ic}</div>` +
-      `<div class="vil-fac-tx"><div class="vil-fac-n">${name}</div><div class="vil-fac-d">${desc}</div></div>` +
-      `<div class="vil-fac-lv">${open ? "Lv " + lv : "未解放"}</div>`));
-  });
-  app.appendChild(facGrid);
-  app.appendChild(el("div", "condition-line",
-    "村レベルが上がると施設が解放され、救済・賭金上限・特典が強化されます（順次アップデート）。"));
+  // ── 村レベルの道のり ──────────────────────────────────────────────
+  // ★ここには以前「村の施設」6枠（竜見せ広場・予想新聞社・応援席・ライダー詰所・
+  //   竜舎・交換所）が灰色で並び、下に「順次アップデート」と書いてあった。
+  //   実際には施設の値を0から上げるコードがどこにも無く、永久に「未解放」だった
+  //   （ユーザー指摘：これは貼ってフラグの残りですかね？ なぜ放置されてるの？）。
+  //   初期構想の名残で、ゲームはその後スカウト・モール・暮らしへ育っている。
+  //   開かない扉を6つ見せるより、<実際に動いている>村レベルの伸びと、
+  //   次のレベルで本当に変わる数値を見せる。数値は既存の表そのまま（表示だけ）。
+  const nextLv = v.level + 1;
+  const need = v.level * 100;                 // state.js gainVillageExp と同じ式
+  const have = Math.max(0, Math.min(need, v.exp || 0));
+  const pct = need > 0 ? Math.round(have / need * 100) : 100;
+  app.appendChild(el("div", "as-sec", "村の育ち"));
+  const road = el("div", "card vil-road");
+  if (v.level >= 10) {
+    road.innerHTML =
+      `<div class="vil-road-top"><b>村Lv 10</b><span>ここまで</span></div>` +
+      `<div class="vil-road-bar"><i style="width:100%"></i></div>` +
+      `<div class="vil-road-note">村はもう満ちている。あとは、走るだけ。</div>`;
+  } else {
+    road.innerHTML =
+      `<div class="vil-road-top"><b>Lv ${v.level} → ${nextLv}</b><span>${have} / ${need}</span></div>` +
+      `<div class="vil-road-bar"><i style="width:${pct}%"></i></div>` +
+      `<div class="vil-road-next">` +
+        `<div class="vil-road-cell"><span>💛 救済コイン</span>` +
+          `<b>${fmtCoins(RESCUE_COINS[v.level] || 300)} → ${fmtCoins(RESCUE_COINS[nextLv] || 0)}</b></div>` +
+        `<div class="vil-road-cell"><span>🎰 賭金倍率</span>` +
+          // 「×2 → ×3」と「×1 → ×1.5」が混ざると桁が揃わないので小数1桁で固定
+          `<b>×${(VILLAGE_MULT[v.level] || 1.0).toFixed(1)} → ` +
+          `×${(VILLAGE_MULT[nextLv] || 1.0).toFixed(1)}</b></div>` +
+      `</div>` +
+      `<div class="vil-road-note">村は<b>的中</b>で育つ。上のランクほど大きく伸びる。</div>`;
+  }
+  app.appendChild(road);
 
   const actions = el("div", "actions");
   const home = el("button", "secondary", "ホームへ"); home.onclick = renderHome;

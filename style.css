@@ -2944,6 +2944,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   position: relative; min-height: 100dvh;
   overflow: hidden; display: flex; align-items: stretch; justify-content: center;
 }
+/* PCはviewportではなく470×836の9:16 body枠が正本。100dvhを残すと枠内に縦スクロールが出る。 */
+@media (min-width: 540px) {
+  body.title-mode #app { overflow: hidden; }
+  body.title-mode .title-screen { min-height: 100%; height: 100%; }
+}
 .title-bg {
   position: absolute; inset: 0;
   background: radial-gradient(125% 85% at 50% 122%, #5a2f73 0%, #34205a 28%, #180e34 58%, #0a0820 100%);
@@ -2985,14 +2990,19 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .title-screen:has(.title-photo .photo-fill) .title-dragon { display: none; }
 .title-inner { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 0 22px;
   display: flex; flex-direction: column; align-items: center; text-align: center; }
-/* タイトル＋サブタイトルを画面の上から約2/6に配置（残りは下のCTAへ） */
-.title-head { position: relative; margin-top: clamp(92px, 24dvh, 250px); width: 100%; }
+/* 透過ロゴは9:16枠の上半分へ。320px幅でも左右を切らず、ミミの顔とCTAを塞がない。 */
+.title-head { position: relative; margin-top: clamp(48px, 8dvh, 72px); width: 100%; }
 /* タイトル背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない） */
 .title-screen:has(.title-photo .photo-fill) .title-head::before {
   content: ""; position: absolute; inset: -22% -10%; z-index: -1; border-radius: 28px;
   background: radial-gradient(76% 82% at 50% 50%, rgba(8,9,14,0.64), rgba(8,9,14,0.28) 56%, transparent 80%);
 }
 .title-logo { margin: 0; line-height: 1.0; font-weight: 900; font-size: clamp(30px, 11vw, 54px); letter-spacing: 0.02em; white-space: nowrap; }
+.title-logo--image { font-size: 0; line-height: 0; white-space: normal; }
+.title-logo-art {
+  display: block; width: min(88vw, 400px); max-width: 100%; height: auto; margin: 0 auto;
+  filter: drop-shadow(0 12px 22px rgba(0,0,0,.44)) drop-shadow(0 2px 3px rgba(0,0,0,.62));
+}
 /* タイトルロゴ＝3段積み（ミミの＝ピンク小／ドラゴンレース＋紀行＝金2行）。
    ★クラス名にタイトルの略称を入れない。改題のたびに古びるため中立な名前にしてある。 */
 .title-logo--main { white-space: normal; display: flex; flex-direction: column; align-items: center;
@@ -4014,18 +4024,24 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   font-variant-numeric: tabular-nums; line-height: 1.15; }
 .vil-stat-s { font-size: 10px; color: var(--mist); margin-top: 3px; }
 
-.vil-facs { display: grid; grid-template-columns: repeat(auto-fit, minmax(248px, 1fr)); gap: 8px; margin-top: 4px; }
-.vil-fac { display: flex; align-items: center; gap: 12px; padding: 10px 12px;
-  background: var(--glass-2); border: 1px solid var(--glass-border); border-radius: var(--radius); }
-.vil-fac-ic { font-size: 26px; line-height: 1; flex: none; width: 34px; text-align: center; }
-.vil-fac-tx { min-width: 0; flex: 1; }
-.vil-fac-n { font-size: 14.5px; font-weight: 800; color: var(--cream); }
-.vil-fac-d { font-size: 11.5px; color: var(--mist-soft); margin-top: 2px; line-height: 1.3; }
-.vil-fac-lv { flex: none; font-size: 11.5px; font-weight: 800; color: var(--jade-bright);
-  padding: 4px 9px; border-radius: 999px; background: rgba(60,160,140,.16); border: 1px solid rgba(60,160,140,.32); }
-.vil-fac.locked { opacity: .62; }
-.vil-fac.locked .vil-fac-ic { filter: grayscale(1); opacity: .7; }
-.vil-fac.locked .vil-fac-lv { color: var(--mist); background: rgba(120,130,140,.12); border-color: var(--glass-border); }
+/* 村の育ち（旧「村の施設」6枠は永久に開かない飾りだったので撤去。ui_render.js に経緯） */
+.vil-road { padding: 12px 13px 11px; }
+.vil-road-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.vil-road-top b { font-size: 15px; color: var(--cream); }
+.vil-road-top span { font-size: 12px; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
+.vil-road-bar { height: 8px; margin-top: 8px; border-radius: 999px; overflow: hidden;
+  background: rgba(120,130,140,.16); border: 1px solid var(--glass-border); }
+.vil-road-bar > i { display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--jade-bright), var(--gold, #d9a441));
+  transition: width .5s ease; }
+.vil-road-next { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 11px; }
+.vil-road-cell { background: var(--glass-2); border: 1px solid var(--glass-border);
+  border-radius: var(--radius); padding: 8px 9px; min-width: 0; }
+.vil-road-cell span { display: block; font-size: 10.5px; color: var(--mist-soft); }
+.vil-road-cell b { display: block; font-size: 12.5px; font-weight: 800; color: var(--cream);
+  margin-top: 3px; font-variant-numeric: tabular-nums; word-break: break-all; }
+.vil-road-note { font-size: 11.5px; color: var(--mist-soft); margin-top: 10px; line-height: 1.45; }
+.vil-road-note b { color: var(--jade-bright); }
 
 /* ===================================================================== */
 /* §HR2 — ホーム／レース選択 レイアウト刷新                                  */

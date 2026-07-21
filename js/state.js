@@ -75,7 +75,6 @@ const state = {
       },
       unlockedDragonIds: [],
       favoriteDragonIds: [],
-      entryEncouragement: { available: false, remainingUses: 0, candidateDragonIds: [] },
       storyFlags: {},
       eventFlags: {}
     },
@@ -230,9 +229,13 @@ function resetGame() {
     },
     village: {
       level: 1, name: "泣き虫ドラゴン村", rescueCoinBase: 300,
+      // ★施設は初期構想の名残で、値を0から上げる機能は結局作られていない
+      //   （ゲームはスカウト・モール・暮らしへ育った）。竜の村の画面に6枠を
+      //   「未解放」で並べて「順次アップデート」と告知していたのを撤去済み。
+      //   assets_engine の facilityValue が読むので枠だけ残す（常に0＝総資産に不干渉）。
+      //   ここを埋める機能を作るときは、画面にも同時に出すこと。
       facilities: { paddock:0, newspaper:0, grandstand:0, riderPost:0, dragonStable:0, exchange:0 },
       unlockedDragonIds: [], favoriteDragonIds: [],
-      entryEncouragement: { available: false, remainingUses: 0, candidateDragonIds: [] },
       storyFlags: {}, eventFlags: {}
     },
     collection: {}
