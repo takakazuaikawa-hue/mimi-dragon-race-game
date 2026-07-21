@@ -310,7 +310,50 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
     app.appendChild(lp);
   }
 
-  // 手札
+  // ── 遊び本体（話しかけ → ダンス）────────────────────────────────────
+  // ★旧「手札から交渉術を選ぶ」は廃止（クイズであってゲームではなかった）。
+  //   竜の向きを読んで十字キーで話題を当て、興味が満ちたらダンスへ持ち込む。
+  //   ループは scout_game.js が持ち、ここは器を渡すだけ。
+  //   1手ごとに画面を描き直さない（描き直すとループが切れて手ざわりが死ぬ）。
+  // ★発見の読み物とゲームは画面を分ける。
+  //   一緒に出すと、竜と十字キーが1画面に収まらない（実測981px＞910px）。
+  //   竜の動きを見て押す遊びなので、両方が見えなければ成立しない。
+  //   初回は「発見」を読ませて、ボタンでゲームに入る＝物語としても素直。
+  if (first && !sess.started) {
+    const go = el("div", "actions");
+    const b1 = el("button", "sc-start", "🗣️ 話しかけてみる ▶");
+    b1.onclick = () => { sess.started = true; _scoutRenderEncounter(false, null, {}); };
+    go.appendChild(b1);
+    app.appendChild(go);
+    const q = el("div", "actions");
+    const b2 = el("button", "secondary", "× そっとしておく");
+    b2.onclick = () => { if (typeof sgStop === "function") sgStop(); _scoutSess = null; renderScout(); };
+    q.appendChild(b2);
+    app.appendChild(q);
+    return;
+  }
+  if (typeof sgMountTalk === "function") {
+    app.classList.add("sc-playing");   // 遊ぶ間は舞台を詰めて、竜とキーを1画面に収める
+    sgMountTalk(app, sess, d,
+      (res) => { sess.status = "win"; _scoutWin(res); },
+      (res) => { sess.status = "lose"; _scoutLose(res); });
+    // 手土産＝1回だけの切り札。話しかけの最中にいつでも切れる。
+    if (sess.gift && !sess.usedGift) {
+      const exWrap = el("div", "sc-extras");
+      const g = el("button", "sc-extra sc-extra--gift", `<span>🎁</span> ${sess.gift.name}を差し出す`);
+      g.onclick = () => _scoutGive();
+      exWrap.appendChild(g);
+      app.appendChild(exWrap);
+    }
+    const actions = el("div", "actions");
+    const give = el("button", "secondary", "× 交渉をやめる");
+    give.onclick = () => { if (typeof sgStop === "function") sgStop(); _scoutSess = null; renderScout(); };
+    actions.appendChild(give);
+    app.appendChild(actions);
+    return;
+  }
+
+  // 手札（旧経路・scout_game.js が読めなかったときの保険）
   const { hand, extras } = scoutHand(sess, 5);
   // ★交渉メモ（学習）＝この竜に前回効いた技カテゴリ。再訪ほど有利になる＝上達の可視化。
   const memo = (typeof scoutMemoGet === "function") ? scoutMemoGet(d.id) : [];
