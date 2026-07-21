@@ -72,7 +72,7 @@ function renderPoroGourmet() {
   const app = beginScreen();
   const d = pgData();
   app.appendChild(el("h2", null, "🏃 ポロのグルメレース"));
-  app.appendChild(el("div", "as-hint2", "ポロが大好きな食べ物を集めて走る、息抜きスコアアタック（表示専用・レースには影響しません）。"));
+  app.appendChild(el("div", "as-hint2", "ポロの好物を集めて走る、息抜きの一走り。"));
 
   // ベスト記録
   app.appendChild(el("div", "pg-best",

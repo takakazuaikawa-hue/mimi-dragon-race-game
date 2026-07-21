@@ -398,7 +398,7 @@ function renderStable() {
   const hero = el("div", "stable-hero");
   hero.innerHTML = `<img src="images/bg/stable.webp" alt="" decoding="async" onerror="this.closest('.stable-hero').remove()"><span>🏠 龍舎</span>`;
   app.appendChild(hero);
-  app.appendChild(el("div", "as-hint2", "ポロと、迎えた竜たちの家。毎日なでて、ごはんをあげて、絆を深めよう。絆の深い竜から、最終決戦の「八竜見参」に並びます（表示専用・レース結果には影響しません）。"));
+  app.appendChild(el("div", "as-hint2", "なでて、ごはんをあげて、絆を深める。"));
 
   // ── ポロ常駐カード（マスコット＋親密度＋なでる[1日3回]＋小イベント） ──
   const af = dragonAffection("poro");
@@ -474,7 +474,7 @@ function renderStable() {
   }
   if (seenIds.length) {
     app.appendChild(el("div", "stable-sec", `👀 見かけた竜（図鑑のみ）<span>${seenIds.length}</span>`));
-    app.appendChild(el("div", "as-hint2", "レースで見かけた竜たち。🔍スカウトで迎えると、お世話ができるようになります。"));
+    app.appendChild(el("div", "as-hint2", "スカウトで迎えると、お世話ができる。"));
     const grid2 = el("div", "stable-grid");
     seenIds.forEach(id => { const c = mkCard(id, false); if (c) grid2.appendChild(c); });
     app.appendChild(grid2);

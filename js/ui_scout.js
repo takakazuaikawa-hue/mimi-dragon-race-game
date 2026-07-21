@@ -13,19 +13,15 @@ let _scoutMeetLoc = null;  // 交渉中のロケ
 
 // ── ハブ：ロケ段階開放＋マスク ───────────────────────────────────────────
 // C1解消：読み合いの核ルールの恒常ヘルプ（？ボタン＋初回自動表示・docs/GAME_FLOW_REDESIGN.md）
+// ★遊びかたは短く。ここは「困ったときに開く」場所であって、遊ぶ前に読ませる
+//   説明書ではない（ユーザー指摘：読んでも大したことがない文章が多く、読む気が失せる）。
+//   旧版は7項目・約400字あり、しかも廃止した「交渉術」を説明したままの嘘になっていた。
 function showScoutHelp() {
-  const legend = (typeof SCOUT_CAT_COLOR !== "undefined")
-    ? Object.keys(SCOUT_CAT_COLOR).map(k => `<span style="border-left:3px solid ${SCOUT_CAT_COLOR[k]};padding-left:5px;margin-right:8px;white-space:nowrap">${k}</span>`).join("")
-    : "";
-  showInfoPopup("🔍 スカウトの読み合い（ルール）",
-    // ★QUALITY_PASS P0-2：新フロー（けはい探し／手土産／メモ）を先頭に。旧ルール説明はその後ろへ。
-    `<div class="mm-row"><span class="mm-ic">🔎</span><div><b>① まず「どう探すか」を選ぶ</b><small>探し方で<u>出会う竜が変わり</u>、相手の警戒の強さも変わる。慎重に近づけば警戒はうすく、大胆に呼べば強気な子に会える。運ではなく<u>選択</u>。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🎁</span><div><b>② 手土産は1回だけの切り札</b><small>出発前に、food＝食べ歩きで覚えた料理をひとつ持てる。交渉中に差し出すと大きく心を開く。<u>その子の大好物なら特大</u>（当てると図鑑に記録）。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">📓</span><div><b>③ 効いた技はメモに残る</b><small>うまくいった技の系統は竜ごとに記録され、次に会った時カードに「前回◎」と出る。<u>会うほど攻略が楽になる</u>（図鑑からも読める）。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>④ しぐさ＝気持ちのヒント</b><small>竜は言葉を話さない代わりに、しぐさで「いまの気持ち」（不安・警戒・甘え・遊びたい…）を見せる。まず読む。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🤝</span><div><b>⑤ 気持ちに合う交渉術を選ぶ</b><small>合う技＝<u>信頼が上がり警戒が下がる</u>。合わない技は逆効果（決裂は運ではなく読み違い）。「観察」で気持ちを確かめてから動くのも手。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🎨</span><div><b>⑥ 色＝技の系統</b><small>${legend}</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🍃</span><div><b>⑦ 決裂しても失うのは旅費だけ</b><small>竜は逃げない。何度でも会いにいける。断られた時は<u>その子の気持ちが明かされる</u>ので、次の手がかりになる（レースの結果には影響しません）。</small></div></div>`);
+  showInfoPopup("🔍 竜と仲よくなる",
+    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>向いた方を押す</b><small>ふと向いた先が、いま気になっているもの。同じ向きを押すと、ミミがその話をする。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">💃</span><div><b>満ちたら踊る</b><small>竜が揺れはじめたら、流れてくるステップに合わせて押す。踊りきれば仲間に。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🍃</span><div><b>断られても平気</b><small>竜は消えない。何度でも会いにいける。</small></div></div>` +
+    `<div class="mm-note">この遊びはレースの着順・オッズ・配当に影響しません。</div>`);
 }
 
 function renderScout() {
@@ -40,7 +36,7 @@ function renderScout() {
   const h2 = el("h2", null, "🔍 竜スカウト <button class=\"info-q\" title=\"読み合いのルール\">？</button>");
   h2.querySelector(".info-q").onclick = () => showScoutHelp();
   app.appendChild(h2);
-  app.appendChild(el("div", "as-hint2", "野の竜は人の言葉を話さない。<b>しぐさ</b>から気持ちを読み、<b>交渉術</b>で心を開かせて仲間に迎えよう。遠征には<b>旅費</b>がかかる（表示専用＝レースの結果には影響しません）。"));
+  app.appendChild(el("div", "as-hint2", "竜のうごきを読んで、心を開かせる。"));
   // 初回だけルールを自動で1回説明（以後は？ボタン）
   if (typeof getStoryFlag === "function" && !getStoryFlag("_help_scout_seen")) {
     setStoryFlag("_help_scout_seen", true);

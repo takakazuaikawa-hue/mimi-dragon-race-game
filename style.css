@@ -7969,3 +7969,22 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   box-shadow: 0 4px 16px rgba(202,164,74,.35);
 }
 .sc-start:active { transform: scale(.98); }
+
+/* 物語の本文＝読ませる場面（js/story_reveal.js）。
+   ★初読は段落ごとに文字を送り、出し切るまで先へ進めない。既読は即座に全文。
+     壁のような本文を一度に出すと、量に負けて読まずに閉じられる。 */
+.sr-body { cursor: pointer; }
+.sr-p {
+  margin: 0 0 .9em; opacity: .96;
+  /* 出しきるまでは字が増えていく。行が伸びても飛ばないよう最小の高さを持たせる */
+  min-height: 1.7em;
+}
+.sr-p.on { opacity: 1; }
+.sr-cue {
+  margin-top: .4em; text-align: center; font-size: 12.5px; font-weight: 700;
+  color: #caa24a; opacity: 0; transition: opacity .25s; user-select: none;
+}
+.sr-cue.ready { opacity: 1; animation: srCue 1.1s ease-in-out infinite; }
+.sr-cue.done { opacity: 0; height: 0; margin: 0; }
+@keyframes srCue { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .sr-cue.ready { animation: none; } }

@@ -176,7 +176,7 @@ function renderIslandBuild() {
   state.ui.screen = "island_build";
   const app = beginScreen();
   app.appendChild(el("h2", null, "🏗 島づくり"));
-  app.appendChild(el("div", "as-hint2", "勝ち取った富を、島に少しずつ注ぐ。育てるほど島が変わり、迫る絶滅が一歩ずつ退く。"));
+  app.appendChild(el("div", "as-hint2", "富を島に注ぐ。育てるほど、島が変わる。"));
 
   const tier = islandTier();
   const head = el("div", "card isl-head");

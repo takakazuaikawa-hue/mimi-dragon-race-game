@@ -250,7 +250,10 @@ function renderStoryChapter(chId) {
   news.appendChild(photo);
 
   // 本文（明朝＝ナレーションの声・両端揃え）
-  news.appendChild(el("div", "news-text", ch.body));
+  // ★本文は「読ませる」場面。初読は段落ごとに文字を送って出し、出し切るまで
+  //   先へ進めない（流し読みで飛ばせない）。既読なら即座に全文。js/story_reveal.js
+  const bodyEl = el("div", "news-text");
+  news.appendChild(bodyEl);
 
   // フッター
   const foot = el("div", "news-foot");
@@ -260,6 +263,11 @@ function renderStoryChapter(chId) {
   foot.appendChild(btns);
   news.appendChild(foot);
   app.appendChild(news);
+
+  // ★読み上げは「画面に載せたあと」に始める。載せる前に始めると、本文がまだ
+  //   親に繋がっておらず「画面から消えた」と誤判定して即終了する（実際そうなった）。
+  if (typeof srRevealInto === "function") srRevealInto(bodyEl, ch.body, ch.id);
+  else bodyEl.textContent = ch.body || "";
 }
 
 // =========================================================================

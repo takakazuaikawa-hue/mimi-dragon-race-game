@@ -58,7 +58,7 @@ function renderEconomy() {
   const _h2 = el("h2", null, `🏦 島の経済 <button class="info-q" title="お金のしくみ">？</button>`);
   const _q = _h2.querySelector(".info-q"); if (_q) _q.onclick = () => { if (typeof showMoneyMap === "function") showMoneyMap(); };
   app.appendChild(_h2);
-  app.appendChild(el("div", "as-hint2", "ミミの再起が、島の景気を回している。賭場の灯りが大きくなるほど、島は栄える。"));
+  app.appendChild(el("div", "as-hint2", "賭場の灯りが大きいほど、島は栄える。"));
 
   // ── 聖龍日報「経済面」リード記事（章連動・K3-A1・表示のみ）──
   try {
