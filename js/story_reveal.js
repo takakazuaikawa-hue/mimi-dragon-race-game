@@ -58,9 +58,14 @@ function srOpenReader(ch, onDone) {
   ov.className = "sr-reader"; ov.id = "sr-reader";
   if (cast && cast.color) ov.style.setProperty("--cg", cast.color);
   ov.innerHTML =
-    `<div class="sr-art"><img src="${srArtSrc(ch)}" alt=""` +
-      ` onerror="this.onerror=null;this.src='images/story/${ch.id}.jpg';this.classList.add('sr-art-fb')"></div>` +
-    `<div class="sr-scrim"></div>` +
+    // ★一枚絵は切らずに全部見せる（853×1280の縦長）。余った余白は同じ絵を
+    //   ぼかして敷いて埋める＝黒帯を作らない。文字は絵の上に浮かせた札に置く。
+    `<div class="sr-art">` +
+      `<img class="sr-art-blur" src="${srArtSrc(ch)}" alt="" aria-hidden="true"` +
+        ` onerror="this.onerror=null;this.src='images/story/${ch.id}.jpg'">` +
+      `<img class="sr-art-main" src="${srArtSrc(ch)}" alt=""` +
+        ` onerror="this.onerror=null;this.src='images/story/${ch.id}.jpg'">` +
+    `</div>` +
     `<div class="sr-head"><span class="sr-ep">${ch.title || ""}</span>` +
       (cast ? `<span class="sr-cast">${cast.symbol || ""} ${cast.name || ""}</span>` : "") + `</div>` +
     `<div class="sr-panel"><p class="sr-line" id="sr-line"></p></div>` +
