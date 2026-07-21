@@ -270,7 +270,7 @@ function renderHome() {
 
   // ── ヘッダー（バー型・ブランド入り）：🐲ブランド｜プロフィール(称号切替)｜資産情報｜相棒ボタン｜⋯
   const top = el("div", "hl-top");
-  top.appendChild(el("div", "hl-brand", `<span class="hl-brand-crest">🐲</span><b><i>ミミ</i>のドラゴンレースアイランド</b>`));
+  top.appendChild(el("div", "hl-brand", `<span class="hl-brand-crest">🐲</span><b><i>ミミ</i>のドラゴンレース紀行</b>`));
   const prof = el("button", "hl-prof");
   // ヘッダー端正化：詰め込みで名前が「予想家ミ」に切れていたのを解消。
   //  ①名前は単独行で必ず全表示 ②ランクはアバター角のバッジへ（テキスト行から外す）

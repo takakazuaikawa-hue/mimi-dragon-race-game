@@ -72,7 +72,7 @@ const ENDING_VN = [
 // ───────────────────────────────────────────────────────────────
 const STAFF_ROLL = [
   { type: "gap",   size: "lg" },
-  { type: "title", text: "ミミのドラゴンレースアイランド", sub: "― STAFF ROLL ―" },
+  { type: "title", text: "ミミのドラゴンレース紀行", sub: "― STAFF ROLL ―" },
   { type: "gap",   size: "lg" },
 
   { type: "head",  text: "CAST" },
