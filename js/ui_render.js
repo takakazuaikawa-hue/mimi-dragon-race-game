@@ -772,11 +772,17 @@ function showStoryArt(ch) {
   const cast = (typeof STORY_CAST !== "undefined") ? STORY_CAST[ch.cast] : null;
   const ov = el("div", "story-viewer"); ov.id = "story-viewer";
   if (cast) ov.style.setProperty("--cg", cast.color);
+  // ★ここは「絵を見る」場所。本文は置かない。
+  //   以前は 562字の本文を 13.5px・max-height:36vh のスクロール箱に詰めていて、
+  //   小さな字＋縦スクロールで読みにくかった（ユーザー指摘：スクロールバー出てる）。
+  //   本文を読むのは全画面リーダー（story_reveal.js）と記事ページの役目。
+  //   ここには絵と、その場面の一行だけを置き、読み直しはボタンから渡す。
   ov.innerHTML =
     `<div class="sv-art">${typeof photoOr === "function" ? photoOr("images/story/" + ch.id + ".jpg", `<span class="sv-sym">${cast ? cast.symbol : "🐲"}</span>`) : ""}</div>` +
     `<div class="sv-textbox">` +
       `<div class="sv-title">${ch.title || ""}${cast ? ` <span class="sv-cast">— ${cast.name}</span>` : ""}</div>` +
-      `<div class="sv-body">${ch.body || ch.scene || ""}</div>` +
+      (ch.scene ? `<div class="sv-scene">${ch.scene}</div>` : "") +
+      `<button class="sv-reread">📖 本文をもう一度読む</button>` +
     `</div>` +
     `<div class="sv-hint">画面タップで テキスト表示/非表示</div>` +
     `<button class="sv-close" aria-label="閉じる">×</button>`;
@@ -784,6 +790,12 @@ function showStoryArt(ch) {
   ov.querySelector(".sv-art").onclick = toggle;
   ov.querySelector(".sv-textbox").onclick = (e) => { e.stopPropagation(); toggle(); };
   ov.querySelector(".sv-close").onclick = (e) => { e.stopPropagation(); ov.remove(); };
+  const rr = ov.querySelector(".sv-reread");
+  if (rr) rr.onclick = (e) => {
+    e.stopPropagation();
+    ov.remove();
+    if (typeof srOpenReader === "function") srOpenReader(ch, () => {});
+  };
   document.body.appendChild(ov);
 }
 
