@@ -20,7 +20,12 @@
 //   ・読み終えたら記事ページへ戻り、以後は全文をいつでも読み返せる。
 // =============================================================================
 
-const SR_CPS = 32;          // 1秒あたりの文字数（黙読よりすこし遅い＝読ませる速さ）
+// ★1文字ぶんの時間は、画面の更新（約16.7ms）の整数倍にする。
+//   半端な値にすると1コマ後と2コマ後に交互に落ちて、送りがかくかくして見える。
+const SR_MS_CHAR   = 33;    // 通常の1文字＝2コマ（約30字/秒）
+const SR_MS_COMMA  = 150;   // 読点のあとの息継ぎ
+const SR_MS_PERIOD = 300;   // 句点のあとの間
+const _srNow = () => (window.performance && performance.now) ? performance.now() : Date.now();
 const SR_GAP = 220;         // 段落を送るときの間
 
 function srRead(id) {
@@ -75,11 +80,12 @@ function srOpenReader(ch, onDone) {
 
   const line = ov.querySelector("#sr-line");
   const cue = ov.querySelector("#sr-cue");
-  let pi = 0, alive = true, typing = false;
+  let pi = 0, alive = true, typing = false, raf = 0;
 
   const close = (finished) => {
     if (!alive) return;
     alive = false;
+    if (raf) { try { cancelAnimationFrame(raf); } catch (err) {} raf = 0; }
     if (finished) srMarkRead(ch.id);
     ov.classList.add("out");
     setTimeout(() => { ov.remove(); if (onDone) onDone(finished); }, 220);
@@ -95,23 +101,41 @@ function srOpenReader(ch, onDone) {
     cue.textContent = "";
     cue.classList.remove("ready");
     typing = true;
-    let i = 0;
-    const step = () => {
+
+    // ★文字送りは画面の更新に乗せる（setTimeout で回さない）。
+    //   以前は setTimeout(1000/32 = 31.25ms) で1文字ずつ出していた。
+    //   画面の更新は約16.7msごとなので、31.25msの待ちは1コマ後か2コマ後の
+    //   どちらかに落ちる。実測すると文字の間隔が 17ms と 33ms で不規則に
+    //   混ざっていて、速くなったり遅くなったりして見えた
+    //   （ユーザー指摘：文字送りがかくかく）。
+    //   ここでは経過時間から「いま何文字目まで出すべきか」を決める。
+    //   1文字＝ちょうど2コマ（33ms）にしたので、刻みが一定になる。
+    let shown = 0, due = 0, prevT = _srNow();
+    const frame = () => {
       if (!alive || !ov.isConnected) { alive = false; return; }
-      line.textContent = text.slice(0, ++i);
-      if (i >= text.length) {
+      const now = _srNow();
+      // タブが裏に回って戻ったときに一気に飛ばさないよう、1回ぶんは頭打ちに
+      const dt = Math.min(96, now - prevT);
+      prevT = now;
+      due -= dt;
+      while (due <= 0 && shown < text.length) {
+        const c = text[shown++];
+        // 句点は長め、読点は短めに間を取る＝読む呼吸に合わせる
+        due += /[。！？]/.test(c) ? SR_MS_PERIOD
+             : /[、…]/.test(c)   ? SR_MS_COMMA
+             : SR_MS_CHAR;
+      }
+      line.textContent = text.slice(0, shown);
+      if (shown >= text.length) {
         typing = false;
         line.classList.add("on");
         cue.textContent = (pi >= paras.length) ? "▼ 読み終える" : "▼ つづき";
         cue.classList.add("ready");
         return;
       }
-      const c = text[i - 1];
-      // 句点は長め、読点は短めに間を取る＝読む呼吸に合わせる
-      const wait = /[。！？]/.test(c) ? 400 : (/[、…]/.test(c) ? 190 : 1000 / SR_CPS);
-      setTimeout(step, wait);
+      raf = requestAnimationFrame(frame);
     };
-    step();
+    raf = requestAnimationFrame(frame);
   };
 
   // 送りは「出し切ったあと」だけ効く＝途中でスキップできない
