@@ -7971,20 +7971,39 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sc-start:active { transform: scale(.98); }
 
 /* 物語の本文＝読ませる場面（js/story_reveal.js）。
-   ★初読は段落ごとに文字を送り、出し切るまで先へ進めない。既読は即座に全文。
-     壁のような本文を一度に出すと、量に負けて読まずに閉じられる。 */
-.sr-body { cursor: pointer; }
-.sr-p {
-  margin: 0 0 .9em; opacity: .96;
-  /* 出しきるまでは字が増えていく。行が伸びても飛ばないよう最小の高さを持たせる */
-  min-height: 1.7em;
+   ★ページを伸ばさないこと。段落を下に足していく作りにしたら、実測で2段落目から
+     送りの合図が画面の外に出て（Y=913 > 画面910）、毎回スクロールして探す羽目に
+     なっていた（ユーザー指摘：押すたびにどんどん下に伸びて読みにくい）。
+     本文は高さの決まった窓にして、中で送る。合図は窓の外＝位置が動かない。 */
+.sr-body {
+  cursor: pointer;
+  /* 読みやすい行数ぶんの窓。小さい端末でも本文と合図が同時に見える高さに収める */
+  height: clamp(190px, 32vh, 290px);
+  overflow: hidden;
+  position: relative;
+  /* 上端は少し霞ませて「続きが上にある」ことを見せる */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 26px, #000 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 26px, #000 100%);
 }
+.sr-scroll { height: 100%; overflow: hidden; scroll-behavior: smooth; }
+/* 読み終えたら縛りを外す＝全文を自由に読み返せる */
+.sr-body.sr-done {
+  height: auto; overflow: visible; cursor: default;
+  -webkit-mask-image: none; mask-image: none;
+}
+.sr-body.sr-done .sr-scroll { height: auto; overflow: visible; }
+.sr-p { margin: 0 0 .9em; opacity: .55; transition: opacity .4s; }
 .sr-p.on { opacity: 1; }
+.sr-body.sr-done .sr-p { opacity: 1; }
+/* 送りの合図＝窓の外。ここは絶対に動かない */
 .sr-cue {
-  margin-top: .4em; text-align: center; font-size: 12.5px; font-weight: 700;
-  color: #caa24a; opacity: 0; transition: opacity .25s; user-select: none;
+  margin: .2em 0 .6em; text-align: center; font-size: 13px; font-weight: 800;
+  color: #caa24a; min-height: 1.4em; opacity: 0; transition: opacity .25s;
+  user-select: none; cursor: pointer;
 }
 .sr-cue.ready { opacity: 1; animation: srCue 1.1s ease-in-out infinite; }
-.sr-cue.done { opacity: 0; height: 0; margin: 0; }
 @keyframes srCue { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
-@media (prefers-reduced-motion: reduce) { .sr-cue.ready { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sr-cue.ready { animation: none; }
+  .sr-scroll { scroll-behavior: auto; }
+}
