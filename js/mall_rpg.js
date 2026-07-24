@@ -194,9 +194,10 @@ const RPG_TOURISTS = ["baku", "selfie", "gourmet", "stroller", "oldies", "kid", 
 const RPG_MONSTERS_MINOR = ["slime", "mannequin", "escalator", "pricetag", "coupon"];
 const RPG_KUNLUN = ["kowako", "shisa", "kumonosei"];   // 崑崙島の固有モンスター（図鑑・タワー出現に合流）
 
-// ★敵の立ち絵（Codex納品 CODEX_ORDER_SCOUT_MALL §C／images/rpg/*.webp・512×512透過）。
+// ★敵アートの唯一の台帳（HUD foe-line ／ canvas戦場 rpgEnemyArt ／ DOM rpgEnemyVisual が全てここを引く）。
+//   Codex納品 CODEX_ORDER_SCOUT_MALL §C／images/rpg/<値>.webp・512×512透過。
 //   意匠が確実に一致するものだけ結線し、それ以外は従来の絵文字のまま＝取り違えを作らない。
-//   新しい絵が届いたら1行足すだけ（キー＝RPG_ENEMIESのid）。
+//   新しい絵が届いたら1行足すだけ（キー＝RPG_MONSのid／値＝images/rpg/直下の拡張子なしファイル名）。
 const RPG_ENEMY_IMG = {
   slime:     "en_bagslime",    // マヨイスライム＝袋スライム
   mannequin: "en_mannequin",   // うごくマネキン
@@ -1211,7 +1212,7 @@ function rpgBuyGoods(id) {
   rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！" + (save > 0 ? ` −${fmtCoins(save)}` : ""), "victory");
   if (typeof updateHeader === "function") updateHeader();   // 財布ヘッダ更新（通常モールの buyOutfit と同じ作法）
   rpgShopFloorReward(RPG ? RPG.fi : 0);                  // 🎀 そのフロアの品を全部そろえたら一度きりのごほうび
-  rpgGrandCompCheck();                                   // 👑 全48品コンプで記念衣装＋最上位称号
+  rpgGrandCompCheck();                                   // 👑 全品コンプ（実数=rpgShopTotalOwned().t）で記念衣装＋最上位称号
   rpgSave(); renderMallRpg();
 }
 // 🎀 フロア・コンプ報酬：その階の品を全部そろえた瞬間（各階1回）に 🎟️＋✨ を返す（買い集めの達成感）
@@ -1227,7 +1228,8 @@ function rpgShopFloorReward(fi) {
   if (RPG) { RPG._shopMsg = `${nm}の品をぜんぶ！ さすがミミ様♪ ごほうびですわ`; rpgLog(`🎀 ${nm} コンプリート！ ごほうび 🎟️+1・✨+5`, "win"); }
   setTimeout(() => rpgSfx("unlock"), 220);
 }
-// 👑 グランドコンプ：全フロアの品(=48品)を制覇した瞬間（1回）に記念衣装＋大量ごほうび＋最上位称号。
+// 👑 グランドコンプ：全フロアの品（実数はrpgShopTotalOwned().t=RPG_SHOPS合計・現状46品）を
+//   制覇した瞬間（1回）に記念衣装＋大量ごほうび＋最上位称号。品数は動的に数えるので追加してもズレない。
 function rpgGrandCompCheck() {
   const d = rpgData(), tot = rpgShopTotalOwned();
   if (tot.o < tot.t || d.grandComp) return;
@@ -1305,13 +1307,17 @@ function renderMallRpg(flash) {
   return rpgRenderHub(app);
 }
 
-// ── ハブ（情報の見え方：主役=冒険を1つ立て、副次情報は折りたたみ＋！バッジ・？モーダル）
-// ⚠️【重要】この rpgRenderHub は js/ui_mall_rpg.js が後勝ちで“全文再定義”して上書きします
-//   （index.html で ui_mall_rpg.js を後に読み込むため、実際に画面へ出るのは向こうの版）。
-//   ここにセクションを足しても ui_mall_rpg.js 側にも入れないとプレイヤーには表示されません
-//   （過去に称号・フロア帯が丸ごと消えた実績あり＝docs/MALL_UX_BACKLOG.md P0-1）。
-//   ハブへ機能追加する時は必ず両方に反映すること。
+// ── ハブの入口（delegate）。ハブの唯一の実装は js/ui_mall_rpg.js の rpgRenderHub2。
+//   呼び出し時にグローバル解決するので「後勝ち上書き」は不要（旧構造＝ここを ui_mall_rpg.js が
+//   全文再定義。両方に反映し忘れて称号・フロア帯が消えた＝docs/MALL_UX_BACKLOG.md P0-1 の原因を根絶）。
+//   ★ハブへ機能追加する時は ui_mall_rpg.js の rpgRenderHub2 だけを編集すればよい。
+//   下の rpgRenderHubLegacy は ui_mall_rpg.js が読めなかった時だけ使う保険（通常は不使用・積極保守不要）。
 function rpgRenderHub(app) {
+  if (typeof rpgRenderHub2 === "function") return rpgRenderHub2(app);
+  return rpgRenderHubLegacy(app);
+}
+// ── ハブ旧実装（保険）。通常は上の delegate 経由で rpgRenderHub2（ui_mall_rpg.js）が使われ、呼ばれない。
+function rpgRenderHubLegacy(app) {
   const d = rpgData();
   const rec = d.records || {};
   const tot = rpgShopTotalOwned();
@@ -2200,10 +2206,10 @@ function rpgMakeSprite(emoji, disp, cls) {
   ctx.fillText(emoji, R / 2, R / 2 + 4);
   return cv;
 }
-// ★アート組み込み口：アートを用意した id をここに足すだけで、絵文字→画像に切替。
-//   （未登録なら画像を読みに行かない＝404/コンソールエラーが出ない）
-//   例: const RPG_ART_ENEMIES = ["slime", "boss1"];  → images/rpg/enemies/slime.webp 等を表示
-const RPG_ART_ENEMIES = [];
+// ★敵アートの唯一の台帳＝上部の RPG_ENEMY_IMG（id→ファイル名）。HUDのfoe-lineも、canvas戦場も、
+//   ショップ等のDOM描画も、すべてこの1つを引く。新しい絵は RPG_ENEMY_IMG に1行足すだけで全所に反映。
+//   （旧 RPG_ART_ENEMIES は別フォルダ images/rpg/enemies/・別命名・空配列で、canvasが納品済み画像を
+//     見つけられず絵文字のままだった＝docs/MALL_UX_BACKLOG.md P0-2 の原因。2系統を統合して廃止した。）
 // ミミ立ち絵の差し込み口：images/rpg/mimi.webp を置いて true にすると戦闘の手前に立ち絵表示
 const RPG_ART_MIMI = false;
 let _rpgMimiImg = null;
@@ -2212,23 +2218,25 @@ function rpgMimiArt() {
   if (!_rpgMimiImg) { _rpgMimiImg = new Image(); _rpgMimiImg.src = "images/rpg/mimi.webp"; }
   return (_rpgMimiImg.complete && _rpgMimiImg.naturalWidth) ? _rpgMimiImg : null;
 }
-// 敵アートのcanvas描画（rpgMimiArt()と同じ方式：Image().complete/naturalWidthで判定）。
-// 戦闘シーンは単一canvasへの直描きのため、DOM要素を返すrpgEnemyVisual()はここでは使わず、
-// 同じ画像パスをcanvas用に直接キャッシュ・drawImageする（RPG_ART_ENEMIES未登録なら読みに行かない＝404を出さない）。
+// 敵アートのcanvas描画：RPG_ENEMY_IMG[id]→images/rpg/<file>.webp をキャッシュしdrawImage用に返す。
+// 未登録/未ロード/失敗は null を返し、呼び出し側が絵文字にフォールバック（404を出さない）。
 const _rpgEnemyArtCache = {};
 function rpgEnemyArt(id) {
-  if (RPG_ART_ENEMIES.indexOf(id) < 0) return null;
+  const file = RPG_ENEMY_IMG[id];
+  if (!file) return null;
   let img = _rpgEnemyArtCache[id];
-  if (!img) { img = _rpgEnemyArtCache[id] = new Image(); img.src = "images/rpg/enemies/" + id + ".webp"; }
+  if (!img) { img = _rpgEnemyArtCache[id] = new Image(); img.src = "images/rpg/" + file + ".webp"; }
   return (img.complete && img.naturalWidth) ? img : null;
 }
+// DOM描画用（ショップ等）：同じ RPG_ENEMY_IMG 台帳を引く。未登録は手続きスプライトにフォールバック。
 function rpgEnemyVisual(id, emoji, disp, cls) {
-  if (RPG_ART_ENEMIES.indexOf(id) < 0) return rpgMakeSprite(emoji, disp, cls);
+  const file = RPG_ENEMY_IMG[id];
+  if (!file) return rpgMakeSprite(emoji, disp, cls);
   const img = document.createElement("img");
   img.className = "rpg-spr rpg-img" + (cls ? " " + cls : "");
   img.alt = ""; img.decoding = "async";
   img.style.width = (disp || 56) + "px"; img.style.height = (disp || 56) + "px";
-  img.src = "images/rpg/enemies/" + id + ".webp";
+  img.src = "images/rpg/" + file + ".webp";
   img.onerror = () => { const s = rpgMakeSprite(emoji, disp, cls); if (img.parentNode) img.parentNode.replaceChild(s, img); };
   return img;
 }

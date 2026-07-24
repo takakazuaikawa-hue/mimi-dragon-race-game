@@ -6735,6 +6735,15 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-wait { grid-column:1/-1; text-align:center; color:#b9a8d4; padding:18px; font-size:20px; letter-spacing:6px; }
 
 @media (prefers-reduced-motion: reduce) { .rpg-act.ult.full { animation:none; } }
+/* P2-7（docs/MALL_UX_BACKLOG.md）：モール大冒険の脈動演出 rpgpulse を、モーション低減設定で一括停止。
+   従来は .scmr-fs-cell.now / .rpg-hpbar.low / .rpg-act.ult.full の3つしか止めておらず、残りが点滅していた。 */
+@media (prefers-reduced-motion: reduce) {
+  .rpg-chip.calm, .rpg-chip.goal.done, .rpg-chip.gacha,
+  .rpg-start.rpg-next, .rpg-start.tower, .rpg-daily,
+  .rpg-ctl-shop.has, .rpg-auto.on,
+  .rpg-movebtn.stairs, .rpg-movebtn.shopenter.has, .rpg-actbtn.shop.has,
+  .rpg-shop-hint.has, .rpg-floorstrip .fs-cell.now { animation: none; }
+}
 
 /* 🤖 オートバトル切替 */
 .rpg-autobtn { width:100%; min-height:46px; margin:2px 0 8px; padding:11px; border-radius:13px; cursor:pointer; font-size:14px; font-weight:800;

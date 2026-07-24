@@ -1,40 +1,34 @@
 # モール大冒険RPG アート差し込み口
 
-ここに画像を置くだけで、コード変更なしに絵文字→アートへ自動で切り替わります
-（ファイルが無ければ絵文字にフォールバック）。
+敵の絵は **1つの台帳**＝`js/mall_rpg.js` の `RPG_ENEMY_IMG`（id→ファイル名）で管理します。
+ここに1行足すと、HUDの敵カード・canvasの戦場スプライト・ショップ等のDOM描画の**すべて**に反映されます。
+ファイルが無ければ自動で絵文字にフォールバック（404は出ません）。
 
-## 敵スプライト（最優先）
-- 置き場所: `images/rpg/enemies/<id>.webp`
-- 形式: **透過 webp**（背景透明）。推奨 256×256 前後の正方形、正面向き、1体。
-- 影は**焼き込まない**（ゲーム側で接地シャドウを付けます）。
-- 光源は左上で統一すると馴染みます。HD-2D調のドット絵 or イラストどちらでも可。
+## 敵スプライトの足しかた
+1. 画像を **`images/rpg/<ファイル名>.webp`**（この直下・**透過webp**・推奨256〜512px正方形・正面向き1体・
+   影は焼き込まない＝ゲーム側で接地シャドウを付ける・光源は左上で統一）に置く。
+2. `js/mall_rpg.js` の `RPG_ENEMY_IMG` に1行足す：`<敵id>: "<ファイル名>",`
+   （敵id＝`RPG_MONS` のキー。ファイル名は拡張子なし）。
+3. `index.html` の `?v=` を更新（キャッシュ対策）。
 
-### 必要な id（ファイル名）
-| id（ファイル名） | キャラ |
-|---|---|
-| `baku.webp`      | 爆買いツアー客 🛍️ |
-| `selfie.webp`    | 自撮り女子 🤳 |
-| `gourmet.webp`   | 食べ歩き勢 🍢 |
-| `stroller.webp`  | ベビーカー隊 👶 |
-| `oldies.webp`    | 団体のおば様 📷 |
-| `kid.webp`       | はぐれっ子 🧒 |
-| `slime.webp`     | マヨイスライム 🟢 |
-| `mannequin.webp` | うごくマネキン 🤖 |
-| `boss1.webp`     | 観覧車ゴーレム 🎡（ボス・少し大きめ推奨） |
+### 現在結線済み（実在ファイル）
+| 敵id | ファイル | キャラ |
+|---|---|---|
+| `slime`     | `en_bagslime.webp`  | マヨイスライム 🟢 |
+| `mannequin` | `en_mannequin.webp` | うごくマネキン 🤖 |
+| `escalator` | `en_sale_golem.webp`| 暴走エスカレーター |
+| `baku`      | `en_cartrat.webp`   | 爆買いツアー客 🛍️（※観光客はcanvasでは手続き描画・HUDカードで使用） |
+| `pricetag`  | `en_pricetag.webp`  | 値札ゴースト |
+| `coupon`    | `en_coupon.webp`    | クーポン鳥 |
+| `madam` / `maison` | `boss_maison.webp` | デパ地下マダム／マダム・メゾン |
+| `boss1`     | `boss_donryu.webp`  | 観覧車ゴーレム 🎡（ボス） |
 
-## 今後追加できる差し込み口（要望あれば実装）
-- `images/rpg/mimi.webp` … 戦闘のミミ立ち絵
-- `images/rpg/bg/<floor>.webp` … フロア別の背景イラスト（現状は手続きHD-2D描画）
+> 旧仕様（`images/rpg/enemies/<id>.webp` という別フォルダ・別命名・`RPG_ART_ENEMIES` 配列）は廃止しました。
+> canvasが納品済み画像を見つけられず絵文字のままだった不具合の原因です（docs/MALL_UX_BACKLOG.md P0-2）。
+
+## 今後追加できる差し込み口
+- `images/rpg/mimi.webp` … 戦闘のミミ立ち絵。`js/mall_rpg.js` の `RPG_ART_MIMI = false` を `true` に。
+- フロア別背景は現状は手続きHD-2D描画（画像化は指示書 M4/M5）。
 
 ## 権利
 GitHub Pages公開のため、生成物の規約・ライセンスはクリーンに。CC0等を使う場合は出所を記録してください。
-
-## 反映の手順（コンソールエラーを出さないため）
-1. `images/rpg/enemies/<id>.webp` を置く
-2. `js/mall_rpg.js` の `const RPG_ART_ENEMIES = [];` に id を追加
-   例: `const RPG_ART_ENEMIES = ["slime", "boss1"];`
-3. `index.html` の `?v=` を更新（キャッシュ対策）
-→ 登録した敵だけ画像表示。未登録は絵文字のまま（404を出さない）。
-
-## ミミ立ち絵（任意）
-- `images/rpg/mimi.webp` を置き、`js/mall_rpg.js` の `RPG_ART_MIMI = false` を `true` に。戦闘の手前にミミの立ち絵が表示されます（未設定は🐰絵文字＋「ミミ」ラベル）。

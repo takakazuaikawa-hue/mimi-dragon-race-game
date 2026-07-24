@@ -1,17 +1,17 @@
 // =========================================================================
-// ui_mall_rpg.js — 大冒険ハブ(rpgRenderHub)を station SQUARE 風ライト・ポータルに“上書き定義”。
+// ui_mall_rpg.js — 大冒険ハブの唯一の実装 rpgRenderHub2（station SQUARE 風ライト・ポータル）。
 // =========================================================================
-// ★クラウドが活発に拡張する mall_rpg.js は一切触らず、後から読み込む本ファイルで rpgRenderHub だけを
-//   再定義（classic scriptは後勝ち）。データ/ロジック(rpgData/rpgStartRun/rpgGachaPull/rpgBuyUp/…)は
-//   全てグローバル流用＝**振る舞いは不変**、見た目だけモール(.scm)に統一。探索/戦闘等の本体画面は不変。
+// ★mall_rpg.js の rpgRenderHub は delegate で、呼び出し時に本ファイルの rpgRenderHub2 を呼ぶ。
+//   だから「後勝ち上書き」に依存しない＝読み込み順が変わっても壊れない。
+//   データ/ロジック(rpgData/rpgStartRun/rpgGachaPull/rpgBuyUp/…)はグローバル流用＝**振る舞いは不変**、
+//   見た目だけモール(.scm)に統一。探索/戦闘等の本体画面は不変。
 // レース数値に非干渉＝[[race-math-immutable]]。_scmIcon は js/ui_mall.js（先に読込）から流用。
 // =========================================================================
-// ⚠️【重要】これが実際に画面へ出るハブの本体（mall_rpg.js の rpgRenderHub を後勝ちで置き換える）。
-//   mall_rpg.js 側のハブに機能を足しても、こちらに入れないとプレイヤーには表示されません。
-//   ハブへ機能追加する時は必ず mall_rpg.js と本ファイルの両方に反映すること
-//   （称号・フロア帯が消えていた事例＝docs/MALL_UX_BACKLOG.md P0-1）。
+// ⚠️【重要】ハブへ機能を足す時は、この rpgRenderHub2 だけを編集すればプレイヤーに表示される
+//   （mall_rpg.js 側の rpgRenderHubLegacy は ui_mall_rpg.js が読めなかった時の保険で、通常は不使用）。
+//   ＝docs/MALL_UX_BACKLOG.md P0-1（両方に反映し忘れて称号・フロア帯が消えた）を構造で根絶した。
 
-function rpgRenderHub(app) {
+function rpgRenderHub2(app) {
   const d = rpgData();
   const rec = d.records || {};
   const tot = rpgShopTotalOwned();
