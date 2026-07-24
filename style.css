@@ -7118,6 +7118,66 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .km-chip--seen .km-chip-st { font-size: 9px; margin-left: 3px; opacity: .8; }
 @media (prefers-reduced-motion: reduce) { .km-pmhit, .km-areacomp { animation: none; } }
 
+/* ===== 📷 撮影ミニゲーム（js/photo_game.js・構図3択→シャッター→☆） ===== */
+/* スポット詳細の撮影ボタン */
+.km-shoot-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  margin: 8px 0 2px; padding: 11px; border: 1px solid rgba(255,205,120,.5); border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, rgba(80,55,25,.5), rgba(50,38,22,.5)); color: #ffe6b8;
+  font-size: 14px; font-weight: 800; }
+.km-shoot-btn.master { border-color: rgba(255,215,110,.85); box-shadow: 0 0 12px rgba(255,200,90,.3); }
+.km-shoot-best { font-size: 13px; letter-spacing: 1px; color: #ffd76a; }
+.km-shoot-best.none { color: #b7a68a; font-size: 11px; letter-spacing: 0; font-weight: 700; }
+/* 撮影モーダル */
+.pg-modal { position: fixed; inset: 0; z-index: 220; display: flex; align-items: center; justify-content: center; }
+.pg-bd { position: absolute; inset: 0; background: rgba(10,8,14,.72); backdrop-filter: blur(3px); }
+.pg-card { position: relative; width: min(92vw, 430px); max-height: 92vh; overflow-y: auto;
+  background: linear-gradient(180deg, #201a26, #17121d); border: 1px solid rgba(255,205,120,.32);
+  border-radius: 18px; padding: 16px; box-shadow: 0 18px 50px rgba(0,0,0,.55); }
+.pg-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.pg-h b { font-size: 15.5px; color: #ffe6b8; }
+.pg-x { background: none; border: none; color: #b8a; font-size: 18px; cursor: pointer; padding: 2px 6px; }
+.pg-step { font-size: 13px; font-weight: 800; color: #f3e6d4; margin-bottom: 8px; }
+.pg-season { margin-left: 8px; font-size: 11px; font-weight: 800; color: #2a2013; background: #ffd76a; border-radius: 99px; padding: 2px 8px; }
+.pg-hint { font-size: 12.5px; color: #e7dcc9; line-height: 1.55; margin-bottom: 6px;
+  background: rgba(255,230,168,.07); border-radius: 9px; padding: 8px 10px; }
+.pg-hint-who { font-weight: 800; color: #ffd88a; margin-right: 2px; }
+.pg-shoot { font-size: 11.5px; color: #b9c6cf; margin-bottom: 10px; }
+.pg-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pg-thumb { display: flex; flex-direction: column; gap: 5px; padding: 0; border: 2px solid transparent; border-radius: 12px;
+  background: none; cursor: pointer; overflow: hidden; }
+.pg-thumb:active { border-color: #ffd76a; }
+.pg-thumb-crop { position: relative; width: 100%; aspect-ratio: 1/1; overflow: hidden; border-radius: 10px; background: #000; }
+.pg-thumb-crop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pg-thumb-lb { font-size: 11.5px; font-weight: 800; color: #e7dcc9; }
+/* シャッターのビュー＋リング */
+.pg-view { position: relative; width: 100%; aspect-ratio: 4/3; margin-bottom: 12px; border-radius: 12px; overflow: hidden; background: #000; }
+.pg-view.sm { aspect-ratio: 16/9; }
+.pg-view-crop { position: absolute; inset: 0; }
+.pg-view-crop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pg-target { position: absolute; top: 50%; left: 50%; width: 84px; height: 84px; transform: translate(-50%,-50%);
+  border: 2px solid rgba(255,255,255,.85); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+.pg-ring { position: absolute; top: 50%; left: 50%; width: 84px; height: 84px; transform: translate(-50%,-50%) scale(2.6);
+  border: 3px solid #ffd76a; border-radius: 50%; box-shadow: 0 0 14px rgba(255,200,90,.6); }
+.pg-shot { display: block; width: 100%; padding: 14px; border: none; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, #d68a3c, #f0b35f); color: #2a1a06; font-size: 16px; font-weight: 900; }
+/* 結果 */
+.pg-result { text-align: center; }
+.pg-stars { font-size: 34px; letter-spacing: 4px; color: #ffd76a; margin: 8px 0 4px; text-shadow: 0 2px 8px rgba(255,190,70,.4); }
+.pg-verdict { font-size: 13px; font-weight: 800; color: #e7dcc9; margin-bottom: 8px; }
+.pg-mp-note { font-size: 12.5px; color: #ffe6b8; margin-bottom: 10px; }
+.pg-masterpiece { border-color: rgba(255,215,110,.85); box-shadow: 0 0 30px rgba(255,200,90,.35), 0 18px 50px rgba(0,0,0,.55); }
+.pg-masterpiece .pg-stars { animation: pgMaster .7s ease-out both; }
+@keyframes pgMaster { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+.pg-result-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.pg-btn { flex: 1; min-width: 100px; min-height: 44px; padding: 10px; border: 1px solid rgba(255,255,255,.16); border-radius: 11px;
+  cursor: pointer; background: rgba(255,255,255,.08); color: #f0e6d4; font-size: 13px; font-weight: 800; }
+.pg-btn--ok { background: linear-gradient(135deg, #3a7d4f, #46b06a); color: #fff; border-color: transparent; }
+.pg-btn--sns { background: linear-gradient(135deg, #2f6fb0, #4a97d8); color: #fff; border-color: transparent; }
+/* ギャラリーの傑作金枠 */
+.kgal-master { outline: 2px solid #ffd76a; outline-offset: -2px; box-shadow: 0 0 14px rgba(255,200,90,.4); }
+.kgal-star { position: absolute; top: 4px; left: 4px; font-size: 14px; color: #ffd76a; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+@media (prefers-reduced-motion: reduce) { .pg-masterpiece .pg-stars { animation: none; } }
+
 /* ===== M1：次の一手チップ（島の一日ループの結線・GAME_EXPERIENCE_DESIGN §3） ===== */
 .nx-row { margin: 10px 0 2px; }
 .nx-row .nx-k { font-size: 10px; letter-spacing: .12em; color: var(--mist-soft); margin-bottom: 5px; }

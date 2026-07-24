@@ -354,6 +354,8 @@ function renderKonronGallery() {
     if (it.open) {
       cell.style.backgroundImage = `url('${it.src}')`;
       if (it.kind === "gourmet") cell.appendChild(el("span", "kgal-badge", "🍽"));
+      // ★T1：傑作（☆3）で撮ったスポットは金枠＋★バッジ＝「自分のいちばんの一枚」を誇る。
+      if (it.kind === "photo" && _kmPhotoStar(it.id) >= 3) { cell.classList.add("kgal-master"); cell.appendChild(el("span", "kgal-star", "★")); }
       cell.appendChild(el("span", "kgal-name", it.label));
       cell.setAttribute("data-id", it.id); cell.setAttribute("data-kind", it.kind);
       cell.onclick = () => _kmOpenPhoto(cell.getAttribute("data-id"), cell.getAttribute("data-kind"));
@@ -515,6 +517,35 @@ function _kmPhotoMission() {
 function _kmPmDone(id) {
   try { const kz = (state.player || {}).kurashi || {}; return kz.pmDay === _kmDayKey() && kz.pmSpot === id; } catch (e) { return false; }
 }
+// ★T1 撮影ミニゲーム：各スポットのベスト☆（1〜3・未撮影は0）。傑作判定＝3。
+function _kmPhotoStar(id) {
+  try { return ((state.player || {}).kurashi || {}).photoStars ? (state.player.kurashi.photoStars[id] || 0) : 0; } catch (e) { return 0; }
+}
+// 撮影を開始し、結果の☆を記録する。失敗状態は無い（☆1でも成立）。
+//   ・ベスト☆を更新（表示専用メタ）
+//   ・今日の一枚ミッションは「☆2以上」で達成（訪問だけの自動達成をやめ、遊びにする）
+//   ・☆3＝傑作は還流（傑作カウント）＋パネル再描画で金の☆に
+function _kmStartShoot(id) {
+  if (typeof pgOpen !== "function" || !id || !KONRON_SPOTS[id]) return;
+  pgOpen(id, function (stars) {
+    try {
+      if (!stars) return;                          // やめた（撮らなかった）＝何も起きない
+      const kz = state.player.kurashi || (state.player.kurashi = {});
+      const ps = kz.photoStars || (kz.photoStars = {});
+      const prev = ps[id] || 0;
+      if (stars > prev) ps[id] = stars;            // ベスト更新
+      // 傑作の累計（旅ノート/SNS/日報が後で拾う・表示専用メタ）
+      if (stars >= 3 && prev < 3) kz.masterpieces = (kz.masterpieces || 0) + 1;
+      // 今日の一枚：☆2以上で達成
+      if (_kmPhotoMission() === id && stars >= 2 && !_kmPmDone(id)) {
+        kz.pmDay = _kmDayKey(); kz.pmSpot = id;
+        if (typeof _kmToast === "function") _kmToast("📸 今日の一枚、いただき！");
+      }
+      if (typeof saveGame === "function") saveGame();
+    } catch (e) {}
+    _kmRenderPanel();                              // ☆表示を更新
+  });
+}
 // エリアの写真スポット進捗（seen/total）。total=0のエリアは対象外。
 function _kmAreaProg(area) {
   try {
@@ -665,7 +696,7 @@ function _kmRenderPanel() {
     // 現章がそのスポットの舞台なら日報風バッジを出す（表示のみ・KONRON_SPOTS本体は不変）。
     // K2（暮らし還流）：写真を見た記録＝表示専用メタ。還流台帳 k_spots8/k_spots20 と
     // 日報の文化面小イベントがこのカウントに反応する（docs/KURASHI_STORY_WEAVE.md B）。
-    let _stampNew = false, _pmJust = false, _areaComp = null;   // H4/H5: 押印・今日の一枚・エリア制覇
+    let _stampNew = false, _areaComp = null;   // H4/H5: 押印・エリア制覇（今日の一枚は撮影側=_kmStartShootが担当）
     if (open && s.photo) {
       try {
         const kz = state.player.kurashi || (state.player.kurashi = {});
@@ -675,8 +706,9 @@ function _kmRenderPanel() {
           const ar = _kmAreaOf(_kmSpot);   // このスタンプでエリアの写真スポットが揃った＝制覇！
           if (ar) { const pr = _kmAreaProg(ar); if (pr.total > 0 && pr.got === pr.total) _areaComp = ar; }
         }
-        if (_kmPhotoMission() === _kmSpot && !_kmPmDone(_kmSpot)) { kz.pmDay = _kmDayKey(); kz.pmSpot = _kmSpot; _pmJust = true; }
-        if (_stampNew || _pmJust) { if (typeof saveGame === "function") saveGame(); }
+        // ★T1：今日の一枚は「訪問＝自動達成」をやめ、撮影で☆2以上を撮ると達成に変更（_kmStartShoot）。
+        //   達成通知は撮影側の toast に一本化（ここではバナーを出さない＝二重告知を避ける）。
+        if (_stampNew) { if (typeof saveGame === "function") saveGame(); }
         // ★初訪問＝到着ミニVN（ガイドとの掛け合い・スポット写真を背景に）。パネル描画後に少し遅らせて再生。
         if (_stampNew) { const _aid = _kmSpot, _as = s; setTimeout(() => _kmPlayArrival(_aid, _as, _as.cat), 420); }
       } catch (e) {}
@@ -705,8 +737,7 @@ function _kmRenderPanel() {
           `<span class="km-rally-seal">📷</span>` +
           `<span class="km-rally-t">${_stampNew ? "スタンプを押した！" : "スタンプ済み"}</span>` +
           `<b>${_seenN} / ${_totalN}</b></div>`;
-        // H5: 今日の一枚 達成＆エリア制覇のバナー（どちらも一度きりの瞬間演出）
-        if (_pmJust) body += `<div class="km-pmhit">📸 今日の一枚、いただき！</div>`;
+        // H5: エリア制覇のバナー（一度きりの瞬間演出）。今日の一枚の達成通知は撮影側 toast に一本化。
         if (_areaComp) body += `<div class="km-areacomp">🏆 ${_areaComp.ic} ${_areaComp.name}エリア、制覇！<span>島の写真帳に「制覇の証」が刻まれた。</span></div>`;
       }
     } catch (e) {}
@@ -716,6 +747,12 @@ function _kmRenderPanel() {
       body += `<div class="km-card-line">${s.line}</div>`;
       const _shoot = _kmShootOf(_kmSpot, s);   // ★門番経由（未登場の顧問名を「撮れるもの」に出さない）
       if (_shoot && _shoot !== "—") body += `<div class="km-card-shoot">📸 撮れるもの：${_shoot}</div>`;
+      // ★T1: 撮影ミニゲーム（photo保持スポットのみ）。過去のベスト☆を添えて「もっといい一枚」を誘う。
+      if (s.photo && typeof pgOpen === "function") {
+        const _bestStar = _kmPhotoStar(_kmSpot);
+        const _starTx = _bestStar ? `<span class="km-shoot-best">${"★".repeat(_bestStar)}${"☆".repeat(3 - _bestStar)}</span>` : `<span class="km-shoot-best none">未撮影</span>`;
+        body += `<button class="km-shoot-btn${_bestStar >= 3 ? " master" : ""}" data-shoot="${_kmSpot}">📷 撮影する${_starTx}</button>`;
+      }
       body += _kmContentHtml(_kmSpot);   // 見どころ／名物／豆知識（作りこみ）
       if (s.gourmet) body += `<button class="km-gourmet" data-gourmet="${_kmSpot}"><img src="${s.gourmet}" alt="" decoding="async"><span>🍽 ご当地グルメ・タップで鑑賞／投稿</span></button>`;   // s.id は常にundefined（同種バグ・上のdata-photoと同じ原因）
       body += _kmMealHtml(_kmSpot);   // ★N5: ここで食べる（スポット↔MEALS直結）
@@ -745,6 +782,8 @@ function _kmRenderPanel() {
     if (ph) ph.onclick = () => _kmOpenPhoto(ph.getAttribute("data-photo"), "photo");
     const gm = panel.querySelector(".km-gourmet");
     if (gm) gm.onclick = () => _kmOpenPhoto(gm.getAttribute("data-gourmet"), "gourmet");
+    const sh = panel.querySelector(".km-shoot-btn");
+    if (sh) sh.onclick = () => _kmStartShoot(sh.getAttribute("data-shoot"));
     // ★N5: ここで食べる＝その場実食（初実食はミミの実食コメントVN）。クイズ品はごはん画面へ。
     panel.querySelectorAll(".km-eat[data-meal]").forEach(function (b) {
       b.onclick = function () {
