@@ -51,24 +51,27 @@ const KONRON_SPOTS = {
   // ── レースの8地域（data_races.js の region と1対1） ──────────────
   // ★レースは8つの地域で行われるのに、島の地図には「中央聖龍レース場」しか
   //   置かれておらず、走った土地を島の上で確かめられなかった。
-  //   写真は未納品なので photo は持たせない（描画側が (open && s.photo) で
-  //   分岐するため、無い場合はエリアの俯瞰図に落ちる＝壊れない）。
+  //   T0（2026-07-25）：孤児PNGを1枚ずつ検収し、世界観に合う6地域に写真を結線した
+  //   （clock/rosso/mist/vento/notte/lapan）。photo を持たない地域は描画側が
+  //   (open && s.photo) で分岐してエリア俯瞰図に落ちる＝壊れない。
+  //   ⚠️ rg_lumina と rg_caldera は既存PNGが世界観不一致（明るい光条→暗い霧漁村／
+  //     赤い溶岩→寒色地熱農村）で検収不合格。§7でHiggsfield再生成待ち（クレジット回復後）。
   //   region はレース側の表記そのまま。ここを変えると突き合わせが切れる。
-  rg_clock:  { name: "グランドクロック大時計走路", cat: "race", tier: 0, region: "グランドクロック地域", portal: "renderRaceSelect", time: "昼",
+  rg_clock:  { name: "グランドクロック大時計走路", cat: "race", tier: 0, region: "グランドクロック地域", portal: "renderRaceSelect", time: "昼", photo: "images/konron/spots/grandclock.webp",
                shoot: "真鍮の大歯車・時報の鐘・金色に光る直線", line: "島の時を刻む大時計の足元を走る。鐘が鳴ると、観客が一斉に時計を見上げる。" },
   rg_lumina: { name: "ルミナ光条コース", cat: "race", tier: 0, region: "ルミナ地域", portal: "renderRaceSelect", time: "午前",
                shoot: "空色の壁・照り返す白砂・滝から流れる霧", line: "光がよく回る谷あいの走路。影が薄く、竜の翼の色がいちばん綺麗に出る。" },
-  rg_rosso:  { name: "リングロッソ闘技走路", cat: "race", tier: 1, region: "リングロッソ地域", portal: "renderRaceSelect", time: "夕",
+  rg_rosso:  { name: "リングロッソ闘技走路", cat: "race", tier: 1, region: "リングロッソ地域", portal: "renderRaceSelect", time: "夕", photo: "images/konron/spots/ringrosso.webp",
                shoot: "赤と黒の石壁・すり鉢状の観客席・爪跡の残る柵", line: "声が丸く溜まるすり鉢の底。歓声が倍になって返ってくる、島でいちばん熱い場所。" },
   rg_caldera:{ name: "カルデラ火口周回路", cat: "race", tier: 1, region: "カルデラ地域", portal: "renderRaceSelect", time: "昼",
                shoot: "溶岩の赤い照り返し・黒い砂利・立ちのぼる陽炎", line: "地面が熱を抱えたまま冷めない。下から炙られながら走る、島でもっとも過酷な走路。" },
-  rg_mist:   { name: "ミストレイク湖畔走路", cat: "race", tier: 1, region: "ミストレイク地域", portal: "renderRaceSelect", time: "早朝",
+  rg_mist:   { name: "ミストレイク湖畔走路", cat: "race", tier: 1, region: "ミストレイク地域", portal: "renderRaceSelect", time: "早朝", photo: "images/konron/spots/mistlake.webp",
                shoot: "霧に沈む湖面・縄を引く整備の人・輪郭だけの竜", line: "霧が濃い日は三十歩先も見えない。音だけが先に届く、静かで難しい走路。" },
-  rg_vento:  { name: "ヴェント峡谷風洞コース", cat: "race", tier: 2, region: "ヴェント峡谷地域", portal: "renderRaceSelect", time: "午後",
+  rg_vento:  { name: "ヴェント峡谷風洞コース", cat: "race", tier: 2, region: "ヴェント峡谷地域", portal: "renderRaceSelect", time: "午後", photo: "images/konron/spots/vento_gorge.webp",
                shoot: "切り立つ岩壁・吹き上げる風・飛ばされた帽子", line: "上からも下からも風が来る。谷が声を二度返す、翼の扱いを試される走路。" },
-  rg_notte:  { name: "ノッテムーンライト夜間走路", cat: "race", tier: 2, region: "ノッテムーンライト地域", portal: "renderRaceSelect", time: "夜",
+  rg_notte:  { name: "ノッテムーンライト夜間走路", cat: "race", tier: 2, region: "ノッテムーンライト地域", portal: "renderRaceSelect", time: "夜", photo: "images/konron/spots/notte_moonlight.webp",
                shoot: "月あかりに浮かぶ白線・落とした照明・青く見える足元", line: "明るくしすぎない決まりがある。月の色に合わせた灯りの下を、影だけが走る。" },
-  rg_lapan:  { name: "ラパン祭典特設走路", cat: "race", tier: 2, region: "ラパン祭典地域", portal: "renderRaceSelect", time: "祭りの三日",
+  rg_lapan:  { name: "ラパン祭典特設走路", cat: "race", tier: 2, region: "ラパン祭典地域", portal: "renderRaceSelect", time: "祭りの三日", photo: "images/konron/spots/lapan_festival.webp",
                shoot: "舞う金の紙吹雪・だらんとした旗・掃除の人の背中", line: "年に三日だけ組まれる特設の走路。金の紙が舞い、視界がまるごときらきらする。" },
 
   // ── 奥地・霧の彼方（聖典：簡単に入れない神秘＝終盤解放のteaser・遠景のみ・出しすぎない） ──
@@ -110,6 +113,11 @@ const KONRON_SPOTS = {
   amazake_chaya:{ name: "甘酒だんご茶屋", cat: "food", tier: 1, time: "レース前", photo: "images/konron/spots/amazake_chaya.webp", gourmet: "images/konron/spots/amazake_chaya_gourmet.webp", shoot: "番傘と提灯・三色だんごの炭火・甘酒・“必勝”の絵馬", line: "勝負の前に、甘酒で一服。三色だんごのゲン担ぎは、この島の必勝祈願。" },
   backlot:   { name: "資材置き場・マスコットの隅", cat: "oshi", tier: 2, time: "—", photo: "images/konron/spots/backlot.webp", shoot: "レース場裏の木箱とブルーシート・雨上がりの水たまり・小さな寝床", line: "レース場の裏手、木箱の陰。島のマスコットが、ちいさく震えていた場所。" }
 };
+// ★各スポットの値オブジェクトに自分のキーを id として持たせる（脆さの解消）。
+//   以前、値が自分の id を知らず data-photo="undefined" で写真ビューアが無反応になったバグがあり、
+//   呼び出し側で id を明示的に渡し回して対処していた。ここで一度だけ注入しておけば、
+//   s.id がいつでも使える＝渡し忘れで壊れる経路が構造的に消える（表示専用・挙動不変）。
+Object.keys(KONRON_SPOTS).forEach(id => { KONRON_SPOTS[id].id = id; });
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
@@ -183,7 +191,8 @@ function _ktRenderRail() {
     if (_ktCat !== "all" && s.cat !== _ktCat) return;
     const card = _ktSpotCard(id); if (card) rail.appendChild(card);
   });
-  if (!rail.children.length) rail.innerHTML = `<div class="kt-rail-empty">このカテゴリの写真は準備中です。</div>`;
+  // 旧「このカテゴリの写真は準備中です」は到達不能デッドコードだった（カテゴリタブは
+  // 写真ありカテゴリだけ生成される＝下の cats 生成を参照。all も必ず写真ありを含む）ので撤去。
 }
 
 function renderKonronMap() {

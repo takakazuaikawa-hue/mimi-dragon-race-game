@@ -21,6 +21,12 @@ var NEXT_SUGGEST = [
     cond: function (ctx) {
       try { return !(ctx && ctx.hit) && getStoryFlag("_chapter_intro_3") && lifeTreeStats().readyCount > 0; } catch (e) { return false; }
     }, go: function () { renderLifeTree(); } },
+  // ── レース結果共通（T0）：走った土地を島の地図で確かめる＝レース⇄島めぐりの結線 ──
+  //   rg_* 6地域に写真が付いたので、地図を開くと「さっき走った場所」を1枚の景色として見られる。
+  //   weight 78＝勝ち時は勝ち飯/SNSが優先、負け時に負け飯の次で自然に出る（既存の勝ち導線は不変）。
+  { at: "result", weight: 78, icon: "🗺", label: "今日走った土地を見にいく", sub: "島の地図で、さっき走った場所を確かめる",
+    cond: function () { try { return typeof konronMapUnlocked === "function" && konronMapUnlocked(); } catch (e) { return false; } },
+    go: function () { renderKonronMap(); } },
   // ★M3 重複告知の削減：「今日の一枚」は崑崙マップ内のストリップと食事あとの導線で押し出す。
   //   結果画面からも出すと同じミニ発見を3口で告知＝出し過ぎになるので、結果画面からは外した（勝ち飯/SNS/負け飯で十分）。
 
