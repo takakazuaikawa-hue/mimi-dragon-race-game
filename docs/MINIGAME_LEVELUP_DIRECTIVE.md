@@ -281,11 +281,49 @@
 | モールフロア背景 | 8×(far/near)=16 | generate_image | 崑崙モール内装（1F食…屋上遊園）。ハイブリッド原則＝背景イラスト調・手前キャラと衝突しない彩度 |
 | rg_* 地域写真 | 検収落ち分のみ（最大8） | generate_image | KONRON_IMAGE_PLAN §0 の絶対原則＋C系プロンプト（soul_location 2k 実写級・方角厳守・主役1つ） |
 | シャッターチャンス素材 | 0（当面テキスト演出） | — | T2はキャプション演出で成立。画像が欲しくなったら翼竜等を透過生成して合成（任意） |
+| **島地図の刷新** | 4候補→1選抜→upscale | generate_image(nano_banana_pro) → upscale_image | §7.1の専用ブリーフ。**ユーザー発注済（2026-07-25）・クレジット月次リセット待ちの最優先枠** |
 | BGM | mall-day/boss/fever 3曲 | generate_audio | 明るい買い物ワルツ/重い店長戦/高揚フィーバー。各90秒ループ・既存 bgm/ 形式(mp3) |
 | SE | 0 | — | sfx.js 合成で足りる（シャッター音は合成で新規1つ） |
 
 命名：`images/rpg/enemies/<id>.webp`・`images/scene/mall/floor<n>_far.webp`・`images/konron/spots/<slug>.webp`・`bgm/mall-*.mp3`。
 webp化必須（総量監視・images は既に51MB級）。`?v=` バンプ忘れずに。
+
+### 7.1 島地図 刷新ブリーフ（ユーザー発注済・クレジット回復後すぐ実行）
+
+**目的**：`images/konron/island_map.webp`（観光の地図タブ＋エリアズーム背景）を高品質に刷新する。
+
+**絶対制約**：
+1. **現行図とほぼ同じレイアウトを保つ**こと（9エリアのピン座標 `KONRON_AREAS` の mx,my% が現行図に
+   合わせて調整済み。配置：西=港町・市街／北西=ルミナ瀑布／中央やや北=アレドラウ火山／中央麓=沈んだ
+   ターコイズの湖／南西=レース場の高台／中南=温泉郷の湯気／東=キビシス崖線／南西岸=白砂ビーチ／
+   南=黒い溶岩海岸／南東=漁村の入江／北・北東=道なき荒岩と霧）。
+2. **アートバイブル §0.4 厳守**（docs/konron/KONRON_IMAGE_PLAN.md）：アレドラウ山＝**尖った活火山の峰**。
+   **山頂に湖は無い**。プロンプトに「caldera volcano」「summit crater lake」と**書かない**（繰り返した誤り）。
+   湖は峰の麓の山体崩落でできた沈んだ聖域として描く。
+3. 文字は読めない装飾程度・奥地（北東）は霧で隠す＝出しすぎない。
+
+**実行手順**：
+1. `balance` で残高確認（4候補=2クレジット・1kで生成→当選のみ upscale）。
+2. `generate_image`：model=`nano_banana_pro`・aspect_ratio=`3:2`・count=4・プロンプト↓
+```
+Photorealistic miniature diorama aerial map of a tropical volcanic resort island, golden hour,
+ultra-detailed. Layout strictly: WEST a lively harbor town with piers, ships and a walled old
+city; NORTHWEST a tall waterfall with a plunge pool; CENTER-NORTH one SHARP active volcanic
+peak with glowing ember cracks and a tall smoke plume (no lake on the summit); at the
+mountain's inner foot a sunken turquoise sacred lake in a collapsed hollow; SOUTHWEST of the
+volcano a stone dragon-racing stadium on a jungle plateau; CENTER-SOUTH a steaming hot-spring
+valley; EAST tall rugged sea cliffs; SOUTHWEST coast bright white-sand lagoon beaches;
+SOUTH a black lava coast with glowing fissures; SOUTHEAST a small fishing village in a cove;
+NORTH and NORTHEAST wild roadless dark crags half-hidden in mist. Lush emerald jungle,
+winding paths connecting districts, warm teal sea, impossibly beautiful, makes you want to
+explore every corner. No readable text, no labels, no UI.
+```
+3. **QA選抜**：候補4枚を1枚ずつ開き、①山頂湖が無い ②レイアウト＝現行図と同配置 ③主役（火山）と
+   高揚感 ④ピンが置ける明瞭な地区分け、で採点。全滅なら文言を1点だけ直して再生成（最大2巡）。
+4. 当選作を `upscale_image` → webp化 → 旧図は `island_map_old.webp` として残す → 差し替え。
+5. **ピン再調整**：新図を開いて9エリアの mx,my% を目視合わせ→ブラウザ実機で全ピンとズーム背景
+   （`km-zoom` の background-position）を確認→スクショ報告。
+6. `?v=` バンプ→両ブランチデプロイ。
 
 ---
 
