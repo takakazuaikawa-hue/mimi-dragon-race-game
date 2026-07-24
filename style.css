@@ -6727,6 +6727,14 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-act.item { background:linear-gradient(165deg,#2f8f8a,#1c5a57); }
 .rpg-act.guard { background:linear-gradient(165deg,#5a6478,#3a4150); }
 .rpg-act.flee { background:linear-gradient(165deg,#5a4a52,#3a2f35); }
+/* ★M1 ためる：通常時は落ち着いた色、ためた状態はオレンジに光らせて分かるように */
+.rpg-act.charge { background:linear-gradient(165deg,#6a5030,#42321c); }
+.rpg-act.charge.on { background:linear-gradient(135deg,#d8853a,#ffce6a); color:#3a2706; box-shadow:0 0 14px rgba(255,180,90,.6), 0 3px 0 rgba(0,0,0,.35); animation:rpgpulse 1s ease-in-out infinite; }
+.rpg-act.charge.on .act-n, .rpg-act.charge.on .act-sub { color:#3a2706; }
+/* ★M1 ボス・主戦はオート不可の告知 */
+.rpg-nomanual { margin:6px 0; padding:8px 10px; border-radius:10px; text-align:center; font-size:12.5px; font-weight:800;
+  color:#ffd6a0; background:rgba(180,90,40,.18); border:1px solid rgba(255,170,100,.35); }
+@media (prefers-reduced-motion: reduce) { .rpg-act.charge.on { animation:none; } }
 .rpg-act.adv { border-color:rgba(255,228,94,.9); box-shadow:0 0 0 2px rgba(255,228,94,.7), 0 3px 0 rgba(0,0,0,.35); }
 .rpg-act .act-weak { position:absolute; top:-1px; right:-1px; background:#ffe45e; color:#3a2a06; font-size:9px; font-weight:900; padding:1px 6px; border-radius:0 12px 0 10px; }
 .rpg-act.ult.full { grid-column:1/-1; min-height:58px; background:linear-gradient(135deg,#b9892f,#ffd86a,#b9892f); color:#3a2706; flex-direction:row; gap:8px;

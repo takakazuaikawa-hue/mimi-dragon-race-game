@@ -140,13 +140,16 @@ function rpgFitCanvas(cv) {
 const RPG_ELEM = { phys: "物理", fire: "火", ice: "氷", elec: "電", force: "力", heal: "回復" };
 const RPG_ELEM_IC = { phys: "⚔️", fire: "🔥", ice: "❄️", elec: "⚡", force: "🌀", heal: "💚" };
 const RPG_EL_BURST = { phys: "#ffffff", fire: "#ff8a3c", ice: "#7fd8ff", elec: "#ffe04a", force: "#c08bff", heal: "#7af0a0" };
+// ★M1（docs/MINIGAME_LEVELUP_DIRECTIVE §4.2-A）：弱点一辺倒の作業化を防ぐため、属性技に搦め手を付けた。
+//   物理(atk)と火(fire)は素の威力で勝負（差別化）。氷/電/力は確率20%で敵に状態異常＝読み合いが増える。
+//   回復(heal)は自分の状態異常を1つ解除（cleanse）。新スキル・新通貨は足していない（既存RPG_STATUS再利用）。
 const RPG_SKILLS = {
   atk:   { n: "ぱほっ！",   el: "phys", mp: 0, pow: 9 },
   fire:  { n: "ぱファ！",   el: "fire", mp: 4, pow: 13 },
-  ice:   { n: "ぱきーん！", el: "ice",  mp: 4, pow: 13 },
-  elec:  { n: "ぱちぱち！", el: "elec", mp: 4, pow: 13 },
-  force: { n: "ぱわー！",   el: "force", mp: 5, pow: 14 },
-  heal:  { n: "ぱふぅ♪",   el: "heal", mp: 6, heal: 30 },
+  ice:   { n: "ぱきーん！", el: "ice",  mp: 4, pow: 13, rider: { status: "defdown", chance: 0.2, dur: 2 } },
+  elec:  { n: "ぱちぱち！", el: "elec", mp: 4, pow: 13, rider: { status: "dazzle", chance: 0.2, dur: 2 } },
+  force: { n: "ぱわー！",   el: "force", mp: 5, pow: 14, rider: { status: "stun", chance: 0.2, dur: 1 } },
+  heal:  { n: "ぱふぅ♪",   el: "heal", mp: 6, heal: 30, cleanse: true },
 };
 // レベルで覚える
 const RPG_LEARN = { 3: ["ice"], 5: ["elec"], 7: ["force"] };
@@ -700,7 +703,7 @@ function rpgAutoPickTarget() {
 // 🤖 オートバトル：頻発戦闘をノーストレスに（必殺優先→低HPなら回復→弱点技→通常）。手で技を押せばその場だけ手動。
 function rpgAutoBattleTick() {
   const b = RPG && RPG.battle, d = rpgData();
-  if (!b || b.phase !== "cmd" || RPG.busy || !b.auto) return;
+  if (!b || b.phase !== "cmd" || RPG.busy || !b.auto || b.boss || b.nushi) return;   // ★M1：ボス・主は手動限定
   if ((b.gauge || 0) >= 100) { rpgUltimate(); return; }
   if (d.hp <= d.maxhp * 0.3 && d.skills.indexOf("heal") >= 0 && d.mp >= RPG_SKILLS.heal.mp && b.pstatus.seal <= 0) { rpgUseSkill("heal"); return; }
   rpgAutoPickTarget();
@@ -709,7 +712,7 @@ function rpgAutoBattleTick() {
   for (let k = 0; k < d.skills.length; k++) { const sk = RPG_SKILLS[d.skills[k]]; if (sk.el !== "heal" && known.indexOf(sk.el) >= 0 && d.mp >= sk.mp) { pick = d.skills[k]; break; } }
   rpgUseSkill(pick || "atk");
 }
-function rpgToggleBtlAuto() { const b = RPG && RPG.battle; if (!b) return; b.auto = !b.auto; rpgSfx("nav"); renderMallRpg(); }
+function rpgToggleBtlAuto() { const b = RPG && RPG.battle; if (!b || b.boss || b.nushi) return; b.auto = !b.auto; rpgSfx("nav"); renderMallRpg(); }
 function rpgEnemyEl(i) { return document.getElementById("rpg-enemy-" + i); }
 function rpgPlayerEl() { return document.getElementById("rpg-mimichar") || document.getElementById("rpg-bhud"); }
 // canvas戦闘の座標→画面座標（FX配置用）
@@ -763,6 +766,22 @@ function rpgMult(mon, el) {
   if (mon.resist.indexOf(el) >= 0) return 0.5;
   return 1;
 }
+// ★M1：敵に状態異常を付与（ミミ→敵の方向。従来は敵→ミミの一方向しか無かった＝読み合いが薄かった）。
+//   defdown=敵がぐったり(受けるダメージ↑)／dazzle=チカチカ(攻撃を外す)／stun=めまい(1ターン動けない)。
+function rpgEnemyAfflict(e, status, dur) {
+  if (!e || !status) return;
+  e.status = e.status || {};
+  e.status[status] = Math.max(e.status[status] || 0, dur);
+}
+function rpgEnemyHas(e, status) { return !!(e && e.status && e.status[status] > 0); }
+// 敵ターンの終わりに、各敵の状態異常を1ずつ減らす（切れたら消える）。
+function rpgTickEnemyStatus() {
+  const b = RPG.battle; if (!b) return;
+  b.enemies.forEach(e => {
+    if (!e.status) return;
+    Object.keys(e.status).forEach(k => { if (e.status[k] > 0) e.status[k]--; });
+  });
+}
 function rpgCodexLearn(id, el) {
   const d = rpgData();
   if (!d.codex[id]) d.codex[id] = { weak: [] };
@@ -797,6 +816,13 @@ function rpgUseSkill(id) {
     const h = sk.heal + d.lv * 2;
     d.hp = Math.min(d.maxhp, d.hp + h);
     rpgBLog(`💚 ${sk.n}！ HPが${h}回復した。`, "good");
+    // ★M1：回復は自分の状態異常も1つ解除（cleanse）＝立て直しの一手にもなる。
+    if (sk.cleanse && b.pstatus) {
+      const order = ["stun", "seal", "defdown", "dazzle"];
+      for (let i = 0; i < order.length; i++) {
+        if (b.pstatus[order[i]] > 0) { b.pstatus[order[i]] = 0; rpgBLog(`✨ ${RPG_STATUS[order[i]].n}が治った！`, "good"); break; }
+      }
+    }
     rpgSfx("unlock");
     RPG.busy = true; b.phase = "anim";
     (function(){ const p = rpgPlayerPt(); rpgFx.spot(p.x, p.y, "+" + h, "heal"); })(); rpgFx.flash("heal");
@@ -810,7 +836,12 @@ function rpgUseSkill(id) {
   if (!tgt) { rpgAfterAct(false); return; }
   const ti = b.enemies.indexOf(tgt);
   const mult = rpgMult(tgt.ref, sk.el), weakHit = mult >= 1.9;
-  const dmg = mult === 0 ? 0 : Math.max(1, Math.round((sk.pow + rpgPlayerPow() * 0.6) * mult * rpgRnd(0.9, 1.1)));
+  // ★M1：ためた一撃は×2.6／敵がぐったり(defdown)なら×1.4。ためは使ったので消費する。
+  //   係数2.6/1.4は tools/sim_mall_run.js で「読めば得・乱用は損」を満たすと確認した採用値（§9）。
+  const chargeMult = b.charged ? 2.6 : 1;
+  const defdownMult = rpgEnemyHas(tgt, "defdown") ? 1.4 : 1;
+  const wasCharged = !!b.charged; if (b.charged) b.charged = false;
+  const dmg = mult === 0 ? 0 : Math.max(1, Math.round((sk.pow + rpgPlayerPow() * 0.6) * mult * chargeMult * defdownMult * rpgRnd(0.9, 1.1)));
   const now0 = (typeof performance !== "undefined" ? performance.now() : Date.now());
   const freeze = weakHit ? 120 : (dmg ? 70 : 40), total = 240 + freeze + (weakHit ? 90 : 220);   // 弱点は戻りを短縮＝もう1回へ素早く
   b.anim = { who: "mimi", tIdx: ti, t0: now0, contactAt: now0 + 240, freeze: freeze, knock: weakHit ? 18 : 12, shakeMag: weakHit ? 14 : 8, burst: { col: RPG_EL_BURST[sk.el] || "#fff", n: weakHit ? 16 : 12, r: 34 } };
@@ -831,6 +862,15 @@ function rpgUseSkill(id) {
       rpgSfxV(weakHit ? "win" : "tick");
       rpgFx.spot(ep.x, ep.y, "-" + dmg, weakHit ? "weak" : (mult === 0.5 ? "resist" : "dmg"));
       if (weakHit) rpgFx.banner("WEAK!", "weak");
+      // ★M1：ためた一撃が決まった＝ヨガの実地稽古(§6.5 mallCharges)。演出も出す。
+      if (wasCharged && dmg > 0) { rpgFx.banner("💥 ためた一撃！", "more");
+        try { const fs = state.player.fieldStats || (state.player.fieldStats = {}); fs.mallCharges = (fs.mallCharges || 0) + 1; } catch (e) {} }
+      // ★M1：属性技の搦め手（生きている敵に確率20%で状態異常）＝弱点一辺倒でない読み合い。
+      if (tgt.hp > 0 && sk.rider && Math.random() < sk.rider.chance) {
+        rpgEnemyAfflict(tgt, sk.rider.status, sk.rider.dur);
+        rpgBLog(`${RPG_STATUS[sk.rider.status].ic} ${tgt.ref.n}は${RPG_STATUS[sk.rider.status].n}になった！`, "good");
+        rpgFx.banner(RPG_STATUS[sk.rider.status].ic + " " + RPG_STATUS[sk.rider.status].n, "more");
+      }
       if (tgt.hp <= 0) { tgt.alive = false; tgt._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfxV("coin"); rpgFx.spot(ep.x, ep.y - 34, tourist ? "満足♪" : "撃破！", "weak"); rpgFx.shakeApp();
         if (tgt.ref.nushi) { RPG._nushiBeat = RPG._nushiBeat || {}; RPG._nushiBeat[RPG.fi] = 1; rpgFx.banner("👑 主を討伐！", "victory"); rpgSfx("unlock"); rpgBLog(`👑 フロアの主「${tgt.ref.n}」を討伐！ ✨評判UP`, "win"); RPG.runMissions = (RPG.runMissions || 0) + 1; } }
       if ((b.combo || 0) >= 3) rpgFx.banner("COMBO ×" + b.combo, "more");
@@ -912,7 +952,22 @@ function rpgEnemyStep(idx) {
   const e = list[idx];
   if (!e.alive) { rpgEnemyStep(idx + 1); return; }
   const ei = b.enemies.indexOf(e);
-  const gf = b.guard ? 0.5 : 1, dmgMult = (b.pstatus.defdown > 0 ? 1.5 : 1) * gf;
+  // ★M1：敵がめまい(stun)なら1ターン動けない。読み合いでこちらが先手を作れる。
+  if (rpgEnemyHas(e, "stun")) {
+    rpgBLog(`${RPG_STATUS.stun.ic} ${e.ref.n}はめまいで動けない！`, "good");
+    e.intent = null;
+    setTimeout(() => { if (RPG && RPG.battle) rpgEnemyStep(idx + 1); }, 420);
+    return;
+  }
+  // ★M1：敵がチカチカ(dazzle)なら攻撃を3割外す。
+  if (rpgEnemyHas(e, "dazzle") && Math.random() < 0.3) {
+    rpgBLog(`${RPG_STATUS.dazzle.ic} ${e.ref.n}は目がチカチカして攻撃を外した！`, "good");
+    e.intent = null;
+    setTimeout(() => { if (RPG && RPG.battle) rpgEnemyStep(idx + 1); }, 420);
+    return;
+  }
+  // ★M1：ためている間は無防備（被ダメ×1.4）。ための見返りに払うリスク（指示書§4.2-A・§9採用値）。
+  const gf = b.guard ? 0.5 : 1, chargeVuln = b.charged ? 1.4 : 1, dmgMult = (b.pstatus.defdown > 0 ? 1.5 : 1) * gf * chargeVuln;
   const sp = e.ref.sp, useSp = !!((e.intent || {}).sp && sp);
   let dealt = 0;
   if (useSp) { if (sp.dmg) dealt = Math.max(1, Math.round((e.atk || e.ref.atk) * 0.8 * dmgMult * rpgRnd(0.85, 1.15) - Math.floor(d.lv * 0.6))); }
@@ -947,6 +1002,7 @@ function rpgEnemyStep(idx) {
 function rpgToPlayer() {
   const b = RPG.battle;
   ["defdown", "dazzle", "seal"].forEach(k => { if (b.pstatus[k] > 0) b.pstatus[k]--; });
+  rpgTickEnemyStatus();   // ★M1：敵に掛けた状態異常も1ターン減衰（ミミ側と同じ寿命）
   b.sub = null;
   if (b.pstatus.stun > 0) {
     b.pstatus.stun--; b.phase = "wait"; RPG.busy = true;
@@ -967,6 +1023,17 @@ function rpgGuard() {
   if (!b || b.phase !== "cmd" || RPG.busy) return;
   b.guard = true; rpgAddGauge(b, 12); b.sub = null;
   rpgBLog("🛡️ みをまもった！", "good"); rpgSfx("unlock");
+  RPG.busy = true; b.phase = "anim"; rpgSave();
+  setTimeout(() => rpgAfterAct(false), 300);
+}
+// ★M1 ためる：1ターン無防備（次の敵ターンの被ダメ×1.5）と引き換えに、次の一撃が×2.2になる。
+//   敵のインテント（攻撃予告）を読んで「今ためるか」を選ぶ＝1ターン単位のリスク選択。
+function rpgCharge() {
+  const b = RPG.battle;
+  if (!b || b.phase !== "cmd" || RPG.busy) return;
+  b.charged = true; b.sub = null; rpgAddGauge(b, 8);
+  rpgBLog("✊ ぐっと力をためた…！ 次の一撃が強くなる（でも無防備）。", "good");
+  rpgSfx("unlock"); rpgFx.banner("✊ ためる", "more");
   RPG.busy = true; b.phase = "anim"; rpgSave();
   setTimeout(() => rpgAfterAct(false), 300);
 }
@@ -2357,10 +2424,15 @@ function rpgRenderBattle(app) {
   if (b.log[0]) lg.appendChild(el("div", "rpg-logline " + b.log[0].cls + " fresh", b.log[0].t));
   panel.appendChild(lg);
 
-  // 🤖 オートバトル切替（回数の多い雑魚はおまかせ＝ノーストレス）
-  const autoBar = el("button", "rpg-autobtn" + (b.auto ? " on" : ""), b.auto ? "🤖 オートでたたかい中（タップで手動にもどる）" : "🤖 オートでたたかう");
-  autoBar.onclick = () => rpgToggleBtlAuto();
-  panel.appendChild(autoBar);
+  // 🤖 オートバトル切替（回数の多い雑魚はおまかせ＝ノーストレス）。
+  // ★M1：ボス・フロアの主はクライマックス＝手で遊ぶ（オート不可）。雑魚のオートは利便として残す。
+  if (!(b.boss || b.nushi)) {
+    const autoBar = el("button", "rpg-autobtn" + (b.auto ? " on" : ""), b.auto ? "🤖 オートでたたかい中（タップで手動にもどる）" : "🤖 オートでたたかう");
+    autoBar.onclick = () => rpgToggleBtlAuto();
+    panel.appendChild(autoBar);
+  } else if (b.phase === "cmd") {
+    panel.appendChild(el("div", "rpg-nomanual", `${b.boss ? "🎡 ボス戦" : "👑 主との勝負"}は手で戦おう！`));
+  }
 
   // ── ワンタップ・アクションデッキ（多段メニュー廃止＝技も道具も1タップ）
   const cmd = el("div", "rpg-deck");
@@ -2381,9 +2453,11 @@ function rpgRenderBattle(app) {
       const can = d.mp >= sk.mp && !sealed;
       const adv = sk.el !== "heal" && known.indexOf(sk.el) >= 0;
       const btn = el("button", "rpg-act el-" + sk.el + (can ? "" : " off") + (adv ? " adv" : ""));
+      // ★M1：副次効果を act-sub にアイコンで示す（氷→😵ぐったり等）＝図鑑を開かずとも搦め手が分かる。
+      const riderIc = sk.rider ? RPG_STATUS[sk.rider.status].ic : (sk.cleanse ? "✨" : "");
       btn.innerHTML = (adv ? `<span class="act-weak">弱点!</span>` : "") +
         `<span class="act-ic">${RPG_ELEM_IC[sk.el]}</span><span class="act-n">${sk.n}</span>` +
-        `<span class="act-sub">${sealed ? "🍙封じ" : (sk.el === "heal" ? "回復" : RPG_ELEM[sk.el])}${sk.mp ? " MP" + sk.mp : ""}</span>`;
+        `<span class="act-sub">${sealed ? "🍙封じ" : (sk.el === "heal" ? "回復" : RPG_ELEM[sk.el])}${riderIc}${sk.mp ? " MP" + sk.mp : ""}</span>`;
       btn.disabled = !can; btn.onclick = () => rpgUseSkill(id);
       skl.appendChild(btn);
     });
@@ -2397,6 +2471,9 @@ function rpgRenderBattle(app) {
     });
     const guard = el("button", "rpg-act guard", `<span class="act-ic">🛡️</span><span class="act-n">まもる</span><span class="act-sub">被ダメ半減</span>`); guard.onclick = () => rpgGuard();
     sub.appendChild(guard);
+    // ★M1 ためる：次の一撃×2.2（1ターン無防備）。ためた状態は光らせて分かるように。
+    const charge = el("button", "rpg-act charge" + (b.charged ? " on" : ""), `<span class="act-ic">✊</span><span class="act-n">ためる</span><span class="act-sub">${b.charged ? "ためた！" : "次撃×2.6"}</span>`); charge.onclick = () => rpgCharge();
+    sub.appendChild(charge);
     const flee = el("button", "rpg-act flee" + (b.boss ? " off" : ""), `<span class="act-ic">🏃</span><span class="act-n">にげる</span><span class="act-sub">${b.boss ? "不可" : "離脱"}</span>`); flee.disabled = !!b.boss; flee.onclick = () => rpgFlee();
     sub.appendChild(flee);
     cmd.appendChild(sub);
@@ -2405,7 +2482,7 @@ function rpgRenderBattle(app) {
   scr.appendChild(panel);
   app.appendChild(scr);
   // オート進行ループ（cmd時に次の手を自動で。手動タップが割り込んでもOK）
-  if (b.auto && b.phase === "cmd" && !RPG.busy) { clearTimeout(RPG._btlAutoT); RPG._btlAutoT = setTimeout(rpgAutoBattleTick, 430); }
+  if (b.auto && !(b.boss || b.nushi) && b.phase === "cmd" && !RPG.busy) { clearTimeout(RPG._btlAutoT); RPG._btlAutoT = setTimeout(rpgAutoBattleTick, 430); }
 }
 function rpgBackBtn() { const b = el("button", "rpg-cmdbtn back", "<b>↩ もどる</b>"); b.onclick = () => rpgCmdBack(); return b; }
 
