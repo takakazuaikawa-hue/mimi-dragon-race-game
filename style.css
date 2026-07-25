@@ -6764,6 +6764,20 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-showcase-item b { font-size:13.5px; color:#fff3e0; }
 .rpg-showcase-item small { font-size:10.5px; color:#cbb89a; }
 .rpg-showcase-item:active { border-color:#ffd76a; box-shadow:0 0 12px rgba(255,200,90,.4); }
+
+/* ★M3 エレベーター3ドア択 */
+.rpg-elev-ov { position:fixed; inset:0; z-index:230; display:flex; align-items:center; justify-content:center; }
+.rpg-elev-bd { position:absolute; inset:0; background:rgba(8,10,18,.78); backdrop-filter:blur(3px); }
+.rpg-elev-card { position:relative; width:min(94vw,430px); background:linear-gradient(180deg,#1c2230,#141826);
+  border:1px solid rgba(150,180,220,.32); border-radius:18px; padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.55); }
+.rpg-elev-h { font-size:15px; font-weight:900; color:#dce8f6; text-align:center; margin-bottom:12px; }
+.rpg-elev-doors { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+.rpg-elev-door { display:flex; flex-direction:column; align-items:center; gap:5px; padding:14px 6px; min-height:110px; cursor:pointer;
+  border:1px solid rgba(150,180,220,.3); border-radius:14px; background:linear-gradient(180deg,rgba(60,72,98,.55),rgba(36,44,64,.55)); color:#e6eef8; }
+.rpg-elev-door .rpg-elev-ic { font-size:30px; }
+.rpg-elev-door b { font-size:13px; color:#fff; }
+.rpg-elev-door small { font-size:10px; color:#a8b6cc; line-height:1.35; text-align:center; }
+.rpg-elev-door:active { border-color:#8fc0ff; box-shadow:0 0 14px rgba(120,180,255,.4); transform:translateY(1px); }
 .rpg-act.adv { border-color:rgba(255,228,94,.9); box-shadow:0 0 0 2px rgba(255,228,94,.7), 0 3px 0 rgba(0,0,0,.35); }
 .rpg-act .act-weak { position:absolute; top:-1px; right:-1px; background:#ffe45e; color:#3a2a06; font-size:9px; font-weight:900; padding:1px 6px; border-radius:0 12px 0 10px; }
 .rpg-act.ult.full { grid-column:1/-1; min-height:58px; background:linear-gradient(135deg,#b9892f,#ffd86a,#b9892f); color:#3a2706; flex-direction:row; gap:8px;

@@ -446,11 +446,14 @@ function rpgGoUp() {
   if (RPG.fi + 1 >= RPG_FLOORS.length) { renderMallRpg(); return; }
   // ★M2：未精算ワゴンがあるなら、上る前に「精算 or 積み増し」を問う（プッシュ・ユア・ラック）。
   if ((RPG.wagon || 0) > 0 && !RPG._wagonChoosing) { rpgWagonPrompt(); return; }
-  RPG._wagonChoosing = false;
+  // ★M3：エレベーターで3つの扉から1つ選ぶ（フロア間の小さな駆け引き）。
+  if (!RPG._elevChoosing) { rpgElevPrompt(); return; }
+  RPG._wagonChoosing = false; RPG._elevChoosing = false;
   RPG.busy = true; rpgSfx("nav");
   const ni = RPG.fi + 1, nm = rpgFloorMeta(ni);
   rpgFx.floorCard(nm.name, rpgGoalCardSub(nm), nm.accent, () => {
     rpgLoadFloor(ni);
+    if (RPG._elevMob) { RPG.grace = 0; RPG._elevMob = false; }   // ★M3 団体様＝次の階はすぐ戦闘
     rpgLog(`🛗 ${rpgFloorMeta(RPG.fi).name} に上ってきた！`, "good");
     RPG.busy = false;
     renderMallRpg();
@@ -488,6 +491,73 @@ function rpgWagonPrompt() {
     rpgLog(`📈 精算せず積み増した＝🛒未精算 🪙${RPG.wagon.toLocaleString("ja-JP")}（気絶で全部失う）。`, "");
     proceed();
   };
+}
+
+// =========================================================================
+// ★M3 エレベーター3ドア択（docs/MINIGAME_LEVELUP_DIRECTIVE §4.2-D）
+// =========================================================================
+// フロア間の移動を「3つの扉から1つ選ぶ」小さな駆け引きにする。既存の階段構造は温存し、
+// 階段→（ワゴン精算）→エレベーター3ドア→次フロア、と差し込むだけ（作り直さない）。
+// hint＝選ぶ前のうっすらした気配（StSの「自分が何に耐えられるか」を問う）。
+const RPG_ELEV_DOORS = [
+  { k: "rest",   ic: "☕", n: "ラウンジ",     hint: "コーヒーの香りがする…",   fl: "座って全回復＋🔕お香" },
+  { k: "loot",   ic: "🎁", n: "ワゴンセール", hint: "何かが山積みだ…",         fl: "掘り出し物（ときどき衣装）" },
+  { k: "polish", ic: "✨", n: "みがき処",     hint: "いい香りがする…",         fl: "✨みがき＋小遣い" },
+  { k: "event",  ic: "❓", n: "ハプニング",   hint: "ざわざわしている…",       fl: "モールの珍事" },
+  { k: "mob",    ic: "⚔️", n: "団体様",       hint: "人の熱気を感じる…",       fl: "🎟️＋次の階はすぐ戦闘" }
+];
+function rpgRollElevDoors() {
+  const pool = RPG_ELEV_DOORS.slice(), picked = [];
+  for (let i = 0; i < 3 && pool.length; i++) picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  return picked;
+}
+function rpgElevPrompt() {
+  const doors = RPG._elevDoors = rpgRollElevDoors();
+  document.querySelectorAll(".rpg-elev-ov").forEach(n => n.remove());
+  const ov = document.createElement("div");
+  ov.className = "rpg-elev-ov";
+  let cards = doors.map(dr => `<button class="rpg-elev-door" data-k="${dr.k}"><span class="rpg-elev-ic">${dr.ic}</span><b>${dr.n}</b><small>${dr.hint}</small></button>`).join("");
+  ov.innerHTML =
+    '<div class="rpg-elev-bd"></div>' +
+    '<div class="rpg-elev-card">' +
+      '<div class="rpg-elev-h">🛗 ' + (RPG.fi + 2) + 'F へ — どの扉を開ける？</div>' +
+      '<div class="rpg-elev-doors">' + cards + '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  ov.querySelectorAll(".rpg-elev-door").forEach(btn => btn.onclick = () => { ov.remove(); rpgElevPick(btn.getAttribute("data-k")); });
+}
+function rpgElevPick(k) {
+  const d = rpgData();
+  if (k === "rest") {
+    d.hp = d.maxhp; d.mp = d.maxmp; d.items.calm = (d.items.calm || 0) + 1;
+    rpgSfx("unlock"); rpgFx.banner("☕ ひと休み", "victory"); rpgLog("☕ ラウンジで一息。HP/MP全回復＋🔕静けさのお香×1。", "good");
+  } else if (k === "loot") {
+    const g = 40 + RPG.fi * 30; rpgGainGold(g); let ex = "";
+    if (Math.random() < 0.3) { const o = rpgGrantOutfit("c"); if (o) ex = `・衣装「${o.name}」`; }
+    rpgSfx("coin"); rpgFx.banner("🎁 掘り出し物！", "more"); rpgLog(`🎁 ワゴンセールで 🪙+${g}（ワゴンへ）${ex}`, "good");
+  } else if (k === "polish") {
+    d.rep = (d.rep || 0) + 3; const g = 20 + RPG.fi * 15; rpgGainGold(g);
+    rpgSfx("unlock"); rpgFx.banner("✨ みがいた！", "more"); rpgLog(`✨ みがき処で ✨みがき+3・🪙+${g}（ワゴンへ）。`, "good");
+  } else if (k === "event") {
+    rpgElevEvent();
+  } else if (k === "mob") {
+    d.tickets = (d.tickets || 0) + 1; RPG._elevMob = true;
+    rpgSfx("nav"); rpgFx.banner("⚔️ 団体様！", "more"); rpgLog("⚔️ 団体様のご案内。🎟️+1。次の階は人だかり＝すぐ戦闘になる。", "good");
+  }
+  RPG._elevChoosing = true; rpgSave(); rpgGoUp();
+}
+// ハプニング＝mall_express.js の MEX_EVENTS を再利用（コメディ・声表準拠・表示専用）。
+function rpgElevEvent() {
+  const d = rpgData();
+  const pool = (typeof MEX_EVENTS !== "undefined") ? MEX_EVENTS : null;
+  if (!pool || !pool.length) { const g = 30 + RPG.fi * 20; rpgGainGold(g); rpgLog(`❓ モールの珍事で 🪙+${g}。`, "good"); return; }
+  const e = pool[Math.floor(Math.random() * pool.length)];
+  if (e.eff === "heal") d.hp = Math.min(d.maxhp, d.hp + (e.n || 12));
+  else if (e.eff === "gold") rpgGainGold(e.n || 40);
+  else if (e.eff === "hp") d.hp = Math.max(1, d.hp + (e.n || 0));
+  else if (e.eff === "buff") d.items.calm = (d.items.calm || 0) + 1;
+  rpgSfx("unlock"); rpgFx.banner(`${e.ic} ${e.t}`, "more");
+  rpgLog(`${e.ic} ${e.t}：${e.body} ${e.mimi || ""}`, "good");
 }
 function rpgLog(t, cls) { if (!RPG) return; RPG.log.unshift({ t, cls: cls || "" }); RPG.log = RPG.log.slice(0, 5); }
 
