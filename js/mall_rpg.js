@@ -530,6 +530,7 @@ function rpgElevPick(k) {
   const d = rpgData();
   if (k === "rest") {
     d.hp = d.maxhp; d.mp = d.maxmp; d.items.calm = (d.items.calm || 0) + 1;
+    if (typeof FieldStats !== "undefined") FieldStats.bump("mallLoungeRests");   // ★K1 茶道の実地（座って息を整える）
     rpgSfx("unlock"); rpgFx.banner("☕ ひと休み", "victory"); rpgLog("☕ ラウンジで一息。HP/MP全回復＋🔕静けさのお香×1。", "good");
   } else if (k === "loot") {
     const g = 40 + RPG.fi * 30; rpgGainGold(g); let ex = "";
@@ -540,6 +541,7 @@ function rpgElevPick(k) {
     rpgSfx("unlock"); rpgFx.banner("✨ みがいた！", "more"); rpgLog(`✨ みがき処で ✨みがき+3・🪙+${g}（ワゴンへ）。`, "good");
   } else if (k === "event") {
     rpgElevEvent();
+    if (typeof FieldStats !== "undefined") FieldStats.bump("mallHelpChoices");   // ★K1 ボランティアの実地（モールの困りごとに関わる）
   } else if (k === "mob") {
     d.tickets = (d.tickets || 0) + 1; RPG._elevMob = true;
     rpgSfx("nav"); rpgFx.banner("⚔️ 団体様！", "more"); rpgLog("⚔️ 団体様のご案内。🎟️+1。次の階は人だかり＝すぐ戦闘になる。", "good");
@@ -652,6 +654,7 @@ function rpgForward(sign) {
   const nx = RPG.px + f[0] * sign, ny = RPG.py + f[1] * sign;
   if (rpgIsWall(rpgCell(nx, ny))) { rpgLog("🧱 壁だ。", ""); renderMallRpg(); return; }
   RPG.px = nx; RPG.py = ny; RPG.steps++;
+  if (typeof FieldStats !== "undefined") FieldStats.bump("mallSteps");   // ★K1 ジムの実地（歩き回る）
   RPG.explored[nx + "," + ny] = 1;
   RPG._stepFx = sign > 0 ? "fwd" : "back";
   rpgSfx("tick");
@@ -989,7 +992,7 @@ function rpgUseSkill(id) {
       let tag = "";
       if (weakHit) { tag = " 弱点!"; b.combo = (b.combo || 0) + 1; rpgGoalBump("weak", 1);
         const hh = 5 + Math.floor(d.lv * 0.8); d.hp = Math.min(d.maxhp, d.hp + hh); const pp = rpgPlayerPt(); rpgFx.spot(pp.x, pp.y - 16, "+" + hh, "heal");   // 弱点ヒット＝巧く戦うと回復（反射タイミングではなく戦略）
-        if (rpgCodexLearn(tgt.id, sk.el)) rpgBLog(`📖 ${tgt.ref.n}の弱点「${RPG_ELEM[sk.el]}」を見つけた！`, "good"); }
+        if (rpgCodexLearn(tgt.id, sk.el)) { rpgBLog(`📖 ${tgt.ref.n}の弱点「${RPG_ELEM[sk.el]}」を見つけた！`, "good"); if (typeof FieldStats !== "undefined") FieldStats.bump("mallCodex12"); } }   // ★K1 読書会の実地（弱点を覚える）
       else if (mult === 0.5) tag = " 耐性…";
       rpgBLog(`${RPG_ELEM_IC[sk.el]} ${sk.n}！ ${tgt.ref.n}に${dmg}ダメージ${tag}`, weakHit ? "good" : "");
       rpgSfxV(weakHit ? "win" : "tick");
@@ -997,14 +1000,14 @@ function rpgUseSkill(id) {
       if (weakHit) rpgFx.banner("WEAK!", "weak");
       // ★M1：ためた一撃が決まった＝ヨガの実地稽古(§6.5 mallCharges)。演出も出す。
       if (wasCharged && dmg > 0) { rpgFx.banner("💥 ためた一撃！", "more");
-        try { const fs = state.player.fieldStats || (state.player.fieldStats = {}); fs.mallCharges = (fs.mallCharges || 0) + 1; } catch (e) {} }
+        if (typeof FieldStats !== "undefined") FieldStats.bump("mallCharges"); }   // ★K1 ヨガの実地（ためる呼吸）
       // ★M1：属性技の搦め手（生きている敵に確率20%で状態異常）＝弱点一辺倒でない読み合い。
       if (tgt.hp > 0 && sk.rider && Math.random() < sk.rider.chance) {
         rpgEnemyAfflict(tgt, sk.rider.status, sk.rider.dur);
         rpgBLog(`${RPG_STATUS[sk.rider.status].ic} ${tgt.ref.n}は${RPG_STATUS[sk.rider.status].n}になった！`, "good");
         rpgFx.banner(RPG_STATUS[sk.rider.status].ic + " " + RPG_STATUS[sk.rider.status].n, "more");
       }
-      if (tgt.hp <= 0) { tgt.alive = false; tgt._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfxV("coin"); rpgFx.spot(ep.x, ep.y - 34, tourist ? "満足♪" : "撃破！", "weak"); rpgFx.shakeApp();
+      if (tgt.hp <= 0) { tgt.alive = false; tgt._deadAt = (typeof performance !== "undefined" ? performance.now() : Date.now()); b.combo = (b.combo || 0) + 1; const tourist = tgt.ref.kind === "tourist"; if (tourist && typeof FieldStats !== "undefined") FieldStats.bump("mallSatisfied");   /* ★K1 英会話の実地（観光客をもてなす） */ rpgBLog(`${tourist ? "😌" : "💥"} ${tgt.ref.n}${tourist ? "は満足して帰っていった！" : "を倒した！"}`, "good"); rpgSfxV("coin"); rpgFx.spot(ep.x, ep.y - 34, tourist ? "満足♪" : "撃破！", "weak"); rpgFx.shakeApp();
         if (tgt.ref.nushi) { RPG._nushiBeat = RPG._nushiBeat || {}; RPG._nushiBeat[RPG.fi] = 1; rpgFx.banner("👑 主を討伐！", "victory"); rpgSfx("unlock"); rpgBLog(`👑 フロアの主「${tgt.ref.n}」を討伐！ ✨評判UP`, "win"); RPG.runMissions = (RPG.runMissions || 0) + 1; } }
       if ((b.combo || 0) >= 3) rpgFx.banner("COMBO ×" + b.combo, "more");
     }
@@ -1423,6 +1426,7 @@ function rpgHaggle(id) {
   else if (r < 0.85) { mul = 1.0; msg = "うーん、これ以上はごめんなさいね？"; tag = "渋い顔…"; cls = "miss"; rpgSfx("tick"); }
   else               { mul = 1.1; msg = "あらあら、強気ですこと！ むしろ正規で、ね？"; tag = "ちょい高め…"; cls = "bad"; rpgSfx("tick"); }
   RPG._haggle[id] = { mul: mul }; RPG._shopMsg = msg;
+  if (mul < 1 && typeof FieldStats !== "undefined") FieldStats.bump("mallHaggleWins");   // ★K1 投資懇談会の実地（値切り成功）
   const np = rpgItemPrice(it), sv = it.price - np;   // 浮いた額（マイナスなら強気で割高）を明示
   rpgFx.banner(tag + (sv > 0 ? ` −${fmtCoins(sv)}` : (sv < 0 ? ` +${fmtCoins(-sv)}` : "")), cls);
   renderMallRpg();
@@ -1452,6 +1456,7 @@ function rpgShopFloorReward(fi) {
   if (d.shopDone[fi]) return;
   d.shopDone[fi] = true;
   d.tickets = (d.tickets || 0) + 1; d.rep = (d.rep || 0) + 5;
+  if (/グルメ|フード/.test(rpgFloorMeta(fi).name) && typeof FieldStats !== "undefined") FieldStats.bump("mallFoodComp");   // ★K1 料理教室の実地（フードコートを制覇）
   const nm = rpgFloorMeta(fi).name.replace(/ .*/, "");
   rpgFx.banner(`🎀 ${nm} お買い物マスター！`, "victory");
   if (RPG) { RPG._shopMsg = `${nm}の品をぜんぶ！ さすがミミ様♪ ごほうびですわ`; rpgLog(`🎀 ${nm} コンプリート！ ごほうび 🎟️+1・✨+5`, "win"); }

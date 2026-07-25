@@ -294,8 +294,9 @@ function pgOpen(spotId, onDone) {
       var st = stars;
       var rare = _pgRun ? _pgRun.rareGot : null;
       var compOk = _pgRun ? _pgRun.composeOk : false;
+      var inSeason = _pgRun ? _pgRun.inSeason : false;
       pgStop();
-      if (onDone) onDone(st, { composeOk: compOk, shutterKey: j.key, rare: rare });
+      if (onDone) onDone(st, { composeOk: compOk, shutterKey: j.key, rare: rare, inSeason: inSeason });
     };
     ov.querySelector('[data-act="ok"]').onclick = finish;
     ov.querySelector('[data-act="retry"]').onclick = function () {

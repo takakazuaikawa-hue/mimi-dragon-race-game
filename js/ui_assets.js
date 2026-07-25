@@ -300,6 +300,8 @@ function _shihanOf(skillId) {
 // 完全な表示専用メタ進行。コイン・資産・着順・オッズ・配当には一切触れない。
 function renderActiveSkills() {
   state.ui.screen = "active_skills";
+  // ★K1：師範と出会った章で画面を開いたら、積んでいた実地経験を「開花」させる（fail-closed）。
+  if (typeof fieldBloom === "function") fieldBloom();
   if (!state.player.activeSkills) state.player.activeSkills = {};
   const as = state.player.activeSkills;
   const app = beginScreen();
@@ -352,7 +354,9 @@ function renderActiveSkills() {
     const lv = Math.min(as[s.id] || 0, max);
     const maxed = lv >= max;
     const isEq = eq === s.id;
-    const dots = Array.from({ length: max }, (_, i) => `<span class="askill-dot${i < lv ? " on" : ""}"></span>`).join("");
+    // ★K1：実地で上げたレベルは金ドット（遊びで身についた分が一目で分かる）。左詰めで実地→月謝の順に塗る。
+    const _gold = (typeof fieldGoldDots === "function") ? Math.min(fieldGoldDots(s.id), lv) : 0;
+    const dots = Array.from({ length: max }, (_, i) => `<span class="askill-dot${i < lv ? (i < _gold ? " on field" : " on") : ""}"></span>`).join("");
     const card = el("div", "askill" + (maxed ? " maxed" : "") + (isEq ? " equipped" : ""));
     // K3-A4: 師範チップ（登場章前は？？？＝誰に教わるかも物語の楽しみ）
     const _m = (typeof _shihanOf === "function") ? _shihanOf(s.id) : null;
@@ -369,6 +373,8 @@ function renderActiveSkills() {
         `<span class="askill-lv">${maxed ? "極" : "Lv" + lv}</span>` +
       `</div>` +
       `<div class="askill-dots">${dots}</div>` +
+      // ★K1 実地の由来（遊びで上がった分がある時だけ・金色）
+      (_gold > 0 ? `<div class="askill-field">✨ 実地で ${_gold} つ上達（遊びの成果）</div>` : "") +
       `<div class="askill-effect">${maxed
         ? `🏅 称号「${s.title}」を獲得！`
         : !_shihanMet ? `師範とまだ出会っていない。` : (lv > 0 ? s.levels[lv - 1] : "まだ通っていない。")}</div>` +

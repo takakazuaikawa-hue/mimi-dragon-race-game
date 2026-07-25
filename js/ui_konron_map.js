@@ -536,6 +536,14 @@ function _kmStartShoot(id) {
       if (stars > prev) ps[id] = stars;            // ベスト更新
       // 傑作の累計（旅ノート/SNS/日報が後で拾う・表示専用メタ）
       if (stars >= 3 && prev < 3) kz.masterpieces = (kz.masterpieces || 0) + 1;
+      // ★K1 撮影連動の実地稽古（スポットのカテゴリ・見頃に応じて習い事が上達）
+      if (typeof FieldStats !== "undefined") {
+        const s = KONRON_SPOTS[id] || {};
+        if (s.cat === "port" && stars >= 2) FieldStats.bump("tourStar2Port");           // 英会話
+        if (id === "left_wing" && stars >= 2) FieldStats.bump("tourEconSpot");          // 投資
+        if ((s.cat === "onsen" || /茶屋|茶処/.test(s.name || "")) && stars >= 3) FieldStats.bump("tourTeaMaster");   // 茶道
+        if (s.cat === "view" && detail && detail.inSeason) FieldStats.bump("tourViewShots");   // ヨガ（見頃の絶景）
+      }
       // ★T2 幻の一枚：撮れたら図鑑バッジ（種類ごとに1回・再訪の動機）＋トースト
       if (detail && detail.rare) {
         const rp = kz.raresPhoto || (kz.raresPhoto = {});
@@ -718,6 +726,13 @@ function _kmRenderPanel() {
         if (_stampNew) { if (typeof saveGame === "function") saveGame(); }
         // ★初訪問＝到着ミニVN（ガイドとの掛け合い・スポット写真を背景に）。パネル描画後に少し遅らせて再生。
         if (_stampNew) { const _aid = _kmSpot, _as = s; setTimeout(() => _kmPlayArrival(_aid, _as, _as.cat), 420); }
+        // ★K1 初訪問の実地稽古（高所エリア＝ジム／civic＝ボランティア／読み物あり＝読書会）
+        if (_stampNew && typeof FieldStats !== "undefined") {
+          const _ar = _kmAreaOf(_kmSpot);
+          if (_ar && (_ar.id === "cliff" || _ar.id === "falls")) FieldStats.bump("tourHighSpots");
+          if (s.cat === "civic") FieldStats.bump("tourCivic");
+          if (typeof konronContentOf === "function" && konronContentOf(_kmSpot)) FieldStats.bump("tourGuideRead");   // その土地の読み物に触れた
+        }
       } catch (e) {}
     }
     panel.style.setProperty("--kmc", c.color);
