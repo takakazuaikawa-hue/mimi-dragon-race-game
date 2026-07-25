@@ -96,6 +96,27 @@ function check(name, ok, detail) { if (!ok) { fail++; problems.push("✗ " + nam
   check("グッド境界(300ms)", pg.pgJudgeShutter(300).key === "good" && pg.pgJudgeShutter(301).key === "miss");
 }
 
+// ── ⑥ シャッターチャンス（T2）：発生率・決定性・門番 ──
+if (typeof pg.pgRollChance === "function") {
+  let hit = 0, tot = 0, ladyLeak = false;
+  const areas = ["falls", "cliff", "sanctum", "onsen", "beach", "city", null];
+  SPOTS.forEach(id => DAYS.forEach(day => {
+    areas.forEach(ar => {
+      tot++;
+      const r = pg.pgRollChance(id, day, ar, false);   // storyOk=false（第4話前）
+      if (r) hit++;
+      if (r && r.id === "lady") ladyLeak = true;         // 門番未達で「お姉さん」が漏れてはいけない
+    });
+  }));
+  const rate = hit / tot * 100;
+  check("チャンス発生率が約" + pg.PG_CHANCE_PCT + "%", rate > pg.PG_CHANCE_PCT - 4 && rate < pg.PG_CHANCE_PCT + 4, rate.toFixed(1) + "%");
+  check("門番：第4話前は『お姉さん』が出ない", !ladyLeak);
+  // 決定性
+  const a = JSON.stringify(pg.pgRollChance("lumina", 20260715, "falls", true));
+  const b = JSON.stringify(pg.pgRollChance("lumina", 20260715, "falls", true));
+  check("チャンスは決定的（同じ日・同じ場所で同じ結果）", a === b);
+}
+
 // ── 逆向き確認（--self）：わざと壊して②③が検出するか ──
 if (process.argv.indexOf("--self") >= 0) {
   console.log("\n[self-check] わざと壊して検出されるか…");

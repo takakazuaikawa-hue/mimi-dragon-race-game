@@ -51,12 +51,40 @@ function pgDayKey(d) {
   if (!d) { var n = new Date(); d = n.getFullYear() * 10000 + (n.getMonth() + 1) * 100 + n.getDate(); }
   return d;
 }
-// FNV-1a 風の決定的ハッシュ（日付+spotId→正解アングル）。
-function pgAnswer(spotId, dayKey) {
-  var s = String(spotId) + ":" + String(dayKey);
-  var h = 2166136261;
+// FNV-1a 風の決定的ハッシュ。
+function pgHash(str) {
+  var s = String(str), h = 2166136261;
   for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0; }
-  return (h >>> 0) % PG_ANGLES.length;
+  return h >>> 0;
+}
+// 日付+spotId→正解アングル。
+function pgAnswer(spotId, dayKey) {
+  return pgHash(String(spotId) + ":" + String(dayKey)) % PG_ANGLES.length;
+}
+
+// ★T2 シャッターチャンス（docs/MINIGAME_LEVELUP_DIRECTIVE §5.3）
+// 撮影中、決定的に約12%で「！」がよぎる。うまく撮れば“幻の一枚”＝専用キャプション＋図鑑バッジ。
+// 何が出るかは教えない（余白3割）。エリア別テーブル＋「見知らぬお姉さん」は門番（第4話後）経由。
+var PG_CHANCE_PCT = 12;
+var PG_SIGHTINGS = {
+  falls:   [{ id: "wyvern",  ic: "🐉", name: "翼竜の影",       cap: "滝しぶきの向こうを、翼竜が一度だけよぎった。" }],
+  cliff:   [{ id: "wyvern",  ic: "🐉", name: "崖の翼竜",       cap: "風に乗る翼竜。崖の上、ほんの一瞬。" }],
+  sanctum: [{ id: "spirit",  ic: "✨", name: "精霊の光",       cap: "竜舎の奥、光の粒がふわりと舞った。" }],
+  onsen:   [{ id: "spirit",  ic: "✨", name: "湯けむりの精霊", cap: "湯けむりに、小さな光がまぎれていた。" }],
+  beach:   [{ id: "seadragon", ic: "🌊", name: "波間の海竜",   cap: "白波の奥で、なにか大きな影がうねった。" }],
+  _any:    [{ id: "childdragon", ic: "🐲", name: "はぐれ子竜", cap: "物陰から、子竜がちょこんと顔を出した。" }],
+  // 門番：第4話後（セレスティア＝謎のお姉さん）にだけ出る幻。
+  _story:  { id: "lady", ic: "🌙", name: "見知らぬお姉さん", cap: "ファインダーの隅に、星を映した瞳のひとが立っていた。", gate: "celestia" }
+};
+// 決定的にチャンスの有無と“何が出るか”を返す（画面なしでNode検証可能）。storyOk=門番の可否。
+function pgRollChance(spotId, dayKey, areaId, storyOk) {
+  var h = pgHash(String(spotId) + ":chance:" + String(dayKey));
+  if ((h % 100) >= PG_CHANCE_PCT) return null;
+  var pool = (PG_SIGHTINGS[areaId] || []).slice();
+  pool = pool.concat(PG_SIGHTINGS._any || []);
+  if (storyOk && PG_SIGHTINGS._story) pool = pool.concat([PG_SIGHTINGS._story]);
+  if (!pool.length) return null;
+  return pool[(h >>> 8) % pool.length];
 }
 // その日の正解と、ヒント一言。ヒントは必ず正解アングルを示すセリフを返す。
 function pgHint(spotId, dayKey) {
@@ -88,8 +116,9 @@ function pgStars(o) {
 // Node からも使えるように（検証用）
 if (typeof module !== "undefined" && module.exports) {
   module.exports = { PG_ANGLES: PG_ANGLES, PG_HINT_LINES: PG_HINT_LINES, PG_TUNE: PG_TUNE,
-                     pgDayKey: pgDayKey, pgAnswer: pgAnswer, pgHint: pgHint,
-                     pgJudgeShutter: pgJudgeShutter, pgStars: pgStars };
+                     PG_SIGHTINGS: PG_SIGHTINGS, PG_CHANCE_PCT: PG_CHANCE_PCT,
+                     pgDayKey: pgDayKey, pgHash: pgHash, pgAnswer: pgAnswer, pgHint: pgHint,
+                     pgRollChance: pgRollChance, pgJudgeShutter: pgJudgeShutter, pgStars: pgStars };
 }
 
 // =============================================================================
@@ -146,12 +175,16 @@ function pgOpen(spotId, onDone) {
   var inSeason = pgInSeason(spot);
   var guide = _pgGuideName(spot);
   var shootTx = (typeof _kmShootOf === "function") ? _kmShootOf(spotId, spot) : (spot.shoot || "");
+  // ★T2 シャッターチャンス：このスポット・この日にチャンスがあるか（門番＝第4話後のお姉さんは advisorMet）。
+  var areaId = (typeof _kmAreaOf === "function" && _kmAreaOf(spotId)) ? _kmAreaOf(spotId).id : null;
+  var storyOk = (typeof advisorMet === "function") && advisorMet("celestia");
+  var chance = pgRollChance(spotId, day, areaId, storyOk);
 
   var ov = document.createElement("div");
   ov.className = "pg-modal";
   document.body.appendChild(ov);
   _pgRun = { ov: ov, spotId: spotId, dead: false, raf: 0, phase: "compose",
-             composeOk: false, day: day, ans: hint.ans, inSeason: inSeason };
+             composeOk: false, day: day, ans: hint.ans, inSeason: inSeason, chance: chance, rareGot: null };
 
   // ─ フェーズ1：構図3択 ─
   function renderCompose() {
@@ -194,7 +227,10 @@ function pgOpen(spotId, onDone) {
         '<div class="pg-h"><b>📷 ' + spot.name + '</b><button class="pg-x" aria-label="やめる">✕</button></div>' +
         '<div class="pg-step">② シャッター！ 輪が重なった瞬間にタップ</div>' +
         '<div class="pg-view"><span class="pg-view-crop"><img src="' + src + '" alt="" style="transform:' + crop + '"></span>' +
+          // ★T2 シャッターチャンス：何が出るかは言わない（！ だけ横切る＝撮ってからのお楽しみ）
+          (_pgRun.chance ? '<span class="pg-chance">！</span>' : '') +
           '<span class="pg-target"></span><span class="pg-ring" id="pg-ring"></span></div>' +
+        (_pgRun.chance ? '<div class="pg-chance-note">✨ 何かが横切った…！ いいタイミングで撮れたら？</div>' : '') +
         '<button class="pg-shot" id="pg-shot">📸 いま！</button>';
     ov.querySelector(".pg-x").onclick = function () { pgStop(); if (onDone) onDone(0, null); };
     var ring = ov.querySelector("#pg-ring");
@@ -221,7 +257,9 @@ function pgOpen(spotId, onDone) {
       var delta = tapT - targetT;
       var j = pgJudgeShutter(delta);
       var stars = pgStars({ composeOk: _pgRun.composeOk, shutterKey: j.key, inSeason: _pgRun.inSeason });
-      if (typeof Sfx !== "undefined" && Sfx.play) Sfx.play(stars >= 3 ? "win" : "coin");
+      // ★T2：チャンスがあり、ブレていなければ（ジャスト/グッド）“幻の一枚”成立。
+      if (_pgRun.chance && j.key !== "miss") _pgRun.rareGot = _pgRun.chance;
+      if (typeof Sfx !== "undefined" && Sfx.play) Sfx.play((stars >= 3 || _pgRun.rareGot) ? "win" : "coin");
       renderResult(stars, j, delta);
     }
     shot.onclick = function () { fire(_pgNow()); };
@@ -244,6 +282,8 @@ function pgOpen(spotId, onDone) {
         '<div class="pg-verdict">' + (masterpiece ? "傑作！" : j.label) +
           (_pgRun.composeOk ? ' ・構図◎' : ' ・構図…') +
           (seasonBumped ? ' ・見頃で昇格🌟' : '') + '</div>' +
+        // ★T2 幻の一枚：撮れた時だけ現れる（撮れなかった時は何も言わない＝存在を明かさない）
+        (_pgRun.rareGot ? '<div class="pg-rare">' + _pgRun.rareGot.ic + ' 幻の一枚「' + _pgRun.rareGot.name + '」！<small>' + _pgRun.rareGot.cap + '</small></div>' : '') +
         (masterpiece ? '<div class="pg-mp-note">📣 ぴょこったーが沸いてる。載せてみる？</div>' : '') +
         '<div class="pg-result-bar">' +
           (masterpiece ? '<button class="pg-btn pg-btn--sns" data-act="sns">📣 SNSに載せる</button>' : '') +
@@ -252,8 +292,10 @@ function pgOpen(spotId, onDone) {
         '</div>';
     var finish = function () {
       var st = stars;
+      var rare = _pgRun ? _pgRun.rareGot : null;
+      var compOk = _pgRun ? _pgRun.composeOk : false;
       pgStop();
-      if (onDone) onDone(st, { composeOk: _pgRun ? _pgRun.composeOk : false, shutterKey: j.key });
+      if (onDone) onDone(st, { composeOk: compOk, shutterKey: j.key, rare: rare });
     };
     ov.querySelector('[data-act="ok"]').onclick = finish;
     ov.querySelector('[data-act="retry"]').onclick = function () {

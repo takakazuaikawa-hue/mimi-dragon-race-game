@@ -527,7 +527,7 @@ function _kmPhotoStar(id) {
 //   ・☆3＝傑作は還流（傑作カウント）＋パネル再描画で金の☆に
 function _kmStartShoot(id) {
   if (typeof pgOpen !== "function" || !id || !KONRON_SPOTS[id]) return;
-  pgOpen(id, function (stars) {
+  pgOpen(id, function (stars, detail) {
     try {
       if (!stars) return;                          // やめた（撮らなかった）＝何も起きない
       const kz = state.player.kurashi || (state.player.kurashi = {});
@@ -536,6 +536,13 @@ function _kmStartShoot(id) {
       if (stars > prev) ps[id] = stars;            // ベスト更新
       // 傑作の累計（旅ノート/SNS/日報が後で拾う・表示専用メタ）
       if (stars >= 3 && prev < 3) kz.masterpieces = (kz.masterpieces || 0) + 1;
+      // ★T2 幻の一枚：撮れたら図鑑バッジ（種類ごとに1回・再訪の動機）＋トースト
+      if (detail && detail.rare) {
+        const rp = kz.raresPhoto || (kz.raresPhoto = {});
+        const first = !rp[detail.rare.id];
+        rp[detail.rare.id] = 1;
+        if (first && typeof _kmToast === "function") _kmToast("✨ 幻の一枚「" + detail.rare.name + "」を撮った！");
+      }
       // 今日の一枚：☆2以上で達成
       if (_kmPhotoMission() === id && stars >= 2 && !_kmPmDone(id)) {
         kz.pmDay = _kmDayKey(); kz.pmSpot = id;

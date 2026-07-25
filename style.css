@@ -7225,6 +7225,15 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .pg-btn--ok { background: linear-gradient(135deg, #3a7d4f, #46b06a); color: #fff; border-color: transparent; }
 .pg-btn--sns { background: linear-gradient(135deg, #2f6fb0, #4a97d8); color: #fff; border-color: transparent; }
 /* ギャラリーの傑作金枠 */
+/* ★T2 シャッターチャンス：撮影中に「！」がよぎる＋幻の一枚 */
+.pg-chance { position:absolute; top:18%; left:-14%; font-size:26px; font-weight:900; color:#fff; z-index:3;
+  text-shadow:0 0 8px rgba(255,220,120,.9),0 2px 6px rgba(0,0,0,.7); animation:pgChanceCross 2.4s linear infinite; pointer-events:none; }
+@keyframes pgChanceCross { 0%{ left:-14%; opacity:0; } 15%{ opacity:1; } 85%{ opacity:1; } 100%{ left:110%; opacity:0; } }
+.pg-chance-note { font-size:11.5px; color:#ffe08a; text-align:center; margin-bottom:8px; }
+.pg-rare { margin:8px 0; padding:9px 11px; border-radius:11px; font-size:13px; font-weight:800; color:#fff;
+  background:linear-gradient(135deg,rgba(120,90,180,.5),rgba(70,60,130,.5)); border:1px solid rgba(180,160,230,.5); }
+.pg-rare small { display:block; font-size:11px; font-weight:600; color:#e0d6f0; margin-top:3px; }
+@media (prefers-reduced-motion: reduce) { .pg-chance { animation:none; left:44%; } }
 .kgal-master { outline: 2px solid #ffd76a; outline-offset: -2px; box-shadow: 0 0 14px rgba(255,200,90,.4); }
 .kgal-star { position: absolute; top: 4px; left: 4px; font-size: 14px; color: #ffd76a; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
 @media (prefers-reduced-motion: reduce) { .pg-masterpiece .pg-stars { animation: none; } }
