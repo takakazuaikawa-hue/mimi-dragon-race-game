@@ -6735,6 +6735,35 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-nomanual { margin:6px 0; padding:8px 10px; border-radius:10px; text-align:center; font-size:12.5px; font-weight:800;
   color:#ffd6a0; background:rgba(180,90,40,.18); border:1px solid rgba(255,170,100,.35); }
 @media (prefers-reduced-motion: reduce) { .rpg-act.charge.on { animation:none; } }
+
+/* ★M2 未精算ワゴンのHUDチップ＋目玉チップ */
+.rpg-chip.wagon { background:linear-gradient(135deg,#7a4a1a,#a8702a); color:#ffe6bf; border-color:rgba(255,190,110,.5); font-weight:800; animation:rpgpulse 1.6s ease-in-out infinite; }
+.rpg-chip.goalprize { background:rgba(210,140,60,.2); color:#ffdca6; border-color:rgba(255,190,110,.4); }
+@media (prefers-reduced-motion: reduce) { .rpg-chip.wagon { animation:none; } }
+/* ★M2 精算/積み増しの選択モーダル */
+.rpg-wagon-ov { position:fixed; inset:0; z-index:230; display:flex; align-items:center; justify-content:center; }
+.rpg-wagon-bd { position:absolute; inset:0; background:rgba(10,8,14,.74); backdrop-filter:blur(3px); }
+.rpg-wagon-card { position:relative; width:min(92vw,410px); background:linear-gradient(180deg,#2a2016,#1c150e);
+  border:1px solid rgba(255,200,120,.4); border-radius:18px; padding:18px; text-align:center; box-shadow:0 18px 50px rgba(0,0,0,.55); }
+.rpg-wagon-h { font-size:16px; font-weight:900; color:#ffe0a8; }
+.rpg-wagon-amt { font-size:30px; font-weight:900; color:#ffd76a; margin:8px 0; font-variant-numeric:tabular-nums; text-shadow:0 2px 10px rgba(255,190,70,.4); }
+.rpg-wagon-note { font-size:12px; color:#e3d3b6; line-height:1.6; margin-bottom:14px; }
+.rpg-wagon-note b { color:#ffd76a; }
+.rpg-wagon-bar { display:flex; gap:10px; }
+.rpg-wagon-btn { flex:1; display:flex; flex-direction:column; gap:3px; min-height:56px; padding:10px 8px; border:none; border-radius:12px; cursor:pointer; font-size:14px; font-weight:900; }
+.rpg-wagon-btn small { font-size:10.5px; font-weight:700; opacity:.9; }
+.rpg-wagon-btn.cash { background:linear-gradient(135deg,#3a7d4f,#46b06a); color:#fff; }
+.rpg-wagon-btn.push { background:linear-gradient(135deg,#c0642a,#e89042); color:#2a1808; }
+/* ★M2 目玉3着の選択（勝利画面） */
+.rpg-showcase { margin:10px 0; padding:12px; border-radius:14px; background:rgba(210,140,60,.12); border:1px solid rgba(255,190,110,.35); }
+.rpg-showcase-h { font-size:13.5px; font-weight:900; color:#ffdca6; text-align:center; margin-bottom:10px; }
+.rpg-showcase-grid { display:grid; grid-template-columns:1fr; gap:8px; }
+.rpg-showcase-item { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border:1px solid rgba(255,200,130,.4); border-radius:11px;
+  background:linear-gradient(135deg,rgba(80,55,25,.5),rgba(50,38,22,.5)); color:#ffe6bf; cursor:pointer; text-align:left; min-height:44px; }
+.rpg-showcase-item .sc-ic { font-size:18px; }
+.rpg-showcase-item b { font-size:13.5px; color:#fff3e0; }
+.rpg-showcase-item small { font-size:10.5px; color:#cbb89a; }
+.rpg-showcase-item:active { border-color:#ffd76a; box-shadow:0 0 12px rgba(255,200,90,.4); }
 .rpg-act.adv { border-color:rgba(255,228,94,.9); box-shadow:0 0 0 2px rgba(255,228,94,.7), 0 3px 0 rgba(0,0,0,.35); }
 .rpg-act .act-weak { position:absolute; top:-1px; right:-1px; background:#ffe45e; color:#3a2a06; font-size:9px; font-weight:900; padding:1px 6px; border-radius:0 12px 0 10px; }
 .rpg-act.ult.full { grid-column:1/-1; min-height:58px; background:linear-gradient(135deg,#b9892f,#ffd86a,#b9892f); color:#3a2706; flex-direction:row; gap:8px;

@@ -111,6 +111,8 @@ function rpgRunLedger() {
 function rpgFinishRun(reason) {
   if (!RPG) { renderMallRpg(); return; }
   if (RPG._autoT) { clearTimeout(RPG._autoT); RPG._autoT = null; RPG.auto = false; }
+  // ★M2：無事に帰る（制覇・自主撤退）ならワゴンは自動精算＝持ち帰る。気絶(lost)は rpgAfterLose で没収済み。
+  if (reason !== "lost" && (RPG.wagon || 0) > 0) { const got = rpgCashOut(); if (got > 0) rpgLog(`💰 帰り道でワゴンを精算＝🪙+${got.toLocaleString("ja-JP")}。`, "win"); }
   rpgEndRun(true);
   RPG.summary = { reason: reason, rows: rpgRunLedger(), next: rpgNextGoalText(), cleared: !!rpgData().cleared };
   RPG.mode = "summary"; RPG.battle = null; RPG.busy = false;
@@ -119,6 +121,29 @@ function rpgFinishRun(reason) {
 }
 function rpgToday() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return "x"; } }
 function rpgSave() { if (typeof saveGame === "function") saveGame(); }
+
+// =========================================================================
+// ★M2 未精算ワゴン（プッシュ・ユア・ラック／docs/MINIGAME_LEVELUP_DIRECTIVE §4.2-B）
+// =========================================================================
+// メインラン中に稼いだゴールドは、いったん「ワゴン（未精算）」に積む＝まだ財布に入っていない。
+// 各階段で「レジで精算」（確定）か「積んだまま上へ」（×WAGON_MULT/階で膨らむが、気絶で全部失う）を選ぶ。
+// レベル・図鑑・自分磨き・精算済みゴールドは絶対に失わない（規律4）。失うのは欲張った上澄みだけ。
+// ワゴンは RPG（ラン一時状態）に持たせる＝気絶で RPG ごと消える＝失う、が自然に実現する。
+const WAGON_MULT = 1.3;   // 積み増し1階ごとの倍率（§9採用値：精算派と積み増し派の期待値が拮抗＝tools/sim_mall_wagon.js）
+// ラン中のゴールド獲得はワゴンへ、それ以外（ハブ/タワー/払い戻し）は即財布へ。
+function rpgGainGold(n) {
+  if (!n) return;
+  if (RPG && !RPG.tower && (RPG.mode === "explore" || RPG.mode === "battle" || RPG.mode === "won")) {
+    RPG.wagon = (RPG.wagon || 0) + n;
+  } else { rpgData().gold += n; }
+}
+// 精算：ワゴンの中身を財布へ確定移動。
+function rpgCashOut() {
+  if (!RPG) return 0;
+  const w = RPG.wagon || 0;
+  if (w > 0) { rpgData().gold += w; RPG.wagon = 0; rpgSave(); }
+  return w;
+}
 function rpgRnd(a, b) { return a + Math.random() * (b - a); }
 function rpgPick(a) { return a[Math.floor(Math.random() * a.length)]; }
 function rpgSfx(id, rate) { try { if (window.Sfx) Sfx.play(id, rate); } catch (e) {} }
@@ -323,7 +348,9 @@ function rpgStartRun() {
     explored: {}, collected: {},
     log: [], battle: null, flash: null, auto: false,
     runKills: 0, runMissions: 0, _maxFi: 0,
+    wagon: 0,   // ★M2 未精算ゴールド（プッシュ・ユア・ラック）
   };
+  RPG.showcase = rpgRollShowcase();   // ★M2 本日の目玉3着（ラン内固定・屋上制覇で1着選んで獲得）
   RPG.snap = rpgRunSnap();   // 📦今回の冒険サマリー用の開始時スナップショット
   rpgLoadFloor(0);
   const sg = rpgUpLv("gold") * 50; if (sg) { rpgData().gold += sg; rpgLog(`👛 やりくり上手で +${sg}G で出発！`, "good"); }   // 👛やりくり上手（自分磨き）
@@ -406,7 +433,7 @@ function rpgGoalCheck() {
   const d = rpgData();
   RPG.runMissions = (RPG.runMissions || 0) + 1;   // ⭐評判の算出に反映
   const bonusG = 50 + RPG.fi * 30, bonusE = 15 + RPG.fi * 10;
-  d.gold += bonusG; d.exp += bonusE;
+  rpgGainGold(bonusG); d.exp += bonusE;   // ★M2：ミッション報酬もワゴンへ
   d.records = d.records || {}; d.records.missions = (d.records.missions || 0) + 1;
   d.best.missionsDone = d.best.missionsDone || {}; d.best.missionsDone[RPG.fi] = true;
   (RPG.battle ? rpgBLog : rpgLog)(`🎯 ミッション達成！「${g.label}」 ごほうび 🪙+${bonusG}・EXP+${bonusE}`, "win");
@@ -417,6 +444,9 @@ function rpgGoalCheck() {
 function rpgGoUp() {
   if (RPG.tower) { rpgTowerAscendPrompt(); return; }     // タワーは「さらに上 or 降りる」選択
   if (RPG.fi + 1 >= RPG_FLOORS.length) { renderMallRpg(); return; }
+  // ★M2：未精算ワゴンがあるなら、上る前に「精算 or 積み増し」を問う（プッシュ・ユア・ラック）。
+  if ((RPG.wagon || 0) > 0 && !RPG._wagonChoosing) { rpgWagonPrompt(); return; }
+  RPG._wagonChoosing = false;
   RPG.busy = true; rpgSfx("nav");
   const ni = RPG.fi + 1, nm = rpgFloorMeta(ni);
   rpgFx.floorCard(nm.name, rpgGoalCardSub(nm), nm.accent, () => {
@@ -425,6 +455,39 @@ function rpgGoUp() {
     RPG.busy = false;
     renderMallRpg();
   });
+}
+// ★M2 精算/積み増しの選択モーダル。ここが緊張の源＝「レジに寄るか、賭けるか」。
+function rpgWagonPrompt() {
+  const w = RPG.wagon || 0;
+  const next = Math.round(w * WAGON_MULT);
+  document.querySelectorAll(".rpg-wagon-ov").forEach(n => n.remove());
+  const ov = document.createElement("div");
+  ov.className = "rpg-wagon-ov";
+  ov.innerHTML =
+    '<div class="rpg-wagon-bd"></div>' +
+    '<div class="rpg-wagon-card">' +
+      '<div class="rpg-wagon-h">🛒 未精算のワゴン</div>' +
+      '<div class="rpg-wagon-amt">🪙 <b>' + w.toLocaleString("ja-JP") + '</b> G</div>' +
+      '<div class="rpg-wagon-note">レジに寄れば確定。積んだまま上れば次の階で <b>🪙' + next.toLocaleString("ja-JP") + 'G</b>（×' + WAGON_MULT + '）に膨らむ。<br>ただし<b>気絶すると未精算ぶんは全部パー</b>。財布のお金と持ち物は無事。</div>' +
+      '<div class="rpg-wagon-bar">' +
+        '<button class="rpg-wagon-btn cash" data-act="cash">💰 レジで精算<small>🪙' + w.toLocaleString("ja-JP") + ' を確定</small></button>' +
+        '<button class="rpg-wagon-btn push" data-act="push">📈 積んだまま上へ<small>×' + WAGON_MULT + '＝🪙' + next.toLocaleString("ja-JP") + '（危険）</small></button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  const proceed = () => { RPG._wagonChoosing = true; ov.remove(); rpgGoUp(); };
+  ov.querySelector('[data-act="cash"]').onclick = () => {
+    const got = rpgCashOut();
+    rpgSfx("coin"); rpgFx.banner("💰 精算 +🪙" + got.toLocaleString("ja-JP"), "victory");
+    rpgLog(`💰 ワゴンを精算＝🪙+${got.toLocaleString("ja-JP")} を確定した。`, "win");
+    proceed();
+  };
+  ov.querySelector('[data-act="push"]').onclick = () => {
+    RPG.wagon = Math.round((RPG.wagon || 0) * WAGON_MULT);
+    rpgSfx("nav"); rpgFx.banner("📈 積み増し ×" + WAGON_MULT, "more");
+    rpgLog(`📈 精算せず積み増した＝🛒未精算 🪙${RPG.wagon.toLocaleString("ja-JP")}（気絶で全部失う）。`, "");
+    proceed();
+  };
 }
 function rpgLog(t, cls) { if (!RPG) return; RPG.log.unshift({ t, cls: cls || "" }); RPG.log = RPG.log.slice(0, 5); }
 
@@ -446,7 +509,7 @@ function rpgFloorClear() {
   RPG._clearedFloors[RPG.fi] = 1;
   const d = rpgData();
   const g = 30 + RPG.fi * 20;                                  // 踏破ボーナス（小・上階ほど増）
-  d.gold += g;
+  rpgGainGold(g);   // ★M2：踏破ボーナスもワゴンへ
   const drop = Math.random() < (0.34 + RPG.fi * 0.05);        // 🔕お香のドロップ（上階ほど出やすい）
   if (drop) d.items.calm = (d.items.calm || 0) + 1;
   rpgFx.banner(`🏁 ${RPG.fi + 1}F 踏破！`, "victory");
@@ -1062,7 +1125,7 @@ function rpgBattleWin() {
   const combo = b.combo || 0, cmult = 1 + Math.min(combo, 25) * 0.06;
   exp = Math.round(exp * cmult); gold = Math.round(gold * cmult);
   if (b.rare) { gold = Math.round(gold * 2.5); exp = Math.round(exp * 1.5); }   // ✨おたからチャンス
-  d.exp += exp; d.gold += gold;
+  d.exp += exp; rpgGainGold(gold);   // ★M2：稼ぎはワゴン（未精算）へ。精算するまで財布に入らない
   if (RPG) RPG.runKills = (RPG.runKills || 0) + b.enemies.length;   // ⭐評判の算出に反映
   rpgGoalBump("defeat", b.enemies.length); if (b.boss) rpgGoalBump("boss", 1); rpgGoalSync();   // フロア・ミッション進捗
   if (combo > (d.records.combo || 0)) d.records.combo = combo;
@@ -1125,6 +1188,32 @@ function rpgGrantOutfit(band) {
   rpgSave();
   return o;
 }
+// ★M2 ショーウィンドウ：ラン開始時に「本日の目玉」3着を抽選（未所持・価格帯を散らす）。屋上制覇で1着選んで獲得。
+function rpgOutfitByBand(band, exclude) {
+  if (typeof OUTFITS === "undefined") return null;
+  const ranges = { c: [0, 8000], r: [8001, 30000], l: [30001, Infinity] };
+  const [lo, hi] = ranges[band] || ranges.c;
+  const pool = OUTFITS.filter(o => o.acquire && o.acquire.price != null && o.acquire.price >= lo && o.acquire.price <= hi && !outfitOwned(o) && (!exclude || exclude.indexOf(o.id) < 0));
+  return pool.length ? rpgPick(pool) : null;
+}
+function rpgRollShowcase() {
+  const ids = [];
+  ["c", "r", "l"].forEach(band => { const o = rpgOutfitByBand(band, ids); if (o) ids.push(o.id); });
+  // 価格帯が枯れて3着に満たなければ、残りをどの帯からでも補う
+  while (ids.length < 3) { const o = rpgOutfitByBand(rpgPick(["c", "r", "l"]), ids) || rpgOutfitByBand("c", ids) || rpgOutfitByBand("r", ids) || rpgOutfitByBand("l", ids); if (!o) break; ids.push(o.id); }
+  return ids;
+}
+// 目玉から1着を選んで獲得（屋上制覇の報酬・重複防止）。
+function rpgClaimShowcase(id) {
+  if (!id) return null;
+  if (!state.player.outfitsWon) state.player.outfitsWon = [];
+  if (state.player.outfitsWon.indexOf(id) >= 0) return null;   // 既に所持なら二重付与しない
+  state.player.outfitsWon.push(id);
+  const o = (typeof OUTFITS !== "undefined") ? OUTFITS.find(x => x.id === id) : { id: id };
+  if (RPG) { RPG.showcaseClaimed = true; RPG.showcasePicked = (o && o.name) || id; }
+  rpgSave();
+  return o;
+}
 
 // ── 戦闘後の遷移
 function rpgAfterWin() {
@@ -1136,6 +1225,9 @@ function rpgAfterWin() {
 function rpgAfterLose() {
   const d = rpgData();
   d.hp = Math.max(1, Math.floor(d.maxhp * 0.5));   // ソフト：気絶して入口へ（罰は軽め）
+  // ★M2：気絶で未精算のワゴンを失う（財布・レベル・図鑑・持ち物は無事＝失うのは欲張った上澄みだけ）。
+  const lost = RPG ? (RPG.wagon || 0) : 0;
+  if (lost > 0) { RPG.wagon = 0; rpgBLog(`💸 気を失って、ワゴンの🪙${lost.toLocaleString("ja-JP")}を全部ぶちまけた…！`, "bad"); }
   rpgFinishRun("lost");   // 倒れても📦今回の成果を見せる（持ち帰った物を可視化）
 }
 
@@ -1643,7 +1735,11 @@ function rpgRenderExplore(app) {
       `<span class="rpg-chip hp">❤️${d.hp}/${d.maxhp}</span>` +
       `<span class="rpg-chip mp">💧${d.mp}/${d.maxmp}</span>` +
       `<span class="rpg-chip">🪙${d.gold}</span>` +
+      // ★M2：未精算ワゴン（あるときだけ）＝リスクとリターンを1行で可視化（次の階段で×WAGON_MULT or 気絶で消失）
+      ((RPG.wagon || 0) > 0 ? `<span class="rpg-chip wagon" title="次の階段で精算/積み増しを選ぶ。気絶で失う">🛒未精算 ${RPG.wagon.toLocaleString("ja-JP")}G</span>` : "") +
       `<span class="rpg-chip">🧝Lv${d.lv}</span>` +
+      // ★M2：目玉まであと◯階（屋上=最終フロアで制覇→目玉GET）。未制覇のメインランのみ。
+      ((!RPG.tower && RPG.showcase && RPG.showcase.length && !RPG.showcaseClaimed && !d.cleared) ? `<span class="rpg-chip goalprize" title="屋上のボスを倒すと本日の目玉から1着選べる">🎁 目玉まであと${Math.max(0, (RPG_FLOORS.length - 1) - RPG.fi)}F</span>` : "") +
       ((RPG.calm || 0) > 0 ? `<span class="rpg-chip calm">🔕 平和 ${RPG.calm}歩</span>` : "") +
     `</div>`;
   const _hq = head.querySelector(".rpg-runhelp");
@@ -2505,6 +2601,23 @@ function rpgRenderWon(app) {
   if (f.outfit) {
     const o = el("div", "rpg-res-outfit rpg-rev"); o.innerHTML = `👑 衣装「${f.outfit.name}」GET！ <small>モールで着られるよ</small>`; o.style.animationDelay = d + "s"; o.setAttribute("data-sfx", "win"); o.setAttribute("data-delay", Math.round(d * 1000)); wrap.appendChild(o); d += 0.5;
   }
+  // ★M2 ショーウィンドウ：屋上制覇の褒賞＝本日の目玉3着から狙って1着を選べる（ランダムドロップと併存）。
+  if (f.boss && RPG.showcase && RPG.showcase.length && typeof OUTFITS !== "undefined") {
+    if (!RPG.showcaseClaimed) {
+      const sc = el("div", "rpg-showcase rpg-rev"); sc.style.animationDelay = d + "s";
+      let h = '<div class="rpg-showcase-h">🎁 本日の目玉！ 好きな1着を選んでGET</div><div class="rpg-showcase-grid">';
+      RPG.showcase.forEach(id => { const o = OUTFITS.find(x => x.id === id); if (!o) return; h += `<button class="rpg-showcase-item" data-oid="${id}"><span class="sc-ic">👗</span><b>${o.name}</b><small>${o.flavor || ""}</small></button>`; });
+      h += '</div>';
+      sc.innerHTML = h; wrap.appendChild(sc); d += 0.5;
+      sc.querySelectorAll(".rpg-showcase-item").forEach(btn => btn.onclick = () => {
+        const o = rpgClaimShowcase(btn.getAttribute("data-oid"));
+        if (o) { rpgSfx("win"); rpgFx.banner("👗 " + o.name + " GET!", "victory"); }
+        renderMallRpg();
+      });
+    } else if (RPG.showcasePicked) {
+      const pk = el("div", "rpg-res-outfit rpg-rev"); pk.innerHTML = `🎁 目玉から「${RPG.showcasePicked}」を選んだ！ <small>狙って手に入れた1着</small>`; pk.style.animationDelay = d + "s"; wrap.appendChild(pk); d += 0.5;
+    }
+  }
   const cont = el("button", "rpg-start rpg-next", "▶ 次へ進む"); // アニメ非依存で常に押せる
   cont.onclick = () => rpgAfterWin();
   wrap.appendChild(cont);
@@ -2615,7 +2728,7 @@ function rpgGrantReward(R) {
   if (ri >= 2 && Math.random() < 0.3) { d.tickets = (d.tickets || 0) + 1; return { rarity: R, icon: "🎟️", label: "ガチャチケット ×1" }; }
   const base = { c: 25, r: 70, sr: 180, ssr: 600, ur: 2500 }[R.id];
   const g = Math.round(base * (0.8 + Math.random() * 0.6));
-  d.gold += g;
+  rpgGainGold(g);   // ★M2：ラン中の宝箱はワゴンへ／ハブのガチャは財布へ（rpgGainGoldが文脈で振り分け）
   return { rarity: R, icon: "🪙", label: g + " ゴールド", gold: g };
 }
 
