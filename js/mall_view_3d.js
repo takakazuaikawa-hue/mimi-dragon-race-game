@@ -1,13 +1,17 @@
 // =========================================================================
-// 🕶️ モール一人称ビュー：3Dレンダラ（実証・ブラックルーム調）
-//   "黒い部屋＋ネオンの輪郭線で奥へ伸びる回廊"（クラシックな一人称DRPGの質感）。
+// 🕶️ モール一人称ビュー：3Dレンダラ（既定ON・テクスチャ質感＋ネオン輪郭）
+//   "生成テクスチャの壁/床＋ネオンの管で奥へ伸びる回廊"。
 //   外部ライブラリ無し・純キャンバスで一点透視のパース投影＝ビルド無しのまま動く。
 //
 //   差し替えの作法（docs/RENDERER_ABSTRACTION.md）に従い、mall_rpg.js は無改変。
-//   window.MallRender.backends["3d"] に登録するだけ。既定は "2d" のまま。
-//   切替：URLに ?mall3d を付ける／コンソールで mallView3D(true)／window.MALL_RENDERER="3d"
+//   window.MallRender.backends["3d"] に登録するだけ。
+//   ★既定＝"3d"（ユーザー決裁 2026-07-26）。ただし初回1秒の実測fpsが30未満なら
+//     自動で "2d" にフォールバック（性能ゲート）。手動退避は ?mall2d ／ mallView3D(false)。
 //   ※ scene は rpgBuildViewScene() の純データ（accent / dusk / openAir / sunset / ahead / cell）。
 //      数値計算には一切触れない（表示専用）。
+//
+//   テクスチャ：images/rpg/tex/<slug>_<wall|floor|ceil>.webp（512シームレス）。
+//   無い／読めない／低速端末／prefers-reduced-motion のときは**現行の単色**に自動フォールバック。
 // =========================================================================
 (function () {
   if (typeof window === "undefined") return;
@@ -15,10 +19,39 @@
   var MAXD = 5;        // 何セル先まで見えるか
   var P = 0.62;        // 透視の縮小率（1セット奥へ＝×P）
   var VY = 0.46;       // 消失点の高さ（画面比）
+  var LNP = Math.log(P);
 
   function isWall(c) { return (typeof rpgIsWall === "function") ? rpgIsWall(c) : (c === "#"); }
   function fit(cv) { if (typeof rpgFitCanvas === "function") rpgFitCanvas(cv); }
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+  // ── テクスチャ台帳 ─────────────────────────────────────────────
+  var TEX_V = "20260726a";                       // キャッシュ撃破
+  var TEX_DIR = "images/rpg/tex/";
+  // RPG_FLOORS の並び（1F..屋上）。タワー層など範囲外は "tower" を共用。
+  var TEX_SLUG = ["beach", "pool", "gourmet", "sea", "luxe", "depart", "fes", "sunset"];
+  var texCache = {};                              // key -> {img:Image|null, ok:bool}
+  var TEX_OK = true;                              // 端末側の許可（低速/reduced-motionで落とす）
+  try {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) TEX_OK = false;
+    if (navigator && navigator.deviceMemory && navigator.deviceMemory <= 2) TEX_OK = false;
+  } catch (e) {}
+
+  function texOf(floor, kind) {
+    if (!TEX_OK) return null;
+    var slug = TEX_SLUG[floor] || "tower";
+    var key = slug + "_" + kind;
+    var e = texCache[key];
+    if (e === undefined) {
+      e = texCache[key] = { img: null, ok: false };
+      var im = new Image();
+      im.decoding = "async";
+      im.onload = function () { if (im.naturalWidth > 0) { e.img = im; e.ok = true; } };
+      im.onerror = function () { e.ok = false; e.img = null; };
+      im.src = TEX_DIR + key + ".webp?v=" + TEX_V;
+    }
+    return e.ok ? e.img : null;
+  }
 
   // depth z(>=0) の「開口（セル境界）」矩形。z=0 は画面いっぱい、奥ほど小さく中心へ。
   function opening(W, H, cx, cy, z) {
@@ -40,14 +73,85 @@
     ctx.stroke(); ctx.restore();
   }
 
+  // ── 側壁テクスチャ：縦ストライプで奥行きサンプリング（レイキャスタと同系の手法）
+  //    側壁は depth dd..dd+1 の台形。画面xから s→z を逆算し、u=z-dd で texture 列を引く。
+  function texSideWall(ctx, tex, nO, fO, side, dd, W, H, cx, cy) {
+    var x0 = side < 0 ? nO.l : nO.r, x1 = side < 0 ? fO.l : fO.r;
+    var dir = x1 >= x0 ? 1 : -1, tw = tex.width, th = tex.height;
+    var step = 1, half = W * 0.5, hh = H * 0.5;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(nO[side < 0 ? "l" : "r"], nO.t); ctx.lineTo(fO[side < 0 ? "l" : "r"], fO.t);
+    ctx.lineTo(fO[side < 0 ? "l" : "r"], fO.b); ctx.lineTo(nO[side < 0 ? "l" : "r"], nO.b);
+    ctx.closePath(); ctx.clip();
+    for (var x = x0; dir > 0 ? x <= x1 : x >= x1; x += dir * step) {
+      var s = side * (x - cx) / half;
+      if (s <= 0.0001) continue;
+      var z = Math.log(s) / LNP;
+      var u = clamp(z - dd, 0, 0.9999);
+      var top = cy - hh * s, bot = cy + hh * s;
+      ctx.drawImage(tex, u * tw, 0, 1, th, x, top, step + 1, bot - top);
+    }
+    ctx.restore();
+  }
+
+  // ── 床/天井テクスチャ：横ストライプで焼き込み（サイズ×フロアでキャッシュ＝毎フレーム再計算しない）
+  var bakeCache = {};
+  function bakedPlane(W, H, cx, cy, tex, key, isFloor) {
+    var ck = key + "|" + W + "x" + H + "|" + (isFloor ? "f" : "c");
+    if (bakeCache[ck]) return bakeCache[ck];
+    var off = document.createElement("canvas"); off.width = W; off.height = H;
+    var c = off.getContext("2d");
+    var tw = tex.width, th = tex.height, half = W * 0.5, hh = H * 0.5;
+    var yEnd = isFloor ? H : 0, dirY = isFloor ? 1 : -1;
+    var y0 = isFloor ? Math.ceil(cy + hh * Math.pow(P, MAXD)) : Math.floor(cy - hh * Math.pow(P, MAXD));
+    for (var y = y0; isFloor ? y < yEnd : y > yEnd; y += dirY) {
+      var s = Math.abs(y - cy) / hh;
+      if (s <= 0.0001) continue;
+      var z = Math.log(s) / LNP;
+      var v = z - Math.floor(z);
+      var xl = cx - half * s, xr = cx + half * s;
+      c.drawImage(tex, 0, v * th, tw, 1, xl, y, xr - xl, 1);
+    }
+    bakeCache[ck] = off;
+    if (Object.keys(bakeCache).length > 24) bakeCache = {};   // 際限なく貯めない
+    return off;
+  }
+
+  // ── 性能ゲート：実測1秒ぶんが30fps未満なら2Dへ退避（1セッション1回だけ）
+  //    ★タブ非表示のときブラウザは rAF を数fpsまで絞る。その間引きコマを数えると
+  //      「速い端末なのに2Dへ落ちる」誤判定になるので、間隔500ms超のコマは捨てる。
+  var gate = { n: 0, acc: 0, last: 0, done: false, skip: 8 };
+  function fpsGate(t) {
+    if (gate.done) return;
+    if (typeof document !== "undefined" && document.hidden) { gate.last = 0; return; }
+    if (gate.skip > 0) { gate.skip--; gate.last = t; return; }   // 起動直後のジャンクは数えない
+    if (!gate.last) { gate.last = t; return; }
+    var dt = t - gate.last; gate.last = t;
+    if (dt <= 0 || dt > 500) return;                    // 中断・非表示スロットリングのコマは無視
+    gate.acc += dt; gate.n++;
+    if (gate.acc < 1000 || gate.n < 12) return;
+    gate.done = true;
+    var fps = gate.n * 1000 / gate.acc;
+    window.MALL3D_FPS = Math.round(fps * 10) / 10;
+    if (fps < 30) {
+      window.MALL_RENDERER = "2d";
+      try { console.log("[mall3d] 実測 " + window.MALL3D_FPS + "fps < 30 → 2Dビューへ自動フォールバック"); } catch (e) {}
+    }
+  }
+
   function drawDungeon3D(cv, scene, t) {
     fit(cv);
+    fpsGate(typeof t === "number" ? t : 0);
     var ctx = cv.getContext("2d");
     var W = cv.width, H = cv.height, cx = W / 2, cy = H * VY, u = W / 470;   // u=DPR込みの寸法単位
     var ac = scene.accent || [120, 160, 200];
     // ネオン強め：加算量UP＋発光(shadowBlur)/線幅を太らせ、暗い部屋の中で管が光っているように見せる
     var bright = "rgba(" + clamp(ac[0] + 112, 0, 255) + "," + clamp(ac[1] + 112, 0, 255) + "," + clamp(ac[2] + 124, 0, 255) + ",";
     var lineW = 2.1 * u, blur = 15 * u;
+    var fi = scene.floor | 0;
+    var texW = texOf(fi, "wall"), texF = texOf(fi, "floor"), texC = texOf(fi, "ceil");
+    var lit = !!texW;                       // テクスチャが載っている時は塗り/線を控えめに
 
     // ── 背景＝黒い部屋。床/天井をうっすらグラデ、消失点に微かな発光。
     ctx.clearRect(0, 0, W, H);
@@ -61,8 +165,18 @@
     sky.addColorStop(0.47, "#070910");
     sky.addColorStop(1, "rgba(" + (ac[0] * 0.10 | 0) + "," + (ac[1] * 0.12 | 0) + "," + (ac[2] * 0.16 | 0) + ",1)");
     ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    // ── 床/天井テクスチャ（焼き込み済みを1枚貼るだけ）＋奥ほど暗く落とすフォグ
+    if (texF) { ctx.save(); ctx.globalAlpha = 0.92; ctx.drawImage(bakedPlane(W, H, cx, cy, texF, "f" + fi, true), 0, 0); ctx.restore(); }
+    if (texC) { ctx.save(); ctx.globalAlpha = 0.72; ctx.drawImage(bakedPlane(W, H, cx, cy, texC, "c" + fi, false), 0, 0); ctx.restore(); }
+    if (texF || texC) {                                   // 消失点へ向かって暗くする（奥行き感）
+      var fog = ctx.createRadialGradient(cx, cy, H * 0.02, cx, cy, H * 0.72);
+      fog.addColorStop(0, "rgba(2,3,6,0.88)"); fog.addColorStop(1, "rgba(2,3,6,0)");
+      ctx.fillStyle = fog; ctx.fillRect(0, 0, W, H);
+    }
+
     var glow = ctx.createRadialGradient(cx, cy, 2 * u, cx, cy, H * 0.5);
-    glow.addColorStop(0, bright + "0.32)"); glow.addColorStop(1, "rgba(0,0,0,0)");
+    glow.addColorStop(0, bright + (lit ? "0.20)" : "0.32)")); glow.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
 
     // ── どこまで奥に壁があるか（前方の最初の壁＝行き止まり）
@@ -72,16 +186,22 @@
     // ── 行き止まりの正面壁（最も奥＝先に描く）
     if (hitFront) {
       var fo = opening(W, H, cx, cy, stop), k = 0.14 * Math.pow(0.74, stop);
-      fillQuad(ctx, [[fo.l, fo.t], [fo.r, fo.t], [fo.r, fo.b], [fo.l, fo.b]],
-        "rgb(" + (ac[0] * k | 0) + "," + (ac[1] * k | 0) + "," + (ac[2] * k | 0) + ")");
+      if (texW) {
+        ctx.drawImage(texW, 0, 0, texW.width, texW.height, fo.l, fo.t, fo.r - fo.l, fo.b - fo.t);
+        fillQuad(ctx, [[fo.l, fo.t], [fo.r, fo.t], [fo.r, fo.b], [fo.l, fo.b]],
+          "rgba(2,3,6," + (1 - Math.pow(0.72, stop)).toFixed(3) + ")");
+      } else {
+        fillQuad(ctx, [[fo.l, fo.t], [fo.r, fo.t], [fo.r, fo.b], [fo.l, fo.b]],
+          "rgb(" + (ac[0] * k | 0) + "," + (ac[1] * k | 0) + "," + (ac[2] * k | 0) + ")");
+      }
       neon(ctx, [[[fo.l, fo.t], [fo.r, fo.t]], [[fo.r, fo.t], [fo.r, fo.b]], [[fo.r, fo.b], [fo.l, fo.b]], [[fo.l, fo.b], [fo.l, fo.t]]], bright + "0.95)", lineW * 1.15, blur * 1.2);
     }
 
     // ── 床/天井の奥行きライン（消失点へ集まる回廊の格子＝ブラックルームの骨格）
     var depthN = hitFront ? stop : MAXD;
-    for (var z = 1; z <= depthN; z++) {
+    for (var z2 = 1; z2 <= depthN; z2++) {
       // 減衰カーブを緩め、奥の方まで管の光が届くように（ネオン強め）
-      var o = opening(W, H, cx, cy, z), a = 0.62 * Math.pow(0.8, z - 1);
+      var o = opening(W, H, cx, cy, z2), a = (lit ? 0.42 : 0.62) * Math.pow(0.8, z2 - 1);
       neon(ctx, [[[o.l, o.b], [o.r, o.b]]], bright + (a * 1.0).toFixed(3) + ")", 1.5 * u, 9 * u);   // 床ライン
       neon(ctx, [[[o.l, o.t], [o.r, o.t]]], bright + (a * 0.62).toFixed(3) + ")", 1.4 * u, 8 * u);  // 天井ライン
     }
@@ -90,20 +210,31 @@
     neon(ctx, [
       [[o0.l, o0.b], [oE.l, oE.b]], [[o0.r, o0.b], [oE.r, oE.b]],
       [[o0.l, o0.t], [oE.l, oE.t]], [[o0.r, o0.t], [oE.r, oE.t]],
-    ], bright + "0.58)", 1.5 * u, 9 * u);
+    ], bright + (lit ? "0.36)" : "0.58)"), 1.5 * u, 9 * u);
 
     // ── 側壁（左右）：手前0..stop-1 セル。壁のある側だけ台形で塞ぐ（無い側＝横道の暗がり）。
     for (var dd = 0; dd < (hitFront ? stop : MAXD); dd++) {
       var nO = opening(W, H, cx, cy, dd), fO = opening(W, H, cx, cy, dd + 1);
       var kk = 0.16 * Math.pow(0.72, dd);
       var wallCol = "rgb(" + (ac[0] * kk | 0) + "," + (ac[1] * kk | 0) + "," + (ac[2] * kk | 0) + ")";
+      var fogA = (1 - Math.pow(0.74, dd + 1)).toFixed(3);
       if (isWall(scene.cell(dd, -1))) {
-        fillQuad(ctx, [[nO.l, nO.t], [fO.l, fO.t], [fO.l, fO.b], [nO.l, nO.b]], wallCol);
-        neon(ctx, [[[nO.l, nO.t], [fO.l, fO.t]], [[fO.l, fO.b], [nO.l, nO.b]], [[fO.l, fO.t], [fO.l, fO.b]]], bright + (0.78 * Math.pow(0.86, dd)).toFixed(3) + ")", lineW, blur);
+        if (texW) {
+          texSideWall(ctx, texW, nO, fO, -1, dd, W, H, cx, cy);
+          fillQuad(ctx, [[nO.l, nO.t], [fO.l, fO.t], [fO.l, fO.b], [nO.l, nO.b]], "rgba(2,3,6," + fogA + ")");
+        } else {
+          fillQuad(ctx, [[nO.l, nO.t], [fO.l, fO.t], [fO.l, fO.b], [nO.l, nO.b]], wallCol);
+        }
+        neon(ctx, [[[nO.l, nO.t], [fO.l, fO.t]], [[fO.l, fO.b], [nO.l, nO.b]], [[fO.l, fO.t], [fO.l, fO.b]]], bright + ((lit ? 0.55 : 0.78) * Math.pow(0.86, dd)).toFixed(3) + ")", lineW, blur);
       }
       if (isWall(scene.cell(dd, 1))) {
-        fillQuad(ctx, [[nO.r, nO.t], [fO.r, fO.t], [fO.r, fO.b], [nO.r, nO.b]], wallCol);
-        neon(ctx, [[[nO.r, nO.t], [fO.r, fO.t]], [[fO.r, fO.b], [nO.r, nO.b]], [[fO.r, fO.t], [fO.r, fO.b]]], bright + (0.78 * Math.pow(0.86, dd)).toFixed(3) + ")", lineW, blur);
+        if (texW) {
+          texSideWall(ctx, texW, nO, fO, 1, dd, W, H, cx, cy);
+          fillQuad(ctx, [[nO.r, nO.t], [fO.r, fO.t], [fO.r, fO.b], [nO.r, nO.b]], "rgba(2,3,6," + fogA + ")");
+        } else {
+          fillQuad(ctx, [[nO.r, nO.t], [fO.r, fO.t], [fO.r, fO.b], [nO.r, nO.b]], wallCol);
+        }
+        neon(ctx, [[[nO.r, nO.t], [fO.r, fO.t]], [[fO.r, fO.b], [nO.r, nO.b]], [[fO.r, fO.t], [fO.r, fO.b]]], bright + ((lit ? 0.55 : 0.78) * Math.pow(0.86, dd)).toFixed(3) + ")", lineW, blur);
       }
     }
 
@@ -135,10 +266,15 @@
   }
   if (!register()) { var tries = 0, iv = setInterval(function () { if (register() || ++tries > 50) clearInterval(iv); }, 50); }
 
-  // ── 切替ヘルパー：?mall3d で起動時ON／コンソールから mallView3D(true/false)
-  try { if (/[?&](mall3d|view3d)(=1|=on|=true)?(&|$)/.test(location.search)) window.MALL_RENDERER = "3d"; } catch (e) {}
+  // ── 既定＝3D（決裁済）。?mall2d／?view2d で従来の2Dへ退避。?mall3d は互換のため残す。
+  try {
+    var q = location.search || "";
+    if (/[?&](mall2d|view2d)(=1|=on|=true)?(&|$)/.test(q)) window.MALL_RENDERER = "2d";
+    else window.MALL_RENDERER = "3d";
+  } catch (e) { window.MALL_RENDERER = "3d"; }
   window.mallView3D = function (on) {
     window.MALL_RENDERER = (on === false) ? "2d" : "3d";
+    if (on !== false) { gate.done = false; gate.n = 0; gate.acc = 0; gate.last = 0; gate.skip = 8; }   // 手動ONは再計測
     if (typeof renderMallRpg === "function") { try { renderMallRpg(); } catch (e) {} }
     return window.MALL_RENDERER;
   };

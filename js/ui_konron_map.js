@@ -126,15 +126,15 @@ Object.keys(KONRON_SPOTS).forEach(id => { KONRON_SPOTS[id].id = id; });
 
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
-  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 46, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro", "oyakata", "furununo", "left_wing", "ushiome_dora", "wagashi", "ura_bistro", "neko_tsuji"] },
-  { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 30, my: 22, spots: ["lumina", "lodge"] },
-  { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 33, my: 60, spots: ["racecourse", "tanryu", "rg_clock", "rg_lumina", "rg_rosso", "rg_caldera", "rg_mist", "rg_vento", "rg_notte", "rg_lapan", "oshigoods", "jogai", "ennichi", "yokukatown", "amazake_chaya", "backlot"] },
-  { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 46, my: 42, spots: ["ryusha", "dakon"] },
-  { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 46, my: 63, spots: ["uroko"] },
-  { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 77, my: 33, spots: ["kibishis", "hoshimi", "hoshikuzu"] },
-  { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 27, my: 81, spots: ["sena", "bangara", "mango"] },
-  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 60, my: 72, spots: ["hoshiuo", "ryoshimeshi", "quaybar"] },
-  { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 61, my: 27, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
+  { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 15, my: 42, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro", "oyakata", "furununo", "left_wing", "ushiome_dora", "wagashi", "ura_bistro", "neko_tsuji"] },
+  { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 31, my: 31, spots: ["lumina", "lodge"] },
+  { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 36, my: 52, spots: ["racecourse", "tanryu", "rg_clock", "rg_lumina", "rg_rosso", "rg_caldera", "rg_mist", "rg_vento", "rg_notte", "rg_lapan", "oshigoods", "jogai", "ennichi", "yokukatown", "amazake_chaya", "backlot"] },
+  { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 50, my: 39, spots: ["ryusha", "dakon"] },
+  { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 57, my: 60, spots: ["uroko"] },
+  { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 86, my: 46, spots: ["kibishis", "hoshimi", "hoshikuzu"] },
+  { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 27, my: 78, spots: ["sena", "bangara", "mango"] },
+  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 82, my: 72, spots: ["hoshiuo", "ryoshimeshi", "quaybar"] },
+  { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 72, my: 20, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
 ];
 
 // ★観光は「初勝利」で解放（進行組み込み・ユーザー確定 2026-07・docs/GAME_FLOW_REDESIGN.md §1）。
@@ -269,7 +269,7 @@ function renderKonronMap() {
   app.appendChild(_ktSectionHead("地図でさがす", "エリアのピンから、その地区のスポットと施設へ。"));
   const mapmod = el("div", "kt-mapmod");
   const stage = el("div", "km-stage");
-  stage.innerHTML = `<img class="km-mapimg" src="images/konron/island_map.webp" alt="崑崙島 観光ジオラマ地図" decoding="async">`;
+  stage.innerHTML = `<img class="km-mapimg" src="images/konron/island_map.webp?v=20260727a" alt="崑崙島 観光ジオラマ地図" decoding="async">`;
   KONRON_AREAS.forEach(a => {
     const pin = el("button", "km-areapin", `<span class="km-areapin-dot">${a.ic}</span><span class="km-areapin-lbl">${a.name}</span>`);
     pin.style.left = a.mx + "%"; pin.style.top = a.my + "%"; pin.style.setProperty("--pc", a.color);
@@ -487,7 +487,7 @@ function _kmAreaOf(spotId) { return KONRON_AREAS.find(a => a.spots.indexOf(spotI
 // bespokeな専用絵 images/konron/area_<id>.webp があれば自動で全面に差し替わる（onerrorでズーム版にフォールバック）。
 function _kmZoomBanner(area) {
   if (!area) return "";
-  return `<div class="km-zoom" style="background-image:url('images/konron/island_map.webp');background-position:${area.mx}% ${area.my}%">` +
+  return `<div class="km-zoom" style="background-image:url('images/konron/island_map.webp?v=20260727a');background-position:${area.mx}% ${area.my}%">` +
     `<img class="km-zoom-img" src="images/konron/area_${area.id}.webp?v=5" alt="" decoding="async" onload="this.classList.add('on')" onerror="this.remove()">` +
     `<span class="km-zoom-tag">🔍 ${area.name}・拡大マップ</span></div>`;
 }
