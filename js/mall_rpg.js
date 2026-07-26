@@ -1739,6 +1739,15 @@ function rpgRenderShop(app) {
   const line = rpgKeeperLine((RPG && RPG._shopMsg) ? RPG._shopMsg
     : (dealIt ? `いらっしゃいませ、ミミ様♪ 本日のおすすめは ${dealIt.ic}${dealIt.n} ですわ！` : "いらっしゃいませ、ミミ様♪ ごゆっくりどうぞ"));
   keep.innerHTML = `<div class="sk-face">💁‍♀️</div><div class="sk-bubble"><b>${rpgKeeperName()}</b><span>${line}</span></div>`;
+  // ★G1b 店主の顔：**出会った後だけ**スミカの立ち絵を出す（出会う前は匿名の「店員さん」＝顔も見せない）。
+  //   門番は rpgKeeperMet()。画像が読めた時だけ差し替える＝欠損しても絵文字のまま壊れない。
+  if (rpgKeeperMet()) {
+    const _f = keep.querySelector(".sk-face");
+    const _im = new Image();
+    _im.className = "sk-face sk-art"; _im.alt = ""; _im.decoding = "async";
+    _im.onload = () => { if (_f && _f.parentNode) _f.replaceWith(_im); };
+    _im.src = "images/rpg/fg/sumika_face.webp?v=20260727a";
+  }
   app.appendChild(keep);
 
   const head = el("div", "rpg-shop-head");

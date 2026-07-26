@@ -5464,6 +5464,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rpg-shopkeep { display:flex; align-items:flex-start; gap:9px; margin:4px 0 10px; padding:10px; border-radius:14px;
   background:linear-gradient(135deg,rgba(70,46,64,.85),rgba(48,30,46,.9)); border:1px solid rgba(255,170,210,.35); }
 .rpg-shopkeep .sk-face { font-size:34px; line-height:1; }
+/* ★G1b 店主の立ち絵（出会った後のみ＝rpgKeeperMet 判定）。画像が無ければ絵文字のまま */
+.rpg-shopkeep .sk-face.sk-art { width:46px; height:46px; flex:0 0 auto; border-radius:12px;
+  object-fit:cover; object-position:50% 16%; border:1px solid rgba(255,170,210,.45);
+  background:rgba(255,255,255,.06); }
 .rpg-shopkeep .sk-bubble { flex:1; font-size:13px; line-height:1.45; color:#ffe6f2; }
 .rpg-shopkeep .sk-bubble b { display:block; font-size:11px; color:#ffb0d4; margin-bottom:2px; }
 .rpg-shop-teaser { margin:12px 0; padding:11px 12px; border-radius:12px; line-height:1.5; font-size:13px; text-align:center;

@@ -118,6 +118,132 @@
     return off;
   }
 
+  // ── 敵の“接近する影”（G1b）─────────────────────────────────────
+  //   この迷宮の敵は**ランダムエンカウント**で、床に置かれて歩き回るわけではない。
+  //   ＝敵は必ず正面から見える。だから8方向ビルボードは要らず、既存の512透過アートを
+  //     そのまま回廊に立てれば「そこに居る」が出る。
+  //   出す窓＝rpgFx.telegraph の予兆（踏み込んでから戦闘突入までの一拍）。
+  //   まだ敵は抽選されていないので、そのフロアの出現表から1体を選んで**影**として見せる
+  //   （正体は突入後の名前カットインで割れる＝既存の流れを壊さない）。
+  var tele = null;                       // {t0, dur, id, ic}
+  var silCache = {};                     // id -> 影にした offscreen canvas
+  var warmed = {};                       // フロア別：出現表の敵アートを先読み済みか
+
+  // 予兆はわずか470ms。そこで初めて画像を読み始めると最初の数コマだけ絵文字が出て“切り替わり”が見える。
+  // フロアを描き始めた時点で出現表ぶんを読ませておく（rpgEnemyArt が内部でキャッシュする）。
+  function warmFoes(fi) {
+    if (warmed[fi]) return;
+    warmed[fi] = 1;
+    try {
+      var fl = (typeof rpgFloorMeta === "function") ? rpgFloorMeta(fi) : null;
+      if (!fl || typeof rpgEnemyArt !== "function") return;
+      (fl.foes || []).forEach(function (id) { rpgEnemyArt(id); });
+      if (fl.nushi && fl.nushi.base) rpgEnemyArt(fl.nushi.base);
+    } catch (e) {}
+  }
+
+  function silhouetteOf(id) {
+    if (silCache[id] !== undefined) return silCache[id];
+    var img = (typeof rpgEnemyArt === "function") ? rpgEnemyArt(id) : null;
+    if (!img) return null;               // まだ読めていない＝次のフレームで再挑戦（キャッシュしない）
+    var o = document.createElement("canvas");
+    o.width = img.naturalWidth || 512; o.height = img.naturalHeight || 512;
+    var c = o.getContext("2d");
+    c.drawImage(img, 0, 0, o.width, o.height);
+    c.globalCompositeOperation = "source-in";     // αを保ったまま真っ黒に塗る＝影
+    c.fillStyle = "#05070c"; c.fillRect(0, 0, o.width, o.height);
+    silCache[id] = o;
+    return o;
+  }
+  // 絵文字しか無い敵の影：ctx.filter に頼ると灰色の塊になって形が読めなかった（実測）。
+  // 絵文字を一度オフスクリーンに描いてから source-atop で暗く沈める＝輪郭が残る。
+  var emoSil = {};
+  function emojiSilhouette(ic) {
+    if (emoSil[ic]) return emoSil[ic];
+    var S = 256, o = document.createElement("canvas");
+    o.width = S; o.height = S;
+    var c = o.getContext("2d");
+    c.font = Math.round(S * 0.8) + "px serif";
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText(ic, S / 2, S * 0.54);
+    c.globalCompositeOperation = "source-atop";   // グリフの上だけ暗く（αは触らない）
+    c.fillStyle = "rgba(5,7,12,0.93)"; c.fillRect(0, 0, S, S);
+    emoSil[ic] = o;
+    return o;
+  }
+
+  function drawTele(ctx, W, H, cx, cy, u, bright, t) {
+    if (!tele) return;
+    var p = (t - tele.t0) / tele.dur;
+    if (p < 0 || p > 1) { if (p > 1) tele = null; return; }
+    var z = 3.0 - 2.85 * p;                        // 奥(3セル)から手前(0.15セル)へ一気に寄ってくる
+    var o = opening(W, H, cx, cy, z);
+    var hh = (o.b - o.t) * 0.72, cw = hh;          // 床に立つ大きさ
+    var by = o.b - (o.b - o.t) * 0.06;
+    var sil = silhouetteOf(tele.id) || (tele.ic ? emojiSilhouette(tele.ic) : null);
+    if (!sil) return;
+    ctx.save();
+    ctx.globalAlpha = 0.34 + 0.60 * p;
+    ctx.shadowColor = bright + "0.9)"; ctx.shadowBlur = (10 + 26 * p) * u;   // 逆光のふち
+    ctx.drawImage(sil, cx - cw / 2, by - hh, cw, hh);
+    ctx.restore();
+    // 足元の影（浮いて見せない）
+    ctx.save();
+    ctx.globalAlpha = 0.26 + 0.3 * p;
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.ellipse(cx, by, cw * 0.34, hh * 0.055, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+
+  // ── ミミの前景（G1b）＝一人称の画面下にミミ自身の手と紙袋。「自分がいる」感を出す。
+  //   衣装は決裁済みの leonmall 固定（指示書 §5.5）。画像が無ければ何も描かない＝壊れない。
+  var fgCache;
+  function mimiFg() {
+    if (fgCache === undefined) {
+      fgCache = null;
+      var im = new Image();
+      im.decoding = "async";
+      im.onload = function () { if (im.naturalWidth > 0) fgCache = im; };
+      im.onerror = function () { fgCache = null; };
+      im.src = "images/rpg/fg/mimi_hand.webp?v=" + TEX_V;
+    }
+    return fgCache;
+  }
+  function drawMimiFg(ctx, W, H, t) {
+    var im = mimiFg();
+    if (!im) return;
+    var h = H * 0.46, w = h * (im.naturalWidth / im.naturalHeight);
+    var bob = TEX_OK ? Math.sin(t / 1000 * 1.7) * H * 0.012 : 0;   // 歩きのゆれ（reduced-motionでは止める）
+    ctx.save();
+    ctx.globalAlpha = 0.97;
+    ctx.drawImage(im, -w * 0.06, H - h + bob, w, h);
+    ctx.restore();
+  }
+
+  // rpgFx.telegraph を包む（mall_rpg.js は無改変のまま予兆の中身を受け取るための唯一の接点）。
+  function hookTelegraph() {
+    if (typeof rpgFx === "undefined" || !rpgFx || typeof rpgFx.telegraph !== "function" || rpgFx.__tele3d) return false;
+    var orig = rpgFx.telegraph.bind(rpgFx);
+    rpgFx.telegraph = function (kind, cb) {
+      try {
+        if (window.MALL_RENDERER === "3d" && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+          var fl = (typeof rpgFloorMeta === "function" && typeof RPG !== "undefined") ? rpgFloorMeta(RPG.fi) : null;
+          var id = null;
+          if (kind === "nushi" && fl && fl.nushi) id = fl.nushi.base;
+          else if (fl && fl.foes && fl.foes.length) id = fl.foes[(Math.random() * fl.foes.length) | 0];
+          if (id) {
+            var m = (typeof RPG_MONS !== "undefined") ? RPG_MONS[id] : null;
+            tele = { t0: (typeof performance !== "undefined" ? performance.now() : 0), dur: 470, id: id, ic: m && m.ic };
+            window.MALL_TELE = tele;
+          }
+        }
+      } catch (e) { tele = null; }
+      return orig(kind, cb);
+    };
+    rpgFx.__tele3d = true;
+    return true;
+  }
+
   // ── 性能ゲート：実測1秒ぶんが30fps未満なら2Dへ退避（1セッション1回だけ）
   //    ★タブ非表示のときブラウザは rAF を数fpsまで絞る。その間引きコマを数えると
   //      「速い端末なのに2Dへ落ちる」誤判定になるので、間隔500ms超のコマは捨てる。
@@ -150,6 +276,7 @@
     var bright = "rgba(" + clamp(ac[0] + 112, 0, 255) + "," + clamp(ac[1] + 112, 0, 255) + "," + clamp(ac[2] + 124, 0, 255) + ",";
     var lineW = 2.1 * u, blur = 15 * u;
     var fi = scene.floor | 0;
+    warmFoes(fi);                                                   // 予兆に間に合わせる先読み
     var texW = texOf(fi, "wall"), texF = texOf(fi, "floor"), texC = texOf(fi, "ceil");
     var lit = !!texW;                       // テクスチャが載っている時は塗り/線を控えめに
 
@@ -253,10 +380,16 @@
       }
     }
 
+    // ── 敵の接近シルエット（予兆の一拍）＝アイコンより手前・ビネットより奥
+    drawTele(ctx, W, H, cx, cy, u, bright, (typeof t === "number" ? t : 0));
+
     // ── ビネット（縁を締めて没入）
     var vg = ctx.createRadialGradient(cx, cy, H * 0.30, cx, cy, H * 0.95);
     vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.64)");
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+    // ── ミミの手（最前面＝ビネットの上。プレイヤー自身なので暗く沈めない）
+    if (!cv._noIcons) drawMimiFg(ctx, W, H, (typeof t === "number" ? t : 0));
   }
 
   // ── レジストリへ登録（mall_rpg.js のあとに読み込まれる前提。念のため軽くリトライ）
@@ -264,7 +397,8 @@
     if (window.MallRender && window.MallRender.backends) { window.MallRender.backends["3d"] = drawDungeon3D; return true; }
     return false;
   }
-  if (!register()) { var tries = 0, iv = setInterval(function () { if (register() || ++tries > 50) clearInterval(iv); }, 50); }
+  function boot() { var a = register(), b = hookTelegraph(); return a && b; }
+  if (!boot()) { var tries = 0, iv = setInterval(function () { if (boot() || ++tries > 50) clearInterval(iv); }, 50); }
 
   // ── 既定＝3D（決裁済）。?mall2d／?view2d で従来の2Dへ退避。?mall3d は互換のため残す。
   try {
