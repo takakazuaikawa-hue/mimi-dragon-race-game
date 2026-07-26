@@ -7241,6 +7241,37 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .kgal-star { position: absolute; top: 4px; left: 4px; font-size: 14px; color: #ffd76a; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
 @media (prefers-reduced-motion: reduce) { .pg-masterpiece .pg-stars { animation: none; } }
 
+/* ★T3 竜の気配チップ（観光→スカウトの結線） */
+.km-scout-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  margin: 8px 0 2px; padding: 10px 12px; border: 1px solid rgba(120,200,150,.4); border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, rgba(30,60,45,.55), rgba(20,40,32,.55)); color: #cdeedb; font-size: 13px; font-weight: 800; }
+.km-scout-hint span { font-size: 11px; font-weight: 700; color: #8fd0aa; }
+
+/* ===== 📔 T3 旅ノート（エリアごとの記録） =====
+   ★観光は kt-page＝明るいトラベル誌トーン。暗背景用の淡色を置くと文字が沈む（実機で確認済み）ので、
+     ここは「クリーム地に濃茶インク＋金アクセント」で組む（[[design-reference-includes-background]]）。 */
+.tn-sum { background: #fdf9f0; border: 1px solid #e3cf9e; border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(90,70,30,.08); }
+.tn-sum-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: #6b5d42; padding: 3px 0; }
+.tn-sum-row b { font-size: 16px; color: #a8741a; font-variant-numeric: tabular-nums; }
+.tn-title { margin-top: 8px; padding: 8px 10px; border-radius: 10px; text-align: center; font-size: 13.5px; font-weight: 900;
+  color: #3a2a06; background: linear-gradient(135deg, #e8b64f, #ffd76a); }
+.tn-next { margin-top: 8px; font-size: 12px; color: #8a7a58; text-align: center; }
+.tn-next b { color: #a8741a; }
+.tn-area { position: relative; border: 1px solid #e6dcc4; border-left: 4px solid var(--tnc, #888);
+  border-radius: 12px; padding: 10px 12px; margin-bottom: 9px; background: #fffdf8; cursor: pointer;
+  box-shadow: 0 1px 5px rgba(90,70,30,.07); }
+.tn-area.done { border-color: #d9a441; border-left-color: #d9a441; background: #fdf3dc; }
+.tn-area-h { display: flex; align-items: center; gap: 7px; font-size: 14px; color: #4a4234; }
+.tn-area-h b { flex: 1; }
+.tn-area-ic { font-size: 16px; }
+.tn-badge { font-size: 10.5px; font-weight: 900; color: #3a2a06; background: #ffd76a; border-radius: 999px; padding: 2px 9px; }
+.tn-pct { font-size: 12px; font-weight: 800; color: #a8956d; font-variant-numeric: tabular-nums; }
+.tn-bar { height: 5px; margin: 7px 0 8px; border-radius: 99px; overflow: hidden; background: #eee4cf; }
+.tn-bar > i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--tnc, #888), #d9a441); }
+.tn-stats { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px; color: #8a7a58; }
+.tn-stats b { color: #4a4234; font-variant-numeric: tabular-nums; }
+
 /* ===== M1：次の一手チップ（島の一日ループの結線・GAME_EXPERIENCE_DESIGN §3） ===== */
 .nx-row { margin: 10px 0 2px; }
 .nx-row .nx-k { font-size: 10px; letter-spacing: .12em; color: var(--mist-soft); margin-bottom: 5px; }

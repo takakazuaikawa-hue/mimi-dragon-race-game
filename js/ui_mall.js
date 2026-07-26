@@ -227,6 +227,7 @@ function _scmFitting() {
   if (sel.acquire.free) acq = "いつでも着られる基本衣装";
   else if (sel.acquire.price != null) acq = owned ? "購入済み" : `価格 <b>${fmtCoins(sel.acquire.price)}</b>`;
   else if (sel.acquire.assets != null) acq = owned ? "解放済み" : `総資産 <b>${fmtCoins(sel.acquire.assets)}</b> で解放`;
+  else if (sel.acquire.travel) acq = owned ? "旅の証（獲得済み）" : "📔 旅ノートで<b>全エリア制覇</b>すると手に入る";   // ★T3
   else acq = "";
   info.innerHTML = `<div class="scm-fit-nm">${sel.name}</div><div class="scm-fit-fl">${sel.flavor}</div><div class="scm-fit-acq">${acq}</div>`;
   const cta = el("div", "scm-fit-cta");
@@ -284,6 +285,7 @@ function _scmShops() {
     else if (oOwned) chip = `<span class="scm-cardchip owned">所持</span>`;
     else if (o.acquire.price != null) chip = `<span class="scm-cardchip price">🪙${fmtCoins(o.acquire.price)}</span>`;
     else if (o.acquire.assets != null) chip = `<span class="scm-cardchip lock">🔒</span>`;
+    else if (o.acquire.travel) chip = `<span class="scm-cardchip lock">📔</span>`;   // ★T3 旅の証
     card.innerHTML =
       `<div class="scm-card-img${oOwned ? "" : " silhouette"}"><img alt="${o.name}" src="${outfitImg(o.id, "default")}" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">${chip}</div>` +
       `<div class="scm-card-nm">${o.name}</div>`;

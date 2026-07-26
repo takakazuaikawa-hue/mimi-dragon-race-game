@@ -202,7 +202,9 @@ const OUTFITS = [
   { id: "swimsuitHIGH",  name: "VIP水着",            flavor: "金糸あしらいのラグジュアリー水着とシャンパン。",         acquire: { price: 45000 } },
   { id: "kigurumi",      name: "遊園地",             flavor: "セイリュランドのうさぎ着ぐるみ。一日中アトラクション気分。", acquire: { price: 6000 } },
   { id: "jirai",         name: "地雷系",             flavor: "病みかわピンク×黒に量産ベア。儚げで危うい夜の装い。",   acquire: { price: 9000 } },
-  { id: "secret_sukanpin", name: "素寒貧・夜",       flavor: "あの日のボロ布を、なぜか色っぽく着崩して。総資産1億の隠し。", acquire: { assets: 100000000 } }
+  { id: "secret_sukanpin", name: "素寒貧・夜",       flavor: "あの日のボロ布を、なぜか色っぽく着崩して。総資産1億の隠し。", acquire: { assets: 100000000 } },
+  // ★T3 旅ノートの全エリア制覇でだけ手に入る記念衣装（買えない＝旅の証）。付与は _kmGrantTravelOutfit。
+  { id: "konron_photographer", name: "崑崙路の写真家", flavor: "島じゅうを歩いて撮った者だけが羽織れる旅装。ポケットには使い切ったフィルム。", acquire: { travel: true } }
 ];
 const DEFAULT_OUTFIT = "sukanpin";   // ゲーム開始当初は素寒貧（無料・新規プレイヤーの既定。既存セーブは保存済みoutfitを維持）
 
