@@ -8299,6 +8299,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .kw-title { font-size: 13.5px; font-weight: 800; color: #ffe6c0; letter-spacing: .02em; }
 .kw-beta { font-size: 10px; padding: 1px 6px; border-radius: 999px; margin-left: 4px;
   color: #2a1d05; background: #e8b94e; vertical-align: middle; }
+/* いまの島時間（_kmIslandNow と同じ刻み。歩く景色の色もこれに合わせる） */
+.kw-when { margin-left: auto; font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+  color: #ffe9c9; background: rgba(60,44,28,.7); border: 1px solid rgba(255,205,140,.35); }
 .kw-stage { position: relative; width: 100%; aspect-ratio: 3 / 4; max-height: 66vh; min-height: 260px; }
 /* 入口プロンプト（近づくと出る）／一言トースト */
 .kw-prompt, .kw-toast { position: absolute; left: 0; right: 0; top: 100%; margin-top: 6px; z-index: 3;
