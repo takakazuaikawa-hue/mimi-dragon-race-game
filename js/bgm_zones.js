@@ -17,10 +17,37 @@
     // "bgm/homebgm/ホームカントリー.mp3"
   ];
   var MALL_TRACKS = [
+    "bgm/mallbgm/mall-day.mp3",
     "bgm/mallbgm/mallでお買い物.mp3",
     "bgm/mallbgm/ドラゴンモールで爆買いバニー.mp3",
     "bgm/mallbgm/バニーガールメンタルで買い物モールは最高.mp3"
   ];
+  // ★G3-5：モールの中だけ“気分”で曲を差し替える（ボス／主の戦い＝boss、おたからチャンス＝fever）。
+  //   mall_rpg.js には触らない。下のポーリングが RPG の状態を見て切り替える＝結線は一方向で済む。
+  //   ファイルが無い／読めない時は**普段の曲のまま**（差し替えを諦める）＝置く前に入れても壊れない。
+  var MOOD_TRACKS = { boss: "bgm/mallbgm/mall-boss.mp3", fever: "bgm/mallbgm/mall-fever.mp3" };
+  var moodOk = {};                       // 実在チェックの結果（null=判定中 / true / false）
+  function probeMood(m) {
+    if (moodOk[m] !== undefined) return moodOk[m];
+    moodOk[m] = null;
+    try {
+      var a = new Audio();
+      a.preload = "metadata";
+      a.onloadedmetadata = function () { moodOk[m] = true; };
+      a.onerror = function () { moodOk[m] = false; };
+      a.src = MOOD_TRACKS[m];
+    } catch (e) { moodOk[m] = false; }
+    return moodOk[m];
+  }
+  // いまのモール内の気分。戦闘中でなければ ""（＝普段の曲）。
+  function moodOf() {
+    try {
+      if (typeof RPG === "undefined" || !RPG || RPG.mode !== "battle" || !RPG.battle) return "";
+      if (RPG.battle.boss || RPG.battle.nushi) return "boss";
+      if (RPG.battle.rare) return "fever";
+    } catch (e) {}
+    return "";
+  }
   // ホーム系ゾーン＝落ち着いた立ち寄り画面（賭け前の選択/詳細も“待ち”の時間なので含む）。
   var HOME_ZONE = {
     home: 1, race_select: 1, race_detail: 1, assets: 1, life_tree: 1, life_collection: 1,
@@ -52,26 +79,47 @@
   }
 
   var curZone = null, curTrack = null, lastScreen = null, kicked = false;
+  var curMood = "", mallBase = null;      // mallBase＝戦闘前に流れていた普段の曲（戦い終わりに戻す先）
 
   function apply(force) {
     if (typeof state === "undefined" || !state.ui) return;
     if (sceneOwnsBgm()) return;
     var z = zoneOf(state.ui.screen);
-    if (!force && z === curZone) return;
+    var mood = (z === "mall") ? moodOf() : "";
+    if (!force && z === curZone && mood === curMood) return;
     var R = window.RaceBgm;
     if (R && R.playFile) {
       if (z === "home") { curTrack = pick(HOME_TRACKS, curTrack); try { if (curTrack) R.playFile(curTrack); else R.stop(); } catch (e) {} }   // 音源が無ければ無音（停止）
-      else if (z === "mall") { curTrack = pick(MALL_TRACKS, curTrack); try { R.playFile(curTrack); } catch (e) {} }
-      else if (z === "title") { try { R.stop(); } catch (e) {} curTrack = null; }
+      else if (z === "mall") {
+        // 気分の曲が使えるならそれ。使えない／普段に戻る時は、戦闘前と同じ曲へ戻す。
+        var want = null;
+        if (mood) {
+          var ok = probeMood(mood);
+          if (ok === null) return;             // ★実在チェックがまだ＝**何も切り替えない**。
+          //   ここで普段の曲へ落とすと、判定が付いた次の瞬間に気分の曲へ跳ぶ＝一瞬だけ別の曲が挟まる
+          //   （実機のログで確認した）。答えが出るまで今の曲のまま待つ。
+          if (ok === true) want = MOOD_TRACKS[mood];
+        }
+        if (!want) {
+          if (!mallBase || curZone !== "mall") mallBase = pick(MALL_TRACKS, mallBase);
+          want = mallBase;
+          mood = "";                       // 差し替えられなかった＝気分は「普段」として憶える
+        } else if (curZone === "mall" && !curMood) {
+          mallBase = curTrack;             // いま鳴っている普段の曲を控えておく
+        }
+        if (want !== curTrack) { curTrack = want; try { R.playFile(curTrack); } catch (e) {} }
+      }
+      else if (z === "title") { try { R.stop(); } catch (e) {} curTrack = null; mallBase = null; }
       // "other"(race/ending) は audio に触れない
     }
-    curZone = z;
+    curZone = z; curMood = mood;
   }
 
-  // 画面変化をポーリングで追従（多様な遷移経路を確実に拾う・軽量）。
+  // 画面変化＋モール内の気分の変化をポーリングで追従（軽量）。
   function tick() {
     if (typeof state === "undefined" || !state.ui) return;
-    if (state.ui.screen !== lastScreen) { lastScreen = state.ui.screen; apply(false); }
+    if (state.ui.screen !== lastScreen) { lastScreen = state.ui.screen; apply(false); return; }
+    if (curZone === "mall" && moodOf() !== curMood) apply(false);   // 戦闘に入った／終わった
   }
   setInterval(tick, 600);
 
@@ -83,6 +131,9 @@
   ["pointerdown", "keydown", "touchstart"].forEach(function (ev) {
     window.addEventListener(ev, kick, { once: true, passive: true });
   });
+
+  // 気分の曲の実在チェックは**起動時に済ませておく**（戦闘が始まってから調べると判定待ちが挟まる）。
+  try { probeMood("boss"); probeMood("fever"); } catch (e) {}
 
   if (typeof window !== "undefined") window.ZoneBgm = { apply: apply, zoneOf: zoneOf };
 })();
