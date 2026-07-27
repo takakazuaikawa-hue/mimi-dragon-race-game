@@ -154,12 +154,24 @@ function rpgRenderHub2(app) {
   // ── 📖 ずかん ──
   const codex = el("details", "scmr-acc");
   let rows = "";
+  // ★G3-3/G3-6：全20種に絵がついたので、ずかんを**絵の並ぶ棚**にした（従来は文字だけだった）。
+  //   未遭遇はシルエットのまま＝出会う前に姿を明かさない。タップで回転ビューア（DexView）へ。
   RPG_TOURISTS.concat(RPG_MONSTERS_MINOR, RPG_KUNLUN, ["boss1"]).forEach(id => {
     const m = RPG_MONS[id], seen = d.codex[id];
     const w = seen && seen.weak.length ? seen.weak.map(e => RPG_ELEM_IC[e]).join("") : "？";
-    rows += `<div class="scmr-codexrow"><span>${m.ic} ${seen ? m.n : "？？？"}</span><span>弱点 ${w}</span></div>`;
+    const file = (typeof RPG_ENEMY_IMG !== "undefined") ? RPG_ENEMY_IMG[id] : null;
+    const art = file
+      ? `<img class="scmr-cx-art${seen ? "" : " unseen"}" src="images/rpg/${file}.webp" alt="" decoding="async" loading="lazy">`
+      : `<span class="scmr-cx-ic">${seen ? m.ic : "❔"}</span>`;
+    rows += `<button class="scmr-cxcard${seen ? " got" : ""}" data-dex="${id}"${seen ? "" : " disabled"}>` +
+      `<span class="scmr-cx-fig">${art}</span>` +
+      `<span class="scmr-cx-n">${seen ? m.n : "？？？"}</span>` +
+      `<span class="scmr-cx-w">弱点 ${w}</span></button>`;
   });
   codex.innerHTML = `<summary>📖 ずかん（すれちがい）</summary><div class="scmr-codex">${rows}</div>`;
+  codex.querySelectorAll("[data-dex]").forEach(b => {
+    b.onclick = () => { if (window.DexView) DexView.open(b.getAttribute("data-dex")); };
+  });
   scm.appendChild(codex);
 
   // ── 🏅 称号（やり込みの頂点。mall_rpg.js版のrpgTitles/rpgTopTitleロジックをそのまま流用・見た目だけ.scm意匠）──

@@ -8341,3 +8341,41 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .mc-fx--bloom.on { opacity: .86; }
 .mc-fx--conquer.on { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .mc-fx { display: none; } }
+
+/* =====================================================================
+   📖 ずかん＝絵の並ぶ棚（G3-3で全20種に絵がついたので文字だけをやめた）
+      ＋ 🔄 回転ビューア（js/dex_view.js・model-viewerは使えないので自前）
+   ===================================================================== */
+.scmr-codex { padding: 0 12px 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.scmr-cxcard { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 5px 8px;
+  border-radius: 12px; background: #fbf7f0; border: 1px solid var(--scm-line); cursor: pointer;
+  font: inherit; color: var(--scm-ink); text-align: center; }
+.scmr-cxcard.got { background: #fff; }
+.scmr-cxcard[disabled] { cursor: default; opacity: .82; }
+.scmr-cxcard:not([disabled]):active { transform: scale(.97); }
+.scmr-cx-fig { width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; }
+.scmr-cx-art { width: 100%; height: 100%; object-fit: contain; }
+/* 未遭遇＝真っ黒のシルエット。出会う前に姿を明かさない */
+.scmr-cx-art.unseen { filter: brightness(0) opacity(.42); }
+.scmr-cx-ic { font-size: 26px; }
+.scmr-cx-n { font-size: 10.5px; font-weight: 800; line-height: 1.25; }
+.scmr-cx-w { font-size: 10px; color: #8a7f72; }
+
+.dexv { position: fixed; inset: 0; z-index: 160; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .22s; }
+.dexv.on { opacity: 1; }
+.dexv-bd { position: absolute; inset: 0; background: rgba(10,14,20,.72); backdrop-filter: blur(2px); }
+.dexv-card { position: relative; width: min(92vw, 360px); padding: 14px; border-radius: 18px;
+  background: linear-gradient(180deg,#fffdf8,#f6efe3); border: 1px solid #e3d7c2;
+  box-shadow: 0 18px 46px rgba(0,0,0,.45); text-align: center; }
+.dexv-stage { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 14px; overflow: hidden;
+  background: radial-gradient(circle at 50% 42%, #fff 0%, #efe6d6 72%); touch-action: none; }
+.dexv-cv { width: 100%; height: 100%; display: block; }
+.dexv-hint { position: absolute; left: 0; right: 0; bottom: 6px; font-size: 10.5px; color: #9a8d7c; }
+.dexv-name { margin-top: 9px; display: flex; align-items: center; justify-content: center; gap: 7px;
+  font-size: 15px; font-weight: 800; color: #3a2f22; }
+.dexv-ic { font-size: 18px; }
+.dexv-meta { margin-top: 2px; font-size: 12px; color: #8a7f72; }
+.dexv-close { margin-top: 12px; width: 100%; padding: 10px; border: 0; border-radius: 11px; cursor: pointer;
+  font-weight: 800; font-size: 13px; color: #2a1d05; background: linear-gradient(180deg,#f0d27a,#caa24a); }
+@media (prefers-reduced-motion: reduce) { .dexv { transition: none; } }
