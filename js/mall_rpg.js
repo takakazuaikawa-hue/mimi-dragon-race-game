@@ -235,7 +235,20 @@ const RPG_ENEMY_IMG = {
   boss1:     "boss_donryu",    // 観覧車ゴーレム＝フロアボスの貫禄
   pricetag:  "en_pricetag",    // 値札ゴースト（P1-6で新設）
   coupon:    "en_coupon",      // クーポン鳥（同上）
-  maison:    "boss_maison"     // マダム・メゾン（エクスプレス3Fの専用店長・P1-7）
+  maison:    "boss_maison",    // マダム・メゾン（エクスプレス3Fの専用店長・P1-7）
+  // ★G3-3：残り11体を en_cartrat を画風アンカーに生成して納品（512透過・同じ縁取り/セル塗り）。
+  //   これで RPG_MONS 全20種に絵がついた＝戦場・HUD・図鑑・3D回廊の接近シルエットが全部絵になる。
+  selfie:    "en_selfie",      // 自撮り女子＝猫娘＋自撮り棒
+  gourmet:   "en_gourmet",     // 食べ歩き勢＝たぬきと串もの
+  stroller:  "en_stroller",    // ベビーカー隊＝母鴨の猛進
+  oldies:    "en_oldies",      // 団体のおば様＝ふくろう婆とカメラ
+  kid:       "en_kid",         // はぐれっ子＝泣きべそ仔犬と風船
+  luxe:      "en_luxe",        // ハイブランド客＝プードル夫人と紙袋
+  hula:      "en_hula",        // フラ見物客＝海亀のフラ
+  influencer:"en_influencer",  // インフルエンサー＝孔雀とリングライト
+  kowako:    "en_kowako",      // はぐれ子竜
+  shisa:     "en_shisa",       // 門番の石獅子
+  kumonosei: "en_kumonosei"    // 雲の精
 };
 // 🔊 フロア別の環境音（さざ波／ざわめき／上品なベル）。索引＝フロア番号。
 const RPG_AMB = ["amb_wave", "amb_wave", "amb_crowd", "amb_wave", "amb_chime", "amb_chime", "amb_crowd", "amb_wave"];

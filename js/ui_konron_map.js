@@ -54,16 +54,17 @@ const KONRON_SPOTS = {
   //   T0（2026-07-25）：孤児PNGを1枚ずつ検収し、世界観に合う6地域に写真を結線した
   //   （clock/rosso/mist/vento/notte/lapan）。photo を持たない地域は描画側が
   //   (open && s.photo) で分岐してエリア俯瞰図に落ちる＝壊れない。
-  //   ⚠️ rg_lumina と rg_caldera は既存PNGが世界観不一致（明るい光条→暗い霧漁村／
-  //     赤い溶岩→寒色地熱農村）で検収不合格。§7でHiggsfield再生成待ち（クレジット回復後）。
+  //   ★G3-2：rg_lumina と rg_caldera は旧PNGが世界観不一致（明るい光条→暗い霧漁村／
+  //     赤い溶岩→寒色地熱農村）で不合格だった。Higgsfieldで撮り直して結線済み
+  //     （lumina_course / caldera_course・アートバイブル§0.4準拠＝尖った活火山の峰・山頂湖なし）。
   //   region はレース側の表記そのまま。ここを変えると突き合わせが切れる。
   rg_clock:  { name: "グランドクロック大時計走路", cat: "race", tier: 0, region: "グランドクロック地域", portal: "renderRaceSelect", time: "昼", photo: "images/konron/spots/grandclock.webp",
                shoot: "真鍮の大歯車・時報の鐘・金色に光る直線", line: "島の時を刻む大時計の足元を走る。鐘が鳴ると、観客が一斉に時計を見上げる。" },
-  rg_lumina: { name: "ルミナ光条コース", cat: "race", tier: 0, region: "ルミナ地域", portal: "renderRaceSelect", time: "午前",
+  rg_lumina: { name: "ルミナ光条コース", cat: "race", tier: 0, region: "ルミナ地域", portal: "renderRaceSelect", time: "午前", photo: "images/konron/spots/lumina_course.webp",
                shoot: "空色の壁・照り返す白砂・滝から流れる霧", line: "光がよく回る谷あいの走路。影が薄く、竜の翼の色がいちばん綺麗に出る。" },
   rg_rosso:  { name: "リングロッソ闘技走路", cat: "race", tier: 1, region: "リングロッソ地域", portal: "renderRaceSelect", time: "夕", photo: "images/konron/spots/ringrosso.webp",
                shoot: "赤と黒の石壁・すり鉢状の観客席・爪跡の残る柵", line: "声が丸く溜まるすり鉢の底。歓声が倍になって返ってくる、島でいちばん熱い場所。" },
-  rg_caldera:{ name: "カルデラ火口周回路", cat: "race", tier: 1, region: "カルデラ地域", portal: "renderRaceSelect", time: "昼",
+  rg_caldera:{ name: "カルデラ火口周回路", cat: "race", tier: 1, region: "カルデラ地域", portal: "renderRaceSelect", time: "昼", photo: "images/konron/spots/caldera_course.webp",
                shoot: "溶岩の赤い照り返し・黒い砂利・立ちのぼる陽炎", line: "地面が熱を抱えたまま冷めない。下から炙られながら走る、島でもっとも過酷な走路。" },
   rg_mist:   { name: "ミストレイク湖畔走路", cat: "race", tier: 1, region: "ミストレイク地域", portal: "renderRaceSelect", time: "早朝", photo: "images/konron/spots/mistlake.webp",
                shoot: "霧に沈む湖面・縄を引く整備の人・輪郭だけの竜", line: "霧が濃い日は三十歩先も見えない。音だけが先に届く、静かで難しい走路。" },
