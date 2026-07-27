@@ -1224,6 +1224,8 @@ function rpgBattleWin() {
     outfit = rpgGrantOutfit("r") || rpgGrantOutfit("c");
     if (outfit) rpgBLog(`👑 屋上制覇！ ごほうびの衣装「${outfit.name}」と🔕静けさのお香×2を手に入れた！`, "win");
     else rpgBLog(`👑 屋上制覇！ ごほうびに🔕静けさのお香×2を手に入れた！`, "win");
+    // ★G3-4 制覇の瞬間だけミニアニメ（素材が無ければ何も出ない・報酬も数値も不変）
+    if (window.MiniClip) MiniClip.play("conquer", { ms: 3000 });
   } else if (Math.random() < 0.06) {
     outfit = rpgGrantOutfit("c");
     if (outfit) rpgBLog(`👑 魔物が衣装「${outfit.name}」を落とした！`, "win");

@@ -138,6 +138,9 @@ function _fieldCutin(e, bloom) {
     var head = bloom ? ("🌸 " + nm + " が開花！") : (ic + " 実地の稽古：" + nm + " が上達！");
     if (typeof _showUnlockToast === "function") _showUnlockToast(head + "\n" + (e.line || ""));
     if (window.Sfx) Sfx.play(bloom ? "win" : "unlock");
+    // ★G3-4 開花の瞬間だけミニアニメ（素材が無ければ何も出ない・表示専用）
+    // 素材の花は**後半にかけてほどける**（実測：光る画素率が2.6秒あたりで最大）ので4秒見せる
+    if (bloom && window.MiniClip) MiniClip.play("bloom", { ms: 4000 });
   } catch (err) {}
 }
 

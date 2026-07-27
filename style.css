@@ -8325,3 +8325,19 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @media (prefers-reduced-motion: reduce) {
   .kw-prompt, .kw-toast { transition: none; }
 }
+
+/* =====================================================================
+   ✨ ミニアニメ（js/miniclip.js）＝真っ黒背景の光素材を screen で重ねる。
+      黒は透け、光だけが乗る。素材が無ければ何も出ない（本編は不変）。
+   ===================================================================== */
+.mc-fx { position: fixed; inset: 0; z-index: 140; pointer-events: none;
+  opacity: 0; transition: opacity .34s ease; mix-blend-mode: screen; }
+.mc-fx.on { opacity: 1; }
+.mc-fx video { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 特定の要素の上だけに乗せたいとき（結果カードなど） */
+.mc-fx--scoped { position: absolute; inset: 0; z-index: 5; border-radius: inherit; overflow: hidden; }
+/* 開花はやわらかく、制覇は強めに */
+.mc-fx--bloom { opacity: 0; }
+.mc-fx--bloom.on { opacity: .86; }
+.mc-fx--conquer.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .mc-fx { display: none; } }

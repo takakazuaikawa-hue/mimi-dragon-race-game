@@ -273,6 +273,8 @@ function pgOpen(spotId, onDone) {
     var starStr = "★★★".slice(0, stars) + "☆☆☆".slice(0, 3 - stars);
     var masterpiece = stars >= 3;
     var seasonBumped = _pgRun.inSeason && j.key === "good";
+    // ★G3-4 傑作☆3の瞬間だけミニアニメ（素材が無ければ何も出ない・☆の判定は不変）
+    if (masterpiece && window.MiniClip) setTimeout(function () { MiniClip.play("masterpiece", { ms: 2400 }); }, 120);
     ov.innerHTML =
       '<div class="pg-bd"></div>' +
       '<div class="pg-card pg-result' + (masterpiece ? " pg-masterpiece" : "") + '">' +
