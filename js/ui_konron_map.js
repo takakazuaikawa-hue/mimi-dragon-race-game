@@ -267,6 +267,15 @@ function renderKonronMap() {
 
   // ⑤ 地図でさがす（暗いインセットの地図モジュール）
   app.appendChild(_ktSectionHead("地図でさがす", "エリアのピンから、その地区のスポットと施設へ。"));
+  // ★G2a 歩けるマップは「島時間」の**新しい入り方**であって、ピン式の置き換えではない（設計の芯）。
+  //   従来のピン式はこの下にそのまま残る。
+  if (typeof renderKonronWalk === "function" && typeof Scene !== "undefined") {
+    const walk = el("button", "kt-walkcard",
+      `<span class="kt-wc-ic">🚶</span><div><b>歩いてまわる（β）</b>` +
+      `<small>港町・市街を自分の足で。市場・モール・見晴らし台へは、歩いて入れます。</small></div>`);
+    walk.onclick = () => renderKonronWalk();
+    app.appendChild(walk);
+  }
   const mapmod = el("div", "kt-mapmod");
   const stage = el("div", "km-stage");
   stage.innerHTML = `<img class="km-mapimg" src="images/konron/island_map.webp?v=20260727a" alt="崑崙島 観光ジオラマ地図" decoding="async">`;

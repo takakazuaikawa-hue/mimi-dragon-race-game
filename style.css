@@ -8270,3 +8270,55 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @media (prefers-reduced-motion: reduce) {
   .sr-reader, .sr-reader.out, .sr-cue.ready { animation: none !important; }
 }
+
+/* =====================================================================
+   🎬 共通シーン基盤（js/scene_engine.js）＋ 🚶 歩いてまわる崑崙島
+   名前空間：基盤=.sc- ／ このシーン=.kw-
+   ===================================================================== */
+.sc-stage { position: relative; width: 100%; height: 100%; overflow: hidden;
+  border-radius: 14px; background: #0b0f16; touch-action: none; }
+.sc-canvas { display: block; width: 100%; height: 100%; }
+/* オンスクリーン十字キー（uiレイヤ相当・スマホの親指位置） */
+.sc-pad { position: absolute; inset: auto 0 0 0; height: 132px; pointer-events: none; }
+.sc-dpad { position: absolute; left: 10px; bottom: 10px; width: 108px; height: 108px; pointer-events: auto; }
+.sc-d { position: absolute; width: 36px; height: 36px; border: 0; border-radius: 9px; cursor: pointer;
+  font-size: 13px; line-height: 1; color: #eaf3ff; background: rgba(16,26,40,.62);
+  border: 1px solid rgba(180,215,255,.4); box-shadow: 0 2px 7px rgba(0,0,0,.4); }
+.sc-d.up { left: 36px; top: 0; } .sc-d.down { left: 36px; top: 72px; }
+.sc-d.left { left: 0; top: 36px; } .sc-d.right { left: 72px; top: 36px; }
+.sc-d.on { background: rgba(90,166,214,.85); transform: scale(.94); }
+.sc-act { position: absolute; right: 12px; bottom: 24px; width: 62px; height: 62px; border-radius: 50%;
+  pointer-events: auto; cursor: pointer; font-size: 24px; color: #2a1d05; border: 0;
+  background: linear-gradient(180deg,#f0d27a,#caa24a); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
+.sc-act:active { transform: scale(.94); }
+
+.kw-page { display: flex; flex-direction: column; gap: 8px; }
+.kw-hud { position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kw-back { padding: 7px 12px; border-radius: 10px; cursor: pointer; font-size: 12.5px; font-weight: 700;
+  color: #e7eef1; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); }
+.kw-title { font-size: 13.5px; font-weight: 800; color: #ffe6c0; letter-spacing: .02em; }
+.kw-beta { font-size: 10px; padding: 1px 6px; border-radius: 999px; margin-left: 4px;
+  color: #2a1d05; background: #e8b94e; vertical-align: middle; }
+.kw-stage { position: relative; width: 100%; aspect-ratio: 3 / 4; max-height: 66vh; min-height: 260px; }
+/* 入口プロンプト（近づくと出る）／一言トースト */
+.kw-prompt, .kw-toast { position: absolute; left: 0; right: 0; top: 100%; margin-top: 6px; z-index: 3;
+  padding: 8px 11px; border-radius: 11px; font-size: 12.5px; line-height: 1.4; color: #eaf3ff;
+  background: rgba(12,20,32,.86); border: 1px solid rgba(150,200,255,.35);
+  opacity: 0; transform: translateY(-4px); transition: opacity .18s, transform .18s; pointer-events: none; }
+.kw-prompt.on, .kw-toast.on { opacity: 1; transform: translateY(0); }
+.kw-toast { border-color: rgba(255,205,140,.42); background: rgba(38,26,16,.9); color: #ffe9c9; }
+.kw-prompt .kw-p-ic { font-size: 16px; margin-right: 6px; }
+.kw-prompt b { color: #ffe6c0; }
+.kw-prompt small { display: block; color: #a9c4d8; font-size: 11px; margin-top: 2px; }
+/* 観光ハブの入口カード */
+.kt-walkcard { display: flex; align-items: center; gap: 11px; width: 100%; margin: 2px 0 12px;
+  padding: 12px 13px; border-radius: 14px; cursor: pointer; text-align: left;
+  color: #eaf3ff; background: linear-gradient(135deg, rgba(46,74,64,.9), rgba(28,46,44,.92));
+  border: 1px solid rgba(150,220,190,.4); }
+.kt-walkcard:active { transform: scale(.99); }
+.kt-walkcard .kt-wc-ic { font-size: 26px; }
+.kt-walkcard b { display: block; font-size: 13.5px; color: #d8ffe9; }
+.kt-walkcard small { display: block; font-size: 11.5px; color: #a9c9bb; margin-top: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .kw-prompt, .kw-toast { transition: none; }
+}
