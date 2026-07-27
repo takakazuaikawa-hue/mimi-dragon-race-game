@@ -2360,7 +2360,9 @@ function rpgDrawBattle(cv, t) {
       //   絵が無い時だけ従来どおり手続きスプライト／絵文字に落ちる＝欠けても壊れない。
       const art = rpgEnemyArt(e.id);
       if (art) {
-        const sz = (b.boss ? 104 : 84) * (0.5 + 0.5 * intro);
+        // ★磨き：fit-height配置ではキャンバスが160pxまで縮む（.rpg-bt-arena min-height:160）。
+        //   84px固定だと高さの半分を敵が占めて構図が壊れた（ユーザー指摘）→ 高さ連動・従来値は上限。
+        const sz = Math.min(b.boss ? 104 : 84, H * (b.boss ? 0.55 : 0.42)) * (0.5 + 0.5 * intro);
         const gy = s.y + off[1] - 2 + bob * 0.5 - 18 * (1 - intro);   // 足元をスロットに置く
         ctx.drawImage(art, ex - sz / 2, gy - sz, sz, sz);
       } else if (tourist) {
