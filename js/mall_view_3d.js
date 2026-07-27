@@ -26,7 +26,7 @@
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 
   // ── テクスチャ台帳 ─────────────────────────────────────────────
-  var TEX_V = "20260726a";                       // キャッシュ撃破
+  var TEX_V = "20260728b";   // ceil追加時にバンプ（旧URLの404が挟まらないように）                       // キャッシュ撃破
   var TEX_DIR = "images/rpg/tex/";
   // RPG_FLOORS の並び（1F..屋上）。タワー層など範囲外は "tower" を共用。
   var TEX_SLUG = ["beach", "pool", "gourmet", "sea", "luxe", "depart", "fes", "sunset"];

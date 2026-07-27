@@ -2399,7 +2399,8 @@ function rpgDrawBattle(cv, t) {
   const mx = L.mimi.x + mo[0], myy = L.mimi.y + mo[1];
   ell(L.mimi.x, L.mimi.y, 27, "rgba(0,0,0,0.30)");
   const mbobY = myy - 32 + Math.sin(ph * 1.6) * 3, mart = rpgMimiArt();
-  if (mart) { const mw = 92, mh = mw * (mart.naturalHeight / mart.naturalWidth); ctx.drawImage(mart, mx - mw / 2, myy - mh + 8 + Math.sin(ph * 1.6) * 3, mw, mh); }
+  // ★磨き：幅92固定だと縦長の立ち絵で頭が切れた（実測）→ 高さ基準（画面の半分弱）に。
+  if (mart) { const mh = Math.min(H * 0.5, 190), mw = mh * (mart.naturalWidth / mart.naturalHeight); ctx.drawImage(mart, mx - mw / 2, myy - mh + 8 + Math.sin(ph * 1.6) * 3, mw, mh); }
   else { ctx.font = "60px serif"; ctx.fillText("🐰", mx, mbobY); }
   ctx.fillStyle = "rgba(255,95,162,0.92)"; rpgRRect(ctx, mx - 22, myy + 1, 44, 18, 9); ctx.fill();
   ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textBaseline = "middle"; ctx.fillText("ミミ", mx, myy + 10);
@@ -2490,7 +2491,9 @@ function rpgMakeSprite(emoji, disp, cls) {
 //   （旧 RPG_ART_ENEMIES は別フォルダ images/rpg/enemies/・別命名・空配列で、canvasが納品済み画像を
 //     見つけられず絵文字のままだった＝docs/MALL_UX_BACKLOG.md P0-2 の原因。2系統を統合して廃止した。）
 // ミミ立ち絵の差し込み口：images/rpg/mimi.webp を置いて true にすると戦闘の手前に立ち絵表示
-const RPG_ART_MIMI = false;
+// ★磨き：leonmall 立ち絵（§5.5の固定衣装）を透過webp化して納品済み → フックを有効化。
+//   これまで戦闘のミミは 🐰 絵文字1個だった（敵だけ絵になって主役が絵文字＝粗の正体）。
+const RPG_ART_MIMI = true;
 let _rpgMimiImg = null;
 function rpgMimiArt() {
   if (!RPG_ART_MIMI) return null;

@@ -41,6 +41,7 @@
   function close() {
     var n = document.getElementById("dex-view");
     if (!n) return;
+    if (n._cleanup) { try { n._cleanup(); } catch (e) {} n._cleanup = null; }   // windowのリスナーを確実に返す
     n.classList.remove("on");
     setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, 240);
   }
@@ -136,11 +137,13 @@
     cv.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", up);
-    ov.addEventListener("DOMNodeRemoved", function () {
+    // ★磨き：後片付けは close() が呼ぶ（旧実装の DOMNodeRemoved は現行Chromeで発火しない＝
+    //   開くたびに window のリスナーが積み上がっていた）。
+    ov._cleanup = function () {
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-    });
+    };
     return true;
   }
 
