@@ -2299,6 +2299,15 @@ function rpgDrawBattle(cv, t) {
   const rgba = (a, k, al) => `rgba(${Math.min(255, a[0] * k) | 0},${Math.min(255, a[1] * k) | 0},${Math.min(255, a[2] * k) | 0},${al})`;
   const ellf = (x, y, rw, rh, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse ? ctx.ellipse(x, y, rw, rh, 0, 0, 7) : ctx.arc(x, y, rw, 0, 7); ctx.fill(); };
   const lerp = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  // ★G1c 戦闘の舞台：フロア別の生成一枚絵があればそれを敷く。無ければ従来の手続き背景のまま。
+  //   舞台（アイソメの床）とキャラの描画はこの下でそのまま走る＝数値も挙動も一切変えない。
+  const _btlBg = rpgBattleBg(RPG.fi);
+  if (_btlBg) {
+    const iw = _btlBg.naturalWidth, ih = _btlBg.naturalHeight;
+    const sc2 = Math.max(W / iw, H / ih);                 // cover（画の中身を切らずに埋める）
+    ctx.drawImage(_btlBg, (W - iw * sc2) / 2, (H - ih * sc2) / 2, iw * sc2, ih * sc2);
+    ctx.fillStyle = "rgba(6,10,18,0.16)"; ctx.fillRect(0, 0, W, H);   // キャラが浮くよう一段沈める
+  } else {
   // 空（3段グラデ）
   let sg = ctx.createLinearGradient(0, 0, 0, H * 0.62);
   if (sunset) { sg.addColorStop(0, "rgb(255,138,86)"); sg.addColorStop(0.5, "rgb(255,178,120)"); sg.addColorStop(1, "rgb(255,222,180)"); }
@@ -2321,6 +2330,7 @@ function rpgDrawBattle(cv, t) {
   ctx.fillStyle = sunset ? "rgba(255,200,150,0.32)" : "rgba(225,245,252,0.38)"; ctx.fillRect(0, hz - 3, W, 7);
   ctx.fillStyle = sunset ? "rgba(255,210,150,0.28)" : "rgba(255,252,230,0.28)"; ctx.fillRect(sux - 14, hz, 28, H * 0.66 - hz);
   for (let i = 0; i < 4; i++) { const wy = hz + (H * 0.66 - hz) * (0.18 + i * 0.2); ctx.strokeStyle = "rgba(255,255,255,.42)"; ctx.lineWidth = 1; ctx.beginPath(); for (let xx = 0; xx <= W; xx += 4) { const yy = wy + Math.sin(xx * 0.05 + ph * 2 + i) * 1.5; xx === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); } ctx.stroke(); }
+  }
   // ── ステージ（シェイク適用）
   ctx.save(); ctx.translate(shx, shy);
   const dp = 16; poly([L.left, L.bot, [L.bot[0], L.bot[1] + dp], [L.left[0], L.left[1] + dp]], rgb(A, 0.45)); poly([L.bot, L.right, [L.right[0], L.right[1] + dp], [L.bot[0], L.bot[1] + dp]], rgb(A, 0.34));
@@ -2345,13 +2355,20 @@ function rpgDrawBattle(cv, t) {
       if (alive && e._flash && now - e._flash < 150) { ctx.shadowColor = "#fff"; ctx.shadowBlur = 22; }
       if (alive && e._flash && now - e._flash < 200) { const u = (now - e._flash) / 200, sc = 1 + Math.sin(u * Math.PI) * 0.16; ctx.translate(ex, cy); ctx.scale(sc, sc); ctx.translate(-ex, -cy); }   // 被弾スカッシュ（命中がはっきり読める）
       if (dying) { const sc = 1 + du * 0.28; ctx.translate(ex, s.y + off[1] + riseY); ctx.scale(sc, sc); ctx.translate(-ex, -(s.y + off[1])); }
-      if (tourist) {
+      // ★G1c 敵は**絵のビルボードで大写し**。G3-3で全20種に絵がついたので、観光客もここで絵を使う
+      //   （以前は観光客に絵が無く、手続きスプライトしか出せなかった）。
+      //   絵が無い時だけ従来どおり手続きスプライト／絵文字に落ちる＝欠けても壊れない。
+      const art = rpgEnemyArt(e.id);
+      if (art) {
+        const sz = (b.boss ? 104 : 84) * (0.5 + 0.5 * intro);
+        const gy = s.y + off[1] - 2 + bob * 0.5 - 18 * (1 - intro);   // 足元をスロットに置く
+        ctx.drawImage(art, ex - sz / 2, gy - sz, sz, sz);
+      } else if (tourist) {
         e._pal = e._pal || rpgTouristPal(e.id);
         rpgDrawTourist(ctx, ex, s.y + off[1] - bob * 0.5, 62 * (0.5 + 0.5 * intro), e._pal, e.ref.ic);
       } else {
-        const sz = (b.boss ? 70 : 48) * (0.45 + 0.55 * intro), art = rpgEnemyArt(e.id);
-        if (art) ctx.drawImage(art, ex - sz / 2, cy - sz / 2, sz, sz);
-        else { ctx.font = sz + "px serif"; ctx.fillText(e.ref.ic, ex, cy); }
+        const sz = (b.boss ? 70 : 48) * (0.45 + 0.55 * intro);
+        ctx.font = sz + "px serif"; ctx.fillText(e.ref.ic, ex, cy);
       }
       ctx.shadowBlur = 0; ctx.restore();
     }
@@ -2488,6 +2505,17 @@ function rpgEnemyArt(id) {
   if (!file) return null;
   let img = _rpgEnemyArtCache[id];
   if (!img) { img = _rpgEnemyArtCache[id] = new Image(); img.src = "images/rpg/" + file + ".webp"; }
+  return (img.complete && img.naturalWidth) ? img : null;
+}
+// ★G1c 戦闘の舞台：フロア別の一枚絵 images/rpg/btl/<slug>.webp。
+//   3Dビューのテクスチャ（images/rpg/tex/<slug>_*）と同じ slug ＝ 回廊と戦場の景色がつながる。
+//   未納品/未ロード/失敗は null を返し、呼び出し側が従来の手続き背景に落ちる（404を出さない）。
+const RPG_BTL_SLUG = ["beach", "pool", "gourmet", "sea", "luxe", "depart", "fes", "sunset"];
+const _rpgBtlBgCache = {};
+function rpgBattleBg(fi) {
+  const slug = RPG_BTL_SLUG[fi] || "tower";
+  let img = _rpgBtlBgCache[slug];
+  if (!img) { img = _rpgBtlBgCache[slug] = new Image(); img.decoding = "async"; img.src = "images/rpg/btl/" + slug + ".webp?v=20260728a"; }
   return (img.complete && img.naturalWidth) ? img : null;
 }
 // DOM描画用（ショップ等）：同じ RPG_ENEMY_IMG 台帳を引く。未登録は手続きスプライトにフォールバック。
