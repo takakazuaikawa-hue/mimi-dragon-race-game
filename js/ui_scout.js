@@ -96,6 +96,9 @@ function scoutEnterLocation(locId) {
     return;
   }
   _scoutMeetLoc = locId; _scoutGiftMeal = null;
+  // 🐾 縦切り試作：草むらだけ新ミニゲーム「しのびあし」へ（js/scout_stalk.js）。
+  //   他の場所は従来の流れのまま＝試作の評価が済んだら全ロケ置き換えを判断する。
+  if (typeof stalkAvailable === "function" && stalkAvailable(locId)) { stalkDepart(locId); return; }
   _scoutRenderProbe();
 }
 // 支度画面：探し方3択＋手土産。旅費はここでは引かない（出発を選んだ瞬間に精算）。
