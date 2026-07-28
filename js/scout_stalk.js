@@ -1,35 +1,35 @@
 // =========================================================================
 // 🐾 しのびあし（竜スカウトの新ミニゲーム・縦切り試作＝草むらのみ）
-//   旧「読み合い／ダンス」はユーザー評価により撤去方向。本作は**完全ターン制**：
-//   こちらが1マス動くと竜も1手動く。それ以外の時間は完全静止＝ラグ・反射神経が
-//   原理的に影響しない。説明文なし＝視界の色マス・！・♡・💤の絵で全部語る。
+//   完全ターン制：こちらが1歩うごくと竜も1手。ラグ・反射神経は原理的に無関係。
 //
-//   射幸性（ユーザー要望）＝「誰が出るか」の抽選と出現演出に段階（白→銀→金→虹）。
-//   コイン・レースの数値には一切触れない（旅費の精算は従来と同じ場所・同じ額）。
+//   ★初見テストの指摘（2026-07-28）を受けた土台直し：
+//   ① 竜は**左右にしか向かない**。スプライトが横向きしか無いのに上下を向かせていた＝
+//      「視界がランダムに見える」の正体。絵とルールを一致させた。
+//   ② 竜の頭上に**次の一手の予告**を常時出す（↩=つぎ振り向く／💤=つぎ居眠り／⚠=つぎ見回し）。
+//      さらに「つぎの視界」を薄い縞で盤面に描く＝考えて動ける。
+//   ③ 茂み(🌾)の**うしろの影も安全**＝濃緑の陰マスとして描く（安全がちゃんと見える）。
+//   ④ ♡は竜の左右2マスだけ（＝顔の横・うしろに回り込む）。正面の♡は薄い。
+//      見られたまま♡へ踏み込むと竜は**その場で驚いて跳びのく**（触れたのに無反応、を無くす）。
+//   ⑤ 教えは「その瞬間に1行だけ」大きく出す（読まれない説明カード3枚は廃止）。
 //
-//   竜の絵は既存HD-2Dスプライト（_scSpriteInto）を使い回し＝52頭ぶん新規画像ゼロ。
-//   個性（気性）は絵ではなくルールで出す：
-//     おだやか＝2手に1回だけ時計回りに向きを変える。動かない。
-//     すなお　＝毎手時計回り。警戒すると1歩逃げる。
-//     きまぐれ＝右→左→💤（居眠り＝見えない）の3拍子。居眠り明けに1歩さまよう。
-//     気難しい＝視界が広く浅い。**連続で動くと**音で気づいてこちらを向く（じっと＝リセット）。
-//
-//   表示専用。レースの着順・オッズ・配当は不変。
+//   射幸性＝「誰が出るか」の抽選と出現演出（白→銀→金→虹）。コイン・レース数値は不変。
+//   竜の絵は既存HD-2Dスプライト（_scSpriteInto）を使い回し。表示専用。
 // =========================================================================
 
 const STALK_COLS = 7, STALK_ROWS = 8;
 const STALK_R = 3;                      // 視界の届くマス数
-const STALK_TURNS = 24;                 // 👣この手数で竜は飽きて飛び去る（間延び防止＋「急ぐか隠れるか」の張り）
-let _stalk = null;                      // 進行中の盤面
+const STALK_TURNS = 24;                 // 👣この手数で竜は飽きて飛び去る
+let _stalk = null;
 
-// 見回し（ターン制版の「だるまさんがころんだ」）＝周期ごとに全方位を見渡す。
-//   1手前に⚠で予告される＝理不尽なし。茂みの中か、届かない距離だけが安全。
-const STALK_SWEEP = { calm: 5, sunao: 4, kimagure: 6, kimuzukashii: 3 };
+// 見回し（ターン制の「だるまさんがころんだ」）＝周期ごとに全方位を見渡す。⚠で1手前に予告。
+// ※気難しいの見回し3手周期は、ソルバ検証で「一度も見られずに成立する手順が存在しない」盤面が
+//   出たため4手に緩めた（細長い視界＋聞き耳が既に強い）。詰みの押し付けは理不尽＝射幸でもない。
+const STALK_SWEEP = { calm: 5, sunao: 4, kimagure: 6, kimuzukashii: 4 };
 function _stalkIsSweepTurn(t) { const p = STALK_SWEEP[_stalk.temper] || 5; return t > 0 && t % p === 0; }
 
 function stalkAvailable(locId) { return locId === "grass"; }   // 縦切り＝草むらのみ
 
-// ── 盤面レイアウト（3種からランダム）。'B'=茂み(入れる・隠れる) 'R'=岩(通れない・視線を遮る)
+// ── 盤面。'B'=草やぶ(入れる・隠れる・視線を遮る) 'R'=岩(通れない・視線を遮る)
 const STALK_MAPS = [
   ["..R....",
    ".......",
@@ -57,14 +57,17 @@ const STALK_MAPS = [
    "......."],
 ];
 
-// ── 気性：既存の nerve（poroTemperLabel と同じ切り方）→ ルールへ
+// ── 気性（nerve由来・poroTemperLabelと同じ切り方）→ 左右の振り向きリズムへ
+//   おだやか＝3手ごとに振り向く。すなお＝2手ごと（警戒すると逃げ腰）。
+//   きまぐれ＝2手見て→1手💤（居眠り＝何も見えない・そのすきに動く）。
+//   気難しい＝視界が細長い（遠くまで見る）。2歩つづけて動くと音でこちらの側を向く。
 function stalkTemper(d) {
   const n = (d && d.stats && d.stats.nerve) || 50;
   return n >= 78 ? "calm" : n >= 60 ? "sunao" : n >= 45 ? "kimagure" : "kimuzukashii";
 }
 const STALK_TEMPER_JA = { calm: "おだやか", sunao: "すなお", kimagure: "きまぐれ", kimuzukashii: "気難しい" };
 
-// ── レア度：その土地の竜リスト内での位置で段階付け（白→銀→金→虹）
+// ── レア度（白→銀→金→虹）＝その土地の竜リスト内の位置。レアほど出にくい。
 function stalkTier(locId, dragonId) {
   const loc = scoutLocation(locId);
   const ids = (loc && loc.dragons) || [];
@@ -74,13 +77,13 @@ function stalkTier(locId, dragonId) {
   return p >= 0.99 ? 3 : p >= 0.7 ? 2 : p >= 0.4 ? 1 : 0;
 }
 const STALK_TIER = [
-  { nm: "",     cls: "t0", w: 100 },
-  { nm: "銀",   cls: "t1", w: 55 },
-  { nm: "金",   cls: "t2", w: 25 },
-  { nm: "虹",   cls: "t3", w: 10 },
+  { nm: "",   cls: "t0", w: 100 },
+  { nm: "銀", cls: "t1", w: 55 },
+  { nm: "金", cls: "t2", w: 25 },
+  { nm: "虹", cls: "t3", w: 10 },
 ];
 
-// ── 出発（試作の支度画面＝手土産・探し方は使わない。旅費だけ）─────────────
+// ── 出発 ─────────────────────────────────────────────────────────────────
 function stalkDepart(locId) {
   const loc = scoutLocation(locId);
   state.ui.screen = "scout";
@@ -96,9 +99,9 @@ function stalkDepart(locId) {
   app.appendChild(el("div", "sc-sec", "🐾 しのびあし（試作）"));
   app.appendChild(el("div", "stalk-hint",
     `<span>👣 1歩うごくと、竜も1手</span><span>🟡のマスは「見えている」</span>` +
-    `<span>🌿 に入るとかくれられる</span><span>うしろか横から、となりに立てたら成立</span>`));
+    `<span>🌾 に入るとかくれられる</span><span>竜のよこ・うしろの♡マスに立てたら成立</span>`));
   const go = el("button", "navpop-go stalk-go" + (canPay ? "" : " is-off"),
-    `🌿 そっと近づいてみる <small>🪙${cost.toLocaleString("ja-JP")}</small>`);
+    `🌾 そっと近づいてみる <small>🪙${cost.toLocaleString("ja-JP")}</small>`);
   if (canPay) go.onclick = () => {
     state.player.coins -= cost;
     if (typeof updateHeader === "function") updateHeader();
@@ -115,7 +118,7 @@ function stalkDepart(locId) {
   app.appendChild(actions);
 }
 
-// ── 抽選：誰が出るか（レアほど出にくい）→ 出現演出（白→銀→金→虹の段階リーチ）
+// ── 抽選と出現演出（射幸の芯・数値に触れない）────────────────────────────
 function _stalkRoll(locId) {
   const pool = unscoutedAtLocation(locId);
   if (!pool.length) { renderScout(); return; }
@@ -125,13 +128,11 @@ function _stalkRoll(locId) {
   for (const w of weighted) { r -= STALK_TIER[w.t].w; if (r <= 0) { pick = w; break; } }
   _stalkReveal(locId, pick.d, pick.t);
 }
-
 function _stalkReveal(locId, d, tier) {
   const ov = el("div", "stalk-reveal");
-  ov.innerHTML = `<div class="stalk-rv-bush">🌿</div><div class="stalk-rv-ring"></div>`;
+  ov.innerHTML = `<div class="stalk-rv-bush">🌾</div><div class="stalk-rv-ring"></div>`;
   document.body.appendChild(ov);
   try { if (window.Sfx) Sfx.play("click"); } catch (e) {}
-  // 段階リーチ：実レア度まで1段ずつ色が上がる（gap は徐々にためる）
   let stage = 0;
   const step = () => {
     if (!ov.isConnected) return;
@@ -163,9 +164,9 @@ function _stalkStart(locId, d, tier) {
     locId, d, tier, map,
     temper: stalkTemper(d),
     mimi: { c: 3, r: STALK_ROWS - 1 },
-    drg: { c: 3, r: 1, dir: 0 },       // dir 0=下(こちら向き) 1=左 2=上 3=右
-    alarm: 0, turn: 0, phase: 0, moveStreak: 0,
-    sleeping: false, over: false,
+    drg: { c: 3, r: 1, dir: (Math.random() < 0.5 ? 1 : 3) },   // dir 1=左 3=右（左右のみ＝絵と一致）
+    alarm: 0, turn: 0, moveStreak: 0,
+    sleeping: false, sweeping: false, over: false,
   };
   _stalkRender();
 }
@@ -174,80 +175,99 @@ function _stalkCell(c, r) {
   if (c < 0 || r < 0 || c >= STALK_COLS || r >= STALK_ROWS) return "R";
   return _stalk.map[r][c] === "B" ? "B" : _stalk.map[r][c] === "R" ? "R" : ".";
 }
-// 視線が通るか（岩・茂みが間にあれば遮られる）
+// 視線が通るか（岩・草やぶが間にあれば遮られる）
 function _stalkLos(c0, r0, c1, r1) {
-  const n = Math.max(Math.abs(c1 - c0), Math.abs(r1 - r0)) * 3;
+  const n = Math.max(Math.abs(c1 - c0), Math.abs(r1 - r0)) * 6;
   for (let i = 1; i < n; i++) {
     const c = Math.round(c0 + (c1 - c0) * i / n), r = Math.round(r0 + (r1 - r0) * i / n);
-    if (c === c1 && r === r1) continue;
-    if (c === c0 && r === r0) continue;
+    if ((c === c1 && r === r1) || (c === c0 && r === r0)) continue;
     const t = _stalkCell(c, r);
     if (t === "R" || t === "B") return false;
   }
   return true;
 }
-// いま竜から「見えている」マス（＝黄色く塗るマス）。眠り中は空。
-function _stalkVision() {
-  const s = _stalk, out = [];
-  if (s.sleeping) return out;
-  const sweeping = !!s.sweeping;                          // 見回し中＝全方位
-  const range = sweeping ? STALK_R : (s.temper === "kimuzukashii" ? 2 : STALK_R);
-  const wide = s.temper === "kimuzukashii";               // 気難しい＝180°
-  const DV = [[0, 1], [-1, 0], [0, -1], [1, 0]][s.drg.dir];
+// 任意の竜状態での視界。戻り値 {vis:[], shade:[]}＝見えるマス／陰（視界内だが遮られて安全）
+function _stalkVisionOf(gc, gr, dir, sweeping, sleeping, temper) {
+  const vis = [], shade = [];
+  if (sleeping) return { vis, shade };
+  const narrow = temper === "kimuzukashii";
+  const range = sweeping ? STALK_R : (narrow ? 5 : STALK_R);
+  const dx = dir === 1 ? -1 : 1;
   for (let r = 0; r < STALK_ROWS; r++) for (let c = 0; c < STALK_COLS; c++) {
-    const dc = c - s.drg.c, dr = r - s.drg.r;
+    const dc = c - gc, dr = r - gr;
     if (!dc && !dr) continue;
     const dist = Math.max(Math.abs(dc), Math.abs(dr));
     if (dist > range) continue;
     if (!sweeping) {
-      const dot = dc * DV[0] + dr * DV[1];
-      const len = Math.sqrt(dc * dc + dr * dr);
-      const cos = dot / len;
-      if (cos < (wide ? 0.05 : 0.55)) continue;           // 90°（wideは180°）の扇
+      if (dc * dx <= 0) continue;                        // 向いている側だけ（左右の半分）
+      const cos = (dc * dx) / Math.sqrt(dc * dc + dr * dr);
+      if (cos < (narrow ? 0.86 : 0.55)) continue;        // ふつう90°／気難しい＝細長い
     }
-    if (!_stalkLos(s.drg.c, s.drg.r, c, r)) continue;
-    out.push(c + "," + r);
+    const key = c + "," + r;
+    if (_stalkLos(gc, gr, c, r)) vis.push(key);
+    else shade.push(key);                                // 陰＝安全がちゃんと見えるように塗る
   }
-  return out;
+  return { vis, shade };
 }
-function _stalkSeen(vision) {
+function _stalkVision() {
   const s = _stalk;
-  if (_stalkCell(s.mimi.c, s.mimi.r) === "B") return false;   // 茂みの中＝見えない
-  return (vision || _stalkVision()).indexOf(s.mimi.c + "," + s.mimi.r) >= 0;
+  return _stalkVisionOf(s.drg.c, s.drg.r, s.drg.dir, s.sweeping, s.sleeping, s.temper);
+}
+function _stalkSeen(v) {
+  const s = _stalk;
+  if (_stalkCell(s.mimi.c, s.mimi.r) === "B") return false;   // 草やぶの中＝見えない
+  return (v || _stalkVision()).vis.indexOf(s.mimi.c + "," + s.mimi.r) >= 0;
 }
 
-// ── 1ターン：プレイヤーの一手 → 成立判定 → 竜の一手 → 発見判定 ─────────
+// ── 竜の「つぎの一手」（＝予告に使う。じっとしていた場合の確定手）─────────
+function _stalkNextPlan() {
+  const s = _stalk, t = s.turn + 1;
+  const plan = { dir: s.drg.dir, sweeping: false, sleeping: false };
+  if (_stalkIsSweepTurn(t)) { plan.sweeping = true; return plan; }
+  if (s.temper === "calm") { if (t % 3 === 0) plan.dir = 4 - s.drg.dir; }
+  else if (s.temper === "sunao") { if (t % 2 === 0) plan.dir = 4 - s.drg.dir; }
+  else if (s.temper === "kimagure") {
+    if (t % 3 === 0) plan.sleeping = true;
+    else plan.dir = (t % 6) < 3 ? 1 : 3;
+  } else { if (t % 3 === 0) plan.dir = 4 - s.drg.dir; }   // 気難しい（音を立てなければ）
+  return plan;
+}
+
+// ── 1ターン：ミミの一手 → 触れる判定 → 竜の一手 → 発見判定 ───────────────
 function stalkAct(kind, dc, dr) {
   const s = _stalk; if (!s || s.over) return;
   s.turn++;
   if (kind === "move") {
     const nc = s.mimi.c + dc, nr = s.mimi.r + dr;
-    if (_stalkCell(nc, nr) === "R") return;                // 岩＝そもそも受け付けない
-    if (nc === s.drg.c && nr === s.drg.r) return;
+    if (_stalkCell(nc, nr) === "R") { s.turn--; return; }
+    if (nc === s.drg.c && nr === s.drg.r) { s.turn--; return; }
     s.mimi.c = nc; s.mimi.r = nr;
     s.moveStreak++;
-    s.lastMove = [dc, dr];
   } else {
-    s.moveStreak = 0;                                      // じっと＝音を消す
+    s.moveStreak = 0;                                    // じっと＝音を消す
   }
 
-  // 成立：竜のとなり（4方向）＆ いま見られていない
-  const adj = Math.abs(s.mimi.c - s.drg.c) + Math.abs(s.mimi.r - s.drg.r) === 1;
-  if (adj && !_stalkSeen()) { _stalkWin(); return; }
+  // 触れる判定＝竜の左右となり（♡マス）に立った瞬間
+  const horizAdj = Math.abs(s.mimi.c - s.drg.c) === 1 && s.mimi.r === s.drg.r;
+  if (horizAdj) {
+    if (!_stalkSeen()) { _stalkWin(); return; }
+    // ★見られたまま正面から触ろうとした＝その場で驚いて跳びのく（無反応をなくす）
+    s.alarm++; s.flash = "alarm";
+    s.drg.dir = (s.mimi.c < s.drg.c) ? 1 : 3;
+    _stalkFleeStep();
+    try { if (window.Sfx) Sfx.play("click"); } catch (e) {}
+    if (s.alarm >= 3) { _stalkLose(); return; }
+    _stalkRender(); return;
+  }
 
-  // 👣使い切り＝竜は飽きて飛び去る（間延び防止）
-  if (s.turn >= STALK_TURNS) { _stalkLose(); return; }
+  if (s.turn >= STALK_TURNS) { _stalkLose(); return; }   // 👣切れ＝飽きて飛び去る
 
   _stalkDragonAct();
   if (s.over) return;
 
-  // 発見判定
   if (_stalkSeen()) {
-    s.alarm++;
-    s.flash = "alarm";
-    // 見つかった方を向く（次の手が考えやすい＝理不尽をなくす）
-    const dcm = s.mimi.c - s.drg.c, drm = s.mimi.r - s.drg.r;
-    s.drg.dir = Math.abs(dcm) > Math.abs(drm) ? (dcm < 0 ? 1 : 3) : (drm < 0 ? 2 : 0);
+    s.alarm++; s.flash = "alarm";
+    if (s.mimi.c !== s.drg.c) s.drg.dir = (s.mimi.c < s.drg.c) ? 1 : 3;   // 見つけた側を向く
     try { if (window.Sfx) Sfx.play("click"); } catch (e) {}
     if (s.alarm >= 3) { _stalkLose(); return; }
   } else s.flash = null;
@@ -256,25 +276,19 @@ function stalkAct(kind, dc, dr) {
 
 function _stalkDragonAct() {
   const s = _stalk, g = s.drg;
-  s.sleeping = false;
-  s.sweeping = false;
-  // 見回し（予告済みのターン）＝この手は向き替えの代わりに、ぐるりと全方位を見渡す
+  s.sleeping = false; s.sweeping = false;
   if (_stalkIsSweepTurn(s.turn)) { s.sweeping = true; return; }
   if (s.temper === "calm") {
-    if (s.turn % 2 === 0) g.dir = (g.dir + 1) % 4;
+    if (s.turn % 3 === 0) g.dir = 4 - g.dir;
   } else if (s.temper === "sunao") {
-    g.dir = (g.dir + 1) % 4;
-    if (s.alarm > 0) _stalkFleeStep();                     // 一度でも警戒したら逃げ腰
+    if (s.turn % 2 === 0) g.dir = 4 - g.dir;
+    if (s.alarm > 0) _stalkFleeStep();
   } else if (s.temper === "kimagure") {
-    const ph = s.turn % 3;
-    if (ph === 1) g.dir = (g.dir + 1) % 4;
-    else if (ph === 2) g.dir = (g.dir + 3) % 4;
-    else { s.sleeping = true; _stalkWander(); }            // 💤＝見えない。そのすきに
-  } else {                                                  // 気難しい：連続で動くと音で気づく
-    if (s.moveStreak >= 2) {
-      const dc = s.mimi.c - g.c, dr = s.mimi.r - g.r;
-      g.dir = Math.abs(dc) > Math.abs(dr) ? (dc < 0 ? 1 : 3) : (dr < 0 ? 2 : 0);
-    } else if (s.turn % 3 === 0) g.dir = (g.dir + 1) % 4;
+    if (s.turn % 3 === 0) { s.sleeping = true; _stalkWander(); }
+    else g.dir = (s.turn % 6) < 3 ? 1 : 3;
+  } else {                                               // 気難しい：2歩つづけて動くと音でバレる
+    if (s.moveStreak >= 2 && s.mimi.c !== g.c) g.dir = (s.mimi.c < g.c) ? 1 : 3;
+    else if (s.turn % 3 === 0) g.dir = 4 - g.dir;
   }
 }
 function _stalkWander() {
@@ -297,12 +311,9 @@ function _stalkFleeStep() {
 function _stalkWin() {
   const s = _stalk; s.over = true;
   _scoutMeetD = s.d; _scoutSess = null;
-  _stalkRender();                                          // ♡の一拍を見せてから
+  _stalkRender();
   const host = document.querySelector(".stalk-board");
-  if (host) {
-    const fx = el("div", "stalk-heart", "♡");
-    host.appendChild(fx);
-  }
+  if (host) host.appendChild(el("div", "stalk-heart", "♡"));
   setTimeout(() => { _stalk = null; _scoutWin(); }, 900);
 }
 function _stalkLose() {
@@ -315,11 +326,10 @@ function _stalkLose() {
     showInfoPopup("🍃 逃げられた……",
       `<div class="mm-row"><span class="mm-ic">💨</span><div><b>竜は飛び去ってしまった。</b><small>気配を消して、もう一度。竜は消えない＝何度でも会いにいける。</small></div></div>`,
       () => renderScout());
-    // もう一度ボタン（射幸のループ＝すぐ次を引ける）
     setTimeout(() => {
       const pop = document.querySelector(".mm-pop, .info-pop, .navpop");
       if (!pop || !canPay) return;
-      const again = el("button", "navpop-go stalk-again", `🌿 もういちど探す <small>🪙${cost.toLocaleString("ja-JP")}</small>`);
+      const again = el("button", "navpop-go stalk-again", `🌾 もういちど探す <small>🪙${cost.toLocaleString("ja-JP")}</small>`);
       again.onclick = () => {
         document.querySelectorAll(".mm-ov,.info-ov,.navpop-ov").forEach(o => o.remove());
         state.player.coins -= cost;
@@ -333,7 +343,7 @@ function _stalkLose() {
   }, 950);
 }
 
-// ── 描画（DOMだけ・毎手描き直す＝ターン制なので十分軽い）────────────────
+// ── 描画 ────────────────────────────────────────────────────────────────
 function _stalkRender() {
   const s = _stalk; if (!s) return;
   state.ui.screen = "scout";
@@ -344,23 +354,28 @@ function _stalkRender() {
     wrap = el("div", "stalk-wrap");
     app.appendChild(wrap);
   }
-  const vision = _stalkVision();
+  const v = _stalkVision();
+  const plan = s.over ? null : _stalkNextPlan();
+  const nv = plan ? _stalkVisionOf(s.drg.c, s.drg.r, plan.dir, plan.sweeping, plan.sleeping, s.temper) : { vis: [] };
   const cw = 100 / STALK_COLS, chh = 100 / STALK_ROWS;
   let cells = "";
   for (let r = 0; r < STALK_ROWS; r++) for (let c = 0; c < STALK_COLS; c++) {
     const t = _stalkCell(c, r);
-    const vis = vision.indexOf(c + "," + r) >= 0;
+    const key = c + "," + r;
+    const vis = v.vis.indexOf(key) >= 0;
+    const shade = !vis && v.shade.indexOf(key) >= 0;
+    const nvis = !vis && !plan?.sweeping && nv.vis.indexOf(key) >= 0;   // つぎ見られるマス（薄い縞）
     const canGo = !s.over && Math.abs(c - s.mimi.c) + Math.abs(r - s.mimi.r) === 1 && t !== "R" && !(c === s.drg.c && r === s.drg.r);
-    // ★ゴールを盤面に描く：竜のとなり4マス＝♡。いま見えているマスの♡は薄く（そこからは成立しない）
-    //   ＝「どこへ行けばいいの？」を文章でなく盤面が答える（初見で伝わらなかった反省）。
-    const goal = t !== "R" && Math.abs(c - s.drg.c) + Math.abs(r - s.drg.r) === 1;
-    cells += `<div class="stalk-cell${vis ? " vis" : ""}${canGo ? " go" : ""}${goal ? (vis && t !== "B" ? " goal-off" : " goal") : ""}" data-c="${c}" data-r="${r}"` +
+    // ♡＝竜の左右2マスだけ（顔の横に回り込む）。いま見えている側は薄い＝正面はダメ、が見える。
+    const goal = t !== "R" && Math.abs(c - s.drg.c) === 1 && r === s.drg.r;
+    cells += `<div class="stalk-cell${vis ? " vis" : ""}${shade ? " shade" : ""}${nvis ? " nvis" : ""}${canGo ? " go" : ""}${t === "B" ? " bushcell" : ""}${goal ? (vis ? " goal-off" : " goal") : ""}" data-c="${c}" data-r="${r}"` +
       ` style="left:${c * cw}%;top:${r * chh}%;width:${cw}%;height:${chh}%">` +
-      (t === "B" ? `<span class="stalk-bush">🌿</span>` : t === "R" ? `<span class="stalk-rock">🪨</span>` : "") +
+      (t === "B" ? `<span class="stalk-bush">🌾</span>` : t === "R" ? `<span class="stalk-rock">🪨</span>` : "") +
       (goal ? `<span class="stalk-goal-heart">♡</span>` : "") +
       `</div>`;
   }
   const hidden = _stalkCell(s.mimi.c, s.mimi.r) === "B";
+  const willFlip = plan && !plan.sweeping && !plan.sleeping && plan.dir !== s.drg.dir;
   wrap.innerHTML =
     `<div class="stalk-top">` +
       `<button class="stalk-quit">← あきらめる</button>` +
@@ -373,14 +388,21 @@ function _stalkRender() {
       `<div class="stalk-drg${s.sweeping ? " sweeping" : ""}" style="left:${(s.drg.c + 0.5) * cw}%;top:${(s.drg.r + 0.62) * chh}%">` +
         `<img class="stalk-drg-img${s.drg.dir === 3 ? " flip" : ""}" alt="">` +
         (s.sleeping ? `<span class="stalk-zzz">💤</span>` : "") +
-        (!s.over && !s.sweeping && _stalkIsSweepTurn(s.turn + 1) ? `<span class="stalk-warn">⚠</span>` : "") +
+        // ★予告（つぎの一手）＝考えて動くための情報。↩=振り向く／💤=居眠り／⚠=見回し
+        (!s.over && plan && plan.sweeping ? `<span class="stalk-warn">⚠</span>` : "") +
+        (!s.over && plan && plan.sleeping ? `<span class="stalk-next">💤…</span>` : "") +
+        (!s.over && willFlip ? `<span class="stalk-next stalk-next-flip${plan.dir === 3 ? " fr" : ""}">↩</span>` : "") +
         (s.sweeping ? `<span class="stalk-eyes">👀</span>` : "") +
         (s.flash === "alarm" ? `<span class="stalk-ex">！</span>` : "") +
       `</div>` +
-      `<div class="stalk-mimi${hidden ? " hid" : ""}" style="left:${(s.mimi.c + 0.5) * cw}%;top:${(s.mimi.r + 0.72) * chh}%"></div>` +
+      `<div class="stalk-mimi${hidden ? " hid" : ""}" style="left:${(s.mimi.c + 0.5) * cw}%;top:${(s.mimi.r + 0.72) * chh}%">` +
+        (hidden ? `<i class="stalk-hidegrass">🌾</i>` : "") +
+      `</div>` +
     `</div>` +
     `<div class="stalk-foot"><span class="stalk-turn${STALK_TURNS - s.turn <= 5 ? " low" : ""}">👣 ${STALK_TURNS - s.turn}</span>` +
-      `<button class="stalk-wait">🐾 じっとする</button></div>`;
+      `<button class="stalk-wait">🐾 じっとする</button></div>` +
+    `<div class="stalk-legend"><span><i class="lg lg-vis"></i>みつかる</span><span><i class="lg lg-nvis"></i>つぎ見られる</span>` +
+      `<span><i class="lg lg-shade"></i>かげ＝安全</span><span>🌾 かくれる</span><span>♡ ゴール</span></div>`;
   _scSpriteInto(wrap.querySelector(".stalk-drg-img"), s.d.id);
   wrap.querySelector(".stalk-quit").onclick = () => { _stalk = null; renderScout(); };
   wrap.querySelector(".stalk-wait").onclick = () => stalkAct("wait");
@@ -392,34 +414,32 @@ function _stalkRender() {
   _stalkCoachMaybe(wrap);
 }
 
-// ── はじめてでも分かるように（説明書ではなく、その場で1つずつ）──────────
-//   ①初回だけ：3タップの絵解き（青マル→黄マス→♡）②初めて見つかった時・初めて⚠が出た時に一言。
-//   「画面が語るから説明不要」は設計者の思い込みだった（ユーザー指摘）ので、教える層を足す。
+// ── 教える層＝「その瞬間に1行だけ」大きく（読まれない説明カードは廃止）────
+function _stalkBanner(wrap, msg, sticky) {
+  const old = wrap.querySelector(".stalk-banner"); if (old) old.remove();
+  const b = el("div", "stalk-banner", msg);
+  (wrap.querySelector(".stalk-board") || wrap).appendChild(b);
+  if (!sticky) setTimeout(() => b.remove(), 2600);
+}
 function _stalkCoachMaybe(wrap) {
-  const p = state.player;
-  if (p._stalkCoach) { _stalkEventTips(wrap); return; }
-  const steps = [
-    { ic: "🔵", tx: "青いマル ＝ あるける場所<br>タップで 1歩すすむ" },
-    { ic: "🟡", tx: "黄色いマス ＝ 竜から<b>見えている</b><br>🌿に入れば かくれられる" },
-    { ic: "♡", tx: "竜のとなりの<b>♡マス</b>にたどりつけたら<br>なかよし成立！（正面からはダメ）" },
-  ];
-  let i = 0;
-  const ov = el("div", "stalk-coach");
-  const card = el("div", "stalk-coach-card");
-  const draw = () => { card.innerHTML = `<span class="stalk-coach-ic">${steps[i].ic}</span><p>${steps[i].tx}</p><small>タップでつぎへ（${i + 1}/${steps.length}）</small>`; };
-  draw();
-  ov.appendChild(card);
-  ov.onclick = () => {
-    i++;
-    if (i >= steps.length) { ov.remove(); p._stalkCoach = 1; if (typeof saveGame === "function") saveGame(); return; }
-    draw();
-  };
-  wrap.appendChild(ov);
+  const s = _stalk, p = state.player;
+  if (!s || s.over) return;
+  if (!p._stalkCoach) {
+    if (s.turn === 0) { _stalkBanner(wrap, "🔵 をタップで いどう", true); return; }
+    if (s.turn === 1) { _stalkBanner(wrap, "🟡 は 竜から<b>見えている</b>"); return; }
+    if (s.turn === 2) {
+      _stalkBanner(wrap, "♡ （竜のよこ）に 立てたら成立");
+      p._stalkCoach = 1; if (typeof saveGame === "function") saveGame();
+      return;
+    }
+    return;
+  }
+  _stalkEventTips(wrap);
 }
 function _stalkTip(wrap, msg) {
   const t = el("div", "stalk-tipmsg", msg);
   (wrap.querySelector(".stalk-board") || wrap).appendChild(t);
-  setTimeout(() => t.remove(), 2400);
+  setTimeout(() => t.remove(), 2600);
 }
 function _stalkEventTips(wrap) {
   const s = _stalk, p = state.player;
@@ -429,7 +449,7 @@ function _stalkEventTips(wrap) {
     _stalkTip(wrap, "みつかった！　<b>！が3つ</b>で 逃げられちゃう");
   } else if (!s.sweeping && _stalkIsSweepTurn(s.turn + 1) && !p._stalkTipSweep) {
     p._stalkTipSweep = 1; if (typeof saveGame === "function") saveGame();
-    _stalkTip(wrap, "⚠ ＝ つぎの手で <b>ぐるっと見回す</b>。🌿へかくれるか、はなれて！");
+    _stalkTip(wrap, "⚠ ＝ つぎの手で <b>ぐるっと見回す</b>。🌾へかくれるか、はなれて！");
   }
 }
 
