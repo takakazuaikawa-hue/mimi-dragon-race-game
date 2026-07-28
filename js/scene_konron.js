@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260728b";
+const KW_V = "20260728e";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -315,7 +315,17 @@ function renderKonronWalk(areaId) {
   app.appendChild(stage);
 
   const imgs = { bg: area.img + "?v=" + KW_V, mimi: "images/scene/konron/mimi_walk.webp?v=" + KW_V };
-  imgs.folk = "images/scene/konron/folk.webp?v=" + KW_V;                    // すれちがいNPC（欠けても動く）
+  imgs.folk = "images/scene/konron/folk.webp?v=" + KW_V;                    // 旧・1枚まとめシート（新シートが欠けた時の受け皿）
+  // ★このエリアに出る村人ぶんだけ読む（6人ぶん常に読むと無駄が大きい）。欠けたら null＝旧シートへ落ちる。
+  (area.npcs || []).forEach(function (n) {
+    const k = "folk" + ((n.s | 0) + 1);
+    imgs[k] = "images/scene/konron/" + k + ".webp?v=" + KW_V;
+  });
+  // ★入口の道標も、このエリアで使う絵柄ぶんだけ。欠けたら手続き描画の灯りに落ちる。
+  (area.doors || []).forEach(function (d) {
+    const s = KW_SIGN[d.hidden ? "❓" : d.ic];
+    if (s) imgs["sg_" + s] = "images/scene/konron/props/" + s + ".webp?v=" + KW_V;
+  });
   if (typeof poroFound === "function" && poroFound()) imgs.poro = "images/scene/konron/poro_walk.webp?v=" + KW_V;
 
   const scene = Scene.create({
@@ -325,7 +335,10 @@ function renderKonronWalk(areaId) {
     onUpdate: function (dt, S) { kwUpdate(dt, S); },
     onDraw: function (ctx, cam, layer, S, t) { kwDraw(ctx, cam, layer, S, t); },
     onAct: function () { kwAct(); },
-    onExit: function () { KW = null; },
+    // ★自分のシーンのぶんだけ片付ける。前のシーンの掃除係（900ms間隔）は、こちらが新しく開いた
+    //   あとから発火することがある。無条件に KW=null すると**新しい方の状態が消されて**
+    //   十字キーだけ残った真っ黒な画面になる（歩く→ホーム→すぐ歩く で再現した）。
+    onExit: function () { if (KW && KW.scene === scene) KW = null; },
   });
 
   KW = { scene: scene, hud: hud, area: area, mimi: null, near: null, dir: 0, step: 0, moving: false, trail: [], npcs: [] };
@@ -344,10 +357,15 @@ function kwSetup(a, S) {
   KW.bg = a.bg || null;
   KW.folk = a.folk || null;
   KW.poroImg = a.poro || null;
+  KW.signs = a;                                          // 道標は a.sg_<name> で引く（無ければ灯り）
   KW.trail = [];
   // すれちがいNPC＝歩ける範囲をゆっくり気ままに歩く
   KW.npcs = (ar.npcs || []).map(function (n) {
-    return { x: (n.c + 0.5) * KW_CW, y: (n.r + 0.5) * KW_CH, s: n.s | 0, line: n.line,
+    const s = n.s | 0;
+    return { x: (n.c + 0.5) * KW_CW, y: (n.r + 0.5) * KW_CH, s: s, line: n.line,
+             // 専用シート（3列×3行）。未納品なら null＝旧・1枚まとめシートで描く。
+             sheet: a["folk" + (s + 1)] || null,
+             dir: 0, face: 1,
              vx: 0, vy: 0, wait: Math.random() * 2, step: Math.random() * 4 };
   });
 }
@@ -403,6 +421,9 @@ function kwUpdate(dt, S) {
       if (!kwBlocked(nx, n.y)) n.x = nx; else n.vx = 0;
       if (!kwBlocked(n.x, ny)) n.y = ny; else n.vy = 0;
       n.step += dt * 5;
+      // 進む向きへ体を向ける（ミミと同じ規約＝0正面 1背中 2横・横は左向き素材）
+      if (n.vy < 0) n.dir = 1; else if (n.vy > 0) n.dir = 0; else if (n.vx) n.dir = 2;
+      if (n.vx) n.face = n.vx < 0 ? -1 : 1;
     }
   }
 
@@ -443,6 +464,13 @@ function kwAct() {
   kwExit();
   try { d.go(); } catch (e) { if (typeof renderKonronMap === "function") renderKonronMap(); }
 }
+
+// 入口アイコン → 道標スプライト（images/scene/konron/props/）。載っていないアイコンは灯りのまま。
+const KW_SIGN = {
+  "🏬": "sign_mall", "🍢": "sign_market", "🍧": "sign_market", "📷": "sign_photo",
+  "🏨": "sign_inn", "⛴️": "sign_pier", "🏟️": "sign_race", "🏁": "sign_race",
+  "♨️": "sign_onsen", "🏖️": "sign_beach", "🏙️": "sign_back", "🏝️": "sign_back", "❓": "q_smoke",
+};
 
 // シートから1コマ描く（96×128セル）。row=0正面 1背中 2横（横は左向き素材＝右向きは反転）
 function kwDrawCell(ctx, sheet, col, row, sx, sy, H, flip) {
@@ -489,8 +517,13 @@ function kwDraw(ctx, cam, layer, S, t) {
     const px = (n.x - cam.x) * sc, py = (n.y - cam.y) * sc;
     if (px < -60 || py < -80 || px > S.vw + 60 || py > S.vh + 60) return;
     kwShadow(ctx, px, py, folkH * 0.22, folkH * 0.05);
-    if (KW.folk) {
-      const col = n.s % 3, row = (n.s / 3) | 0;
+    if (n.sheet) {
+      // 専用シート＝ミミと同じ読み方（列=歩行コマ／行=向き）。止まっている間は立ちコマ。
+      const moving = !!(n.vx || n.vy);
+      const col = moving ? [1, 0, 1, 2][Math.floor(n.step) % 4] : 1;
+      kwDrawCell(ctx, n.sheet, col, n.dir, px, py, folkH, n.dir === 2 && n.face > 0);
+    } else if (KW.folk) {
+      const col = n.s % 3, row = (n.s / 3) | 0;             // 旧・1枚まとめシート（正面のみ）
       ctx.save();
       ctx.drawImage(KW.folk, col * 96, row * 128, 96, 128, px - folkH * (96 / 128) / 2, py - folkH, folkH * (96 / 128), folkH);
       ctx.restore();
@@ -500,18 +533,16 @@ function kwDraw(ctx, cam, layer, S, t) {
     }
   });
 
-  // ── ポロ（ミミの少し後ろを、ちょこちょこ跳ねてついてくる）
-  //   ポロの立ち絵は正面1枚しかないので、歩行コマではなく**跳ね**で歩いてる感じを出す。
+  // ── ポロ（ミミの少し後ろを、ちょこちょこ歩いてついてくる）
+  //   歩行シート（3列×3行）が来たので、ミミと同じ読み方で足も動く。跳ねは少しだけ残して軽さを出す。
   if (KW.poro && KW.poroImg) {
     const p = KW.poro;
-    const ph = H * 0.60, pw = ph * (KW.poroImg.naturalWidth / KW.poroImg.naturalHeight);
-    const hop = (KW.moving && !S.reduce) ? Math.abs(Math.sin(KW.step * 1.6)) * ph * 0.10 : 0;
+    const ph = H * 0.60, pw = ph * (96 / 128);
+    const hop = (KW.moving && !S.reduce) ? Math.abs(Math.sin(KW.step * 1.6)) * ph * 0.06 : 0;
     const px = (p.x - cam.x) * sc, py = (p.y - cam.y) * sc;
     kwShadow(ctx, px, py, pw * 0.34, ph * 0.055);
-    ctx.save();
-    if (p.f < 0) { ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }   // 進む向きに体を向ける
-    ctx.drawImage(KW.poroImg, px - pw / 2, py - ph - hop, pw, ph);
-    ctx.restore();
+    const col = KW.moving ? [1, 0, 1, 2][Math.floor(KW.step) % 4] : 1;
+    kwDrawCell(ctx, KW.poroImg, col, p.d | 0, px, py - hop, ph, (p.d | 0) === 2 && p.f > 0);
   }
 
   // ── ミミ
@@ -534,6 +565,19 @@ function kwDraw(ctx, cam, layer, S, t) {
     const bob = S.reduce ? 0 : Math.sin(t / 520 + d.c) * 2.4 * sc;
     const R = Math.max(3, 4.6 * sc);
     const hid = !!d.hidden;                                  // 隠しは白い「？」の煙として立つ
+    // ★道標スプライトがあればそれを立てる（看板・のれん・「？」の煙）。無ければ従来の灯り。
+    const sg = KW.signs && KW.signs["sg_" + KW_SIGN[hid ? "❓" : d.ic]];
+    if (sg) {
+      // 128×128の正方をそのままの比で、**足元をマスの中心に置いて立たせる**。
+      //   高さはミミ（118）の約2/3＝道しるべとして目に入るが人物より小さい、の関係。
+      const sh = 78 * sc, sw = sh, groundY = py + 26 * sc;
+      ctx.save();
+      ctx.globalAlpha = hid ? 0.92 : 1;
+      if (!hid) kwShadow(ctx, px, groundY, sw * 0.20, sh * 0.035);   // 浮いて見えないよう影を1枚
+      ctx.drawImage(sg, px - sw / 2, groundY + bob - sh + 4 * sc, sw, sh);
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.translate(px, py + bob);
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 3.4);
