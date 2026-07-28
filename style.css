@@ -8616,9 +8616,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .stalk-turn.low { color: #ff8a8a; font-weight: 800; animation: stalkWarnPulse .8s ease-in-out infinite; }
 
 /* しのびあし：教える層（♡ゴールマス・初回の絵解き・出来事ヒント）＝「初見でルールが分からない」対策 */
-.stalk-goal-heart { position: absolute; right: 2px; bottom: 1px; font-size: 13px; font-weight: 900;
-  color: #ff9db8; text-shadow: 0 1px 3px rgba(0,0,0,.75); pointer-events: none; animation: stalkGoalPulse 1.3s ease-in-out infinite; }
-.stalk-cell.goal { box-shadow: inset 0 0 0 2px rgba(255,150,180,.5); }
+/* ♡＝小さすぎ＆竜スプライトの裏に隠れて見えなかった（ユーザー指摘）→ 大きく・手前(z6)・強い縁光 */
+.stalk-goal-heart { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); z-index: 6;
+  font-size: 21px; font-weight: 900; color: #ff8fb3;
+  text-shadow: 0 0 4px rgba(0,0,0,.95), 0 0 10px rgba(255,120,170,.8);
+  pointer-events: none; animation: stalkGoalPulse 1.3s ease-in-out infinite; }
+.stalk-cell.goal { box-shadow: inset 0 0 0 2.5px rgba(255,150,180,.65); }
 .stalk-cell.goal-off .stalk-goal-heart { color: rgba(255,255,255,.32); animation: none; }
 @keyframes stalkGoalPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 .stalk-coach { position: absolute; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center;

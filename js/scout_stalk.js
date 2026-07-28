@@ -386,7 +386,9 @@ function _stalkRender() {
       _scBgTag(s.locId, "stalk-bg") +
       `<div class="stalk-grid">${cells}</div>` +
       `<div class="stalk-drg${s.sweeping ? " sweeping" : ""}" style="left:${(s.drg.c + 0.5) * cw}%;top:${(s.drg.r + 0.62) * chh}%">` +
-        `<img class="stalk-drg-img${s.drg.dir === 3 ? " flip" : ""}" alt="">` +
+        // ★HD-2Dスプライトの素材は**右向きが標準**（草むら6頭を並べて実測）。左を向くときだけ反転。
+        //   以前は逆（右で反転）だったため、絵の向きと視界が常に食い違っていた（ユーザー指摘2回目）。
+        `<img class="stalk-drg-img${s.drg.dir === 1 ? " flip" : ""}" alt="">` +
         (s.sleeping ? `<span class="stalk-zzz">💤</span>` : "") +
         // ★予告（つぎの一手）＝考えて動くための情報。↩=振り向く／💤=居眠り／⚠=見回し
         (!s.over && plan && plan.sweeping ? `<span class="stalk-warn">⚠</span>` : "") +
