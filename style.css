@@ -2804,7 +2804,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scm-shops-top { margin-bottom: 10px; }
 .scm-filter { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
 .scm-filter::-webkit-scrollbar { display: none; }
-.scm-chip { flex: none; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #6a635c; background: #f3efe9; border: 1px solid transparent; cursor: pointer; }
+.scm-chip { flex: none; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #6a635c; background: #f3efe9; border: 1px solid transparent; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; line-height: 1; }   /* ★中身を確実に中央へ */
 .scm-chip.on { background: #fff3e4; color: var(--scm-org); border-color: #f0c089; }
 .scm-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; }
 .scm-card { padding: 0; background: #fff; border: 1px solid #ececec; border-radius: 13px; overflow: hidden; cursor: pointer; box-shadow: 0 6px 16px -12px rgba(0,0,0,.4); transition: transform .12s ease, box-shadow .15s ease; text-align: left; }
@@ -4554,7 +4555,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .as-entry { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; cursor: pointer;
   background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--mist); }
 .as-entry:active { transform: translateY(1px); background: rgba(255,255,255,0.08); }
-.as-entry-ic { font-size: 24px; line-height: 1; flex: none; width: 30px; text-align: center; }
+/* ★アイコン枠は flex で中央に。text-align/line-height 任せだと字形の余白ぶん中心からズレる。 */
+.as-entry-ic { font-size: 24px; line-height: 1; flex: none; width: 30px;
+  display: flex; align-items: center; justify-content: center; }
 .as-entry-tx { flex: 1; min-width: 0; }
 .as-entry-l { font-size: 14.5px; font-weight: 800; color: var(--mist); }
 .as-entry-s { display: block; font-size: 11.5px; color: var(--mist-soft); margin-top: 2px; }
@@ -8288,13 +8291,17 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* オンスクリーン十字キー（uiレイヤ相当・スマホの親指位置） */
 .sc-pad { position: absolute; inset: auto 0 0 0; height: 132px; pointer-events: none; }
 .sc-dpad { position: absolute; left: 10px; bottom: 10px; width: 108px; height: 108px; pointer-events: auto; }
+/* ★アイコンだけのボタンは flex で中央に置く。ブラウザ既定の text-align/line-height 任せだと
+   字形の余白ぶんズレる（十字キーの矢印が中心に乗らない＝ユーザー指摘）。padding:0 も要る。 */
 .sc-d { position: absolute; width: 36px; height: 36px; border: 0; border-radius: 9px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
   font-size: 13px; line-height: 1; color: #eaf3ff; background: rgba(16,26,40,.62);
   border: 1px solid rgba(180,215,255,.4); box-shadow: 0 2px 7px rgba(0,0,0,.4); }
 .sc-d.up { left: 36px; top: 0; } .sc-d.down { left: 36px; top: 72px; }
 .sc-d.left { left: 0; top: 36px; } .sc-d.right { left: 72px; top: 36px; }
 .sc-d.on { background: rgba(90,166,214,.85); transform: scale(.94); }
 .sc-act { position: absolute; right: 12px; bottom: 24px; width: 62px; height: 62px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1;
   pointer-events: auto; cursor: pointer; font-size: 24px; color: #2a1d05; border: 0;
   background: linear-gradient(180deg,#f0d27a,#caa24a); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
 .sc-act:active { transform: scale(.94); }
@@ -8505,3 +8512,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .kw-stall .kw-stall-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
 .kw-stall .kw-stall-grid .meal-card { padding: 10px 6px; }
 @media (max-width: 400px) { .kw-stall .kw-stall-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* 散歩のおわり「きょうの散歩」（js/scene_konron.js kwWalkEnd）＝点数もごほうびも付けない、見たものの一覧 */
+.kw-end .kw-end-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 4px; }
+.kw-end .kw-end-list > div { padding: 8px 10px; border-radius: 9px; font-size: 12.5px; line-height: 1.5;
+  color: var(--mist); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); }
+.kw-end .kw-end-none { margin: 10px 0 4px; font-size: 12.5px; color: var(--mist-soft); text-align: center; }

@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260728g";
+const KW_V = "20260728h";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -287,6 +287,37 @@ function kwExit() {
   KW = null;
 }
 
+// ── 散歩のおわり。「きょうの散歩」を一枚だけ見せてから島の地図へ。
+//   点数もごほうびも付けない（付けた瞬間に散歩が作業になる）。見たものを並べるだけ。
+function kwWalkEnd() {
+  const steps = Math.round((KW && KW.steps) || 0);
+  const found = (KW && KW.found) || [];
+  const met = KW ? Object.keys(KW.met || {}).length : 0;
+  const areaNm = (KW && KW.area) ? KW.area.name : "崑崙島";
+  const now = kwNow();
+  kwExit();
+  if (typeof renderKonronMap === "function") renderKonronMap();
+  if (steps < 6 && !found.length && !met) return;                 // ほとんど歩いていない＝黙って戻る
+  const ov = document.createElement("div"); ov.className = "navpop-ov";
+  const box = document.createElement("div"); box.className = "navpop kw-end";
+  let h = '<h3 class="navpop-h">' + now.ic + " きょうの散歩</h3>" +
+          '<p class="navpop-sub">' + areaNm + "・" + now.k + "／" + steps + " 歩" +
+          (met ? "、" + met + " 人と立ち話" : "") + "。</p>";
+  if (found.length) {
+    h += '<div class="kw-end-list">' + found.map(function (f) { return "<div>" + f + "</div>"; }).join("") + "</div>";
+  } else {
+    h += '<p class="kw-end-none">とくに何も拾わなかった。……そういう日も、ある。</p>';
+  }
+  box.innerHTML = h;
+  const btns = document.createElement("div"); btns.className = "navpop-btns";
+  const ok = document.createElement("button"); ok.className = "navpop-go"; ok.textContent = "ごちそうさま";
+  ok.onclick = function () { ov.remove(); };
+  btns.appendChild(ok); box.appendChild(btns);
+  ov.appendChild(box);
+  ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+
 // ── 帰り道（★迷子にしない）
 //   入口から食事やモールへ渡すと、渡した先には「歩く画面へ戻る」導線が無く、**戻れなくなる**
 //   （ユーザー報告：食べ歩きに入ったきり歩く画面に帰れない）。渡す直前に居場所を控えておいて、
@@ -338,12 +369,12 @@ function renderKonronWalk(areaId, at) {
   hud.className = "kw-hud";
   hud.innerHTML =
     '<button class="kw-back">← 島の地図へ</button>' +
-    '<div class="kw-title">🚶 ' + area.name + 'をあるく <span class="kw-beta">β</span></div>' +
+    '<div class="kw-title">🚶 ' + area.name + 'を散歩 <span class="kw-beta">β</span></div>' +
     '<div class="kw-when">' + now.ic + " " + now.k + "</div>" +
     '<div class="kw-toast"></div>' +
     '<div class="kw-prompt"></div>';
   app.appendChild(hud);
-  hud.querySelector(".kw-back").onclick = () => { kwExit(); renderKonronMap(); };
+  hud.querySelector(".kw-back").onclick = () => { kwWalkEnd(); };
 
   const stage = document.createElement("div");
   stage.className = "kw-stage";
@@ -397,6 +428,18 @@ function kwSetup(a, S) {
   KW.poroImg = a.poro || null;
   KW.signs = a;                                          // 道標は a.sg_<name> で引く（無ければ灯り）
   KW.trail = [];
+  // ★散歩の道具立て：きらめき（寄り道の理由）／ひとりごと（立ち止まる理由）／歩数と見つけたもの
+  KW.spark = [];
+  const finds = (KW_FINDS[KW.areaId] || []).slice();
+  const spots = [];
+  for (let r = 0; r < KW_ROWS; r++) for (let c = 0; c < KW_COLS; c++) if (kwCell(c, r) === ".") spots.push([c, r]);
+  for (let k = 0; k < 4 && spots.length && finds.length; k++) {
+    const p = spots.splice((Math.random() * spots.length) | 0, 1)[0];
+    const t = finds.splice((Math.random() * finds.length) | 0, 1)[0];
+    if (Math.hypot((p[0] + 0.5) * KW_CW - KW.mimi.x, (p[1] + 0.5) * KW_CH - KW.mimi.y) < 120) { k--; continue; }
+    KW.spark.push({ x: (p[0] + 0.5) * KW_CW, y: (p[1] + 0.5) * KW_CH, txt: t });
+  }
+  KW.found = []; KW.steps = 0; KW.idle = 0; KW.lastMuse = -1; KW.met = {};
   // すれちがいNPC＝歩ける範囲をゆっくり気ままに歩く
   KW.npcs = (ar.npcs || []).map(function (n) {
     const s = n.s | 0;
@@ -445,6 +488,37 @@ function kwUpdate(dt, S) {
 
   KW.step = KW.moving ? (KW.step + dt * 7.5) : 0;
 
+  // ── 散歩①：歩数（あとで「きょうの散歩」に出す）
+  if (KW.moving) KW.steps += sp / KW_CW;
+
+  // ── 散歩②：立ち止まると、ミミが目の前のものについてひとりごとを言う。
+  //   「早く着く」ことに価値を置かない代わりに、**止まっている時間に中身を持たせる**のが散歩の芯。
+  if (KW.moving) { KW.idle = 0; }
+  else {
+    KW.idle += dt;
+    if (KW.idle > 1.3) {
+      KW.idle = -6.5;                                    // 次の一言まで少し間を置く（うるさくしない）
+      const pool = (KW_MUSE[KW.areaId] || []).concat(KW_MUSE_TIME[kwNow().k] || []);
+      if (pool.length) {
+        let i = (Math.random() * pool.length) | 0;
+        if (i === KW.lastMuse) i = (i + 1) % pool.length; // 同じ文を続けない
+        KW.lastMuse = i;
+        kwToast("💭 " + pool[i]);
+      }
+    }
+  }
+
+  // ── 散歩③：きらめきに寄ると、役に立たないものが見つかる（コインも進行も動かさない）
+  for (let s = KW.spark.length - 1; s >= 0; s--) {
+    const sp2 = KW.spark[s];
+    if (Math.hypot(sp2.x - m.x, sp2.y - m.y) < 34) {
+      KW.spark.splice(s, 1);
+      KW.found.push(sp2.txt);
+      kwToast(sp2.txt);
+      try { if (window.Sfx) Sfx.play("nav"); } catch (e) {}
+    }
+  }
+
   // ポロ随行＝足あとを溜めて、少し遅れて同じ道をついてくる（poroFound後のみ）。
   //   ★足あとは「フレーム」ではなく「距離」で刻む。壁に押しつけている間は進んでいないので、
   //     フレームで刻むと同じ座標が溜まってポロがミミに重なってしまう（実機で踏んだ）。
@@ -488,10 +562,13 @@ function kwUpdate(dt, S) {
     }
   }
 
-  // カメラ＝ミミを中心に、地図の外は見せない
+  // カメラ＝ミミを中心に、地図の外は見せない。★ぴったり張りつかせず少し遅れて追う＝歩きがやわらぐ。
   const sc = kwScale(S), vw = S.vw / sc, vh = S.vh / sc;
-  S.camera.x = Math.max(0, Math.min(Math.max(0, KW_MAPW - vw), m.x - vw / 2));
-  S.camera.y = Math.max(0, Math.min(Math.max(0, KW_MAPH - vh), m.y - vh / 2));
+  const tx = Math.max(0, Math.min(Math.max(0, KW_MAPW - vw), m.x - vw / 2));
+  const ty = Math.max(0, Math.min(Math.max(0, KW_MAPH - vh), m.y - vh / 2));
+  const k = S.reduce ? 1 : Math.min(1, dt * 7.5);
+  S.camera.x = (S.camera.x || S.camera.x === 0) ? S.camera.x + (tx - S.camera.x) * k : tx;
+  S.camera.y = (S.camera.y || S.camera.y === 0) ? S.camera.y + (ty - S.camera.y) * k : ty;
   S.camera.sc = sc; S.camera.vw = vw; S.camera.vh = vh;
 
   // いちばん近いもの（入口 or NPC）→プロンプト
@@ -519,7 +596,7 @@ function kwAct() {
   if (!KW || !KW.near) { kwToast("🔍 ……とくに何もない。"); return; }
   const d = KW.near;
   try { if (window.Sfx) Sfx.play("nav"); } catch (e) {}
-  if (KW.nearKind === "npc") { kwToast("💬 「" + d.line + "」"); return; }
+  if (KW.nearKind === "npc") { KW.met[d.s] = 1; kwToast("💬 「" + d.line + "」"); return; }
   if (d.area) { kwGo(d.area); return; }                  // エリア移動
   if (d.stay) { try { d.go(); } catch (e) {} return; }   // その場に留まる（オーバーレイ／一言）
   // ★別画面へ渡す前に居場所を控える＝行った先に「歩く画面にもどる」が出る（戻れなくならない）。
@@ -578,6 +655,58 @@ function kwStall(title, ids) {
   document.body.appendChild(ov);
 }
 
+// =========================================================================
+// 🌿 散歩の芯（ユーザー決裁：歩くモードは主導線から外し、**散歩そのものを目的**にする）
+//   移動手段としては要らない（ピンを押せば一瞬で行ける）。だから「早く着く」を competing させず、
+//   **立ち止まると気づく／寄り道するとささやかに何か見つかる**だけの時間にする。
+//   見つかるのは役に立たないものばかり＝コインも進行も動かさない（数値非干渉）。
+// =========================================================================
+
+// ① 立ち止まると出る、ミミのひとりごと。歩き出すと消える。同じ文は続けて出さない。
+const KW_MUSE = {
+  city: ["潮の匂い。……港って、朝もお昼も、ずっと働いてるなあ。",
+         "石畳、ところどころ丸くなってる。何人ぶんの足だろ。",
+         "干した網のむこうで、猫がのびをした。",
+         "屋台の湯気って、なんであんなに、おいでおいでって感じなんだろ。",
+         "遠くで船の鐘。……もう一便、出るのかな。"],
+  race: ["風、砂を運んでくる。……走る日の匂いだ。",
+         "だれもいない走路。ここ、いつも音でいっぱいなのにな。",
+         "旗がぱたぱた鳴ってる。それだけで、ちょっと胸がはやる。",
+         "屋台のおじさん、もう仕込みしてる。早いなあ。",
+         "柵にもたれて、しばらく見てるだけの時間。……こういうのも、悪くない。"],
+  onsen: ["湯けむりが、竹の上をゆっくり越えていく。",
+          "石のふち、あったかい。ここに座ってる人、絶対いる。",
+          "しゅわ……って音がずっとしてる。お湯って、しゃべってるみたい。",
+          "鳥居の赤、湯気ににじんできれい。",
+          "肩の力、勝手にぬけてく。……ふう。"],
+  beach: ["波の音って、近づくと大きいのに、うるさくない。ふしぎ。",
+          "砂、さっきより冷たい。日がかたむいてきたのかも。",
+          "桟橋の板、一枚だけ音が違う。……この板、好きかも。",
+          "小屋のかげ、風がすずしい。ちょっとだけ、ここにいよう。",
+          "足あと、波が消してく。それも、なんかいい。"],
+};
+const KW_MUSE_TIME = {
+  朝: ["朝の光、まだやわらかい。", "空気がしゃんとしてる。今日、いい日かも。"],
+  昼: ["日ざしがまっすぐ。影がちいさい。", "お腹すいたな……なんて、まだ早いか。"],
+  夕: ["ぜんぶ、あめ色になってきた。", "夕方の風は、ちょっとだけ、さみしい匂いがする。"],
+  夜: ["灯りがぽつぽつ。夜の島って、こんなに静かなんだ。", "星、見えるかな。……見えた。"],
+};
+// ② 寄り道で見つかるもの（きらめき）。役に立たないものだけ＝集めても何も強くならない。
+const KW_FINDS = {
+  city: ["🐚 白い貝がら。港なのに、なんでここに？", "🐈 日なたで寝てる猫。起こさないように、そっと。",
+         "🪵 削りかけの木くず。だれかの仕事のとちゅう。", "🌼 石のすきまに、ちいさい花。",
+         "🎣 ほどけた釣り糸。結び目のかたちが、きれい。", "🍋 転がってた柑橘。いい匂いだけ、もらった。"],
+  race: ["🎫 風に飛ばされた古い馬券……じゃなくて、竜券。", "🪶 柵にひっかかった羽根。だれの？",
+         "🌾 走路のはじの、しぶとい草。", "🔔 落ちてた小さな鈴。ちりん。",
+         "🧢 忘れ物の帽子。……あとで届けよう。", "🍡 だんごの串。だれか、ここで食べたんだ。"],
+  onsen: ["🍃 湯に浮かんだ葉っぱ。ゆっくりまわってる。", "🪨 つるつるの石。ずっと撫でられてきた顔。",
+          "🧺 忘れられた桶。ひっくり返して、ひと休み。", "🕯 灯籠の中、ろうそくの燃えかす。",
+          "🎋 竹に彫られた古い名前。だれとだれ、だろ。", "♨️ 湯の花。指でつまむと、ふわっと消えた。"],
+  beach: ["🪸 桃色のさんごのかけら。", "🍶 中身のないびん。手紙は……入ってない。",
+          "🐚 巻き貝。耳にあてたら、ちゃんと海だった。", "🪁 ちぎれた凧の尾。どこから来たの。",
+          "🦀 横歩きのカニ。目が合った気がする。", "🌴 落ちてた椰子の実。……重い。"],
+};
+
 // 入口アイコン → 道標スプライト（images/scene/konron/props/）。載っていないアイコンは灯りのまま。
 const KW_SIGN = {
   "🏬": "sign_mall", "🍢": "sign_market", "🍧": "sign_market", "📷": "sign_photo",
@@ -623,6 +752,22 @@ function kwDraw(ctx, cam, layer, S, t) {
 
   const m = KW.mimi;
   const H = 118 * sc;
+
+  // ── きらめき（寄り道の理由）＝ふわふわ光るだけ。近づくと「見つけたもの」になる。
+  (KW.spark || []).forEach(function (s, i) {
+    const px = (s.x - cam.x) * sc, py = (s.y - cam.y) * sc;
+    if (px < -30 || py < -30 || px > S.vw + 30 || py > S.vh + 30) return;
+    const pu = S.reduce ? 0.7 : (0.55 + 0.45 * Math.abs(Math.sin(t / 620 + i)));
+    const R = 9 * sc * pu;
+    ctx.save();
+    const g = ctx.createRadialGradient(px, py - 12 * sc, 0, px, py - 12 * sc, R * 2.6);
+    g.addColorStop(0, "rgba(255,248,205," + (0.85 * pu).toFixed(2) + ")");
+    g.addColorStop(1, "rgba(255,230,150,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py - 12 * sc, R * 2.6, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(255,252,232,.95)";
+    ctx.beginPath(); ctx.arc(px, py - 12 * sc, Math.max(1.2, R * 0.34), 0, 7); ctx.fill();
+    ctx.restore();
+  });
 
   // ── すれちがいNPC（ミミより奥の人から順に）
   const folkH = H * 0.94;

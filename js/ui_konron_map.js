@@ -268,15 +268,6 @@ function renderKonronMap() {
 
   // ⑤ 地図でさがす（暗いインセットの地図モジュール）
   app.appendChild(_ktSectionHead("地図でさがす", "エリアのピンから、その地区のスポットと施設へ。"));
-  // ★G2a 歩けるマップは「島時間」の**新しい入り方**であって、ピン式の置き換えではない（設計の芯）。
-  //   従来のピン式はこの下にそのまま残る。
-  if (typeof renderKonronWalk === "function" && typeof Scene !== "undefined") {
-    const walk = el("button", "kt-walkcard",
-      `<span class="kt-wc-ic">🚶</span><div><b>歩いてまわる（β）</b>` +
-      `<small>港町・市街を自分の足で。市場・モール・見晴らし台へは、歩いて入れます。</small></div>`);
-    walk.onclick = () => renderKonronWalk();
-    app.appendChild(walk);
-  }
   const mapmod = el("div", "kt-mapmod");
   const stage = el("div", "km-stage");
   stage.innerHTML = `<img class="km-mapimg" src="images/konron/island_map.webp?v=20260727a" alt="崑崙島 観光ジオラマ地図" decoding="async">`;
@@ -304,6 +295,14 @@ function renderKonronMap() {
   const tn = el("button", "kt-more-card", `<span class="kt-more-ic">📔</span><b>旅ノート</b><small>エリアごとの記録・制覇度・称号</small>`);
   tn.onclick = () => renderKonronTravelNote();
   more.appendChild(g); more.appendChild(gal); more.appendChild(tn);
+  // ★歩けるマップは**移動手段ではなく散歩**（ユーザー決裁）。ピンの上ではなく「もっと楽しむ」に、
+  //   急ぐ人が踏まない位置で置く。用が無くても、ただ歩きたい人のためのもの。
+  if (typeof renderKonronWalk === "function" && typeof Scene !== "undefined") {
+    const walk = el("button", "kt-more-card",
+      `<span class="kt-more-ic">🚶</span><b>島を散歩する</b><small>用は無くても。立ち止まると、気づくものがある（β）</small>`);
+    walk.onclick = () => renderKonronWalk();
+    more.appendChild(walk);
+  }
   app.appendChild(more);
   app.appendChild(el("div", "kt-note", "※「観光」は表示専用です（レースの着順・オッズ・配当には影響しません）。"));
   // M2：島の一日ループの出口（観光→次のレース／SNS未読）。docs/GAME_EXPERIENCE_DESIGN §3。
