@@ -8614,3 +8614,23 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   filter: drop-shadow(0 2px 5px rgba(0,0,0,.8)); animation: stalkPop .25s both; }
 .stalk-drg.sweeping .stalk-drg-img { filter: drop-shadow(0 5px 7px rgba(0,0,0,.5)) drop-shadow(0 0 14px rgba(255,214,90,.55)); }
 .stalk-turn.low { color: #ff8a8a; font-weight: 800; animation: stalkWarnPulse .8s ease-in-out infinite; }
+
+/* しのびあし：教える層（♡ゴールマス・初回の絵解き・出来事ヒント）＝「初見でルールが分からない」対策 */
+.stalk-goal-heart { position: absolute; right: 2px; bottom: 1px; font-size: 13px; font-weight: 900;
+  color: #ff9db8; text-shadow: 0 1px 3px rgba(0,0,0,.75); pointer-events: none; animation: stalkGoalPulse 1.3s ease-in-out infinite; }
+.stalk-cell.goal { box-shadow: inset 0 0 0 2px rgba(255,150,180,.5); }
+.stalk-cell.goal-off .stalk-goal-heart { color: rgba(255,255,255,.32); animation: none; }
+@keyframes stalkGoalPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+.stalk-coach { position: absolute; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 12%; background: rgba(5,8,13,.45); cursor: pointer; border-radius: 14px; }
+.stalk-wrap { position: relative; }
+.stalk-coach-card { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 84%;
+  padding: 14px 20px 10px; border-radius: 14px; background: rgba(16,22,32,.97); border: 1.5px solid rgba(255,214,140,.6);
+  box-shadow: 0 12px 30px -10px rgba(0,0,0,.8); animation: stalkPop .3s both; text-align: center; }
+.stalk-coach-ic { font-size: 34px; }
+.stalk-coach-card p { margin: 0; font-size: 13.5px; line-height: 1.65; color: #f2ecdd; }
+.stalk-coach-card small { font-size: 10.5px; color: var(--mist-soft); }
+.stalk-tipmsg { position: absolute; left: 50%; top: 14%; transform: translateX(-50%); z-index: 20; max-width: 88%;
+  padding: 9px 14px; border-radius: 12px; font-size: 12.5px; color: #fff4dd; text-align: center; white-space: nowrap;
+  background: rgba(16,22,32,.94); border: 1px solid rgba(255,214,140,.55); box-shadow: 0 8px 22px -8px rgba(0,0,0,.8);
+  animation: stalkPop .3s both; pointer-events: none; }

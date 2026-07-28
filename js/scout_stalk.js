@@ -351,9 +351,13 @@ function _stalkRender() {
     const t = _stalkCell(c, r);
     const vis = vision.indexOf(c + "," + r) >= 0;
     const canGo = !s.over && Math.abs(c - s.mimi.c) + Math.abs(r - s.mimi.r) === 1 && t !== "R" && !(c === s.drg.c && r === s.drg.r);
-    cells += `<div class="stalk-cell${vis ? " vis" : ""}${canGo ? " go" : ""}" data-c="${c}" data-r="${r}"` +
+    // ★ゴールを盤面に描く：竜のとなり4マス＝♡。いま見えているマスの♡は薄く（そこからは成立しない）
+    //   ＝「どこへ行けばいいの？」を文章でなく盤面が答える（初見で伝わらなかった反省）。
+    const goal = t !== "R" && Math.abs(c - s.drg.c) + Math.abs(r - s.drg.r) === 1;
+    cells += `<div class="stalk-cell${vis ? " vis" : ""}${canGo ? " go" : ""}${goal ? (vis && t !== "B" ? " goal-off" : " goal") : ""}" data-c="${c}" data-r="${r}"` +
       ` style="left:${c * cw}%;top:${r * chh}%;width:${cw}%;height:${chh}%">` +
       (t === "B" ? `<span class="stalk-bush">🌿</span>` : t === "R" ? `<span class="stalk-rock">🪨</span>` : "") +
+      (goal ? `<span class="stalk-goal-heart">♡</span>` : "") +
       `</div>`;
   }
   const hidden = _stalkCell(s.mimi.c, s.mimi.r) === "B";
@@ -385,6 +389,48 @@ function _stalkRender() {
       parseInt(cell.getAttribute("data-c")) - s.mimi.c,
       parseInt(cell.getAttribute("data-r")) - s.mimi.r);
   });
+  _stalkCoachMaybe(wrap);
+}
+
+// ── はじめてでも分かるように（説明書ではなく、その場で1つずつ）──────────
+//   ①初回だけ：3タップの絵解き（青マル→黄マス→♡）②初めて見つかった時・初めて⚠が出た時に一言。
+//   「画面が語るから説明不要」は設計者の思い込みだった（ユーザー指摘）ので、教える層を足す。
+function _stalkCoachMaybe(wrap) {
+  const p = state.player;
+  if (p._stalkCoach) { _stalkEventTips(wrap); return; }
+  const steps = [
+    { ic: "🔵", tx: "青いマル ＝ あるける場所<br>タップで 1歩すすむ" },
+    { ic: "🟡", tx: "黄色いマス ＝ 竜から<b>見えている</b><br>🌿に入れば かくれられる" },
+    { ic: "♡", tx: "竜のとなりの<b>♡マス</b>にたどりつけたら<br>なかよし成立！（正面からはダメ）" },
+  ];
+  let i = 0;
+  const ov = el("div", "stalk-coach");
+  const card = el("div", "stalk-coach-card");
+  const draw = () => { card.innerHTML = `<span class="stalk-coach-ic">${steps[i].ic}</span><p>${steps[i].tx}</p><small>タップでつぎへ（${i + 1}/${steps.length}）</small>`; };
+  draw();
+  ov.appendChild(card);
+  ov.onclick = () => {
+    i++;
+    if (i >= steps.length) { ov.remove(); p._stalkCoach = 1; if (typeof saveGame === "function") saveGame(); return; }
+    draw();
+  };
+  wrap.appendChild(ov);
+}
+function _stalkTip(wrap, msg) {
+  const t = el("div", "stalk-tipmsg", msg);
+  (wrap.querySelector(".stalk-board") || wrap).appendChild(t);
+  setTimeout(() => t.remove(), 2400);
+}
+function _stalkEventTips(wrap) {
+  const s = _stalk, p = state.player;
+  if (!s) return;
+  if (s.flash === "alarm" && !p._stalkTipAlarm) {
+    p._stalkTipAlarm = 1; if (typeof saveGame === "function") saveGame();
+    _stalkTip(wrap, "みつかった！　<b>！が3つ</b>で 逃げられちゃう");
+  } else if (!s.sweeping && _stalkIsSweepTurn(s.turn + 1) && !p._stalkTipSweep) {
+    p._stalkTipSweep = 1; if (typeof saveGame === "function") saveGame();
+    _stalkTip(wrap, "⚠ ＝ つぎの手で <b>ぐるっと見回す</b>。🌿へかくれるか、はなれて！");
+  }
 }
 
 // キー操作（任意）：矢印＝移動・スペース＝じっと
