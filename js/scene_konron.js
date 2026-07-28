@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260728e";
+const KW_V = "20260728g";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -54,8 +54,8 @@ const KW_AREAS = {
     doors: [
       { c: 14, r: 8, ic: "🏬", n: "崑崙モール", hint: "アーチをくぐる",
         go: function () { if (typeof renderMall === "function") renderMall(); } },
-      { c: 11, r: 12, ic: "🍢", n: "霧待ち市場", hint: "屋台をのぞく",
-        go: function () { if (typeof renderMeals === "function") renderMeals(); } },
+      { c: 11, r: 12, ic: "🍢", n: "霧待ち市場", hint: "屋台をのぞく", stay: true,
+        go: function () { kwStall("🍢 霧待ち市場の立ち食い", ["t_nikuman", "t_ikayaki", "t_corn"]); } },
       // 撮影は**オーバーレイ**（pgOpen）＝画面遷移ではない。シーンを壊すと閉じた後に
       // キャンバスの無い抜け殻が残るので、この場に留まったまま上に開く（実機で踏んだ不具合）。
       { c: 9, r: 19, ic: "📷", n: "ミストラ湾の見晴らし台", hint: "写真をとる", stay: true,
@@ -110,8 +110,8 @@ const KW_AREAS = {
         go: function () { if (typeof renderRaceSelect === "function") renderRaceSelect(); } },
       { c: 18, r: 19, ic: "📷", n: "大門前の眺め", hint: "写真をとる", stay: true,
         go: function () { kwShoot("racecourse"); } },
-      { c: 21, r: 16, ic: "🍢", n: "場外の屋台", hint: "食べていく",
-        go: function () { if (typeof renderMeals === "function") renderMeals(); } },
+      { c: 21, r: 16, ic: "🍢", n: "場外の屋台", hint: "食べていく", stay: true,
+        go: function () { kwStall("🍢 場外の屋台", ["t_yakitori", "t_dote", "t_dango"]); } },
       { c: 15, r: 22, ic: "🏙️", n: "港町へもどる坂", hint: "坂をくだる", area: "city" },
       { c: 27, r: 16, ic: "♨️", n: "温泉郷へつづく道", hint: "湯けむりの方へ", area: "onsen" },
     ],
@@ -154,7 +154,7 @@ const KW_AREAS = {
       { c: 12, r: 7, ic: "♨️", n: "湯けむりの露天", hint: "写真をとる", stay: true,
         go: function () { kwShoot("uroko"); } },
       { c: 17, r: 7, ic: "🍵", n: "休憩処", hint: "ひと息つく", stay: true,
-        go: function () { kwToast("🍵 湯上がりの甘酒。……ふう、と息が出る。"); } },
+        go: function () { kwStall("🍵 湯上がりの休憩処", ["t_amazake"]); } },
       { c: 19, r: 4, ic: "🏁", n: "レース場へもどる道", hint: "小径をもどる", area: "race" },
       { c: 25, r: 12, ic: "🏖️", n: "浜へくだる道", hint: "潮の匂いのする方へ", area: "beach" },
       { c: 15, r: 20, ic: "🏝️", n: "鳥居をくぐって島の地図へ", hint: "この日の島時間をとじる",
@@ -198,8 +198,8 @@ const KW_AREAS = {
     doors: [
       { c: 3, r: 11, ic: "📷", n: "桟橋の先", hint: "写真をとる", stay: true,
         go: function () { kwShoot("sena"); } },
-      { c: 12, r: 10, ic: "🍧", n: "かき氷の屋台", hint: "食べていく",
-        go: function () { if (typeof renderMeals === "function") renderMeals(); } },
+      { c: 12, r: 10, ic: "🍧", n: "かき氷の屋台", hint: "食べていく", stay: true,
+        go: function () { kwStall("🍧 浜のかき氷屋", ["t_kakigori", "t_wataame", "t_takoyaki"]); } },
       { c: 23, r: 11, ic: "♨️", n: "温泉郷へもどる道", hint: "坂をのぼる", area: "onsen" },
       { c: 14, r: 22, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
@@ -286,14 +286,49 @@ function kwExit() {
   if (KW && KW.scene) { try { KW.scene.destroy(); } catch (e) {} }
   KW = null;
 }
+
+// ── 帰り道（★迷子にしない）
+//   入口から食事やモールへ渡すと、渡した先には「歩く画面へ戻る」導線が無く、**戻れなくなる**
+//   （ユーザー報告：食べ歩きに入ったきり歩く画面に帰れない）。渡す直前に居場所を控えておいて、
+//   行った先の画面に小さなボタンを出す。ホーム／タイトルまで下りたら「島を出た」とみなして消す。
+let KW_RETURN = null, KW_RETURN_TIMER = 0;
+function kwMarkReturn() {
+  if (!KW || !KW.mimi) return;
+  KW_RETURN = { area: KW.areaId || "city", x: KW.mimi.x, y: KW.mimi.y };
+  let b = document.getElementById("kw-return");
+  if (!b) {
+    b = document.createElement("button");
+    b.id = "kw-return"; b.className = "kw-return";
+    b.innerHTML = '<span class="kw-return-ic">🚶</span>歩く画面にもどる';
+    b.onclick = function () {
+      const r = KW_RETURN; kwReturnClear();
+      if (r && typeof renderKonronWalk === "function") renderKonronWalk(r.area, r);
+    };
+    document.body.appendChild(b);
+  }
+  b.hidden = false;
+  clearInterval(KW_RETURN_TIMER);
+  KW_RETURN_TIMER = setInterval(function () {
+    const s = (typeof state !== "undefined" && state.ui) ? state.ui.screen : "";
+    if (s === "home" || s === "title" || s === "konron_walk") kwReturnClear();
+  }, 500);
+}
+function kwReturnClear() {
+  KW_RETURN = null;
+  clearInterval(KW_RETURN_TIMER); KW_RETURN_TIMER = 0;
+  const b = document.getElementById("kw-return"); if (b) b.remove();
+}
 // エリア移動＝シーンを作り直す（設計書 §2「入場でロード／退場で破棄」に従う）
 function kwGo(areaId) { kwExit(); renderKonronWalk(areaId); }
 
 // ── 画面：歩いてまわる（β）
-function renderKonronWalk(areaId) {
+function renderKonronWalk(areaId, at) {
   if (typeof konronMapUnlocked === "function" && !konronMapUnlocked()) { renderKonronMap(); return; }
   if (typeof Scene === "undefined" || !Scene.create) { renderKonronMap(); return; }
   const area = KW_AREAS[areaId] || KW_AREAS.city;
+  const areaKey = KW_AREAS[areaId] ? areaId : "city";
+  // 戻ってきた時は**出て行った場所に立たせる**（毎回スタート地点に飛ばされると歩き直しになる）
+  const resume = (at && at.area === areaKey) ? { x: at.x, y: at.y } : null;
   state.ui.screen = "konron_walk";
   const app = beginScreen();
   app.classList.add("kw-page");
@@ -341,13 +376,16 @@ function renderKonronWalk(areaId) {
     onExit: function () { if (KW && KW.scene === scene) KW = null; },
   });
 
-  KW = { scene: scene, hud: hud, area: area, mimi: null, near: null, dir: 0, step: 0, moving: false, trail: [], npcs: [] };
+  KW = { scene: scene, hud: hud, area: area, areaId: areaKey, resume: resume,
+         mimi: null, near: null, dir: 0, step: 0, moving: false, trail: [], npcs: [] };
 }
 
 function kwSetup(a, S) {
   if (!KW) return;
   const ar = KW.area, st = ar.start || { c: 16, r: 11 };
-  KW.mimi = { x: (st.c + 0.5) * KW_CW, y: (st.r + 0.5) * KW_CH };
+  KW.mimi = (KW.resume && !kwBlocked(KW.resume.x, KW.resume.y))
+    ? { x: KW.resume.x, y: KW.resume.y }                  // 用事から帰ってきた＝出て行った場所へ
+    : { x: (st.c + 0.5) * KW_CW, y: (st.r + 0.5) * KW_CH };
   if (kwBlocked(KW.mimi.x, KW.mimi.y)) {                 // 万一ふさがっていたら近くの歩ける所へ逃がす
     outer: for (let r = 8; r < KW_ROWS; r++) for (let c = 0; c < KW_COLS; c++) {
       if (kwCell(c, r) === ".") { KW.mimi = { x: (c + 0.5) * KW_CW, y: (r + 0.5) * KW_CH }; break outer; }
@@ -375,7 +413,8 @@ function kwScale(S) { return Math.max(0.28, S.vw / 760); }
 
 function kwUpdate(dt, S) {
   if (!KW || !KW.mimi) return;
-  const sp = 210 * dt;                                    // ワールドpx/秒
+  // ★歩く速さ＝1マス(60px)を約0.18秒。210だと「移動そのものが待ち時間」になっていた（ユーザー指摘）。
+  const sp = 330 * dt;                                    // ワールドpx/秒
   const i = S.input;
   let dx = (i.right ? 1 : 0) - (i.left ? 1 : 0);
   let dy = (i.down ? 1 : 0) - (i.up ? 1 : 0);
@@ -384,10 +423,23 @@ function kwUpdate(dt, S) {
   if (dy < 0) KW.dir = 1; else if (dy > 0) KW.dir = 0; else if (dx) KW.dir = 2;
   KW.face = dx < 0 ? -1 : (dx > 0 ? 1 : (KW.face || 1));
 
-  // 軸ごとに判定＝壁ぞいに滑れる（角で引っかからない）
+  // 軸ごとに判定＝壁ぞいに滑れる。さらに**角ずらし**：まっすぐ進めない時、ほんの少し横へ
+  //   寄れば通れるなら勝手に寄る。1マス幅の抜け道（門・板の道）に真横から入ろうとして
+  //   引っかかり続けるのを無くす＝「道に詰まる」の実体（ユーザー指摘）。
   const m = KW.mimi;
-  if (dx) { const nx = m.x + dx * sp; if (!kwBlocked(nx, m.y)) m.x = nx; }
-  if (dy) { const ny = m.y + dy * sp; if (!kwBlocked(m.x, ny)) m.y = ny; }
+  const A = 17;                                           // 寄せてみる幅（マスの約1/4）
+  if (dx) {
+    const nx = m.x + dx * sp;
+    if (!kwBlocked(nx, m.y)) m.x = nx;
+    else if (!kwBlocked(nx, m.y - A) && !kwBlocked(m.x, m.y - A)) m.y -= Math.min(A, sp);
+    else if (!kwBlocked(nx, m.y + A) && !kwBlocked(m.x, m.y + A)) m.y += Math.min(A, sp);
+  }
+  if (dy) {
+    const ny = m.y + dy * sp;
+    if (!kwBlocked(m.x, ny)) m.y = ny;
+    else if (!kwBlocked(m.x - A, ny) && !kwBlocked(m.x - A, m.y)) m.x -= Math.min(A, sp);
+    else if (!kwBlocked(m.x + A, ny) && !kwBlocked(m.x + A, m.y)) m.x += Math.min(A, sp);
+  }
   m.x = Math.max(4, Math.min(KW_MAPW - 4, m.x));
   m.y = Math.max(4, Math.min(KW_MAPH - 4, m.y));
 
@@ -408,6 +460,15 @@ function kwUpdate(dt, S) {
   // NPC＝気ままに一歩ずつ。壁とマップ外には入らない
   for (let k = 0; k < KW.npcs.length; k++) {
     const n = KW.npcs[k];
+    // ★近づいたら**立ち止まってミミの方を向く**。話しかけようとした相手が歩いて逃げるのは
+    //   ただのストレスで、追いかけっこをさせたいわけではない（ユーザー指摘）。
+    if (Math.abs(n.x - m.x) < KW_CW * 2.0 && Math.abs(n.y - m.y) < KW_CH * 2.0) {
+      n.vx = 0; n.vy = 0; n.wait = Math.max(n.wait, 0.5);
+      const ax = m.x - n.x, ay = m.y - n.y;
+      if (Math.abs(ax) > Math.abs(ay)) { n.dir = 2; n.face = ax < 0 ? -1 : 1; }
+      else n.dir = ay < 0 ? 1 : 0;
+      continue;
+    }
     n.wait -= dt;
     if (n.wait <= 0) {
       const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [0, 0]];
@@ -461,8 +522,60 @@ function kwAct() {
   if (KW.nearKind === "npc") { kwToast("💬 「" + d.line + "」"); return; }
   if (d.area) { kwGo(d.area); return; }                  // エリア移動
   if (d.stay) { try { d.go(); } catch (e) {} return; }   // その場に留まる（オーバーレイ／一言）
+  // ★別画面へ渡す前に居場所を控える＝行った先に「歩く画面にもどる」が出る（戻れなくならない）。
+  //   島の地図へ抜ける入口は「島時間を閉じる」意図なので控えない。
+  if (!/島の地図/.test(d.n || "")) kwMarkReturn(); else kwReturnClear();
   kwExit();
   try { d.go(); } catch (e) { if (typeof renderKonronMap === "function") renderKonronMap(); }
+}
+
+// ── 屋台＝**その場に在るものだけ**出す（★設計の直し）
+//   入口を押すと食べ歩き帳（44品ぜんぶ）が開いていた。目の前の屋台に立っているのに
+//   島じゅうの品が何でも食べられるのは、歩いている意味を消す嘘だった（ユーザー指摘）。
+//   ここでは「並んでいる品」だけを見せ、実食の中身（値段・おなか・反応）は
+//   既存の showMealDetail にそのまま渡す＝経済も判定も一切変えない。
+function kwStall(title, ids) {
+  if (typeof MEALS === "undefined" || typeof showMealDetail !== "function") {
+    if (typeof renderMeals === "function") { kwMarkReturn(); kwExit(); renderMeals(); }
+    return;
+  }
+  const items = ids.map(function (id) { return MEALS.find(function (m) { return m.id === id; }); })
+                   .filter(Boolean);
+  if (!items.length) { kwToast("🍽️ ……今日はもう店じまいらしい。"); return; }
+  const ov = document.createElement("div"); ov.className = "navpop-ov";
+  const box = document.createElement("div"); box.className = "navpop kw-stall";
+  const close = function () { ov.remove(); };
+  let html = '<h3 class="navpop-h">' + title + "</h3>" +
+             '<p class="navpop-sub">きょう並んでいるのは、この' + items.length + "品。</p>" +
+             '<div class="meal-grid kw-stall-grid">';
+  items.forEach(function (m) {
+    const got = (typeof mealEaten === "function") && mealEaten(m.id);
+    const price = (typeof mealPrice === "function") ? mealPrice(m) : 0;
+    html += '<button class="meal-card' + (got ? " got" : "") + '" data-id="' + m.id + '">' +
+            '<span class="meal-card-ic">' + m.icon + "</span>" +
+            '<span class="meal-card-nm">' + m.name +
+            (price ? '<span class="meal-card-price">🪙' + price.toLocaleString("ja-JP") + "</span>" : "") +
+            "</span></button>";
+  });
+  html += "</div>";
+  box.innerHTML = html;
+  const btns = document.createElement("div"); btns.className = "navpop-btns";
+  const bookBtn = document.createElement("button");
+  bookBtn.className = "navpop-cancel"; bookBtn.textContent = "📖 食べ歩き帳を開く";
+  bookBtn.onclick = function () { close(); kwMarkReturn(); kwExit(); if (typeof renderMeals === "function") renderMeals(); };
+  const back = document.createElement("button");
+  back.className = "navpop-cancel"; back.textContent = "また今度";
+  back.onclick = close;
+  btns.appendChild(bookBtn); btns.appendChild(back); box.appendChild(btns);
+  box.querySelectorAll(".meal-card").forEach(function (c) {
+    c.onclick = function () {
+      const m = items.find(function (x) { return x.id === c.getAttribute("data-id"); });
+      if (m) showMealDetail(m);                 // ★実食の中身は既存のまま（値段・おなか・反応・満腹）
+    };
+  });
+  ov.appendChild(box);
+  ov.onclick = function (e) { if (e.target === ov) close(); };
+  document.body.appendChild(ov);
 }
 
 // 入口アイコン → 道標スプライト（images/scene/konron/props/）。載っていないアイコンは灯りのまま。

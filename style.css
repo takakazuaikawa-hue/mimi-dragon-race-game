@@ -8489,3 +8489,19 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .rpg-deck-sub.chips .rpg-chip:not(.flee) .act-n { display:none; }
   .rpg-deck-sub.chips .rpg-chip:not(.flee) .act-ic { font-size:19px; }
 }
+
+/* ── 歩く画面から用事に出たときの帰り道（js/scene_konron.js kwMarkReturn）
+   食事やモールに入ると歩く画面に戻る導線が無く、迷子になっていた（ユーザー報告）。
+   ホーム/タイトルまで下りたら「島を出た」とみなして自動で消える。 */
+.kw-return { position: fixed; left: 10px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 140;
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; color: #fff8e6; cursor: pointer;
+  background: rgba(24,30,40,.92); border: 1px solid rgba(255,214,140,.55);
+  box-shadow: 0 8px 22px -8px rgba(0,0,0,.8); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.kw-return:active { transform: scale(.94); }
+.kw-return-ic { font-size: 15px; }
+
+/* 屋台のミニ品書き（js/scene_konron.js kwStall）＝その場に並んでいる品だけ。実食は既存の meal-pop へ */
+.kw-stall .kw-stall-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; }
+.kw-stall .kw-stall-grid .meal-card { padding: 10px 6px; }
+@media (max-width: 400px) { .kw-stall .kw-stall-grid { grid-template-columns: repeat(2, 1fr); } }
