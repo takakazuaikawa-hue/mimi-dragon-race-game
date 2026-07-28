@@ -364,7 +364,8 @@ function _stalkRender() {
     const key = c + "," + r;
     const vis = v.vis.indexOf(key) >= 0;
     const shade = !vis && v.shade.indexOf(key) >= 0;
-    const nvis = !vis && !plan?.sweeping && nv.vis.indexOf(key) >= 0;   // つぎ見られるマス（薄い縞）
+    // つぎ見られるマス（赤紫の縞）。⚠（つぎ見回し）のときも描く＝⚠の意味が縞の広がりで自明になる。
+    const nvis = !vis && nv.vis.indexOf(key) >= 0;
     const canGo = !s.over && Math.abs(c - s.mimi.c) + Math.abs(r - s.mimi.r) === 1 && t !== "R" && !(c === s.drg.c && r === s.drg.r);
     // ♡＝竜の左右2マスだけ（顔の横に回り込む）。いま見えている側は薄い＝正面はダメ、が見える。
     const goal = t !== "R" && Math.abs(c - s.drg.c) === 1 && r === s.drg.r;
@@ -380,6 +381,7 @@ function _stalkRender() {
     `<div class="stalk-top">` +
       `<button class="stalk-quit">← あきらめる</button>` +
       `<span class="stalk-name">${s.d.name}${STALK_TIER[s.tier].nm ? `<i class="stalk-tier ${STALK_TIER[s.tier].cls}">✨${STALK_TIER[s.tier].nm}</i>` : ""}</span>` +
+      `<button class="stalk-help info-q" title="記号のいみ">？</button>` +
       `<span class="stalk-pips">${[0, 1, 2].map(i => `<i class="${i < s.alarm ? "on" : ""}">！</i>`).join("")}</span>` +
     `</div>` +
     `<div class="stalk-board${s.flash === "alarm" ? " alarm" : ""}${s.flash === "flee" ? " flee" : ""}">` +
@@ -389,12 +391,13 @@ function _stalkRender() {
         // ★HD-2Dスプライトの素材は**右向きが標準**（草むら6頭を並べて実測）。左を向くときだけ反転。
         //   以前は逆（右で反転）だったため、絵の向きと視界が常に食い違っていた（ユーザー指摘2回目）。
         `<img class="stalk-drg-img${s.drg.dir === 1 ? " flip" : ""}" alt="">` +
-        (s.sleeping ? `<span class="stalk-zzz">💤</span>` : "") +
-        // ★予告（つぎの一手）＝考えて動くための情報。↩=振り向く／💤=居眠り／⚠=見回し
-        (!s.over && plan && plan.sweeping ? `<span class="stalk-warn">⚠</span>` : "") +
-        (!s.over && plan && plan.sleeping ? `<span class="stalk-next">💤…</span>` : "") +
-        (!s.over && willFlip ? `<span class="stalk-next stalk-next-flip${plan.dir === 3 ? " fr" : ""}">↩</span>` : "") +
-        (s.sweeping ? `<span class="stalk-eyes">👀</span>` : "") +
+        // ★動く記号は**必ずラベルつき**で出す。一度きりのヒントに説明を頼ると、見逃したら
+        //   一生わからない記号になる（⚠と👀で2度ユーザーに指摘された）。
+        (s.sleeping ? `<span class="stalk-badge stalk-zzz">💤<small>いねむり中</small></span>` : "") +
+        (!s.over && plan && plan.sweeping ? `<span class="stalk-badge stalk-warn">⚠<small>つぎ 見回し</small></span>` : "") +
+        (!s.over && plan && plan.sleeping ? `<span class="stalk-badge stalk-next">💤<small>つぎ いねむり</small></span>` : "") +
+        (!s.over && willFlip ? `<span class="stalk-badge stalk-next">↩<small>つぎ ふりむく</small></span>` : "") +
+        (s.sweeping ? `<span class="stalk-badge stalk-eyes">👀<small>見回し中！</small></span>` : "") +
         (s.flash === "alarm" ? `<span class="stalk-ex">！</span>` : "") +
       `</div>` +
       `<div class="stalk-mimi${hidden ? " hid" : ""}" style="left:${(s.mimi.c + 0.5) * cw}%;top:${(s.mimi.r + 0.72) * chh}%">` +
@@ -404,8 +407,9 @@ function _stalkRender() {
     `<div class="stalk-foot"><span class="stalk-turn${STALK_TURNS - s.turn <= 5 ? " low" : ""}">👣 ${STALK_TURNS - s.turn}</span>` +
       `<button class="stalk-wait">🐾 じっとする</button></div>` +
     `<div class="stalk-legend"><span><i class="lg lg-vis"></i>みつかる</span><span><i class="lg lg-nvis"></i>つぎ見られる</span>` +
-      `<span><i class="lg lg-shade"></i>かげ＝安全</span><span>🌾 かくれる</span><span>♡ ゴール</span></div>`;
+      `<span><i class="lg lg-shade"></i>かげ＝安全</span><span>🌾 かくれる</span><span>♡ ゴール</span><span>⚠ つぎ見回し</span></div>`;
   _scSpriteInto(wrap.querySelector(".stalk-drg-img"), s.d.id);
+  wrap.querySelector(".stalk-help").onclick = () => stalkShowHelp();
   wrap.querySelector(".stalk-quit").onclick = () => { _stalk = null; renderScout(); };
   wrap.querySelector(".stalk-wait").onclick = () => stalkAct("wait");
   wrap.querySelectorAll(".stalk-cell.go").forEach(cell => {
@@ -414,6 +418,25 @@ function _stalkRender() {
       parseInt(cell.getAttribute("data-r")) - s.mimi.r);
   });
   _stalkCoachMaybe(wrap);
+}
+
+// ── 記号の一覧（？ボタン＝いつでも読める恒久の説明。1回きりのヒント頼みをやめる）──
+function stalkShowHelp() {
+  if (typeof showInfoPopup !== "function") return;
+  const row = (ic, nm, tx) => `<div class="stalk-hp-row"><span class="stalk-hp-ic">${ic}</span><div><b>${nm}</b><small>${tx}</small></div></div>`;
+  showInfoPopup("🐾 しのびあしの記号",
+    row('<i class="lg lg-vis"></i>', "黄色いマス", "竜から<b>いま見えている</b>。入るとみつかる") +
+    row('<i class="lg lg-nvis"></i>', "赤むらさきの縞", "<b>つぎの手で</b>見られるマス。先回りして避ける") +
+    row('<i class="lg lg-shade"></i>', "こい緑のマス", "草や岩の<b>かげ＝安全</b>。視界の中でも見えていない") +
+    row("🌾", "草やぶ", "入るとかくれられる（いる間は絶対みつからない）") +
+    row("🪨", "岩", "通れない。視線もさえぎる") +
+    row("♡", "ゴール", "竜のよこ2マス。<b>見られていない側</b>から立てば成立") +
+    row("👀", "見回し中", "この手は<b>全方位</b>が見えている。かげと🌾だけが安全") +
+    row("⚠", "つぎ見回し", "次の手で👀が来る予告。縞がその範囲") +
+    row("💤", "いねむり", "何も見えていない。近づくチャンス") +
+    row("↩", "つぎ ふりむく", "次の手で反対を向く予告") +
+    row("！", "警戒", "みつかった回数。<b>3つで逃げられる</b>") +
+    row("👣", "のこり手数", "0になると竜は飽きて飛び去る"));
 }
 
 // ── 教える層＝「その瞬間に1行だけ」大きく（読まれない説明カードは廃止）────
@@ -449,8 +472,10 @@ function _stalkEventTips(wrap) {
   if (s.flash === "alarm" && !p._stalkTipAlarm) {
     p._stalkTipAlarm = 1; if (typeof saveGame === "function") saveGame();
     _stalkTip(wrap, "みつかった！　<b>！が3つ</b>で 逃げられちゃう");
-  } else if (!s.sweeping && _stalkIsSweepTurn(s.turn + 1) && !p._stalkTipSweep) {
-    p._stalkTipSweep = 1; if (typeof saveGame === "function") saveGame();
+  } else if (!s.sweeping && _stalkIsSweepTurn(s.turn + 1) && (p._stalkTipSweep2 | 0) < 2) {
+    // ★⚠の一言は2回まで出す（1回きりだと見逃したら終わり。実際テストが初回を消費して
+    //   ユーザーに一度も出ていなかった）。恒久の説明は凡例の「⚠ つぎ見回し」が担う。
+    p._stalkTipSweep2 = (p._stalkTipSweep2 | 0) + 1; if (typeof saveGame === "function") saveGame();
     _stalkTip(wrap, "⚠ ＝ つぎの手で <b>ぐるっと見回す</b>。🌾へかくれるか、はなれて！");
   }
 }
