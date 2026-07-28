@@ -244,9 +244,12 @@
     return true;
   }
 
-  // ── 性能ゲート：実測1秒ぶんが30fps未満なら2Dへ退避（1セッション1回だけ）
-  //    ★タブ非表示のときブラウザは rAF を数fpsまで絞る。その間引きコマを数えると
-  //      「速い端末なのに2Dへ落ちる」誤判定になるので、間隔500ms超のコマは捨てる。
+  // ── 性能の目安（★2Dへ自動で落とすのは廃止）
+  //    以前は「最初の1秒が30fps未満なら2Dへ退避」していたが、その1秒はテクスチャの復号と
+  //    床/天井の焼き込みが重なる**一番重い区間**なので、速い端末でも誤判定した。
+  //    実害＝せっかくの3Dが一瞬映って2Dに切り替わる（ユーザー報告）。
+  //    ★決裁：ロード時間がかかっても3Dを出す。よってここでは**測るだけ**で、描画方式は変えない。
+  //    本当に重い端末は ?mall2d または window.mallView3D(false) で手動退避できる（従来どおり）。
   var gate = { n: 0, acc: 0, last: 0, done: false, skip: 8 };
   function fpsGate(t) {
     if (gate.done) return;
@@ -258,12 +261,7 @@
     gate.acc += dt; gate.n++;
     if (gate.acc < 1000 || gate.n < 12) return;
     gate.done = true;
-    var fps = gate.n * 1000 / gate.acc;
-    window.MALL3D_FPS = Math.round(fps * 10) / 10;
-    if (fps < 30) {
-      window.MALL_RENDERER = "2d";
-      try { console.log("[mall3d] 実測 " + window.MALL3D_FPS + "fps < 30 → 2Dビューへ自動フォールバック"); } catch (e) {}
-    }
+    window.MALL3D_FPS = Math.round((gate.n * 1000 / gate.acc) * 10) / 10;   // 目安の記録のみ
   }
 
   function drawDungeon3D(cv, scene, t) {

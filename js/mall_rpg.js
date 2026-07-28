@@ -2401,8 +2401,10 @@ function rpgDrawBattle(cv, t) {
   const mx = L.mimi.x + mo[0], myy = L.mimi.y + mo[1];
   ell(L.mimi.x, L.mimi.y, 27, "rgba(0,0,0,0.30)");
   const mbobY = myy - 32 + Math.sin(ph * 1.6) * 3, mart = rpgMimiArt();
-  // ★磨き：幅92固定だと縦長の立ち絵で頭が切れた（実測）→ 高さ基準（画面の半分弱）に。
-  if (mart) { const mh = Math.min(H * 0.5, 190), mw = mh * (mart.naturalWidth / mart.naturalHeight); ctx.drawImage(mart, mx - mw / 2, myy - mh + 8 + Math.sin(ph * 1.6) * 3, mw, mh); }
+  // ★ミミの絵をデフォルメのミニキャラ（正方512・この画角向けに描き起こし）へ差し替え。
+  //   以前は等身の高いVN立ち絵で、チビの敵とも斜め見下ろしの舞台とも合っていなかった（ユーザー指摘）。
+  //   寸法は敵（min(84, H*0.42)）と同じ土俵に置き、主役ぶん少しだけ大きく。足元は従来どおり myy+8。
+  if (mart) { const mh = Math.min(104, H * 0.52), mw = mh * (mart.naturalWidth / mart.naturalHeight); ctx.drawImage(mart, mx - mw / 2, myy - mh + 8 + Math.sin(ph * 1.6) * 3, mw, mh); }
   else { ctx.font = "60px serif"; ctx.fillText("🐰", mx, mbobY); }
   ctx.fillStyle = "rgba(255,95,162,0.92)"; rpgRRect(ctx, mx - 22, myy + 1, 44, 18, 9); ctx.fill();
   ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textBaseline = "middle"; ctx.fillText("ミミ", mx, myy + 10);
@@ -2499,7 +2501,7 @@ const RPG_ART_MIMI = true;
 let _rpgMimiImg = null;
 function rpgMimiArt() {
   if (!RPG_ART_MIMI) return null;
-  if (!_rpgMimiImg) { _rpgMimiImg = new Image(); _rpgMimiImg.src = "images/rpg/mimi.webp"; }
+  if (!_rpgMimiImg) { _rpgMimiImg = new Image(); _rpgMimiImg.src = "images/rpg/mimi.webp?v=20260729b"; }
   return (_rpgMimiImg.complete && _rpgMimiImg.naturalWidth) ? _rpgMimiImg : null;
 }
 // 敵アートのcanvas描画：RPG_ENEMY_IMG[id]→images/rpg/<file>.webp をキャッシュしdrawImage用に返す。
