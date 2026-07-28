@@ -222,8 +222,8 @@ function _scSpriteInto(imgEl, id) {
     let u = null;
     try { u = (typeof _ecSpriteURL === "function") ? _ecSpriteURL(id) : null; } catch (e) {}
     if (u && imgEl.isConnected) { imgEl.src = u; imgEl.classList.add("on"); clearInterval(poll); }
-    else if (tries > 25 || !imgEl.isConnected) clearInterval(poll);
-  }, 120);
+    else if (tries > 60 || !imgEl.isConnected) clearInterval(poll);
+  }, 50);   // ★120ms→50ms＝焼き上がりから表示までの遅れを縮める（出現カードの絵が遅い対策）
 }
 function _scoutBar(label, val, max, cls, goalLabel, delta, pulse) {
   const pct = Math.max(0, Math.min(100, Math.round((val / max) * 100)));

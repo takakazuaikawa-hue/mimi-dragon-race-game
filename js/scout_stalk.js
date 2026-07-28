@@ -86,6 +86,9 @@ const STALK_TIER = [
 // ── 出発 ─────────────────────────────────────────────────────────────────
 function stalkDepart(locId) {
   const loc = scoutLocation(locId);
+  // ★出発画面を開いた時点で、この土地の竜のスプライトを全員ぶん裏で焼き始める。
+  //   出現カードの絵が遅れて出る（346ms実測）対策の1段目＝数秒の先行を稼ぐ。焼き済みはキャッシュ。
+  try { unscoutedAtLocation(locId).forEach(d => { if (typeof _rcDragonSprite === "function") _rcDragonSprite(d.id); }); } catch (e) {}
   state.ui.screen = "scout";
   const app = beginScreen();
   const head = el("div", "sc-probe-hero");
@@ -126,6 +129,9 @@ function _stalkRoll(locId) {
   let total = 0; weighted.forEach(w => total += STALK_TIER[w.t].w);
   let r = Math.random() * total, pick = weighted[0];
   for (const w of weighted) { r -= STALK_TIER[w.t].w; if (r <= 0) { pick = w; break; } }
+  // ★当たりが決まった瞬間にスプライトを裏で焼き始める＝茂みが揺れている約2〜3秒が読み込み時間。
+  //   これをしないとカードの絵が遅れて出る（ユーザー指摘）。
+  try { if (typeof _rcDragonSprite === "function") _rcDragonSprite(pick.d.id); } catch (e) {}
   _stalkReveal(locId, pick.d, pick.t);
 }
 function _stalkReveal(locId, d, tier) {
@@ -144,8 +150,14 @@ function _stalkReveal(locId, d, tier) {
   };
   setTimeout(step, 480);
 }
-function _stalkRevealEnd(ov, locId, d, tier) {
+function _stalkRevealEnd(ov, locId, d, tier, tries) {
   if (!ov.isConnected) return;
+  // ★絵がまだ焼けていなければ、茂みを揺らしたままカードを最大1.2秒待つ＝空のカードを見せない。
+  let ready = false;
+  try { ready = !!(typeof _ecSpriteURL === "function" && _ecSpriteURL(d.id)); } catch (e) {}
+  //   焼き上がりはキュー次第で数秒かかる（実測：待ち1.2秒でも382ms遅れ）。茂みが揺れ続けるのは
+  //   演出として自然なので、最大4秒まで待って「絵が空のカード」だけは出さない。
+  if (!ready && (tries | 0) < 26) { setTimeout(() => _stalkRevealEnd(ov, locId, d, tier, (tries | 0) + 1), 150); return; }
   ov.classList.add("open");
   const card = el("div", "stalk-rv-card " + STALK_TIER[tier].cls);
   card.innerHTML =
@@ -314,7 +326,19 @@ function _stalkWin() {
   _stalkRender();
   const host = document.querySelector(".stalk-board");
   if (host) host.appendChild(el("div", "stalk-heart", "♡"));
-  setTimeout(() => { _stalk = null; _scoutWin(); }, 900);
+  // ★成立の当たり演出（ユーザー要望＝♡のあとにも射幸感を）。レア度の色で全画面が弾ける：
+  //   閃光→色付きリング2連→♡の舞い→「なかよし成立！」。そのあと既存の成立ポップへ渡す。
+  const tier = s.tier, d = s.d;
+  setTimeout(() => {
+    const fx = el("div", "stalk-winfx " + STALK_TIER[tier].cls);
+    fx.innerHTML =
+      `<div class="swf-flash"></div><div class="swf-ring"></div><div class="swf-ring r2"></div>` +
+      [0, 1, 2, 3, 4, 5, 6, 7].map(i => `<i class="swf-h h${i}">♡</i>`).join("") +
+      `<div class="swf-t">🤝 なかよし成立！${STALK_TIER[tier].nm ? `<b class="swf-tier">✨${STALK_TIER[tier].nm}クラス</b>` : ""}</div>`;
+    document.body.appendChild(fx);
+    try { if (window.Sfx) Sfx.play(tier >= 2 ? "legendary" : "coin"); } catch (e) {}
+    setTimeout(() => { fx.remove(); _stalk = null; _scoutWin(); }, 1550);
+  }, 700);
 }
 function _stalkLose() {
   const s = _stalk; s.over = true; s.flash = "flee";
@@ -377,6 +401,15 @@ function _stalkRender() {
   }
   const hidden = _stalkCell(s.mimi.c, s.mimi.r) === "B";
   const willFlip = plan && !plan.sweeping && !plan.sleeping && plan.dir !== s.drg.dir;
+  // ★状態ラベルは竜に張り付けず、盤の上の**専用の行**に出す。竜が盤の端にいると
+  //   盤の overflow:hidden で切れて読めなかった（ユーザー指摘）。行の高さは固定＝ガタつかない。
+  let status = "";
+  if (s.sleeping) status += `<span class="stalk-badge stalk-zzz">💤<small>いねむり中</small></span>`;
+  if (s.sweeping) status += `<span class="stalk-badge stalk-eyes">👀<small>見回し中！</small></span>`;
+  if (!s.over && plan && plan.sweeping) status += `<span class="stalk-badge stalk-warn">⚠<small>つぎ 見回し</small></span>`;
+  if (!s.over && plan && plan.sleeping) status += `<span class="stalk-badge stalk-next">💤<small>つぎ いねむり</small></span>`;
+  if (!s.over && willFlip) status += `<span class="stalk-badge stalk-next">↩<small>つぎ ふりむく</small></span>`;
+  if (!status) status = `<span class="stalk-status-idle">🐾 しずか……</span>`;
   wrap.innerHTML =
     `<div class="stalk-top">` +
       `<button class="stalk-quit">← あきらめる</button>` +
@@ -384,20 +417,15 @@ function _stalkRender() {
       `<button class="stalk-help info-q" title="記号のいみ">？</button>` +
       `<span class="stalk-pips">${[0, 1, 2].map(i => `<i class="${i < s.alarm ? "on" : ""}">！</i>`).join("")}</span>` +
     `</div>` +
+    // ★状態ラベルは盤の中に置かない＝専用の行（高さ固定）。竜が盤の端にいると
+    //   盤の overflow:hidden でラベルが切れて読めなかった（ユーザー指摘）。
+    `<div class="stalk-status">${status}</div>` +
     `<div class="stalk-board${s.flash === "alarm" ? " alarm" : ""}${s.flash === "flee" ? " flee" : ""}">` +
       _scBgTag(s.locId, "stalk-bg") +
       `<div class="stalk-grid">${cells}</div>` +
       `<div class="stalk-drg${s.sweeping ? " sweeping" : ""}" style="left:${(s.drg.c + 0.5) * cw}%;top:${(s.drg.r + 0.62) * chh}%">` +
         // ★HD-2Dスプライトの素材は**右向きが標準**（草むら6頭を並べて実測）。左を向くときだけ反転。
-        //   以前は逆（右で反転）だったため、絵の向きと視界が常に食い違っていた（ユーザー指摘2回目）。
         `<img class="stalk-drg-img${s.drg.dir === 1 ? " flip" : ""}" alt="">` +
-        // ★動く記号は**必ずラベルつき**で出す。一度きりのヒントに説明を頼ると、見逃したら
-        //   一生わからない記号になる（⚠と👀で2度ユーザーに指摘された）。
-        (s.sleeping ? `<span class="stalk-badge stalk-zzz">💤<small>いねむり中</small></span>` : "") +
-        (!s.over && plan && plan.sweeping ? `<span class="stalk-badge stalk-warn">⚠<small>つぎ 見回し</small></span>` : "") +
-        (!s.over && plan && plan.sleeping ? `<span class="stalk-badge stalk-next">💤<small>つぎ いねむり</small></span>` : "") +
-        (!s.over && willFlip ? `<span class="stalk-badge stalk-next">↩<small>つぎ ふりむく</small></span>` : "") +
-        (s.sweeping ? `<span class="stalk-badge stalk-eyes">👀<small>見回し中！</small></span>` : "") +
         (s.flash === "alarm" ? `<span class="stalk-ex">！</span>` : "") +
       `</div>` +
       `<div class="stalk-mimi${hidden ? " hid" : ""}" style="left:${(s.mimi.c + 0.5) * cw}%;top:${(s.mimi.r + 0.72) * chh}%">` +

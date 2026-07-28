@@ -8591,7 +8591,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .stalk-ex { color: #ff5c5c; font-weight: 900; font-size: 24px; text-shadow: 0 2px 4px rgba(0,0,0,.7); animation: stalkPop .25s both; }
 .stalk-mimi { position: absolute; transform: translate(-50%, -100%); z-index: 4; width: 40px; height: 53px; pointer-events: none;
   transition: left .18s ease, top .18s ease, opacity .2s;
-  background: url("images/scene/konron/mimi_walk.webp") no-repeat; background-size: 300% 300%; background-position: 33.4% 0;
+  /* 3×3シートの切り出し：background-position の % は「画像の p% を枠の p% に合わせる」仕様なので
+     3コマ格子は 0% / 50% / 100% が正しい。33.4% だと隣のコマが混ざる（ユーザー指摘の表示ずれ）。 */
+  background: url("images/scene/konron/mimi_walk.webp") no-repeat; background-size: 300% 300%; background-position: 50% 0;
   filter: drop-shadow(0 4px 5px rgba(0,0,0,.55)); }
 .stalk-mimi.hid { opacity: .45; }
 .stalk-heart { position: absolute; left: 50%; top: 38%; z-index: 6; font-size: 56px; color: #ff8fb3;
@@ -8685,3 +8687,33 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .stalk-hp-ic .lg-vis { background: rgba(255,214,90,.6); }
 .stalk-hp-ic .lg-nvis { background: repeating-linear-gradient(45deg, rgba(255,80,150,.75) 0 4px, rgba(10,6,14,.6) 4px 8px); }
 .stalk-hp-ic .lg-shade { background: rgba(20,60,30,.9); box-shadow: inset 0 0 0 1px rgba(80,150,90,.6); }
+
+/* しのびあし：状態ラベル専用行（盤の端で切れない・高さ固定でガタつかない） */
+.stalk-status { height: 34px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.stalk-status .stalk-badge { position: static; transform: none; animation: stalkPop .25s both; }
+.stalk-status-idle { font-size: 11.5px; color: var(--mist-soft); opacity: .75; }
+
+/* ♡成立の当たり演出（レア度の色で弾ける→既存の成立ポップへ） */
+.stalk-winfx { position: fixed; inset: 0; z-index: 230; pointer-events: none; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; --wc: #ffd873; }
+.stalk-winfx.t1 { --wc: #cfd9e6; } .stalk-winfx.t2 { --wc: #ffd873; } .stalk-winfx.t3 { --wc: #ff9de2; }
+.swf-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, var(--wc), transparent 62%);
+  opacity: 0; animation: swfFlash 1.5s ease-out both; }
+@keyframes swfFlash { 0% { opacity: 0; } 12% { opacity: .85; } 100% { opacity: 0; } }
+.swf-ring { position: absolute; left: 50%; top: 45%; width: 40px; height: 40px; border-radius: 50%;
+  border: 4px solid var(--wc); transform: translate(-50%,-50%); opacity: 0; animation: swfRing 1.1s ease-out both; }
+.swf-ring.r2 { animation-delay: .22s; border-width: 2.5px; }
+@keyframes swfRing { 0% { opacity: .95; width: 40px; height: 40px; } 100% { opacity: 0; width: 92vmin; height: 92vmin; } }
+.swf-h { position: absolute; left: 50%; top: 46%; font-size: 26px; font-style: normal; color: #ff8fb3;
+  text-shadow: 0 0 8px rgba(255,130,170,.8); opacity: 0; animation: swfHeart 1.35s ease-out both; }
+.swf-h.h0 { --dx: -120px; --dy: -150px; } .swf-h.h1 { --dx: 120px; --dy: -140px; animation-delay: .06s; }
+.swf-h.h2 { --dx: -170px; --dy: -30px; animation-delay: .1s; } .swf-h.h3 { --dx: 170px; --dy: -40px; animation-delay: .14s; }
+.swf-h.h4 { --dx: -90px; --dy: 120px; animation-delay: .08s; } .swf-h.h5 { --dx: 100px; --dy: 110px; animation-delay: .12s; }
+.swf-h.h6 { --dx: -40px; --dy: -190px; animation-delay: .16s; } .swf-h.h7 { --dx: 40px; --dy: 170px; animation-delay: .2s; }
+@keyframes swfHeart { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.4); }
+  18% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.3); } }
+.swf-t { position: relative; padding: 14px 26px; border-radius: 16px; font-size: 20px; font-weight: 900; color: #fff4dd;
+  background: rgba(14,19,28,.94); border: 2.5px solid var(--wc); box-shadow: 0 0 34px -4px var(--wc);
+  animation: stalkPop .4s .15s cubic-bezier(.2,1.7,.4,1) both; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.swf-tier { font-size: 13px; color: var(--wc); }
+.stalk-winfx.t3 .swf-t, .stalk-winfx.t3 .swf-ring { animation-name: stalkPop, stalkHue; }
