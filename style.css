@@ -8812,3 +8812,36 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* 🐾 しのびあし ？記号一覧：14項目は縦に収まらない（実測1216px＞700px）→ 中で送れるように */
 .stalk-hp-pop { max-height: calc(100vh - 40px); overflow-y: auto; overscroll-behavior: contain; }
+
+/* ===== モール探検HUDの整理（ユーザー指摘：整理されず場所を取って醜い）＝2段に圧縮 ===== */
+.rpg-runhead2 { gap: 4px; margin: 6px 0 8px; }
+.rpg-runhead2 .rh-top { gap: 5px; }
+.rpg-runhead2 .rh-top .rpg-chip { padding: 2px 9px; font-size: 12px; }
+.rpg-runhead2 .rh-top .rpg-chip.win { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rpg-runhead2 .rh-top .rpg-chip.goal { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rpg-runhead2 .rh-top .rpg-runhelp { flex: none; width: 24px; height: 24px; display: inline-flex;
+  align-items: center; justify-content: center; padding: 0; line-height: 1; }
+.rpg-runhead2 .rh-vit { gap: 5px; align-items: center; flex-wrap: nowrap; }
+/* 体力・魔力は数字チップではなくバー＝ひと目で残量が分かり、幅も食わない */
+.rh-g { position: relative; flex: 1 1 0; min-width: 54px; height: 18px; border-radius: 999px; overflow: hidden;
+  background: rgba(20,16,30,.85); border: 1px solid rgba(150,120,200,.3); display: flex; align-items: center; }
+.rh-g i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; transition: width .25s ease; }
+.rh-g b { position: relative; z-index: 1; width: 100%; text-align: center; font-size: 11px; font-weight: 800;
+  letter-spacing: .01em; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+.rh-g small { font-size: 9px; opacity: .75; font-weight: 700; }
+.rh-g.hp i { background: linear-gradient(90deg,#c8425e,#ef7f96); }
+.rh-g.hp b { color: #ffe3ea; }
+.rh-g.mp i { background: linear-gradient(90deg,#3a63b0,#79a8ee); }
+.rh-g.mp b { color: #e2ecff; }
+.rh-p { flex: none; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap;
+  background: rgba(40,32,56,.85); border: 1px solid rgba(150,120,200,.3); color: #e9e0f5; }
+.rh-p.prize { background: rgba(210,140,60,.2); color: #ffdca6; border-color: rgba(255,190,110,.4); }
+.rh-p.wagon { background: linear-gradient(135deg,#7a4a1a,#a8702a); color: #ffe6bf; border-color: rgba(255,190,110,.5); font-weight: 800; }
+.rh-p.calm { background: rgba(46,70,86,.8); border-color: rgba(130,200,220,.5); color: #cdeefb; }
+@media (max-width: 380px) { .rh-p { padding: 2px 6px; font-size: 11px; } .rh-g { min-width: 46px; } }
+
+/* ログは最新1行だけ・数秒で自分から消える（3Dビューを塞がない） */
+.rpg-logline.fade { animation: rpgLogFade 4.4s ease-out forwards; }
+@keyframes rpgLogFade { 0% { opacity: 0; transform: translateY(4px); } 8% { opacity: 1; transform: translateY(0); }
+  74% { opacity: 1; } 100% { opacity: 0; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .rpg-logline.fade { animation: none; opacity: .9; } }

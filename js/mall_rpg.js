@@ -1824,6 +1824,11 @@ function rpgRenderExplore(app) {
 
   // 上段HUD：いる場所＋🎯目標＋？ヘルプ／バイタル（C6解消＝ラン中でもルールを確認できる恒常？）
   const head = el("div", "rpg-runhead2");
+  // ★HUD整理（ユーザー指摘：整理されておらず余計なスペースを取って醜い）
+  //   数字チップを8個並べるのをやめ、①いる場所＋目標＋？の細い行 ②体力/魔力は**バー**、
+  //   金・Lv・目玉・ワゴンは小さなピル、の2段に圧縮。高さは約半分。
+  const _hpPct = Math.max(0, Math.min(100, Math.round(d.hp / d.maxhp * 100)));
+  const _mpPct = Math.max(0, Math.min(100, Math.round(d.mp / (d.maxmp || 1) * 100)));
   head.innerHTML =
     `<div class="rh-top">` +
       `<span class="rpg-chip win">${RPG.tower ? "🌟" : "🏬"} ${rpgFloorMeta(RPG.fi).name}</span>` +
@@ -1831,15 +1836,15 @@ function rpgRenderExplore(app) {
       `<button class="rpg-chip rpg-runhelp" title="あそびかた">？</button>` +
     `</div>` +
     `<div class="rh-vit">` +
-      `<span class="rpg-chip hp">❤️${d.hp}/${d.maxhp}</span>` +
-      `<span class="rpg-chip mp">💧${d.mp}/${d.maxmp}</span>` +
-      `<span class="rpg-chip">🪙${d.gold}</span>` +
-      // ★M2：未精算ワゴン（あるときだけ）＝リスクとリターンを1行で可視化（次の階段で×WAGON_MULT or 気絶で消失）
-      ((RPG.wagon || 0) > 0 ? `<span class="rpg-chip wagon" title="次の階段で精算/積み増しを選ぶ。気絶で失う">🛒未精算 ${RPG.wagon.toLocaleString("ja-JP")}G</span>` : "") +
-      `<span class="rpg-chip">🧝Lv${d.lv}</span>` +
+      `<span class="rh-g hp" title="体力"><i style="width:${_hpPct}%"></i><b>${d.hp}<small>/${d.maxhp}</small></b></span>` +
+      `<span class="rh-g mp" title="魔力"><i style="width:${_mpPct}%"></i><b>${d.mp}<small>/${d.maxmp}</small></b></span>` +
+      `<span class="rh-p">🪙${d.gold}</span>` +
+      `<span class="rh-p">Lv${d.lv}</span>` +
       // ★M2：目玉まであと◯階（屋上=最終フロアで制覇→目玉GET）。未制覇のメインランのみ。
-      ((!RPG.tower && RPG.showcase && RPG.showcase.length && !RPG.showcaseClaimed && !d.cleared) ? `<span class="rpg-chip goalprize" title="屋上のボスを倒すと本日の目玉から1着選べる">🎁 目玉まであと${Math.max(0, (RPG_FLOORS.length - 1) - RPG.fi)}F</span>` : "") +
-      ((RPG.calm || 0) > 0 ? `<span class="rpg-chip calm">🔕 平和 ${RPG.calm}歩</span>` : "") +
+      ((!RPG.tower && RPG.showcase && RPG.showcase.length && !RPG.showcaseClaimed && !d.cleared) ? `<span class="rh-p prize" title="屋上のボスを倒すと本日の目玉から1着選べる">🎁 あと${Math.max(0, (RPG_FLOORS.length - 1) - RPG.fi)}F</span>` : "") +
+      // ★M2：未精算ワゴン（あるときだけ）＝リスクとリターンを可視化（次の階段で×WAGON_MULT or 気絶で消失）
+      ((RPG.wagon || 0) > 0 ? `<span class="rh-p wagon" title="次の階段で精算/積み増しを選ぶ。気絶で失う">🛒${RPG.wagon.toLocaleString("ja-JP")}G</span>` : "") +
+      ((RPG.calm || 0) > 0 ? `<span class="rh-p calm">🔕${RPG.calm}</span>` : "") +
     `</div>`;
   const _hq = head.querySelector(".rpg-runhelp");
   if (_hq) _hq.onclick = () => rpgShowHelp();
@@ -1852,8 +1857,10 @@ function rpgRenderExplore(app) {
   cv.width = 470; cv.height = 430;   // 初期値（以後 rpgFitCanvas が表示枠に追従）
   stage.appendChild(cv);
   const mini = rpgMiniMap(); mini.classList.add("ov"); stage.appendChild(mini);
+  // ★ログは**いちばん新しい1行だけ**を出し、数秒で自分から消える（ユーザー指摘：3行出っぱなしで
+  //   3Dビューの邪魔）。移動のたびに描き直されるので、新しい行が来ればまた4秒だけ見えて消える。
   const lg = el("div", "rpg-log ov");
-  RPG.log.slice(0, 3).forEach(L => lg.appendChild(el("div", "rpg-logline " + L.cls, L.t)));
+  RPG.log.slice(0, 1).forEach(L => lg.appendChild(el("div", "rpg-logline fade " + L.cls, L.t)));
   stage.appendChild(lg);
   // 文脈フック：目の前が“お店の入口”か判定（壁＝店構え）。タップで世界そのものから入店できる導線を残しつつ、主役は下のボタン。
   const onStairs = rpgCell(RPG.px, RPG.py) === "U";
