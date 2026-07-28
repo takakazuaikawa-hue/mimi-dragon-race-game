@@ -8382,3 +8382,106 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .dexv-close { margin-top: 12px; width: 100%; padding: 10px; border: 0; border-radius: 11px; cursor: pointer;
   font-weight: 800; font-size: 13px; color: #2a1d05; background: linear-gradient(180deg,#f0d27a,#caa24a); }
 @media (prefers-reduced-motion: reduce) { .dexv { transition: none; } }
+
+/* =====================================================================
+   ⚔️ 戦闘デッキのTier制（ユーザー決定のUX）：
+   毎ターンの意思決定（属性6＋オート）は大きいまま、低頻度の5操作
+   （にげる/回復薬/マナ水/まもる/ためる）は40px級チップ1行に圧縮。
+   にげる＝緊急ボタンは左端に分離固定（位置記憶で押せる）。
+   ===================================================================== */
+.rpg-deck-sub.chips { display:flex; grid-template-columns:none; gap:6px; align-items:stretch; }
+.rpg-deck-sub.chips .rpg-chip { flex:1 1 0; flex-direction:row; gap:5px; min-height:42px; padding:4px 6px;
+  border-radius:11px; overflow:visible; }
+.rpg-deck-sub.chips .rpg-chip .act-ic { font-size:17px; line-height:1; }
+.rpg-deck-sub.chips .rpg-chip .act-n { font-size:10.5px; letter-spacing:-.02em; }
+.rpg-deck-sub.chips .rpg-chip .chip-badge { position:absolute; top:-6px; right:-4px; min-width:17px; padding:0 4px;
+  border-radius:999px; background:#ff4d6d; color:#fff; font-size:10px; font-weight:800; line-height:16px;
+  box-shadow:0 1px 3px rgba(0,0,0,.4); }
+.rpg-deck-sub.chips .rpg-chip.off .chip-badge { background:#6a6a78; }
+/* にげる＝左端で分離。地の色も変えて「系統が違うボタン」だと分かるように */
+.rpg-deck-sub.chips .rpg-chip.flee { flex:0 0 auto; padding:4px 10px; margin-right:6px;
+  background:linear-gradient(165deg, rgba(96,58,58,.95), rgba(64,34,38,.98)); }
+
+/* 低い画面では上段も一段詰めて、パネルがスクロールなしで収まるように */
+@media (max-height:760px) {
+  .rpg-act { min-height:52px; padding:6px 3px; }
+  .rpg-act .act-ic { font-size:20px; }
+  .rpg-act .act-n { font-size:12px; }
+  .rpg-autobtn { min-height:44px; padding:9px; }
+  .rpg-deck-sub.chips .rpg-chip { min-height:40px; }
+}
+
+/* ── Tier制の追補（実測チューニング）─────────────────────────────
+   ・チップ行が55pxに伸びていた犯人＝ .rpg-deck{min-height:186px} の余りがsub行へ配られていた。
+     行の高さは42pxに固定して配らせない（deckのminは待機「…」時の潰れ防止用に150へ）。
+   ・390×700で「スクロールなしで全ボタンが見える」を成立させる圧縮（低い画面のみ）。 */
+.rpg-deck { min-height:150px; }
+.rpg-deck-sub.chips { height:42px; min-height:0; flex:0 0 auto; }
+.rpg-deck-sub.chips .rpg-chip { height:100%; min-height:0; }
+@media (max-height:760px) {
+  .rpg-bt-panel { padding:8px 10px 10px; }
+  .foe-line { font-size:12px; }
+  .foe-line .fl-art { width:24px; height:24px; vertical-align:-7px; }
+  .rpg-me { flex-wrap:nowrap; gap:5px 6px; padding:5px 9px; margin-bottom:4px; }
+  .rpg-me .me-name { flex:0 0 auto; font-size:12px; }
+  .rpg-me .me-stat { flex:1 1 0; min-width:0; }
+  .rpg-me .me-stat .me-bar { flex:1 1 20px; width:auto; min-width:16px; }
+  .rpg-blog.fixed1 { margin:4px 0 6px; }
+  .rpg-deck { gap:6px; min-height:120px; }
+  .rpg-deck-skills { gap:6px; }
+  .rpg-deck-skills .rpg-act { min-height:48px; padding:5px 3px; }
+  .rpg-deck-skills .rpg-act .act-sub { font-size:9px; }
+  .rpg-deck-sub.chips { height:40px; }
+}
+
+/* Tier制の追補2：敵2体時（foes 2行）も390×700でスクロールゼロにする圧縮。
+   アリーナは低い画面のみ38%→34%（**内容量ではなく画面高だけで決まる＝安定は維持**・下限200pxは不変）。 */
+@media (max-height:760px) {
+  .rpg-bt-arena { height:clamp(200px, 34%, 420px); }
+  .foe-line { font-size:11.5px; line-height:1.3; }
+  .foe-line .fl-art { width:20px; height:20px; vertical-align:-5px; }
+  .rpg-foes { margin-bottom:4px; }
+  .rpg-me { padding:4px 8px; }
+  .rpg-me .me-stat { font-size:11px; }
+  .rpg-blog.fixed1 { min-height:0; height:30px; padding:4px 10px; margin:2px 0 4px; }
+  .rpg-autobtn { min-height:40px; padding:8px; margin:0 0 6px; }
+  .rpg-deck-skills .rpg-act .act-ic { font-size:18px; }
+  .rpg-deck-skills .rpg-act .act-n { font-size:11.5px; }
+}
+
+/* Tier制の追補3：敵2体（foes 2行）でも390×700スクロールゼロに届かせる最終調整 */
+@media (max-height:760px) {
+  .rpg-bt-panel { padding:6px 10px 10px; }
+  .foe-line { font-size:11px; line-height:1.2; }
+  .rpg-foes { margin-bottom:3px; }
+  .rpg-me { margin-bottom:3px; }
+  .rpg-blog.fixed1 { height:27px; margin:2px 0 3px; }
+  .rpg-autobtn { min-height:38px; margin:0 0 5px; padding:7px; }
+  .rpg-deck { gap:5px; }
+  .rpg-deck-skills { gap:5px; }
+  .rpg-deck-skills .rpg-act { min-height:46px; }
+  .rpg-deck-skills .rpg-act .act-ic { font-size:16px; }
+  .rpg-deck-sub.chips { height:38px; }
+}
+
+/* Tier制の追補4：残り7pxの最終消し込み（敵2体・390×700） */
+@media (max-height:760px) {
+  .rpg-blog.fixed1 { height:24px; padding:3px 10px; }
+  .rpg-me { padding:3px 8px; }
+  .rpg-foes { margin-bottom:2px; }
+}
+
+/* Tier制の追補5：チップ内の文字折返し禁止＋低画面ではMP/SPをバー無し数値表示に（潰れ防止） */
+.rpg-deck-sub.chips .rpg-chip { white-space:nowrap; }
+.rpg-deck-sub.chips .rpg-chip .act-n { white-space:nowrap; }
+@media (max-height:760px) {
+  .rpg-me .me-stat.mp .me-bar, .rpg-me .me-stat.sp .me-bar { display:none; }
+  .rpg-me .me-stat.mp, .rpg-me .me-stat.sp { flex:0 0 auto; }
+}
+
+/* Tier制の追補6：低画面はチップをアイコン＋バッジのみに（「ためる」の右見切れ対策）。
+   にげるだけはラベル維持＝緊急ボタンは読めることが優先。 */
+@media (max-height:760px) {
+  .rpg-deck-sub.chips .rpg-chip:not(.flee) .act-n { display:none; }
+  .rpg-deck-sub.chips .rpg-chip:not(.flee) .act-ic { font-size:19px; }
+}

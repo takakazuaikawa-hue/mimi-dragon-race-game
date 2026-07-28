@@ -2690,20 +2690,28 @@ function rpgRenderBattle(app) {
       skl.appendChild(btn);
     });
     cmd.appendChild(skl);
-    const sub = el("div", "rpg-deck-sub");
+    // ★UX磨き（Tier制）：低頻度の5操作は40px級の「チップ」1行へ圧縮＝毎ターンの属性6は大きいまま、
+    //   スクロールも多段メニューも作らない。にげる＝緊急ボタンは**左端に分離固定**（位置記憶で押せる）。
+    //   説明文（被ダメ半減等）はチップでは title と使用時ログに委ねる。onclick/disabled 条件は従来と同一。
+    const sub = el("div", "rpg-deck-sub chips");
+    const flee = el("button", "rpg-act rpg-chip flee" + (b.boss ? " off" : ""), `<span class="act-ic">🏃</span><span class="act-n">にげる</span>`);
+    flee.title = b.boss ? "ボス戦は逃げられない" : "戦いから離脱する";
+    flee.disabled = !!b.boss; flee.onclick = () => rpgFlee();
+    sub.appendChild(flee);
     [["potion", "🧪", "回復薬", d.items.potion || 0], ["ether", "🔵", "マナ水", d.items.ether || 0]].forEach(([k, ic, nm, q]) => {
-      const btn = el("button", "rpg-act item" + (q > 0 ? "" : " off"));
-      btn.innerHTML = `<span class="act-ic">${ic}</span><span class="act-n">${nm}</span><span class="act-sub">×${q}</span>`;
+      const btn = el("button", "rpg-act rpg-chip item" + (q > 0 ? "" : " off"));
+      btn.innerHTML = `<span class="act-ic">${ic}</span><span class="act-n">${nm}</span><span class="chip-badge">${q}</span>`;
+      btn.title = nm + " ×" + q;
       btn.disabled = q <= 0; btn.onclick = () => rpgUseItem(k);
       sub.appendChild(btn);
     });
-    const guard = el("button", "rpg-act guard", `<span class="act-ic">🛡️</span><span class="act-n">まもる</span><span class="act-sub">被ダメ半減</span>`); guard.onclick = () => rpgGuard();
+    const guard = el("button", "rpg-act rpg-chip guard", `<span class="act-ic">🛡️</span><span class="act-n">まもる</span>`);
+    guard.title = "このターンの被ダメージを半減"; guard.onclick = () => rpgGuard();
     sub.appendChild(guard);
     // ★M1 ためる：次の一撃×2.2（1ターン無防備）。ためた状態は光らせて分かるように。
-    const charge = el("button", "rpg-act charge" + (b.charged ? " on" : ""), `<span class="act-ic">✊</span><span class="act-n">ためる</span><span class="act-sub">${b.charged ? "ためた！" : "次撃×2.6"}</span>`); charge.onclick = () => rpgCharge();
+    const charge = el("button", "rpg-act rpg-chip charge" + (b.charged ? " on" : ""), `<span class="act-ic">✊</span><span class="act-n">${b.charged ? "ためた！" : "ためる"}</span>`);
+    charge.title = b.charged ? "ためた！ 次の一撃が強くなる" : "1ターン無防備の代わりに次撃×2.6"; charge.onclick = () => rpgCharge();
     sub.appendChild(charge);
-    const flee = el("button", "rpg-act flee" + (b.boss ? " off" : ""), `<span class="act-ic">🏃</span><span class="act-n">にげる</span><span class="act-sub">${b.boss ? "不可" : "離脱"}</span>`); flee.disabled = !!b.boss; flee.onclick = () => rpgFlee();
-    sub.appendChild(flee);
     cmd.appendChild(sub);
   }
   panel.appendChild(cmd);
