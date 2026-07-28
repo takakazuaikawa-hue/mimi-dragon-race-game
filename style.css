@@ -4144,8 +4144,12 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .hl-dress-nm { max-width: 116px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ミミは中央・周囲とのバランスを取りつつ最大化（PCはコンテナ相対、スマホは画面幅相対）。
    背が高い時は上段バー(z-index:3)の背後に収まるので情報を隠さない。 */
+/* ★高さの上限に必ず calc(100% + 120px)（＝ステージの高さ＋下の沈み込み120px）を混ぜること。
+   立ち絵は bottom:-120px の下揃え＝箱が高いほど**上端がステージより上へ出る**。#app.hl-clip は
+   overflow:hidden なので、はみ出した分だけ顔の上が切り落とされる（実測：上端-21px＝127pxはみ出し）。
+   この項を外すと画面の高さ次第で顔が切れて戻る。下の -120px と必ず同じ数にすること。 */
 .hl-mimi { position: absolute; left: 50%; bottom: -120px; transform: translateX(-50%); z-index: 1;
-  width: min(96vw, 92%, 540px); height: min(88vh, 800px);
+  width: min(96vw, 92%, 540px); height: min(88vh, 800px, calc(100% + 120px));
   cursor: pointer; will-change: transform; filter: drop-shadow(0 2px 7px rgba(0,0,0,.5)); }
 .hl-mimi-in { width: 100%; height: 100%; will-change: transform; perspective: 700px; }
 .hl-mimi-flip { width: 100%; height: 100%; transition: transform .23s cubic-bezier(.45,0,.55,1); transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
@@ -4452,7 +4456,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   .hl-item .ic { font-size: 16px; }
   .hl-item .lb { font-size: 8.5px; letter-spacing: -.02em; white-space: nowrap; }
   .hl-dock { padding: 8px 8px 10px; gap: 7px; }
-  .hl-mimi { width: min(120vw, 480px); height: min(90vh, 740px); }
+  .hl-mimi { width: min(120vw, 480px); height: min(90vh, 740px, calc(100% + 120px)); }   /* 上限に沈み込み分を必ず含める＝顔が切れない */
   .hl-stage { min-height: 34vh; }   /* 小型機でもドック込みで1画面に収める（はみ出し→スクロール化を防ぐ） */
   .hl-left { width: 58vw; }
   .hl-prof-tx b { font-size: 11.5px; }
@@ -7141,7 +7145,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .tik-tab.center .ic { font-size: 19px; }
 .tik-tab .dot { top: 3px; width: 7px; height: 7px; }
 /* 配信モードのミミ＝約14%小さく（下揃えのまま）＝背景の世界が見える */
-.hl.tik .hl-mimi { width: min(103vw, 414px); height: min(78vh, 640px); }
+.hl.tik .hl-mimi { width: min(103vw, 414px); height: min(78vh, 640px, calc(100% + 120px)); }   /* 上限に沈み込み分を必ず含める＝顔が切れない */
 
 /* ===== H4：観光スタンプラリー（押印演出＋通し番号・表示専用） ===== */
 .km-rally { display: flex; align-items: center; gap: 7px; margin: 6px 0 2px; padding: 6px 10px;
