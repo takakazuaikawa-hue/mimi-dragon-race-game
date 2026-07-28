@@ -8637,7 +8637,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* しのびあし 土台直し（初見テスト反映）：陰マス・つぎの視界・草やぶ・予告・凡例・1行バナー */
 .stalk-cell.shade { background: rgba(20,60,30,.38); box-shadow: inset 0 0 0 1px rgba(60,120,70,.35); }
-.stalk-cell.nvis { background-image: repeating-linear-gradient(45deg, rgba(255,214,90,.16) 0 6px, transparent 6px 12px); }
+/* ★「つぎ見られる」を黄と同系にしない。草むらの背景も黄緑＝同系3つが重なって見分け不能だった
+   （ユーザー指摘）。赤紫の縞＋暗地なら、背景にも「いま見られる」黄にも埋もれない。 */
+.stalk-cell.nvis { background-image: repeating-linear-gradient(45deg, rgba(255,80,150,.5) 0 5px, rgba(10,6,14,.42) 5px 11px);
+  box-shadow: inset 0 0 0 1px rgba(255,110,170,.55); }
 .stalk-cell.bushcell { background-color: rgba(30,80,40,.30); }
 .stalk-bush { font-size: 30px; }
 .stalk-mimi .stalk-hidegrass { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
@@ -8651,7 +8654,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .stalk-legend span { display: inline-flex; align-items: center; gap: 4px; }
 .stalk-legend .lg { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
 .stalk-legend .lg-vis { background: rgba(255,214,90,.55); }
-.stalk-legend .lg-nvis { background: repeating-linear-gradient(45deg, rgba(255,214,90,.4) 0 3px, transparent 3px 6px); }
+.stalk-legend .lg-nvis { background: repeating-linear-gradient(45deg, rgba(255,80,150,.75) 0 3px, rgba(10,6,14,.6) 3px 6px); }
 .stalk-legend .lg-shade { background: rgba(20,60,30,.85); box-shadow: inset 0 0 0 1px rgba(80,150,90,.6); }
 .stalk-banner { position: absolute; left: 50%; top: 10%; transform: translateX(-50%); z-index: 22; white-space: nowrap;
   padding: 12px 20px; border-radius: 14px; font-size: 16.5px; font-weight: 900; color: #ffefc8; text-align: center;
