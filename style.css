@@ -8717,3 +8717,85 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   animation: stalkPop .4s .15s cubic-bezier(.2,1.7,.4,1) both; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .swf-tier { font-size: 13px; color: var(--wc); }
 .stalk-winfx.t3 .swf-t, .stalk-winfx.t3 .swf-ring { animation-name: stalkPop, stalkHue; }
+
+/* ===== 🗣️ しのびあし：話しかけフェーズ（♡のあと・STALK_TALK_DIRECTIVE §3） =====
+   盤と**同じ枠・同じ大きさ**（aspect-ratio 7/8）に差し替える＝♡→話しかけで画面がガタつかない。 */
+.stalk-talk { position: relative; width: 100%; aspect-ratio: 7 / 8; border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.09); background: #0d1117;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px; }
+.stk-stage { position: relative; flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; }
+/* レア度の光（竜の背後のスポット）。竜が横長なので**硬い円の枠は使わない**——
+   輪郭が竜を横切って見えるため、にじむ光にしてレア度だけを伝える。 */
+.stk-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: 88%; aspect-ratio: 1; border-radius: 50%; pointer-events: none; --rc: 255,255,255;
+  background: radial-gradient(circle, rgba(var(--rc),.30), rgba(var(--rc),.10) 42%, transparent 68%); }
+.stk-ring.t1 { --rc: 207,217,230; }
+.stk-ring.t2 { --rc: 255,216,115; }
+.stk-ring.t3 { --rc: 255,157,226; animation: stalkHue 1.4s linear infinite; }
+/* 竜の縦横比は不可侵。竜スプライトは**横長（実測 2.15:1）**で、高さだけ決めると幅が
+   枠を突き抜けて切れる（実測 408px ＞ 枠 339px）。width/height は auto のまま
+   max-width と max-height の**両方**で抑える＝縮んでも比率は崩れない。 */
+.stk-drg { position: relative; z-index: 2; width: auto; height: auto; max-width: 82%; max-height: 100%;
+  image-rendering: pixelated; opacity: 0; transition: opacity .3s; filter: drop-shadow(0 8px 12px rgba(0,0,0,.6)); }
+.stk-drg.on { opacity: 1; }
+.stk-say { position: relative; z-index: 3; padding: 8px 14px; border-radius: 12px; text-align: center;
+  font-size: 14px; font-weight: 800; color: #fff4dd; background: rgba(14,19,28,.9);
+  border: 1px solid rgba(255,214,140,.45); box-shadow: 0 6px 16px -8px rgba(0,0,0,.8); }
+/* ボタンが消える「間」でも高さが変わらない＝タメの静けさが崩れない */
+.stk-topics { position: relative; z-index: 3; display: flex; gap: 8px; width: 100%; min-height: 86px; }
+.stk-topic { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  padding: 10px 4px; border-radius: 14px; cursor: pointer; color: #fff4dd;
+  background: linear-gradient(180deg, rgba(42,50,62,.96), rgba(24,29,38,.96));
+  border: 2px solid rgba(255,214,140,.5); box-shadow: 0 6px 16px -6px rgba(0,0,0,.8); }
+.stk-t-ic { font-size: 30px; line-height: 1; }
+.stk-topic b { font-size: 13px; font-weight: 900; }
+.stk-topic:active { transform: scale(.96); }
+.stk-topic.off { opacity: .45; filter: grayscale(1); border-color: rgba(255,255,255,.18); cursor: default; }
+.stk-t-x { font-style: normal; font-size: 9.5px; font-weight: 800; color: #ff9a9a; }
+.stk-cost { margin-left: auto; font-size: 11px; color: var(--mist-soft); }
+.stalk-banner small { display: block; margin-top: 4px; font-size: 11.5px; font-weight: 700; color: var(--mist-soft); }
+/* ドキドキの間：3回ゆれる → 900msの静寂 → 結果 */
+.stk-stage.shake .stk-drg { animation: stkShake .5s ease-in-out; }
+@keyframes stkShake { 0%,100% { transform: rotate(0) translateX(0); }
+  25% { transform: rotate(-5deg) translateX(-5px); } 75% { transform: rotate(5deg) translateX(5px); } }
+.stk-stage.shake .stk-ring { animation: stkRingGlow .5s ease-out; }
+@keyframes stkRingGlow { 0% { filter: brightness(1); transform: translate(-50%,-50%) scale(1); }
+  40% { filter: brightness(1.9); transform: translate(-50%,-50%) scale(1.06); }
+  100% { filter: brightness(1); transform: translate(-50%,-50%) scale(1); } }
+.stalk-talk.miss .stk-drg { animation: stkNo .7s ease-in-out; }
+@keyframes stkNo { 0%,100% { transform: rotate(0); } 20% { transform: rotate(-9deg); }
+  50% { transform: rotate(9deg); } 80% { transform: rotate(-5deg); } }
+.stalk-talk.hit::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, rgba(255,236,190,.9), transparent 62%);
+  animation: swfFlash 1.1s ease-out both; }
+.stalk-talk.flee .stk-drg { animation: stkFlee .9s ease-in forwards; }
+@keyframes stkFlee { to { transform: translateY(-180px) scale(.62); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  /* 揺れだけ省く。JS側の「間」（600ms×3＋900ms）はそのまま残す＝タメは失わない。 */
+  .stk-stage.shake .stk-drg, .stk-stage.shake .stk-ring,
+  .stalk-talk.miss .stk-drg, .stk-ring.t3 { animation: none; }
+}
+
+/* 🤝 成立ポップ（絵が主役・4行以内／STALK_TALK_DIRECTIVE §2） */
+.scw-pop { text-align: center; }
+.scw-art { position: relative; display: flex; align-items: center; justify-content: center;
+  height: 158px; margin: 12px 0 4px; padding: 8px; }
+/* レア枠＝出現カード（.stalk-rv-card）と同じ「角丸の枠＋レア色のにじみ」。
+   ⚠ ここに transform を使うアニメ（stalkPop 等）を足さないこと——inset で置いた枠が
+   キーフレームの transform に上書きされてズレる（実測：中心から右下へ90pxずれた）。 */
+.scw-ring { position: absolute; inset: 0; border-radius: 16px; pointer-events: none;
+  border: 2px solid rgba(255,255,255,.28); background: rgba(255,255,255,.04);
+  box-shadow: 0 0 26px -6px rgba(255,255,255,.22) inset; }
+.scw-pop.t1 .scw-ring { border-color: #cfd9e6; box-shadow: 0 0 30px -4px rgba(200,220,240,.5) inset; }
+.scw-pop.t2 .scw-ring { border-color: #ffd873; box-shadow: 0 0 36px -4px rgba(255,205,90,.55) inset; }
+.scw-pop.t3 .scw-ring { border-color: #ff9de2; box-shadow: 0 0 42px -4px rgba(255,150,220,.6) inset;
+  animation: stalkHue 1.4s linear infinite; }
+/* 成立ポップの竜も横長。max-width/max-height の両方で抑えて比率を保つ（.stk-drg と同じ理由） */
+.scw-img { position: relative; z-index: 2; width: auto; height: auto; max-width: 100%; max-height: 100%;
+  image-rendering: pixelated; opacity: 0; transition: opacity .3s; filter: drop-shadow(0 6px 10px rgba(0,0,0,.6)); }
+.scw-img.on { opacity: 1; }
+.scw-sub { font-size: 12px; color: var(--mist-soft); }
+.scw-lore { margin-top: 9px; font-size: 12px; font-weight: 800; color: #ffd873; }
+
+/* 🐾 しのびあし ？記号一覧：14項目は縦に収まらない（実測1216px＞700px）→ 中で送れるように */
+.stalk-hp-pop { max-height: calc(100vh - 40px); overflow-y: auto; overscroll-behavior: contain; }

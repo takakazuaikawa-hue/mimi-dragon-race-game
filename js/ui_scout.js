@@ -465,14 +465,6 @@ function _scoutWinFx(d) {
 }
 
 // ── 成立＝心を開く → 既存の払い出し ──────────────────────────────────────
-// G2: 成立の個別ひとこと。交渉ペルソナ(favCat)由来＝竜ごとに決定的で、口説き方の記憶と一致する。
-const _SCOUT_WIN_VOICE = {
-  "声": n => `名前を呼んだら、ちゃんとこっちを見たの。${n}、もう家族だ〜。`,
-  "間": n => `${n}はね、間合いが大事なの。……今日、その間合いに入れてもらえた。`,
-  "贈": n => `${n}、贈り物のときだけ目の色が変わるんだよ。かわいいやつめ〜。`,
-  "遊": n => `${n}ってば、遊びだすと止まらないの。龍舎、にぎやかになるぞ〜。`,
-  "身": n => `${n}が、そっと身を寄せてくれた。……あったかいんだ、竜って。`
-};
 function _scoutWin() {
   const d = _scoutMeetD;
   const e = poroColEntry(d.id);
@@ -484,20 +476,41 @@ function _scoutWin() {
   if (typeof saveGame === "function") saveGame();
   _scoutSess = null;
   _scoutWinFx(d);   // 🎉 成立の祝祭（駆け寄り＋紙吹雪）
-  let mimiLine = "";
-  try {
-    const cat = (typeof scoutPersona === "function") ? scoutPersona(d).favCat : "身";
-    mimiLine = (_SCOUT_WIN_VOICE[cat] || _SCOUT_WIN_VOICE["身"])(d.name);
-  } catch (err) { mimiLine = ""; }
-  // 📜 断章III「伝承の真相」＝成立の報酬（読み物のご褒美・図鑑に全断章が揃う）
+  // 📜 断章III「伝承の真相」＝成立の報酬。★全文はここで読ませない＝**無言で解禁**し、
+  //   「増えた」1行だけ添える（図鑑をのぞく動機づけ／STALK_TALK_DIRECTIVE §2）。
   const lore3 = (typeof dragonLoreUnlock === "function") ? dragonLoreUnlock(d.id, 3) : null;
-  showInfoPopup(`🤝 ${d.name} と心が通じた！`,
-    `<div class="mm-row"><span class="mm-ic">🐲</span><div><b>${d.name}を龍舎に迎えた。</b><small>${d.portraitTone || d.tone || "言葉はなくても、気持ちは通じた。"}</small></div></div>` +
-    (lore3 ? `<div class="sc-lore new sc-lore--win"><div class="sc-lore-t">📜 断章 III 「伝承の真相」——全断章が図鑑に揃った</div><div class="sc-lore-tx">${lore3}</div></div>` : "") +
-    (mimiLine ? `<div class="mm-row"><span class="mm-ic">🐰</span><div><b>ミミ</b><small>「${mimiLine}」</small></div></div>` : "") +
-    (isNew ? `<div class="mm-row"><span class="mm-ic">📖</span><div><b>図鑑＆龍舎に登録</b><small>出会いの記録が増えた。</small></div></div>` : "") +
-    `<div class="mm-note">※ 表示専用。レースの結果・オッズ・配当は変わりません。</div>`,
-    () => { if (!_maybeEightAssembly(isNew)) renderScout(); });
+  _scoutWinPop(d, isNew, !!lore3);
+}
+
+// 🤝 成立ポップ（ユーザー決裁＝**絵が主役**・4行以内）。
+//   タイトル／大きなスプライト（レア枠リング）／1行のクラス＆気性／断章の1行だけ。
+//   ミミの台詞・重複説明・注意書きは載せない（増やさないこと）。
+function _scoutWinPop(d, isNew, loreNew) {
+  const tier = (typeof stalkTier === "function") ? stalkTier(_scoutMeetLoc, d.id) : 0;
+  const T = (typeof STALK_TIER !== "undefined" && STALK_TIER[tier]) ? STALK_TIER[tier] : { nm: "", cls: "t0" };
+  const temper = (typeof stalkTemper === "function" && typeof STALK_TEMPER_JA !== "undefined")
+    ? STALK_TEMPER_JA[stalkTemper(d)]
+    : ((typeof poroTemperLabel === "function") ? poroTemperLabel(d) : "—");
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop infopop scw-pop " + T.cls);
+  box.innerHTML =
+    `<div class="navpop-t">🤝 ${d.name}と ともだちに！</div>` +
+    `<div class="scw-art"><div class="scw-ring"></div><img class="scw-img" alt=""></div>` +
+    `<div class="scw-sub">${T.nm ? `✨${T.nm}クラス・` : ""}気性 ${temper}</div>` +
+    (loreNew ? `<div class="scw-lore">📜 断章IIIが図鑑に増えた</div>` : "");
+  const btns = el("div", "navpop-btns");
+  // 📖 図鑑は**上に重ねて**開く（閉じれば成立ポップに戻る＝八竜集結の結線を壊さない）。
+  const colBtn = el("button", "secondary scw-col", "📖 図鑑で見る");
+  colBtn.onclick = () => { if (typeof showDragonDetail === "function") showDragonDetail(d.id); };
+  const ok = el("button", "navpop-go", "わかった！");
+  const close = () => { ov.remove(); if (!_maybeEightAssembly(isNew)) renderScout(); };
+  ok.onclick = close;
+  btns.appendChild(colBtn); btns.appendChild(ok);
+  box.appendChild(btns);
+  ov.appendChild(box);
+  ov.onclick = (ev) => { if (ev.target === ov) close(); };
+  document.body.appendChild(ov);
+  if (typeof _scSpriteInto === "function") _scSpriteInto(box.querySelector(".scw-img"), d.id);
 }
 
 // ── G1: 八竜集結（8頭目成立の夜・1回だけ）───────────────────────────────

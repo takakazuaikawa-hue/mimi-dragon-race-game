@@ -27,7 +27,9 @@ let _stalk = null;
 const STALK_SWEEP = { calm: 5, sunao: 4, kimagure: 6, kimuzukashii: 4 };
 function _stalkIsSweepTurn(t) { const p = STALK_SWEEP[_stalk.temper] || 5; return t > 0 && t % p === 0; }
 
-function stalkAvailable(locId) { return locId === "grass"; }   // 縦切り＝草むらのみ
+// ★全ロケ展開（STALK_TALK_DIRECTIVE §4）。旧フロー（_scoutRenderProbe／scout_game.js の読み合い・
+//   ダンス）は**呼ばれなくなるだけ**で残す＝1コミットで戻せる。盤面は3種共用・背景だけロケごと。
+function stalkAvailable(locId) { return true; }
 
 // ── 盤面。'B'=草やぶ(入れる・隠れる・視線を遮る) 'R'=岩(通れない・視線を遮る)
 const STALK_MAPS = [
@@ -69,8 +71,10 @@ const STALK_TEMPER_JA = { calm: "おだやか", sunao: "すなお", kimagure: "�
 
 // ── レア度（白→銀→金→虹）＝その土地の竜リスト内の位置。レアほど出にくい。
 function stalkTier(locId, dragonId) {
-  const loc = scoutLocation(locId);
-  const ids = (loc && loc.dragons) || [];
+  // ★ロケの竜リストは SCOUT_LOCATIONS に**無い**（archs から scoutDragonHome で決定的に割り当てる）。
+  //   旧実装は存在しない loc.dragons を見ていたため ids が常に空＝**全頭が「白」**になり、
+  //   銀/金/虹のリーチ段階が一度も出ていなかった。正本は dragonsAtLocation()。
+  const ids = (typeof dragonsAtLocation === "function" ? dragonsAtLocation(locId) : []).map(d => d.id);
   const i = ids.indexOf(dragonId);
   if (i < 0 || ids.length < 2) return 0;
   const p = i / (ids.length - 1);
@@ -102,7 +106,7 @@ function stalkDepart(locId) {
   app.appendChild(el("div", "sc-sec", "🐾 しのびあし（試作）"));
   app.appendChild(el("div", "stalk-hint",
     `<span>👣 1歩うごくと、竜も1手</span><span>🟡のマスは「見えている」</span>` +
-    `<span>🌾 に入るとかくれられる</span><span>竜のよこ・うしろの♡マスに立てたら成立</span>`));
+    `<span>🌾 に入るとかくれられる</span><span>竜のよこの♡に立てたら 🗣️話しかけ</span>`));
   const go = el("button", "navpop-go stalk-go" + (canPay ? "" : " is-off"),
     `🌾 そっと近づいてみる <small>🪙${cost.toLocaleString("ja-JP")}</small>`);
   if (canPay) go.onclick = () => {
@@ -262,7 +266,7 @@ function stalkAct(kind, dc, dr) {
   // 触れる判定＝竜の左右となり（♡マス）に立った瞬間
   const horizAdj = Math.abs(s.mimi.c - s.drg.c) === 1 && s.mimi.r === s.drg.r;
   if (horizAdj) {
-    if (!_stalkSeen()) { _stalkWin(); return; }
+    if (!_stalkSeen()) { _stalkReachHeart(); return; }   // ★♡は成立ではなく「話しかけ」の入口
     // ★見られたまま正面から触ろうとした＝その場で驚いて跳びのく（無反応をなくす）
     s.alarm++; s.flash = "alarm";
     s.drg.dir = (s.mimi.c < s.drg.c) ? 1 : 3;
@@ -319,13 +323,149 @@ function _stalkFleeStep() {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════
+// 🗣️ 話しかけ（♡のあと・ポケモンのゲット風／STALK_TALK_DIRECTIVE §3）
+//   ♡に立てても即成立ではない。竜の「好きな話題」を3択から当てて、はじめて仲よくなれる。
+//   ★核＝話題は竜ごとに**固定**（決定的ハッシュ）。外した話題はセッションを跨いで
+//     グレーのまま残る＝次に会うときは消去法が効く（＝再挑戦が「上達」になる）。
+// ═════════════════════════════════════════════════════════════════════════
+const STALK_TOPICS = [
+  { ic: "☁️", nm: "そら" }, { ic: "🍖", nm: "ごはん" }, { ic: "🗺️", nm: "たび" },
+  { ic: "🌙", nm: "ひみつ" }, { ic: "🏁", nm: "レース" }, { ic: "🎵", nm: "うた" },
+];
+const STALK_TALK_COST = 4;             // 1回の話しかけ＝👣4消費（最悪3回＝12手）
+
+// 竜IDから決定的に「出る3話題」と「正解の位置」を決める。52頭ぶん手作業の台帳は作らない。
+//   i1 は i0 から 1〜3 ずれる／i2 は i1 から 1〜2 ずれる＝合計 2〜5 ずれるので i0 とも必ず異なる。
+// ⚠ シフトは必ず **>>>（符号なし）**。h は 32bit いっぱいまで育つので `>>` だと Int32 の
+//   負数になり、`% 3` が負を返して picks が重複し answer が −1/−2 になる
+//   （機械検証で miruka/phenix/stella が実際に壊れていた）。
+function stalkTalkSet(id) {
+  let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const i0 = h % 6;
+  const i1 = (i0 + 1 + ((h >>> 4) % 3)) % 6;
+  const i2 = (i1 + 1 + ((h >>> 8) % 2)) % 6;
+  return { picks: [i0, i1, i2], answer: (h >>> 2) % 3 };
+}
+// 外した話題の位置（0〜2）。図鑑エントリに永続＝次の遠征でもグレーのまま。
+function stalkTalkMiss(id) {
+  try { const e = poroColEntry(id); return (e && e.talkMiss) || []; } catch (err) { return []; }
+}
+
+// ♡到達＝盤を凍らせて♡を出し、ひと呼吸おいて話しかけへ。
+function _stalkReachHeart() {
+  const s = _stalk; s.over = true; s.reached = true;
+  _stalkRender();
+  const host = document.querySelector(".stalk-board");
+  if (host) host.appendChild(el("div", "stalk-heart", "♡"));
+  try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
+  setTimeout(() => { if (_stalk === s) _stalkTalkStart(); }, 820);
+}
+
+function _stalkTalkStart() {
+  const s = _stalk; if (!s) return;
+  s.over = false;                                   // 話しかけ中は決着していない
+  s.talk = { set: stalkTalkSet(s.d.id), miss: stalkTalkMiss(s.d.id), busy: false, say: null, fx: null };
+  _stalkTalkRender();
+  // 教える層①：初回だけ大バナー（＋？一覧にも恒久で載せる＝1回きりのヒント頼みにしない）
+  const p = state.player;
+  if (!p._stalkTalkIntro) {
+    p._stalkTalkIntro = 1; if (typeof saveGame === "function") saveGame();
+    const wrap = document.querySelector(".stalk-wrap");
+    if (wrap) _stalkBanner(wrap, "🗣️ はなしかけよう<br><small>はずれても 👣がのこれば もう一度</small>", true);
+  }
+}
+
+function _stalkTalkRender() {
+  const s = _stalk; if (!s || !s.talk) return;
+  const wrap = document.querySelector(".stalk-wrap"); if (!wrap) return;
+  const t = s.talk, left = Math.max(0, STALK_TURNS - s.turn);
+  const say = t.say || `🗣️ なにを 話しかける？`;
+  const showBtns = !s.over && !t.busy;
+  let btns = "";
+  if (showBtns) {
+    btns = t.set.picks.map((ti, pos) => {
+      const top = STALK_TOPICS[ti], off = t.miss.indexOf(pos) >= 0;
+      return `<button class="stk-topic${off ? " off" : ""}" data-pos="${pos}"${off ? " disabled" : ""}>` +
+        `<span class="stk-t-ic">${top.ic}</span><b>${top.nm}</b>` +
+        (off ? `<i class="stk-t-x">ハズレ</i>` : "") + `</button>`;
+    }).join("");
+  }
+  wrap.innerHTML =
+    `<div class="stalk-top">` +
+      `<span class="stalk-name">${s.d.name}${STALK_TIER[s.tier].nm ? `<i class="stalk-tier ${STALK_TIER[s.tier].cls}">✨${STALK_TIER[s.tier].nm}</i>` : ""}</span>` +
+      `<button class="stalk-help info-q" title="記号のいみ">？</button>` +
+    `</div>` +
+    `<div class="stalk-talk${t.fx ? " " + t.fx : ""}">` +
+      _scBgTag(s.locId, "stalk-bg") +
+      `<div class="stk-stage">` +
+        `<div class="stk-ring ${STALK_TIER[s.tier].cls}"></div>` +
+        `<img class="stk-drg" alt="">` +
+      `</div>` +
+      `<div class="stk-say">${say}</div>` +
+      `<div class="stk-topics">${btns}</div>` +
+    `</div>` +
+    `<div class="stalk-foot"><span class="stalk-turn${left <= 5 ? " low" : ""}">👣 ${left}</span>` +
+      `<span class="stk-cost">🗣️ 1回 話しかけると 👣${STALK_TALK_COST}</span></div>`;
+  _scSpriteInto(wrap.querySelector(".stk-drg"), s.d.id);
+  const q = wrap.querySelector(".stalk-help"); if (q) q.onclick = () => stalkShowHelp();
+  wrap.querySelectorAll(".stk-topic:not(.off)").forEach(b => {
+    b.onclick = () => _stalkTalkPick(parseInt(b.getAttribute("data-pos"), 10));
+  });
+}
+
+// 射幸の「間」＝ボタンを消す → 3回ゆれる（600ms間隔） → 900msの静寂 → 結果。
+function _stalkTalkPick(pos) {
+  const s = _stalk; if (!s || !s.talk || s.talk.busy || s.over) return;
+  s.talk.busy = true; s.talk.say = "……";
+  s.turn += STALK_TALK_COST;
+  _stalkTalkRender();
+  let n = 0;
+  const shake = () => {
+    if (_stalk !== s || !s.talk) return;
+    const st = document.querySelector(".stk-stage");
+    if (st) { st.classList.remove("shake"); void st.offsetWidth; st.classList.add("shake"); }
+    try { if (window.Sfx) Sfx.play("click"); } catch (e) {}
+    n++;
+    if (n < 3) setTimeout(shake, 600);
+    else setTimeout(() => _stalkTalkResult(pos), 900);   // ★何も動かないタメ
+  };
+  setTimeout(shake, 80);
+}
+
+function _stalkTalkResult(pos) {
+  const s = _stalk; if (!s || !s.talk) return;
+  if (pos === s.talk.set.answer) { s.talk.busy = false; _stalkWin(); return; }
+  // 外れ＝首を振るだけ（！は増えない＝警戒には入れない）。その話題は永久にグレーへ。
+  try {
+    const e = poroColEntry(s.d.id);
+    e.talkMiss = e.talkMiss || [];
+    if (e.talkMiss.indexOf(pos) < 0) e.talkMiss.push(pos);
+    if (typeof saveGame === "function") saveGame();
+  } catch (err) {}
+  s.talk.miss = stalkTalkMiss(s.d.id);
+  s.talk.say = "……ちがうみたい";
+  s.talk.fx = "miss";
+  _stalkTalkRender();
+  try { if (window.Sfx) Sfx.play("click"); } catch (e) {}
+  setTimeout(() => {
+    if (_stalk !== s || !s.talk) return;
+    s.talk.fx = null;
+    if (STALK_TURNS - s.turn >= 1) { s.talk.busy = false; s.talk.say = null; _stalkTalkRender(); }
+    else _stalkLose();                                   // 👣が尽きた＝飛び去る
+  }, 1350);
+}
+
 // ── 決着 ────────────────────────────────────────────────────────────────
 function _stalkWin() {
   const s = _stalk; s.over = true;
   _scoutMeetD = s.d; _scoutSess = null;
-  _stalkRender();
-  const host = document.querySelector(".stalk-board");
-  if (host) host.appendChild(el("div", "stalk-heart", "♡"));
+  if (s.talk) { s.talk.fx = "hit"; s.talk.say = "🤝 心が つうじた！"; _stalkTalkRender(); }
+  else {
+    _stalkRender();
+    const host = document.querySelector(".stalk-board");
+    if (host) host.appendChild(el("div", "stalk-heart", "♡"));
+  }
   // ★成立の当たり演出（ユーザー要望＝♡のあとにも射幸感を）。レア度の色で全画面が弾ける：
   //   閃光→色付きリング2連→♡の舞い→「なかよし成立！」。そのあと既存の成立ポップへ渡す。
   const tier = s.tier, d = s.d;
@@ -342,7 +482,9 @@ function _stalkWin() {
 }
 function _stalkLose() {
   const s = _stalk; s.over = true; s.flash = "flee";
-  _stalkRender();
+  // 話しかけ中に👣が尽きた場合は、盤へ戻さずその場で飛び去らせる（画面がガタつかない）。
+  if (s.talk) { s.talk.fx = "flee"; s.talk.say = "🍃 飛び去っていく……"; _stalkTalkRender(); }
+  else _stalkRender();
   const locId = s.locId, cost = (scoutLocation(locId) || {}).cost || 0;
   setTimeout(() => {
     _stalk = null;
@@ -458,13 +600,22 @@ function stalkShowHelp() {
     row('<i class="lg lg-shade"></i>', "こい緑のマス", "草や岩の<b>かげ＝安全</b>。視界の中でも見えていない") +
     row("🌾", "草やぶ", "入るとかくれられる（いる間は絶対みつからない）") +
     row("🪨", "岩", "通れない。視線もさえぎる") +
-    row("♡", "ゴール", "竜のよこ2マス。<b>見られていない側</b>から立てば成立") +
+    row("♡", "ゴール", "竜のよこ2マス。<b>見られていない側</b>から立てば「話しかけ」へ") +
+    row("🗣️", "話しかけ", "♡のあと、話題を3つから選ぶ。<b>好きな話題は竜ごとに決まっている</b>。1回 👣4") +
+    row("🚫", "グレーの話題", "この竜には<b>ハズレだった話題</b>。次に会っても消えたまま＝消去法で当てられる") +
     row("👀", "見回し中", "この手は<b>全方位</b>が見えている。かげと🌾だけが安全") +
     row("⚠", "つぎ見回し", "次の手で👀が来る予告。縞がその範囲") +
     row("💤", "いねむり", "何も見えていない。近づくチャンス") +
     row("↩", "つぎ ふりむく", "次の手で反対を向く予告") +
     row("！", "警戒", "みつかった回数。<b>3つで逃げられる</b>") +
     row("👣", "のこり手数", "0になると竜は飽きて飛び去る"));
+  // ★記号14項目は 390×700 に収まらない（実測 1216px）。中央寄せの .navpop-ov は
+  //   はみ出しても**スクロールできない**＝上下が読めなくなるので、この一覧だけ内部スクロールへ。
+  try {
+    const ovs = document.querySelectorAll(".navpop-ov");
+    const box = ovs.length ? ovs[ovs.length - 1].querySelector(".navpop") : null;
+    if (box) box.classList.add("stalk-hp-pop");
+  } catch (e) {}
 }
 
 // ── 教える層＝「その瞬間に1行だけ」大きく（読まれない説明カードは廃止）────
@@ -481,7 +632,7 @@ function _stalkCoachMaybe(wrap) {
     if (s.turn === 0) { _stalkBanner(wrap, "🔵 をタップで いどう", true); return; }
     if (s.turn === 1) { _stalkBanner(wrap, "🟡 は 竜から<b>見えている</b>"); return; }
     if (s.turn === 2) {
-      _stalkBanner(wrap, "♡ （竜のよこ）に 立てたら成立");
+      _stalkBanner(wrap, "♡ （竜のよこ）に 立てたら <b>話しかけ</b>");
       p._stalkCoach = 1; if (typeof saveGame === "function") saveGame();
       return;
     }
@@ -510,7 +661,7 @@ function _stalkEventTips(wrap) {
 
 // キー操作（任意）：矢印＝移動・スペース＝じっと
 document.addEventListener("keydown", function (e) {
-  if (!_stalk || _stalk.over) return;
+  if (!_stalk || _stalk.over || _stalk.talk) return;   // 話しかけ中は盤の操作を受けない
   const k = e.key;
   if (k === "ArrowUp") stalkAct("move", 0, -1);
   else if (k === "ArrowDown") stalkAct("move", 0, 1);
