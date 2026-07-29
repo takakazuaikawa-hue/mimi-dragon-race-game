@@ -8845,3 +8845,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 @keyframes rpgLogFade { 0% { opacity: 0; transform: translateY(4px); } 8% { opacity: 1; transform: translateY(0); }
   74% { opacity: 1; } 100% { opacity: 0; transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { .rpg-logline.fade { animation: none; opacity: .9; } }
+
+/* ===== 上に貼りつく帯どうしの重なり回避（ユーザー報告：上段にホームのボタンが浮いて出る） =====
+   .topback（← ホーム／実測47px）と .rs-ctrl が両方 sticky top:0 だったため、スクロールすると
+   同じ行に積み重なり、一覧の操作バーの上にホームのボタンが被っていた。
+   .rs-ctrl はホーム帯の下に、.rs-grp-head はさらにその下に貼りつくよう実測値でずらす。 */
+.rs-ctrl { top: 47px; }
+.rs-grp-head { top: 99px; }   /* 47(topback) + 52(元の値) */

@@ -42,6 +42,22 @@ const SCREEN_DEPTH = {
 let _prevScreen = null;
 let _heroRect = null;   // rect of a tapped card, to expand from on the next screen
 
+// ★PC枠のときだけ起きる「スクロールが利かない」の対策（ユーザー報告：モールで下が見られない）。
+//   PC幅では #app（幅470の端末枠）がスクローラで、その左右は body の余白。body は overflow:hidden
+//   なので、**余白の上でホイールを回すとどこもスクロールしない**＝画面が固まって見えた。
+//   実測：#app の上で回せば 0→273 と最下部まで動く／余白の上では 0 のまま。
+//   余白で回したぶんを #app に渡す。モーダルが開いている間は背後を動かさない。
+(function () {
+  if (typeof document === "undefined") return;
+  document.addEventListener("wheel", function (e) {
+    const app = document.getElementById("app");
+    if (!app || app.scrollHeight <= app.clientHeight + 2) return;
+    if (e.target && e.target.closest && e.target.closest("#app")) return;      // 枠の中は素の挙動のまま
+    if (document.querySelector(".navpop-ov, .mm-ov, .info-ov, .mv-ov, .rpg-wagon-ov, .stalk-reveal, .stalk-winfx")) return;
+    app.scrollTop += e.deltaY;
+  }, { passive: true });
+})();
+
 function beginScreen() {
   const app = $("app");
   const screen = state.ui.screen;
