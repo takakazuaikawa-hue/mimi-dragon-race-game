@@ -1890,6 +1890,12 @@ table.entry-table {
 @keyframes sgKvRise { from { transform: translateY(14px) scale(.985); opacity: 0; } to { transform: none; opacity: 1; } }
 .sg-kv-cap { max-width: 520px; text-align: center; font-size: 13px; line-height: 1.75; color: #ffe9c9;
   text-shadow: 0 2px 10px rgba(0,0,0,.9); animation: sgKvRise 1.2s .25s cubic-bezier(.22,.61,.36,1) both; }
+/* 惜敗版＝同じカードを冷たく。閃光は弱く短く、地色は黒、文字は白銀。 */
+.sg-kv.fail { background: radial-gradient(120% 90% at 50% 32%, #16121a 0%, #0b090e 62%, #030205 100%); }
+.sg-kv.fail .sg-kv-flash { animation: sgKvFlashCold .8s ease-out forwards; }
+@keyframes sgKvFlashCold { 0% { opacity: .6; } 25% { opacity: .22; } 100% { opacity: 0; } }
+.sg-kv.fail .sg-kv-img { box-shadow: 0 24px 60px -18px rgba(0,0,0,.95), 0 0 0 1px rgba(255,255,255,.22); }
+.sg-kv.fail .sg-kv-cap { color: #dfe3ec; }
 
 /* === north-star next-goal (spec #37) === */
 .hw-goals { padding: 12px 13px; margin-bottom: 12px; }

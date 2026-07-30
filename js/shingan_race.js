@@ -57,7 +57,7 @@ const SHINGAN_ROSTER = [
 // ── 状態（表示専用メタ・saveGameで永続） ─────────────────────────────────
 function shinganData() {
   const p = state.player;
-  if (!p.shingan) p.shingan = { ab: {}, intro: false, cleared: false, best: null };
+  if (!p.shingan) p.shingan = { ab: {}, intro: false, cleared: false, best: null, failShown: false };
   return p.shingan;
 }
 function shinganAb(id) {
@@ -228,7 +228,9 @@ function renderShinganRace() {
   const runBtn = el("button", "sg-run" + (allIn ? "" : " off"), allIn ? "🏁 試走する（何度でも）" : "🔒 8頭そろったら出走できる");
   runBtn.onclick = allIn ? () => {
     _sgLast = shinganRun(null);
-    if (_sgLast.clear && !shinganData().cleared) { _sgClear(); return; }
+    const sg = shinganData();
+    if (_sgLast.clear && !sg.cleared) { _sgClear(); return; }
+    if (!_sgLast.clear && !sg.cleared && !sg.failShown && _sgLast.spread <= SG_FAIL_AT) { _sgFail(); return; }
     renderShinganRace();
     try { if (window.Sfx) Sfx.play(_sgLast.spread < 1 ? "streak" : "nav"); } catch (e) {}
   } : () => {};
@@ -269,10 +271,16 @@ function _sgIntroVN(done) {
   ], { force: true }).then(done);
 }
 
-// ── クリアの一枚絵（赤目ミミ）＝全画面カード。タップ／自動で閉じて次のVNへ。 ──
-//   画像は images/story/shingan_clear.webp（Higgsfield生成・章の一枚絵と同じ画風・2:3）。
+// ── 神眼レースの一枚絵（赤目ミミ）＝全画面カード。タップ／自動で閉じて次へ。 ──
+//   kind="clear" → images/story/shingan_clear.webp（三頭同着＝ゲームクリア）
+//   kind="fail"  → images/story/shingan_fail.webp （惜敗＝光は届いたが決着が生まれた）
 //   ★画像が無い環境でも進行が止まらないよう、onerror でカードを閉じて先へ進める。
-function _sgKeyVisual() {
+const SG_KV = {
+  clear: { img: "shingan_clear.webp", cap: "三頭同着。——絶滅の神眼は、視るべき決着を失った。", sfx: "legendary", ms: 6200 },
+  fail:  { img: "shingan_fail.webp",  cap: "届かない。——叫びは光になっても、決着は、生まれてしまう。", sfx: "streak",    ms: 5200 }
+};
+function _sgKeyVisual(kind) {
+  const conf = SG_KV[kind] || SG_KV.clear;
   return new Promise(function (resolve) {
     var done = false;
     function close() {
@@ -280,19 +288,41 @@ function _sgKeyVisual() {
       try { ov.classList.add("out"); } catch (e) {}
       setTimeout(function () { try { ov.remove(); } catch (e) {} resolve(); }, 420);
     }
-    var ov = el("div", "sg-kv");
+    var ov = el("div", "sg-kv" + (kind === "fail" ? " fail" : ""));
     ov.innerHTML =
       '<div class="sg-kv-flash"></div>' +
       '<img class="sg-kv-img" alt="">' +
-      '<div class="sg-kv-cap">三頭同着。——絶滅の神眼は、視るべき決着を失った。</div>' +
+      '<div class="sg-kv-cap">' + conf.cap + '</div>' +
       '<div class="fin-skip">タップで進む ▶</div>';
     var img = ov.querySelector(".sg-kv-img");
     img.onerror = function () { close(); };                  // 画像未納品でも詰まらせない
-    img.src = "images/story/shingan_clear.webp";
+    img.src = "images/story/" + conf.img;
     document.body.appendChild(ov);
-    try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+    try { if (window.Sfx) Sfx.play(conf.sfx); } catch (e) {}
     ov.onclick = close;
-    setTimeout(close, 6200);                                 // 自動で先へ（長居させない）
+    setTimeout(close, conf.ms);                              // 自動で先へ（長居させない）
+  });
+}
+
+// ── 惜敗の演出：一度だけ。「あと少し」で本気の敗北を味わわせる ───────────────
+//   ★試走は何度でもできるので、毎回出したら邪魔になる。上位3頭が1秒以内に
+//     詰まった＝本当に手が届きかけた最初の1回だけ、一枚絵＋短いVNを見せる。
+const SG_FAIL_AT = 1.00;
+function _sgFail() {
+  const sg = shinganData();
+  sg.failShown = true;
+  if (typeof saveGame === "function") saveGame();
+  const vn = [
+    ["makura", "写真判定ィィ——……あー、決着。決着です。三頭、わずかに、ずれてる……！"],
+    ["celestia", "……視えたわ。ほんの一瞬、視えなくなりかけたけれど。……視えた。", "default"],
+    ["mimi", "……っ、はぁ、はぁ。……もう少し。もう少しなんです。", "panic"],   // sad は全衣装に無い＝404でsmileに落ちる
+    ["mimi", "寝ません。まだ寝ません。……あの八頭の目盛りを、あと一つだけ、動かせば。", "default"],
+    ["narrator", "淘汰は終わらない。——けれど、終わらせ方は、たしかに見えかけている。"]
+  ];
+  _sgKeyVisual("fail").then(() => {
+    const back = () => renderShinganRace();
+    if (window.Dialogue && Dialogue.play) Dialogue.play(vn, { force: true }).then(back);
+    else back();
   });
 }
 
@@ -324,7 +354,7 @@ function _sgClear() {
     if (typeof playFinalShowcase === "function") playFinalShowcase().then(afterShow); else afterShow();
   };
   // 一枚絵（赤目ミミ）→ 同着VN → 走馬灯 → 八竜 → ED
-  _sgKeyVisual().then(() => {
+  _sgKeyVisual("clear").then(() => {
     if (window.Dialogue && Dialogue.play) Dialogue.play(vn, { force: true }).then(runShow);
     else runShow();
   });
