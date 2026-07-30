@@ -6699,20 +6699,25 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sg-ring { position: absolute; inset: 20%; border-radius: 50%; border: 2px solid rgba(201,169,255,.6); opacity: 0; animation: sgRing 1.5s ease-out .7s; }
 @keyframes sgRing { 0% { opacity: .8; transform: scale(.7); } 100% { opacity: 0; transform: scale(1.7); } }
 .sg-text { position: absolute; left: 0; right: 0; bottom: 17%; text-align: center; padding: 0 18px; pointer-events: none; }
-.sg-kicker { font-size: 13px; font-weight: 800; letter-spacing: .12em; color: #cdaaff; opacity: 0; animation: sgFade .5s ease .9s forwards; }
-.sg-title { font-size: 46px; font-weight: 900; letter-spacing: .3em; color: #fff; margin: 2px 0 7px;
+/* ★ここから下は #sg-cutin（神眼カットイン＝全画面の眼）専用。
+   .sg-title / .sg-sub は ☄️神眼レース画面のヘッダ（上の .sg-head 内・22px）と**同名**で、
+   このブロックのほうが後に来るため、スコープを切らないとレース画面まで
+   46px・letter-spacing .3em・opacity:0 のフェードインを浴びる（実測：360px幅で
+   タイトルが「神眼レ／ース」と改行し、サブタイトルが1.5秒遅れて出ていた）。 */
+#sg-cutin .sg-kicker { font-size: 13px; font-weight: 800; letter-spacing: .12em; color: #cdaaff; opacity: 0; animation: sgFade .5s ease .9s forwards; }
+#sg-cutin .sg-title { font-size: 46px; font-weight: 900; letter-spacing: .3em; color: #fff; margin: 2px 0 7px;
   text-shadow: 0 0 20px rgba(154,106,208,.95), 0 2px 6px rgba(0,0,0,.6); opacity: 0;
   animation: sgTitle .7s cubic-bezier(.2,.9,.25,1) 1.05s forwards; }
 @keyframes sgTitle { 0% { opacity: 0; transform: scale(1.5); letter-spacing: .6em; } 100% { opacity: 1; transform: scale(1); letter-spacing: .3em; } }
-.sg-sub { font-size: 13.5px; color: #e7d8ff; opacity: 0; animation: sgFade .6s ease 1.5s forwards; }
+#sg-cutin .sg-sub { font-size: 13.5px; color: #e7d8ff; opacity: 0; animation: sgFade .6s ease 1.5s forwards; }
 @keyframes sgFade { to { opacity: 1; } }
-.sg-skip { position: absolute; right: 14px; bottom: 12px; font-size: 10.5px; color: rgba(255,255,255,.5); opacity: 0; animation: sgFade .5s ease 1.9s forwards; }
+#sg-cutin .sg-skip { position: absolute; right: 14px; bottom: 12px; font-size: 10.5px; color: rgba(255,255,255,.5); opacity: 0; animation: sgFade .5s ease 1.9s forwards; }
 @media (prefers-reduced-motion: reduce) {
   .sg-flash, .sg-rays, .sg-meteors i, .sg-ring { display: none; }
   .sg-eye { animation: none; opacity: 1; transform: scaleY(1); }
   .sg-iris { animation: none; }
-  .sg-kicker, .sg-title, .sg-sub, .sg-skip { animation: none; opacity: 1; }
-  .sg-title { letter-spacing: .3em; transform: none; }
+  #sg-cutin .sg-kicker, #sg-cutin .sg-title, #sg-cutin .sg-sub, #sg-cutin .sg-skip { animation: none; opacity: 1; }
+  #sg-cutin .sg-title { letter-spacing: .3em; transform: none; }
 }
 
 /* =========================================================================
