@@ -57,7 +57,8 @@
     //   モールから歩いて出ても**買い物の曲が鳴りっぱなし**だった（実機で確認）。ホーム系として扱う。
     //   いま HOME_TRACKS は空＝ホームと同じ無音になる（＝前の画面の曲が居残らないのが正しい状態）。
     //   島歩き専用の曲を入れるときは、ここに混ぜず WALK 用のゾーンを足すこと。
-    konron_map: 1, konron_guide: 1, konron_gallery: 1, konron_walk: 1
+    konron_map: 1, konron_guide: 1, konron_gallery: 1, konron_walk: 1,
+    kiko: 1, media: 1   // 📖紀行ブログ・📱メディアハブ（2026-07-30 IA再編）＝ホーム系ゾーン
   };
   var MALL_ZONE = { mall: 1, mall_rpg: 1 };
 

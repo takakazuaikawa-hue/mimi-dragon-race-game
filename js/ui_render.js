@@ -3804,6 +3804,7 @@ function showLoginBonus(info) {
       partsHtml +
       `<div class="lb-amount">＋<b id="lb-count">0</b> コイン</div>` +
       `<button class="lb-claim">受け取る</button>` +
+      `<button class="lb-blog">📖 受け取ってブログを見る</button>` +
     `</div>`;
   document.body.appendChild(ov);
   requestAnimationFrame(() => {
@@ -3815,6 +3816,13 @@ function showLoginBonus(info) {
     if (typeof claimDailyLogin === "function") claimDailyLogin(info);
     ov.remove();
     if (state.ui.screen === "home") renderHome();
+  };
+  // 📖 受け取ってそのままブログ（紀行）へ＝売上→本文の導線を閉じる（2026-07-30）
+  const blogBtn = ov.querySelector(".lb-blog");
+  if (blogBtn) blogBtn.onclick = () => {
+    if (typeof claimDailyLogin === "function") claimDailyLogin(info);
+    ov.remove();
+    if (typeof renderKiko === "function") renderKiko(); else if (state.ui.screen === "home") renderHome();
   };
 }
 

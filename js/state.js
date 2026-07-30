@@ -211,6 +211,7 @@ function checkDailyLogin() {
 function claimDailyLogin(info) {
   if (!info) return;
   state.player.coins += info.bonus;
+  state.player.kikoEarned = (state.player.kikoEarned || 0) + info.bonus;   // 📖 紀行の累計売上（ブログ表示用）
   state.player.lastLoginDay = info.today;
   state.player.loginStreak = info.streak;
   if (typeof bumpMaxCoins === "function") bumpMaxCoins();

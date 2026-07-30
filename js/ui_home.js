@@ -114,18 +114,9 @@ function renderHome() {
     try {
       const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
       // ★初回だけ：サケの勧めで『ドラゴンレース紀行』を書き始めるVN（柱A・タイトル回収）。
-      //   以後の毎日の売上ポップに文脈がつく。1回きり（kikoStarted）・サケは第1話から登場済み＝門番OK。
-      if (_lb && typeof getStoryFlag === "function" && !getStoryFlag("kikoStarted") && window.Dialogue && Dialogue.play) {
-        setStoryFlag("kikoStarted", true);
-        setTimeout(() => {
-          Dialogue.play([
-            ["sake_udada", "……おい、ミミ。あんた、飯の味も竜の顔も、一度見たら忘れないだろう。それ、書き留めてみな。旅の見聞録ってやつだ。島の外の連中が、金を払ってでも読みたがる。"],
-            ["mimi", "私が、本を……！　た、確かに食べたものは全部言えます。おとといの塩パスタ、麺は太めでした！", "happy"],
-            ["sake_udada", "名付けて『ドラゴンレース紀行』だ！"],
-            ["mimi", "なるほど、昨今では珍しい、早めのタイトル回収ですね！", "happy"],
-            { s: "narrator", t: "こうしてミミは、レースの合間に筆を執ることになった。島でのあらゆる見聞が『紀行』のネタになり、毎日すこしずつ、売上が届く。" }
-          ]).then(() => { try { showLoginBonus(_lb); } catch (e) {} });
-        }, 420);
+      //   本体は ui_kiko.js の playKikoIntro（紀行画面から先に入った場合も同じ入口・1回きり）。
+      if (_lb && typeof getStoryFlag === "function" && !getStoryFlag("kikoStarted") && typeof playKikoIntro === "function") {
+        setTimeout(() => playKikoIntro(() => { try { showLoginBonus(_lb); } catch (e) {} }), 420);
       }
       else if (_lb) setTimeout(() => showLoginBonus(_lb), 420);
       else _doGreet = true;
@@ -885,35 +876,41 @@ function renderHome() {
     b.onclick = opts.locked ? go : () => _tikGo(go);   // 遷移はフェード（配信のみ）・ロックのポップは即時
     return b;
   };
-  // ★フッター＝“行き先”タブだけ（レースは上のゴールドCTA「レースへ進む」が唯一の導線＝
-  //   二重導線バグを解消／ユーザー指摘）。中央強調も廃止＝全タブ等価。行き先：島/暮らし/ごはん/SNS/図鑑。
-  // 🏝島（初勝利で解放・中に食べ歩き/買い物/龍舎）
+  // ★フッター＝“行き先”タブだけ（レースは上のゴールドCTA「レースへ進む」が唯一の導線）。
+  // ★2026-07-30 IA全面再編（ユーザー決裁・案A・正本=docs/KIKO_READER_IA_REDESIGN.md §4）：
+  //   島／竜／暮らし／紀行／メディア の5タブ・両モード共通＝配信化でも枠が変わらない。
+  //   ・🍽ごはんタブは廃止 → ヘッダーの🍖おなかピル1タップ＋島ハブ内（高頻度ループは維持）
+  //   ・物語は🌳暮らしから📱メディアへ（書く=紀行／撮られる=物語／流れる=SNSの三面）
+  // 🏝島（初勝利で解放・中に観光/歩く/モール/村/屋台）
   if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
     bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap(), { img: "island" }));
   } else {
     bar.appendChild(tikTab("🏝️", "島", () => showInfoPopup("🏝️ 島",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物・龍舎もここから）。</small></div></div>`), { locked: true, img: "island" }));
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物もここから）。</small></div></div>`), { locked: true, img: "island" }));
   }
-  // 🌳暮らし＝物語もこの中。新しい話が読める時は未読ドットで気づかせる（レース直後のモーダルの代わり）。
-  const _storyNew = (typeof storyHasUnread === "function") && storyHasUnread();
-  bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets(), { img: "kurashi", dot: _storyNew }));   // 経済/ツリー/習い事/物語/相談/コレクション
-  bar.appendChild(tikTab("🍽️", "ごはん", () => renderMeals(), { img: "meal" }));          // 勝ち飯/負け飯＝高頻度ループを1タップ
-  // 📱SNS＝配信モードのみ（未読ドット）
-  if (broadcast) {
-    const _unreadL = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
-    bar.appendChild(tikTab("📱", "SNS", () => renderSns(), { dot: _unreadL > 0, img: "sns" }));
-  }
-  // 5番目＝竜のハブ「龍舎」（スカウト/図鑑/ポロを集約）。図鑑は龍舎の中にある＝単独タブにしない
-  //   （ユーザー指摘：図鑑は竜舎から行けばよい）。龍舎が開く前(2勝目/ポロ発見前)は図鑑単体を出し、
-  //   龍舎解放で龍舎へ“昇格”＝図鑑が消える窓を作らない。
+  // 🐲竜＝龍舎（スカウト/図鑑/ポロ/グルメ）。龍舎が開く前(ポロ発見前)は図鑑単体、その前は🔒。
   if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
-    bar.appendChild(tikTab("🏠", "龍舎", () => renderStable(), { img: "stable" }));
+    bar.appendChild(tikTab("🐲", "竜", () => renderStable(), { img: "stable" }));
   } else if (typeof dexUnlocked === "function" && dexUnlocked()) {
-    bar.appendChild(tikTab("📖", "図鑑", () => renderCollection(), { img: "dex" }));
+    bar.appendChild(tikTab("🐲", "竜", () => renderCollection(), { img: "dex" }));
   } else {
-    bar.appendChild(tikTab("📖", "図鑑", () => showInfoPopup("📖 図鑑",
+    bar.appendChild(tikTab("🐲", "竜", () => showInfoPopup("🐲 竜",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります（のちに「龍舎」に集約）。</small></div></div>`), { locked: true, img: "dex" }));
   }
+  // 🌳暮らし＝「する」専用（ツリー/習い事/経済/島づくり/相談）。
+  bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets(), { img: "kurashi" }));
+  // 📖紀行＝ミミのブログ（全記録のハブ）。売上が受け取れる日はドット。
+  const _kikoDue = (() => { try { return !!checkDailyLogin(); } catch (e) { return false; } })();
+  if ((p.completedRaces || 0) >= 1) {
+    bar.appendChild(tikTab("📖", "紀行", () => renderKiko(), { dot: _kikoDue }));
+  } else {
+    bar.appendChild(tikTab("📖", "紀行", () => showInfoPopup("📖 ？？？",
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ始まっていません</b><small>まずは1戦、走ってみよう。島の姉御が、なにか勧めてくるらしい。</small></div></div>`), { locked: true }));
+  }
+  // 📱メディア＝物語（ドキュメンタリー）＋SNS＋手紙。未読はドット。
+  const _storyNew = (typeof storyHasUnread === "function") && storyHasUnread();
+  const _unreadL = (broadcast && typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
+  bar.appendChild(tikTab("📱", "メディア", () => renderMediaHub(), { dot: _storyNew || _unreadL > 0, img: "sns" }));
   dock.appendChild(bar);
   wrap.appendChild(dock);
 

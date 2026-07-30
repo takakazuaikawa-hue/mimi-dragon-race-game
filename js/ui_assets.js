@@ -213,23 +213,12 @@ function renderAssets() {
     ent.appendChild(entry("🏦", "島の経済", epOn ? "総資産・名声・村の景気… ＋ ☄️絶滅メーターの綱引き" : "総資産・名声・フォロワー・村の景気＝島の経済状態", epOn ? "☄️終章" : "", () => renderEconomy()));
   }
   // 「できること」＝実際に今できることだけ。未開放は locked に分けて別見出しへ（ここに混ぜると「できる」が嘘になる＝ユーザー指摘）。
+  // ★2026-07-30 IA再編（docs/KIKO_READER_IA_REDESIGN.md §4）：暮らし＝「する」専用に痩せた。
+  //   移動先＝📖物語→📱メディアタブ／🎁生活資産コレクション→📖紀行#おかいもの／🏆コレクション得点→📖紀行のあゆみ。
   const locked = el("div", "as-entries");
-  // 🏆 コレクション・やり込み（各収集の達成度＝得点＋クリア後ミニゲーム）。js/ui_collection_score.js
-  if (typeof renderCollectionScore === "function") {
-    const _cleared = (typeof kurashiChapter === "function") && kurashiChapter() >= 6;
-    if (_cleared) {
-      ent.appendChild(entry("🏆", "コレクション", "図鑑・衣装・食・小イベント… 達成度（得点）＋ミニゲーム", "", () => renderCollectionScore()));
-    } else {
-      locked.appendChild(entry("🔒", "？？？", "終章のあとで——島での日々の、すべてが得点になる。", "", () => {
-        if (typeof showInfoPopup === "function") showInfoPopup("🏆 ？？？",
-          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語を最後まで見届けると開放されます。図鑑も、衣装も、食べ歩きも——島での日々のすべてが、ここで振り返れるようになります。</small></div></div>`);
-      }));
-    }
-  }
   // ★くらしツリー・生活資産は第3話「スミカと総資産」を読むと開放（progression再設計・docs/PROGRESSION_DESIGN.md）。_ch3unlocked は上（すべきこと判定）で確定済み。
   if (_ch3unlocked) {
     ent.appendChild(entry("🌳", "くらしスキルツリー", `解放 ${st.unlockedCount}/${st.totalNodes} ・ いま取れる ${st.readyCount}`, ready ? "振れる!" : "", () => renderLifeTree()));
-    ent.appendChild(entry("🎁", "生活資産コレクション", `${colOwned} / ${LIFE_ASSETS.length} 解放`, "", () => renderLifeCollection()));
   } else {
     // ★同上：第3話未読＝スミカ未登場なので、章の副題（固有名）を伏せた予告にする（R7）。
     locked.appendChild(entry("🔒", "くらしツリー・生活資産", "第3話を読むと開放", "", () => {
@@ -241,7 +230,7 @@ function renderAssets() {
   }
   // 習い事：次に通える師範のミニ肖像を添える（未登場の師範なら無し＝ネタバレしない）。
   ent.appendChild(entry("🎫", "習い事（アクティブスキル）", `称号 ${skTitles} / ${ACTIVE_SKILLS.length} 獲得 ・ ミミの暮らしの記録`, skTitles >= ACTIVE_SKILLS.length ? "コンプ!" : "", () => renderActiveSkills(), _nextSkill ? _shihanMini(_nextSkill.id) : null));
-  ent.appendChild(entry("📖", "物語", `${unlockedCh} / ${STORY_CHAPTERS.length} 話 解放`, ((typeof storyHasUnread === "function" && storyHasUnread()) ? "🆕" : ""), () => renderStory()));
+  // （📖物語は📱メディアタブへ移設＝2026-07-30 IA再編。unlockedCh は他表示で使用中のため残置）
   // 相談（顧問）はホームのナビから移設＝暮らしハブに配置（予想の視点をもらう・任意）。
   // E4：予想の相談も第2話「ミズの分析」で解禁（1章は勘レース）。表示ゲートのみ・数値不変。
   if (typeof renderConsult === "function") {
