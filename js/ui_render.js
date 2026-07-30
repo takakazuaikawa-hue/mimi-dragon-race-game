@@ -949,25 +949,10 @@ function renderSettings() {
   });
   app.appendChild(seg);
 
-  // 竜の村のようす（救済・賭金倍率・解放竜＝経済情報を残す）
-  const v = state.player.village || { level: 1, name: "泣き虫ドラゴン村", facilities: {}, unlockedDragonIds: [] };
-  const rescue = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[v.level]) || 300;
-  const villMult = (typeof VILLAGE_MULT !== "undefined" && VILLAGE_MULT[v.level]) || 1.0;
-  const dn = (typeof DRAGONS !== "undefined") ? DRAGONS.length : 0;
-  app.appendChild(el("div", "as-sec", "竜の村のようす"));
-  app.appendChild(el("div", "card set-village",
-    `<div class="set-vil-top">🏘️ ${v.name}　<b>村Lv ${v.level}</b></div>` +
-    `<div class="set-vil-stats"><span>💛 救済 <b>${fmtCoins(rescue)}</b></span>` +
-      `<span>🎰 賭金 <b>×${villMult}</b></span>` +
-      `<span>🐉 解放竜 <b>${(v.unlockedDragonIds || []).length}/${dn}</b></span></div>`));
-  // 竜の村フル画面への導線（設定のカードだけだと施設ロードマップに辿り着けなかった＝孤立解消）
-  if (typeof renderVillage === "function") {
-    const vilWrap = el("div", "set-data");
-    const vilOpen = el("button", "secondary", "🏘️ 竜の村をくわしく見る");
-    vilOpen.onclick = () => renderVillage();
-    vilWrap.appendChild(vilOpen);
-    app.appendChild(vilWrap);
-  }
+  // ★撤去（2026-07-31・IA整理）：ここにあった「竜の村のようす」カード（救済・賭金倍率・解放竜）は
+  //   暮らし画面の「🏅 暮らしレベル」カードと同じ内容の重複表示だった。もともと村画面が
+  //   孤立していたので設定に入口を足した応急処置だったが、暮らしが正面の置き場所になったので不要。
+  //   村のフル画面（施設ロードマップ）へは 暮らし → 🏘️竜の村 から入る。
 
   // 予想入門・ヘルプ（ホームのナビから移設＝ここから開く）
   if (typeof renderHelp === "function") {

@@ -87,6 +87,36 @@ const STYLE_LABEL = { escape:"逃げ", front:"先行", late:"差し", chase:"追
 // §08 §7 Village multipliers.
 const VILLAGE_MULT = { 1:1.0, 2:1.5, 3:2.0, 4:3.0, 5:5.0, 6:8.0, 7:12.0, 8:20.0, 9:35.0, 10:50.0 };
 
+// ★暮らしレベル（2026-07-31・ユーザー決裁）＝これまで「村Lv」と呼んでいたものの表の顔。
+//   RPGなので「段位」ではなく「レベル」。★仕組み・数値・伸び方は一切変えていない。
+//   同じ1〜10に称号を与えて、散らばっていた「村Lv」表記を暮らしレベルに一本化しただけ。
+//   Lvが上がると：💛救済額（RESCUE_COINS）と 🎰賭金上限の倍率（VILLAGE_MULT）が伸びる。
+//   ⚠️伸びるのは**的中したときだけ**（state.js gainVillageExp＝rank×15／しきい値=Lv×100）。
+//     負けレースでは伸びない。ここは「負け続けで勝手に進む」を止めた設計なので変えないこと。
+const LIVING_RANKS = [
+  { lv: 1,  title: "ドロミズすすりマン",   note: "雨どいの水がごちそう。ここから始まる。" },
+  { lv: 2,  title: "雨やどりの達人",       note: "軒下の一等地を見抜く目が育った。" },
+  { lv: 3,  title: "屋根ありバニー",       note: "自分の屋根の下で眠れる。それだけで偉い。" },
+  { lv: 4,  title: "一日三食の女",         note: "抜かずに食べる。この島では立派な身分。" },
+  { lv: 5,  title: "湯につかる人",         note: "湯を沸かす余裕。肩まで浸かれる暮らし。" },
+  { lv: 6,  title: "おかわり自由の民",     note: "屋台で二杯目を頼める。ささやかな贅沢。" },
+  { lv: 7,  title: "ツケ帳の筆頭",         note: "店主が名前で呼んでくる。信用という財産。" },
+  { lv: 8,  title: "通りに名がある人",     note: "島の誰かが、あなたの話をしている。" },
+  { lv: 9,  title: "島の顔役",             note: "祭りの席次が変わった。呼ばれる側になった。" },
+  { lv: 10, title: "聖龍とまどろむ者",     note: "竜の隣で眠れる。この島で、それ以上は無い。" }
+];
+function livingRankOf(lv) {
+  const n = Math.max(1, Math.min(lv || 1, LIVING_RANKS.length));
+  return LIVING_RANKS[n - 1];
+}
+// 次のレベルまでの進み具合。★しきい値は state.js gainVillageExp と同じ式（Lv×100）から引く＝二重管理しない。
+function livingRankProgress(st) {
+  const v = ((st || state).player || {}).village || {};
+  const lv = v.level || 1, exp = v.exp || 0;
+  const need = lv * 100;
+  return { lv, exp, need, max: lv >= LIVING_RANKS.length, pct: Math.max(0, Math.min(100, Math.round(exp / need * 100))) };
+}
+
 // §08 §13 Rescue coins by village level.
 // ★2026-07-30 上位を再スケール（旧 Lv8=1億/Lv9=10億/Lv10=100億）。頂が10億の世界では
 //   「ゴールより救済が大きい」＝救済だけでEDに届く事故になるため。救済＝再挑戦の種銭の一部、が思想。

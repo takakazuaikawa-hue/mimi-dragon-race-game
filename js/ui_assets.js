@@ -128,6 +128,33 @@ function renderAssets() {
     app.appendChild(mv);
   }
 
+  // 🏅 暮らしレベル（旧「村Lv」）。★表示だけの再構成＝数値も伸び方も不変。
+  //   「村Lv」は 専用画面・設定の重複カード・資産の内訳 の3箇所に散っていたので、
+  //   暮らしを正面の置き場所にして、称号・恩恵・次の条件を1枚にまとめた。
+  //   ★次の条件は state.js gainVillageExp の実式（的中で rank×15／しきい値 Lv×100）から出す。
+  //     ここに「スキルツリーを進めよう」等の実在しない条件を書かない（文章だけ古びる事故の元）。
+  if (typeof livingRankOf === "function" && typeof livingRankProgress === "function") {
+    const pr = livingRankProgress(state);
+    const rk = livingRankOf(pr.lv);
+    const _rescue = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[pr.lv]) || 0;
+    const _mult = (typeof VILLAGE_MULT !== "undefined" && VILLAGE_MULT[pr.lv]) || 1.0;
+    const nextRk = pr.max ? null : livingRankOf(pr.lv + 1);
+    const card = el("div", "card lrank");
+    card.innerHTML =
+      `<div class="lrank-h">🏅 暮らしレベル</div>` +
+      `<div class="lrank-top"><span class="lrank-lv">Lv.${pr.lv}</span>` +
+        `<span class="lrank-title">${rk.title}</span></div>` +
+      `<div class="lrank-note">${rk.note}</div>` +
+      `<div class="lrank-gain"><span>💛 救済 <b>${fmtCoins(_rescue)}</b></span>` +
+        `<span>🎰 賭金の上限 <b>×${_mult}</b></span></div>` +
+      (pr.max
+        ? `<div class="lrank-next">この島で、これ以上の暮らしは無い。</div>`
+        : `<div class="lrank-bar"><div style="width:${pr.pct}%"></div></div>` +
+          `<div class="lrank-next">次は <b>Lv.${pr.lv + 1}「${nextRk.title}」</b>　` +
+            `あと <b>${pr.need - pr.exp}</b>（レースで<u>的中</u>すると貯まる／上のランクほど大きい）</div>`);
+    app.appendChild(card);
+  }
+
   const _avA = advisorVoiceEl("assets"); if (_avA) app.appendChild(_avA);
 
   // 内訳（小さなセグメントバー＝グラフィカル）
@@ -209,6 +236,14 @@ function renderAssets() {
   if (typeof renderEconomy === "function") {
     const epOn = (typeof epilogueOn === "function") && epilogueOn();
     ent.appendChild(entry("🏦", "島の経済", epOn ? "総資産・名声・村の景気… ＋ ☄️絶滅メーターの綱引き" : "総資産・名声・フォロワー・村の景気＝島の経済状態", epOn ? "☄️終章" : "", () => renderEconomy()));
+  }
+  // 🏘️ 竜の村＝暮らしレベルの中身（施設ロードマップ・解放竜）。★設定にあった重複カードを撤去した
+  //   受け皿。暮らしレベルのカードから自然に降りられる位置に置く。
+  if (typeof renderVillage === "function") {
+    const _v = state.player.village || {};
+    const _dn = (typeof DRAGONS !== "undefined") ? DRAGONS.length : 0;
+    ent.appendChild(entry("🏘️", _v.name || "竜の村",
+      `施設と解放竜　🐉 ${((_v.unlockedDragonIds || []).length)}/${_dn}`, "", () => renderVillage()));
   }
   // 「できること」＝実際に今できることだけ。未開放は locked に分けて別見出しへ（ここに混ぜると「できる」が嘘になる＝ユーザー指摘）。
   // ★2026-07-30 IA再編（docs/KIKO_READER_IA_REDESIGN.md §4）：暮らし＝「する」専用に痩せた。
