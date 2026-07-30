@@ -28,27 +28,32 @@ const SHINGAN_TIE = 0.10;   // 同着の許容差（秒）＝クリア条件
 //   mult＝生まれつきの得意/苦手（訓練で変わらない・区間係数）。quirk＝動的な特性（下の _sgQuirk）。
 //   ab0＝初期能力（0..100）。★数値はこのモード内で完結＝レース本編のstatsとは独立。
 const SHINGAN_ROSTER = [
-  { id: "yugiri", loc: "jungle",  locName: "密林",     ic: "🌳",
-    q: "霧隠れ", qd: "近く（前後0.8秒）に2頭以上いると紛れて速い（×1.04）。単独だと迷う（×0.98）。",
-    mult: [1, 1, 1.03, 1.03, 0.98], ab0: [50, 55, 58, 60, 48] },
-  { id: "konron", loc: "cliff",   locName: "崖",       ic: "🪨",
-    q: "山の主", qd: "登りがめっぽう得意（×1.12）、降りは苦手（×0.94）。気分に流されない安定株。",
-    mult: [1, 1, 1.12, 0.94, 1], ab0: [46, 52, 70, 40, 50] },
   { id: "goka",   loc: "volcano", locName: "火山地帯", ic: "🌋",
     q: "業火の癇癪", qd: "直前の区間で順位を落とすと怒って速い（×1.08）。上げると満足して緩む（×0.99）。",
     mult: [1, 1.02, 1.02, 1, 1], ab0: [55, 60, 52, 55, 58] },
-  { id: "yomi",   loc: "sea",     locName: "水中",     ic: "🌊",
-    q: "黄泉還り", qd: "前半（ゲート・平地）は眠く（×0.96）、降り以降でよみがえる（×1.07）。",
-    mult: [0.96, 0.96, 1, 1.07, 1.07], ab0: [42, 50, 55, 66, 60] },
+  // 雷王＝速度94・逃げ。先頭に立っている間だけ伸び続ける＝**同着から最も遠い竜**。
+  { id: "raiou",  loc: "sky",     locName: "空中",     ic: "⚡",
+    q: "劫雷の先陣", qd: "先頭に立っている区間は雷を纏って加速（×1.06）。捕まると気落ちする（×0.95）。",
+    mult: [1.08, 1.05, 1, 0.98, 0.94], ab0: [72, 68, 55, 52, 45] },
   { id: "souten", loc: "sky",     locName: "空中",     ic: "☁️",
     q: "王の余裕", qd: "2番手以内だと手を抜き（×0.98）、3番手以下だと本気を出す（×1.06）。",
     mult: [1, 1.02, 1, 1, 1.02], ab0: [65, 66, 60, 62, 64] },
-  { id: "gekka",  loc: "sky",     locName: "空中",     ic: "🌙",
-    q: "月の満ち欠け", qd: "訓練値の合計が偶数だと満ちて速い（×1.03）、奇数だと欠けて鈍い（×0.98）。",
-    mult: [1, 1, 1, 1.02, 1.02], ab0: [52, 58, 50, 56, 57] },
+  { id: "yomi",   loc: "sea",     locName: "水中",     ic: "🌊",
+    q: "黄泉還り", qd: "前半（ゲート・平地）は眠く（×0.96）、降り以降でよみがえる（×1.07）。",
+    mult: [0.96, 0.96, 1, 1.07, 1.07], ab0: [42, 50, 55, 66, 60] },
   { id: "phenix", loc: "sky",     locName: "空中",     ic: "🔥",
     q: "不死の翼", qd: "出遅れ癖（ゲート×0.90）。だが最終直線で燃え上がる（×1.15）。絶滅を知らない鳥。",
     mult: [0.90, 1, 1, 1, 1.15], ab0: [40, 55, 48, 52, 72] },
+  // 不岳＝持久94・鉄壁。★このレース唯一「クセを持たない」竜＝順位にも差にも一切反応しない。
+  //   他の七頭が揺れる中で動かない基準点になるので、詰めるときの物差しとして機能する。
+  { id: "fugaku", loc: "cliff",   locName: "崖",       ic: "🪨",
+    q: "不動", qd: "順位にも差にも一切反応しない。登りは島いちばん（×1.14）、降りは苦手（×0.96）。動かざること山。",
+    mult: [1, 1.03, 1.14, 0.96, 1], ab0: [52, 70, 72, 45, 52] },
+  // 裂風＝旋回92・小回り◎。★伝承「風は裂いても、**群れは裂かない**」をそのままクセにした。
+  //   囲まれると自分だけ抜け出さない＝同着を作る側に回る竜（ポロと並ぶ“糊”）。
+  { id: "reppu",  loc: "grass",   locName: "草むら",   ic: "🍃",
+    q: "群れは裂かない", qd: "前後0.8秒に他の竜がいると抜け出さず合わせる（×0.97）。単独になれば刃を振るう（×1.05）。",
+    mult: [0.98, 1, 1, 1.10, 1.04], ab0: [48, 58, 55, 68, 62] },
   // ★八頭目＝相棒のポロ。スカウトではなく「見つけた」竜なので解放条件だけ別扱い（下の shinganScouted）。
   //   正典の性格＝先行・気性安定・**複系狙い**（data_dragons.js: traits）。1着を獲りにいかず上位に
   //   食らいつく竜＝この舞台の主役にふさわしい。クセもそこから引いた。
@@ -94,18 +99,22 @@ function _sgRanks(cum) {
   idx.forEach((x, pos) => { rank[x[1]] = pos + 1; });
   return rank;
 }
-function _sgQuirk(d, s, i, snap, rank, prevRank, abSum) {
+// 動的なクセ。★「引き離す側」と「合わせる側」が混在しているのがパズルの肝。
+//   引き離す＝ライオウ(先頭で加速)・ゴウカ(抜かれると怒る)・ソウテン(後ろだと本気)
+//   合わせる＝レップウ(囲まれると出ない)・ポロ(先頭に食らいつく)
+//   動かない＝フガク(唯一クセ無し＝物差し)
+function _sgQuirk(d, s, i, snap, rank, prevRank) {
   switch (d.id) {
-    case "kogane": return (s === 4) ? (rank[i] === 1 ? 1.10 : 0.97) : 1;
-    case "yugiri": {
+    case "goka":   return (s === 0) ? 1 : (rank[i] > prevRank[i] ? 1.08 : (rank[i] < prevRank[i] ? 0.99 : 1));
+    case "raiou":  return (s === 0) ? 1 : (rank[i] === 1 ? 1.06 : 0.95);
+    case "souten": return (s === 0) ? 1 : (rank[i] <= 2 ? 0.98 : 1.06);
+    // ★レップウ＝伝承「風は裂いても、群れは裂かない」。囲まれている間は自分だけ抜け出さない。
+    case "reppu": {
       if (s === 0) return 1;
       let near = 0;
       for (let j = 0; j < snap.length; j++) if (j !== i && Math.abs(snap[j] - snap[i]) <= 0.8) near++;
-      return near >= 2 ? 1.04 : 0.98;
+      return near >= 1 ? 0.97 : 1.05;
     }
-    case "goka":   return (s === 0) ? 1 : (rank[i] > prevRank[i] ? 1.08 : (rank[i] < prevRank[i] ? 0.99 : 1));
-    case "souten": return (s === 0) ? 1 : (rank[i] <= 2 ? 0.98 : 1.06);
-    case "gekka":  return (abSum % 2 === 0) ? 1.03 : 0.98;
     // ★ポロ＝先頭に食らいついている間だけ伸びる。置いていかれると泣いて鈍る。
     //   先頭のタイムへ引き寄せる向きに働くので、同着を作る側の竜として素直に効く。
     case "poro": {
@@ -114,15 +123,13 @@ function _sgQuirk(d, s, i, snap, rank, prevRank, abSum) {
       for (let j = 1; j < snap.length; j++) if (snap[j] < lead) lead = snap[j];
       return (snap[i] - lead <= 0.5) ? 1.07 : 0.96;
     }
-    default: return 1;   // konron / yomi / phenix ＝ mult（固定の得意/苦手）だけ
+    default: return 1;   // ★フガク＝「不動」。ヨミ/フェニックスは mult（固定の得意/苦手）だけ
   }
 }
 // abOv＝{id:[5つの能力]}（省略時は保存値）。乱数ゼロ＝同じ入力なら必ず同じ結果。
 function shinganRun(abOv) {
   const R = SHINGAN_ROSTER;
   const ab = R.map(d => (abOv && abOv[d.id]) || shinganAb(d.id));
-  const gekkaIdx = R.findIndex(d => d.id === "gekka");
-  const gekkaSum = ab[gekkaIdx].reduce((a, x) => a + x, 0);
   const cum = R.map(() => 0);
   let prevRank = R.map(() => 1);
   const passLog = [];
@@ -130,7 +137,7 @@ function shinganRun(abOv) {
     const snap = cum.slice();
     const rank = _sgRanks(snap);
     for (let i = 0; i < R.length; i++) {
-      const m = R[i].mult[s] * _sgQuirk(R[i], s, i, snap, rank, prevRank, gekkaSum);
+      const m = R[i].mult[s] * _sgQuirk(R[i], s, i, snap, rank, prevRank);
       const v = (20 + ab[i][s] * 0.12) * m;
       cum[i] += SHINGAN_SEGS[s].len / v;
     }
