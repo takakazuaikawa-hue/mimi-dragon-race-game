@@ -270,8 +270,10 @@
       var t = (l.t != null) ? l.t : l.text;
       if (t == null || t === "") continue;
       // ★演出フィールドは任意（fx=感情アニメ/se=効果音/bg=背景/w=行末の間ms）。既存台本は無指定＝従来どおり。
+      // ★img＝その行だけ立ち絵を差し替える（場面限定の衣装。例：温泉回の湯上がり姿）。
+      //   通常の解決チェーンの先頭に挿すだけなので、404なら従来の絵へ自動で落ちる。
       out.push({ s: (l.s != null ? l.s : l.speaker), t: String(t), e: (l.e || l.expr), side: l.side,
-        fx: l.fx, se: l.se, bg: l.bg, w: l.w });
+        fx: l.fx, se: l.se, bg: l.bg, w: l.w, img: l.img });
     }
     return out;
   }
@@ -307,7 +309,7 @@
       var d = ensureDom();
       // 立ち絵スロット初期化
       ["left", "right"].forEach(function (s) {
-        var sl = d.slots[s]; sl.id = null; sl.expr = null; sl.has = false;
+        var sl = d.slots[s]; sl.id = null; sl.expr = null; sl.imgOv = null; sl.has = false;
         sl.wrap.classList.remove("active", "dim", "has", "in");
       });
       d.overlay.classList.remove("hidden");
@@ -330,7 +332,7 @@
       d.name.style.display = "none";
       d.name.textContent = "";
     } else {
-      setSlot(side, line.s, chooseExpr(line, c), c);
+      setSlot(side, line.s, chooseExpr(line, c), c, line.img);
       activate(side);
       d.name.style.display = c.name ? "" : "none";
       d.name.textContent = c.name || "";
@@ -350,15 +352,18 @@
     startType(line.t, line);
   }
 
-  function setSlot(side, id, expr, c) {
+  function setSlot(side, id, expr, c, imgOv) {
     var sl = dom.slots[side];
     id = resolveId(id);
-    var sameOccupant = (sl.id === id && sl.expr === (expr || null));
-    sl.id = id; sl.expr = expr || null; sl.has = true;
+    // ★imgOv も同一判定に含める（衣装だけ変わった行で絵が据え置かれないように）
+    var sameOccupant = (sl.id === id && sl.expr === (expr || null) && sl.imgOv === (imgOv || null));
+    sl.id = id; sl.expr = expr || null; sl.imgOv = imgOv || null; sl.has = true;
     sl.wrap.classList.add("has");
     sl.wrap.style.setProperty("--cg", c.color || "#caa24a");
     if (sameOccupant) return; // 同一話者連続なら絵を差し替えない（再フェード回避）
-    loadInto(sl, imgChain(id, expr), c.symbol);
+    var chain = imgChain(id, expr);
+    if (imgOv) chain = [imgOv].concat(chain);   // 先頭に挿す＝未納品なら従来の絵へ自動で落ちる
+    loadInto(sl, chain, c.symbol);
     if (!REDUCE) { sl.wrap.classList.remove("in"); void sl.wrap.offsetWidth; sl.wrap.classList.add("in"); }
   }
 
