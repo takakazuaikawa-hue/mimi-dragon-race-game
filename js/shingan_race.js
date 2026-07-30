@@ -49,11 +49,12 @@ const SHINGAN_ROSTER = [
   { id: "fugaku", loc: "cliff",   locName: "崖",       ic: "🪨",
     q: "不動", qd: "順位にも差にも一切反応しない。登りは島いちばん（×1.14）、降りは苦手（×0.96）。動かざること山。",
     mult: [1, 1.03, 1.14, 0.96, 1], ab0: [52, 70, 72, 45, 52] },
-  // 裂風＝旋回92・小回り◎。★伝承「風は裂いても、**群れは裂かない**」をそのままクセにした。
-  //   囲まれると自分だけ抜け出さない＝同着を作る側に回る竜（ポロと並ぶ“糊”）。
-  { id: "reppu",  loc: "grass",   locName: "草むら",   ic: "🍃",
-    q: "群れは裂かない", qd: "前後0.8秒に他の竜がいると抜け出さず合わせる（×0.97）。単独になれば刃を振るう（×1.05）。",
-    mult: [0.98, 1, 1, 1.10, 1.04], ab0: [48, 58, 55, 68, 62] },
+  // 氷甲＝この八頭で唯一の「氷」。持久92・気性◎。★フガクと役割が被らないよう、
+  //   フガク＝**自分が**動じない、グレイズ＝**周りを**動じさせない、と対にした。
+  //   伝承「夏バテした子竜が寄りかかりに来る」「グレイズの複勝は、貯金」＝面倒見のいい兄貴分。
+  { id: "glaze",  loc: "sea",     locName: "水中",     ic: "❄️",
+    q: "氷甲の冷気", qd: "前後0.8秒にいる<b>他の竜のクセを半分に鎮める</b>（気性が荒い竜ほど効く）。自分は淡々と走り、順位にも差にも動じない。",
+    mult: [1.02, 1.03, 1, 1.02, 0.96], ab0: [56, 68, 58, 60, 44] },
   // ★八頭目＝相棒のポロ。スカウトではなく「見つけた」竜なので解放条件だけ別扱い（下の shinganScouted）。
   //   正典の性格＝先行・気性安定・**複系狙い**（data_dragons.js: traits）。1着を獲りにいかず上位に
   //   食らいつく竜＝この舞台の主役にふさわしい。クセもそこから引いた。
@@ -101,20 +102,13 @@ function _sgRanks(cum) {
 }
 // 動的なクセ。★「引き離す側」と「合わせる側」が混在しているのがパズルの肝。
 //   引き離す＝ライオウ(先頭で加速)・ゴウカ(抜かれると怒る)・ソウテン(後ろだと本気)
-//   合わせる＝レップウ(囲まれると出ない)・ポロ(先頭に食らいつく)
-//   動かない＝フガク(唯一クセ無し＝物差し)
+//   合わせる＝ポロ(先頭に食らいつく)
+//   動かない＝フガク(自分が動じない＝物差し)・グレイズ(周りを動じさせない＝下の SG_CHILL)
 function _sgQuirk(d, s, i, snap, rank, prevRank) {
   switch (d.id) {
     case "goka":   return (s === 0) ? 1 : (rank[i] > prevRank[i] ? 1.08 : (rank[i] < prevRank[i] ? 0.99 : 1));
     case "raiou":  return (s === 0) ? 1 : (rank[i] === 1 ? 1.06 : 0.95);
     case "souten": return (s === 0) ? 1 : (rank[i] <= 2 ? 0.98 : 1.06);
-    // ★レップウ＝伝承「風は裂いても、群れは裂かない」。囲まれている間は自分だけ抜け出さない。
-    case "reppu": {
-      if (s === 0) return 1;
-      let near = 0;
-      for (let j = 0; j < snap.length; j++) if (j !== i && Math.abs(snap[j] - snap[i]) <= 0.8) near++;
-      return near >= 1 ? 0.97 : 1.05;
-    }
     // ★ポロ＝先頭に食らいついている間だけ伸びる。置いていかれると泣いて鈍る。
     //   先頭のタイムへ引き寄せる向きに働くので、同着を作る側の竜として素直に効く。
     case "poro": {
@@ -123,13 +117,25 @@ function _sgQuirk(d, s, i, snap, rank, prevRank) {
       for (let j = 1; j < snap.length; j++) if (snap[j] < lead) lead = snap[j];
       return (snap[i] - lead <= 0.5) ? 1.07 : 0.96;
     }
-    default: return 1;   // ★フガク＝「不動」。ヨミ/フェニックスは mult（固定の得意/苦手）だけ
+    default: return 1;   // ★フガク/グレイズ＝自分のクセ無し。ヨミ/フェニックスは mult だけ
   }
+}
+// ★グレイズ「氷甲の冷気」＝このレース唯一の“他の竜に効く”特性。
+//   近く（前後0.8秒）にいる竜のクセの振れ幅を半分に鎮める。1.06→1.03、0.95→0.975 のように
+//   1.0へ寄せるので、気性の荒い竜（ライオウ/ゴウカ/ソウテン）ほど大きく大人しくなる。
+//   ＝「暴れる竜の隣にグレイズを置く」という手が生まれる＝同着を作るための道具になる。
+//   伝承「夏バテした子竜が寄りかかりに来る」（data_dragon_lore.js: glaze）をそのまま機構にした。
+const SG_CHILL_RANGE = 0.8, SG_CHILL_MUL = 0.5;
+function _sgChill(q, i, glazeIdx, snap) {
+  if (glazeIdx < 0 || i === glazeIdx) return q;
+  if (Math.abs(snap[i] - snap[glazeIdx]) > SG_CHILL_RANGE) return q;
+  return 1 + (q - 1) * SG_CHILL_MUL;
 }
 // abOv＝{id:[5つの能力]}（省略時は保存値）。乱数ゼロ＝同じ入力なら必ず同じ結果。
 function shinganRun(abOv) {
   const R = SHINGAN_ROSTER;
   const ab = R.map(d => (abOv && abOv[d.id]) || shinganAb(d.id));
+  const glazeIdx = R.findIndex(d => d.id === "glaze");   // 居なければ -1＝冷気なしで従来どおり
   const cum = R.map(() => 0);
   let prevRank = R.map(() => 1);
   const passLog = [];
@@ -137,7 +143,7 @@ function shinganRun(abOv) {
     const snap = cum.slice();
     const rank = _sgRanks(snap);
     for (let i = 0; i < R.length; i++) {
-      const m = R[i].mult[s] * _sgQuirk(R[i], s, i, snap, rank, prevRank);
+      const m = R[i].mult[s] * _sgChill(_sgQuirk(R[i], s, i, snap, rank, prevRank), i, glazeIdx, snap);
       const v = (20 + ab[i][s] * 0.12) * m;
       cum[i] += SHINGAN_SEGS[s].len / v;
     }
