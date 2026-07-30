@@ -113,7 +113,21 @@ function renderHome() {
     window._mimiLoginChecked = true;
     try {
       const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
-      if (_lb) setTimeout(() => showLoginBonus(_lb), 420);
+      // ★初回だけ：サケの勧めで『ドラゴンレース紀行』を書き始めるVN（柱A・タイトル回収）。
+      //   以後の毎日の売上ポップに文脈がつく。1回きり（kikoStarted）・サケは第1話から登場済み＝門番OK。
+      if (_lb && typeof getStoryFlag === "function" && !getStoryFlag("kikoStarted") && window.Dialogue && Dialogue.play) {
+        setStoryFlag("kikoStarted", true);
+        setTimeout(() => {
+          Dialogue.play([
+            ["sake_udada", "……おい、ミミ。あんた、飯の味も竜の顔も、一度見たら忘れないだろう。それ、書き留めてみな。旅の見聞録ってやつだ。島の外の連中が、金を払ってでも読みたがる。"],
+            ["mimi", "私が、本を……！　た、確かに食べたものは全部言えます。おとといの塩パスタ、麺は太めでした！", "happy"],
+            ["sake_udada", "名付けて『ドラゴンレース紀行』だ！"],
+            ["mimi", "なるほど、昨今では珍しい、早めのタイトル回収ですね！", "happy"],
+            { s: "narrator", t: "こうしてミミは、レースの合間に筆を執ることになった。島でのあらゆる見聞が『紀行』のネタになり、毎日すこしずつ、売上が届く。" }
+          ]).then(() => { try { showLoginBonus(_lb); } catch (e) {} });
+        }, 420);
+      }
+      else if (_lb) setTimeout(() => showLoginBonus(_lb), 420);
       else _doGreet = true;
     } catch (e) {}
   } else if (!window._mimiLoginChecked) {

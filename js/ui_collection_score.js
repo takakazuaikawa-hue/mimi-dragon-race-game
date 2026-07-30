@@ -15,13 +15,11 @@ function _csRow(ic, name, got, total) {
     `<span class="cs-num">${got} / ${total}</span></div>`;
 }
 
-function renderCollectionScore() {
-  state.ui.screen = "collection_score";
-  if (typeof recomputeAssets === "function") recomputeAssets(state);
-  var app = beginScreen();   // 上部に「← 暮らし」
-  app.appendChild(el("h2", null, "🏆 コレクション・やり込み"));
-
-  // ── 各コレクションの収集状況を集計（表示専用） ──
+// ── 各コレクションの収集状況の集計（表示専用・単一の集計元）─────────────
+// ★2026-07-30 『ドラゴンレース紀行』の売上式（state.js checkDailyLogin）もこの総合達成率を
+//   「紀行の充実度」として読む＝島でのあらゆる行動（食べ歩き/図鑑/写真/スカウト/衣装/暮らし）が
+//   そのまま紀行のネタ＝売上になる（docs/ENDGAME_ECONOMY_REDESIGN.md 柱A）。
+function collectionScoreParts() {
   var dexTot = (typeof _gDexTotal === "function") ? _gDexTotal() : 8;
   var rows = [];
   rows.push(["📖", "竜の図鑑", (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0, dexTot]);
@@ -36,10 +34,20 @@ function renderCollectionScore() {
   try { var lt = (typeof lifeTreeStats === "function") ? lifeTreeStats() : null; if (lt) { ltGot = lt.unlockedCount || 0; ltTot = lt.totalNodes || 0; } } catch (e) {}
   rows.push(["🌳", "くらしツリー", ltGot, ltTot]);
   rows.push(["🐲", "スカウトした竜", (typeof _gScouted === "function") ? _gScouted() : 0, dexTot]);
-
   var sg = 0, stt = 0;
   rows.forEach(function (r) { sg += Math.min(r[2], r[3]); stt += r[3]; });
-  var pct = stt ? Math.round(sg / stt * 100) : 0;
+  return { rows: rows, got: sg, total: stt, pct: stt ? Math.round(sg / stt * 100) : 0 };
+}
+if (typeof window !== "undefined") window.collectionScoreParts = collectionScoreParts;
+
+function renderCollectionScore() {
+  state.ui.screen = "collection_score";
+  if (typeof recomputeAssets === "function") recomputeAssets(state);
+  var app = beginScreen();   // 上部に「← 暮らし」
+  app.appendChild(el("h2", null, "🏆 コレクション・やり込み"));
+
+  var cs = collectionScoreParts();
+  var rows = cs.rows, sg = cs.got, stt = cs.total, pct = cs.pct;
 
   // ── 総合達成度（得点） ──
   var hero = el("div", "card cs-hero");

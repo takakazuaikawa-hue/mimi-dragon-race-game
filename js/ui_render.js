@@ -3779,6 +3779,8 @@ function spawnConfetti(container, n, tier) {
 }
 
 // §37 — daily login reward modal (shown once per session on home if a new day).
+// ★2026-07-30 ログインボーナス →「📖 きょうの『紀行』売上」（柱A）。式は state.js checkDailyLogin。
+//   内訳（印税=人望×充実度／資産の実り）を見せる＝「島でのあらゆる行動が資産になる」が毎朝伝わる。
 function showLoginBonus(info) {
   if (!info) return;
   const ov = el("div", "login-ov");
@@ -3786,11 +3788,20 @@ function showLoginBonus(info) {
     const cls = d < info.cycleDay ? "done" : (d === info.cycleDay ? "now" : "");
     return `<div class="lb-day ${cls}">${d === 7 ? "★" : d}</div>`;
   }).join("");
+  // 旧セーブ／万一の欠損では内訳を出さず合計だけ（fail-soft）
+  const hasParts = (info.royalty != null && info.yield != null);
+  const partsHtml = hasParts
+    ? `<div class="lb-parts">` +
+        `<div class="lb-part"><span>📖 紀行の印税</span><small>人望 × 記事の充実 ${Math.round((info.fill || 0) * 100)}%</small><b>${fmtCoins(info.royalty)}</b></div>` +
+        `<div class="lb-part"><span>🏦 資産の実り</span><small>総資産と島づくり投資が働いた分</small><b>${fmtCoins(info.yield)}</b></div>` +
+      `</div>`
+    : "";
   ov.innerHTML =
     `<div class="login-card">` +
-      `<div class="lb-title">✦ ログインボーナス ✦</div>` +
-      `<div class="lb-streak">${info.streak}日連続ログイン</div>` +
+      `<div class="lb-title">📖 きょうの『紀行』売上</div>` +
+      `<div class="lb-streak">『ドラゴンレース紀行』好評連載中 — ${info.streak}日連続</div>` +
       `<div class="lb-strip">${strip}</div>` +
+      partsHtml +
       `<div class="lb-amount">＋<b id="lb-count">0</b> コイン</div>` +
       `<button class="lb-claim">受け取る</button>` +
     `</div>`;

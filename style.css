@@ -1701,6 +1701,15 @@ table.entry-table {
 .lb-day.done { color: #4a2e08; background: linear-gradient(180deg, #ffe09a, #e6b24a); border-color: var(--gold-line); }
 .lb-day.now { color: #fff; background: linear-gradient(180deg, var(--lava-glow), var(--lantern));
   border-color: var(--gold-bright); box-shadow: 0 0 10px rgba(255,110,60,0.6); transform: scale(1.08); }
+/* 📖 きょうの『紀行』売上の内訳（印税＝人望×充実／資産の実り）。2026-07-30 柱A */
+.lb-parts { margin: 2px 0 10px; display: grid; gap: 6px; }
+.lb-part { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center;
+  text-align: left; padding: 7px 10px; border-radius: 10px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); }
+.lb-part span { font-size: 12.5px; font-weight: 800; color: var(--cream); }
+.lb-part small { grid-column: 1; font-size: 10.5px; color: var(--mist-soft); }
+.lb-part b { grid-column: 2; grid-row: 1 / span 2; font-size: 15px; font-weight: 900;
+  color: var(--gold-bright); font-variant-numeric: tabular-nums; }
 .lb-amount { font-size: 18px; color: var(--cream); margin: 6px 0 16px; }
 .lb-amount b { font-size: 32px; font-weight: 900; color: var(--gold-bright); }
 .lb-claim { width: 100%; padding: 13px; border: none; border-radius: 12px; cursor: pointer;

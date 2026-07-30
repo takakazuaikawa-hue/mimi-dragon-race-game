@@ -183,7 +183,13 @@ function _epochDay(d) {
   d = d || new Date();
   return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
 }
-// Returns the bonus due today (or null if already claimed today). Does NOT grant.
+// ★2026-07-30 ログインボーナス →『ドラゴンレース紀行』のきょうの売上へ（柱A・ユーザー決裁）。
+//   設定：第1話でサケに勧められ、ミミは島の見聞録『ドラゴンレース紀行』の作者になる（タイトル回収）。
+//   島をめぐるあらゆる行動＝紀行のネタ＝売上。式は2本立て（表示メタのみ・レース数値に非干渉）：
+//     📖 紀行の印税 = フォロワー ×（0.5 ＋ 2×充実度）… 人望×コンテンツ。充実度=コレクション総合達成率
+//     🏦 資産の実り = 総資産（現在）×（0.1% ＋ 0.1%×島の景気ティア0..3）… 資産と島づくり投資が働く
+//   規模感（実測ベース）：序盤=数百コイン／中盤=数万／終盤（資産10億級・達成度高）=数百万×7日倍率。
+//   旧式（到達最高コイン×0.5%）は「何もしなくても最高額だけで増える」＝行動と結びつかなかった。
 function checkDailyLogin() {
   const today = _epochDay();
   const last = state.player.lastLoginDay;
@@ -192,9 +198,15 @@ function checkDailyLogin() {
   if (last == null || today > last + 1) streak = 1;       // first ever / chain broke
   else streak = (state.player.loginStreak || 0) + 1;      // last === today-1 → consecutive
   const cycleDay = ((streak - 1) % 7) + 1;
-  const base = Math.max(200, Math.floor((state.player.maxCoinsReached || 0) * 0.005));
+  let fill = 0, fol = 0, tier = 0;
+  try { if (typeof collectionScoreParts === "function") fill = (collectionScoreParts().pct || 0) / 100; } catch (e) {}
+  try { if (typeof goalFollowers === "function") fol = goalFollowers() || 0; } catch (e) {}
+  try { if (typeof islandTier === "function") tier = islandTier() || 0; } catch (e) {}
+  const royalty = Math.floor(fol * (0.5 + 2 * fill));                                    // 📖 紀行の印税
+  const yld = Math.floor(Math.max(0, state.player.totalAssets || 0) * (0.001 + 0.001 * tier));   // 🏦 資産の実り
+  const base = Math.max(200, royalty + yld);
   const bonus = Math.floor(base * LOGIN_DAY_MULT[cycleDay - 1]);
-  return { today, streak, cycleDay, bonus };
+  return { today, streak, cycleDay, bonus, royalty, yield: yld, base, fill, tier };
 }
 function claimDailyLogin(info) {
   if (!info) return;
