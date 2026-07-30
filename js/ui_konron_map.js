@@ -783,12 +783,57 @@ function _kmArrivalScript(id, s, cat) {
     closer
   ];
 }
+// ♨️ ウロコトロ温泉郷＝ミズとの湯けむり回。★終章（三頭同着）の伏線をここで一度だけ渡す。
+//   もとは小イベントを「12戦」で開けていたが、きっかけが唐突だった。**初めて温泉に来た日の
+//   出来事**にすると、話の入り（平和だね〜 → 平和といえば）が自然につながる。
+//   ★ミズ未登場のうちは発火させない（fail-closed）。その場合は通常の到着VNを出し、
+//     ミズの話は次に来たときに回す＝初回に会えていなくても取り逃さない。
+//   ここで setStoryFlag("onsenDeadheatHeard") を立て、小イベント側（読み返し用）の解放条件にする。
+function _kmOnsenMizuScript(s) {
+  const bg = s.photo;
+  return [
+    { s: "narrator", t: "♨️ ウロコトロ温泉郷。湯けむりの向こうで、湖の灯りが揺れている。", bg: bg },
+    { s: "mimi", e: "smile", t: "ふあぁ……とける……。ミズさん、ここ、さいっこうです……。" },   // ★hopは付けない（浸かってるのに跳ねる）
+    { s: "mizu", t: "でしょう。あたくし、月に一度は来るのよ。……ほら、肩まで浸かりなさいな。" },
+    { s: "mimi", e: "happy", t: "はーい。……ん〜〜〜っ、平和だね〜。" },
+    { s: "mizu", t: "……ほんと。平和だわ〜。" },
+    { s: "narrator", t: "しばらく、湯の音だけがしていた。" },
+    { s: "mizu", t: "……平和といえば。むかし、この島が一日だけ、まるごと止まった日があるのよ。" },
+    { s: "mimi", e: "panic", t: "え、こわい。なんですかそれ。" },
+    { s: "mizu", t: "ゴールが、完全に並んだの。写真判定でも分けられなくて——同着。" },
+    { s: "mimi", t: "……それで、どっちが勝ちになったんですか？" },
+    { s: "mizu", t: "どっちも。……というより、どちらでもなかったわ。" },
+    { s: "mizu", t: "順位が決まらないと、賭けは成立しないの。だからその日は、ぜんぶそのままお返し。払い戻しよ。" },
+    { s: "mimi", t: "えっ。じゃあ、胴元は。" },
+    { s: "mizu", t: "一銭も取れない。あはん。" },
+    { s: "mizu", t: "帳面のその頁だけ、数字がひとつも入っていないの。……あの日だけはね。この賭場、だあれも勝てなかったのよ。" },
+    { s: "mimi", t: "……なんだか、へんなの。だれも勝ってないのに、平和な話に聞こえます。" },
+    { s: "mizu", t: "そう？　……そうかもしれないわね。" },
+    { s: "narrator", t: "湯けむりが、ゆっくりと湖のほうへ流れていった。" }
+  ];
+}
+function _kmMaybeOnsenDeadheat(id, s) {
+  try {
+    if (id !== "uroko") return false;
+    if (!(window.Dialogue && Dialogue.play)) return false;
+    if (!(typeof advisorMet === "function" && advisorMet("mizu"))) return false;   // 未登場なら次回へ回す
+    const kz = state.player.kurashi || (state.player.kurashi = {});
+    if (kz.onsenDeadheatSeen) return false;
+    kz.onsenDeadheatSeen = 1;
+    if (typeof setStoryFlag === "function") setStoryFlag("onsenDeadheatHeard", true);
+    if (typeof saveGame === "function") saveGame();
+    Dialogue.play(_kmOnsenMizuScript(s), { force: true });
+    return true;
+  } catch (e) { return false; }
+}
 function _kmPlayArrival(id, s, cat) {
   try {
     if (!(window.Dialogue && Dialogue.play)) return;
     const kz = state.player.kurashi || (state.player.kurashi = {});
     const seenVN = kz.arrivalSeen || (kz.arrivalSeen = {});
     if (seenVN[id]) return;   // 到着VNはスポットごとに1回だけ（2回目からは静かに）
+    // ♨️温泉の初訪問はミズの湯けむり回を優先（ミズ未登場なら下の通常VNへ落ちる）
+    if (_kmMaybeOnsenDeadheat(id, s)) { seenVN[id] = 1; if (typeof saveGame === "function") saveGame(); return; }
     seenVN[id] = 1; if (typeof saveGame === "function") saveGame();
     // ★G7：絶景スポットの初訪問後は「知らないお姉さん」の代替カメオ（破産しない上手い人向け・
     //   第4話既読＋未遭遇のみ発火＝epilogue_engine.maybeStrangerVista が全条件を持つ）。
@@ -875,6 +920,9 @@ function _kmRenderPanel() {
         if (_stampNew) { if (typeof saveGame === "function") saveGame(); }
         // ★初訪問＝到着ミニVN（ガイドとの掛け合い・スポット写真を背景に）。パネル描画後に少し遅らせて再生。
         if (_stampNew) { const _aid = _kmSpot, _as = s; setTimeout(() => _kmPlayArrival(_aid, _as, _as.cat), 420); }
+        // ♨️ ミズの湯けむり回は「初訪問」に限定しない。初回にミズが未登場だと永久に見られなく
+        //   なるため、2回目以降の入湯でも取りこぼしを拾う（内部で一度きりガード済み）。
+        else if (_kmSpot === "uroko") { const _us = s; setTimeout(() => _kmMaybeOnsenDeadheat("uroko", _us), 420); }
         // ★K1 初訪問の実地稽古（高所エリア＝ジム／civic＝ボランティア／読み物あり＝読書会）
         if (_stampNew && typeof FieldStats !== "undefined") {
           const _ar = _kmAreaOf(_kmSpot);
