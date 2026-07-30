@@ -28,9 +28,6 @@ const SHINGAN_TIE = 0.10;   // 同着の許容差（秒）＝クリア条件
 //   mult＝生まれつきの得意/苦手（訓練で変わらない・区間係数）。quirk＝動的な特性（下の _sgQuirk）。
 //   ab0＝初期能力（0..100）。★数値はこのモード内で完結＝レース本編のstatsとは独立。
 const SHINGAN_ROSTER = [
-  { id: "kogane", loc: "grass",   locName: "草むら",   ic: "🌾",
-    q: "強欲の輝き", qd: "最終直線を先頭で迎えると末脚が燃える（×1.10）。先頭でなければ少し萎える（×0.97）。",
-    mult: [1, 1.02, 0.98, 1, 1], ab0: [60, 62, 45, 50, 66] },
   { id: "yugiri", loc: "jungle",  locName: "密林",     ic: "🌳",
     q: "霧隠れ", qd: "近く（前後0.8秒）に2頭以上いると紛れて速い（×1.04）。単独だと迷う（×0.98）。",
     mult: [1, 1, 1.03, 1.03, 0.98], ab0: [50, 55, 58, 60, 48] },
@@ -51,7 +48,13 @@ const SHINGAN_ROSTER = [
     mult: [1, 1, 1, 1.02, 1.02], ab0: [52, 58, 50, 56, 57] },
   { id: "phenix", loc: "sky",     locName: "空中",     ic: "🔥",
     q: "不死の翼", qd: "出遅れ癖（ゲート×0.90）。だが最終直線で燃え上がる（×1.15）。絶滅を知らない鳥。",
-    mult: [0.90, 1, 1, 1, 1.15], ab0: [40, 55, 48, 52, 72] }
+    mult: [0.90, 1, 1, 1, 1.15], ab0: [40, 55, 48, 52, 72] },
+  // ★八頭目＝相棒のポロ。スカウトではなく「見つけた」竜なので解放条件だけ別扱い（下の shinganScouted）。
+  //   正典の性格＝先行・気性安定・**複系狙い**（data_dragons.js: traits）。1着を獲りにいかず上位に
+  //   食らいつく竜＝この舞台の主役にふさわしい。クセもそこから引いた。
+  { id: "poro",   loc: "poro",    locName: "相棒",     ic: "💧",
+    q: "涙の伴走", qd: "先頭との差が0.5秒以内なら泣きながら食らいつく（×1.07）。離されると心が折れる（×0.96）。",
+    mult: [1.04, 1, 0.94, 1, 0.98], ab0: [58, 60, 44, 55, 50] }
 ];
 
 // ── 状態（表示専用メタ・saveGameで永続） ─────────────────────────────────
@@ -67,6 +70,9 @@ function shinganAb(id) {
   return d.ab[id];
 }
 function shinganScouted(id) {
+  // ★ポロだけは「スカウト」ではなく物語で見つける相棒なので、判定が別（scoutedRoster も
+  //   poro を明示的に除外している）。poroFound() が唯一の正。
+  if (id === "poro") { try { return (typeof poroFound === "function") ? !!poroFound() : false; } catch (e) { return false; } }
   try { const e = (state.player.collection || {})[id]; return !!(e && e.scouted); } catch (e) { return false; }
 }
 function shinganAllScouted() { return SHINGAN_ROSTER.every(d => shinganScouted(d.id)); }
@@ -100,6 +106,14 @@ function _sgQuirk(d, s, i, snap, rank, prevRank, abSum) {
     case "goka":   return (s === 0) ? 1 : (rank[i] > prevRank[i] ? 1.08 : (rank[i] < prevRank[i] ? 0.99 : 1));
     case "souten": return (s === 0) ? 1 : (rank[i] <= 2 ? 0.98 : 1.06);
     case "gekka":  return (abSum % 2 === 0) ? 1.03 : 0.98;
+    // ★ポロ＝先頭に食らいついている間だけ伸びる。置いていかれると泣いて鈍る。
+    //   先頭のタイムへ引き寄せる向きに働くので、同着を作る側の竜として素直に効く。
+    case "poro": {
+      if (s === 0) return 1;
+      let lead = snap[0];
+      for (let j = 1; j < snap.length; j++) if (snap[j] < lead) lead = snap[j];
+      return (snap[i] - lead <= 0.5) ? 1.07 : 0.96;
+    }
     default: return 1;   // konron / yomi / phenix ＝ mult（固定の得意/苦手）だけ
   }
 }
@@ -222,9 +236,10 @@ function shinganDevUnlock(opts) {
   const need = (typeof storyUnlockAt === "function" && storyUnlockAt("ED")) || 1000000000;
   p.assetsPeak = Math.max(p.assetsPeak || 0, need);
   p.maxCoinsReached = Math.max(p.maxCoinsReached || 0, need);
-  // ③ 8頭すべてスカウト済み（図鑑エントリの scouted を立てる）
+  // ③ 8頭すべて出走可能に。★ポロだけはスカウトではなく物語フラグ（poroFound）が正。
   p.collection = p.collection || {};
   SHINGAN_ROSTER.forEach(d => {
+    if (d.id === "poro") { if (typeof setStoryFlag === "function") setStoryFlag("poroFound", true); return; }
     p.collection[d.id] = Object.assign({}, p.collection[d.id], { scouted: true, seen: true });
   });
   // ④ 通しで見たいときは演出フラグを戻す
@@ -288,7 +303,7 @@ function renderShinganRace() {
   head.innerHTML =
     `<div class="sg-title">☄️ 神眼レース</div>` +
     `<div class="sg-sub">決着の視える眼に、決着の無い結末を。</div>` +
-    `<div class="sg-rule">スカウトしてきた<b>最高クラスの8頭</b>を、竜舎で説得して鍛え上げろ。<br>` +
+    `<div class="sg-rule">スカウトしてきた<b>最高クラスの七頭</b>と、<b>相棒のポロ</b>。竜舎で説得して鍛え上げろ。<br>` +
     `徹夜の赤い目で、ミミはレース結果を<b>ある程度予想できる</b>。<br>` +
     `<b>セレスティアが当てられない組み合わせ</b>になったら、勝負を挑め。</div>`;
   app.appendChild(head);
@@ -306,7 +321,9 @@ function renderShinganRace() {
       `<button class="sg-card-h">` +
       `<span class="sg-d-ic">${ok ? d.ic : "❔"}</span>` +
       `<span class="sg-d-tx"><b>${ok ? _sgName(d.id) : "？？？"}</b>` +
-      `<small>${ok ? `${d.q} — ${d.qd}` : `🔒 この竜のスカウトが必要（${d.ic} ${d.locName}）`}</small></span>` +
+      `<small>${ok ? `${d.q} — ${d.qd}`
+        : (d.id === "poro" ? "🔒 まだ出会っていない相棒（島のどこかで泣いている）"
+                           : `🔒 この竜のスカウトが必要（${d.ic} ${d.locName}）`)}</small></span>` +
       `<span class="sg-d-ch">${ok ? (_sgOpen === d.id ? "▾" : "▸") : "▶"}</span></button>`;
     if (ok && _sgOpen === d.id) {
       h += `<div class="sg-train">` + SHINGAN_ABL.map((nm, k) =>
@@ -322,7 +339,8 @@ function renderShinganRace() {
     const hd = card.querySelector(".sg-card-h");
     hd.onclick = ok
       ? () => { _sgOpen = (_sgOpen === d.id) ? null : d.id; renderShinganRace(); }
-      : () => { if (typeof renderScout === "function") renderScout(); };
+      : () => { if (d.id === "poro") { if (typeof renderHome === "function") renderHome(); }   // ポロはスカウト画面にいない
+                else if (typeof renderScout === "function") renderScout(); };
     card.querySelectorAll(".sg-st").forEach(btn => {
       btn.onclick = (ev) => {
         ev.stopPropagation();
@@ -396,7 +414,12 @@ function _sgIntroVN(done) {
     ["celestia", "この賭場も、いいところだけど。……きっと、壊れちゃう。", "default"],
     ["mimi", "それでも。……わたしは、負けたくないんです。", "default"],
     ["celestia", "そう。楽しみだな。うん。", "default"],
-    ["celestia", "——赤い目のウサギさん。私に、その魂を見せてみて。", "default"]
+    ["celestia", "——赤い目のウサギさん。私に、その魂を見せてみて。", "default"],
+    // ★八頭目の発表＝この舞台のもうひとつの山。最高クラスが七頭、そして——
+    ["makura", "出走表が出たぜェ！ 最高クラスが……七頭！ そんでもって、八頭目はァ——"],
+    ["makura", "……は？ ポ、ポロ！？ あの泣き虫が、この大舞台にィ！？"],
+    ["mimi", "……はい。ポロが、走りたいって。", "default"],
+    ["celestia", "ふふ。……いいんじゃない。その子、いちばん人の隣にいるのが上手だもの。", "default"]
   ], { force: true }).then(done);
 }
 
