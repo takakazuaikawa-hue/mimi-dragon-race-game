@@ -9142,3 +9142,116 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .lrank-goals i { font-style: normal; font-size: 10.5px; padding: 3px 8px; border-radius: 999px;
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #e8def8; }
 .lrank-block-n { margin-top: 7px !important; opacity: .75; }
+
+/* =========================================================================
+   ★UIキット（2026-08-01・P-6 iteration 1）— ボタン／ウィンドウ／面の設計言語
+   =========================================================================
+   ユーザー要望「ボタン関連・ウィンドウ関連の装飾・アイコンを最新ゲーム風に」。
+
+   ■実測した現状の欠陥（推測ではなく計測）
+     ・解放ポップの「あとで」と「今すぐ見る」が**どちらも金の塗り**＝主役が2つ。
+       取り消し側(.navpop-x)がグローバルのbuttonをそのまま継いでいたのが原因。
+     ・角丸が10種類（999/12/8/14/16/10/18/9/99…）＝スケールが無い。
+     ・box-shadowが16種類、しかも大半のボタンは影ゼロ＝板に紙を貼った見え方。
+   ■リサーチの要点（ロゴ/UIとも同じ結論）
+     ・装飾を全周に盛ると読めなくなる。**主役と脇役を決め、飾りは交点にだけ置く**。
+     ・2025のUIは「モーフィズムの小さな復活」＝派手な立体ではなく、
+       **上から一方向の光＋薄いベベル＋段階のある影**で奥行きを作る。
+   ■このゲーム自身の一番良い作りを様式に昇格させる
+     .title-cta だけは既に正しく作られていた（下の鍵エッジ 0 7px 0＋内側の金リング＋
+     上のハイライト）。外から様式を持ち込まず、これを縮小してトークン化する。
+   ■壊さないための仕掛け
+     ベベルは box-shadow ではなく **background-image の層**で作る。
+     この配色は background を自前で持つボタン（透明アイコンボタン実測60個）が
+     background を上書きした瞬間に**一緒に消える**＝除外リストを書かなくて済む。
+     鍵エッジ(box-shadow)だけは自動で消えないので、`button:not([class])`＝
+     グローバルの金をそのまま使っている素のボタンと、名指しの金ボタン族にだけ与える。
+   ========================================================================= */
+:root {
+  /* 角丸＝4段だけ（チップ/部品/カード/窓）。以後これ以外を増やさない。 */
+  --r-1: 9px; --r-2: 12px; --r-3: 16px; --r-4: 22px;
+  /* 高さ＝3段だけ（面 < 浮き < 窓）。影の種類を増やさないための物差し。 */
+  --e-1: 0 1px 2px rgba(0,0,0,.30), 0 8px 20px -14px rgba(0,0,0,.75);
+  --e-2: 0 2px 8px rgba(0,0,0,.36), 0 18px 40px -22px rgba(0,0,0,.85);
+  --e-3: 0 10px 24px rgba(0,0,0,.42), 0 40px 84px -30px rgba(0,0,0,.92);
+  /* 光は上から一方向（全部品で共通） */
+  --lift: inset 0 1px 0 rgba(255,255,255,.16);
+  --hair-gold: rgba(202,162,74,.46);
+  --key-gold: #9c6a1c;                      /* 金ボタンの“下の鍵” */
+  /* 金の塗り＝上のハイライト線／下の内リム／本体グラデの3層。真鍮の質感を狙う。 */
+  --btn-gold:
+    linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,0) 2px),
+    linear-gradient(0deg, rgba(120,74,14,.55), rgba(120,74,14,0) 4px),
+    linear-gradient(180deg, #ffeaa6 0%, #fbd274 46%, #edb245 50%, #dc9c33 100%);
+  --btn-glass:
+    linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 2px),
+    linear-gradient(0deg, rgba(0,0,0,.30), rgba(0,0,0,0) 4px),
+    linear-gradient(180deg, rgba(238,244,240,.10), rgba(238,244,240,.04));
+}
+
+/* ── ボタン：金＝主役／ガラス＝脇役。1画面に金の塗りはひとつ ─────────────── */
+button {
+  background-image: var(--btn-gold);
+  border-radius: var(--r-2);
+  text-shadow: 0 1px 0 rgba(255,255,255,.30);
+  letter-spacing: .02em;
+}
+/* 鍵エッジ＋落ち影は「グローバルの金をそのまま使っている素のボタン」と金ボタン族だけに。
+   クラスを持つボタンは自前の背景＝自前の奥行きを決めるので触らない（透明アイコンボタンを汚さない）。 */
+button:not([class]), .navpop-go, .hl-race, button.primary {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.34),      /* 内側の細いリング＝“成形された部品”に見せる要（title-cta由来） */
+    inset 0 1px 0 rgba(255,255,255,.72),        /* 上の光（一方向） */
+    inset 0 -2px 0 rgba(146,92,20,.42),         /* 下の内リム */
+    0 2px 0 var(--key-gold),                    /* 下の鍵 */
+    var(--e-1);
+}
+button:not([class]):active:not(:disabled), .navpop-go:active, .hl-race:active, button.primary:active:not(:disabled) {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.28),
+    inset 0 2px 5px rgba(120,74,14,.45),        /* 押した面は内側に影が落ちる */
+    0 0 0 var(--key-gold), 0 1px 3px rgba(0,0,0,.5);   /* 鍵が沈む＝指に返る */
+  transform: translateY(2px) scale(.99);
+}
+/* 脇役＝ガラス＋金の細線。★実測バグの修正：解放ポップの取り消し(.navpop-x)が
+   グローバルの金を継いで「あとで」まで主役級に光っていた。 */
+button.secondary, .navpop-cancel, .navpop-x {
+  background-image: var(--btn-glass);
+  background-color: transparent;
+  color: var(--mist-soft);
+  border: 1px solid var(--glass-border);
+  box-shadow: none;
+  text-shadow: none;
+}
+button.secondary:hover, .navpop-cancel:hover, .navpop-x:hover { border-color: var(--hair-gold); filter: none; }
+button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+/* ── 面（カード）：上から1本の光＋いちばん低い影 ────────────────────────── */
+.card {
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 1px),
+    linear-gradient(180deg, rgba(238,244,240,.085), rgba(238,244,240,.032));
+  border: 1px solid rgba(238,244,240,.15);
+  border-radius: var(--r-3);
+  box-shadow: var(--e-1);
+}
+
+/* ── 窓（モーダル）：いちばん高い影＋金の内側の光。飾りは四隅の交点だけ ──── */
+.navpop {
+  position: relative;
+  border-radius: var(--r-4);
+  border: 1px solid var(--hair-gold);
+  background-image:
+    linear-gradient(180deg, rgba(255,224,160,.10), rgba(255,224,160,0) 64px),
+    linear-gradient(180deg, rgba(34,38,46,.985), rgba(20,23,29,.985));
+  box-shadow: var(--e-3), inset 0 1px 0 rgba(255,224,160,.20);
+}
+/* ★装飾は全周に回さない（＝ロゴが読めなくなったのと同じ轍を踏まない）。角の2箇所だけ。 */
+.navpop::before, .navpop::after {
+  content: ""; position: absolute; width: 18px; height: 18px; pointer-events: none; opacity: .55;
+}
+.navpop::before { top: 7px; left: 7px;
+  border-top: 1.5px solid var(--gold-bright); border-left: 1.5px solid var(--gold-bright); border-top-left-radius: 14px; }
+.navpop::after { bottom: 7px; right: 7px;
+  border-bottom: 1.5px solid var(--gold-bright); border-right: 1.5px solid var(--gold-bright); border-bottom-right-radius: 14px; }
+.navpop-btns button { border-radius: var(--r-2); }
