@@ -46,7 +46,8 @@ var SCREEN_INDEX = [
   { no: 31, id: "konron_gallery",  label: "フォトコレクション(図鑑)", group: "拠点" },
   { no: 32, id: "konron_walk",     label: "歩いてまわる(β)",     group: "拠点" },
   { no: 33, id: "kiko",            label: "紀行ブログ",           group: "紀行" },
-  { no: 34, id: "media",           label: "メディア(物語/SNS)",   group: "SNS" }
+  { no: 34, id: "media",           label: "メディア(物語/SNS)",   group: "SNS" },
+  { no: 35, id: "shingan",         label: "神眼レース(終章)",     group: "終章" }
 ];
 
 // 画面名 → 描画を呼ぶ thunk。呼び出し時に解決（全描画関数が定義済みの状態で動く）。
@@ -94,7 +95,8 @@ function screenMap() {
     timeline:        function () { opt("renderSns", "renderHome")("timeline"); },     // 後方互換（旧?go=）
     fanletters:      function () { opt("renderSns", "renderHome")("fanletters"); },
     kiko:            function () { opt("renderKiko", "renderHome")(); },              // 📖 紀行ブログ（2026-07-30）
-    media:           function () { opt("renderMediaHub", "renderHome")(); }           // 📱 メディアハブ（物語/SNS/手紙）
+    media:           function () { opt("renderMediaHub", "renderHome")(); },          // 📱 メディアハブ（物語/SNS/手紙）
+    shingan:         function () { opt("renderShinganRace", "renderHome")(); }        // ☄️ 神眼レース（終章M3）
   };
 }
 

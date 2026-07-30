@@ -321,7 +321,10 @@ function chapterAvailable(chId) {
       case "3":  return chapterRead("2") && wins >= 1;             // スミカ＝2話を読み、初勝利で勝ち分の守り方に直面してから
       case "4":  return chapterRead("3") && total >= 1000000;      // マクラ＝島がリゾートに育つ頃（総資産100万）
       case "5":  return chapterRead("4") && total >= 100000000;    // セレスティア＝世界の天井が見える頃（総資産1億）
-      case "ED": return chapterRead("5") && (!!(p.epilogue && p.epilogue.edFlag) || total >= storyUnlockAt("ED"));
+      // ★M3（2026-07-30）：EDの金額バイパスを廃止。総資産10億は「神眼レースの解放額」であって
+      //   EDの直行券ではない（クリマックス＝3頭同着のパズルを飛ばせない）。edFlag は
+      //   神眼レースのクリア（shingan_race.js _sgClear→epilogueClear）で立つ。
+      case "ED": return chapterRead("5") && !!(p.epilogue && p.epilogue.edFlag);
       default:   return false;
     }
   } catch (e) { return false; }

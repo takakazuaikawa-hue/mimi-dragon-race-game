@@ -1814,6 +1814,71 @@ table.entry-table {
 .yt-page .actions .secondary { background: #272727; color: #f1f1f1; border: 1px solid #3a3a3a; }
 .yt-page .topback-btn { background: #272727; color: #f1f1f1; border: 1px solid #3a3a3a; }
 
+/* ===== ☄️ 神眼レース（終章M3・天穹の闇×金）===== */
+#app.sg-page { background: radial-gradient(120% 90% at 50% 0%, #221a33 0%, #120d1d 55%, #0b0812 100%) !important; }
+.sg-head { padding: 18px 16px 10px; text-align: center; }
+.sg-title { font-size: 22px; font-weight: 900; color: #ffd877; letter-spacing: .06em;
+  text-shadow: 0 0 18px rgba(160,110,255,.55); }
+.sg-sub { margin-top: 3px; font-size: 12px; color: #b9a8d8; font-weight: 700; }
+.sg-rule { margin: 10px auto 0; max-width: 420px; padding: 10px 12px; border-radius: 12px; text-align: left;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(160,110,255,.35);
+  font-size: 12px; line-height: 1.7; color: #d8cdee; }
+.sg-rule b { color: #ffd877; }
+.sg-cleared { margin: 8px 14px 0; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 800;
+  background: rgba(255,216,119,.12); border: 1px solid rgba(255,216,119,.4); color: #ffd877; }
+.sg-need { margin: 10px 14px 0; padding: 9px 12px; border-radius: 10px; font-size: 12px;
+  background: rgba(214,69,47,.12); border: 1px solid rgba(214,69,47,.4); color: #ffb9a8; }
+.sg-need b { color: #ffd877; }
+.sg-list { margin: 12px 14px 0; display: grid; gap: 7px; }
+.sg-card { border-radius: 13px; overflow: hidden; background: rgba(255,255,255,.045);
+  border: 1px solid rgba(160,110,255,.28); }
+.sg-card.locked { opacity: .66; border-style: dashed; }
+.sg-card-h { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px;
+  background: transparent; border: none; cursor: pointer; text-align: left; }
+.sg-d-ic { flex: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; padding: 0; font-size: 18px;
+  background: rgba(160,110,255,.16); border: 1px solid rgba(160,110,255,.4); }
+.sg-d-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sg-d-tx b { font-size: 13.5px; color: #f2ecff; }
+.sg-d-tx small { font-size: 10.5px; line-height: 1.55; color: #a795c8; }
+.sg-d-ch { flex: none; color: #ffd877; font-weight: 900; }
+.sg-train { padding: 4px 12px 11px; display: grid; gap: 5px; background: rgba(0,0,0,.22); }
+.sg-ab { display: flex; align-items: center; gap: 6px; }
+.sg-ab-n { flex: none; width: 40px; font-size: 11.5px; font-weight: 800; color: #b9a8d8; }
+.sg-ab-v { flex: 1; text-align: center; font-size: 15px; font-weight: 900; color: #ffd877;
+  font-variant-numeric: tabular-nums; }
+.sg-st { flex: none; min-width: 40px; padding: 7px 0; border-radius: 9px; cursor: pointer;
+  font-size: 11.5px; font-weight: 800; color: #e8def8;
+  background: rgba(160,110,255,.14); border: 1px solid rgba(160,110,255,.4); }
+.sg-st:active { transform: translateY(1px); }
+.sg-run { display: block; width: calc(100% - 28px); margin: 14px 14px 0; padding: 14px; border-radius: 14px;
+  cursor: pointer; border: none; font-size: 16px; font-weight: 900; color: #2a1c08;
+  background: linear-gradient(135deg, #ffe9a6, #f3bd54 50%, #d99a32); box-shadow: 0 10px 26px -12px rgba(217,154,50,.8); }
+.sg-run.off { opacity: .5; cursor: default; filter: grayscale(.4); }
+.sg-res { margin: 12px 14px 0; border-radius: 13px; overflow: hidden;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(160,110,255,.3); }
+.sg-sp { padding: 12px; text-align: center; font-size: 13px; font-weight: 800; color: #d8cdee;
+  border-bottom: 1px solid rgba(160,110,255,.25); }
+.sg-sp b { font-size: 22px; color: #ffb9a8; font-variant-numeric: tabular-nums; }
+.sg-sp.near b { color: #ffd877; }
+.sg-sp.win b { color: #7af0a0; }
+.sg-sp small { display: block; margin-top: 2px; font-size: 10.5px; color: #a795c8; }
+.sg-row { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 12.5px; color: #cfc3e6;
+  border-top: 1px dashed rgba(255,255,255,.06); }
+.sg-row.top3 { background: rgba(255,216,119,.07); }
+.sg-row .p { flex: none; width: 34px; font-weight: 900; color: #ffd877; }
+.sg-row .ic { flex: none; }
+.sg-row .n { flex: 1; min-width: 0; font-weight: 700; color: #f2ecff; }
+.sg-row .t, .sg-row .g { font-variant-numeric: tabular-nums; }
+.sg-row .g { width: 56px; text-align: right; color: #ffb9a8; }
+.sg-page .actions .secondary, .sg-page .topback-btn { background: rgba(255,255,255,.07); color: #e8def8;
+  border: 1px solid rgba(160,110,255,.4); }
+/* 赤目の閃光（クリアの瞬間・一枚絵はアート納品後に差し替え） */
+.sg-redflash { position: fixed; inset: 0; z-index: 9500; pointer-events: none;
+  background: radial-gradient(60% 60% at 50% 42%, rgba(255,60,60,.55), rgba(120,0,20,.25) 60%, transparent 100%);
+  animation: sgRed .9s ease-out forwards; }
+@keyframes sgRed { 0% { opacity: 0; } 22% { opacity: 1; } 100% { opacity: 0; } }
+
 /* === north-star next-goal (spec #37) === */
 .hw-goals { padding: 12px 13px; margin-bottom: 12px; }
 .hw-goals-h { font-size: 11px; color: var(--mist-soft); opacity: .8; letter-spacing: .06em; margin-bottom: 8px; }

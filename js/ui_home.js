@@ -417,10 +417,14 @@ function renderHome() {
     let _title = null, _cls = "hl-goal", _onclick = null;
     // ★単一行に簡素化（ユーザー指摘＝もっとシンプルに入りきるように）：アイコン＋やること＋常設の▸だけ。
     //   長いときは末尾を…省略し▸は常に残る（flex行で幅を譲る側＝LIVE帯を必ず優先表示）。
-    if (_epOn && _ep.finalReady) {
+    if (_epOn && (_ep.finalReady || (typeof shinganUnlocked === "function" && shinganUnlocked()))) {
+      // ★M3：最終決戦の中身＝神眼レース（3頭同着パズル）。メーター押し切り or 総資産10億で解放。
       _cls += " hl-goal--act hl-goal--final";
-      _title = "⚔️ 最終決戦へ";
-      _onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
+      _title = "☄️ 神眼レースへ";
+      _onclick = () => {
+        if (typeof renderShinganRace === "function") renderShinganRace();
+        else if (typeof startFinalBattle === "function") startFinalBattle();   // 旧演出＝読み込み失敗時の保険
+      };
     } else if (_broke) {
       _cls += " hl-goal--act hl-goal--broke";
       _title = "🙏 無心する";

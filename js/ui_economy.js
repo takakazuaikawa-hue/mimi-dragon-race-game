@@ -230,9 +230,13 @@ function _ecoExtinctionPanel() {
         `<span class="pic">${x.ic}</span><span class="plb">${x.label}</span><span class="pn">${x.now || ""}</span></div>`;
     }).join("");
   wrap.appendChild(pl);
-  if (e.finalReady) {
-    const fin = el("button", "hl-final eco-final", `⚔️ 最終決戦へ ▶`);
-    fin.onclick = () => { if (typeof startFinalBattle === "function") startFinalBattle(); };
+  // ★M3：最終決戦の中身＝神眼レース。メーター押し切り(finalReady) または 総資産10億で解放（shinganUnlocked）。
+  if (e.finalReady || (typeof shinganUnlocked === "function" && shinganUnlocked())) {
+    const fin = el("button", "hl-final eco-final", `☄️ 神眼レースへ ▶`);
+    fin.onclick = () => {
+      if (typeof renderShinganRace === "function") renderShinganRace();
+      else if (typeof startFinalBattle === "function") startFinalBattle();
+    };
     wrap.appendChild(fin);
   }
   // 初めてメーター詳細を開いた時に一度だけ自動で説明（VN/別ポップ中は次回へ）。
