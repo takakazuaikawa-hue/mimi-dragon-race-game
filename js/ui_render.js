@@ -1028,6 +1028,36 @@ function renderSettings() {
     }));
     grid.appendChild(act("👁️ 神眼カットイン再生", () => { if (typeof playShinganCutin === "function") playShinganCutin(); }));
     app.appendChild(grid);
+
+    // ☄️ 終章＝神眼レースの直行（実機デバッグ用）。上の「終章テスト準備」は第5話までの
+    // 解放で、神眼レースのゲート（第5話既読＋到達資産10億＋8頭スカウト）は開かない。
+    // ここは解放を満たして画面まで飛ばす＋能力表のプリセットまで入れる＝1タップで山場に立てる。
+    if (typeof shinganDevUnlock === "function") {
+      app.appendChild(el("div", "as-sec", "☄️ 終章（神眼レース）へ直行"));
+      const sgg = el("div", "set-debug");
+      const jump = (label, preset) => {
+        const b = el("button", "set-dbg-b", label);
+        b.onclick = () => {
+          shinganDevUnlock({ replay: true });
+          let sp = null;
+          if (preset && typeof shinganDevPreset === "function") sp = shinganDevPreset(preset);
+          if (typeof saveGame === "function") saveGame();
+          if (typeof Sfx !== "undefined" && Sfx.play) Sfx.play("nav");
+          if (typeof renderShinganRace === "function") renderShinganRace();
+          if (sp) try { console.log("[dev] 神眼プリセット", sp.kind, "差", sp.spread.toFixed(3) + "秒"); } catch (e) {}
+        };
+        return b;
+      };
+      sgg.appendChild(jump("☄️ 解放して直行（能力は初期値）", null));
+      sgg.appendChild(jump("🎯 惜敗の配分で直行（敗北絵）", "near"));
+      sgg.appendChild(jump("🏆 同着の配分で直行（クリア）", "tie"));
+      app.appendChild(sgg);
+      app.appendChild(el("div", "as-hint2",
+        "第5話既読・到達資産10億・8頭スカウトを付与し、前口上と一枚絵のフラグも戻します（通しで再確認できる）。" +
+        "配分プリセットは押した時点でソルバが解くので、8頭の調整をしても古びません。" +
+        "URLでも：<code>?go=shingan&amp;dev=1</code>（<code>&amp;preset=near</code> / <code>&amp;preset=tie</code>）。" +
+        "<b>本番セーブが終章まで進んだ状態になります</b>ので、確認用のセーブで使ってください。"));
+    }
     app.appendChild(el("div", "as-hint2", "※メタ操作のみ（コイン/所持/ランク/物語の解放）。レースの着順・オッズ・配当の計算には触れません。終章メーターも表示専用。"));
 
     // 🩺 レスポンシブ自己診断（js/devcheck.js）：横溢れ/横向きクリップ/16px未満input/壊れ表示/100vh残存を機械検出。

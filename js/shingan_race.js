@@ -155,6 +155,62 @@ function _sgSolve(iters) {
   return { best, ab: bestAb };
 }
 
+// ── 開発用ショートカット（デバッグ盤／?go=shingan&dev=1 から呼ぶ） ───────────
+//   終章まで実機で遊んで到達するのは現実的でないので、ゲートが要求するものだけを
+//   最小限で満たす。ここで触るのは解放条件と能力表＝表示専用メタのみで、
+//   レースの着順・オッズ・配当には一切触れない（[[race-math-immutable]]）。
+//   ★replay:true で intro/cleared/failShown を戻す＝前口上から一枚絵まで通しで再確認できる。
+function shinganDevUnlock(opts) {
+  const o = opts || {}, p = state.player;
+  // ① 第5話既読（chapterRead("5") が見る唯一のフラグ）
+  if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_5", true);
+  // ② 到達最高資産＝ED解放額（assetsPeak は assetsPeak/totalAssets の大きい方）
+  const need = (typeof storyUnlockAt === "function" && storyUnlockAt("ED")) || 1000000000;
+  p.assetsPeak = Math.max(p.assetsPeak || 0, need);
+  p.maxCoinsReached = Math.max(p.maxCoinsReached || 0, need);
+  // ③ 8頭すべてスカウト済み（図鑑エントリの scouted を立てる）
+  p.collection = p.collection || {};
+  SHINGAN_ROSTER.forEach(d => {
+    p.collection[d.id] = Object.assign({}, p.collection[d.id], { scouted: true, seen: true });
+  });
+  // ④ 通しで見たいときは演出フラグを戻す
+  const sg = shinganData();
+  if (o.replay) { sg.intro = false; sg.cleared = false; sg.failShown = false; sg.best = null; }
+  if (typeof saveGame === "function") saveGame();
+  return { unlocked: shinganUnlocked(), allScouted: shinganAllScouted() };
+}
+
+// 能力表のプリセット。kind="tie" で同着解（クリア演出の確認用）、
+// kind="near" で惜敗レンジ（敗北の一枚絵の確認用）。どちらも実行時にソルバで解くので、
+// ロスターやクセを調整してもプリセットが古びない（実測：60000手で約60ms＝スマホでも即時）。
+function shinganDevPreset(kind) {
+  const sg = shinganData();
+  SHINGAN_ROSTER.forEach(d => shinganAb(d.id));          // 未初期化を埋める
+  const sol = _sgSolve(60000);
+  if (kind !== "near") {
+    sg.ab = JSON.parse(JSON.stringify(sol.ab));
+    if (typeof saveGame === "function") saveGame();
+    return { kind: "tie", spread: shinganRun(null).spread };
+  }
+  // 同着解を1目盛だけ崩して惜敗レンジ（0.15〜1.00秒）へ落とす＝「あと少し」を再現
+  const ids = SHINGAN_ROSTER.map(d => d.id);
+  for (let step = 1; step <= 6; step++) {
+    for (const id of ids) for (let a = 0; a < 5; a++) for (const sign of [-1, 1]) {
+      const ab = JSON.parse(JSON.stringify(sol.ab));
+      ab[id][a] = Math.max(0, Math.min(100, ab[id][a] + sign * step * 5));
+      sg.ab = ab;
+      const sp = shinganRun(null).spread;
+      if (sp >= 0.15 && sp <= SG_FAIL_AT) {
+        if (typeof saveGame === "function") saveGame();
+        return { kind: "near", spread: sp };
+      }
+    }
+  }
+  sg.ab = JSON.parse(JSON.stringify(sol.ab));             // 見つからなければ同着解のまま
+  if (typeof saveGame === "function") saveGame();
+  return { kind: "tie-fallback", spread: shinganRun(null).spread };
+}
+
 // ── UI ─────────────────────────────────────────────────────────────────
 var _sgOpen = null;      // 訓練アコーディオンの開いている竜
 var _sgLast = null;      // 直近の試走結果
@@ -365,4 +421,6 @@ if (typeof window !== "undefined") {
   window.shinganUnlocked = shinganUnlocked;
   window.shinganRun = shinganRun;
   window._sgSolve = _sgSolve;
+  window.shinganDevUnlock = shinganDevUnlock;
+  window.shinganDevPreset = shinganDevPreset;
 }

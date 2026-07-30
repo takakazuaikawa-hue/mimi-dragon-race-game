@@ -116,6 +116,17 @@ function applyStartupRoute() {
     var p = new URLSearchParams(location.search);
     if (p.get("debug") === "1" && state.ui) state.ui.debug = true;
     var go = p.get("go");
+    // ★&dev=1 … その画面の解放条件を開発用に満たしてから飛ぶ。終章のように「実機で
+    //   到達するのが現実的でない画面」を直接確認するため。触るのは解放メタのみ。
+    //   例: ?go=shingan&dev=1（第5話既読＋到達資産10億＋8頭スカウトを付与）
+    if (go && p.get("dev") === "1") {
+      try {
+        if (go === "shingan" && typeof shinganDevUnlock === "function") {
+          shinganDevUnlock({ replay: p.get("replay") !== "0" });
+          if (p.get("preset") && typeof shinganDevPreset === "function") shinganDevPreset(p.get("preset"));
+        }
+      } catch (e) { try { console.warn("dev prep failed:", go, e); } catch (_) {} }
+    }
     if (go && screenMap()[go]) return goto(go);
   } catch (e) {}
   return false;
