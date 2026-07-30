@@ -62,7 +62,7 @@ function beginScreen() {
   const app = $("app");
   const screen = state.ui.screen;
   const prev = _prevScreen;
-  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip");   // 観光(.kt-page)/暮らし(.lr-page)の明色テーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
+  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip", "kiko-page", "yt-page");   // 観光(.kt-page)/暮らし(.lr-page)/紀行(.kiko-page)/メディア(.yt-page)のテーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
   if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
   // ★BUGFIX：title-mode は body を position:fixed / overflow:hidden にする全画面レイアウト。
   //   従来 renderHome でしか外しておらず、タイトルからホームを経由せずに他画面へ入ると
@@ -103,13 +103,24 @@ function beginScreen() {
     poro_gourmet: "home",   // クリア後ミニゲームも迷子にしない（mall_rpgはラン中断防止のため意図的に無し＝race_runと同じ例外）
     sns: "home", konron_map: "home",   // SNSは戻る導線が無かった／観光は自前バックが画面下＝上部stickyを補う
     life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story",
-    konron_guide: "konron_map", konron_gallery: "konron_map"
+    konron_guide: "konron_map", konron_gallery: "konron_map",
+    kiko: "home", media: "home"   // 📖紀行・📱メディア（2026-07-30 IA再編）
   };
   const BACK_TGT = {
     home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory },
-    konron_map: { l: "← 観光", f: (typeof renderKonronMap === "function" ? renderKonronMap : renderHome) }
+    konron_map: { l: "← 観光", f: (typeof renderKonronMap === "function" ? renderKonronMap : renderHome) },
+    kiko: { l: "← 📖 紀行", f: (typeof renderKiko === "function" ? renderKiko : renderHome) }
   };
-  const bt = BACK_TGT[TOP_BACK[screen]];
+  let bt = BACK_TGT[TOP_BACK[screen]];
+  // ★紀行のカテゴリから来た時は、上部stickyの戻り先を「← 📖 紀行」へ差し替える（ユーザー指摘：
+  //   カテゴリへ移動した後、紀行へ戻る導線が無い）。旗は紀行のチップが立て、対象画面の外へ出たら消える
+  //   ＝他の入口（ホームのタブ等）から来た時の戻り先は従来のまま。
+  const _KIKO_TGT = { meals: 1, collection: 1, konron_guide: 1, konron_gallery: 1, story: 1, story_read: 1, life_collection: 1, collection_score: 1 };
+  if (state.ui._kikoBack) {
+    if (_KIKO_TGT[screen]) bt = BACK_TGT.kiko;
+    else if (screen !== "kiko") state.ui._kikoBack = false;   // 対象外へ移動＝旗を畳む（kiko自身に戻った時も下で畳む）
+    if (screen === "kiko") state.ui._kikoBack = false;
+  }
   if (bt) {
     const tb = el("div", "topback");
     const b = el("button", "topback-btn", bt.l);

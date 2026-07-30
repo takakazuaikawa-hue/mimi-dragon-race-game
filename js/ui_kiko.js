@@ -106,6 +106,33 @@ function _kikoTodaysPost() {
   return posts[((day % posts.length) + posts.length) % posts.length];
 }
 
+// ── 🐦 あゆみ（昔のTwitter風）のつぶやき文面。目標id→当時のミミのツイート。──
+//   声表：短文の畳みかけ・！多め・飯に着地しがち・自分に「おめでとう」と言わない。
+//   ★未登場キャラの固有名は書かない（表示側でも goalMasked で二重に防護）。
+var _KIKO_TWEETS = {
+  firstRace:  "はじめてレース出た！！ 心臓が竜より速く走ってた。おなかすいた。",
+  firstHit:   "当たった。当たったよ！？ 記念に屋台で一本追加した🍢",
+  firstWin:   "単勝、獲った……！！ 🏆 今日のごはんはおかず二品です",
+  firstMeal:  "島のごはん、はじめて食べた。泣いた。おかわりした🍙",
+  firstOutfit:"はじめて自分の服買った！！👗 ボロ卒業。姿見の前から動けない",
+  readCh2:    "オッズって生き物なんだ……📊 市場、こわい。でもおもしろい",
+  changeFit:  "着替えると気分まで替わるの、なんで？👗",
+  wideHit:    "ワイド当てた✨ “妙味”ってやつ、ちょっとわかってきたかも",
+  rankUp:     "上のクラス、行けた🏅 竜の迫力がぜんぜん違う。ごはん食べて出直します",
+  readCh3:    "総資産の話を聞いた🏠 暮らしを立てるって、こういうことか……",
+  buddy:      "相棒ができました。泣き虫。でも、いちばん強い子🐲",
+  lifeTree:   "くらしツリー始めた🌱 生活が積み上がってくの、うれしい",
+  oneRoom:    "引っ越した！！🛏️ じぶんの部屋！！ 床で寝ない生活！！",
+  meetMakura: "実況の人に会った📣 声だけで景色が見えるのすごい",
+  buyPhone:   "スマホ買いました📱 配信、はじめます。手が震えてる",
+  fol10k:     "フォロワー1万人……！？💗 みんな、ほんとにありがとう。今日は勝負めし！",
+  dexHalf:    "図鑑、半分埋まった📖 竜はぜんぶ顔がちがう。ぜんぶ好き",
+  meetCelestia:"……すごい人に、会った。🌌 世界の天井、見えた気がする",
+  scout3:     "新しい土地で3頭も友だちになれた🌋 旅はつづく",
+  fol100k:    "10万人。……10万人！？💗💗 島いちばんの予想家、目指します",
+  protect:    "この島は、渡さない。ぜったいに。🏝️"
+};
+
 // ── 📖 紀行ブログ本体 ─────────────────────────────────────────────────
 function renderKiko() {
   const p = state.player;
@@ -154,23 +181,52 @@ function renderKiko() {
     b.onclick = c.locked
       ? () => { if (typeof showInfoPopup === "function") showInfoPopup(`${c.ic} #${c.tag}`,
           `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ書けないカテゴリ</b><small>${c.lockNote}。ネタができたら、ここに記事がたまっていきます。</small></div></div>`); }
-      : c.go;
+      : () => { state.ui._kikoBack = true; c.go(); };   // ★行き先の上部stickyが「← 📖 紀行」になる（beginScreen）
     chips.appendChild(b);
   });
   app.appendChild(chips);
 
-  // 📈 ブログのあゆみ（充実度＝売上の理由・終章後はやり込み得点への入口もここ）
-  app.appendChild(el("div", "kiko-sec", "ブログのあゆみ"));
-  const ayumi = el("div", "kiko-ayumi");
-  ayumi.innerHTML =
-    `<div class="kiko-ay-row"><span>記事の充実度</span><div class="kiko-ay-bar"><i style="width:${cs.pct}%"></i></div><b>${cs.pct}%</b></div>` +
-    `<div class="kiko-ay-note">島で食べて・出会って・撮って・集めるほど記事が増え、<b>毎日の売上</b>が上がります。</div>`;
-  app.appendChild(ayumi);
+  // 🐦 紀行のあゆみ＝昔のTwitter風タイムライン（ユーザー決裁2026-07-30）。
+  //   達成済みの目標（goals.js）を「当時のつぶやき」として新しい順に流す。文面は _KIKO_TWEETS、
+  //   無ければ goalTitleSafe（門番つき＝未登場キャラの名は出ない）。📌固定ツイート＝充実度（売上の理由）。
+  app.appendChild(el("div", "kiko-sec", "紀行のあゆみ"));
+  const tl = el("div", "kiko-tl");
+  let tlHtml =
+    `<div class="ktw-prof"><span class="ktw-av big">🐰</span><div><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span></div>` +
+    `<div class="ktw-fol"><b>${fol.toLocaleString("ja-JP")}</b><span>フォロワー</span></div></div>` +
+    `<div class="ktw pinned"><span class="ktw-av">🐰</span><div class="ktw-b">` +
+      `<div class="ktw-pin">📌 固定されたツイート</div>` +
+      `<div class="ktw-h"><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span></div>` +
+      `<div class="ktw-t">記事の充実度、いま <b>${cs.pct}%</b>！ 島で食べて・出会って・撮って・集めるほど記事が増えて、毎日の売上が上がるよ📈 がんばる！</div>` +
+      `<div class="ktw-a"><span>返信</span><span>リツイート</span><span class="fav">★ ふぁぼ</span></div></div></div>`;
+  try {
+    const done = GOALS.filter(g => goalDone(g));
+    const recent = done.slice(-6).reverse();   // 新しい実績が上（昔のTLと同じ・最新が先頭）
+    recent.forEach((g, i) => {
+      const masked = (typeof goalMasked === "function") && goalMasked(g);
+      const text = (!masked && _KIKO_TWEETS[g.id]) || `${(typeof goalIconSafe === "function") ? goalIconSafe(g) : ""} ${(typeof goalTitleSafe === "function") ? goalTitleSafe(g) : g.title}、達成！`;
+      const ph = (typeof GOAL_PHASES !== "undefined" && GOAL_PHASES.find(x => x.id === g.phase)) || null;
+      const when = ph ? ph.label.split(" ")[0] : "島のどこか";
+      const rt = 2 + ((i * 7 + (done.length * 3)) % 29);
+      const fav = 5 + ((i * 13 + fol) % 97);
+      tlHtml +=
+        `<div class="ktw"><span class="ktw-av">🐰</span><div class="ktw-b">` +
+        `<div class="ktw-h"><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span><i>・${when}のころ</i></div>` +
+        `<div class="ktw-t">${text}</div>` +
+        `<div class="ktw-a"><span>返信</span><span>リツイート ${rt}</span><span class="fav">★ ${fav}</span></div></div></div>`;
+    });
+    if (!recent.length) tlHtml += `<div class="ktw"><span class="ktw-av">🐰</span><div class="ktw-b">` +
+      `<div class="ktw-h"><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span></div>` +
+      `<div class="ktw-t">アカウント作った！ これから島でのこと、ぜんぶ書いていくよ🐣</div>` +
+      `<div class="ktw-a"><span>返信</span><span>リツイート</span><span class="fav">★</span></div></div></div>`;
+  } catch (e) {}
+  tl.innerHTML = tlHtml;
+  app.appendChild(tl);
   try {
     const cleared = (typeof kurashiChapter === "function") && kurashiChapter() >= 6;
     const row = el("button", "kiko-score" + (cleared ? "" : " locked"),
       cleared ? `🏆 やり込み得点（総集編）を見る ›` : `🔒 総集編 — 物語を最後まで見届けると、日々のすべてが得点になる`);
-    row.onclick = cleared ? () => renderCollectionScore()
+    row.onclick = cleared ? () => { state.ui._kikoBack = true; renderCollectionScore(); }
       : () => { if (typeof showInfoPopup === "function") showInfoPopup("🏆 ？？？",
           `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語を最後まで見届けると開放されます。</small></div></div>`); };
     app.appendChild(row);
@@ -182,37 +238,54 @@ function renderKiko() {
   app.appendChild(actions);
 }
 
-// ── 📱 メディアハブ：ミミをめぐる3つのメディアの入口（物語＋SNS＋手紙）──
+// ── 📱 メディアハブ＝YouTubeの登録チャンネル風（ユーザー決裁2026-07-30）──
+//   ミミをめぐるメディアを「登録チャンネル一覧」として並べる：丸アイコン＋チャンネル名＋
+//   登録者数＋新着バッジ＋「登録済み」ピル。ダークな動画アプリ面（画面スコープ .yt-page）。
 function renderMediaHub() {
   state.ui.screen = "media";
   const app = beginScreen();
-  app.appendChild(el("h2", null, "📱 メディア"));
-  app.appendChild(el("div", "media-lead", "ミミをめぐる、島のメディアたち。"));
-  const ent = el("div", "as-entries");
-  const entry = (ic, label, sub, badge, onClick) => {
-    const b = el("button", "as-entry",
-      `<span class="as-entry-ic">${ic}</span><span class="as-entry-tx"><span class="as-entry-l">${label}${badge ? ` <span class="as-entry-badge">${badge}</span>` : ""}</span>` +
-      `<span class="as-entry-s">${sub}</span></span><span class="as-entry-ch">›</span>`);
+  app.classList.add("yt-page");
+  const fol = (typeof goalFollowers === "function") ? goalFollowers() : 800;
+
+  const head = el("div", "yt-head");
+  head.innerHTML = `<div class="yt-title">📱 メディア</div><div class="yt-sub">登録チャンネル</div>`;
+  app.appendChild(head);
+
+  const list = el("div", "yt-list");
+  const ch = (avIc, avCls, name, handle, meta, badge, onClick) => {
+    const b = el("button", "yt-ch",
+      `<span class="yt-av ${avCls}">${avIc}</span>` +
+      `<span class="yt-tx"><span class="yt-nm">${name}${badge ? ` <i class="yt-new">${badge}</i>` : ""}</span>` +
+      `<span class="yt-hd">${handle}</span><span class="yt-mt">${meta}</span></span>` +
+      `<span class="yt-btn">登録済み</span>`);
     b.onclick = onClick; return b;
   };
-  // 🎬 物語＝密着ドキュメンタリー（撮られる側・最初から）
+  // 🎬 物語＝密着ドキュメンタリー（撮られる側・最初から登録済み）
   const unread = (typeof storyHasUnread === "function") && storyHasUnread();
-  ent.appendChild(entry("🎬", "ミミ、爆走中。", "密着ドキュメンタリー — ミミの物語", unread ? "🆕" : "", () => renderStory()));
+  let ep = 1;
+  try { ep = STORY_CHAPTERS.filter(c => (typeof chapterAvailable === "function") && chapterAvailable(c.id)).length; } catch (e) {}
+  list.appendChild(ch("🎬", "red", "ミミ、爆走中。", "@mimi_official_docs",
+    `登録者 ${(fol * 3 + 1200).toLocaleString("ja-JP")}人 ・ EP ${Math.min(ep, 6)}/6 公開中`,
+    unread ? "新着" : "", () => renderStory()));
   // 📱 SNS（流れる側・スマホ購入で解禁）
   const bc = (typeof getStoryFlag === "function") && getStoryFlag("phoneBought");
   if (bc) {
     const dm = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
-    ent.appendChild(entry("📱", "タイムライン", "島のみんなの投稿・ミミの配信のこだま", "", () => renderSns("feed")));
-    ent.appendChild(entry("✉️", "ファンレター", "届いた手紙を読む", dm > 0 ? `未読${dm}` : "", () => renderSns("dm")));
+    list.appendChild(ch("🏝️", "teal", "崑崙タイムライン", "@konron_now",
+      `島のみんなの投稿 ・ ミミの配信のこだま`, "", () => renderSns("feed")));
+    list.appendChild(ch("✉️", "pink", "ファンレター便", "@fanletter_post",
+      dm > 0 ? `未読 ${dm}通 が届いています` : "届いた手紙を読む", dm > 0 ? "新着" : "", () => renderSns("dm")));
   } else {
-    const lk = el("button", "as-entry",
-      `<span class="as-entry-ic">🔒</span><span class="as-entry-tx"><span class="as-entry-l">？？？</span>` +
-      `<span class="as-entry-s">スマホを手に入れると、ここに新しいメディアが増える。</span></span><span class="as-entry-ch">›</span>`);
+    const lk = el("button", "yt-ch locked",
+      `<span class="yt-av grey">🔒</span>` +
+      `<span class="yt-tx"><span class="yt-nm">？？？</span><span class="yt-hd">@???</span>` +
+      `<span class="yt-mt">スマホを手に入れると、登録チャンネルが増える。</span></span>`);
     lk.onclick = () => { if (typeof showInfoPopup === "function") showInfoPopup("📱 ？？？",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語が進み、<u>スマホを買う</u>と解禁されます。</small></div></div>`); };
-    ent.appendChild(lk);
+    list.appendChild(lk);
   }
-  app.appendChild(ent);
+  app.appendChild(list);
+
   const actions = el("div", "actions");
   const back = el("button", "secondary", "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(back);

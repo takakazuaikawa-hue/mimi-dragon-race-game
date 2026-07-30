@@ -1752,21 +1752,67 @@ table.entry-table {
 .kiko-chip .kc-n { font-size: 11.5px; font-weight: 800; color: #8a7f7a; font-variant-numeric: tabular-nums; }
 .kiko-chip.locked { opacity: .55; }
 .kiko-chip.locked .kc-tag { color: #9a908b; }
-.kiko-ayumi { margin: 0 14px; padding: 12px 14px; border-radius: 14px; background: #fff; border: 1px solid #f0e3da; }
-.kiko-ay-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 800; color: #55483f; }
-.kiko-ay-bar { flex: 1; height: 8px; border-radius: 999px; background: #f4e8e0; overflow: hidden; }
-.kiko-ay-bar i { display: block; height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, #ff8fae, #ffc46b); }
-.kiko-ay-row b { color: #d84e77; font-variant-numeric: tabular-nums; }
-.kiko-ay-note { margin-top: 8px; font-size: 11.5px; line-height: 1.6; color: #8a7f7a; }
-.kiko-ay-note b { color: #2fa89a; }
+/* 🐦 紀行のあゆみ＝昔のTwitter風タイムライン（水色の空に白いカード・★は黄色いふぁぼ） */
+.kiko-tl { margin: 0 14px; border-radius: 14px; overflow: hidden;
+  background: #c0deed; border: 1px solid #a8cee3; font-family: "Helvetica Neue", Arial, "Hiragino Sans", sans-serif; }
+.ktw-prof { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  background: linear-gradient(180deg, #9ae4e8 0%, #c0deed 100%); border-bottom: 1px solid #a8cee3; }
+.ktw-prof > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ktw-prof b { font-size: 14px; color: #1c2938; }
+.ktw-prof span { font-size: 11.5px; color: #57779a; }
+.ktw-fol { text-align: right; }
+.ktw-fol b { display: block; font-size: 14px; color: #1c2938; font-variant-numeric: tabular-nums; }
+.ktw-fol span { font-size: 10px; color: #57779a; }
+.ktw { display: flex; gap: 9px; padding: 11px 13px; background: #fff; border-bottom: 1px solid #e3edf3; text-align: left; }
+.ktw.pinned { background: #f5fbff; }
+.ktw-av { flex: none; width: 34px; height: 34px; border-radius: 6px;   /* 昔のTwitterは角丸“弱め”の四角アイコン */
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  background: #ffe1ec; border: 1px solid #f3c9d4; font-size: 18px; }
+.ktw-av.big { width: 42px; height: 42px; font-size: 22px; }
+.ktw-b { flex: 1; min-width: 0; }
+.ktw-pin { font-size: 10px; font-weight: 800; color: #57779a; margin-bottom: 2px; }
+.ktw-h { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
+.ktw-h b { font-size: 12.5px; color: #1c2938; }
+.ktw-h span { font-size: 11px; color: #8899a6; }
+.ktw-h i { font-style: normal; font-size: 10.5px; color: #8899a6; }
+.ktw-t { margin-top: 3px; font-size: 12.5px; line-height: 1.65; color: #333; word-break: break-word; }
+.ktw-t b { color: #d84e77; }
+.ktw-a { margin-top: 6px; display: flex; gap: 16px; font-size: 10.5px; color: #8899a6; }
+.ktw-a .fav { color: #d9a400; }   /* ★＝黄色いふぁぼ（旧Twitter） */
 .kiko-score { display: block; width: calc(100% - 28px); margin: 10px 14px 0; padding: 12px 14px; border-radius: 14px;
   cursor: pointer; text-align: left; font-size: 13px; font-weight: 800;
   background: #fff; border: 1px solid #f0e3da; color: #b08a52; }
 .kiko-score.locked { opacity: .6; }
 .kiko-page .actions .secondary { background: #fff; color: #55483f; border: 1px solid #e3d5ca; }
-/* 📱 メディアハブの小さな導入行（ダーク面のまま） */
-.media-lead { margin: 2px 0 12px; font-size: 12.5px; color: var(--mist-soft); }
+.kiko-page .topback-btn { background: #fff; color: #d84e77; border: 1px solid #f0d4dc; }
+
+/* ===== 📱 メディア＝YouTube登録チャンネル風（ダークな動画アプリ面・2026-07-30） ===== */
+#app.yt-page { background-color: #0f0f0f !important; background-image: none !important; color: #f1f1f1;
+  font-family: "Roboto","Hiragino Sans","Yu Gothic",sans-serif; }
+.yt-head { padding: 16px 16px 6px; }
+.yt-title { font-size: 19px; font-weight: 900; color: #fff; }
+.yt-sub { margin-top: 2px; font-size: 12px; font-weight: 700; color: #aaa; letter-spacing: .03em; }
+.yt-list { margin: 8px 10px 0; }
+.yt-ch { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 8px; cursor: pointer;
+  background: transparent; border: none; border-bottom: 1px solid #272727; text-align: left; }
+.yt-ch:active { background: #1c1c1c; }
+.yt-av { flex: none; width: 46px; height: 46px; border-radius: 50%; padding: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.yt-av.red  { background: radial-gradient(circle at 32% 28%, #ff6b6b, #b3161d); }
+.yt-av.teal { background: radial-gradient(circle at 32% 28%, #57d6c2, #0f7f8b); }
+.yt-av.pink { background: radial-gradient(circle at 32% 28%, #ff9ec2, #c9407e); }
+.yt-av.grey { background: #2c2c2c; }
+.yt-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.yt-nm { font-size: 14px; font-weight: 800; color: #fff; }
+.yt-new { display: inline-block; font-style: normal; margin-left: 4px; padding: 1px 6px; border-radius: 4px;
+  background: #cc0000; color: #fff; font-size: 9.5px; font-weight: 900; vertical-align: 1px; }
+.yt-hd { font-size: 11px; color: #8a8a8a; }
+.yt-mt { font-size: 11.5px; color: #aaa; }
+.yt-btn { flex: none; padding: 7px 13px; border-radius: 999px; font-size: 11.5px; font-weight: 800;
+  background: #272727; color: #f1f1f1; }
+.yt-ch.locked { opacity: .6; }
+.yt-page .actions .secondary { background: #272727; color: #f1f1f1; border: 1px solid #3a3a3a; }
+.yt-page .topback-btn { background: #272727; color: #f1f1f1; border: 1px solid #3a3a3a; }
 
 /* === north-star next-goal (spec #37) === */
 .hw-goals { padding: 12px 13px; margin-bottom: 12px; }
