@@ -125,7 +125,8 @@ function renderEconomy() {
   // ── 経済の内訳（6成分のセグメントバー＝暮らし画面と同じ見せ方）──
   const parts = [
     ["コイン", p.coins, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
-    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
+    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"],
+    ["島づくり投資", a.islandValue, "#ec7fb9"]   // ★投資累計＝資産（2026-07-30）
   ].filter(x => (x[1] || 0) > 0);
   const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
   app.appendChild(el("div", "eco-sec", "経済の内訳"));

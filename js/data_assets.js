@@ -28,7 +28,7 @@ const ASSET_LEVELS = [
   { level: 2, threshold: 100000 },
   { level: 3, threshold: 1000000 },
   { level: 4, threshold: 100000000 },
-  { level: 5, threshold: 1000000000000 }
+  { level: 5, threshold: 1000000000 }   // ★2026-07-30 頂＝10億（旧1兆。docs/ENDGAME_ECONOMY_REDESIGN.md）
 ];
 
 function assetLevelOf(total) {
@@ -268,13 +268,12 @@ const STORY_CAST = {
 // spec 32 §9 — story chapters unlock by 総資産 (DECOUPLED from the lifestyle
 // ASSET_LEVELS, so story pacing follows the spec without touching the
 // economy / lifestyle / rescue thresholds). chapter id → 総資産 needed.
-// ED aligns to the shared "summit" (1兆 / 1e12): the same total at which the
-// final rank (神兎大レース) and the top life tier (聖龍級) unlock, so every
-// system agrees the player has reached the top. (Previously 1京/1e16, which
-// sat 10,000× beyond every other ceiling and made the next-goal pointer jump
-// off-scale after 第5話.) The 一京 in the ED text is the 聖龍の加護 flourish
-// layered on top of that summit, not the unlock gate.
-const STORY_UNLOCK_AT = { "1": 0, "2": 3000, "3": 30000, "4": 1000000, "5": 100000000, "ED": 1000000000000 };
+// ★2026-07-30 頂＝10億へ圧縮（旧1兆・ユーザー決裁。docs/ENDGAME_ECONOMY_REDESIGN.md）。
+//   実測：R5帯の本命は期待値+29%あり、1億→10億は複利15〜30レース＝1兆は本命党には永遠に届かない壁だった。
+//   10億は「最後のイベントレース（神眼レース・M3で実装）」の解放額。当面（M1）は従来どおり
+//   このしきい値でEDの金額パスが開く。LIFE_TIERS の富豪〜聖龍級（100億〜1兆）はED後の
+//   フレーバーとして意図的に残す（コインはED後も増え続けるため）。
+const STORY_UNLOCK_AT = { "1": 0, "2": 3000, "3": 30000, "4": 1000000, "5": 100000000, "ED": 1000000000 };
 function storyUnlockAt(chapterId) { const v = STORY_UNLOCK_AT[chapterId]; return v == null ? 0 : v; }
 // 総資産 needed for an advisor (= their introducing chapter's threshold).
 function castUnlockAt(castKey) { const ch = STORY_CHAPTERS.find(c => c.cast === castKey); return ch ? storyUnlockAt(ch.id) : 0; }

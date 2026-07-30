@@ -22,7 +22,8 @@ function showAssetBreakdown() {
     ["🏗", "施設", a.facilityValue || 0, "島に建てた施設の価値。投資するとここが増える。"],
     ["🛋", "暮らし", a.livingValue || 0, "手に入れた生活用品や住まいの価値。"],
     ["📣", "名声", a.fameValue || 0, "ランク・勝利数・最高配当から決まる評判の値打ち。"],
-    ["🐲", "竜", a.dragonValue || 0, "図鑑に載せた竜・推し竜の数。"]
+    ["🐲", "竜", a.dragonValue || 0, "図鑑に載せた竜・推し竜の数。"],
+    ["🏝", "島づくり投資", a.islandValue || 0, "島に注いだ投資の累計。投資は消えない＝資産に形を変える。"]
   ];
   const sum = rows.reduce((s, r) => s + r[2], 0);
   const body =
@@ -30,7 +31,7 @@ function showAssetBreakdown() {
       `<div class="mm-row"><span class="mm-ic">${r[0]}</span><div><b>${r[1]}　${fmtCoins(r[2])}</b><small>${r[3]}</small></div></div>`
     ).join("") +
     `<div class="mm-row mm-sum"><span class="mm-ic">🏦</span><div><b>合計＝資産　${fmtCoins(sum)}</b>` +
-      `<small>この6つを足しただけの数字です。コインを使って施設を建てれば、コインが減って施設が増える＝合計はほとんど変わりません。ごはんなどで使い切った分だけ、本当に減ります。</small></div></div>` +
+      `<small>これらを足しただけの数字です。コインで島に投資すれば、コインが減って投資が増える＝合計はほとんど変わりません。ごはんなどで使い切った分だけ、本当に減ります。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🔓</span><div><b>お話やお店が開く条件は、減りません</b>` +
       `<small>解放の判定には「これまでに届いた最高額（${fmtCoins((typeof assetsPeak === "function") ? assetsPeak(state) : sum)}）」を使います。資産を使ったせいで、読めた話が読めなくなることはありません。</small></div></div>`;
   if (typeof showInfoPopup === "function") showInfoPopup("🏦 資産の内訳", body);
@@ -132,7 +133,8 @@ function renderAssets() {
   // 内訳（小さなセグメントバー＝グラフィカル）
   const parts = [
     ["コイン", p.coins, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
-    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"]
+    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"],
+    ["島づくり投資", a.islandValue, "#ec7fb9"]   // ★投資累計＝資産（2026-07-30）
   ].filter(x => x[1] > 0);
   const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
   const _asBreak = el("div", "card as-break",   // ※「できること」の後（詳細）に配置するため、ここでは組むだけ。

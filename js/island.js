@@ -7,39 +7,42 @@
 // レースの着順/オッズ/配当/FinalPower は不変。担うのは①コインシンク②メーター押し戻し③テキスト進化。
 // 状態：state.player.island = { lv:{facId:level}, dev:number }（initガード・既存セーブ互換）。
 
+// ★2026-07-30 コスト再スケール（全分野 base200万×1.5^lv・累計約5.9億。旧 base150〜220万×1.72〜1.74=累計11.9億）。
+//   頂＝10億の世界で「投資MAX」が買い切れる規模に。投資累計は islandValue として総資産に計上される
+//   （assets_engine.js computeIslandValue＝投資は消えない・資産に変わる）。押し戻し量(doom)・節目は不変。
 var ISLAND_CATS = [
-  { id: "infra",    ic: "🏗", name: "施設",     color: "#57b1dd", base: 1500000, growth: 1.72, maxLv: 8,
+  { id: "infra",    ic: "🏗", name: "施設",     color: "#57b1dd", base: 2000000, growth: 1.5, maxLv: 8,
     milestones: {
       1: { name: "港の桟橋を直す",   doom: 8,  react: ["ミミ", "がたがたの桟橋、やっと直った！ 船が安心して着ける島って、それだけで豊かだ。"] },
       4: { name: "谷に橋を架ける",   doom: 14, react: ["スミカ・ラグナ", "ミミ様。橋の向こうの村と、やっと行き来ができます。……島がひとつに繋がりました。"] },
       8: { name: "大通りを石畳に",   doom: 24, react: ["ミミ", "泥だらけだった大通りが、石畳に。雨の日も、みんなが胸を張って歩ける。"] }
     } },
-  { id: "commerce", ic: "🏪", name: "商業",     color: "#e6b24a", base: 1800000, growth: 1.74, maxLv: 8,
+  { id: "commerce", ic: "🏪", name: "商業",     color: "#e6b24a", base: 2000000, growth: 1.5, maxLv: 8,
     milestones: {
       1: { name: "屋台に補助金",     doom: 8,  react: ["屋台のおやじ", "補助金だと……？ ふん、その分うまいもん作らにゃ罰が当たる。見てろよ。"] },
       4: { name: "市場を拡張する",   doom: 15, react: ["ミズ", "市場が広がれば、価値の巡りも太くなる。……あなた、商人の才もあるのね。あはん。"] },
       8: { name: "百貨店を誘致する", doom: 24, react: ["ミミ", "島に百貨店……！ 昔の私が見たら、目を回して気絶するやつだ。"] }
     } },
-  { id: "race",     ic: "🏟", name: "レース",   color: "#d6452f", base: 2200000, growth: 1.74, maxLv: 8,
+  { id: "race",     ic: "🏟", name: "レース",   color: "#d6452f", base: 2000000, growth: 1.5, maxLv: 8,
     milestones: {
       1: { name: "観客席を増やす",   doom: 8,  react: ["実況マクラ", "席が増えた分だけ、歓声も増える！ この島のレースは、まだまだ熱くなるぞ——！"] },
       4: { name: "ナイター照明をつける", doom: 15, react: ["ミミ", "夜のレース……！ 火山の赤と、照明の白。あの子たちが星みたいに駆けるんだ。"] },
       8: { name: "大競技場を建てる", doom: 25, react: ["実況マクラ", "世界の天井さえ覗きにくる大舞台だ！ ここが……聖龍レースの、心臓になる。"] }
     } },
-  { id: "dragon",   ic: "🐲", name: "竜",       color: "#9a6ad0", base: 2000000, growth: 1.74, maxLv: 8,
+  { id: "dragon",   ic: "🐲", name: "竜",       color: "#9a6ad0", base: 2000000, growth: 1.5, maxLv: 8,
     milestones: {
       // ★声表：ポロは言葉を持たない＝語り手をミミにして、ポロのしぐさを描く（セリフ化しない）
       1: { name: "竜の宿舎を建てる", doom: 9,  react: ["ミミ", "新しい宿舎の藁に、ポロが真っ先にもぐりこんだ。……鼻先だけ出して、動かない。気に入ったらしい。"] },
       4: { name: "竜の牧場を拓く",   doom: 16, react: ["ミミ", "竜たちが自由に走れる牧場。レースじゃない、ただ幸せそうな姿……いいなあ。"] },
       8: { name: "竜の療養所を作る", doom: 24, react: ["スミカ・ラグナ", "傷ついた竜も、歳をとった竜も、ここで穏やかに。……島は、勝者だけのものではありません。"] }
     } },
-  { id: "public",   ic: "⛲", name: "公共",     color: "#49c89c", base: 1500000, growth: 1.72, maxLv: 8,
+  { id: "public",   ic: "⛲", name: "公共",     color: "#49c89c", base: 2000000, growth: 1.5, maxLv: 8,
     milestones: {
       1: { name: "井戸を掘る",       doom: 8,  react: ["村の子ども", "みず、いっぱいでるよ！ ミミおねえちゃん、まほうつかいみたい！"] },
       4: { name: "診療所を建てる",   doom: 16, react: ["スミカ・ラグナ", "お医者様が常駐してくださる。……もう、熱を出した子を抱えて夜通し歩かなくていい。"] },
       8: { name: "学校を建てる",     doom: 25, react: ["ミミ", "子どもたちが、字を覚えて、予想も覚えて……いつか私を負かすのかな。それも、楽しみ。"] }
     } },
-  { id: "industry", ic: "🏭", name: "産業",     color: "#caa44a", base: 1800000, growth: 1.74, maxLv: 8,
+  { id: "industry", ic: "🏭", name: "産業",     color: "#caa44a", base: 2000000, growth: 1.5, maxLv: 8,
     milestones: {
       1: { name: "畑を耕す",         doom: 8,  react: ["ミミ", "島の畑！ 採れたての野菜って、こんなに甘いんだ。屋台のおやじが泣いて喜んでた。"] },
       4: { name: "漁港を整備する",   doom: 15, react: ["漁師", "いい漁港だ。これで時化の日も船が守れる。……島の飯が、もっとうまくなるぞ。"] },
@@ -125,6 +128,8 @@ function islandInvest(cat) {
     state.player.coins -= cost;
     islandState().lv[cat.id] = newLv;
     islandState().dev = islandDevTotal();
+    // ★投資は消えない＝islandValue として総資産に即計上（コイン→資産の置き換え。目減りしない）。
+    if (typeof recomputeAssets === "function") try { recomputeAssets(state); } catch (e) {}
     const pushed = (typeof epPushAmount === "function") ? epPushAmount(doom) : 0;
     if (typeof updateHeader === "function") try { updateHeader(); } catch (e) {}
     if (typeof saveGame === "function") try { saveGame(); } catch (e) {}

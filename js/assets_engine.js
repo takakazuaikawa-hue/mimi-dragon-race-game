@@ -107,6 +107,23 @@ function isLifeAssetUnlocked(state, item, level) {
 //   期待する挙動と逆だった。現在額にすることで、島に投資する＝コインが減って施設の
 //   価値が上がる＝お金が資産に形を変えただけ、という動きが数字の上で見える。
 //   進行の巻き戻り（＝一度開いた話が資産を使ったせいで閉じる）は assetsPeak が防ぐ。
+// ★2026-07-30 島づくり投資の資産計上（docs/ENDGAME_ECONOMY_REDESIGN.md 柱B・ユーザー決裁）。
+//   投資累計＝現在の各分野レベルから決定的に導出（コスト表で評価・保存フィールド不要＝後方互換）。
+//   「投資すると総資産が減る」旧仕様を廃し、投資＝コインを島の資産に置き換える行為にする。
+//   island.js 未ロード時は 0（recomputeAssets は毎レース呼ばれるので、ロード後に自然に正しくなる）。
+function computeIslandValue(state) {
+  try {
+    if (typeof ISLAND_CATS === "undefined") return 0;
+    const lvmap = (state.player.island && state.player.island.lv) || {};
+    let total = 0;
+    for (const c of ISLAND_CATS) {
+      const lv = Math.max(0, Math.min(lvmap[c.id] || 0, c.maxLv));
+      for (let l = 0; l < lv; l++) total += Math.round(c.base * Math.pow(c.growth, l) / 10000) * 10000;
+    }
+    return total;
+  } catch (e) { return 0; }
+}
+
 function calculateTotalAssets(state) {
   const p = state.player, a = state.assets;
   return (p.coins || 0)
@@ -114,7 +131,8 @@ function calculateTotalAssets(state) {
     + (a.facilityValue || 0)
     + (a.livingValue || 0)
     + (a.fameValue || 0)
-    + (a.dragonValue || 0);
+    + (a.dragonValue || 0)
+    + (a.islandValue || 0);   // ★島づくり投資の累計（投資は消えない・資産に形を変える）
 }
 
 // ★進行判定の正本＝「これまでに到達した資産の最高額」。
@@ -137,13 +155,14 @@ function assetsPeak(st) {
 function recomputeAssets(state) {
   if (!state.assets) {
     state.assets = { villageValue:0, facilityValue:0, livingValue:0, fameValue:0,
-                     dragonValue:0, lifeItems:[], unlockedLifeStages:0, rescueBonus:0 };
+                     dragonValue:0, islandValue:0, lifeItems:[], unlockedLifeStages:0, rescueBonus:0 };
   }
   const a = state.assets;
   a.villageValue  = computeVillageValue(state);
   a.facilityValue = computeFacilityValue(state);
   a.fameValue     = computeFameValue(state);
   a.dragonValue   = computeDragonValue(state);
+  a.islandValue   = computeIslandValue(state);   // ★島づくり投資の累計（2026-07-30）
 
   // 生活資産の解放段位は「到達最高」で決める（＝一度手に入れた暮らしは失わない）。
   // totalAssets そのものは現在値なので、段位の決定権を持たせてはいけない。
@@ -172,7 +191,7 @@ function recomputeAssets(state) {
 }
 
 // §7 — the highest story chapter unlocked at this 総資産 (spec 32 §9 thresholds).
-// ★EDは総資産1兆 か、終章クリア（epilogue.edFlag＝絶滅メーターを押し切り最終決戦を完走）で解放。
+// ★EDは総資産10億（2026-07-30・旧1兆）か、終章クリア（epilogue.edFlag＝絶滅メーターを押し切り最終決戦を完走）で解放。
 function epStoryGateOk(ch, total) {
   // ★解放の正本＝chapterAvailable（前章既読＋実績）。従来の総資産しきい値はフォールバックに残す。
   if (typeof chapterAvailable === "function") return chapterAvailable(ch.id);

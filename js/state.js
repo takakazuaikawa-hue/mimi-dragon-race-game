@@ -87,6 +87,7 @@ const state = {
   assets: {
     villageValue: 0, facilityValue: 0, livingValue: 0,
     fameValue: 0, dragonValue: 0,
+    islandValue: 0,           // ★島づくり投資の累計（2026-07-30・投資は資産に形を変える）
     lifeItems: [],            // owned purchasable cosmetics
     unlockedLifeStages: 0,    // high-water asset level (story gate; never drops)
     rescueBonus: 0            // flat rescue add from unlocked life assets
@@ -242,7 +243,7 @@ function resetGame() {
   };
   state.assets = {
     villageValue: 0, facilityValue: 0, livingValue: 0,
-    fameValue: 0, dragonValue: 0,
+    fameValue: 0, dragonValue: 0, islandValue: 0,
     lifeItems: [], unlockedLifeStages: 0, rescueBonus: 0
   };
   state.lifeTree = { unlocked: {} };   // §38 reset 暮らしツリー
