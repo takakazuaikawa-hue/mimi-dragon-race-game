@@ -106,6 +106,8 @@ function renderHome() {
   app.classList.add("hl-clip");
   const p = state.player;
   if (typeof recomputeAssets === "function") recomputeAssets(state);
+  // ⚔️ 竜帝の戴冠衣：押し戻した瞬間にVN/ポップアップが開いていて見送られた場合の拾い直し（自身が門番）。
+  if (typeof maybeGrantDragonRobe === "function") maybeGrantDragonRobe();
   // daily login reward — checked once per session, shown just after home paints
   // ★D4解消（FTUE保護）：初出走前は文脈のない報酬ポップを出さない＝初回導線（→レースへ）に集中させる。
   let _doGreet = false;   // 挨拶はVNではなく“配信の吹き出し”で（大立ち絵と二重にしない）

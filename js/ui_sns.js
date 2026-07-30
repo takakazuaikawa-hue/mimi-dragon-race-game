@@ -36,11 +36,19 @@ function renderSns(tab) {
   logo.title = "フィードへ";
   logo.onclick = () => { _snsTab = "feed"; renderSns(); };
   top.appendChild(logo);
+  // 右側＝❓遊び方 ＋ ✉️DM（2つ並ぶので入れ物でまとめる。topbarは space-between なので直付けすると散る）
+  const acts = el("div", "ig-topacts");
+  const helpBtn = el("button", "ig-top-help");
+  helpBtn.innerHTML = "❓";
+  helpBtn.title = "Pyogramの遊び方";
+  helpBtn.onclick = () => showSnsHelp();
+  acts.appendChild(helpBtn);
   const dmBtn = el("button", "ig-top-dm");
   const unread = (typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
   dmBtn.innerHTML = `✉️${unread ? `<span class="ig-dmbadge">${unread}</span>` : ""}`;
   dmBtn.onclick = () => { _snsTab = "dm"; renderSns(); };
-  top.appendChild(dmBtn);
+  acts.appendChild(dmBtn);
+  top.appendChild(acts);
   ig.appendChild(top);
 
   const body = el("div", "ig-body");
@@ -68,6 +76,38 @@ function renderSns(tab) {
   // M2：一日の締め（SNS→ホームへ）。docs/GAME_EXPERIENCE_DESIGN §3。IG風画面に明示的な戻りが
   // 無いので、ループ結線と「配信を閉じる」出口を兼ねる。
   try { const _nx = (typeof nextSuggestRow === "function") && nextSuggestRow("sns"); if (_nx) app.appendChild(_nx); } catch (e) {}
+  maybeShowSnsHelpFirstTime();   // ★はじめて開いた時だけ、遊び方を1回
+}
+
+// =========================================================================
+// 遊び方（❓からいつでも／はじめて開いた時に一度だけ自動で）
+// =========================================================================
+// ★ユーザー指摘（2026-07-31）「SNS始めた後チュートリアルがない」：スマホを買うとPyogramが開くのに、
+//   この画面にだけオンボーディングが無かった（他画面は予想入門の🆕/✓・モールや暮らしの？がある）。
+//   Instagramの文法をそのまま説明するのではなく、「この島で何をすると何が起きるか」を書く。
+function showSnsHelp() {
+  if (typeof showInfoPopup !== "function") return;
+  showInfoPopup("📱 Pyogram の遊び方",
+    `<div class="mm-row"><span class="mm-ic">🏠</span><div><b>フィード</b>` +
+      `<small>島のみんなの投稿が流れます。写真をダブルタップ、または♡でいいね。💬から返事を選ぶと会話が続きます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">📊</span><div><b>きょうのお題（ストーリーズ）</b>` +
+      `<small>上の丸いアイコン。ミミのストーリーはその日の投票で、答えると島のみんなの割合が見られます。日替わりです。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">＋</span><div><b>自分で投稿する</b>` +
+      `<small>ストーリーズ左端の「あなた＋」から。島めぐりで撮った写真（スポットの📸）にひとこと添えて出すと、プロフィールに並んでいいねが伸びます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">👤</span><div><b>プロフィール</b>` +
+      `<small>フォロワー数と、投稿した写真の3列グリッド。連続ログインのハイライトもここに溜まります。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">✉️</span><div><b>メッセージ（ファンレター）</b>` +
+      `<small>あなたの戦績や物語の進みに応じて、島の人たちから手紙が届きます。赤い数字は未読の数です。</small></div></div>` +
+    `<div class="mm-note">※ SNSは<b>表示専用</b>です。いいねもフォロワーも、レースの着順・オッズ・配当には一切影響しません。</div>`);
+}
+// はじめて開いた時に一度だけ（VN・別ポップアップ中は次回に回す＝重ねない。終章メーターの説明と同じ流儀）。
+function maybeShowSnsHelpFirstTime() {
+  if (typeof getStoryFlag === "function" && getStoryFlag("snsHelpSeen")) return;
+  if (typeof showInfoPopup !== "function" || typeof document === "undefined") return;
+  if (document.querySelector(".navpop-ov")) return;                       // 別ポップアップが開いている
+  if (document.querySelector(".dlg-overlay:not(.hidden)")) return;        // VN再生中
+  if (typeof setStoryFlag === "function") setStoryFlag("snsHelpSeen", true);
+  showSnsHelp();
 }
 
 // =========================== 🏠 フィード ===========================

@@ -364,7 +364,7 @@ function renderKonronGallery() {
     if (s.gourmet) items.push({ id: id, kind: "gourmet", label: s.name + "・グルメ", src: s.gourmet, open: open });
   });
   const total = items.length, got = items.filter(it => it.open).length;
-  app.appendChild(_ktSectionHead("🖼 フォトコレクション", `崑崙島で撮った景色＆ご当地グルメ。行ける場所が増えると集まる（タップで鑑賞＆SNS投稿）。<b>${got} / ${total}</b> 枚 収集。`));
+  app.appendChild(_ktSectionHead("🖼 フォトコレクション", `崑崙島で撮った景色＆ご当地グルメ。行ける場所が増えると集まる（タップで鑑賞${_kmSnsOk() ? "＆SNS投稿" : ""}）。<b>${got} / ${total}</b> 枚 収集。`));
   const grid = el("div", "kgal-grid");
   items.forEach(it => {
     const cell = el("button", "kgal-cell" + (it.open ? "" : " kgal-cell--locked"));
@@ -507,7 +507,14 @@ function _kmSpotPhotoBanner(id, s) {
   //   data-photo="undefined" → タップしても_kmOpenPhotoが該当スポットを見つけられず無反応だった（ユーザー指摘）。
   return `<button class="km-photo" data-photo="${id}">` +
     `<img class="km-photo-img" src="${s.photo}" alt="${s.name}" decoding="async">` +
-    `<span class="km-photo-tag">📸 タップで鑑賞・SNS投稿</span></button>`;
+    `<span class="km-photo-tag">📸 タップで鑑賞${_kmSnsOk() ? "・SNS投稿" : ""}</span></button>`;
+}
+// ★門番（ユーザー指摘・2026-07-31）：SNS(Pyogram)はスマホ購入=broadcastOn()で開く機能なのに、
+//   島の写真ビューアの「📣 SNSに投稿」は解放前でも押せて、そのまま投稿できてしまっていた
+//   （renderSns 側だけを門番していて、投稿導線が素通しだった）。fail-closed＝未解放なら導線ごと出さない。
+function _kmSnsOk() {
+  try { return (typeof broadcastOn === "function") && broadcastOn() && (typeof addMyPost === "function"); }
+  catch (e) { return false; }
 }
 // フルスクリーンの写真ビューア（タップで拡大トグル＝じっくり鑑賞／SNS投稿／閉じる）。表示専用。
 function _kmPhotoOf(s, kind) { return (kind === "gourmet") ? s.gourmet : s.photo; }
@@ -521,7 +528,7 @@ function _kmOpenPhoto(spotId, kind) {
     `<div class="km-viewer-stage"><img class="km-viewer-img" src="${src}" alt="${s.name}"></div>` +
     `<div class="km-viewer-cap"><b>${s.name}</b><span>${_kmPhotoCap(s, kind)}</span></div>` +
     `<div class="km-viewer-bar">` +
-      `<button class="km-vbtn km-vbtn--sns" data-act="sns">📣 SNSに投稿</button>` +
+      (_kmSnsOk() ? `<button class="km-vbtn km-vbtn--sns" data-act="sns">📣 SNSに投稿</button>` : ``) +
       `<button class="km-vbtn" data-act="x">✕ 閉じる</button></div>`;
   document.body.appendChild(ov);
   const img = ov.querySelector(".km-viewer-img");
@@ -529,12 +536,13 @@ function _kmOpenPhoto(spotId, kind) {
   const close = () => ov.remove();
   ov.querySelector(".km-viewer-bd").onclick = close;
   ov.querySelector('[data-act="x"]').onclick = close;
-  ov.querySelector('[data-act="sns"]').onclick = () => _kmSnsCompose(spotId, kind);
+  const snsB = ov.querySelector('[data-act="sns"]');
+  if (snsB) snsB.onclick = () => _kmSnsCompose(spotId, kind);
 }
 // SNS（ぴょこったー）へコメント付きで投稿。sns.js の addMyPost(text,img) を使う＝タイムラインに流れる。
 function _kmSnsCompose(spotId, kind) {
   const s = KONRON_SPOTS[spotId]; const src = s && _kmPhotoOf(s, kind); if (!src) return;
-  if (typeof addMyPost !== "function") { _kmToast("SNS機能が見つかりません"); return; }
+  if (!_kmSnsOk()) { _kmToast("📱 スマホを手に入れると投稿できます"); return; }   // 二重の守り（呼ばれても通さない）
   document.querySelectorAll(".km-compose").forEach(v => v.remove());   // 既存の投稿モーダルを先に消す（同種の重ね開き対策）
   const def = (kind === "gourmet" ? `${s.name}でこれ食べた😋📸` : `${s.name}で一枚📸 ${s.line || ""}`).trim();
   const cm = el("div", "km-compose");

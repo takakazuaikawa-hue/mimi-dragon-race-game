@@ -172,7 +172,10 @@ const OUTFITS = [
   { id: "tarzan",    name: "野生児ターザン",   flavor: "ヒョウ柄をまとった、聖龍島サバイバル仕様。",     acquire: { price: 40000 } },
   { id: "gymhigh",    name: "トレーニングギア", flavor: "絞れた体で、レース前の追い込みも気分から。",       acquire: { price: 10000 } },
   { id: "drago",      name: "DRADAを着た女",   flavor: "黒で固めたハイブランドDRADA。背伸びした女の貫禄。", acquire: { price: 25000 } },
-  { id: "dragonrobe", name: "竜帝の戴冠衣",     flavor: "聖龍の翼と宝玉をまとう、最上位の正装。",           acquire: { price: 80000 } },
+  // ★買えない（ユーザー指定・2026-07-31）：竜帝の戴冠衣は**最終決戦の装束**なので、8万コインで
+  //   いつでも買える普段着ではなく、終章（第5話〜最終決戦の前）のイベントでだけ手に入る。
+  //   付与＝epilogue_engine.js maybeGrantDragonRobe（絶滅メーターを押し戻して安全ゾーンに入った時）。
+  { id: "dragonrobe", name: "竜帝の戴冠衣",     flavor: "聖龍の翼と宝玉をまとう、最上位の正装。",           acquire: { epilogue: true } },
   { id: "maumau",    name: "プレッピーカジュアル", flavor: "きれいめトラッドな、お嬢様風プレッピー。",       acquire: { price: 6000 } },
   { id: "gymlow",    name: "スポーティMIX",     flavor: "シャツを腰に巻いた、動きやすい運動着。",           acquire: { price: 8000 } },
   { id: "gymmiddle", name: "アクティブフィット", flavor: "絞った体に映える、ベージュのジムスタイル。",       acquire: { price: 9000 } },

@@ -228,6 +228,7 @@ function _scmFitting() {
   else if (sel.acquire.price != null) acq = owned ? "購入済み" : `価格 <b>${fmtCoins(sel.acquire.price)}</b>`;
   else if (sel.acquire.assets != null) acq = owned ? "解放済み" : `総資産 <b>${fmtCoins(sel.acquire.assets)}</b> で解放`;
   else if (sel.acquire.travel) acq = owned ? "旅の証（獲得済み）" : "📔 旅ノートで<b>全エリア制覇</b>すると手に入る";   // ★T3
+  else if (sel.acquire.epilogue) acq = owned ? "決戦の装束（授かった）" : "⚔️ 終章、島のみんなから<b>贈られる</b>一着";   // 竜帝の戴冠衣＝買えない
   else acq = "";
   info.innerHTML = `<div class="scm-fit-nm">${sel.name}</div><div class="scm-fit-fl">${sel.flavor}</div><div class="scm-fit-acq">${acq}</div>`;
   const cta = el("div", "scm-fit-cta");
@@ -273,7 +274,8 @@ function _scmShops() {
   let list = OUTFITS.slice();
   if (_mallFilter === "new") list = list.slice().reverse();
   else if (_mallFilter === "owned") list = list.filter(o => outfitOwned(o));
-  else if (_mallFilter === "locked") list = list.filter(o => o.acquire && o.acquire.assets != null);
+  // 「特別」＝買えない服（総資産で解放／旅の証／終章の装束）。★travel は登録時に入れ忘れていた。
+  else if (_mallFilter === "locked") list = list.filter(o => o.acquire && (o.acquire.assets != null || o.acquire.travel || o.acquire.epilogue));
 
   const grid = el("div", "scm-grid");
   list.forEach(o => {
@@ -286,6 +288,7 @@ function _scmShops() {
     else if (o.acquire.price != null) chip = `<span class="scm-cardchip price">🪙${fmtCoins(o.acquire.price)}</span>`;
     else if (o.acquire.assets != null) chip = `<span class="scm-cardchip lock">🔒</span>`;
     else if (o.acquire.travel) chip = `<span class="scm-cardchip lock">📔</span>`;   // ★T3 旅の証
+    else if (o.acquire.epilogue) chip = `<span class="scm-cardchip lock">⚔️</span>`;  // 竜帝の戴冠衣＝終章のイベント
     card.innerHTML =
       `<div class="scm-card-img${oOwned ? "" : " silhouette"}"><img alt="${o.name}" src="${outfitImg(o.id, "default")}" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">${chip}</div>` +
       `<div class="scm-card-nm">${o.name}</div>`;

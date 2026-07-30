@@ -3465,7 +3465,9 @@ function renderResult() {
   // 🐲 泣き虫竜ポロ 発見イベント：序盤の「2勝目（単勝）」で出会う（第4章開放=総資産100万より前。
   // ポロは第3・4章の一枚絵に既に登場するため、それより前に加入させる）。完了で龍舎/スカウト解放。
   // js/poro.js。既存のレース出走ポロ・オッズ・配当・図鑑は一切不変＝表示専用メタ。
-  if (!c._poroArcTried && typeof maybePlayPoroArcOnWin === "function" && typeof poroFound === "function" && !poroFound()) {
+  // ★段階分け（2026-07-31）：poroFound で止めない。発見の後も「鑑定の結果」「顧問の後日談」が
+  //   段として残っているので、レース結果ごとに maybePlayPoroBeat が“最大1本だけ”出す。
+  if (!c._poroArcTried && typeof maybePlayPoroArcOnWin === "function") {
     c._poroArcTried = true;
     setTimeout(() => { try { maybePlayPoroArcOnWin(); } catch (e) {} }, 700);
   }

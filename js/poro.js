@@ -72,6 +72,18 @@ function dexUnlocked() {
 //   出演させない。彼女たちの反応は別の短い後日談シーン（poro***FollowupScript）として切り出し、
 //   実際にその章を読んだ後に1回だけ再生する＝進行に追いつくまで小出しにする。
 //   核心シーン（発見・命名オチ）はナレーター／ミミ／ポロ／村人／サケ（第1話＝最初から知り合い）だけで回す。
+// ★段階分け（ユーザー指摘「ポロの登場イベントが何回も出てくる。段階に分けて少しづつ物語が
+//   進んだ方がいい」・2026-07-31）：以前は2勝目の一瞬に【23行の発見VN＋溜まっていた顧問の後日談を
+//   まとめ再生＋解放ポップ】が連続で降ってきていた（実測4連続）。同じ「ポロが来た」を角度を変えて
+//   4回見せる形になっていて、話が進んでいる感じがしない。
+//   → ポロの物語は **1回にひとつだけ／レースを挟んで順に** 進む（nextPoroBeat／maybePlayPoroBeat）。
+//   切れ目は物語のほうが元から用意していた：サケの「鑑定に出せ。話はそれからだ。」——鑑定に出したのに
+//   結果が同じ場面で読み上げられていたのが不自然だったので、ここで段を割る。
+//   ①出会い（単勝2勝目）→ 鑑定に出して引く／②鑑定の結果（+2レース）→ 種明かし・命名・解放
+//   ／③以降 顧問の後日談を1本ずつ（+2レースずつ）。
+const PORO_BEAT_GAP = 2;   // 段と段のあいだに挟むレース数（テンポ調整はここ1か所）
+
+// ① 出会い：拾う → 聖龍の幼体では！？の騒ぎ → サケ「鑑定に出せ」で引く。まだ名前は無い。
 function poroDiscoveryScript() {
   return [
     ["narrator", "雷雨の去ったレース場の裏手。資材置き場、木箱の陰で——なにかが、ちいさく震えていた。"],
@@ -88,6 +100,15 @@ function poroDiscoveryScript() {
     ["mimi", "じゃあ……ほんとうに、聖龍なんですか……？", "default"],
     // 旧スミカ台詞の役割（鑑定へ促す）をサケへ。サケは第1話＝最初から会っている唯一の顧問。
     ["sake", "……知らん。憶測じゃ竜は育たん。鑑定に出せ。話はそれからだ。"],
+    ["mimi", "は、はい……！ ——だいじょうぶ。すぐ、迎えにくるからね。", "default"],
+    ["poro", "……ぽろ？", "default"],
+    ["narrator", "鑑定の結果が出るまでには、幾日かかかるという。——この仔には、まだ名前が無い。"]
+  ];
+}
+// ② 鑑定の結果：紙が届く → 種明かし → 「ポロのままでいい」 → 命名 → 相棒に（ここで poroFound）。
+function poroAppraisalScript() {
+  return [
+    ["narrator", "幾日かして、鑑定所から一枚の紙が届いた。村のみんなが、息をのんで覗き込む。"],
     ["narrator", "＜鑑定結果＞　種族：ムラサキマルチビ竜／成長段階：幼体／希少指定：なし／聖龍との血縁：なし／特殊能力：なし／……食べ過ぎ傾向：あり。"],
     ["villager", "……な〜んだ。ぜんぶ、ふつうの仔竜かぁ。"],
     // 旧ミズ台詞の種明かしを村人＋ナレーターへ分担（「市場が夢を見た」の総括はナレーターが引き取る）。
@@ -143,30 +164,57 @@ function poroCelestiaFollowupScript() {
   ];
 }
 
-// 発見アークの再生（1回だけ）。完了後にフラグ確定＋解放通知。window._poroArcPlayingで二重起動ガード。
-function _playPoroArc() {
-  if (poroFound()) return false;
+// ── 段の間合い（レース数） ───────────────────────────────────────────────
+// 「1回にひとつだけ／レースを挟んで順に」を保証する。completedRaces を物差しにするので、
+// 勝っても負けても進む＝物語が止まらない。
+function _poroRaces() { return (state.player && state.player.completedRaces) || 0; }
+function _poroBeatMark() {
+  const fl = (state.player && state.player.flags) || {};
+  return (fl._poroBeatAt == null) ? -999 : fl._poroBeatAt;
+}
+function _poroMarkBeat() {
+  try { state.player.flags._poroBeatAt = _poroRaces(); if (typeof saveGame === "function") saveGame(); } catch (e) {}
+}
+function _poroGapOk() { return _poroRaces() >= _poroBeatMark() + PORO_BEAT_GAP; }
+
+// ★次に進むべき段を1つだけ返す（無ければ null）。ここがポロの物語の唯一の進行表。
+//   gap:false ＝ 間合い不要（アークの1本目）／gap:true ＝ 前の段から PORO_BEAT_GAP レース空ける。
+function nextPoroBeat() {
+  if (!_poroSeen("poroMet")) {
+    if (((state.player && state.player.wins) || 0) < 2) return null;   // 出会い＝単勝2勝目
+    return { id: "met", gap: false, script: poroDiscoveryScript, flag: "poroMet" };
+  }
+  if (!poroFound()) return { id: "appraisal", gap: true, script: poroAppraisalScript, done: completePoroDiscovery };
+  const f = pendingPoroFollowups()[0];                                  // 顧問の後日談は章順に1本ずつ
+  if (f) return { id: "fu_" + f.cast, gap: true, script: f.script, flag: f.flag };
+  return null;
+}
+// 段を1つだけ再生する。ignoreGap＝章を開いた取りこぼし救済など、間合いを問わず出したい時。
+function maybePlayPoroBeat(ignoreGap) {
   if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
   if (window._poroArcPlaying) return false;
+  const beat = nextPoroBeat();
+  if (!beat) return false;
+  if (beat.gap && !ignoreGap && !_poroGapOk()) return false;
   window._poroArcPlaying = true;
-  Dialogue.play(poroDiscoveryScript(), { force: true }).then(function () {
+  Dialogue.play(beat.script(), { force: true }).then(function () {
     window._poroArcPlaying = false;
-    completePoroDiscovery();
+    if (beat.flag && typeof setStoryFlag === "function") setStoryFlag(beat.flag, true);
+    _poroMarkBeat();
+    if (typeof beat.done === "function") beat.done();
+    if (typeof saveGame === "function") saveGame();
   });
   return true;
 }
 // ★出会い＝序盤の「2勝目」（ユーザー指定）。ポロは第3・4章の一枚絵に既に登場するため、章開放
 //   （総資産100万＝第4章）より前に加入させる。wins＝単勝的中数。結果画面(renderResult)から呼ぶ。
-function maybePlayPoroArcOnWin() {
-  if (poroFound()) return false;
-  if (((state.player && state.player.wins) || 0) < 2) return false;
-  return _playPoroArc();
-}
+//   ★以後この1本が「ポロの物語を1段だけ進める」窓口＝レース結果ごとに最大1本しか出ない。
+function maybePlayPoroArcOnWin() { return maybePlayPoroBeat(false); }
 // フォールバック：万一2勝より先に第3/4章へ到達していたら、章を開いた時に出会いを再生（取りこぼし防止）。
 function maybePlayPoroArcOnChapter(chId) {
   if (chId !== "3" && chId !== "4") return false;
   if (poroFound()) return false;
-  return _playPoroArc();
+  return maybePlayPoroBeat(true);
 }
 // 後日談の共通再生ヘルパー（_playPoroArcと同じ二重起動ガードを共用＝同時に2つ走らせない）。
 function _playPoroFollowup(script, seenFlag) {
@@ -176,6 +224,7 @@ function _playPoroFollowup(script, seenFlag) {
   Dialogue.play(script, { force: true }).then(function () {
     window._poroArcPlaying = false;
     if (typeof setStoryFlag === "function") setStoryFlag(seenFlag, true);
+    _poroMarkBeat();                                   // 章から出した分も間合いに数える＝次の段が続けて来ない
     if (typeof saveGame === "function") saveGame();
   });
   return true;
@@ -230,10 +279,12 @@ function maybePlayPoroFollowupOnChapter(chId) {
   return false;
 }
 
-// ★追いつき再生（ユーザー指定）：後日談は「章を開いた時」に出るが、第2話（総資産3千）・第3話（3万）は
+// ★取りこぼし防止の変遷（重要）：後日談は「章を開いた時」に出るが、第2話（総資産3千）・第3話（3万）は
 //   出会い（単勝2勝目）より先に読まれるのが普通。そのままだと「章をもう一度開き直した時」にしか流れず、
-//   多くのプレイヤーが見ないまま終わる。そこで発見の瞬間に、既に読み終えている章の後日談を章順にまとめて
-//   再生してから解放通知を出す。門番は各 maybePlay* と同じ advisorMet（未登場の顧問は出ない）。
+//   多くのプレイヤーが見ないまま終わる——という問題に対し、以前は【発見の瞬間に溜まった分を全部まとめて
+//   再生する】追いつき再生を入れていた。それが「ポロの登場イベントが何回も出てくる」の原因だったので撤去。
+//   ★取りこぼし防止の役目は nextPoroBeat が引き継いでいる（レース結果ごとに、溜まった後日談を1本ずつ
+//   順に出す）＝見逃さないまま、一度に降ってこない。門番は従来どおり advisorMet（未登場の顧問は出ない）。
 const PORO_FOLLOWUPS = [
   { cast: "mizu",     flag: "poroMizuSceneSeen",     script: poroMizuFollowupScript },
   { cast: "sumika",   flag: "poroSumikaSceneSeen",   script: poroSumikaFollowupScript },
@@ -245,28 +296,6 @@ function pendingPoroFollowups() {
   if (!poroFound()) return [];
   return PORO_FOLLOWUPS.filter(f => _poroAdvisorMet(f.cast) && !_poroSeen(f.flag));
 }
-// 溜まっている後日談を順に再生し、終わったら done() を呼ぶ。再生するものが無ければ false（呼び元が done する）。
-function playPoroFollowupCatchup(done) {
-  const pend = pendingPoroFollowups();
-  if (!pend.length) return false;
-  if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
-  if (window._poroArcPlaying) return false;
-  window._poroArcPlaying = true;
-  let chain = Promise.resolve();
-  pend.forEach(function (f) {
-    chain = chain.then(function () { return Dialogue.play(f.script(), { force: true }); })
-                 .then(function () {
-                   if (typeof setStoryFlag === "function") setStoryFlag(f.flag, true);   // 1本ずつ確定（途中離脱でも取りこぼさない）
-                   if (typeof saveGame === "function") saveGame();
-                 });
-  });
-  chain.then(function () {
-    window._poroArcPlaying = false;
-    if (typeof done === "function") done();
-  });
-  return true;
-}
-
 // 発見完了＝フラグ確定（poroFound＋鑑定＋スカウト/龍舎を同時解放）。仕様 §8・§12。
 function completePoroDiscovery() {
   if (typeof setStoryFlag !== "function") return;
@@ -277,11 +306,8 @@ function completePoroDiscovery() {
   //   鑑定の途中経過を分けて見たくなったら、そのとき読み手と一緒に足すこと。
   setStoryFlag("dragonScoutUnlocked", true);
   setStoryFlag("dragonStableUnlocked", true);
-  // ★追いつき再生：poroFound を立てた直後なので、既に読み終えている章の後日談が pending に見える。
-  //   出会い済みの顧問の反応を章順にまとめて流し、終わってから解放通知を出す（無ければ即通知）。
-  const _caughtUp = (typeof playPoroFollowupCatchup === "function") &&
-    playPoroFollowupCatchup(function () { showPoroUnlockNotice(); });
-  if (!_caughtUp) showPoroUnlockNotice();
+  // 解放通知はこの1枚だけ（溜まった後日談は次のレース以降に1本ずつ届く＝ここで重ねない）。
+  showPoroUnlockNotice();
 }
 
 // 新機能解放通知（仕様 §12「UI上で新機能解放通知が表示される」）。

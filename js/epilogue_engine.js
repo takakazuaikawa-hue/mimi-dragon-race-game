@@ -171,6 +171,8 @@ function epPush(reason) {
   if (!epiloguePushable()) return;
   const e = epData();
   e.meter -= (EP_CONST.PUSH[reason] || 0);
+  // ★装束は最終決戦“解放より前”に渡す＝先に判定してから finalReady を見る（順序を入れ替えないこと）。
+  if (e.meter > 0) maybeGrantDragonRobe();
   if (e.meter <= 0) { e.meter = 0; e.finalReady = true; onFinalReady(); }
   epSave();
 }
@@ -180,6 +182,7 @@ function epPushAmount(n) {
   const e = epData();
   const before = e.meter;
   e.meter = Math.max(0, e.meter - (n || 0));
+  if (e.meter > 0) maybeGrantDragonRobe();                 // ★装束は最終決戦の解放より前（epPushと同じ順序）
   if (e.meter <= 0) { e.meter = 0; e.finalReady = true; onFinalReady(); }
   epSave();
   return before - e.meter;   // 実際に退いた量
@@ -190,6 +193,67 @@ function onDoomReached() {
   if (typeof showInfoPopup === "function") showInfoPopup("☄️ 淘汰は終わらない",
     `<div class="mm-row"><span class="mm-ic">🌌</span><div><b>「……まだ、終わらないわ」</b><small>淘汰の圧はぶり返した。それでも、灯りはまだ消えていない。押し戻し続けよう。</small></div></div>`);
 }
+// =========================================================================
+// ⚔️ 竜帝の戴冠衣＝最終決戦の装束（ユーザー指定・2026-07-31）
+// =========================================================================
+// 「龍帝の衣装は最終イベント用の衣装だから、5章から最終決戦の前のどこかでイベントで手に入るように」。
+// 以前は 8万コインでいつでも買える普段着だった（data_assets.js の acquire を epilogue へ変更済）。
+// タイミング＝**綱引きを押し戻して安全ゾーンに入った瞬間**。第5話開始（真ん中＝mid）より後で、
+// メーター0（＝最終決戦解放）より前に必ず挟まる＝「決戦の前に島から装束を託される」一幕になる。
+// ★表示専用＝衣装は立ち絵が変わるだけ。着順・オッズ・配当には非干渉（[[race-math-immutable]]）。
+const EP_ROBE_ID = "dragonrobe";
+function _epRobeScript() {
+  const s = [
+    ["narrator", "その日、龍舎の戸を叩いたのは、村のみんなだった。両手に、大きな包み。"],
+    ["villager", "ミミちゃん。……その、みんなで、少しずつ出し合ってな。"],
+    ["villager", "祭りの旗を縫うばあさん、鱗細工の親父、宝玉磨きの職人——島じゅうから、一枚ずつ持ち寄ったんだ。"],
+    ["mimi", "……これ、って……。", "default"],
+    ["narrator", "包みをほどくと、聖龍の翼をかたどった一着——竜帝の戴冠衣。"]
+  ];
+  // ★門番（[[cast-appearance-gate]]）：スミカは出会っていれば一言添える。未登場なら村人だけで回す。
+  try {
+    if (typeof advisorMet === "function" && advisorMet("sumika"))
+      s.push(["sumika", "採寸は済ませてあります。……ミミ様。これは贈り物ではありません。島からの、委任状です。"]);
+  } catch (e) {}
+  s.push(["villager", "あの星空みたいなドレスのお人に、この島は強いんだって、見せてやってくれ。"]);
+  s.push(["mimi", "……はい。ぜったいに、見せてきます。", "happy"]);
+  return s;
+}
+function _epRobeOwned() {
+  try {
+    const won = (state.player && state.player.outfitsWon) || [];
+    return won.indexOf(EP_ROBE_ID) >= 0;
+  } catch (e) { return false; }
+}
+// 安全ゾーンに入っていれば1回だけ授与。VN/ポップアップ中なら見送って次の機会に（重ねない）。
+// 呼び元＝epPush / epPushAmount（押し戻した瞬間）と renderHome（見送られた分の拾い直し）。
+function maybeGrantDragonRobe() {
+  try {
+    if (!epilogueOn()) return false;                                     // 終章中だけ
+    if (typeof getStoryFlag !== "function" || getStoryFlag("dragonRobeGranted")) return false;
+    if (epilogueZone() !== "safe") return false;                         // 押し戻して安全側に入ったら
+    if (typeof document === "undefined") return false;
+    if (document.querySelector(".navpop-ov")) return false;              // 別ポップアップが開いている
+    if (document.querySelector(".dlg-overlay:not(.hidden)")) return false; // VN再生中
+    if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
+    setStoryFlag("dragonRobeGranted", true);
+    Dialogue.play(_epRobeScript(), { force: true }).then(function () {
+      if (!_epRobeOwned()) {
+        state.player.outfitsWon = state.player.outfitsWon || [];
+        state.player.outfitsWon.push(EP_ROBE_ID);
+      }
+      epSave();
+      if (typeof showInfoPopup === "function") showInfoPopup("⚔️ 竜帝の戴冠衣を授かった",
+        `<div class="mm-row"><span class="mm-ic">👗</span><div><b>竜帝の戴冠衣</b>` +
+          `<small>聖龍の翼と宝玉をまとう、最上位の正装。島じゅうの職人が一枚ずつ持ち寄って仕立てた、決戦の装束。</small></div></div>` +
+        `<div class="mm-row"><span class="mm-ic">🛍️</span><div><b>着替えはモールから</b><small>「特別」の棚に並びます。最後の一戦は、この一着で。</small></div></div>` +
+        `<div class="mm-note">※ 衣装は立ち絵が変わるだけです。レースの着順・オッズ・配当は変わりません（表示専用）。</div>`);
+      if (typeof renderHome === "function") renderHome();
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
 // メーターを0に押し切った＝最終決戦解放。
 function onFinalReady() {
   if (typeof showInfoPopup === "function") showInfoPopup("⚔️ 最終決戦",
