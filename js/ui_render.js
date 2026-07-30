@@ -1499,6 +1499,41 @@ function showCollectionDragonDetail(d) {   // ※poro.js の showDragonDetail(id
   };
 }
 
+// ── 図鑑カードのミニ竜を描く ──────────────────────────────────────────────
+// ★竜のスプライト（ref.pngのトレース）は非同期で読み込まれるので、画面を組んだ
+//   その場で描くと**52枚すべて白紙**になる（実測）。_dexFitSprite が null を返す間は
+//   手続き描画にも寸法が渡らず、カードが空のまま残っていた。
+//   → 描画を関数に切り出し、絵が乗るまで数回だけ描き直す。読み込み済みなら1回で終わる。
+function _dexPaintCard(cv, d) {
+  if (!cv || !cv.getContext || typeof rcDrawDragon !== "function") return false;
+  try {
+    const fit = (typeof _dexFitSprite === "function") ? _dexFitSprite(d.id, 78, 56, 5, 4, 6) : null;
+    const col = (typeof dragonColor === "function") ? dragonColor(d) : (d.color || "#888");
+    const o = fit ? { id: d.id, x: fit.x, y: fit.y, scale: fit.scale, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 }
+                  : { id: d.id, x: 42, y: 38, scale: 0.72, color: col, style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 };
+    const ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    rcDrawDragon(ctx, o);
+    return !!fit;                                   // fit が来ていれば本番の絵が乗っている
+  } catch (e) { return false; }
+}
+function _dexRepaintUntilReady(grid) {
+  if (!grid) return;
+  let tries = 0;
+  const tick = () => {
+    tries++;
+    let pending = 0;
+    grid.querySelectorAll("canvas[data-did]").forEach(cv => {
+      const d = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === cv.dataset.did) : null;
+      if (!d) return;
+      try { if (typeof _rcDragonSprite === "function") _rcDragonSprite(d.id); } catch (e) {}   // 読み込みを促す
+      if (!_dexPaintCard(cv, d)) pending++;
+    });
+    if (pending && tries < 12 && document.body.contains(grid)) setTimeout(tick, 140);
+  };
+  setTimeout(tick, 60);
+}
+
 function renderCollection() {
   if (typeof dexUnlocked === "function" && !dexUnlocked()) {   // Ⓐ 早期解放を封じる：図鑑は初的中で開く（mall型の案内つき）。
     if (typeof renderHome === "function") renderHome();
@@ -1563,12 +1598,7 @@ function renderCollection() {
       (fav ? `<span class="dex-fav">★</span>` : "");
     if (seen) {
       const cv = card.querySelector("canvas");
-      if (cv && cv.getContext && typeof rcDrawDragon === "function") {
-        const _fit2 = _dexFitSprite(d.id, 78, 56, 5, 4, 6);
-        const _o2 = _fit2 ? { id: d.id, x: _fit2.x, y: _fit2.y, scale: _fit2.scale, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 }
-          : { id: d.id, x: 42, y: 38, scale: 0.72, color: dragonColor(d), style: d.style, gait: 0, flap: 1.0, lean: 0.25, glow: 0.4 };
-        rcDrawDragon(cv.getContext("2d"), _o2);
-      }
+      if (cv && cv.getContext) { cv.dataset.did = d.id; _dexPaintCard(cv, d); }
       card.onclick = () => showCollectionDragonDetail(d);
     } else {
       const cv = card.querySelector("canvas"); if (cv) cv.style.display = "none";
@@ -1576,6 +1606,7 @@ function renderCollection() {
     grid.appendChild(card);
   });
   app.appendChild(grid);
+  _dexRepaintUntilReady(grid);   // ★スプライトは非同期ロード＝初回描画では間に合わない（下の注記）
   if (shown === 0)
     app.appendChild(el("div", "condition-line", _dexFilter === "fav"
       ? "お気に入りはまだありません（カード詳細から★を付けられます）。"

@@ -630,3 +630,27 @@ function showDragonDetail(id) {
 // （SCOUT_SPOTS / poroScoutCandidates / showScoutResult）はここから撤去した。
 // 成立の払い出し（collection.scouted/seen＋raiseAffection＋epPush）は新UI側で同一。
 // =========================================================================
+
+// =========================================================================
+// 開発用：図鑑を全開放して竜の絵を一覧する（?go=collection&dev=1 から呼ぶ）
+// =========================================================================
+// 竜のスプライトや識別色を見直すとき、実際に遊んで全種そろえるのは現実的でないため。
+// ★触るのは図鑑の「見た」フラグだけ＝表示専用メタ。スカウト成立(scouted)・絆・
+//   レースの着順/オッズ/配当には一切触れない（[[race-math-immutable]]）。
+function devSeeAllDragons() {
+  try {
+    const p = state.player;
+    if (typeof setStoryFlag === "function") setStoryFlag("everHit", true);   // 図鑑の解放条件
+    p.flags = p.flags || {}; p.flags.everHit = true;
+    p.collection = p.collection || {};
+    (typeof DRAGONS !== "undefined" ? DRAGONS : []).forEach(d => {
+      const e = p.collection[d.id] || {};
+      e.seen = true;                                     // ★seen だけ。scouted は立てない
+      e.records = e.records || { racesSeen: 0 };
+      p.collection[d.id] = e;
+    });
+    if (typeof saveGame === "function") saveGame();
+    return { seen: Object.keys(p.collection).length, total: (typeof DRAGONS !== "undefined" ? DRAGONS.length : 0) };
+  } catch (e) { return { error: String(e) }; }
+}
+if (typeof window !== "undefined") window.devSeeAllDragons = devSeeAllDragons;

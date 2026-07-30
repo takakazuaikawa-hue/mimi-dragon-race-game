@@ -125,6 +125,8 @@ function applyStartupRoute() {
           shinganDevUnlock({ replay: p.get("replay") !== "0" });
           if (p.get("preset") && typeof shinganDevPreset === "function") shinganDevPreset(p.get("preset"));
         }
+        // 図鑑＝全竜を「見た」状態にして絵を一覧できるようにする（竜の絵の見直し用）。
+        if (go === "collection" && typeof devSeeAllDragons === "function") devSeeAllDragons();
       } catch (e) { try { console.warn("dev prep failed:", go, e); } catch (_) {} }
     }
     if (go && screenMap()[go]) return goto(go);
