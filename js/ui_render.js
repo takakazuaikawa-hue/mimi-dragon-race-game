@@ -3442,10 +3442,24 @@ function drawRecapScreen() {
       else if (g.assetsDelta < 0) R("🏦", "資産", "−" + fmtCoins(-g.assetsDelta), "loss");
       if (g.rankUp) R("🏅", "ランク昇格！", "ランク" + g.rankUp, "rankup");
       // ★解放は結果画面では静かに1行だけ（章題は出さず「新しい話が届いた」）。詳しい案内は物語ナビ/ホーム側で。
-      if (g.storyUnlocked && g.storyUnlocked.length) R("📖", "新しい話が届いた", "〈物語〉へ", "rankup");
+      //   ★この行だけタップで物語へ飛ばす（rs-lg-go）。「次のレースへ」を連打してホームに戻らない人には
+      //   ここが唯一の即時告知なのに、ただの表示で押せず鈴（ホーム到着時のカットイン）まで気づけなかった。
+      if (g.storyUnlocked && g.storyUnlocked.length) R("📖", "新しい話が届いた", "〈物語〉へ ▶", "rankup rs-lg-go");
       if (g.mission) R("📋", "デイリーミッション「出走」", "達成！", "asset");
       const box = el("div", "rs-ledger");
       box.innerHTML = `<div class="rs-lg-t">📦 今回の獲得</div>` + rows.join("");
+      // 台帳の他の行は表示のまま（触らない）。押せる行だけに導線を付ける。
+      const goRow = box.querySelector(".rs-lg-go");
+      if (goRow) {
+        goRow.setAttribute("role", "button");
+        goRow.tabIndex = 0;
+        const goStory = () => {
+          try { if (window.Sfx) Sfx.play("nav"); } catch (e) {}
+          if (typeof renderStory === "function") renderStory();
+        };
+        goRow.onclick = goStory;
+        goRow.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); goStory(); } };
+      }
       app.appendChild(box);
     } else {
       if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));

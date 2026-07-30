@@ -30,6 +30,38 @@ const RACE_BGM_TRACKS = [
   "lets-do-this.mp3"   // 「やったるで」＝気合い曲。レース実況のローテーションに追加（ASCII名でNFD404回避）
 ];
 
+// ── 曲別ゲイン（B-2：素材ごとのラウドネス差を均す） ────────────────────────
+// 納品mp3のラウドネスは曲ごとにバラバラで、同じ a.volume でも体感の大きさが倍近く違った
+// （＝「モールの音が大きすぎる」の正体）。WebAudio の decodeAudioData で全曲のRMSを実測し、
+// **一番静かな曲を1.0**として、他をRMS比で**下げるだけ**（上げない＝クリップさせない）。
+// 実測は docs/FLOW_AUDIO_AUDIT_DIRECTIVE.md B-2 の表を参照。キーは**ファイル名だけ**。
+// 曲を足したときは、ここに1行足さなければ 1.0（=素の音量）として鳴る。
+// 実測（2026-07-30・全曲をdecodeAudioDataしてRMS）：基準＝一番静かな lets-do-this.mp3（RMS 0.1195 / -18.45dBFS）。
+// gain = 0.1195 / その曲のRMS（＝どの曲も体感で同じ大きさに揃う／下げるだけなのでクリップしない）。
+const TRACK_GAIN = {
+  // bgm/racebgm/                          RMS      dBFS
+  "crown-of-thunder.mp3": 0.80,         // 0.1502  -16.47
+  "the-fanfare.mp3": 0.79,              // 0.1514  -16.40
+  "sky-hero.mp3": 0.84,                 // 0.1425  -16.92
+  "unlosable-battle.mp3": 0.76,         // 0.1564  -16.12
+  "fog-cutting-flag.mp3": 0.88,         // 0.1364  -17.31
+  "lets-do-this.mp3": 1.00,             // 0.1195  -18.45 ← 基準（一番静か）
+  "fanfare-days.mp3": 0.83,             // 0.1445  -16.80
+  // bgm/mallbgm/
+  "mall-day.mp3": 0.81,                 // 0.1467  -16.67
+  "mall-boss.mp3": 0.74,                // 0.1620  -15.81
+  "mall-fever.mp3": 0.85,               // 0.1411  -17.01
+  "mallでお買い物.mp3": 0.75,            // 0.1599  -15.92
+  "ドラゴンモールで爆買いバニー.mp3": 0.59,  // 0.2026  -13.87 ← 一番大きい（「モールがうるさい」の主犯）
+  "バニーガールメンタルで買い物モールは最高.mp3": 0.75,   // 0.1599  -15.92
+  // bgm/homebgm/（いまは無音運用・鳴らすときのために測っておく）
+  "くつろぎ.mp3": 0.86,                  // 0.1389  -17.15
+  "ホームカントリー.mp3": 0.85,           // 0.1411  -17.01
+  // bgm/（終章・エンディング）
+  "絶滅のファンファーレ.mp3": 0.99,        // 0.1205  -18.38
+  "ある日森の中ドラゴンに出会った.mp3": 0.84  // 0.1424  -16.93
+};
+
 var RaceBgm = (function () {
   var audio = null;
   var MUTE_KEY = "mimi_muted";
@@ -38,6 +70,50 @@ var RaceBgm = (function () {
   var bgmLevel = 1;             // ユーザー音量 0..1（1.0=従来）
   try { var _bv = parseFloat(localStorage.getItem(VOL_KEY)); if (_bv >= 0 && _bv <= 1) bgmLevel = _bv; } catch (e) {}
   var lastIdx = -1;   // 直前と同じ曲を避けて選ぶ
+
+  // ── 「鳴っているaudioは常に1本」の不変条件 ────────────────────────────────
+  // ★事故の実態（実測して確定・2026-07-30）：旧 fadeOut() は `audio = null` してから
+  //   1.4〜3秒かけて**参照を失ったaudio**をフェードしていた。そのあいだに playFile()／stop()／
+  //   setMuted() が来ても、それらは新しい（または存在しない）audio しか見ないので、
+  //   古い曲は**止める手段のないまま鳴り続けた**。実測での再現：
+  //     ゴール fadeOut(3000) → 結果画面のファンファーレ → モールへ移動 で **同時再生2本**
+  //     （レース曲 t=24.66s v=0.273 と mall-day v=0.42 が並走）。
+  //     さらに フェード中の stop() でも消えず／フェード中の ミュート でも消えなかった。
+  // ★構造的な直し：フェード中も `audio` は**その要素を指したまま**にし、音量は
+  //   「基準 × ユーザー音量 × 曲別ゲイン × ダッキング × フェード」の掛け算で一元管理する。
+  //   差し替え・停止は必ず _detach()（pause＋src=""）を通り、世代番号(gen)で古いタイマーを黙らせる。
+  var gen = 0;        // 世代番号。audio を差し替える／止めるたびに進む
+  var fadeIv = null;  // 進行中のフェードアウト（同時に1本だけ）
+  var fadeMul = 1;    // フェードの係数 1→0
+  var curGain = 1;    // いま鳴っている曲の TRACK_GAIN
+  var duckMul = 1;    // ダッキングの係数（効果音の瞬間だけ 0.35 へ）
+  var duckT = null, duckIv = null;
+
+  function _gainOf(relPath) {
+    try {
+      var base = decodeURIComponent(String(relPath).split("/").pop());
+      var g = TRACK_GAIN[base];
+      return (g > 0 && g <= 1) ? g : 1;
+    } catch (e) { return 1; }
+  }
+  // いま鳴っているaudioへ音量を反映（掛け算はここ1箇所だけ＝フェード/ダッキング/スライダが喧嘩しない）。
+  function _applyVolume() {
+    if (!audio) return;
+    try { audio.volume = Math.max(0, Math.min(1, BGM_BASE * bgmLevel * curGain * duckMul * fadeMul)); } catch (e) {}
+  }
+  function _detach(a) { try { a.pause(); a.src = ""; a.load(); } catch (e) {} }
+  function _clearFade() { if (fadeIv) { clearInterval(fadeIv); fadeIv = null; } fadeMul = 1; }
+  function _clearDuck() {
+    if (duckT) { clearTimeout(duckT); duckT = null; }
+    if (duckIv) { clearInterval(duckIv); duckIv = null; }
+    duckMul = 1;
+  }
+  // 新しい曲を主役に据える共通口（start/playFile はこれだけを通る）。
+  function _adopt(a, relPath) {
+    curGain = _gainOf(relPath);
+    audio = a;
+    _applyVolume();
+  }
   // 「いま何を鳴らしている/鳴らすべきか」の意図。ミュート中に start()/playFile() されても
   // ここに残るので、ミュート解除時に正しく復帰できる（旧実装は解除時に何もせず
   // 「一度消すと二度と鳴らない」バグだった）。stop()/fadeOut() で消える。
@@ -98,26 +174,49 @@ var RaceBgm = (function () {
 
   function stop() {
     pending = null;                 // 意図ごと止める（画面離脱・明示停止）
-    if (audio) {
-      try { audio.pause(); audio.src = ""; audio.load(); } catch (e) {}
-      audio = null;
-    }
+    gen++;                          // ★進行中のフェードを黙らせる（下のタイマーは何もしなくなる）
+    _clearFade();
+    _clearDuck();
+    if (audio) { _detach(audio); audio = null; }
   }
 
   // ゴール時：音量をなめらかに絞ってから停止（歓声に重ねてフェードアウト）。
+  // ★フェード中も audio はこの要素を指したまま＝stop()／playFile()／setMuted() が必ず届く
+  //   （＝新しい曲が始まった瞬間に古い曲は消える＝二重再生が原理的に起きない）。
   function fadeOut(ms) {
     pending = null;               // フェード終了後に勝手に復帰しない
     if (!audio) return;
-    var a = audio;
-    audio = null;                 // 次レースが新規 start できるよう即デタッチ
-    try {
-      var dur = ms || 1400, steps = 20, i = 0, v0 = a.volume;
-      var iv = setInterval(function () {
+    var a = audio, myGen = ++gen;
+    _clearFade();                 // 二重フェードで音量が飛ぶのを防ぐ（直前のフェードは畳む）
+    var dur = ms || 1400, steps = 20, i = 0;
+    var iv = setInterval(function () {
+      if (myGen !== gen || audio !== a) { clearInterval(iv); return; }   // 世代交代済み＝もう主役ではない
+      i++;
+      fadeMul = Math.max(0, 1 - i / steps);
+      _applyVolume();
+      if (i >= steps) { clearInterval(iv); if (fadeIv === iv) fadeIv = null; stop(); }
+    }, dur / steps);
+    fadeIv = iv;
+  }
+
+  // ★B-3 ダッキング：勝利/レジェンダリー等の効果音が鳴る瞬間だけBGMを下げ、静かに戻す。
+  //   触るのは**BGMの音量だけ**（効果音側は一切変えない）。曲の再生位置もそのまま。
+  var DUCK_MUL = 0.35, DUCK_HOLD = 200, DUCK_BACK = 1200;
+  function duck() {
+    if (!audio) return;
+    _clearDuck();
+    duckMul = DUCK_MUL;
+    _applyVolume();
+    duckT = setTimeout(function () {
+      duckT = null;
+      var i = 0, steps = 12;
+      duckIv = setInterval(function () {
         i++;
-        try { a.volume = Math.max(0, v0 * (1 - i / steps)); } catch (e) {}
-        if (i >= steps) { clearInterval(iv); try { a.pause(); a.src = ""; a.load(); } catch (e) {} }
-      }, dur / steps);
-    } catch (e) { try { a.pause(); } catch (e2) {} }
+        duckMul = DUCK_MUL + (1 - DUCK_MUL) * (i / steps);
+        if (i >= steps) { duckMul = 1; clearInterval(duckIv); duckIv = null; }
+        _applyVolume();
+      }, DUCK_BACK / steps);
+    }, DUCK_HOLD);
   }
 
   function start() {
@@ -128,13 +227,13 @@ var RaceBgm = (function () {
     if (idx < 0) return;                 // 曲が未設置 → 無音の no-op
     lastIdx = idx;
     try {
-      var a = new Audio(RACE_BGM_DIR + encodeURIComponent(RACE_BGM_TRACKS[idx]));
+      var name = RACE_BGM_TRACKS[idx];
+      var a = new Audio(RACE_BGM_DIR + encodeURIComponent(name));
       a.loop = true;                     // レースの長さに合わせてループ
-      a.volume = BGM_BASE * bgmLevel;    // 効果音(Sfx master 0.42)に埋もれない程度（×ユーザー音量）
       routeThroughWebAudio(a);             // ★旧iOS向けの保険（新APIがある環境では何もしない）
+      _adopt(a, name);                   // 音量＝基準×ユーザー音量×曲別ゲイン（効果音に埋もれない程度）
       var p = a.play();
       if (p && p.catch) p.catch(function () {});   // 自動再生がブロックされても無視
-      audio = a;
     } catch (e) { audio = null; }
   }
 
@@ -143,10 +242,13 @@ var RaceBgm = (function () {
   // 旧実装（mute=破棄・解除=何もしない）は「一度消すとBGMが二度と鳴らない」バグ。
   function setMuted(m) {
     if (m) {
+      // ★フェード中のミュートは「そのまま止める」＝復帰先(pending)は fadeOut が既に消しているので、
+      //   一時停止でお茶を濁すと**消したのに鳴り続ける**（実測済のバグ）。
+      if (fadeIv) { stop(); return; }
       if (audio) { try { audio.pause(); } catch (e) {} }
     } else {
       if (audio) {
-        try { audio.volume = BGM_BASE * bgmLevel; var p = audio.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+        try { _applyVolume(); var p = audio.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
       } else if (pending) {
         if (pending.kind === "file" && pending.path) playFile(pending.path, { once: pending.once });
         else start();
@@ -158,7 +260,7 @@ var RaceBgm = (function () {
   function setVolume(v) {
     bgmLevel = Math.max(0, Math.min(1, (v == null ? 1 : v)));
     try { localStorage.setItem(VOL_KEY, String(bgmLevel)); } catch (e) {}
-    if (audio) { try { audio.volume = BGM_BASE * bgmLevel; } catch (e) {} }
+    _applyVolume();   // 曲別ゲイン・フェード・ダッキングを保ったままスライダぶんだけ反映
   }
   function getVolume() { return bgmLevel; }
 
@@ -174,10 +276,9 @@ var RaceBgm = (function () {
       parts[parts.length - 1] = encodeURIComponent(parts[parts.length - 1]);   // 日本語/空白のファイル名を安全に
       var a = new Audio(parts.join("/"));
       a.loop = !opts.once;   // once=true＝ループしない単発ジングル（結果画面のファンファーレ等）
-      a.volume = BGM_BASE * bgmLevel;
       routeThroughWebAudio(a);             // ★旧iOS向けの保険（新APIがある環境では何もしない）
+      _adopt(a, relPath);                  // 音量＝基準×ユーザー音量×曲別ゲイン
       var p = a.play(); if (p && p.catch) p.catch(function () {});
-      audio = a;
     } catch (e) { audio = null; }
   }
 
@@ -189,6 +290,7 @@ var RaceBgm = (function () {
     setVolume: setVolume,
     getVolume: getVolume,
     playFile: playFile,
+    duck: duck,           // ★効果音の瞬間だけBGMを下げる（sfx.js から呼ばれる・音量以外は触らない）
     // 「端末が消音でも鳴らす」を切り替えた直後に呼ばれる。旧iOSでは経路（Web Audio経由か否か）
     // が変わるため、鳴らし直さないと新しい設定が効かない。意図(pending)から作り直す。
     reapplySession: function () {
@@ -198,7 +300,13 @@ var RaceBgm = (function () {
       if (k === "file" && p) playFile(p, { once: o }); else start();
     },
     isPlaying: function () { return !!audio; },
-    trackCount: function () { return RACE_BGM_TRACKS.length; }
+    trackCount: function () { return RACE_BGM_TRACKS.length; },
+    // 検証用の覗き窓（表示専用・ゲームは読まない）。混在バグの再発を機械確認するために置く。
+    debugState: function () {
+      return { gen: gen, fading: !!fadeIv, curGain: curGain, duckMul: +duckMul.toFixed(3),
+               fadeMul: +fadeMul.toFixed(3), vol: audio ? +audio.volume.toFixed(3) : null,
+               src: audio ? decodeURIComponent((audio.src || "").split("/").pop()) : null };
+    }
   };
 })();
 if (typeof window !== "undefined") window.RaceBgm = RaceBgm;

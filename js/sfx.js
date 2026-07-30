@@ -117,10 +117,14 @@ var Sfx = (function () {
 
   var C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5, E6 = 1318.5, G6 = 1568.0;
 
+  // ★勝ちの効果音とBGMがぶつかって団子になるのを避ける（B-3 ダッキング）。
+  //   ここで**効果音は一切変えない**。鳴った瞬間を RaceBgm へ知らせ、BGM側が自分の音量だけ下げる。
+  var DUCK_SFX = { win: 1, bigwin: 1, legendary: 1 };
   function play(name, rate) {
     if (muted) return;
     if (!ensure()) return;
     resume();
+    if (DUCK_SFX[name]) { try { if (window.RaceBgm && RaceBgm.duck) RaceBgm.duck(); } catch (e) {} }
     pr = (rate > 0 ? rate : 1);             // 任意のピッチ倍率（連発音の単調さ回避）。既定1=従来どおり
     var t = ctx.currentTime + 0.01;
     try {

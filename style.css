@@ -1977,6 +1977,11 @@ table.entry-table {
 .rs-lg-row.asset b { color: var(--jade-bright); }
 .rs-lg-row.rankup { background: rgba(255,216,119,.08); border-radius: 8px; border-top: 0; }
 .rs-lg-row.rankup b { color: var(--gold-bright); }
+/* 押せる台帳行（📖 新しい話が届いた → 物語へ）。他の行は表示のままなので、
+   「押せる」ことが見て分かる差（枠・指カーソル・押し込み）をこの行だけに付ける。 */
+.rs-lg-row.rs-lg-go { cursor: pointer; padding: 6px 8px; border: 1px solid var(--gold-line); }
+.rs-lg-row.rs-lg-go:active { transform: translateY(1px); background: rgba(255,216,119,.18); }
+.rs-lg-row.rs-lg-go:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
 
 /* ===== ？インフォボタン＋お金のしくみモーダル ===== */
 .info-q { width: 22px; height: 22px; padding: 0; box-sizing: border-box; flex: none; margin-left: 6px;
