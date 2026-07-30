@@ -163,14 +163,30 @@ function _sgOutcome(res) {
   if ((rows[1].time - rows[0].time) <= T) return "tie2";
   return "clean";
 }
-function _sgList(arr) { return arr.map(r => r.ic + " " + r.name).join("、"); }
+// ★VNの台詞に絵文字は入れない（口に出して読む文字ではないので、喋りが不自然になる）。
+//   絵文字を使うのは画面の予想カードだけ。
+function _sgList(arr) { return arr.map(r => r.name).join("、"); }
 // セレスティアの宣言＝上位3頭を着順つきで。プレイヤーのどの買い方よりも厳しい予想なので、
 // 「配当の大小」を比べる必要がなく（ワイドは単勝より当たりやすい＝比べると彼女が格下になる）、
 // 素直に“彼女の方が上を当てた”が成立する。★同着に言及させない＝答えを先出ししない。
 function _sgOrderCall(res) {
-  return res.rows.slice(0, 3).map((r, i) => `${i + 1}着 ${r.ic} ${r.name}`).join("、");
+  return res.rows.slice(0, 3).map((r, i) => `${i + 1}着 ${r.name}`).join("、");
 }
 function _sgBetName(k) { const b = SG_BETS.find(x => x.k === k); return b ? b.nm.replace("予想", "") : "単勝"; }
+
+// マクラの宣言コール。★声＝物語でのマクラ（「〜だぜ」「〜だァ！」の勢いのある実況）。
+//   単勝なのに複数頭を読み上げることになったら、実況として必ず引っかかる＝そこを拾わせる。
+//   （この時点でプレイヤーは既に同着を作っている＝これは“次の一手”のヒントではなく反応）
+function _sgDeclareCall(kind, arr) {
+  const nm = _sgList(arr), n = arr.length;
+  if (kind === "tan") {
+    return n === 1
+      ? `さあ来たァ！ ミミちゃんの宣言——単勝、${nm}の一点だ！ この大舞台で一点勝負たァ、いい度胸だぜ！`
+      : `さあ来たァ！ ミミちゃんの宣言——単勝、${nm}……ってオイ！ 単勝で${n}頭ってどういう了見だァ！？ そんな買い目、聞いたことねぇぞ！`;
+  }
+  if (kind === "fuku") return `さあ来たァ！ ミミちゃんの宣言——複勝、${nm}の${n}点だ！`;
+  return `さあ来たァ！ ミミちゃんの宣言——ワイド、${nm}！ 上位まるごと指しやがったァ！`;
+}
 
 // ── 開発検証用ソルバ（山登り法・解の存在証明。UIからは呼ばない） ──────────
 function _sgSolve(iters) {
@@ -435,7 +451,7 @@ function _sgChallenge(kind) {
   if (out === "tie3") { _sgClear(kind, mine, betNm); return; }
 
   const vn = [
-    ["makura", `さあ挑戦者の宣言だァ！ ミミ選手——「${betNm}、${mine}」ッ！`],
+    ["makura", _sgDeclareCall(kind, pr[kind])],
     ["celestia", `じゃあ私は、一着から三着まで。${order}。……順番も、この通り。`, "default"]
   ];
   if (out === "tie2") {
