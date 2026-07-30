@@ -269,17 +269,38 @@ function _sgIntroVN(done) {
   ], { force: true }).then(done);
 }
 
+// ── クリアの一枚絵（赤目ミミ）＝全画面カード。タップ／自動で閉じて次のVNへ。 ──
+//   画像は images/story/shingan_clear.webp（Higgsfield生成・章の一枚絵と同じ画風・2:3）。
+//   ★画像が無い環境でも進行が止まらないよう、onerror でカードを閉じて先へ進める。
+function _sgKeyVisual() {
+  return new Promise(function (resolve) {
+    var done = false;
+    function close() {
+      if (done) return; done = true;
+      try { ov.classList.add("out"); } catch (e) {}
+      setTimeout(function () { try { ov.remove(); } catch (e) {} resolve(); }, 420);
+    }
+    var ov = el("div", "sg-kv");
+    ov.innerHTML =
+      '<div class="sg-kv-flash"></div>' +
+      '<img class="sg-kv-img" alt="">' +
+      '<div class="sg-kv-cap">三頭同着。——絶滅の神眼は、視るべき決着を失った。</div>' +
+      '<div class="fin-skip">タップで進む ▶</div>';
+    var img = ov.querySelector(".sg-kv-img");
+    img.onerror = function () { close(); };                  // 画像未納品でも詰まらせない
+    img.src = "images/story/shingan_clear.webp";
+    document.body.appendChild(ov);
+    try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+    ov.onclick = close;
+    setTimeout(close, 6200);                                 // 自動で先へ（長居させない）
+  });
+}
+
 // ── クリア：赤目の同着 → 走馬灯/八竜（既存流用）→ edFlag → エンディング ────
 function _sgClear() {
   const sg = shinganData();
   sg.cleared = true; sg.best = _sgLast ? _sgLast.spread : 0;
   if (typeof saveGame === "function") saveGame();
-  // 赤い閃光＝赤目の一瞬（一枚絵はアート納品後に差し替え・CAST_ART_BRIEF）
-  try {
-    const fl = el("div", "sg-redflash"); document.body.appendChild(fl);
-    setTimeout(() => { try { fl.remove(); } catch (e) {} }, 900);
-    if (window.Sfx) Sfx.play("legendary");
-  } catch (e) {}
   const top3 = _sgLast ? _sgLast.rows.slice(0, 3).map(r => r.name).join("・") : "三頭";
   const vn = [
     ["narrator", "——ゴール線上。三つの影が、完全に、重なった。"],
@@ -302,10 +323,11 @@ function _sgClear() {
   const runShow = () => {
     if (typeof playFinalShowcase === "function") playFinalShowcase().then(afterShow); else afterShow();
   };
-  setTimeout(() => {
+  // 一枚絵（赤目ミミ）→ 同着VN → 走馬灯 → 八竜 → ED
+  _sgKeyVisual().then(() => {
     if (window.Dialogue && Dialogue.play) Dialogue.play(vn, { force: true }).then(runShow);
     else runShow();
-  }, 700);
+  });
 }
 
 if (typeof window !== "undefined") {
