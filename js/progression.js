@@ -36,26 +36,10 @@ const UNLOCKS = [
     notifyTitle: "🌱 くらしツリーが解放！",
     notifyBody: "レースで稼いだコインで生活を育てる「くらしツリー」と生活資産が使えるようになりました。負けた夜にも人生が終わらない、本当の準備を。" },
 
-  // ── ★章の「読める」を向こうから知らせる（ユーザー指摘：条件が揃っても、物語画面へ行かない限り
-  //    出会いが起きない＝第2話で実際に詰まった）。出会い自体は従来どおり物語の中（VN）で行う＝
-  //    ここは呼び鈴だけ。未登場キャラの固有名は出さない（ネタバレ門番と同じ規律）。
-  //    cond は「読める＆未読」なので、先に読んでいれば一度も鳴らない。
-  { id: "ch2ready", icon: "📖", label: "第2話", tier: "cutin", go: "story",
-    cond: function () { return _chReady("2"); },
-    notifyTitle: "📖 第2話が読めるようになった！",
-    notifyBody: "はじめての自分の一着——それを見ていた人がいます。物語で新しい出会いが待っています。予想のやり方が、ここから変わる。" },
-  { id: "ch3ready", icon: "📖", label: "第3話", tier: "cutin", go: "story",
-    cond: function () { return _chReady("3"); },
-    notifyTitle: "📖 第3話が読めるようになった！",
-    notifyBody: "勝った。じゃあ、その勝ち分をどう守る？　物語で新しい出会いが待っています。暮らしの話です。" },
-  { id: "ch4ready", icon: "📖", label: "第4話", tier: "cutin", go: "story",
-    cond: function () { return _chReady("4"); },
-    notifyTitle: "📖 第4話が読めるようになった！",
-    notifyBody: "総資産100万。島はもう、あなたを放っておきません。物語で新しい出会いが待っています。" },
-  { id: "ch5ready", icon: "📖", label: "第5話", tier: "cutin", go: "story",
-    cond: function () { return _chReady("5"); },
-    notifyTitle: "📖 最終話が読めるようになった！",
-    notifyBody: "総資産1億。世界の天井の向こうから、誰かがこの島を見ています。物語へ。" },
+  // ── ※章の「読める」呼び鈴は progressionCheckOnHome 冒頭の nextUnreadChapter → _showStoryCutin が
+  //    **既に担っている**（story_<id>フラグ）。同役のch2ready〜ch5readyを一度足して二重に鳴らした
+  //    ため撤去（監査で発覚）。既存の呼び鈴は「あとで」で二度と鳴らない＝その救済は
+  //    目標の動的ヒント＋「▶ 物語へ」ボタンが担う。
 
   // ── ★章を読んだ後の「何が開いたか」（ユーザー指摘：ミズに会っても分析予想の案内が無い）。
   //    出会い済みなので固有名を出してよい。
@@ -92,11 +76,6 @@ const UNLOCKS = [
 function _scoutLocOpen(id) {
   try { return (typeof poroScoutUnlocked === "function") && poroScoutUnlocked() &&
     (typeof scoutLocationUnlocked === "function") && scoutLocationUnlocked(id); } catch (e) { return false; }
-}
-// 章が「読める＆まだ読んでいない」＝呼び鈴を鳴らす条件。先に読んだ人には一度も鳴らない。
-function _chReady(id) {
-  try { return (typeof chapterAvailable === "function") && chapterAvailable(id) &&
-    (typeof chapterRead === "function") && !chapterRead(id); } catch (e) { return false; }
 }
 
 // ===== 暮らし×物語 結線（正本 docs/KURASHI_STORY_WEAVE.md）=====
@@ -169,7 +148,10 @@ function _markNotified(id) { if (typeof setStoryFlag === "function") setStoryFla
 // 立ち上がり直後のログボ等と喧嘩しないよう、呼び出し側で「初出走前は呼ばない」こと（FTUE保護）。
 function progressionCheckOnHome() {
   try {
-    if (document.querySelector(".navpop-ov")) return;   // 既に何かのモーダルが出ていたら譲る（1到着1件ルール）
+    // 既に何かのモーダル/VN/演出が出ていたら譲る（1到着1件ルール）。
+    // ★監査で穴：旧ガードは .navpop-ov だけ＝ホーム到着時にVN（dlg-overlay・スマホ購入等）や
+    //   情報ポップ（mm-ov/info-ov）が出ているとcut-inが上に重なった。全部に譲る。
+    if (document.querySelector(".navpop-ov, .dlg-overlay, .mm-ov, .info-ov, .mv-ov")) return;
     let cutinDone = false;
     // ★物語の新章＝レース直後にモーダルを出さず、ここ（次のホーム到着）で静かに1件だけ案内する（ユーザー指摘）。
     //   優先度は高め（新しい話は大きな出来事）＝他の解放より先に見せる。1到着1モーダルの枠を消費する。
