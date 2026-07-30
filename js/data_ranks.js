@@ -109,12 +109,40 @@ function livingRankOf(lv) {
   const n = Math.max(1, Math.min(lv || 1, LIVING_RANKS.length));
   return LIVING_RANKS[n - 1];
 }
+// ★暮らしレベルの上限＝くらしスキルツリーの解放ノード数（2026-07-31・ユーザー決裁）。
+//   ねらい：的中だけを稼いでも、暮らしが伸びていなければレベルは上がらない。
+//   式＝1 + floor(解放ノード数 / 20)（最大10）。★ツリーの実構造を精査して決めた：
+//     ・全200ノード／前提の連鎖なし／資産帯(0,1万,10万,100万,1億)で開く平らな表
+//     ・各帯までに取れる累計＝36/72/108/144/200 に対し、必要ノードは 20/60/100/140/180
+//       ＝どの帯でもちょうど2レベルぶん開き、必ず余裕（最小4）が残る＝押し忘れで詰まない
+//   ⚠️上限は「これ以上**上がらない**」だけ。すでに得たレベルは絶対に下げない
+//     （下げると救済額と賭金上限が縮んで、途中から理不尽になる）。
+//   ⚠️ツリーは第3話で開く。それ以前は縛らない（序盤のテンポを損なわないため）。
+const LIVING_NODES_PER_LV = 20;
+function livingLevelCap(st) {
+  const s = st || state;
+  try {
+    // 第3話（ツリー解放）前は上限なし＝従来どおり的中だけで伸びる
+    const treeOpen = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
+    if (!treeOpen) return LIVING_RANKS.length;
+    const got = (typeof lifeTreeStats === "function") ? (lifeTreeStats().unlockedCount || 0) : 0;
+    return Math.max(1, Math.min(LIVING_RANKS.length, 1 + Math.floor(got / LIVING_NODES_PER_LV)));
+  } catch (e) { return LIVING_RANKS.length; }   // 判定できないときは縛らない（fail-open）
+}
 // 次のレベルまでの進み具合。★しきい値は state.js gainVillageExp と同じ式（Lv×100）から引く＝二重管理しない。
 function livingRankProgress(st) {
-  const v = ((st || state).player || {}).village || {};
+  const s = st || state;
+  const v = (s.player || {}).village || {};
   const lv = v.level || 1, exp = v.exp || 0;
   const need = lv * 100;
-  return { lv, exp, need, max: lv >= LIVING_RANKS.length, pct: Math.max(0, Math.min(100, Math.round(exp / need * 100))) };
+  const cap = livingLevelCap(s);
+  const got = (typeof lifeTreeStats === "function") ? (lifeTreeStats().unlockedCount || 0) : 0;
+  // ツリーが足りずに頭打ちか（＝expは満ちているのに上がれない、またはこれ以上上がれない）
+  const blocked = lv >= cap && lv < LIVING_RANKS.length;
+  const needNodes = blocked ? Math.max(0, lv * LIVING_NODES_PER_LV - got) : 0;   // 次のLvを開くのに要るノード数
+  return { lv, exp, need, cap, blocked, nodes: got, needNodes,
+           max: lv >= LIVING_RANKS.length,
+           pct: Math.max(0, Math.min(100, Math.round(exp / need * 100))) };
 }
 
 // §08 §13 Rescue coins by village level.

@@ -232,8 +232,13 @@ function unlockLifeNode(node) {
   if (!state.lifeTree) state.lifeTree = { unlocked: {} };
   if (!state.lifeTree.unlocked) state.lifeTree.unlocked = {};
   state.lifeTree.unlocked[node.nodeId] = true;
+  // ★ノードを取ると暮らしレベルの上限が上がる（1 + floor(解放数/20)）。的中で貯めたexpが
+  //   頭打ちで待っていた場合、この瞬間にまとめて昇格させる＝「ツリーを進めたら暮らしが
+  //   伸びた」を待たせずに見せる（レース確定まで反映されないと因果が伝わらない）。
+  let livingUp = null;
+  if (typeof applyLivingLevelUps === "function") { try { livingUp = applyLivingLevelUps(0); } catch (e) {} }
   if (typeof saveGame === "function") saveGame();
-  return { ok: true };
+  return { ok: true, livingUp };
 }
 function respecLifeTree() {
   state.lifeTree = { unlocked: {} };

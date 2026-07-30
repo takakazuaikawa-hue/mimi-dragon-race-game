@@ -149,9 +149,25 @@ function renderAssets() {
         `<span>🎰 賭金の上限 <b>×${_mult}</b></span></div>` +
       (pr.max
         ? `<div class="lrank-next">この島で、これ以上の暮らしは無い。</div>`
-        : `<div class="lrank-bar"><div style="width:${pr.pct}%"></div></div>` +
+        : `<div class="lrank-bar${pr.blocked ? " blocked" : ""}"><div style="width:${pr.pct}%"></div></div>` +
+          // ★expが満ちている（＝あと0）ときに「あと0」と出すと、なぜ上がらないのか分からない。
+          //   満ちているなら「修行はじゅうぶん」と言い切り、理由は下のブロックに任せる。
           `<div class="lrank-next">次は <b>Lv.${pr.lv + 1}「${nextRk.title}」</b>　` +
-            `あと <b>${pr.need - pr.exp}</b>（レースで<u>的中</u>すると貯まる／上のランクほど大きい）</div>`);
+            (pr.exp >= pr.need
+              ? `<b>レースの経験はもうじゅうぶん</b>`
+              : `あと <b>${pr.need - pr.exp}</b>（レースで<u>的中</u>すると貯まる／上のランクほど大きい）`) +
+          `</div>` +
+          // ★頭打ちの理由と、必要なノード数を必ず出す。ここが見えないと「なぜ上がらないのか
+          //   分からない」＝理不尽になる（ツリーは一本道を1つずつ進める形なので特に）。
+          (pr.blocked
+            ? `<button class="lrank-block"><span>🌳 <b>暮らしが追いついていない</b>` +
+                `<small>くらしスキルツリーを <b>あと${pr.needNodes}個</b> 進めると Lv.${pr.lv + 1} が開きます` +
+                `（いま ${pr.nodes}／${pr.lv * 20} 個）</small></span><span class="as-entry-ch">›</span></button>`
+            : ""));
+    if (pr.blocked) {
+      const b = card.querySelector(".lrank-block");
+      if (b) b.onclick = () => { if (typeof renderLifeTree === "function") renderLifeTree(); };
+    }
     app.appendChild(card);
   }
 

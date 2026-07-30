@@ -356,17 +356,34 @@ function gainVillageExp(race, hit, newDragonsThisRace) {
   //   勝手に進む主犯だった）。的中時のみ育つ＝勝って島を潤す、へ。スカウトは常に加点。
   let gain = (hit ? race.rank * 15 : 0) + (newDragonsThisRace || 0) * 20;
   v.exp += gain;
-  const threshold = v.level * 100;
-  if (v.exp >= threshold && v.level < 10) {
-    v.exp -= threshold;
-    v.level += 1;
-    state.player.villageLevel = v.level; // sync shortcut
-    runEventHooks("onVillageUpdate", { newLevel: v.level, gain });
-    saveGame();
-    return v.level;
-  }
+  const up = applyLivingLevelUps(gain);
   saveGame();
-  return null;
+  return up;
+}
+
+// ★暮らしレベルの昇格判定（2026-07-31・ユーザー決裁）。
+//   expは的中で貯まるが、**くらしスキルツリーが伸びていないと上がらない**
+//   （livingLevelCap ＝ 1 + floor(解放ノード数 / 20)・data_ranks.js）。
+//   ・expは頭打ちの間も貯まり続ける＝ツリーを進めた瞬間にまとめて上がる（while で多段昇格）
+//   ・上限は「これ以上上がらない」だけ。**すでに得たレベルは絶対に下げない**
+//     （下げると救済額と賭金上限が縮み、途中から理不尽になる）
+//   ・レース確定時（gainVillageExp）とノード取得時（unlockLifeNode）の両方から呼ぶ＝
+//     どちらの操作でも待たされずに反映される
+function applyLivingLevelUps(gain) {
+  const v = state.player.village; if (!v) return null;
+  if (!v.exp) v.exp = 0;
+  const cap = (typeof livingLevelCap === "function") ? livingLevelCap(state) : 10;
+  let leveled = null;
+  while (v.level < 10 && v.level < cap && v.exp >= v.level * 100) {
+    v.exp -= v.level * 100;
+    v.level += 1;
+    state.player.villageLevel = v.level;   // sync shortcut
+    leveled = v.level;
+  }
+  if (leveled !== null && typeof runEventHooks === "function") {
+    runEventHooks("onVillageUpdate", { newLevel: leveled, gain: gain || 0 });
+  }
+  return leveled;
 }
 
 // §08 §11 Check rank unlock after race.
