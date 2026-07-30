@@ -103,12 +103,14 @@ function beginScreen() {
     poro_gourmet: "home",   // クリア後ミニゲームも迷子にしない（mall_rpgはラン中断防止のため意図的に無し＝race_runと同じ例外）
     sns: "home", konron_map: "home",   // SNSは戻る導線が無かった／観光は自前バックが画面下＝上部stickyを補う
     life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story",
-    konron_guide: "konron_map", konron_gallery: "konron_map",
+    konron_guide: "kiko",   // ★ガイドブックは紀行の連載「#島さんぽ」へ引っ越した（2026-07-31 IA統合）
+    konron_gallery: "konron_map",
+    konron_travelnote: "konron_map",   // 旅ノートは“次どこ行く？”の道具＝おでかけの持ち物として島に残す
     kiko: "home", media: "home"   // 📖紀行・📱メディア（2026-07-30 IA再編）
   };
   const BACK_TGT = {
     home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory },
-    konron_map: { l: "← 観光", f: (typeof renderKonronMap === "function" ? renderKonronMap : renderHome) },
+    konron_map: { l: "← おでかけ", f: (typeof renderKonronMap === "function" ? renderKonronMap : renderHome) },
     kiko: { l: "← 📖 紀行", f: (typeof renderKiko === "function" ? renderKiko : renderHome) }
   };
   let bt = BACK_TGT[TOP_BACK[screen]];

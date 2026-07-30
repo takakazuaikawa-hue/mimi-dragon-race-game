@@ -204,7 +204,7 @@ function _ktRenderRail() {
 function renderKonronMap() {
   if (!konronMapUnlocked()) {   // 解放前は入口で案内（?go=直行や旧導線でも迷子にしない）
     renderHome();
-    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ 観光",
+    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ おでかけ",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます。</small></div></div>`);
     return;
   }
@@ -266,6 +266,24 @@ function renderKonronMap() {
     }
   } catch (e) {}
 
+  // ★旅ノートのサマリを上へ（ユーザー決裁・2026-07-31）：中身が「あと◯エリアで制覇」「タップで
+  //   そのエリアへ跳ぶ」＝**次どこ行くかを決める道具**なので、読み物側（紀行）ではなくここに残す。
+  //   ただし「もっと楽しむ」の3枚目では埋もれていたので、地図の直前に1行の進み具合として出す
+  //   ＝おでかけタブが『今日どこ行く？』の画面になる。タップで旅ノート本体へ。
+  try {
+    const _tt = _kmTravelTitle();
+    if (_tt.total > 0) {
+      const _pc = Math.round(_tt.doneN / _tt.total * 100);
+      const tnr = el("button", "km-tnrow" + (_tt.got ? " done" : ""));
+      tnr.innerHTML = `<span class="km-tnrow-ic">📔</span>` +
+        `<span class="km-tnrow-tx"><b>旅ノート — エリア制覇 ${_tt.doneN} / ${_tt.total}</b>` +
+        `<small>${_tt.got ? "🏅 称号「崑崙路の写真家」を獲得ずみ。" : `あと ${_tt.total - _tt.doneN} エリアで称号「崑崙路の写真家」`}</small></span>` +
+        `<span class="km-tnrow-bar"><i style="width:${_pc}%"></i></span><span class="km-tnrow-go">▸</span>`;
+      tnr.onclick = () => renderKonronTravelNote();
+      app.appendChild(tnr);
+    }
+  } catch (e) {}
+
   // ⑤ 地図でさがす（暗いインセットの地図モジュール）
   app.appendChild(_ktSectionHead("地図でさがす", "エリアのピンから、その地区のスポットと施設へ。"));
   const mapmod = el("div", "kt-mapmod");
@@ -289,12 +307,11 @@ function renderKonronMap() {
   // ⑥ もっと楽しむ（ガイド／コレクション）＋戻る
   app.appendChild(_ktSectionHead("もっと楽しむ", ""));
   const more = el("div", "kt-more");
-  const g = el("button", "kt-more-card", `<span class="kt-more-ic">📖</span><b>崑崙ガイドブック</b><small>島の歴史・文化・食・竜・地理の図鑑</small>`); g.onclick = () => renderKonronGuide();
   const gal = el("button", "kt-more-card", `<span class="kt-more-ic">🖼</span><b>フォトコレクション</b><small>撮った景色＆ご当地グルメを集める</small>`); gal.onclick = () => renderKonronGallery();
-  // ★T3 旅ノート：エリアごとの記録を1ページに束ねる（スタンプ／傑作／実食／制覇）。
+  // ★T3 旅ノート：エリアごとの記録を1ページに束ねる（スタンプ／傑作／実食／制覇）。上部にサマリ行も出している。
   const tn = el("button", "kt-more-card", `<span class="kt-more-ic">📔</span><b>旅ノート</b><small>エリアごとの記録・制覇度・称号</small>`);
   tn.onclick = () => renderKonronTravelNote();
-  more.appendChild(g); more.appendChild(gal); more.appendChild(tn);
+  more.appendChild(gal); more.appendChild(tn);
   // ★歩けるマップは**移動手段ではなく散歩**（ユーザー決裁）。ピンの上ではなく「もっと楽しむ」に、
   //   急ぐ人が踏まない位置で置く。用が無くても、ただ歩きたい人のためのもの。
   if (typeof renderKonronWalk === "function" && typeof Scene !== "undefined") {
@@ -304,7 +321,11 @@ function renderKonronMap() {
     more.appendChild(walk);
   }
   app.appendChild(more);
-  app.appendChild(el("div", "kt-note", "※「観光」は表示専用です（レースの着順・オッズ・配当には影響しません）。"));
+  // ★ガイドブックは紀行へ引っ越した（IA統合）。ここには行き先の1行だけを残す＝読み物は紀行に集約。
+  const gline = el("button", "kt-toKiko", `📖 島の読み物（歴史・文化・食・竜・地理）は <b>紀行の #島さんぽ</b> に集めました ▸`);
+  gline.onclick = () => { state.ui._kikoBack = true; renderKonronGuide(); };
+  app.appendChild(gline);
+  app.appendChild(el("div", "kt-note", "※「おでかけ」は表示専用です（レースの着順・オッズ・配当には影響しません）。"));
   // M2：島の一日ループの出口（観光→次のレース／SNS未読）。docs/GAME_EXPERIENCE_DESIGN §3。
   try { const _nx = (typeof nextSuggestRow === "function") && nextSuggestRow("konron"); if (_nx) app.appendChild(_nx); } catch (e) {}
   const back = el("button", "kt-back", "← ホームへ戻る"); back.onclick = () => renderHome();
@@ -315,32 +336,48 @@ function renderKonronMap() {
 function renderKonronGuide() {
   if (!konronMapUnlocked()) {   // Ⓑ 親konron_mapと同じ条件でゲート（島がロック中はガイドも閉じる）。
     renderHome();
-    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ 観光",
+    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ おでかけ",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、崑崙島を巡れるようになります。</small></div></div>`);
     return;
   }
+  // ★IA統合（ユーザー決裁・2026-07-31）：「崑崙ガイドブックのページの情報は、紀行と統合した方が
+  //   いいのでは？」→ **紀行の記事棚に溶かす**を採用。
+  //   理由＝この画面は歴史/文化/食/竜/地理の“読み物”で、性質が完全に📖紀行（＝集めた記録を読む家）側。
+  //   実バグも1つあった：下部の戻るが「← おでかけへ戻る」固定だったので、紀行の #島さんぽ から入ると
+  //   島マップへ飛ばされて帰り道が壊れていた（[[screen-transition-continuity]]）。
+  //   ★screen id は "konron_guide" のまま（nav の ?go=／SCREEN_INDEX を壊さない）。変えたのは体裁と帰り道。
   state.ui.screen = "konron_guide";
   const app = beginScreen();
-  app.classList.add("kt-page");
+  app.classList.add("kiko-page");   // 図鑑の体裁(kt-page)をやめ、紀行の明るいWEBメディア面に合わせる
   let total = 0, open = 0;
   (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => c.entries.forEach(e => { total++; if (_kmTotal() >= (KM_TIER_AT[e.tier] || 0)) open++; }));
-  app.appendChild(_ktSectionHead("📖 崑崙ガイドブック", `崑崙島の歴史・文化・食・竜・地理を集める図鑑。総資産が増えると解放（表示専用）。<b>${open} / ${total}</b> 解放。`));
+
+  // 紀行の連載の一本として名乗る（ロゴ＋著者＋この連載の進み具合）
+  const head = el("div", "kiko-head");
+  head.innerHTML =
+    `<div class="kiko-logo">🏝️ 島さんぽ</div>` +
+    `<div class="kiko-byline">『ドラゴンレース紀行』連載 by ミミ🐰 <span class="kiko-badge">${open} / ${total} 本</span></div>` +
+    `<div class="kiko-stats"><span>歩いて、聞いて、書きためた崑崙島のはなし。</span></div>`;
+  app.appendChild(head);
+
   (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => {
-    const sec = el("div", "kg-sec");
-    let h = `<div class="kg-cat"><span class="kg-cat-ic">${c.ic}</span>${c.cat}</div>`;
+    app.appendChild(el("div", "kiko-sec", `${c.ic} ${c.cat}`));
     c.entries.forEach(e => {
       const unlocked = _kmTotal() >= (KM_TIER_AT[e.tier] || 0);
-      if (unlocked) {
-        h += `<div class="kg-entry"><b>${e.title}</b><p>${e.body}</p></div>`;
-      } else {
-        h += `<div class="kg-entry kg-entry--locked"><b>？？？</b><p>🔒 ${_kmTierLabel(e.tier)}で解放（総資産 ${(KM_TIER_AT[e.tier] || 0).toLocaleString("ja-JP")}）</p></div>`;
-      }
+      const art = el("div", "kiko-post" + (unlocked ? "" : " locked"));
+      art.innerHTML = unlocked
+        ? `<div class="kiko-post-k">${c.ic} ${c.cat}</div>` +
+          `<div class="kiko-post-t">${e.title}</div>` +
+          `<div class="kiko-post-b">${e.body}</div>` +
+          `<div class="kiko-post-tags">#島さんぽ #崑崙島 #${c.cat}</div>`
+        : `<div class="kiko-post-k">🔒 取材中</div>` +
+          `<div class="kiko-post-t">？？？</div>` +
+          `<div class="kiko-post-b">${_kmTierLabel(e.tier)}まで暮らしが育つと書ける記事です（総資産 ${(KM_TIER_AT[e.tier] || 0).toLocaleString("ja-JP")}）。</div>`;
+      app.appendChild(art);
     });
-    sec.innerHTML = h;
-    app.appendChild(sec);
   });
   const actions = el("div", "actions");
-  const back = el("button", "kt-back", "← 観光へ戻る"); back.onclick = () => renderKonronMap();
+  const back = el("button", "kt-back", "← 📖 紀行へ戻る"); back.onclick = () => renderKiko();
   actions.appendChild(back);
   app.appendChild(actions);
 }
@@ -350,7 +387,7 @@ function renderKonronGuide() {
 function renderKonronGallery() {
   if (!konronMapUnlocked()) {   // Ⓑ 親konron_mapと同じ条件でゲート（島がロック中はギャラリーも閉じる）。
     renderHome();
-    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ 観光",
+    if (typeof showInfoPopup === "function") showInfoPopup("🏝️ おでかけ",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、崑崙島の写真を集められます。</small></div></div>`);
     return;
   }
@@ -383,7 +420,7 @@ function renderKonronGallery() {
   });
   app.appendChild(grid);
   const actions = el("div", "actions");
-  const back = el("button", "kt-back", "← 観光へ戻る"); back.onclick = () => renderKonronMap();
+  const back = el("button", "kt-back", "← おでかけへ戻る"); back.onclick = () => renderKonronMap();
   actions.appendChild(back);
   app.appendChild(actions);
 }
@@ -479,7 +516,7 @@ function renderKonronTravelNote() {
   });
 
   const actions = el("div", "actions");
-  const back = el("button", "kt-back", "← 観光へ戻る"); back.onclick = () => renderKonronMap();
+  const back = el("button", "kt-back", "← おでかけへ戻る"); back.onclick = () => renderKonronMap();
   actions.appendChild(back);
   app.appendChild(actions);
 }

@@ -1743,6 +1743,11 @@ table.entry-table {
 .kiko-post-b { margin-top: 7px; font-size: 13px; line-height: 1.75; color: #55483f; }
 .kiko-post-tags { margin-top: 9px; font-size: 11.5px; font-weight: 800; color: #6cb7dd; }
 .kiko-sec { margin: 18px 16px 8px; font-size: 12px; font-weight: 900; color: #b08a52; letter-spacing: .1em; }
+/* 未取材の記事（旧ガイドブックの未解放エントリ）＝紙は置くが中身は伏せる。 */
+.kiko-post.locked { background: #faf5f1; border-style: dashed; border-color: #e5d5c8; box-shadow: none; }
+.kiko-post.locked .kiko-post-k { color: #b3a396; }
+.kiko-post.locked .kiko-post-t { color: #b3a396; }
+.kiko-post.locked .kiko-post-b { color: #9c8d80; font-size: 12px; }
 .kiko-chips { margin: 0 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .kiko-chip { display: flex; align-items: center; gap: 8px; padding: 11px 12px; border-radius: 14px; cursor: pointer;
   background: #fff; border: 1px solid #f0e3da; text-align: left; }
@@ -6488,6 +6493,27 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .kt-more-card b { font-size: 14px; color: #23201b; }
 .kt-more-card small { font-size: 10.5px; color: #7a7160; line-height: 1.45; }
 .kt-note { margin: 16px 20px 6px; font-size: 10px; color: #9a8f78; text-align: center; }
+/* おでかけ→紀行への1行（読み物はぜんぶ紀行に集約した、という道しるべ）。 */
+.kt-toKiko { display: block; width: calc(100% - 32px); margin: 10px 16px 0; padding: 11px 13px; border-radius: 12px;
+  text-align: left; font-size: 12px; line-height: 1.5; color: #6b5b46; background: #fff8ee;
+  border: 1px dashed #e0cba6; cursor: pointer; }
+.kt-toKiko b { color: #b0762a; }
+.kt-toKiko:active { background: #fdf1dc; }
+/* 📔旅ノートの進み具合＝おでかけハブの「今日どこ行く？」の一行（地図の直前）。 */
+.km-tnrow { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  margin: 8px 0 2px; padding: 10px 12px; border-radius: 12px;
+  background: linear-gradient(120deg, rgba(110,190,255,.13), rgba(180,150,255,.10));
+  border: 1px solid rgba(150,190,255,.34); transition: transform .12s ease; cursor: pointer; }
+.km-tnrow:active { transform: scale(.985); }
+.km-tnrow .km-tnrow-ic { font-size: 20px; }
+.km-tnrow .km-tnrow-tx { min-width: 0; }
+.km-tnrow .km-tnrow-tx b { display: block; font-size: 12.5px; }
+.km-tnrow .km-tnrow-tx small { font-size: 10.5px; color: var(--mist-soft); }
+.km-tnrow .km-tnrow-bar { flex: 0 0 54px; height: 5px; margin-left: auto; border-radius: 999px; background: rgba(255,255,255,.16); overflow: hidden; }
+.km-tnrow .km-tnrow-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7fd0ff, #b9a6ff); }
+.km-tnrow .km-tnrow-go { color: #a9d8ff; font-weight: 900; }
+.km-tnrow.done { background: rgba(124,255,178,.07); border-color: rgba(124,255,178,.3); }
+.km-tnrow.done .km-tnrow-bar i { background: linear-gradient(90deg, #7cffb2, #d7ff9a); }
 .kt-back { display: block; margin: 8px auto 0; background: none; border: none; color: #6f6757; font-size: 13px; font-weight: 800; cursor: pointer; padding: 8px; }
 
 /* 図鑑・ガイドブックも観光(明色)テーマに合わせて統一（明→暗の段差を解消） */

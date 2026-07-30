@@ -887,11 +887,14 @@ function renderHome() {
   //   島／竜／暮らし／紀行／メディア の5タブ・両モード共通＝配信化でも枠が変わらない。
   //   ・🍽ごはんタブは廃止 → ヘッダーの🍖おなかピル1タップ＋島ハブ内（高頻度ループは維持）
   //   ・物語は🌳暮らしから📱メディアへ（書く=紀行／撮られる=物語／流れる=SNSの三面）
-  // 🏝島（初勝利で解放・中に観光/歩く/モール/村/屋台）
+  // 🏝おでかけ（初勝利で解放・中に観光/歩く/モール/村/屋台）
+  // ★タブ名を「島」→「おでかけ」へ（ユーザー決裁・2026-07-31）。他4タブ（竜/暮らし/紀行/メディア）は
+  //   対象名だが、このタブの実体は観光・散歩・モール・屋台・村＝**出かける行為**。しかも「島」は
+  //   紀行の #島さんぽ・暮らしの🏦島の経済・島づくり と語がぶつかっていた。「おでかけ」なら重複しない。
   if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
-    bar.appendChild(tikTab("🏝️", "島", () => renderKonronMap(), { img: "island" }));
+    bar.appendChild(tikTab("🏝️", "おでかけ", () => renderKonronMap(), { img: "island" }));
   } else {
-    bar.appendChild(tikTab("🏝️", "島", () => showInfoPopup("🏝️ 島",
+    bar.appendChild(tikTab("🏝️", "おでかけ", () => showInfoPopup("🏝️ おでかけ",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物もここから）。</small></div></div>`), { locked: true, img: "island" }));
   }
   // 🐲竜＝龍舎（スカウト/図鑑/ポロ/グルメ）。龍舎が開く前(ポロ発見前)は図鑑単体、その前は🔒。
