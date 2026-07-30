@@ -65,9 +65,9 @@ const BC_CHATTER = [
   //   ⚠️この表には「賭けの当たり外れに触れない」規約があり、tools/audit_broadcast.js が
   //   /あなたの(一票|予想|賭け|竜)|賭け(た|金|竜)|的中|払戻/ を検出する。だから「払い戻し」等は
   //   使わず、**帳場が止まった／数字が入っていない頁**という情景だけで同じことを伝える。
-  { id: "mizu_history_deadheat_01", cm: "mizu", topic: "history", at: "entry", line: "昔ね、ゴールが完全に並んだ日があるの。帳場が丸ごと止まったわ。" },
-  { id: "mizu_history_deadheat_02", cm: "mizu", topic: "history", at: "mid", line: "順位が決まらなかった日の帳面、いまも飾ってあるのよ。数字が一つも入っていないの。" },
-  { id: "makura_history_deadheat_01", cm: "makura", topic: "history", at: "mid", line: "同着って見たことある？ うちのじいちゃんが一回だけ見たってさ。場内、しーんとしたらしいよ。" },
+  { id: "mizu_history_deadheat_01", cm: "mizu", topic: "history", at: "entry", line: "昔ね、一着が三頭ならんだ日があるの。配当が三つに割れて、それはもうぺしゃんこ。" },
+  { id: "mizu_history_deadheat_02", cm: "mizu", topic: "history", at: "mid", line: "同着の日はね、当たった人がいちばん多いのよ。ひとりぶんは、いちばん小さいけれど。" },
+  { id: "makura_history_deadheat_01", cm: "makura", topic: "history", at: "mid", line: "一着が二頭ならんだレース、見たことある？ 場内、しーんとしたあとに、どっと沸くんだってさ。" },
   { id: "sumika_history_01", cm: "sumika", topic: "history", at: "entry", line: "この島の会場は、もともと荷揚げの広場だったと伺っております。" },
   { id: "sumika_history_02", cm: "sumika", topic: "history", at: "entry", line: "昔は竜に荷を運ばせておりました。走らせるのは後の話でございます。" },
   { id: "sumika_history_03", cm: "sumika", topic: "history", at: "mid", line: "百年前の大火の後、屋根はすべて瓦に替えられたそうでございます。" },
