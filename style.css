@@ -9105,3 +9105,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .lrank-block > span:first-child { flex: 1; min-width: 0; }
 .lrank-block b { color: #7fe0bb; }
 .lrank-block small { display: block; margin-top: 3px; font-size: 10.5px; line-height: 1.55; color: var(--mist-soft); }
+/* 次の暮らしの中身（具体名）＝「あと何個」より先に目に入る位置に置く */
+.lrank-goals { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.lrank-goals i { font-style: normal; font-size: 10.5px; padding: 3px 8px; border-radius: 999px;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #e8def8; }
+.lrank-block-n { margin-top: 7px !important; opacity: .75; }

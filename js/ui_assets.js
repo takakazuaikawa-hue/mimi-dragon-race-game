@@ -159,10 +159,23 @@ function renderAssets() {
           `</div>` +
           // ★頭打ちの理由と、必要なノード数を必ず出す。ここが見えないと「なぜ上がらないのか
           //   分からない」＝理不尽になる（ツリーは一本道を1つずつ進める形なので特に）。
+          // ★「あと40個」ではなく**次に手に入る暮らしそのもの**を見せる。
+          //   数だけ出しても作業量の話になり、目指す気持ちにならない（ユーザー指摘）。
+          //   いま取れるノードの実タイトルを3つ並べ、何が良くなるのかを名指しする。
           (pr.blocked
-            ? `<button class="lrank-block"><span>🌳 <b>暮らしが追いついていない</b>` +
-                `<small>くらしスキルツリーを <b>あと${pr.needNodes}個</b> 進めると Lv.${pr.lv + 1} が開きます` +
-                `（いま ${pr.nodes}／${pr.lv * 20} 個）</small></span><span class="as-entry-ch">›</span></button>`
+            ? (function () {
+                const ready = (typeof LIFE_MILESTONES !== "undefined" && typeof lifeNodeState === "function")
+                  ? LIFE_MILESTONES.filter(n => lifeNodeState(n) === "ready").slice(0, 3) : [];
+                const list = ready.length
+                  ? `<span class="lrank-goals">${ready.map(n => `<i>${n.icon}${n.title}</i>`).join("")}</span>`
+                  : "";
+                return `<button class="lrank-block"><span>` +
+                  `<b>次の暮らしへ — ${nextRk.title}</b>` +
+                  `<small>${nextRk.note}</small>` +
+                  list +
+                  `<small class="lrank-block-n">🌳 くらしスキルツリーで あと${pr.needNodes}個 身につけると届く</small>` +
+                  `</span><span class="as-entry-ch">›</span></button>`;
+              })()
             : ""));
     if (pr.blocked) {
       const b = card.querySelector(".lrank-block");
