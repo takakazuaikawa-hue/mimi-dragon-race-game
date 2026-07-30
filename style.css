@@ -8846,9 +8846,17 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   74% { opacity: 1; } 100% { opacity: 0; transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { .rpg-logline.fade { animation: none; opacity: .9; } }
 
-/* ===== 上に貼りつく帯どうしの重なり回避（ユーザー報告：上段にホームのボタンが浮いて出る） =====
-   .topback（← ホーム／実測47px）と .rs-ctrl が両方 sticky top:0 だったため、スクロールすると
-   同じ行に積み重なり、一覧の操作バーの上にホームのボタンが被っていた。
-   .rs-ctrl はホーム帯の下に、.rs-grp-head はさらにその下に貼りつくよう実測値でずらす。 */
-.rs-ctrl { top: 47px; }
-.rs-grp-head { top: 99px; }   /* 47(topback) + 52(元の値) */
+/* ===== スクロールで「追従させるもの」の判定を正す（ユーザー報告：上段にホームが出る／見出しが重なる）
+   誤り＝レース一覧の3つが全部 sticky だった（.topback / .rs-ctrl / .rs-grp-head ×地域ごと）。
+   ずらしても不透明にしても、**追従すべきでないものが追従している**という原因は消えない。
+   判定：
+     ・← ホーム（.topback）＝ページの先頭にある戻り口。**追従不要**（ヘッダーのロゴと画面末尾にも戻り口がある）
+     ・地域の見出し（.rs-grp-head）＝一覧の区切りラベル。**追従不要**（地域ごとに次々貼りついて積み重なる）
+     ・並び替え/絞り込み（.rs-ctrl）＝長い一覧を見ながら操作したい。**ここだけ追従させる**
+   ※ .rs-ctrl は追従するので、下を通るカードが透けないよう地をほぼ不透明にしておく。 */
+.topback { position: static; }
+.rs-grp-head { position: static; }
+
+/* 追従するのは .rs-ctrl だけ＝その下をカードが通るので、地はほぼ不透明にして文字の透けを止める。
+   （見出しは追従しなくなったので、元の半透明な金の帯のまま＝見た目は変えない） */
+.rs-ctrl { background: linear-gradient(180deg, #12161c 88%, rgba(18,22,28,0)); }
