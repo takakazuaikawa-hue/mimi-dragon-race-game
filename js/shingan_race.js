@@ -134,6 +134,44 @@ function _sgName(id) {
   return id;
 }
 
+// ── ミミの予想（徹夜の赤い目）＝この画面の「気づき」の装置 ──────────────────
+//   3つの買い方で同じレースを言い換えるだけ。ふつうは 1頭／2頭／3頭 と増えていく。
+//   ★肝：1着に並ぶ頭数(lead)だけ、どの予想も広がる。
+//     lead=1 … 単勝1・複勝2・ワイド3（ばらばら）
+//     lead=2 … 単勝2・複勝2・ワイド3（単勝と複勝が一致しはじめる＝惜しい）
+//     lead=3 … 単勝3・複勝3・ワイド3（三行が完全に一致＝もう誰にも決着が言えない）
+//   答えを文章で説明せず、この「三行がそろう」画だけで気づかせる。
+//   ★説明文は実際の頭数から作る。同着で頭数が増えたとき「この2頭」と書いてあるのに
+//     3頭並ぶ、という嘘を出さないため。単勝が「1着に並ぶのはこの3頭」になる違和感が、
+//     そのまま気づきの入口になる（仕組みは説明しない）。
+const SG_BETS = [
+  { k: "tan",  nm: "単勝予想",   sub: n => n === 1 ? "1着になるのはこの竜" : `1着に並ぶのはこの${n}頭` },
+  { k: "fuku", nm: "複勝予想",   sub: n => `上位に来るのはこの${n}頭` },
+  { k: "wide", nm: "ワイド予想", sub: n => `上位を占めるのはこの${n}頭` }
+];
+function _sgPredict(res) {
+  const rows = res.rows, T = SHINGAN_TIE;
+  let lead = 1;
+  while (lead < rows.length && (rows[lead].time - rows[0].time) <= T) lead++;
+  const take = n => rows.slice(0, Math.max(n, lead));
+  return { lead, tan: take(1), fuku: take(2), wide: take(3) };
+}
+// 決着がどこまで割れているか。tie3＝ワイドすら決まらない＝賭けが成立しない＝勝利。
+function _sgOutcome(res) {
+  const rows = res.rows, T = SHINGAN_TIE;
+  if ((rows[2].time - rows[0].time) <= T) return "tie3";
+  if ((rows[1].time - rows[0].time) <= T) return "tie2";
+  return "clean";
+}
+function _sgList(arr) { return arr.map(r => r.ic + " " + r.name).join("、"); }
+// セレスティアの宣言＝上位3頭を着順つきで。プレイヤーのどの買い方よりも厳しい予想なので、
+// 「配当の大小」を比べる必要がなく（ワイドは単勝より当たりやすい＝比べると彼女が格下になる）、
+// 素直に“彼女の方が上を当てた”が成立する。★同着に言及させない＝答えを先出ししない。
+function _sgOrderCall(res) {
+  return res.rows.slice(0, 3).map((r, i) => `${i + 1}着 ${r.ic} ${r.name}`).join("、");
+}
+function _sgBetName(k) { const b = SG_BETS.find(x => x.k === k); return b ? b.nm.replace("予想", "") : "単勝"; }
+
 // ── 開発検証用ソルバ（山登り法・解の存在証明。UIからは呼ばない） ──────────
 function _sgSolve(iters) {
   const cur = {}; SHINGAN_ROSTER.forEach(d => { cur[d.id] = d.ab0.slice(); });
@@ -213,7 +251,8 @@ function shinganDevPreset(kind) {
 
 // ── UI ─────────────────────────────────────────────────────────────────
 var _sgOpen = null;      // 訓練アコーディオンの開いている竜
-var _sgLast = null;      // 直近の試走結果
+var _sgLast = null;      // 直近の予想（＝決定的シミュレーションの結果）
+var _sgChoice = null;    // 挑んだ買い方（"tan"/"fuku"/"wide"）
 
 function renderShinganRace() {
   if (!shinganUnlocked()) {
@@ -233,10 +272,11 @@ function renderShinganRace() {
   head.innerHTML =
     `<div class="sg-title">☄️ 神眼レース</div>` +
     `<div class="sg-sub">決着の視える眼に、決着の無い結末を。</div>` +
-    `<div class="sg-rule">最高クラスの8頭を<b>訓練（上げ下げ）</b>し、<b>上位3頭を同着（差 ${SHINGAN_TIE.toFixed(2)}秒以内）</b>に持ち込め。` +
-    `賭けもオッズも無い。能力がすべてを決める——だから、決着を消せる。</div>`;
+    `<div class="sg-rule">スカウトしてきた<b>最高クラスの8頭</b>を、竜舎で説得して鍛え上げろ。<br>` +
+    `徹夜の赤い目で、ミミはレース結果を<b>ある程度予想できる</b>。<br>` +
+    `<b>セレスティアが当てられない組み合わせ</b>になったら、勝負を挑め。</div>`;
   app.appendChild(head);
-  if (sg.cleared) app.appendChild(el("div", "sg-cleared", "👁️‍🗨️ 神眼は破られた — クリア済み（何度でも試走できます）"));
+  if (sg.cleared) app.appendChild(el("div", "sg-cleared", "👁️‍🗨️ 神眼は破られた — クリア済み（何度でも予想できます）"));
 
   // ── 8頭：スカウト状態と訓練 ──
   const allIn = shinganAllScouted();
@@ -280,23 +320,35 @@ function renderShinganRace() {
   });
   app.appendChild(list);
 
-  // ── 試走 ──
-  const runBtn = el("button", "sg-run" + (allIn ? "" : " off"), allIn ? "🏁 試走する（何度でも）" : "🔒 8頭そろったら出走できる");
+  // ── 予想する ──
+  const runBtn = el("button", "sg-run" + (allIn ? "" : " off"), allIn ? "🔮 予想する（何度でも）" : "🔒 8頭そろったら予想できる");
   runBtn.onclick = allIn ? () => {
     _sgLast = shinganRun(null);
-    const sg = shinganData();
-    if (_sgLast.clear && !sg.cleared) { _sgClear(); return; }
-    if (!_sgLast.clear && !sg.cleared && !sg.failShown && _sgLast.spread <= SG_FAIL_AT) { _sgFail(); return; }
+    _sgChoice = null;                     // 予想し直したら挑戦の選択はリセット
     renderShinganRace();
-    try { if (window.Sfx) Sfx.play(_sgLast.spread < 1 ? "streak" : "nav"); } catch (e) {}
+    try { if (window.Sfx) Sfx.play("nav"); } catch (e) {}
   } : () => {};
   app.appendChild(runBtn);
 
   if (_sgLast) {
+    // ── ミミの予想（3つの買い方）＝タップで勝負を挑む ──
+    const pr = _sgPredict(_sgLast);
+    const box = el("div", "sg-pred");
+    box.appendChild(el("div", "sg-pred-h", "🔮 ミミの予想 <small>——挑む買い方を選ぶ</small>"));
+    SG_BETS.forEach(b => {
+      const arr = pr[b.k];
+      const btn = el("button", "sg-bet" + (_sgChoice === b.k ? " on" : ""),
+        `<span class="sg-bet-n">${b.nm}</span>` +
+        `<span class="sg-bet-d">${arr.map(r => `<i>${r.ic}</i>${r.name}`).join("")}</span>` +
+        `<span class="sg-bet-s">${b.sub(arr.length)}</span>`);
+      btn.onclick = () => _sgChallenge(b.k);
+      box.appendChild(btn);
+    });
+    app.appendChild(box);
+
+    // ── 走ってみた結果（着順・タイム・着差）＝同着を詰める唯一の手がかり ──
     const res = el("div", "sg-res");
-    const sp = _sgLast.spread;
-    res.innerHTML =
-      `<div class="sg-sp${sp <= SHINGAN_TIE ? " win" : (sp <= 1 ? " near" : "")}">上位3頭の差 <b>${sp.toFixed(2)}秒</b><small>（クリア ${SHINGAN_TIE.toFixed(2)}秒以内）</small></div>` +
+    res.innerHTML = `<div class="sg-res-h">走らせてみた結果</div>` +
       _sgLast.rows.map(r =>
         `<div class="sg-row${r.pos <= 3 ? " top3" : ""}"><span class="p">${r.pos}着</span><span class="ic">${r.ic}</span>` +
         `<span class="n">${r.name}</span><span class="t">${_sgFmt(r.time)}</span>` +
@@ -314,16 +366,21 @@ function _sgFmt(t) {
   return m + ":" + (s < 10 ? "0" : "") + s.toFixed(2);
 }
 
-// ── 前口上（初回のみ）：神眼の宣告 ───────────────────────────────────────
+// ── 前口上（初回のみ）：勝負の申し込み ───────────────────────────────────
+//   ★ここで答え（＝三頭同着）は絶対に言わない。ミミは「あなたが勝てないことを証明する」としか
+//     言わず、方法はプレイヤーが予想欄を見て自分で気づく（この画面の設計の核）。
 function _sgIntroVN(done) {
   if (!(window.Dialogue && Dialogue.play)) { done(); return; }
   Dialogue.play([
     ["narrator", "夜明け前の聖龍レース場。最高クラスの八頭のための、最後のゲートが組まれていく。"],
-    ["celestia", "この舞台に賭けは無い。オッズも、配当も。……能力が、すべてを決める。", "default"],
-    ["celestia", "つまり——わたしには、結果が完全に視えている。決着は、動かない。", "default"],
-    ["mimi", "……決着が、あれば。ですよね。", "default"],
-    ["mimi", "なら、わたしは訓練で竜たちを揃えます。1着も2着も3着も無い——同着なら、視える決着なんて、無い！", "happy"],
-    ["narrator", "こうしてミミは、八頭の能力表とにらめっこする日々に入った。……目の下に、クマをつくりながら。"]
+    ["mimi", "セレスティアさん。今度の大レースで、わたしと勝負をしてください。", "default"],
+    ["celestia", "いいけれど。……どんな勝負？", "default"],
+    ["mimi", "この島が本当に強くて、あなたが勝てないことを証明する勝負です。", "default"],
+    ["celestia", "いいよ。でも、私が勝てないなんてことは、たぶんないと思うよ。", "default"],
+    ["celestia", "この賭場も、いいところだけど。……きっと、壊れちゃう。", "default"],
+    ["mimi", "それでも。……わたしは、負けたくないんです。", "default"],
+    ["celestia", "そう。楽しみだな。うん。", "default"],
+    ["celestia", "——赤い目のウサギさん。私に、その魂を見せてみて。", "default"]
   ], { force: true }).then(done);
 }
 
@@ -360,42 +417,77 @@ function _sgKeyVisual(kind) {
   });
 }
 
-// ── 惜敗の演出：一度だけ。「あと少し」で本気の敗北を味わわせる ───────────────
-//   ★試走は何度でもできるので、毎回出したら邪魔になる。上位3頭が1秒以内に
-//     詰まった＝本当に手が届きかけた最初の1回だけ、一枚絵＋短いVNを見せる。
-const SG_FAIL_AT = 1.00;
-function _sgFail() {
-  const sg = shinganData();
-  sg.failShown = true;
-  if (typeof saveGame === "function") saveGame();
+// ── 勝負を挑む＝この画面の山場 ─────────────────────────────────────────
+//   セレスティアの「視力」が三段階で崩れる。台詞では同着にも決着にも触れさせず、
+//   彼女が一段ずつ退避していく姿だけを見せる＝答えはプレイヤーが自分で気づく。
+//     clean … 着順まで完全に当てる（＝手も足も出ない）
+//     tie2  … 一着が割れる → ワイドへ退避して、それでも勝つ（＝あと一段だと気づく）
+//     tie3  … ワイドも割れる → 払い戻し → 彼女の負け
+const SG_FAIL_AT = 1.00;   // 一枚絵を出す「惜しい」の目安（上位3頭の差・秒）
+function _sgChallenge(kind) {
+  if (!_sgLast) return;
+  _sgChoice = kind;
+  const res = _sgLast, out = _sgOutcome(res), sg = shinganData();
+  const pr = _sgPredict(res);
+  const mine = _sgList(pr[kind]), betNm = _sgBetName(kind), order = _sgOrderCall(res);
+  try { if (window.Sfx) Sfx.play("nav"); } catch (e) {}
+
+  if (out === "tie3") { _sgClear(kind, mine, betNm); return; }
+
   const vn = [
-    ["makura", "写真判定ィィ——……あー、決着。決着です。三頭、わずかに、ずれてる……！"],
-    ["celestia", "……視えたわ。ほんの一瞬、視えなくなりかけたけれど。……視えた。", "default"],
-    ["mimi", "……っ、はぁ、はぁ。……もう少し。もう少しなんです。", "panic"],   // sad は全衣装に無い＝404でsmileに落ちる
-    ["mimi", "寝ません。まだ寝ません。……あの八頭の目盛りを、あと一つだけ、動かせば。", "default"],
-    ["narrator", "淘汰は終わらない。——けれど、終わらせ方は、たしかに見えかけている。"]
+    ["makura", `さあ挑戦者の宣言だァ！ ミミ選手——「${betNm}、${mine}」ッ！`],
+    ["celestia", `じゃあ私は、一着から三着まで。${order}。……順番も、この通り。`, "default"]
   ];
-  _sgKeyVisual("fail").then(() => {
-    const back = () => renderShinganRace();
-    if (window.Dialogue && Dialogue.play) Dialogue.play(vn, { force: true }).then(back);
-    else back();
-  });
+  if (out === "tie2") {
+    vn.push(["narrator", "——ゲートが開く。八つの影が、火山へ、峡谷へ、最終直線へ。"]);
+    vn.push(["makura", "ゴォォール！ ……お、おおっと！？ 一着が——二頭ォォ！ 写真判定、写真判定ィ！"]);
+    vn.push(["makura", `二頭同着ゥゥ！ 一着が、決まらないィィ！`]);
+    // ★仕組みは絶対に説明させない（「ワイドなら決まる」「三着までの顔ぶれ」等は
+    //   次の一手を言葉で教えてしまう＝この画面の設計を殺す）。割れたことを認めて、
+    //   それでも視えると言うだけ。あと一段という推測はプレイヤーに残す。
+    vn.push(["celestia", "……あら。", "default"]);
+    vn.push(["celestia", "ふふ。おもしろい子。——でも、まだ視えるよ。", "default"]);
+    vn.push(["mimi", "……まだ。まだ、足りない。", "panic"]);   // sad は全衣装に無い＝404でsmileに落ちる
+  } else {
+    vn.push(["narrator", "——ゲートが開く。八つの影が、火山へ、峡谷へ、最終直線へ。"]);
+    vn.push(["makura", `ゴォォール！ ${order}——寸分たがわず、宣言どおりだァ！`]);
+    vn.push(["celestia", "同じ予想だったけど。……私は、負けてないね。", "default"]);
+    vn.push(["celestia", "また何度でも挑戦してきていいよ。", "default"]);
+    vn.push(["mimi", "……はい。まだ、終わりません。", "default"]);
+  }
+
+  // 一枚絵は一度だけ（毎回出すと挑戦のテンポを殺す）。tie2＝本当に手が届きかけた回を優先。
+  const showArt = !sg.cleared && !sg.failShown && (out === "tie2" || res.spread <= SG_FAIL_AT);
+  const runVN = () => {
+    const back = () => { _sgChoice = null; renderShinganRace(); };
+    if (window.Dialogue && Dialogue.play) Dialogue.play(vn, { force: true }).then(back); else back();
+  };
+  if (showArt) {
+    sg.failShown = true;
+    if (typeof saveGame === "function") saveGame();
+    _sgKeyVisual("fail").then(runVN);
+  } else runVN();
 }
 
 // ── クリア：赤目の同着 → 走馬灯/八竜（既存流用）→ edFlag → エンディング ────
-function _sgClear() {
+function _sgClear(kind, mine, betNm) {
   const sg = shinganData();
   sg.cleared = true; sg.best = _sgLast ? _sgLast.spread : 0;
   if (typeof saveGame === "function") saveGame();
   const top3 = _sgLast ? _sgLast.rows.slice(0, 3).map(r => r.name).join("・") : "三頭";
+  const order = _sgLast ? _sgOrderCall(_sgLast) : "";
   const vn = [
-    ["narrator", "——ゴール線上。三つの影が、完全に、重なった。"],
-    ["makura", "どっ、同着ゥゥ！？ しゃ、写真判定！ 写真判定ンンン！！ ……さ、三頭同着ォォォ！？ 神兎大レース史上、初ゥゥゥ！！"],
+    ["makura", `さあ挑戦者の宣言だァ！ ミミ選手——「${betNm || "ワイド"}、${mine || top3}」ッ！`],
+    ["celestia", `じゃあ私は、一着から三着まで。${order}。……順番も、この通り。`, "default"],
+    ["narrator", "——ゲートが開く。八つの影が、火山へ、峡谷へ、最終直線へ。"],
+    ["makura", "ゴォォール！ ……えっ。えっ！？ しゃ、写真判定！ 写真判定ンンン！！"],
+    ["makura", "さ、三頭同着ォォォ！？ 神兎大レース史上、初ゥゥゥ！！"],
     ["narrator", `${top3}。三頭の鼻先は、寸分の狂いなく、同じ線の上にあった。`],
-    ["celestia", "………。視えない。……決着が、無い。", "default"],
-    ["mimi", "ふふ、ふふふ。……徹夜三日目の目、なめないでください。", "happy"],
-    ["mimi", "決着が無ければ、神眼にも——淘汰にも、なにも視えない……！", "happy"],
-    ["celestia", "……あなた、目が真っ赤よ。……ふ。ふふ。あはは！ 参った。わたしの神眼は、あなたの寝不足に負けたわ。", "default"],
+    ["celestia", "…………すごい。", "default"],
+    ["celestia", "同着ってことは、払い戻しだね。", "default"],
+    ["celestia", "私、勝てなかったよ。", "default"],
+    ["mimi", "……っ、はぁ。……はぁ。", "happy"],
+    ["celestia", "この賭場も、貴方の魂も。……見せてもらえたね。", "default"],
     ["narrator", "絶滅の神眼は、決着なき決着の前に——静かに、閉じた。"]
   ];
   const toEnd = () => {
