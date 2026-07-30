@@ -131,11 +131,9 @@ function renderAssets() {
   const _avA = advisorVoiceEl("assets"); if (_avA) app.appendChild(_avA);
 
   // 内訳（小さなセグメントバー＝グラフィカル）
-  const parts = [
-    ["コイン", p.coins, "#e6b24a"], ["村", a.villageValue, "#49c89c"], ["施設", a.facilityValue, "#57b1dd"],
-    ["生活", a.livingValue, "#caa44a"], ["名声", a.fameValue, "#d6452f"], ["ドラゴン", a.dragonValue, "#9a6ad0"],
-    ["島づくり投資", a.islandValue, "#ec7fb9"]   // ★投資累計＝資産（2026-07-30）
-  ].filter(x => x[1] > 0);
+  // ★内訳は assets_engine.js の ASSET_PARTS（合計計算と同じ正本）から引く＝ラベルの二重管理をやめた。
+  //   新しい資産項目を足すときは ASSET_PARTS に1行足すだけで、合計・バー・説明文が同時に追従する。
+  const parts = ((typeof assetPartsOf === "function") ? assetPartsOf(state) : []).filter(x => x[1] > 0);
   const sum = parts.reduce((s, x) => s + x[1], 0) || 1;
   const _asBreak = el("div", "card as-break",   // ※「できること」の後（詳細）に配置するため、ここでは組むだけ。
     `<div class="as-break-bar">${parts.map(x => `<div style="width:${x[1] / sum * 100}%;background:${x[2]}"></div>`).join("")}</div>` +

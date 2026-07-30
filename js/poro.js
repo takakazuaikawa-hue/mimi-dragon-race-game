@@ -271,9 +271,10 @@ function playPoroFollowupCatchup(done) {
 function completePoroDiscovery() {
   if (typeof setStoryFlag !== "function") return;
   setStoryFlag("poroFound", true);
-  setStoryFlag("poroAppraisalStarted", true);
-  setStoryFlag("poroAppraisalCompleted", true);
-  setStoryFlag("poroConfirmedNotSacredDragon", true);
+  // ★撤去（2026-07-31・フラグ監査）：poroAppraisalStarted / poroAppraisalCompleted /
+  //   poroConfirmedNotSacredDragon の3つは、ここで poroFound と**同じ瞬間に**立てていたのに
+  //   どこからも読まれていなかった（＝poroFound が真なら必ず真＝情報量ゼロ）。
+  //   鑑定の途中経過を分けて見たくなったら、そのとき読み手と一緒に足すこと。
   setStoryFlag("dragonScoutUnlocked", true);
   setStoryFlag("dragonStableUnlocked", true);
   // ★追いつき再生：poroFound を立てた直後なので、既に読み終えている章の後日談が pending に見える。

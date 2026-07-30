@@ -497,13 +497,18 @@ function syncVolumeFab() {
 // 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
 // 設計：1通貨1役割／コイン→資産→解放（物語・衣装・お店）の一方向の流れを見せる。
 function showMoneyMap() {
+  // ★内訳の並びは assets_engine.js の ASSET_PARTS から引く（説明文だけ古くなる事故を防ぐ）。
+  const parts = (typeof assetPartsLabel === "function") ? assetPartsLabel() : "コイン＋村＋施設＋暮らし＋名声＋竜";
+  // ★救済額も定数から。RESCUE_COINS を触ったら説明文が自動で追従する。
+  const r1 = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[1]) ? RESCUE_COINS[1] : 300;
   showInfoPopup("💰 お金のしくみ", `
     <div class="mm-flow">🪙 勝つ → 🏦 育つ → 🔓 解放される</div>
-    <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・ログボで増え、賭け・お買い物で減る。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">🏦</span><div><b>資産</b><small>いま持っているものの合計＝コイン＋村＋施設＋暮らし＋名声＋竜。<u>使えば減り、島に投資すればコインが施設に変わるだけで合計は保たれる</u>。内訳はいつでも開けます。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・紀行の売上・救済で増え、賭け・お買い物で減る。<u>お財布はこれ一つ</u>です。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🏦</span><div><b>資産</b><small>いま持っているものの合計＝${parts}。<u>使えば減り、島に投資すればコインが施設に変わるだけで合計は保たれる</u>。内訳はいつでも開けます。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🔓</span><div><b>解放は「これまでの最高額」で判定</b><small>お話やお店が開く条件だけは、<u>これまでに届いた一番高い資産</u>で見ます。だから資産を使っても、読めた話が読めなくなることはありません。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🏅</span><div><b>ランク</b><small>出走と勝利で昇格。新しいレースが解放される。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">🎫</span><div><b>メダル・かけら</b><small>モール探検専用。常連特典と衣装交換に。コインとは別のお財布。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">💛</span><div><b>救済</b><small>コインが0でも大丈夫。村Lv1で <b>${fmtCoins(r1)}</b> から始まり、村・暮らし・名声が育つほど増えます。借金ではありません。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🗼</span><div><b>モールの持ちもの</b><small>お買い物ダンジョンの中だけで使う <b>🪙G</b>・<b>🎟️チケット</b>・<b>✨評判</b>。<u>衣装の購入はコイン</u>で、Gでは買えません。</small></div></div>
     <div class="mm-row"><span class="mm-ic">💗</span><div><b>視聴者・いいね</b><small>配信のにぎわい（飾り）。勝負には影響しない。</small></div></div>`);
 }
 
@@ -1435,8 +1440,15 @@ function renderHelp() {
     "<b>簡易</b>=入門。<b>標準</b>=デフォルト。<b>詳細</b>=妙味手がかり＋分析項目追加。<b>エキスパート</b>=コンポーネント内訳まで。"
   ]));
 
+  // ★数字は定数から埋める（直書きしない）。RESCUE_COINS を触れば説明が自動で追従する。
+  //   実際の救済は base に暮らし/名声/村のボーナスが乗るので、いま見込める額も出す。
+  const _r1 = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[1]) ? RESCUE_COINS[1] : 300;
+  const _rMax = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[10]) ? RESCUE_COINS[10] : 0;
+  const _rNow = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, state.player.rank) : 0;
   app.appendChild(section("rescue", "救済システム", [
-    "コインが0になっても安心。サケ・ウダダが村の予備コイン300枚を渡してくれます（村Lv1）。",
+    `コインが0になっても安心。サケ・ウダダが村の予備コインを渡してくれます（村Lv1で <b>${fmtCoins(_r1)}</b>` +
+      (_rMax ? `、村Lv10まで育てば <b>${fmtCoins(_rMax)}</b>` : "") + `）。`,
+    `村・暮らし・名声が育つほど上乗せされます。<b>いまのあなたの救済見込みは ${fmtCoins(_rNow)}</b>。`,
     "借金ではありません。小さく賭けて立て直しましょう。"
   ]));
 

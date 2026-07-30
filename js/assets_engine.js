@@ -124,15 +124,22 @@ function computeIslandValue(state) {
   } catch (e) { return 0; }
 }
 
+// ★総資産の内訳＝ここが唯一の正本。合計・内訳バー・「お金のしくみ」の説明文は全部この表から引く。
+//   （以前は 計算式／内訳バーのラベル／説明文 が三重管理になっていて、islandValue を足したとき
+//     説明文だけ古いまま残った。同じ事故を繰り返さないための単一化。）
+const ASSET_PARTS = [
+  { key: "coins",         label: "コイン",       color: "#e6b24a", get: st => (st.player.coins || 0) },
+  { key: "villageValue",  label: "村",           color: "#49c89c", get: st => ((st.assets || {}).villageValue  || 0) },
+  { key: "facilityValue", label: "施設",         color: "#57b1dd", get: st => ((st.assets || {}).facilityValue || 0) },
+  { key: "livingValue",   label: "生活",         color: "#caa44a", get: st => ((st.assets || {}).livingValue   || 0) },
+  { key: "fameValue",     label: "名声",         color: "#d6452f", get: st => ((st.assets || {}).fameValue     || 0) },
+  { key: "dragonValue",   label: "ドラゴン",     color: "#9a6ad0", get: st => ((st.assets || {}).dragonValue   || 0) },
+  { key: "islandValue",   label: "島づくり投資", color: "#ec7fb9", get: st => ((st.assets || {}).islandValue   || 0) }
+];
+function assetPartsOf(st) { return ASSET_PARTS.map(p => [p.label, p.get(st), p.color]); }
+function assetPartsLabel() { return ASSET_PARTS.map(p => p.label).join("＋"); }
 function calculateTotalAssets(state) {
-  const p = state.player, a = state.assets;
-  return (p.coins || 0)
-    + (a.villageValue || 0)
-    + (a.facilityValue || 0)
-    + (a.livingValue || 0)
-    + (a.fameValue || 0)
-    + (a.dragonValue || 0)
-    + (a.islandValue || 0);   // ★島づくり投資の累計（投資は消えない・資産に形を変える）
+  return ASSET_PARTS.reduce((s, p) => s + p.get(state), 0);
 }
 
 // ★進行判定の正本＝「これまでに到達した資産の最高額」。
