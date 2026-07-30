@@ -472,7 +472,9 @@ function _scoutWin() {
   e.scouted = true; e.seen = true;
   if (typeof raiseAffection === "function") raiseAffection(d.id, 12);
   if (isNew && typeof epPush === "function") epPush("scoutNew");   // 終章：新種保護＝絶滅メーター押し戻し
-  if (window.Sfx && Sfx.play) Sfx.play("legendary");
+  // 🎺 新しい竜の当たり音（実ファイル・2026-07-30）。初成立だけ鳴らし、再訪は従来の合成音。
+  if (isNew && window.Sfx && Sfx.sting) Sfx.sting("sting-newdragon.mp3");
+  else if (window.Sfx && Sfx.play) Sfx.play("legendary");
   if (typeof saveGame === "function") saveGame();
   _scoutSess = null;
   _scoutWinFx(d);   // 🎉 成立の祝祭（駆け寄り＋紙吹雪）

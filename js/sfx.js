@@ -357,8 +357,26 @@ var Sfx = (function () {
     });
   } catch (e) {}
 
+  // ★2026-07-30 当たり音（sting）＝短いmp3の単発再生。BGMは奪わず、鳴る瞬間だけ下げる（duck）。
+  //   合成音(play)と違い実ファイルなので、BGMと同じ曲別ゲイン(TRACK_GAIN)を適用して音量を揃える。
+  //   ファイルが無ければ黙って何も起きない（onerror＝no-op）。
+  var STING_BASE = 0.55;
+  function sting(file) {
+    if (muted) return;
+    try {
+      var gain = 1;
+      try { if (typeof TRACK_GAIN !== "undefined" && TRACK_GAIN[file] > 0) gain = TRACK_GAIN[file]; } catch (e) {}
+      var a = new Audio("bgm/uibgm/" + file);
+      a.volume = Math.max(0, Math.min(1, STING_BASE * sfxLevel * gain));
+      a.onerror = function () {};
+      var p = a.play(); if (p && p.catch) p.catch(function () {});
+      try { if (window.RaceBgm && RaceBgm.duck) RaceBgm.duck(); } catch (e) {}
+    } catch (e) {}
+  }
+
   return {
     play: play,
+    sting: sting,
     startCrowd: startCrowd,
     stopCrowd: stopCrowd,
     setMuted: setMuted,

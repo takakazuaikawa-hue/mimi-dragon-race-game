@@ -383,6 +383,7 @@ function checkRankProgression() {
         || (cond.hitsAtLowerRank != null && hitsLower >= cond.hitsAtLowerRank)
         || completedLower >= cond.completedAtLowerRank) {
       p.rank = r;
+      try { if (window.Sfx && Sfx.sting) Sfx.sting("sting-rankup.mp3"); } catch (e) {}   // 🎺 昇格の当たり音（2026-07-30）
       runEventHooks("onRankUp", { newRank: r });
       saveGame();
       return r;

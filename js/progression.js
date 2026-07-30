@@ -216,7 +216,8 @@ function _showStoryCutin(ch) {
   ov.appendChild(box);
   ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
   document.body.appendChild(ov);
-  try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+  // 🎺 新章の当たり音（実ファイル・2026-07-30）。無ければ従来の合成音に落ちる。
+  try { if (window.Sfx && Sfx.sting) Sfx.sting("sting-chapter.mp3"); else if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
 }
 
 // toast＝下部にすっと出て消える帯（モーダルではない・タップで即消し）。

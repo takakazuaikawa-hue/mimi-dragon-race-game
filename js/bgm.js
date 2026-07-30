@@ -57,6 +57,22 @@ const TRACK_GAIN = {
   // bgm/homebgm/（いまは無音運用・鳴らすときのために測っておく）
   "くつろぎ.mp3": 0.86,                  // 0.1389  -17.15
   "ホームカントリー.mp3": 0.85,           // 0.1411  -17.01
+  // ★bgm/uibgm/（2026-07-30 Suno納品13曲＋当たり音3本・同じ手順でRMS実測→0.1195÷RMS）
+  "bet-lobby.mp3": 0.66,                // 0.1824  賭け場のロビー（レース選択/賭け/分析）
+  "documentary.mp3": 0.71,              // 0.1673  物語=密着ドキュメンタリー
+  "island-life.mp3": 0.75,              // 0.1593  暮らしの帳面
+  "konron-stroll.mp3": 0.83,            // 0.1434  崑崙そぞろ歩き（観光）
+  "scout-stalk.mp3": 0.62,              // 0.1923  けはいを追って（スカウト）
+  "poro-nap.mp3": 0.90,                 // 0.1333  ポロと昼寝（龍舎）
+  "after-race.mp3": 0.64,               // 0.1866  答え合わせ（結果画面の中立ベッド）
+  "timeline.mp3": 0.80,                 // 0.1502  タイムラインの海（SNS/メディア）
+  "onsen-uroko.mp3": 0.67,              // 0.1796  うろこ湯（温泉）
+  "doom-countdown.mp3": 0.54,           // 0.2219  淘汰のカウントダウン（終章・神眼レース）
+  "sacred-race.mp3": 0.64,              // 0.1858  神兎大レース（ランク7＝最上位レース）
+  "home-onair.mp3": 0.69,               // 0.1735  ミミ・オン・エア（配信ホーム）
+  "sting-rankup.mp3": 0.68,             // 0.1746  当たり音（昇格）
+  "sting-newdragon.mp3": 0.81,          // 0.1483  当たり音（新しい竜）
+  "sting-chapter.mp3": 0.80,            // 0.1496  当たり音（新章）
   // bgm/（終章・エンディング）
   "絶滅のファンファーレ.mp3": 0.99,        // 0.1205  -18.38
   "ある日森の中ドラゴンに出会った.mp3": 0.84  // 0.1424  -16.93
@@ -223,6 +239,15 @@ var RaceBgm = (function () {
     stop();
     pending = { kind: "race" };          // ミュート中でも「レースBGMを鳴らすべき」を覚える
     if (isMuted()) return;
+    // ★ランク7（神兎大レース）だけは専用曲＝格を音で示す（2026-07-30 T14納品）。
+    //   ファイルが無い環境ではローテーションに落ちる（playFile側の404は無音になるだけ＝安全）。
+    try {
+      if (state && state.current && state.current.race && state.current.race.rank >= 7) {
+        playFile("bgm/uibgm/sacred-race.mp3");
+        pending = { kind: "file", path: "bgm/uibgm/sacred-race.mp3", once: false };
+        return;
+      }
+    } catch (e) {}
     var idx = pickIndex();
     if (idx < 0) return;                 // 曲が未設置 → 無音の no-op
     lastIdx = idx;
