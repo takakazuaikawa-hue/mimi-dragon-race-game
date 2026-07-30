@@ -35,6 +35,43 @@ const UNLOCKS = [
     teaser: "第3話を読むと解放",
     notifyTitle: "🌱 くらしツリーが解放！",
     notifyBody: "レースで稼いだコインで生活を育てる「くらしツリー」と生活資産が使えるようになりました。負けた夜にも人生が終わらない、本当の準備を。" },
+
+  // ── ★章の「読める」を向こうから知らせる（ユーザー指摘：条件が揃っても、物語画面へ行かない限り
+  //    出会いが起きない＝第2話で実際に詰まった）。出会い自体は従来どおり物語の中（VN）で行う＝
+  //    ここは呼び鈴だけ。未登場キャラの固有名は出さない（ネタバレ門番と同じ規律）。
+  //    cond は「読める＆未読」なので、先に読んでいれば一度も鳴らない。
+  { id: "ch2ready", icon: "📖", label: "第2話", tier: "cutin", go: "story",
+    cond: function () { return _chReady("2"); },
+    notifyTitle: "📖 第2話が読めるようになった！",
+    notifyBody: "はじめての自分の一着——それを見ていた人がいます。物語で新しい出会いが待っています。予想のやり方が、ここから変わる。" },
+  { id: "ch3ready", icon: "📖", label: "第3話", tier: "cutin", go: "story",
+    cond: function () { return _chReady("3"); },
+    notifyTitle: "📖 第3話が読めるようになった！",
+    notifyBody: "勝った。じゃあ、その勝ち分をどう守る？　物語で新しい出会いが待っています。暮らしの話です。" },
+  { id: "ch4ready", icon: "📖", label: "第4話", tier: "cutin", go: "story",
+    cond: function () { return _chReady("4"); },
+    notifyTitle: "📖 第4話が読めるようになった！",
+    notifyBody: "総資産100万。島はもう、あなたを放っておきません。物語で新しい出会いが待っています。" },
+  { id: "ch5ready", icon: "📖", label: "第5話", tier: "cutin", go: "story",
+    cond: function () { return _chReady("5"); },
+    notifyTitle: "📖 最終話が読めるようになった！",
+    notifyBody: "総資産1億。世界の天井の向こうから、誰かがこの島を見ています。物語へ。" },
+
+  // ── ★章を読んだ後の「何が開いたか」（ユーザー指摘：ミズに会っても分析予想の案内が無い）。
+  //    出会い済みなので固有名を出してよい。
+  { id: "analysis", icon: "📊", label: "分析予想", tier: "cutin", go: "race_select",
+    cond: function () { return analysisUnlocked(); },
+    teaser: "第2話を読むと解放",
+    notifyTitle: "📊 ミズの分析予想が解放！",
+    notifyBody: "賭け画面の相談役に「分析予想」（ミズ）が増えました。オッズの妙味と脚質の読みが手に入ります。レース後の「分析」「次のヒント」タブも解禁。まずは1レース、ミズの目で見てみて。" },
+  { id: "dexdeep", icon: "📖", label: "図鑑の深い記録", tier: "cutin", go: "collection",
+    cond: function () { return (typeof getStoryFlag === "function") && !!getStoryFlag("metMakura"); },
+    teaser: "第4話を読むと解放",
+    notifyTitle: "📖 図鑑が深くなった！",
+    notifyBody: "マクラの推し竜文化に触れて、図鑑に竜たちの深い記録が載るようになりました。推しを決めるなら、まず図鑑から。" },
+  { id: "doomview", icon: "🏦", label: "島の経済・新表示", tier: "toast",
+    cond: function () { return (typeof getStoryFlag === "function") && !!getStoryFlag("_chapter_intro_5"); },
+    notifyBody: "🏦 「暮らし → 島の経済」に新しい表示が増えました。島の行方は、これからの走りに。" },
   // --- toast（既存画面への追加。モーダルは出さない） ---
   // ★M3 余白の尊重：ロケ名と生息竜はスカウト画面が ？？？ で伏せて「行って確かめる」発見にしている
   //   （ui_scout.js）。toast でロケ名まで先に明かすと発見を先食いするので、「新しい行き先が増えた」だけ告知。
@@ -55,6 +92,11 @@ const UNLOCKS = [
 function _scoutLocOpen(id) {
   try { return (typeof poroScoutUnlocked === "function") && poroScoutUnlocked() &&
     (typeof scoutLocationUnlocked === "function") && scoutLocationUnlocked(id); } catch (e) { return false; }
+}
+// 章が「読める＆まだ読んでいない」＝呼び鈴を鳴らす条件。先に読んだ人には一度も鳴らない。
+function _chReady(id) {
+  try { return (typeof chapterAvailable === "function") && chapterAvailable(id) &&
+    (typeof chapterRead === "function") && !chapterRead(id); } catch (e) { return false; }
 }
 
 // ===== 暮らし×物語 結線（正本 docs/KURASHI_STORY_WEAVE.md）=====

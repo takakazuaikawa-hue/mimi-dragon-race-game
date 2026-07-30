@@ -1933,6 +1933,21 @@ function renderRaceDetail(race) {
     });
     hub.appendChild(tabRow);
     hub.appendChild(host);
+    // ★分析予想の初回チュートリアル（ユーザー指摘：ミズに会っても使い方の説明が無い）。
+    //   ミズ解禁後、はじめて賭け画面に来た1回だけ。以後は出ない（フラグ）。
+    try {
+      if ((typeof advisorMet === "function") && advisorMet("mizu")
+          && (typeof getStoryFlag === "function") && !getStoryFlag("_anaTutorSeen")
+          && typeof showInfoPopup === "function") {
+        setStoryFlag("_anaTutorSeen", true);
+        setTimeout(function () {
+          showInfoPopup("📊 分析予想のつかいかた",
+            `<div class="mm-row"><span class="mm-ic">🎴</span><div><b>賭け画面の相談役</b><small>「分析予想」タブでミズがオッズの妙味・脚質の噛み合わせを読んでくれます。</small></div></div>` +
+            `<div class="mm-row"><span class="mm-ic">🔍</span><div><b>レースのあと</b><small>結果画面に「分析」「次のヒント」タブが増えています。外れたレースほど、次の材料になる。</small></div></div>` +
+            `<div class="mm-row"><span class="mm-ic">🐰</span><div><small>ミミ「カンは卒業……しないけど、カンに根拠がつくって、つよい。」</small></div></div>`);
+        }, 350);
+      }
+    } catch (e) {}
     function setOpen(key) {
       state.current._openAdvisor = key || null;
       Object.keys(btnByKey).forEach(k => btnByKey[k].classList.toggle("active", k === key));
@@ -3941,7 +3956,7 @@ function renderAnalysis() {
     app0.appendChild(el("h2", null, "レース後分析"));
     app0.appendChild(el("div", "card",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ「分析」はできません</b>` +
-      `<small>いまはカンだけが頼りのミミ。<u>第2話</u>を読むと、オッズの読み方・妙味・次のヒントが手に入ります（総資産3千で第2話が解禁）。</small></div></div>` +
+      `<small>いまはカンだけが頼りのミミ。<u>第2話</u>を読むと、オッズの読み方・妙味・次のヒントが手に入ります（第1話を読み、3戦走り、🛍️モールで普段着を買うと第2話が解禁）。</small></div></div>` +
       `<div class="mm-row"><span class="mm-ic">🐰</span><div><small>ミミ「ぶ、分析……？　なにそれおいしいの……？　いまはカン！　カンで勝負だよっ！（震え声）」</small></div></div>`));
     const acts = el("div", "actions");
     const bk = el("button", "secondary", "◀ 結果へ戻る"); bk.onclick = () => renderResult();

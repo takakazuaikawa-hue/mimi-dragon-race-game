@@ -135,21 +135,24 @@ var GOALS = [
   { id: "rankUp",     phase: 2, icon: "🏅", title: "ランクを上げる",             hint: "出走と勝利でランク2へ。",                   done: function (s) { return (s.player.rank || 1) >= 2; } },
 
   // ── 第三話：暮らしを立てる ── 🌱くらしツリー・生活資産／2勝で🐲龍舎・竜スカウト ──
-  { id: "readCh3",    phase: 3, icon: "🏠", title: "スミカと総資産（第3話）",   hint: "第2話を読み、はじめて単勝を当てると第3話 → 🌱くらしツリー・生活資産が開放。", cast: "sumika", maskTitle: "？？？と総資産（第3話）", done: function () { return _gFlag("_chapter_intro_3"); } },
+  { id: "readCh3",    phase: 3, icon: "🏠", title: "スミカと総資産（第3話）",   hint: "第2話を読み、はじめて単勝を当てると第3話 → 🌱くらしツリー・生活資産が開放。", cast: "sumika", maskTitle: "？？？と総資産（第3話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+    done: function () { return _gFlag("_chapter_intro_3"); } },
   // hides:"poro" ＝ 発見前は名前「ポロ」を出さない（命名オチを潰さないため。発見条件の2勝は仕様どおり不変）。
   { id: "buddy",      phase: 3, icon: "🐲", title: "相棒を見つける（2勝）",     hint: "2勝するとポロと出会い、🐲龍舎・竜スカウトが開く。", hides: "poro", maskHint: "2勝すると相棒と出会い、🐲龍舎・竜スカウトが開く。", done: function (s) { return (s.player.wins || 0) >= 2; } },
   { id: "lifeTree",   phase: 3, icon: "🌱", title: "くらしツリーを育てはじめる", hint: "レースで稼いだコインで生活を解放する。",         done: function () { return _gLifeNodes() >= 1; } },
   { id: "oneRoom",    phase: 3, icon: "🛏️", title: "ワンルームへ引っ越す",       hint: "🌳暮らしで、コインを払って引っ越す。",     done: function () { return (typeof roomLevel === "function") && roomLevel() >= 1; } },   // ★実際に引っ越したかで判定（引っ越しはコイン制）
 
   // ── 第四話：配信者になる ── 📱スマホ購入でホーム放送化・SNS解禁 ──
-  { id: "meetMakura", phase: 4, icon: "📣", title: "マクラに会う（第4話）",     hint: "第3話を読み、総資産100万で第4話 → 📖図鑑の深い情報。", cast: "makura", maskTitle: "？？？に会う（第4話）", done: function () { return _gFlag("metMakura"); } },
+  { id: "meetMakura", phase: 4, icon: "📣", title: "マクラに会う（第4話）",     hint: "第3話を読み、総資産100万で第4話 → 📖図鑑の深い情報。", cast: "makura", maskTitle: "？？？に会う（第4話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+    done: function () { return _gFlag("metMakura"); } },
   { id: "buyPhone",   phase: 4, icon: "📱", title: "スマホを買って配信を始める", hint: "マクラに背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", cast: "makura", maskHint: "？？？に背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", done: function () { return _gFlag("phoneBought"); } },
   { id: "fol10k",     phase: 4, icon: "💗", title: "フォロワーを1万人にする",   hint: "名声と戦績で配信を育てる。",               done: function () { return goalFollowers() >= 10000; } },
   { id: "dexHalf",    phase: 4, icon: "📖", title: "図鑑を半分まで埋める",       hint: "出会った竜を記録していく。",               done: function () { var seen = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0; return seen >= Math.ceil(_gDexTotal() / 2); } },
 
   // ── 終章：島を守る ── 全開放（スカウト全ロケ・買い物全品・暮らし全枝・上級グルメ） ──
   // セレスティアは伏線段階（celestiaStrangerSeen）でも本名・☄️・「神眼」を出さない（解禁は第5話＝advisorMet）。
-  { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: "第4話を読み、総資産1億で第5話 → 終章・☄️絶滅メーター。", cast: "celestia", maskTitle: "？？？（第5話）", maskHint: "第4話を読み、総資産1億で第5話 → 終章がはじまる。", done: function () { return _gFlag("_chapter_intro_5") || _gFlag("celestiaStrangerSeen"); } },
+  { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: "第4話を読み、総資産1億で第5話 → 終章・☄️絶滅メーター。", cast: "celestia", maskTitle: "？？？（第5話）", maskHint: "第4話を読み、総資産1億で第5話 → 終章がはじまる。", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+    done: function () { return _gFlag("_chapter_intro_5") || _gFlag("celestiaStrangerSeen"); } },
   { id: "scout3",     phase: 5, icon: "🌋", title: "新たな地で竜を3頭スカウトする", hint: "終章で全ロケーション（火山・水中・空中…）が開放。", done: function () { return _gScouted() >= 3; } },
   { id: "fol100k",    phase: 5, icon: "💗", title: "フォロワーを10万人にする",   hint: "島いちばんの予想家へ。",                   done: function () { return goalFollowers() >= 100000; } },
   // ☄️はセレスティアの記号（data_assets.js の STORY_CAST.celestia.symbol）＝未登場のあいだは出さない（R3）。文面に固有名は無いので伏せるのはアイコンだけ。
