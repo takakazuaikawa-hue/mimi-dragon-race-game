@@ -8860,3 +8860,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* 追従するのは .rs-ctrl だけ＝その下をカードが通るので、地はほぼ不透明にして文字の透けを止める。
    （見出しは追従しなくなったので、元の半透明な金の帯のまま＝見た目は変えない） */
 .rs-ctrl { background: linear-gradient(180deg, #12161c 88%, rgba(18,22,28,0)); }
+
+/* 目標から行き先へ直接飛ぶボタン（ユーザー指摘：モールの入口が分かりにくい＝島タブの奥にしか無かった） */
+.goal-go { flex: none; margin-left: 8px; padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  font-size: 12px; font-weight: 800; white-space: nowrap; color: #2a1d05;
+  background: linear-gradient(180deg, #ffd966, #f0a838); border: none;
+  box-shadow: 0 3px 10px -3px rgba(240,168,56,.7); }
+.goal-go:active { transform: translateY(1px); }
+.goal-row.done .goal-go { display: none; }

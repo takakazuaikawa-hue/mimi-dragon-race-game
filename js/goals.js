@@ -28,6 +28,26 @@ function _gOutfitCount() {
     return b + w + 1;   // +1：初期の無料衣装（ブニクロ）は常に所持
   } catch (e) { return 0; }
 }
+// ★第2話ゲート（data_assets.js chapterAvailable "2"）と同じものを見るヘルパー。
+//   ここを別の指標で代用すると、目標と実際の解放条件がまた食い違う（今回の不具合の原因）。
+function _gBuniqro() {
+  try {
+    return (typeof outfitOwned === "function") && (typeof OUTFITS !== "undefined")
+      && !!outfitOwned(OUTFITS.find(function (o) { return o.id === "buniqro"; }));
+  } catch (e) { return false; }
+}
+// 第2話のヒント＝**残っている条件だけ**を出す。全部済んでいれば読みに行く先を指す。
+function _gCh2Hint() {
+  try {
+    var read1 = (typeof chapterRead === "function") ? chapterRead("1") : true;
+    var races = (state.player && state.player.completedRaces) || 0;
+    var need = [];
+    if (!read1) need.push("📖 第1話を読む");
+    if (races < 3) need.push("🏁 あと" + (3 - races) + "戦 走る");
+    if (!_gBuniqro()) need.push("🛍️ モールで『ブニクロ普段着』を買う");
+    return need.length ? ("あと：" + need.join(" ／ ")) : "条件はそろった！ 📖物語で第2話を読もう。";
+  } catch (e) { return "第1話・3戦・モールで普段着を買うと第2話へ。"; }
+}
 function _gScouted() {
   try { return Object.values(state.player.collection || {}).filter(function (e) { return e && e.scouted; }).length; }
   catch (e) { return 0; }
@@ -66,7 +86,10 @@ function goalTitleSafe(g) {
 }
 function goalHintSafe(g) {
   if (!g) return "";
-  return goalMasked(g) ? (g.maskHint || g.hint || "") : (g.hint || "");
+  // hint は関数でもよい＝「いま残っている条件だけ」を出す動的ヒントに使う（第2話など）。
+  var h = goalMasked(g) ? (g.maskHint || g.hint) : g.hint;
+  if (typeof h === "function") { try { h = h(); } catch (e) { h = ""; } }
+  return h || "";
 }
 // 表示用アイコン。★記号もネタバレになりうる（☄️＝STORY_CAST.celestia.symbol）ので、
 //   maskIcon を持つ目標は未登場のあいだ無害な記号へ差し替える（castSymbolSafe と同じ考え方）。
@@ -91,11 +114,22 @@ var GOALS = [
   { id: "firstRace",  phase: 1, icon: "🏁", title: "はじめてのレースに出走する", hint: "まずは1戦、走ってみよう。",                 done: function (s) { return (s.player.completedRaces || 0) >= 1; } },
   { id: "firstHit",   phase: 1, icon: "🎯", title: "はじめて的中する",           hint: "1点でも当てると 🐉竜の図鑑 が開く。",     done: function () { return _gFlag("everHit"); } },
   { id: "firstWin",   phase: 1, icon: "🏆", title: "はじめての勝利をあげる",     hint: "単勝で1着を当てる。",                       done: function (s) { return (s.player.wins || 0) >= 1; } },
-  { id: "firstMeal",  phase: 1, icon: "🍙", title: "屋台のごはんにありつく",     hint: "🍽️ごはんで1品たべると達成。おなかが減ったら屋台へ。", done: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 1; } },   // ★実際に食べたかで判定（旧=総資産1万の代理指標）
+  { id: "firstMeal",  phase: 1, icon: "🍙", title: "屋台のごはんにありつく",     hint: "🍽️ごはんで1品たべると達成。おなかが減ったら屋台へ。", goLabel: "▶ ごはんへ", go: function () { if (typeof renderMeals === "function") renderMeals(); },
+    done: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 1; } },   // ★実際に食べたかで判定（旧=総資産1万の代理指標）
+  // ★序章に「初めて自分の服を買う」の段を新設（ユーザー指摘：第2話の一番の関門なのに階段に段が無く、
+  //   何をすれば進むのか分からなかった）。判定は第2話ゲート（data_assets.js chapterAvailable "2"）と同一。
+  { id: "firstOutfit", phase: 1, icon: "🛍️", title: "はじめて自分の服を買う",
+    hint: "🛍️モールで『ブニクロ普段着』を買う。これが第2話のカギ。",
+    goLabel: "▶ モールへ", goIf: function () { return (typeof mallUnlocked !== "function") || mallUnlocked(); },
+    go: function () { if (typeof renderMall === "function") renderMall(); },
+    done: function () { return _gBuniqro(); } },
 
   // ── 第二話：オッズと市場 ── 🛍️モール買い物が開く ──
   // cast: 未登場のあいだ固有名を伏せる（maskTitle/maskHint に切替）。条件＝総資産・第N話はそのまま残す。
-  { id: "readCh2",    phase: 2, icon: "📊", title: "ミズの分析を学ぶ（第2話）", hint: "第1話を読み、レースを数戦こなすと第2話 → 🛍️モールで買い物が開放。", cast: "mizu", maskTitle: "？？？に会う（第2話）", done: function () { return _gFlag("_chapter_intro_2"); } },
+  // ★ヒントは**実際のゲートと一致**させる（旧文は「服を買う」を書いておらず、モールを"結果"と誤読させた）。
+  //   残っている条件だけを動的に出す＝いま何をすればいいかが一目で分かる。
+  { id: "readCh2",    phase: 2, icon: "📊", title: "ミズの分析を学ぶ（第2話）", hint: _gCh2Hint, cast: "mizu", maskTitle: "？？？に会う（第2話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+    done: function () { return _gFlag("_chapter_intro_2"); } },
   { id: "changeFit",  phase: 2, icon: "👗", title: "衣装を着替えてみる",         hint: "モールで服を手に入れて着替える。",         done: function () { return _gOutfitCount() >= 2; } },
   { id: "wideHit",    phase: 2, icon: "✨", title: "ワイド／複勝を当てる",       hint: "単勝の外に“妙味”を見つける。",             done: function () { return _gFlag("firstWideHit"); } },
   { id: "rankUp",     phase: 2, icon: "🏅", title: "ランクを上げる",             hint: "出走と勝利でランク2へ。",                   done: function (s) { return (s.player.rank || 1) >= 2; } },

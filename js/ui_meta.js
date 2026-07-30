@@ -40,6 +40,13 @@ function renderGoals() {
         `<span class="goal-ic">${done ? "✅" : (isNext ? "🎯" : icon)}</span>` +
         `<span class="goal-tx"><b>${title}</b><small>${done ? "達成ずみ" : hint}</small></span>` +
         `<span class="goal-st">${done ? "✓ クリア" : (isNext ? "挑戦中" : "")}</span>`;
+      // ★未達の目標には「その場所へ行く」ボタンを付ける（ユーザー指摘：モールの入口が分かりにくい／
+      //   モールは島タブの奥にしか無く、序盤の関門なのに辿り着けなかった）。目標＝行き先、にする。
+      if (!done && g.go && (!g.goIf || g.goIf())) {
+        const jump = el("button", "goal-go", g.goLabel || "▶ 行く");
+        jump.onclick = (e) => { e.stopPropagation(); try { g.go(); } catch (err) {} };
+        row.appendChild(jump);
+      }
       list.appendChild(row);
     });
     app.appendChild(list);
