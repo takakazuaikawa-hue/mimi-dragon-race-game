@@ -4,6 +4,10 @@
 > そのために本書は **①1本の音楽的背骨（モチーフと楽器パレット）→②画面ごとの発注 →③採用基準 →④結線**
 > の順で書く。曲は Suno でユーザーが作り、**届いたら結線はこちら（実装側）でやる**。
 >
+> ## 👉 **実際にSunoへ貼るときは [BGM_SUNO_PASTE_SHEET.md](BGM_SUNO_PASTE_SHEET.md)**
+> （Sunoの入力欄と1対1・Title/Styles/Excludeを読まずに上から貼れる作業用シート）。
+> **本書は設計の理屈**＝なぜその楽器・その速度・その長さなのか、と採用基準。迷ったときに戻る場所。
+>
 > 既存の `docs/BGM_SUNO_BRIEF.md` はモール3曲（納品済み `mall-day/boss/fever`）の発注書。
 > **本書がそれを含む全体の正本**。以後BGMの話はここに集約する。
 > 関連：[[audio-volume-control]]（🔊スライダ）・`js/bgm.js`（TRACK_GAIN＝曲別ゲイン）・`js/bgm_zones.js`（ゾーン割り当て）。
