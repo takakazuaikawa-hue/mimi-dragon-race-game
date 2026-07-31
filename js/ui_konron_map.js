@@ -740,7 +740,15 @@ function _kmAreaProg(area) {
 const KM_HIDDEN = {
   ura_bistro: { area: "city", cond: function () { try { return typeof mealEaten === "function" && mealEaten("g_pasta"); } catch (e) { return false; } } },
   neko_tsuji: { area: "city", cond: function () { try { var d = mealData(); return Object.keys(d.eaten || {}).length >= 10; } catch (e) { return false; } } },
-  hoshikuzu:  { area: "cliff", cond: function () { try { return (((state.player || {}).kurashi || {}).masterpieces || 0) >= 3; } catch (e) { return false; } } }
+  hoshikuzu:  { area: "cliff", cond: function () { try { return (((state.player || {}).kurashi || {}).masterpieces || 0) >= 3; } catch (e) { return false; } } },
+  // ★W2（2026-08-01）：隠しが city にしか無く、**探索の報酬が序盤エリアで打ち止め**だった。
+  //   浜と漁師町に1つずつ足す。どちらも**既存スポット＋既存写真**で、新しい画は発注していない
+  //   （mango_orchard.webp / ryoshimeshi.webp とも実在を確認済み）。
+  //   条件は ura_bistro の作法をそのまま踏襲＝「その屋台で食べた人だけが、次の場所を教わる」。
+  //   浜のかき氷 → 果物の出どころ（火山果樹園）／波止場のイカ焼き → 漁師のまかない、と
+  //   **その場の屋台と隠し先が地続き**になるように選んである。
+  mango:      { area: "beach",   cond: function () { try { return typeof mealEaten === "function" && mealEaten("t_kakigori"); } catch (e) { return false; } } },
+  ryoshimeshi:{ area: "fishing", cond: function () { try { return typeof mealEaten === "function" && mealEaten("t_ikayaki"); } catch (e) { return false; } } }
 };
 // 隠しスポットが表示してよい状態か（未定義＝普通のスポット＝常に true）。
 function _kmHiddenOk(id) {

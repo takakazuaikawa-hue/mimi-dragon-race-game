@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260801a";
+const KW_V = "20260801b";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -117,7 +117,15 @@ const KW_AREAS = {
     ],
     npcs: [
       { c: 12, r: 16, s: 3, line: "ぼく、いつか自分の竜であそこを走るんだ！" },
-      { c: 23, r: 16, s: 4, line: "本日の第一。荒れますよ、この風は。" },
+      // ★W1（2026-08-01）：s:4 は `folk5.webp` を指すが**そのシートは納品されていない**。
+      //   結果この予想屋だけ旧まとめシート(folk.webp)に落ち、①画風が違う ②正面コマしか無いので
+      //   横に歩いても正面を向いたまま、という二重の粗になっていた（実測で確認）。
+      //   → 既存シートへ付け替え。s:0＝羊角の老人（作務衣）は場慣れた予想屋の見えとして自然で、
+      //     このエリアのもう一人（s:3＝キツネの子）とも被らない。
+      //   ★村人の使い回しは既存設計と同じ頻度（s:1 と s:2 は既に3エリアで再利用されている）。
+      //   ★6人目を本当に作るなら発注仕様は docs/CODEX_ORDER_WALK_SCOUT.md（288×384・3×3）。
+      //     置くだけで自動的に読まれる（ここを s:4 に戻すだけ）＝任意の増補として残す。
+      { c: 23, r: 16, s: 0, line: "本日の第一。荒れますよ、この風は。" },
     ],
   },
 
@@ -203,6 +211,10 @@ const KW_AREAS = {
         go: function () { kwStall("🍧 浜のかき氷屋", ["t_kakigori", "t_wataame", "t_takoyaki"]); } },
       { c: 23, r: 11, ic: "♨️", n: "温泉郷へもどる道", hint: "坂をのぼる", area: "onsen" },
       { c: 22, r: 18, ic: "🎣", n: "ホシウオ村への砂道", hint: "波止場の方へ", area: "fishing" },
+      // ★W2 隠し：小屋のあいだから内陸へ抜ける道。かき氷を食べた人だけが果物の出どころを教わる。
+      //   fail-closed（KM_HIDDEN.mango を満たすまで存在ごと出ない）。撮影はオーバーレイなので stay 必須。
+      { c: 17, r: 8, ic: "❓", n: "小屋のあいだの小径", hint: "内陸へ入ってみる", stay: true, hidden: "mango",
+        go: function () { kwShoot("mango"); } },
       { c: 14, r: 22, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],
@@ -247,6 +259,10 @@ const KW_AREAS = {
         go: function () { kwShoot("hoshiuo"); } },
       { c: 16, r: 11, ic: "🍢", n: "炭火の魚焼き", hint: "食べていく", stay: true,
         go: function () { kwStall("🍢 波止場の炭火焼き", ["t_ikayaki", "t_takoyaki", "t_corn"]); } },
+      // ★W2 隠し：かご置き場の奥。イカ焼きを食べた人だけが「観光地図にない席」を教わる
+      //   （スポット定義の line がまさにそう書いてある＝設定と条件が噛み合う）。fail-closed。
+      { c: 14, r: 17, ic: "❓", n: "かごの奥の引き戸", hint: "のぞいてみる", stay: true, hidden: "ryoshimeshi",
+        go: function () { kwShoot("ryoshimeshi"); } },
       { c: 20, r: 18, ic: "🍶", n: "波止場の一杯", hint: "のぞいてみる", stay: true,
         go: function () { kwToast("🍶 昼から一杯やってる漁師たち。……いい顔してるなあ。"); } },
       { c: 14, r: 21, ic: "🏖️", n: "浜へもどる砂道", hint: "波の音の方へ", area: "beach" },
