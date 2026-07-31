@@ -61,13 +61,14 @@ const BC_CHATTER = [
   { id: "sumika_island_05", cm: "sumika", topic: "island", at: "mid", region: "ミストレイク地域", line: "古い井戸のある通りは、夏でもひんやりして過ごしやすいのです。" },
   { id: "sumika_island_06", cm: "sumika", topic: "island", at: "entry", line: "島の郵便は船待ちですから、返事は気長にお待ちいただくものですね。" },
   { id: "sumika_island_07", cm: "sumika", topic: "island", at: "mid", line: "潮風で金具が錆びますので、鍵は月に一度油をひいております。" },
-  // ★終章（三頭同着）の伏線＝環境音の層。レース中にふと耳に入って「聞いたことがある」の下地を作る。
-  //   ⚠️この表には「賭けの当たり外れに触れない」規約があり、tools/audit_broadcast.js が
-  //   /あなたの(一票|予想|賭け|竜)|賭け(た|金|竜)|的中|払戻/ を検出する。だから「払い戻し」等は
-  //   使わず、**帳場が止まった／数字が入っていない頁**という情景だけで同じことを伝える。
-  { id: "mizu_history_deadheat_01", cm: "mizu", topic: "history", at: "entry", line: "同着の日はね、配当が1.0倍になるのよ。この島の、古い決まり。" },
-  { id: "mizu_history_deadheat_02", cm: "mizu", topic: "history", at: "mid", line: "同着は竜の名誉にも勝敗にもならない。……だから、増えも減りもしないの。" },
-  { id: "makura_history_deadheat_01", cm: "makura", topic: "history", at: "mid", line: "一着がならぶと1.0倍なんだってさ。勝ちも負けもナシ、って決まりらしいよ。" },
+  // ★終章（三頭同着）の伏線を**実況から撤去した**（2026-08-01・ユーザー指摘）。
+  //   撤去したのは mizu_history_deadheat_01/02 と makura_history_deadheat_01 の3本。
+  //   理由：実況の雑談は「いま目の前で起きていること」に紐づいて流れるのに、同着の規則だけは
+  //   何の脈絡もなく落ちてくるので**唐突で意味が分からない**（ユーザー実プレイでの指摘）。
+  //   伏線は温泉の湯けむり回（`js/ui_konron_map.js` のミズ回・`onsenDeadheatHeard`）が
+  //   会話の流れの中で一度だけ渡す。**そちらが本体で、実況に重ねる必要はなかった。**
+  //   ★同種の追加をするときの教訓：実況の雑談は状況に接続していないと浮く。
+  //     設定の説明を流し込む場所ではない。
   { id: "sumika_history_01", cm: "sumika", topic: "history", at: "entry", line: "この島の会場は、もともと荷揚げの広場だったと伺っております。" },
   { id: "sumika_history_02", cm: "sumika", topic: "history", at: "entry", line: "昔は竜に荷を運ばせておりました。走らせるのは後の話でございます。" },
   { id: "sumika_history_03", cm: "sumika", topic: "history", at: "mid", line: "百年前の大火の後、屋根はすべて瓦に替えられたそうでございます。" },
