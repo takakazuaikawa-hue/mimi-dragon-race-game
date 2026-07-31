@@ -316,7 +316,7 @@ function renderKonronMap() {
   //   急ぐ人が踏まない位置で置く。用が無くても、ただ歩きたい人のためのもの。
   if (typeof renderKonronWalk === "function" && typeof Scene !== "undefined") {
     const walk = el("button", "kt-more-card",
-      `<span class="kt-more-ic">🚶</span><b>島を散歩する</b><small>用は無くても。立ち止まると、気づくものがある（β）</small>`);
+      `<span class="kt-more-ic">🚶</span><b>島を散歩する</b><small>用は無くても。立ち止まると、気づくものがある。</small>`);
     walk.onclick = () => renderKonronWalk();
     more.appendChild(walk);
   }

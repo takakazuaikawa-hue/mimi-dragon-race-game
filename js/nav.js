@@ -44,7 +44,7 @@ var SCREEN_INDEX = [
   { no: 29, id: "konron_map",      label: "おでかけ(島)",          group: "拠点" },
   { no: 30, id: "konron_guide",    label: "紀行 #島さんぽ(旧ガイドブック)", group: "拠点" },
   { no: 31, id: "konron_gallery",  label: "フォトコレクション(図鑑)", group: "拠点" },
-  { no: 32, id: "konron_walk",     label: "歩いてまわる(β)",     group: "拠点" },
+  { no: 32, id: "konron_walk",     label: "歩いてまわる",        group: "拠点" },
   { no: 33, id: "kiko",            label: "紀行ブログ",           group: "紀行" },
   { no: 34, id: "media",           label: "メディア(物語/SNS)",   group: "SNS" },
   { no: 35, id: "shingan",         label: "神眼レース(終章)",     group: "終章" }

@@ -530,7 +530,10 @@ function kwReturnClear() {
 // エリア移動＝シーンを作り直す（設計書 §2「入場でロード／退場で破棄」に従う）
 function kwGo(areaId) { kwExit(); renderKonronWalk(areaId); }
 
-// ── 画面：歩いてまわる（β）
+// ── 画面：歩いてまわる
+//   ★2026-08-01 脱β。KONRON_WALK_COMPLETION_DIRECTIVE §2 の受け入れ基準8項を
+//     全部満たしてから外した（BFS全緑・一周プレイ・folk5解消・隠し2つ・時間帯4種目視・
+//     ポロ随行・エラー0）。基準を満たす前に外さないこと。
 function renderKonronWalk(areaId, at) {
   if (typeof konronMapUnlocked === "function" && !konronMapUnlocked()) { renderKonronMap(); return; }
   if (typeof Scene === "undefined" || !Scene.create) { renderKonronMap(); return; }
@@ -547,7 +550,7 @@ function renderKonronWalk(areaId, at) {
   hud.className = "kw-hud";
   hud.innerHTML =
     '<button class="kw-back">← 島の地図へ</button>' +
-    '<div class="kw-title">🚶 ' + area.name + 'を散歩 <span class="kw-beta">β</span></div>' +
+    '<div class="kw-title">🚶 ' + area.name + 'を散歩</div>' +
     '<div class="kw-when">' + now.ic + " " + now.k + "</div>" +
     '<div class="kw-toast"></div>' +
     '<div class="kw-prompt"></div>';
