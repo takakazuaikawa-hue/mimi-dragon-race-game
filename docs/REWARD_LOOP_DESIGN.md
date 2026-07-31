@@ -154,3 +154,52 @@ R1 は器だけ作って誰も使わない段＝ `js/data_chapters.js` と同じ
 - **1到着1モーダル**を守る（`progressionCheckOnHome` の作法）
 - **表示専用**：着順・オッズ・配当・FinalPower には触れない
 - 新しい正本を作らない（既存の `MEALS` / `KONRON_SPOTS` / `OUTFITS` を読むだけ）
+
+---
+
+## R4 実装記録（2026-08-01・完了）
+
+**島でやったことに、レース場の側が反応する。** 実装は2層。
+
+### ① 顧問が触れる（`js/event_registry.js` 末尾・8本）
+`afterRaceSelect` に `once:true` で登録。**実名で言う**のが肝で、`text` に関数を渡して
+発火時に state から場所名・料理名を引く（`_r4LastSpotName()` 等）。
+
+| id | 条件 | 話者 |
+|---|---|---|
+| `x_mizu_saw_you_out` | スポット3か所＋名前が引ける | ミズ |
+| `x_sumika_island_walker` | スポット15か所 | スミカ |
+| `x_sake_you_ate` | 食べ歩き5品＋名前が引ける | サケ |
+| `x_makura_food_content` | 食べ歩き15品 | マクラ |
+| `x_makura_saw_photo` | ★3写真1枚 | マクラ |
+| `x_mizu_stable_grows` | 龍舎2頭 | ミズ |
+| `x_sumika_dressed_up` | 衣装3着 | スミカ |
+| `x_sake_life_settled` | ツリー8ノード | サケ |
+
+**発火の実測**：`runEventHooks` は `vnBudget = 1`＝**1フックにつき喋るイベントは1本だけ**
+（`js/event_hooks.js`）。同一優先度では登録順が勝つので、R4は毎レース1本ずつ順に出る＝
+まとめて降ってこない。優先度は 0 のまま＝地域初訪問の説明（同じく0・先に登録）が先に出て、
+それが済んでからR4が出る。この順序は意図どおりなので priority は足していない。
+
+### ② SNSが拾う（`js/sns.js` `SNS_POSTS` 末尾・5本）
+既存の `p_walker`「島を歩く人」/ `p_gourmet`「うまそうに食う子」は**匿名の一般論**だった。
+R4で足したのは**固有名を出す投稿**（`p_x_spot` / `p_x_meal` / `p_x_photo` / `p_x_stable` / `p_x_walker20`）。
+
+- `unlock()` で**名前が引けることまで**確かめる＝穴あき投稿（「、うまそうに食う」）を出さない。
+- 文面は「最近／このごろ」＝**現在進行の観測**にする。`text` は描画のたびに評価されるので、
+  「〜に行った」と過去形にすると次の外出で**過去の投稿が書き換わって**見える。
+- 早い3本は `unlockDelayDay` で1日ずらす（既存の還流投稿と同じ作法）。
+
+### ⚠ 途中で見つけた事故（記録）
+`POST_TEMPLATES`（ミミが自分で投稿するテンプレ・13件）は **`postTemplates()` が
+どこからも呼ばれておらず、全部が死にデータ**。R4を最初ここへ足してしまい、実機で
+タイムラインに出ないことで気づいた。**SNSに何か足すときは `timelinePosts()` から
+辿れるか（＝`SNS_DAILY` か `SNS_POSTS`）を先に確かめること。**
+
+### 検証（実機・DOM実測）
+- 実経路 `renderRaceDetail(race)` で `x_mizu_saw_you_out` が発火し、立ち絵つきで
+  ミズ・アオラ「昨日、ウロコトロ温泉郷に居たでしょう。……見てましたよ、あはん。」を確認。
+- `timelinePosts()` に4本が実名で出ることを確認（龍舎0頭の `p_x_stable` は正しく非表示）。
+- ★Browserペインのスクショが古い描画のまま止まるため、目視ではなく **DOM実測**で確認した
+  （[[browser-pane-hidden-shot-server]] と同じ症状）。
+- テスト汚染は `resetGame()` で復旧済み（spots 0 / meals 0 / coins 1000 / x_フラグ0）。

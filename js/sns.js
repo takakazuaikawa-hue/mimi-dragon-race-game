@@ -204,7 +204,40 @@ var SNS_POSTS = [
     unlock: function () { var c = Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_walker", c) : c; } },   // ★D9-11: 號外(+1レース)とさらに時差
   { id: "p_gourmet", ic: "🍜", name: "屋台のおやじ", handle: "@yatai_oyaji", base: 96,
     text: "また来たよ、あの子。うちの新作、いちばんうまそうに食うんだ。……悪い気はしねえ。（グルメ面『みみしんぼ』連載中）",
-    unlock: function () { var c = (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_gourmet", c) : c; } }   // ★D9-11: toast即時→號外+1レース→投稿+1日
+    unlock: function () { var c = (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_gourmet", c) : c; } },   // ★D9-11: toast即時→號外+1レース→投稿+1日
+
+  // ── R4：島でやったことを、SNSが**実名で**拾う（docs/REWARD_LOOP_DESIGN.md）──
+  // ★既存の p_walker / p_gourmet は「島を歩く人」「よく食う子」と**匿名の一般論**だった。
+  //   ここで足すのは**行った場所・食べた品の固有名**を出す投稿＝「見られている」実感の核。
+  // ★unlock() で名前が引けることまで確かめる＝穴あき投稿（「、うまそうに食う」）を出さない。
+  // ★_r4* は event_registry.js 定義（呼び出し時解決なので読み込み順に依存しない）。
+  // ★文面は「最近／このごろ」＝現在進行の観測にする。text は毎回評価されるので、
+  //   「〜に行った」と過去形で固定名を書くと、次の外出で**過去の投稿が書き換わって**見える。
+  // ★表示専用＝着順・オッズ・配当には触れない。
+  { id: "p_x_spot", ic: "🏝", name: "島の掲示板", handle: "@konron_bbs", base: 88,
+    text: function () { return `最近、${_r4LastSpotName()}のあたりでうさ耳の子を見かけるって話。……あの予想家、ほんとに島を歩いてるんだな。`; },
+    unlock: function () {
+      var c = typeof _r4LastSpotName === "function" && !!_r4LastSpotName() && _r4SpotCount() >= 3;
+      return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_x_spot", c) : c;
+    } },
+  { id: "p_x_meal", ic: "🍚", name: "崑崙たべあるき", handle: "@konron_tabe", base: 134,
+    text: function () { return `${_r4LastMealName()}、あの子が食ってるの見て並んだ人が今日も居た。……予想より先に、飯を当てられてる。`; },
+    unlock: function () {
+      var c = typeof _r4LastMealName === "function" && !!_r4LastMealName() && _r4MealCount() >= 3;
+      return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_x_meal", c) : c;
+    } },
+  { id: "p_x_photo", ic: "📸", name: "崑崙フォト部", handle: "@konron_photo", base: 152,
+    text: function () { return `今月の★3、${_r4Masterpieces()}枚。竜を「速い生き物」じゃなく「きれいな生き物」として撮る人、ほんとに少ないんですよ。`; },
+    unlock: function () {
+      var c = typeof _r4Masterpieces === "function" && _r4Masterpieces() >= 1;
+      return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_x_photo", c) : c;
+    } },
+  { id: "p_x_stable", ic: "🐲", name: "竜舎だより", handle: "@ryusha_news", base: 163,
+    text: function () { return `ミミの龍舎、${_r4Scouted()}頭になりました。どの子も、名前で呼ばれると耳を動かします。……見てもらえてる竜の顔だ。`; },
+    unlock: function () { return typeof _r4Scouted === "function" && _r4Scouted() >= 2; } },
+  { id: "p_x_walker20", ic: "🗺", name: "崑崙観光協会", handle: "@konron_kanko", base: 118,
+    text: function () { return `島${_r4SpotCount()}か所踏破。……あの、もう観光ガイド書いてもらえませんか。真面目に。`; },
+    unlock: function () { return typeof _r4SpotCount === "function" && _r4SpotCount() >= 20; } }
 ];
 // ★BUGFIX（マイルストーンだけ素通し）：日替わり(SNS_DAILY_GATE)は守れていたのに、rank/コインだけで解放される
 //   マイルストーン投稿は顧問の登場判定を通っておらず、「日替わりのマクラは出ないのに投稿はする」矛盾が起きていた。

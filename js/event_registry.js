@@ -627,3 +627,149 @@ registerEvent({
   id: "milestone_node_first", hook: "onLifeNode", condition: { once: true }, priority: 10,
   actions: [{ type: "dialogue", speaker: "mimi", text: "……これ、生活が一個ぶん、ちゃんとした。" }]
 });
+
+// =========================================================================
+// R4：横断の見返り＝**島でやったことに、レース場の側が反応する**
+// =========================================================================
+// 正本: docs/REWARD_LOOP_DESIGN.md
+//
+// ★ここが本命（R1〜R3で足りなかった層）：
+//   個別の反応（食べた瞬間の react 等）＝R1で既にある。節目の反応＝R3で足した。
+//   だが**島とレース場が別世界のまま**だった。島を歩いても顧問は何も知らない顔をしていた。
+//   顧問が「昨日、灯籠通りに居たでしょう」と**名指しで**触れた瞬間、世界がひとつに繋がる。
+//
+// ★実装の要点（ここを守ること）：
+//   ①**具体名で言う**。「観光してるね」では誰の話でもない。実際に行った場所・食べた品の名前を出す。
+//     text は関数を取れる（event_hooks.js:177）ので、発火時に state から実名を引く。
+//   ②**名前が引けないときは発火しない**（test で name の存在まで確かめる）。
+//     「、行った？」のような穴あき台詞を絶対に出さない。
+//   ③**once: true**＝繰り返さない。afterRaceSelect は毎レース通るフックなので、
+//     once を外すと顧問が毎回同じ雑談をする＝レースのテンポを壊す。
+//   ④**門番（_met）を必ず通す**。未登場の顧問に喋らせない（fail-closed・[[cast-appearance-gate]]）。
+//   ⑤表示専用＝レースの着順・オッズ・配当・FinalPower には一切触れない。
+// =========================================================================
+
+// ── 島の実績を「実名で」引くヘルパ（引けなければ null＝発火しない）──────
+// ★キーの挿入順＝訪問順／実食順なので、末尾＝**いちばん最近**。
+//   「昨日〜に居たでしょう」が本当に最近の出来事になる。
+function _r4LastSpotName() {
+  try {
+    if (typeof KONRON_SPOTS === "undefined") return null;
+    const ids = Object.keys(((state.player || {}).kurashi || {}).spotsSeen || {}).filter(id => KONRON_SPOTS[id]);
+    if (!ids.length) return null;
+    const s = KONRON_SPOTS[ids[ids.length - 1]];
+    return (s && s.name) || null;
+  } catch (e) { return null; }
+}
+function _r4SpotCount() {
+  try { return Object.keys(((state.player || {}).kurashi || {}).spotsSeen || {}).length; } catch (e) { return 0; }
+}
+function _r4LastMealName() {
+  try {
+    if (typeof MEALS === "undefined" || typeof mealData !== "function") return null;
+    const ids = Object.keys(mealData().eaten || {});
+    if (!ids.length) return null;
+    const m = MEALS.find(x => x.id === ids[ids.length - 1]);
+    return (m && m.name) || null;
+  } catch (e) { return null; }
+}
+function _r4MealCount() { try { return mealStatsAll().got; } catch (e) { return 0; } }
+function _r4Masterpieces() { try { return ((state.player || {}).kurashi || {}).masterpieces || 0; } catch (e) { return 0; } }
+function _r4Scouted() { try { return scoutedRoster().length; } catch (e) { return 0; } }
+function _r4Outfits() { try { return OUTFITS.filter(x => outfitOwned(x)).length; } catch (e) { return 0; } }
+
+// ── 🏝 出かけたことに、顧問が触れる ────────────────────────────────
+registerEvent({
+  id: "x_mizu_saw_you_out", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("mizu") && _r4SpotCount() >= 3 && !!_r4LastSpotName() },
+  actions: [
+    { type: "dialogue", speaker: "mizu",
+      text: () => `昨日、${_r4LastSpotName()}に居たでしょう。……見てましたよ、あはん。` },
+    { type: "dialogue", speaker: "mizu",
+      text: "いいことです。竜は島で育つの。島を知らない人の予想は、数字だけになる。" }
+  ]
+});
+
+registerEvent({
+  id: "x_sumika_island_walker", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("sumika") && _r4SpotCount() >= 15 },
+  actions: [
+    { type: "dialogue", speaker: "sumika",
+      text: () => `島を${_r4SpotCount()}か所。……あなた、もう観光客じゃないわね。` },
+    { type: "dialogue", speaker: "sumika",
+      text: "住んでる人の顔になってきた。悪くないわ、その顔で買いなさい。" }
+  ]
+});
+
+// ── 🍜 食べたことに、顧問が触れる ──────────────────────────────────
+registerEvent({
+  id: "x_sake_you_ate", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _r4MealCount() >= 5 && !!_r4LastMealName() },
+  actions: [
+    { type: "dialogue", speaker: "sake_udada",
+      text: () => `${_r4LastMealName()}か。……ふん、悪くない選び方をする。` },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "腹が減った奴の予想は荒れる。食え。それも予想のうちだ。" }
+  ]
+});
+
+registerEvent({
+  id: "x_makura_food_content", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("makura") && _r4MealCount() >= 15 },
+  actions: [
+    { type: "dialogue", speaker: "makura",
+      text: () => `島の飯、${_r4MealCount()}品も食ってんの？ ……それ、コンテンツだよ。` },
+    { type: "dialogue", speaker: "makura",
+      text: "予想が当たらない日でも、飯の画は伸びる。覚えとけ、それが強さだ。" }
+  ]
+});
+
+// ── 📸 撮ったことに、顧問が触れる ──────────────────────────────────
+registerEvent({
+  id: "x_makura_saw_photo", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("makura") && _r4Masterpieces() >= 1 && !!_r4LastSpotName() },
+  actions: [
+    { type: "dialogue", speaker: "makura",
+      text: "おい、あの★3の写真。……あれ、お前が撮ったのか。" },
+    { type: "dialogue", speaker: "makura",
+      text: "竜を「速い生き物」じゃなく「きれいな生き物」として撮れる奴は、そう多くねぇよ。" }
+  ]
+});
+
+// ── 🌴 竜を迎えたことに、顧問が触れる ──────────────────────────────
+registerEvent({
+  id: "x_mizu_stable_grows", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("mizu") && _r4Scouted() >= 2 },
+  actions: [
+    { type: "dialogue", speaker: "mizu",
+      text: () => `龍舎、${_r4Scouted()}頭になったそうね。……あなた、集める側になってきたわ。` },
+    { type: "dialogue", speaker: "mizu",
+      text: "近くで見た竜の走りは、数字より正確よ。あはん、それはもう分かってるでしょ？" }
+  ]
+});
+
+// ── 👗 着替えたことに、顧問が触れる ────────────────────────────────
+registerEvent({
+  id: "x_sumika_dressed_up", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("sumika") && _r4Outfits() >= 3 },
+  actions: [
+    { type: "dialogue", speaker: "sumika",
+      text: "今日の服、いいじゃない。……ちゃんとお金の使い方を覚えたのね。" },
+    { type: "dialogue", speaker: "sumika",
+      text: "貯めるだけの人は、いつか貯めることが目的になる。使いなさい、生きるために。" }
+  ]
+});
+
+// ── 🌳 暮らしが整ったことに、顧問が触れる ──────────────────────────
+registerEvent({
+  id: "x_sake_life_settled", hook: "afterRaceSelect",
+  condition: { once: true, test: () => {
+    try { return Object.keys((state.lifeTree || {}).unlocked || {}).length >= 8; } catch (e) { return false; }
+  } },
+  actions: [
+    { type: "dialogue", speaker: "sake_udada",
+      text: "……顔つきが変わったな。寝床が定まった奴の顔だ。" },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "焦った金は、焦った買い方をする。落ち着いた奴の金は、落ち着いて増える。" }
+  ]
+});
