@@ -944,6 +944,27 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 }
 .rs-reason .rsr-stat { font-size: 11px; color: #9aa2ae; margin-top: 8px; }
 .rs-reason .rsr-stat b { color: #e2e6ec; font-variant-numeric: tabular-nums; }
+/* ★C-2 図鑑導線／C-4 リベンジ（js/rival.js・表示専用）。
+   敗因1行の下に置く＝「負けた → 相手は誰 → その竜を見る」の順で読める。 */
+.rs-reason .rsr-revenge {
+  font-size: 12.5px; font-weight: 800; line-height: 1.6; color: #ffd9a8; margin-top: 7px;
+  padding-top: 7px; border-top: 1px dashed rgba(255,255,255,.14);
+}
+.rs-reason .rsr-dexlink {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 9px; padding: 7px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; color: #e8edf4;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.16);
+  cursor: pointer; -webkit-appearance: none; appearance: none;
+}
+.rs-reason .rsr-dexlink:hover { background: rgba(255,255,255,.11); }
+/* 出走表の ⚔️ 印。名札の一部として小さく置く（人気/オッズの読みを邪魔しない）。 */
+.bet-pick-card .bp-rival {
+  margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; color: #ffd0c4;
+  background: rgba(255,110,80,.16); border: 1px solid rgba(255,140,110,.42);
+  white-space: nowrap;
+}
 /* ★C-4：主CTAに連勝の熱を乗せる */
 .actions .rs-next { font-weight: 900; }
 

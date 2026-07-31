@@ -174,7 +174,7 @@ function renderTitle() {
     <div class="title-inner">
       <div class="title-head">
         <h1 class="title-logo title-logo--image">
-          <img class="title-logo-art" src="images/title_logo.webp?v=20260725c" width="1240" height="1023" alt="ミミのドラゴンレース紀行　転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件" decoding="async">
+          <img class="title-logo-art" src="images/title_logo.webp?v=20260801s" width="1598" height="984" alt="ミミのドラゴンレース紀行　転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件" decoding="async">
         </h1>
         <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
       </div>
@@ -2325,7 +2325,7 @@ function renderRaceDetail(race) {
       <span class="bp-pop p${rk <= 3 ? rk : ""}">${rk}<small>人気</small></span>
       <span class="bp-main">
         <span class="bp-name"><span class="dragon-icon" style="background:${dragonColor(d)}">${d.name.charAt(0)}</span>${d.name}</span>
-        <span class="bp-sub"><span class="style-${d.style}">${STYLE_LABEL[d.style]}</span>${d.newspaperMark ? `<span class="bp-mark">${d.newspaperMark}</span>` : ""}<span class="bp-form">${recentResultLabel(d.recentResult)}</span></span>
+        <span class="bp-sub"><span class="style-${d.style}">${STYLE_LABEL[d.style]}</span>${d.newspaperMark ? `<span class="bp-mark">${d.newspaperMark}</span>` : ""}<span class="bp-form">${recentResultLabel(d.recentResult)}</span>${typeof rivalTagHtml === "function" ? rivalTagHtml(d.id) : ""}</span>
         <span class="bp-traits">${d.traits.join("・")}</span>
       </span>
       <span class="bp-odds">
@@ -3590,12 +3590,34 @@ function drawRecapScreen() {
     if (R) {
       if (!c._reasonScored) { c._reasonScored = recordReasonResult(rk, !!ps.hit) || true; }
       const st = (state.player.reasonStats || {})[rk] || { w: 0, l: 0 };
+      // ★C-4 リベンジ／C-2 図鑑導線（js/rival.js・表示専用）。
+      //   記録は1レース1回だけ（タブ切替の再描画で上書き連打しないよう _rivalScored で門番）。
+      let _rv = { revenged: false, name: "" };
+      if (typeof rivalSettle === "function") {
+        if (!c._rivalScored) { _rv = rivalSettle(c, !!ps.hit); c._rivalScored = _rv; }
+        else _rv = c._rivalScored;
+      }
       const box = el("div", "rs-reason" + (ps.hit ? " hit" : " miss"));
       box.innerHTML =
         `<div class="rsr-top"><span class="rsr-ic">${R.ic}</span>` +
         `<span class="rsr-msg">${ps.hit ? R.win : R.lose}</span></div>` +
         (!ps.hit ? `<div class="rsr-miss">${missReasonLine(c)}</div>` : "") +
+        (_rv.revenged ? `<div class="rsr-revenge">⚔️ ${_rv.name} に、借りを返した。</div>` : "") +
         `<div class="rsr-stat">${R.ic} ${R.name}での予想　<b>${st.w}勝${st.l}敗</b></div>`;
+      // ★負けた相手を「名前のある相手」にする＝図鑑へ1タップで飛べる導線。
+      //   ここで初めて、負けが次のレースの動機になる。
+      if (!ps.hit && typeof rivalPickFrom === "function") {
+        const foe = rivalPickFrom(c);
+        // ★showCollectionDragonDetail は未観戦だと黙って return する＝押しても何も起きない
+        //   死にボタンになる。走った直後なので実際は必ず seen だが、条件はここで明示して守る。
+        const _foeSeen = foe && ((state.player.collection || {})[foe.id] || {}).seen;
+        if (foe && _foeSeen) {
+          const chip = el("button", "rsr-dexlink", `📖 ${foe.name} を図鑑で見る`);
+          chip.type = "button";
+          chip.onclick = () => { if (typeof showCollectionDragonDetail === "function") showCollectionDragonDetail(foe); };
+          box.appendChild(chip);
+        }
+      }
       app.appendChild(box);
     }
   }
