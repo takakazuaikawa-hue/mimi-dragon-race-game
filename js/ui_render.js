@@ -1121,16 +1121,11 @@ function renderSettings() {
       if (window.Sfx && Sfx.play) Sfx.play("click");
       if (window.Ending && Ending.play) {
         Ending.play().then(() => {
-          // 本編クリア＝エンディング完走。ポロを見つけていれば「ポロのグルメレース」解放（仕様§7・表示専用）。
+          // 本編クリア＝エンディング完走。★F4（2026-08-01）：ここに直書きしていた解放処理を
+          //   epilogue_engine.js の markGameCleared() へ集約した。正規クリア（神眼→ED）でも
+          //   同じ関数・同じ瞬間に呼ばれる＝実装がひとつ。docs/CHAPTER_STATE_DESIGN.md
           try {
-            if (typeof setStoryFlag === "function" && !getStoryFlag("gameCleared")) {
-              setStoryFlag("gameCleared", true);
-              if (typeof poroFound === "function" && poroFound()) {
-                setStoryFlag("poroGourmetRaceUnlocked", true);
-                if (typeof showInfoPopup === "function") showInfoPopup("🏃 ポロのグルメレース 解放！",
-                  `<div class="mm-row"><span class="mm-ic">🥹</span><div><b>クリアおめでとう！</b><small>おまけに「ポロのグルメレース」が遊べるようになりました。設定のおまけ欄から、いつでもどうぞ。</small></div></div>`);
-              }
-            }
+            if (typeof markGameCleared === "function") markGameCleared();
             if (state.ui.screen === "settings") renderSettings();
           } catch (e) {}
         });

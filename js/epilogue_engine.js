@@ -264,6 +264,35 @@ function epilogueClear() {
   const e = epData(); if (e.edFlag) return; e.edFlag = true; epSave();
 }
 
+// =========================================================================
+// ★クリア印の確定（2026-08-01・章デザイン監査 F4）— docs/CHAPTER_STATE_DESIGN.md
+// =========================================================================
+// 実バグ：正規クリア（神眼レース完走→Ending.play）では poroGourmetRaceUnlocked が
+//   どこでも立たず、ED後の特別號から「ポロのグルメレース」へ飛ぶと
+//   「まだ開いていません」でホームへ戻されていた（js/poro_gourmet.js の門番）。
+//   立てていたのは設定「おまけ」のED再生を完走した時（ui_render.js）の1箇所だけ。
+// ★edFlag と gameCleared は重複ではない。指している瞬間が違う：
+//     edFlag      … 最終決戦を完走した（＝ED再生の直前）
+//     gameCleared … エンディングを最後まで観た
+//   解放は後者（ユーザー決裁 2026-08-01）。renderPoroGourmet のロック文言
+//   「本編をクリア（エンディングを観る）すると解放されます」と、設定側の実装に揃える。
+// 両経路（神眼→ED／設定のおまけ→ED）がこの1関数を呼ぶ＝実装をひとつにする。
+function markGameCleared() {
+  try {
+    if (typeof setStoryFlag !== "function" || typeof getStoryFlag !== "function") return false;
+    if (getStoryFlag("gameCleared")) return false;                 // 二度目は何もしない
+    setStoryFlag("gameCleared", true);
+    // ポロを見つけていればグルメレースも解放（仕様§7・表示専用ミニゲーム）。
+    if (typeof poroFound === "function" && poroFound()) {
+      setStoryFlag("poroGourmetRaceUnlocked", true);
+      if (typeof showInfoPopup === "function") showInfoPopup("🏃 ポロのグルメレース 解放！",
+        `<div class="mm-row"><span class="mm-ic">🥹</span><div><b>クリアおめでとう！</b><small>おまけに「ポロのグルメレース」が遊べるようになりました。設定のおまけ欄から、いつでもどうぞ。</small></div></div>`);
+    }
+    if (typeof saveGame === "function") saveGame();
+    return true;
+  } catch (e) { return false; }
+}
+
 // 最終決戦（Stage2＝積み上げ紹介の演出レース）：前口上 → 走馬灯ショー（積み上げ紹介）→ 最後のレース＋締め
 //   → 終章クリア(edFlag) → 既存エンディング。すべて表示専用＝着順/オッズ/配当は不変（普通のレースを
 //   演出で祝祭化するだけ・docs/epilogue_extinction_design.md §6）。読むデータは総資産/ランク/完走/図鑑/

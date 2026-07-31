@@ -550,7 +550,13 @@ function _sgClear(kind, mine, betNm) {
   const toEnd = () => {
     if (typeof epilogueClear === "function") epilogueClear();
     else { const e = state.player.epilogue || (state.player.epilogue = {}); e.edFlag = true; if (typeof saveGame === "function") saveGame(); }
-    if (window.Ending && Ending.play) Ending.play(); else renderHome();
+    // ★F4（2026-08-01）：ここでEDを流すだけで終わっていたため、正規クリアでは gameCleared /
+    //   poroGourmetRaceUnlocked が永久に立たず、ED後の特別號から「ポロのグルメレース」へ飛ぶと
+    //   ロックで弾かれていた。解放は「エンディングを観終わったとき」（ユーザー決裁）なので、
+    //   Ending.play() の完了後に markGameCleared() を呼ぶ＝設定「おまけ」経路と同じ関数・同じ瞬間。
+    const _cleared = () => { if (typeof markGameCleared === "function") markGameCleared(); };
+    if (window.Ending && Ending.play) Ending.play().then(_cleared, _cleared);
+    else { _cleared(); renderHome(); }
   };
   const afterShow = () => {
     if (typeof playEightDragonsCutin === "function") playEightDragonsCutin().then(toEnd); else toEnd();
