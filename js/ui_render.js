@@ -145,7 +145,7 @@ function renderTitle() {
     <div class="title-inner">
       <div class="title-head">
         <h1 class="title-logo title-logo--image">
-          <img class="title-logo-art" src="images/title_logo.webp?v=20260725c" width="1240" height="1023" alt="ミミのドラゴンレース紀行　転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件" decoding="async">
+          <img class="title-logo-art" src="images/title_logo.webp?v=20260801s" width="1598" height="984" alt="ミミのドラゴンレース紀行　転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件" decoding="async">
         </h1>
         <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
       </div>
