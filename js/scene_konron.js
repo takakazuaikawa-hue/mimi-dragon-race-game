@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260801j";
+const KW_V = "20260801k";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -52,7 +52,11 @@ const KW_AREAS = {
       "################################", // r23
     ],
     doors: [
+      // ★open: 未解放なら**その場で断る**（歩けるマップは行き先を予告してから動くため。
+      //   これが無いと「モールへ移動します」と言ってホームへ飛ばす＝約束破りになる。実プレイで発見）
       { c: 14, r: 8, ic: "🏬", n: "崑崙モール", hint: "アーチをくぐる",
+        open: function () { return (typeof mallUnlocked !== "function") || mallUnlocked(); },
+        closed: "シャッターが下りている。……服が一着買えるくらい稼いだら、開くらしい。",
         go: function () { if (typeof renderMall === "function") renderMall(); } },
       { c: 11, r: 12, ic: "🍢", n: "霧待ち市場", hint: "屋台をのぞく", stay: true,
         go: function () { kwStall("🍢 霧待ち市場の立ち食い", ["t_nikuman", "t_ikayaki", "t_corn"]); } },
@@ -784,6 +788,17 @@ function kwAct() {
   if (KW.nearKind === "npc") { KW.met[d.s] = 1; kwToast("💬 「" + d.line + "」"); return; }
   if (d.area) { kwGo(d.area); return; }                  // エリア移動
   if (d.stay) { try { d.go(); } catch (e) {} return; }   // その場に留まる（オーバーレイ／一言）
+  // ★まだ開いていない行き先は、**その場で断る**（2026-08-01・実プレイで発見したバグの修正）。
+  //   直す前：モール未解放でも入口が押せて「崑崙モールへ移動します」と予告し、
+  //   実際は renderMall() が renderHome() へ落とすので**ホームに飛ばされた**＝約束を破っていた。
+  //   （renderMall のフォールバックはピン式地図から入る前提で、それ自体は正しい。
+  //     歩けるマップは行き先を名指ししてから動くので、**こちら側で止める**必要がある。）
+  //   ★入口ごと消さないのは、モールのアーチが背景画に描かれているから。
+  //     絵に在るものへ歩み寄れて、閉まっていると教わる＝町として自然。
+  if (typeof d.open === "function") {
+    let ok = false; try { ok = !!d.open(); } catch (e) { ok = false; }
+    if (!ok) { kwToast((d.ic || "🔒") + " " + (d.closed || "まだ開いていないみたい。")); return; }
+  }
   // ★ここから先は**歩く画面が終わる**（ユーザー指摘：黙って画面が変わると迷子になる）。
   //   実測すると入口34件のうち、画面が変わるのは7件だけ（17件はその場のオーバーレイ、
   //   10件はエリア間の徒歩移動）。**その7件にだけ**行き先を予告して同意を取る。
