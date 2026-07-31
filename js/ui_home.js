@@ -575,6 +575,31 @@ function renderHome() {
     if (hour >= 5 && hour < 11) out.push("おはよ〜ミミちゃん", "朝から配信えらい！");
     else if (hour >= 22 || hour < 4) out.push("夜更かし配信？", "夜のミミもいいね", "ねむくないの〜？");
     try { const o = outfitById(oid); if (o && o.name) out.push(`その「${o.name}」似合ってる！`, "今日の衣装かわいい〜"); } catch (e) {}
+    // ★R2（2026-08-01）：レースだけ繰り返す層に「島に何かある」と気づかせる。
+    //   ★数を出さない（「30か所未訪問」は宣告になる）。**具体的な場所や料理の名前**で誘う。
+    //     視聴者が勝手に喋っているだけ＝押し付けない（誘導であって指示ではない）。
+    //     未消化がある時だけ候補に混ぜ、無ければ黙る。消化を強制する表現は使わない。
+    try {
+      const bl = (typeof actionBacklog === "function") ? actionBacklog() : {};
+      if (bl.spots > 0 && typeof KONRON_SPOTS !== "undefined" && typeof _kmSpotOpen === "function") {
+        const seenS = ((p || {}).kurashi || {}).spotsSeen || {};
+        const yet = Object.keys(KONRON_SPOTS).filter(id => _kmSpotOpen(KONRON_SPOTS[id]) && !seenS[id]);
+        if (yet.length) {
+          const s = KONRON_SPOTS[yet[Math.floor(Math.random() * yet.length)]];
+          if (s && s.name) out.push(`${s.name}、行った？`, `${s.name}の写真みたい〜`);
+        }
+        out.push("島の景色も配信してほしい", "観光回もみたいな〜");
+      }
+      if (bl.meals > 0 && typeof MEALS !== "undefined" && typeof mealUnlocked === "function") {
+        const eaten = ((typeof mealData === "function") ? mealData() : {}).eaten || {};
+        const yetM = MEALS.filter(m => mealUnlocked(m) && !eaten[m.id]);
+        if (yetM.length) {
+          const m = yetM[Math.floor(Math.random() * yetM.length)];
+          if (m && m.name) out.push(`${m.name}おいしいよ！`, `${m.name}まだ食べてないでしょ〜`);
+        }
+      }
+      if (bl.dragons > 0) out.push("あの竜、気になるなあ", "龍舎に空きあるでしょ〜");
+    } catch (e) {}
     return out;
   }
   function _randCm() {
@@ -891,6 +916,15 @@ function renderHome() {
   // ★タブ名を「島」→「おでかけ」へ（ユーザー決裁・2026-07-31）。他4タブ（竜/暮らし/紀行/メディア）は
   //   対象名だが、このタブの実体は観光・散歩・モール・屋台・村＝**出かける行為**。しかも「島」は
   //   紀行の #島さんぽ・暮らしの🏦島の経済・島づくり と語がぶつかっていた。「おでかけ」なら重複しない。
+  // ★R2（2026-08-01）：レースだけ繰り返す層に「島に何かある」と気づかせる。
+  //   実測＝25レース時点で行ける島スポット30/62がすべて未訪問・食べ歩き0/44。
+  //   ★ここでタブに未読ドットを点けるのは**誤り**（ユーザー指摘・実装して取り下げた）。
+  //     バッジは「未処理が30件ある」という宣告で、任意のはずの島めぐりを
+  //     消化タスクに変えてしまう（消さないと気持ち悪い＝強制）。探索には最も向かない。
+  //   ★誘導の原則：**数を見せない／消させない／ひとつだけ魅力で誘う**。
+  //     採用したのは (1) 視聴者コメントで匂わせる（_ctxCm・招待であって指示ではない）
+  //     (2) 既存の🎯目標チップ（常に1件だけ・言葉で誘う）。
+  //     actionBacklog() は「まだ余地があるか」の判定だけに使い、件数はUIに出さない。
   if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
     bar.appendChild(tikTab("🏝️", "おでかけ", () => renderKonronMap(), { img: "island" }));
   } else {

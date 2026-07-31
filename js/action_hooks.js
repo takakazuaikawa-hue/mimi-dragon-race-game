@@ -22,6 +22,52 @@
 // ★表示/メタ専用＝レースの着順・オッズ・配当・FinalPower には一切触れない。
 // =========================================================================
 
+// =========================================================================
+// 未消化の残り（R2・ホームの誘導が読む）
+// =========================================================================
+// ★なぜ要るか（実測）：25レース走った時点で、行ける島スポット30/62がすべて未訪問、
+//   食べ歩き0/44なのに、おでかけタブにドットが点かなかった。誘導の器（目標チップ・
+//   タブのドット）はあるのに、未消化コンテンツと連動していなかった。
+//   ＝レースだけ繰り返す層は「島に何かある」と気づけないまま終わる。
+// ★判定はここ1か所に集める（ホーム側にロジックを散らさない）。
+// ★fail-open ではなく **fail-quiet**：数えられなければ false＝出さない。
+//   誤って点けるより、点かない方がまし（オオカミ少年にしない）。
+// ★表示専用＝レースの着順・オッズ・配当には触れない。
+function actionBacklog() {
+  const out = { spots: 0, meals: 0, dragons: 0, nodes: 0 };
+  // 🏝 行けるのに、まだ行っていないスポット
+  try {
+    if (typeof KONRON_SPOTS !== "undefined" && typeof _kmSpotOpen === "function" && typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
+      const seen = ((state.player || {}).kurashi || {}).spotsSeen || {};
+      Object.keys(KONRON_SPOTS).forEach(function (id) {
+        if (_kmSpotOpen(KONRON_SPOTS[id]) && !seen[id]) out.spots++;
+      });
+    }
+  } catch (e) {}
+  // 🍜 いま食べられるのに、まだ食べていない品
+  try {
+    if (typeof MEALS !== "undefined" && typeof mealUnlocked === "function") {
+      const d = (typeof mealData === "function") ? mealData() : { eaten: {} };
+      MEALS.forEach(function (m) { if (mealUnlocked(m) && !(d.eaten || {})[m.id]) out.meals++; });
+    }
+  } catch (e) {}
+  // 🐲 図鑑で見たのに、まだ龍舎に迎えていない竜（＝スカウトの余地）
+  try {
+    if (typeof poroStableUnlocked === "function" && poroStableUnlocked() && typeof DRAGONS !== "undefined") {
+      const col = (state.player || {}).collection || {};
+      DRAGONS.forEach(function (d) { const e = col[d.id]; if (e && e.seen && !e.scouted) out.dragons++; });
+    }
+  } catch (e) {}
+  // 🌳 いま取れるツリーのノード
+  try {
+    if (typeof LIFE_MILESTONES !== "undefined" && typeof lifeNodeState === "function" &&
+        typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_3")) {
+      LIFE_MILESTONES.forEach(function (n) { if (lifeNodeState(n) === "ready") out.nodes++; });
+    }
+  } catch (e) {}
+  return out;
+}
+
 (function () {
   function fire(hook, ctx) {
     try { if (typeof runEventHooks === "function") runEventHooks(hook, ctx || {}); } catch (e) {}

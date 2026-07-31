@@ -541,3 +541,89 @@ registerEvent({
 
 // ===== EXTENSION POINT — §10 Phase 5+: Full story arcs go here =====
 // Append additional dialogue/story beats for future phases below.
+
+// =============================================================================
+// 🏝 島側の行動の見返り＝「節目」（2026-08-01・R3／正本 docs/REWARD_LOOP_DESIGN.md）
+// =============================================================================
+// ★原則（ユーザー決裁）：「プレイヤーが何かをやるたびに、その見返りとしてイベントが見られる」。
+// ★個別の反応は既にある（食べれば react、服は DLG.OUTFIT、スポットは到着VN、撮影は☆評価、
+//   ノードは showLifeCutin、スカウトは竜ごとの一言）。ここで足すのは**節目**だけ。
+//   個別を置き換えない＝上に重なる。
+// ★門番（[[cast-appearance-gate]]）：未登場の顧問は喋らせない。fail-closed で
+//   advisorMet が無い/偽なら、そのイベントは発火しない。
+// ★表示専用＝レースの着順・オッズ・配当には非干渉。
+const _met = k => { try { return typeof advisorMet === "function" && advisorMet(k); } catch (e) { return false; } };
+
+// ── 🍜 食べる ────────────────────────────────────────────────────────
+registerEvent({
+  id: "milestone_meal_first", hook: "onMeal", condition: { once: true }, priority: 10,
+  actions: [
+    { type: "dialogue", speaker: "mimi", text: ctx => `${(ctx && ctx.meal && ctx.meal.name) || "屋台のごはん"}……っ、おいしい。ちゃんとした、ごはんだ……。` },
+    { type: "dialogue", speaker: "sake_udada", text: "そうだ。まず食え。……島は、腹が減っていると狭く見える。" }
+  ]
+});
+registerEvent({
+  id: "milestone_meal_5", hook: "onMeal",
+  condition: { once: true, test: ctx => ctx && ctx.totalEaten >= 5 },
+  actions: [{ type: "dialogue", speaker: "mimi", text: "5品目。……この島、食べ物の名前を覚えるだけで一日終わっちゃう。" }]
+});
+registerEvent({
+  id: "milestone_meal_10", hook: "onMeal",
+  condition: { once: true, test: ctx => ctx && ctx.totalEaten >= 10 && _met("sumika") },
+  actions: [{ type: "dialogue", speaker: "sumika", text: "ミミ様。食べ歩きの記録が10品を超えました。……食費ではなく、これは取材費として計上いたします。" }]
+});
+registerEvent({
+  id: "milestone_meal_25", hook: "onMeal",
+  condition: { once: true, test: ctx => ctx && ctx.totalEaten >= 25 && _met("makura") },
+  actions: [{ type: "dialogue", speaker: "makura", text: "25品！？ もうグルメ配信者だろそれ。竜より飯で有名になるぞ！" }]
+});
+
+// ── 🏝 出かける ──────────────────────────────────────────────────────
+registerEvent({
+  id: "milestone_spot_first", hook: "onSpotVisit", condition: { once: true }, priority: 10,
+  actions: [{ type: "dialogue", speaker: "mimi", text: "レース場の外にも、島ってこんなに広かったんだ……。" }]
+});
+registerEvent({
+  id: "milestone_spot_5", hook: "onSpotVisit",
+  condition: { once: true, test: ctx => ctx && ctx.totalSeen >= 5 },
+  actions: [{ type: "dialogue", speaker: "mimi", text: "5か所目。……歩いた道が、ちょっとずつ地図になってきた。" }]
+});
+registerEvent({
+  id: "milestone_spot_15", hook: "onSpotVisit",
+  condition: { once: true, test: ctx => ctx && ctx.totalSeen >= 15 && _met("mizu") },
+  actions: [{ type: "dialogue", speaker: "mizu", text: "あなた、最近いろんな通りで見かけるわね。……あはん。足で見た情報は、オッズより正直よ。" }]
+});
+registerEvent({
+  id: "milestone_spot_30", hook: "onSpotVisit",
+  condition: { once: true, test: ctx => ctx && ctx.totalSeen >= 30 },
+  actions: [{ type: "dialogue", speaker: "narrator", text: "30か所。——この島で、ミミの知らない道のほうが少なくなってきた。" }]
+});
+
+// ── 📸 撮る ──────────────────────────────────────────────────────────
+registerEvent({
+  id: "milestone_photo_first", hook: "onPhoto", condition: { once: true }, priority: 10,
+  actions: [{ type: "dialogue", speaker: "mimi", text: "撮れた……！ これ、紀行に載せていいやつだよね。" }]
+});
+registerEvent({
+  id: "milestone_photo_star3", hook: "onPhoto",
+  condition: { once: true, test: ctx => ctx && ctx.stars >= 3 },
+  actions: [{ type: "dialogue", speaker: "mimi", text: "★3……！ わたし、写真の才能あるのでは……？（ないです）" }]
+});
+
+// ── 👗 服 ────────────────────────────────────────────────────────────
+registerEvent({
+  id: "milestone_outfit_5", hook: "onOutfit",
+  condition: { once: true, test: ctx => ctx && ctx.totalOwned >= 5 },
+  actions: [{ type: "dialogue", speaker: "mimi", text: "5着目。……着るものを選べるって、こんなに気分がちがうんだ。" }]
+});
+registerEvent({
+  id: "milestone_outfit_10", hook: "onOutfit",
+  condition: { once: true, test: ctx => ctx && ctx.totalOwned >= 10 && _met("makura") },
+  actions: [{ type: "dialogue", speaker: "makura", text: "衣装10着！ 毎回ちがう画が撮れるって、それだけで強いぜ？" }]
+});
+
+// ── 🌳 くらしツリー ──────────────────────────────────────────────────
+registerEvent({
+  id: "milestone_node_first", hook: "onLifeNode", condition: { once: true }, priority: 10,
+  actions: [{ type: "dialogue", speaker: "mimi", text: "……これ、生活が一個ぶん、ちゃんとした。" }]
+});
