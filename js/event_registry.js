@@ -773,3 +773,137 @@ registerEvent({
       text: "焦った金は、焦った買い方をする。落ち着いた奴の金は、落ち着いて増える。" }
   ]
 });
+
+// =========================================================================
+// STEP3（2026-08-01）：いちばん長い区間に、いちばん中身が無い問題への手当て
+// =========================================================================
+// 正本: docs/PACING_EXECUTION_DIRECTIVE.md STEP3／方針 docs/PACING_DESIGN_RESEARCH.md v2 D6
+//
+// ★実測で分かっていたこと：顧問の台詞は サケ28／ミズ12／スミカ6／マクラ4／**セレスティア0**。
+//   要求は第4話→第5話で×100、第5話→EDで×10と伸びるのに、**中身は逆に減っていく**。
+//   終章の主役セレスティアがレース場で一度も喋らないのは、いちばん長い旅がいちばん静かという状態。
+// ★ここで足すのは台詞だけ。進行にもレース数値にも触れない（純粋な密度の手当て）。
+// ★門番は必ず通す（fail-closed）。表情は _cut→expr→smile→default の自動フォールバックがあるので
+//   実在キー（default/smile/serious/sad）を使う。
+// =========================================================================
+
+// ── 🌌 セレスティア：終章の主役に、日常のレースを語らせる ──────────────
+// ★答えは絶対に言わせない（神眼は最終決戦の切り札。ここで先に見せない）。
+//   「視える人が、視えないことを面白がる」という距離感で書く。
+registerEvent({
+  id: "x_celes_first_ordinary", hook: "afterRaceSelect",
+  condition: { once: true, requiredFlag: "_chapter_intro_5", test: () => _met("celestia") },
+  actions: [
+    { type: "dialogue", speaker: "celestia", expr: "smile",
+      text: "こんな小さなレースにも、ちゃんと来るのね。……ふふ、感心してるのよ。" },
+    { type: "dialogue", speaker: "celestia", expr: "serious",
+      text: "先が視えるということはね、驚けなくなるということ。あなたはまだ驚ける。それは強さよ。" }
+  ]
+});
+registerEvent({
+  id: "x_celes_why_watch", hook: "afterRaceSelect",
+  condition: { once: true, requiredFlag: "_chapter_intro_5", test: () => _met("celestia") },
+  actions: [
+    { type: "dialogue", speaker: "celestia",
+      text: "わたしが視ているのは結果。あなたが視ているのは、走っている竜。……同じものを見ていないの。" }
+  ]
+});
+registerEvent({
+  id: "x_celes_on_crowd", hook: "afterRaceSelect",
+  condition: { once: true, requiredFlag: "_chapter_intro_5", test: () => _met("celestia") },
+  actions: [
+    { type: "dialogue", speaker: "celestia", expr: "smile",
+      text: "この歓声、嫌いじゃないわ。……誰も答えを知らないから、こんなに大きくなるのね。" }
+  ]
+});
+registerEvent({
+  id: "x_celes_on_mimi", hook: "afterRaceSelect",
+  condition: { once: true, requiredFlag: "_chapter_intro_5", test: () => _met("celestia") },
+  actions: [
+    { type: "dialogue", speaker: "celestia", expr: "serious",
+      text: "あなたの目、だんだん濁らなくなってきた。……最初に会った頃は、もっと数字を見ていたのに。" },
+    { type: "dialogue", speaker: "mimi",
+      text: "……えっと、それ、褒められてます……？" },
+    { type: "dialogue", speaker: "celestia", expr: "smile", text: "さあ。どちらでも。" }
+  ]
+});
+registerEvent({
+  id: "x_celes_late_warning", hook: "afterRaceSelect",
+  condition: { once: true, requiredFlag: "_chapter_intro_5",
+    test: () => _met("celestia") && (((state.player || {}).completedRaces || 0) >= 60) },
+  actions: [
+    { type: "dialogue", speaker: "celestia", expr: "serious",
+      text: "……島の空気が、少し軽くなってきたわ。悪い意味でね。" },
+    { type: "dialogue", speaker: "celestia",
+      text: "急がなくていい。でも、忘れないで。あなたが走らせているのは、竜だけじゃない。" }
+  ]
+});
+
+// ── 🎤 マクラ：第4話の長旅を持たせる（4本→計9本）────────────────────
+registerEvent({
+  id: "x_makura_pace", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("makura") },
+  actions: [{ type: "dialogue", speaker: "makura",
+    text: "毎日おなじ熱量で叫んでたら、俺、三日で潰れる。……抜くとこ抜くのも技術だ。" }]
+});
+registerEvent({
+  id: "x_makura_picture", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("makura") },
+  actions: [{ type: "dialogue", speaker: "makura",
+    text: "勝った竜より、負けて泣いてる客のほうが画になる時がある。……悪趣味じゃねぇぞ、それが競技だ。" }]
+});
+registerEvent({
+  id: "x_makura_name", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("makura") && (((state.player || {}).completedRaces || 0) >= 40) },
+  actions: [
+    { type: "dialogue", speaker: "makura",
+      text: "お前の名前、実況席で噛まなくなったよ。最初は「よ、予想家ミミさん」だったのにな。" },
+    { type: "dialogue", speaker: "mimi", text: "覚えててくださったんですね……！" },
+    { type: "dialogue", speaker: "makura", text: "仕事だからな。……まあ、それだけでもねぇけど。" }
+  ]
+});
+registerEvent({
+  id: "x_makura_long_road", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("makura") && (((state.player || {}).completedRaces || 0) >= 70) },
+  actions: [{ type: "dialogue", speaker: "makura",
+    text: "ここからが長いぞ。伸びが止まったように感じる時期が必ず来る。……そこで辞める奴を、何人も見た。" }]
+});
+registerEvent({
+  id: "x_makura_stream", hook: "afterRaceSelect",
+  condition: { once: true, test: () => _met("makura") && (typeof getStoryFlag === "function") && getStoryFlag("phoneBought") },
+  actions: [{ type: "dialogue", speaker: "makura",
+    text: "配信、始めたんだってな。……見られる側は、外した時が全部残る。それでもやるなら、応援する。" }]
+});
+
+// ── 🔄 各章の「転」＝予想を裏切る一撃に台詞を当てる ────────────────────
+// ★新しい判定は作らない。afterRaceResult に既に渡っている ctx（hit / popularityRank / bigLoss）だけを見る。
+registerEvent({
+  id: "x_twist_longshot", hook: "afterRaceResult",
+  condition: { once: true, test: ctx => ctx && ctx.popularityRank >= 6 },
+  actions: [
+    { type: "dialogue", speaker: "mizu",
+      text: "……あら。いちばん人気のない子が、いちばん前に居るわ。" },
+    { type: "dialogue", speaker: "mizu",
+      text: "数字は嘘をつかない。でもね、全部は言わないの。あはん、そこが面白いところ。" }
+  ]
+});
+registerEvent({
+  id: "x_twist_fav_fell", hook: "afterRaceResult",
+  condition: { once: true, test: ctx => ctx && !ctx.hit && ctx.popularityRank > 1 },
+  actions: [
+    { type: "dialogue", speaker: "sake_udada",
+      text: "本命が飛んだな。……こういう日は、誰の予想も紙くずだ。" },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "覚えとけ。外れた日にしか見えないものがある。今日の走り、よく思い出しておけ。" }
+  ]
+});
+registerEvent({
+  id: "x_twist_big_loss", hook: "afterRaceResult",
+  condition: { once: true, test: ctx => ctx && ctx.bigLoss && _met("sumika") },
+  actions: [
+    { type: "dialogue", speaker: "sumika",
+      text: "大きく賭けて、大きく外した。……顔を上げなさい、みっともない。" },
+    { type: "dialogue", speaker: "sumika",
+      text: "ここで覚えることは一つだけ。減らない場所にお金を置いておくこと。それが暮らしよ。" }
+  ]
+});
