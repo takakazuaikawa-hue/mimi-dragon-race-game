@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260801g";
+const KW_V = "20260801h";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -921,9 +921,15 @@ function kwBakeAir(img) {
 }
 
 // fg レイヤー＝キャラの上に掛ける「空気」。色調もここ（キャラごと染める）。
+// 空気の粒の速さ（px/秒・実測で決めた値。§④のコメント参照）。
+//   埃＝ほぼ静止に見える速さ／蛍＝ふわりと動くが視線を奪わない速さ。
+const KW_AIR_DUST_V = 4;
+const KW_AIR_FIRE_V = 16;
+
 function kwDrawAir(ctx, cam, S, t) {
   const now = kwNow(), tint = KW_TINT[now.k];
   const night = (now.k === "夜" || now.k === "宵" || now.k === "未明");
+  const sc0 = cam.sc || kwScale(S);
 
   // ── ⑥ 色調＝**キャラの後**。これで人も景色と同じ時間に居る ──
   // ★順番が命：**先に暗くして、後から光を足す**。逆にすると、加算で持ち上がった画を
@@ -948,13 +954,30 @@ function kwDrawAir(ctx, cam, S, t) {
   }
 
   // ── ④ 空気の粒：昼は埃、夜は蛍火。手続き生成＝画像ゼロ ──
-  const N = night ? 16 : 11;
+  // ★最初の実装は目分量で書いてしまい、実測したら**画面を約1秒で横断**していた
+  //   （180〜420 px/秒＝吹雪かレンズの汚れが流れる速さ）。数字で決め直す：
+  //     ・空気中の埃 … ほぼ静止〜数px/秒。「見えるか見えないか」が正解
+  //     ・蛍         … ふわりと10〜30px/秒で、向きがゆっくり変わる
+  //   → 埃 KW_AIR_DUST_V=4／蛍 KW_AIR_FIRE_V=16 px/秒 を基準にする。
+  // ★もう一つの設計ミス：粒を**画面座標**に置いていた＝歩いても粒が付いてこず
+  //   「レンズについた汚れ」に見えた。空気は場のものなので**ワールド座標**に置き、
+  //   カメラを引いてから描く。歩けば粒の間を通り抜ける。
+  // ★数はマジックナンバーではなく**面積あたり**で決める（画面サイズが変わっても密度が一定）。
+  const areaK = (S.vw * S.vh) / (390 * 500);              // 基準画面＝390×500
+  const N = Math.max(6, Math.round((night ? 14 : 9) * areaK));
+  const V = night ? KW_AIR_FIRE_V : KW_AIR_DUST_V;        // px/秒
+  const span = 900;                                       // 粒が漂うワールド範囲（カメラ周り）
   ctx.save();
   for (let i = 0; i < N; i++) {
-    // 画面座標で漂わせる（カメラに緩く追従＝空気が場に留まって見える）
     const seed = i * 137.51;
-    const px = ((Math.sin(seed) * 0.5 + 0.5) * S.vw + t * (0.006 + (i % 3) * 0.004) * 30) % (S.vw + 40) - 20;
-    const py = ((Math.cos(seed * 1.7) * 0.5 + 0.5) * S.vh + Math.sin(t * 0.0007 + seed) * 26) % (S.vh + 40) - 20;
+    // ワールド座標：カメラ中心のまわりに撒き、ゆっくり流す＋左右にゆらぐ
+    const wx0 = cam.x + cam.vw * 0.5 + (Math.sin(seed) * 0.5) * span;
+    const wy0 = cam.y + cam.vh * 0.5 + (Math.cos(seed * 1.7) * 0.5) * span;
+    const drift = (t / 1000) * V * (0.7 + (i % 5) * 0.15);          // 帯が5種＝群れて見えない
+    const wx = wx0 + ((drift + seed * 13) % span) - span * 0.5;
+    const wy = wy0 + Math.sin(t * 0.00035 + seed) * (night ? 22 : 9);
+    const px = (wx - cam.x) * sc0, py = (wy - cam.y) * sc0;
+    if (px < -20 || py < -20 || px > S.vw + 20 || py > S.vh + 20) continue;
     if (night) {
       const tw = 0.35 + Math.abs(Math.sin(t * 0.0016 + seed)) * 0.65;
       ctx.globalAlpha = tw * 0.72; ctx.fillStyle = "#ffe6a0";
@@ -962,8 +985,9 @@ function kwDrawAir(ctx, cam, S, t) {
       ctx.globalAlpha = tw * 0.18;
       ctx.beginPath(); ctx.arc(px, py, 6 + tw * 5, 0, 6.284); ctx.fill();
     } else {
-      ctx.globalAlpha = 0.20 + (i % 4) * 0.05; ctx.fillStyle = "#fff8e2";
-      ctx.beginPath(); ctx.arc(px, py, 1.1 + (i % 3) * 0.5, 0, 6.284); ctx.fill();
+      // 昼の埃は**ほとんど見えない**のが正しい。存在を主張させない。
+      ctx.globalAlpha = 0.13 + (i % 4) * 0.03; ctx.fillStyle = "#fff8e2";
+      ctx.beginPath(); ctx.arc(px, py, 0.9 + (i % 3) * 0.35, 0, 6.284); ctx.fill();
     }
   }
   ctx.restore();
