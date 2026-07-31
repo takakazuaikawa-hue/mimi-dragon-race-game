@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260801b";
+const KW_V = "20260801g";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -361,8 +361,11 @@ const KW_TINT = {
   "朝":     { col: "#ffe9c2", a: 0.14, mode: "source-over" },
   "昼":     { col: "#fff6e0", a: 0.05, mode: "source-over" },
   "夕暮れ": { col: "#ff9a4d", a: 0.22, mode: "source-over" },
-  "宵":     { col: "#4a2f6b", a: 0.30, mode: "multiply" },
-  "夜":     { col: "#16224a", a: 0.44, mode: "multiply" },
+  // ★ブルームが「灯りだけ」を拾うようになったので、夜はもう一段沈められる
+  //   （前は全体が光っていたため、暗くしても加算で打ち消されていた）。
+  //   夜らしさは暗さそのものではなく、**灯りとの落差**で出る。
+  "宵":     { col: "#4a2f6b", a: 0.38, mode: "multiply" },
+  "夜":     { col: "#101a3e", a: 0.56, mode: "multiply" },
 };
 function kwNow() {
   try { return (typeof _kmIslandNow === "function") ? _kmIslandNow() : { k: "昼", ic: "☀️" }; }
@@ -544,6 +547,7 @@ function kwSetup(a, S) {
   }
   KW.sheet = a.mimi || null;
   KW.bg = a.bg || null;
+  kwBakeAir(KW.bg);        // ★HD-2Dの「奥行きの版」と「光の版」をここで1回だけ焼く（毎フレームは重い）
   KW.folk = a.folk || null;
   KW.poroImg = a.poro || null;
   KW.signs = a;                                          // 道標は a.sg_<name> で引く（無ければ灯り）
@@ -851,6 +855,130 @@ const KW_SIGN = {
 };
 
 // シートから1コマ描く（96×128セル）。row=0正面 1背中 2横（横は左向き素材＝右向きは反転）
+// =========================================================================
+// HD-2D の空気（2026-08-01）— **新しい絵は1枚も足していない。全部が後処理。**
+// =========================================================================
+// ユーザー指摘「HD2Dのような美しさがなく、単調」。実測したら描画は
+// 「背景を1枚貼る → 色を1枚乗せる」だけで、奥行き・光・粒・視線誘導が**ゼロ**だった。
+// HD-2D（オクトパス系）の記号を、既存の絵のまま手に入れる：
+//   ①ティルトシフト（上下だけボケ）＝奥行き   … bgFar で合成（ぼかしは読み込み時に1枚作る）
+//   ②ブルーム（光のにじみ）                  … 明るい画素だけ抽出→ぼかし→加算。夜ほど強い
+//   ③灯りの呼吸                              … ブルームの強さをゆっくり上下させる
+//   ④空気の粒（昼＝埃 / 夜＝蛍火）            … 手続きで生成・画像不要
+//   ⑤ビネット                                … 視線を中央へ
+//   ⑥色調をキャラの**後**に掛ける            … これが「浮いて見える」の正体だった
+//     （従来は背景→色調→キャラの順で、夜に背景だけ44%暗くなりミミだけ明るいままだった）
+// ★ぼかし/明るい画素の抽出は**エリア読み込み時に1回だけ**。毎フレームやると確実に落ちる。
+// ★表示専用＝当たり判定・進行・レース数値には一切触れない。
+// =========================================================================
+
+// 後処理用の作業キャンバス（画面サイズぶん1枚を使い回す。毎フレーム作らない）。
+function kwFx(w, h) {
+  try {
+    if (!KW._fx || KW._fx.width !== w || KW._fx.height !== h) {
+      KW._fx = document.createElement("canvas"); KW._fx.width = w; KW._fx.height = h;
+    }
+    return KW._fx;
+  } catch (e) { return null; }
+}
+
+// 明るい画素だけを残した「光の版」と、全体をぼかした「奥行きの版」を1回だけ焼く。
+function kwBakeAir(img) {
+  KW.bgBlur = null; KW.bgBloom = null;
+  try {
+    if (!img || !img.naturalWidth) return;
+    const W = img.naturalWidth, H = img.naturalHeight;
+    // ── ①奥行きの版（全体を強めにぼかす）──
+    const b = document.createElement("canvas"); b.width = W; b.height = H;
+    const bx = b.getContext("2d");
+    bx.filter = "blur(" + Math.max(3, Math.round(W / 260)) + "px)";
+    bx.drawImage(img, 0, 0);
+    bx.filter = "none";
+    KW.bgBlur = b;
+    // ── ②光の版（明るいところだけ残してぼかす）──
+    const l = document.createElement("canvas"); l.width = W; l.height = H;
+    const lx = l.getContext("2d");
+    lx.drawImage(img, 0, 0);
+    const im = lx.getImageData(0, 0, W, H), d = im.data;
+    for (let i = 0; i < d.length; i += 4) {
+      // 明度がしきい値を超えたぶんだけを残す（超えない画素は透明）
+      const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
+      // ★しきい値は高めに取る。低いと**石畳や砂まで光って**画面全体が持ち上がり、
+      //   せっかくの夜の色調を打ち消す（実機で踏んだ＝夜なのに昼に見えた）。
+      //   拾いたいのは提灯・窓・炎だけ＝少数の画素を、強く光らせる。
+      const over = v - 228;
+      if (over <= 0) { d[i + 3] = 0; }
+      else { d[i + 3] = Math.min(255, Math.round(over * 9)); }
+    }
+    lx.putImageData(im, 0, 0);
+    const l2 = document.createElement("canvas"); l2.width = W; l2.height = H;
+    const l2x = l2.getContext("2d");
+    l2x.filter = "blur(" + Math.max(4, Math.round(W / 150)) + "px)";
+    l2x.drawImage(l, 0, 0);
+    l2x.filter = "none";
+    KW.bgBloom = l2;
+  } catch (e) { KW.bgBlur = null; KW.bgBloom = null; }   // 焼けなくても歩ける（fail-safe）
+}
+
+// fg レイヤー＝キャラの上に掛ける「空気」。色調もここ（キャラごと染める）。
+function kwDrawAir(ctx, cam, S, t) {
+  const now = kwNow(), tint = KW_TINT[now.k];
+  const night = (now.k === "夜" || now.k === "宵" || now.k === "未明");
+
+  // ── ⑥ 色調＝**キャラの後**。これで人も景色と同じ時間に居る ──
+  // ★順番が命：**先に暗くして、後から光を足す**。逆にすると、加算で持ち上がった画を
+  //   multiply が中途半端に沈めるだけになり、夜なのに昼のような眠い画になる（実機で踏んだ）。
+  if (tint && tint.a > 0.02) {
+    ctx.save();
+    ctx.globalCompositeOperation = tint.mode;
+    ctx.globalAlpha = tint.a; ctx.fillStyle = tint.col;
+    ctx.fillRect(0, 0, S.vw, S.vh);
+    ctx.restore();
+  }
+
+  // ── ②③ ブルーム：暗くした上に灯りを足す。夜ほど強く、ゆっくり呼吸させる ──
+  if (KW.bgBloom) {
+    const breathe = 0.86 + Math.sin(t * 0.0011) * 0.14;
+    const base = night ? 0.62 : (now.k === "夕暮れ" ? 0.34 : 0.14);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = base * breathe;
+    ctx.drawImage(KW.bgBloom, cam.x, cam.y, cam.vw, cam.vh, 0, 0, S.vw, S.vh);
+    ctx.restore();
+  }
+
+  // ── ④ 空気の粒：昼は埃、夜は蛍火。手続き生成＝画像ゼロ ──
+  const N = night ? 16 : 11;
+  ctx.save();
+  for (let i = 0; i < N; i++) {
+    // 画面座標で漂わせる（カメラに緩く追従＝空気が場に留まって見える）
+    const seed = i * 137.51;
+    const px = ((Math.sin(seed) * 0.5 + 0.5) * S.vw + t * (0.006 + (i % 3) * 0.004) * 30) % (S.vw + 40) - 20;
+    const py = ((Math.cos(seed * 1.7) * 0.5 + 0.5) * S.vh + Math.sin(t * 0.0007 + seed) * 26) % (S.vh + 40) - 20;
+    if (night) {
+      const tw = 0.35 + Math.abs(Math.sin(t * 0.0016 + seed)) * 0.65;
+      ctx.globalAlpha = tw * 0.72; ctx.fillStyle = "#ffe6a0";
+      ctx.beginPath(); ctx.arc(px, py, 1.6 + tw * 1.5, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = tw * 0.18;
+      ctx.beginPath(); ctx.arc(px, py, 6 + tw * 5, 0, 6.284); ctx.fill();
+    } else {
+      ctx.globalAlpha = 0.20 + (i % 4) * 0.05; ctx.fillStyle = "#fff8e2";
+      ctx.beginPath(); ctx.arc(px, py, 1.1 + (i % 3) * 0.5, 0, 6.284); ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // ── ⑤ ビネット：四隅を落として視線を中央へ ──
+  ctx.save();
+  const vg = ctx.createRadialGradient(S.vw / 2, S.vh * 0.46, Math.min(S.vw, S.vh) * 0.34,
+                                      S.vw / 2, S.vh * 0.46, Math.max(S.vw, S.vh) * 0.78);
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  // ★夜に .58 は掛けすぎだった（実機で景色が沈んだ）。灯りが主役なので四隅だけ軽く落とす。
+  vg.addColorStop(1, night ? "rgba(4,6,16,.34)" : "rgba(20,12,4,.22)");
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, S.vw, S.vh);
+  ctx.restore();
+}
+
 function kwDrawCell(ctx, sheet, col, row, sx, sy, H, flip) {
   const W = H * (96 / 128);
   ctx.save();
@@ -873,17 +1001,35 @@ function kwDraw(ctx, cam, layer, S, t) {
     if (KW.bg) ctx.drawImage(KW.bg, cam.x, cam.y, cam.vw, cam.vh, 0, 0, S.vw, S.vh);
     else { ctx.fillStyle = "#c8b48a"; ctx.fillRect(0, 0, S.vw, S.vh); }   // 画像が無くても歩ける
     ctx.restore();
-    // ★時間帯パレット＝島の一日（_kmIslandNow）と歩く景色をそろえる
-    const tint = KW_TINT[kwNow().k];
-    if (tint && tint.a > 0.02) {
-      ctx.save();
-      ctx.globalCompositeOperation = tint.mode;
-      ctx.globalAlpha = tint.a; ctx.fillStyle = tint.col;
-      ctx.fillRect(0, 0, S.vw, S.vh);
-      ctx.restore();
+    // ★HD-2D ①ティルトシフト：上下だけボケさせて“奥行き”を作る。
+    //   これがHD-2Dのいちばん分かりやすい記号（真ん中だけピントが合っている）。
+    //   ぼかし画像は**エリア読み込み時に1枚だけ**作る（毎フレームの blur は重すぎる）。
+    if (KW.bgBlur) {
+      // ★必ず**別キャンバスでマスクしてから**重ねる。
+      //   本体キャンバスに直接 destination-out を掛けると、下に描いた背景まで消える
+      //   （実機で踏んだ＝中央が空っぽの帯になった）。合成先を分けるのが唯一の正解。
+      const fx = kwFx(S.vw, S.vh);
+      if (fx) {
+        const f = fx.getContext("2d");
+        f.clearRect(0, 0, S.vw, S.vh);
+        f.globalCompositeOperation = "source-over";
+        f.drawImage(KW.bgBlur, cam.x, cam.y, cam.vw, cam.vh, 0, 0, S.vw, S.vh);
+        f.globalCompositeOperation = "destination-out";
+        const g = f.createLinearGradient(0, 0, 0, S.vh);
+        g.addColorStop(0.00, "rgba(0,0,0,0)");
+        g.addColorStop(0.30, "rgba(0,0,0,1)");
+        g.addColorStop(0.72, "rgba(0,0,0,1)");
+        g.addColorStop(1.00, "rgba(0,0,0,0)");
+        f.fillStyle = g; f.fillRect(0, 0, S.vw, S.vh);
+        f.globalCompositeOperation = "source-over";
+        ctx.save(); ctx.globalAlpha = 0.8;
+        ctx.drawImage(fx, 0, 0);
+        ctx.restore();
+      }
     }
-    return;
+    return;   // ★色調（tint）は fg へ移した＝キャラも一緒に染まる（下の理由参照）
   }
+  if (layer === "fg") { kwDrawAir(ctx, cam, S, t); return; }
   if (layer !== "world") return;
 
   const m = KW.mimi;
