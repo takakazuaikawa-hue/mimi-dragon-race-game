@@ -138,12 +138,21 @@ function livingRankOf(lv) {
 //     （下げると救済額と賭金上限が縮んで、途中から理不尽になる）。
 //   ⚠️ツリーは第3話で開く。それ以前は縛らない（序盤のテンポを損なわないため）。
 const LIVING_NODES_PER_LV = 20;
+// ★F8-①（2026-08-01・ユーザー決裁）：第3話前の上限を「なし」から4に変える。
+//   直す前の構造＝第3話を読むまで上限が外れているので、**読まずに放置したほうが暮らしレベルが
+//   伸び、資産で開く第4話（100万）・第5話（1億）が先に開く**。つまり
+//   「第3話を読むほど損をする」＝物語を読むことがペナルティになっていた。
+//   この抜け道のせいで到達戦数が22〜350戦まで暴れ、プレイ時間が設計不能だった。
+//   → 前段は村Lv4（村12万）で固定。序盤のテンポは保ったまま、Lv10（村5億）への抜け道だけ閉じる。
+//   ★既得レベルは下がらない（applyLivingLevelUps が「上限は上がらないだけ」を保証済み）＝
+//     進行中の走は壊れない。リリース前なので後方互換は不要（docs/PROGRESSION_DESIGN.md 方針）。
+const LIVING_CAP_BEFORE_TREE = 4;
 function livingLevelCap(st) {
   const s = st || state;
   try {
-    // 第3話（ツリー解放）前は上限なし＝従来どおり的中だけで伸びる
+    // 第3話（ツリー解放）前＝固定上限。以後はツリーのノード数で伸びる
     const treeOpen = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
-    if (!treeOpen) return LIVING_RANKS.length;
+    if (!treeOpen) return LIVING_CAP_BEFORE_TREE;
     const got = (typeof lifeTreeStats === "function") ? (lifeTreeStats().unlockedCount || 0) : 0;
     return Math.max(1, Math.min(LIVING_RANKS.length, 1 + Math.floor(got / LIVING_NODES_PER_LV)));
   } catch (e) { return LIVING_RANKS.length; }   // 判定できないときは縛らない（fail-open）
