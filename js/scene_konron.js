@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260801h";
+const KW_V = "20260801i";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -723,11 +723,53 @@ function kwAct() {
   if (KW.nearKind === "npc") { KW.met[d.s] = 1; kwToast("💬 「" + d.line + "」"); return; }
   if (d.area) { kwGo(d.area); return; }                  // エリア移動
   if (d.stay) { try { d.go(); } catch (e) {} return; }   // その場に留まる（オーバーレイ／一言）
-  // ★別画面へ渡す前に居場所を控える＝行った先に「歩く画面にもどる」が出る（戻れなくならない）。
-  //   島の地図へ抜ける入口は「島時間を閉じる」意図なので控えない。
-  if (!/島の地図/.test(d.n || "")) kwMarkReturn(); else kwReturnClear();
-  kwExit();
-  try { d.go(); } catch (e) { if (typeof renderKonronMap === "function") renderKonronMap(); }
+  // ★ここから先は**歩く画面が終わる**（ユーザー指摘：黙って画面が変わると迷子になる）。
+  //   実測すると入口34件のうち、画面が変わるのは7件だけ（17件はその場のオーバーレイ、
+  //   10件はエリア間の徒歩移動）。**その7件にだけ**行き先を予告して同意を取る。
+  //   stay とエリア移動には出さない＝毎回確認させて歩きのテンポを殺さないため。
+  kwConfirmLeave(d);
+}
+
+// 島歩きを抜ける入口の予告。「どこへ行くか」を名指しし、やめて歩きに戻る道も残す。
+function kwConfirmLeave(d) {
+  const goNow = function () {
+    // ★別画面へ渡す前に居場所を控える＝行った先に「歩く画面にもどる」が出る（戻れなくならない）。
+    //   島の地図へ抜ける入口は「島時間を閉じる」意図なので控えない。
+    if (!/島の地図/.test(d.n || "")) kwMarkReturn(); else kwReturnClear();
+    kwExit();
+    try { d.go(); } catch (e) { if (typeof renderKonronMap === "function") renderKonronMap(); }
+  };
+  // ★載せ先は `.kw-stage`（position:relative）。HUD の親は app なので、そこに載せると
+  //   ページ全体に対して位置が決まってしまう（実測して気づいた）。
+  const stage = (typeof document !== "undefined") ? document.querySelector(".kw-stage") : null;
+  if (!stage) { goNow(); return; }   // 出せない環境では素通し（fail-open＝移動を止めない）
+  const toMap = /島の地図/.test(d.n || "");
+  const dest = toMap ? "島の地図" : (d.n || "つぎの場所");
+  const ov = document.createElement("div");
+  ov.className = "kw-leave-ov";
+  ov.innerHTML =
+    '<div class="kw-leave">' +
+      '<div class="kw-leave-ic">' + (d.ic || "🚪") + '</div>' +
+      '<div class="kw-leave-t">島歩きを終わって<br><b>' + dest + '</b>へ移動します</div>' +
+      '<div class="kw-leave-s">' + (toMap ? "この日の島時間をとじます。" : "歩く画面には、行った先の「🚶 歩く画面にもどる」から戻れます。") + '</div>' +
+      '<div class="kw-leave-btns">' +
+        '<button class="kw-leave-no" type="button">まだ歩く</button>' +
+        '<button class="kw-leave-go" type="button">移動する ▶</button>' +
+      '</div>' +
+    '</div>';
+  const close = function () { if (ov.parentNode) ov.parentNode.removeChild(ov); };
+  ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+  ov.querySelector(".kw-leave-no").onclick = close;
+  ov.querySelector(".kw-leave-go").onclick = function () { close(); goNow(); };
+  stage.appendChild(ov);
+  // キーでも決められる（Enter=移動 / Esc=やめる）。歩きの操作を奪ったままにしない。
+  const onKey = function (e) {
+    if (!ov.parentNode) { window.removeEventListener("keydown", onKey, true); return; }
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); close(); goNow(); }
+  };
+  window.addEventListener("keydown", onKey, true);
+  setTimeout(function () { try { ov.querySelector(".kw-leave-go").focus(); } catch (e) {} }, 30);
 }
 
 // ── 屋台＝**その場に在るものだけ**出す（★設計の直し）
