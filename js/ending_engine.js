@@ -131,7 +131,10 @@
         ["図鑑", dexS + " ／ " + dexT + " 頭"],
         ["スカウト", scouted + " 頭を龍舎へ"],
         ["晴れ着", Math.min(ob, ot) + " ／ " + ot + " 着"],
-        ["村レベル", String(p.villageLevel || (p.village && p.village.level) || 1)]
+        // ★旧称「村レベル」→「暮らし」。数字だけでなく称号を出す（LIVING_RANKS）。
+        ["暮らし", (function(){ var lv = p.villageLevel || (p.village && p.village.level) || 1;
+          var rk = (typeof LIVING_RANKS !== "undefined") ? LIVING_RANKS[lv-1] : null;
+          return rk ? ("Lv." + lv + "　" + rk.title) : String(lv); })()]
       ];
       if (typeof poroFound === "function" && poroFound()) rows.push(["相棒", "ポロと出会えた"]);
       var html = "";

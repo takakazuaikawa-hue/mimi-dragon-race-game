@@ -329,13 +329,32 @@ registerEvent({
     text: "ポロちゃん、3着以内に入った……！ 泣いてても走れる、ちゃんと走れるんだね……ぐすっ。" }]
 });
 
+// ★称号入りに書き換え（2026-08-01・ユーザー決裁）。昇格の演出はこのVN1本に一本化する
+//   （別にカットインを重ねると、昇格のたびにVN→カットインの二重になる）。
+//   ★旧称「村レベル」が残っていたのも修正＝用語は「暮らしレベル」に一本化済み。
+//   ★称号（LIVING_RANKS）こそ「いまどんな暮らしをしているか」を伝える言葉なので、
+//     数字ではなく称号を言わせる。声表：スミカ＝丁寧語・呼称「ミミ様」。
+function _lvTitle(ctx) {
+  try {
+    const lv = (ctx && ctx.newLevel) ||
+      (state.player && ((state.player.village && state.player.village.level) || state.player.villageLevel));
+    if (!lv) return null;
+    const rk = (typeof LIVING_RANKS !== "undefined") ? LIVING_RANKS[lv - 1] : null;
+    return { lv: lv, title: rk ? rk.title : null };
+  } catch (e) { return null; }
+}
 registerEvent({
   id: "village_first_levelup",
   hook: "onVillageUpdate",
   condition: { once: true },
   priority: 5,
   actions: [{ type: "dialogue", speaker: "sumika",
-    text: "ミミ様、村が育ってきました。応援が増え、予備コインの蓄えも厚くなっています。生活の土台が、着実に。" }]
+    text: ctx => {
+      const t = _lvTitle(ctx);
+      return (t && t.title)
+        ? `ミミ様、暮らしが一段あがりました。いまのミミ様は「${t.title}」です。……胸を張ってよろしいかと。`
+        : "ミミ様、暮らしが一段あがりました。生活の土台が、着実に。";
+    } }]
 });
 registerEvent({
   id: "village_levelup_generic",
@@ -343,10 +362,10 @@ registerEvent({
   condition: { once: false },
   actions: [{ type: "dialogue", speaker: "sumika",
     text: ctx => {
-      const lv = (ctx && ctx.newLevel) || (state.player && ((state.player.village && state.player.village.level) || state.player.villageLevel));
-      return lv
-        ? `ミミ様、村レベルが ${lv} に上がりました。賭金倍率と救済コインの基準が上がります。`
-        : `ミミ様、村が一段、育ちました。賭金倍率と救済コインの基準が上がります。`;
+      const t = _lvTitle(ctx);
+      if (t && t.title) return `ミミ様、暮らしレベルが ${t.lv}「${t.title}」に上がりました。賭金の上限と救済の基準も上がります。`;
+      if (t) return `ミミ様、暮らしレベルが ${t.lv} に上がりました。賭金の上限と救済の基準も上がります。`;
+      return "ミミ様、暮らしが一段、育ちました。賭金の上限と救済の基準も上がります。";
     } }]
 });
 

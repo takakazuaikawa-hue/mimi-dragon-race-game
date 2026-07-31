@@ -122,6 +122,11 @@ function _livingCelebrate() {
     }
     if (lv <= seen) return null;
     if (typeof setStoryFlag === "function") setStoryFlag("_livingCelebratedLv", lv);
+    // ★カットインは Lv.1（開幕の授与）だけ（2026-08-01・ユーザー決裁）。
+    //   Lv.2以降の昇格は、既にスミカのVN（event_registry.js village_levelup_*）が
+    //   称号入りで語る。両方出すと昇格のたびにVN→カットインの二重になる。
+    //   ここで記録だけ進めるのは、次の昇格を正しく判定するため。
+    if (lv > 1) return null;
     const rk = LIVING_RANKS[lv - 1];
     return rk ? { lv: lv, rk: rk } : null;
   } catch (e) { return null; }
@@ -136,10 +141,10 @@ function maybeCelebrateLiving() {
     return true;
   } catch (e) { return false; }
 }
+// ★実際に出るのは Lv.1（開幕の授与）だけ。Lv.2以降はスミカのVNが称号入りで語る。
+//   上限（くらしツリー）の説明は Lv.1 では出ない（第3話前は上限そのものが無いため）。
+//   将来 Lv.2以降でも使うことになったら capLine がそのまま効く。
 function _showLivingCutin(lv, rk) {
-  // 上限（くらしスキルツリー）で頭打ちなら、そのことをここで一度だけ教える。
-  // ★第3話を読むまでは上限そのものが無い（data_ranks.js livingLevelCap は fail-open）ので、
-  //   読む前に「ツリーを進めないと上がらない」と言うのは嘘になる。読んだ後だけ出す。
   let capLine = "";
   try {
     const treeOpen = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");

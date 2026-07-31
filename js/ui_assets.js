@@ -600,7 +600,16 @@ function renderLifeTree() {
       `<div class="lt-node-right">${right}</div>`);
     if (stt === "ready") {
       const btn = row.querySelector(".lt-buy");
-      if (btn) btn.onclick = () => { const r = unlockLifeNode(node); if (r.ok) { _ltJustUnlocked = node.nodeId; renderLifeTree(); showLifeCutin(node); } };
+      if (btn) btn.onclick = () => {
+        const r = unlockLifeNode(node);
+        if (!r.ok) return;
+        _ltJustUnlocked = node.nodeId; renderLifeTree(); showLifeCutin(node);
+        // ★r.livingUp はここでは使わない（2026-08-01・実測で判明）。ノード取得で暮らしレベルが
+        //   上がると applyLivingLevelUps → runEventHooks("onVillageUpdate") が走り、
+        //   スミカのVN（称号入り）が既に出る。ここで追い打ちを掛けると
+        //   「ノードのカットイン → スミカのVN → 暮らしのカットイン」の三重になる。
+        //   因果（ツリーを進めたら暮らしが伸びた）はスミカのVNが即座に語るので足りている。
+      };
     } else if (stt === "unlocked") {
       // 解放済みノードはタップで回想ポップ（ユーザー指摘：タップしても無反応だった）。
       row.style.cursor = "pointer";

@@ -327,7 +327,9 @@ function finalShowcaseBeats() {
   if (outfits > 0) beats.push({ ic: "👗", k: "着てきた晴れ着", v: outfits + "着", c: "今日も、いちばんの一着で。" });
   if (typeof poroFound === "function" && poroFound()) beats.push({ ic: "🐉", k: "いちばんの相棒", v: "ポロ", c: "特別じゃなくても、愛されていい。" });
   const vlv = p.villageLevel || (p.village && p.village.level) || 1;
-  beats.push({ ic: "🏘️", k: "灯りを守った島", v: "村レベル " + vlv, c: "この賭場の灯りは、消えなかった。" });
+  // ★旧称「村レベル」→称号で見せる（LIVING_RANKS）。数字より「どんな暮らしか」が伝わる。
+  const _vrk = (typeof LIVING_RANKS !== "undefined") ? LIVING_RANKS[vlv-1] : null;
+  beats.push({ ic: "🏘️", k: "灯りを守った島", v: (_vrk ? _vrk.title : ("暮らしLv " + vlv)), c: "この賭場の灯りは、消えなかった。" });
   return beats;
 }
 // 走馬灯ショー（全画面・自動送り＋タップで先へ）。完了で resolve（→ 締めのVN）。表示専用。
