@@ -4551,7 +4551,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* 🧭 画面ジャンプ（デバッグ・開発用・js/nav.js SCREEN_INDEX） */
 .set-jump { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0; }
-.set-jump-b { display: flex; align-items: center; gap: 6px; padding: 8px 9px; border-radius: 9px; cursor: pointer;
+/* ★min-width:0 が要る（2026-08-01・F3で実測）：グリッド項目の既定 min-width:auto は
+   中身より縮まないので、長いラベルだと3列目が枠の外へ出ていた（実測 中身568px > 表示415px）。
+   これを入れて初めて span の text-overflow:ellipsis が効く。既存の「画面ジャンプ」も同じ不具合だった。 */
+.set-jump-b { min-width: 0; display: flex; align-items: center; gap: 6px; padding: 8px 9px; border-radius: 9px; cursor: pointer;
   background: var(--glass-2); border: 1px solid var(--glass-border); color: var(--mist); font-size: 11.5px; text-align: left; }
 .set-jump-b:active { transform: translateY(1px); }
 .set-jump-b b { flex: none; min-width: 18px; text-align: center; color: #ffce8a; font-variant-numeric: tabular-nums; }
@@ -9255,3 +9258,20 @@ button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2p
 .navpop::after { bottom: 7px; right: 7px;
   border-bottom: 1.5px solid var(--gold-bright); border-right: 1.5px solid var(--gold-bright); border-bottom-right-radius: 14px; }
 .navpop-btns button { border-radius: var(--r-2); }
+
+/* ── デバッグ盤「① いまの状態」（F3・2026-08-01）─────────────────────────
+   デバッグで最初に要るのは「いま自分がどの状態にいるか」。以前は足した順のボタン列で
+   これが画面に無く、章・整合・主要な数値を見る手段が無かった。 */
+.set-dbgnow { margin: 8px 0 4px; padding: 11px 12px; border-radius: var(--r-3, 16px);
+  background: linear-gradient(180deg, rgba(124,255,178,.07), rgba(124,255,178,.03));
+  border: 1px solid rgba(124,255,178,.28); }
+.set-dbgnow.ng { background: linear-gradient(180deg, rgba(255,140,110,.09), rgba(255,140,110,.03));
+  border-color: rgba(255,140,110,.36); }
+.set-dbgnow-h { font-size: 13px; font-weight: 800; color: var(--mist); }
+.set-dbgnow-h b { color: var(--gold-bright); }
+.set-dbgnow-tag { margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 700;
+  background: rgba(255,255,255,.10); border: 1px solid var(--glass-border); color: var(--mist-soft); }
+.set-dbgnow-g { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 8px;
+  font-size: 11.5px; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
+.set-dbgnow-ok { margin-top: 8px; font-size: 11.5px; color: #7fd6a0; }
+.set-dbgnow-p { margin-top: 8px; font-size: 11.5px; line-height: 1.65; color: #ffc4ae; }

@@ -989,6 +989,77 @@ function renderSettings() {
   dbgRow.appendChild(dBtn);
   app.appendChild(dbgRow);
   if (state.ui.debug) {
+    // =====================================================================
+    // ★デバッグ盤の整理（2026-08-01・F3）— docs/CHAPTER_STATE_DESIGN.md
+    // =====================================================================
+    // 以前は「足した順」に並んだ平らなボタン列で、いちばん要る情報＝**いま自分が
+    // どの状態にいるか**が画面に無かった。用途で4つに分ける：
+    //   ① いまの状態（現在章・整合・主要な数値）… まずこれを見る
+    //   ② 章へジャンプ                       … 状態を作る
+    //   ③ 数値をいじる／山場へ直行             … 部分的に作る
+    //   ④ 診断（🩺レスポンシブ・章の整合）／画面ジャンプ
+    // すべてメタ操作＝レースの着順・オッズ・配当には触れない。
+
+    // ── ① いまの状態 ──────────────────────────────────────────────
+    if (typeof chapterVerifyAll === "function") {
+      app.appendChild(el("div", "as-sec", "① いまの状態"));
+      const rep = (function () { try { return chapterVerifyAll(); } catch (e) { return { current: "?", problems: ["診断に失敗: " + e.message] }; } })();
+      const meta = (typeof chapterMeta === "function") ? chapterMeta(rep.current) : null;
+      const p = state.player || {};
+      const peak = (typeof assetsPeak === "function") ? assetsPeak(state) : (p.assetsPeak || 0);
+      const bad = rep.problems && rep.problems.length;
+      const now = el("div", "set-dbgnow" + (bad ? " ng" : ""));
+      now.innerHTML =
+        `<div class="set-dbgnow-h">${bad ? "⚠️" : "✅"} 現在章：<b>${meta ? meta.title : rep.current}</b>` +
+          (rep.devJumped ? ` <span class="set-dbgnow-tag">開発ジャンプ済み</span>` : "") + `</div>` +
+        `<div class="set-dbgnow-g">` +
+          `<span>🪙 ${fmtCoins(p.coins || 0)}</span>` +
+          `<span>🏦 到達最高 ${fmtCoins(peak)}</span>` +
+          `<span>🏅 ランク ${p.rank || 1}</span>` +
+          `<span>🐲 ${p.completedRaces || 0}走 / ${p.wins || 0}勝</span>` +
+          `<span>🌳 暮らしLv ${p.villageLevel || (p.village && p.village.level) || 1}</span>` +
+          `<span>🍖 おなか ${(typeof hungerGet === "function") ? hungerGet() : "-"}</span>` +
+        `</div>` +
+        (bad
+          ? `<div class="set-dbgnow-p">` + rep.problems.map(s => `<div>・${String(s).replace(/</g, "&lt;")}</div>`).join("") + `</div>`
+          : `<div class="set-dbgnow-ok">整合：問題なし</div>`);
+      app.appendChild(now);
+    }
+
+    // ── ② 章へジャンプ ────────────────────────────────────────────
+    if (typeof CHAPTERS !== "undefined" && typeof chapterApply === "function") {
+      app.appendChild(el("div", "as-sec", "② 章へジャンプ"));
+      const chg = el("div", "set-jump");
+      CHAPTERS.forEach(c => {
+        const b = el("button", "set-jump-b", `<b>${c.id}</b><span>${c.title.replace(/^第(\d)話　/, "$1: ")}</span>`);
+        b.title = "タップ＝その章の“手前”に立つ（導入VNを見られる）／長押し・右クリック＝読了状態で立つ";
+        const jump = (read) => {
+          const r = chapterApply(c.id, { read: !!read });
+          if (typeof Sfx !== "undefined" && Sfx.play) Sfx.play("nav");
+          if (typeof updateHeader === "function") updateHeader();
+          renderSettings();
+          if (typeof showInfoPopup === "function") showInfoPopup(
+            (r.problems.length ? "⚠️ " : "✅ ") + (read ? "読了で" : "手前に") + "立ちました：" + c.title,
+            `<div class="mm-row"><span class="mm-ic">🧩</span><div><b>満たした要求 ${r.applied.length} 件</b><small>${r.applied.length ? r.applied.join("、") : "すでに全て満たしていました"}</small></div></div>` +
+            (r.problems.length
+              ? `<div class="mm-row"><span class="mm-ic">⚠️</span><div><b>整合の問題</b><small>${r.problems.map(s => String(s).replace(/</g, "&lt;")).join("<br>")}</small></div></div>`
+              : `<div class="mm-row"><span class="mm-ic">✅</span><div><b>整合：問題なし</b><small>この state はその章として辻褄が合っています。</small></div></div>`) +
+            (c.irreversible ? `<div class="mm-note">※この章は開くと戻せません：${c.irreversible.join(" ／ ")}</div>` : "") +
+            `<div class="mm-note">※メタ操作のみ。レースの着順・オッズ・配当には触れていません。</div>`);
+        };
+        b.onclick = () => jump(false);
+        b.oncontextmenu = (e) => { e.preventDefault(); jump(true); };
+        chg.appendChild(b);
+      });
+      app.appendChild(chg);
+      app.appendChild(el("div", "as-hint2",
+        "タップ＝その章の<b>手前</b>に立つ（＝まだ未読なので、導入VN・カットイン・不可逆な副作用を実機で確認できる）。" +
+        "<b>右クリック／長押し</b>＝読了状態で立つ。" +
+        "満たすべき条件は <code>js/data_chapters.js</code> の1枚の表から作られ、同じ表で整合も検算されます" +
+        "（再現と検算がズレない）。<b>本番セーブが動きます</b>ので確認用のセーブでどうぞ。"));
+    }
+
+    app.appendChild(el("div", "as-sec", "③ 数値をいじる"));
     const grid = el("div", "set-debug");
     const act = (label, fn) => {
       const b = el("button", "set-dbg-b", label);
@@ -1025,7 +1096,7 @@ function renderSettings() {
     // 解放で、神眼レースのゲート（第5話既読＋到達資産10億＋8頭スカウト）は開かない。
     // ここは解放を満たして画面まで飛ばす＋能力表のプリセットまで入れる＝1タップで山場に立てる。
     if (typeof shinganDevUnlock === "function") {
-      app.appendChild(el("div", "as-sec", "☄️ 終章（神眼レース）へ直行"));
+      app.appendChild(el("div", "as-sec", "④ 山場へ直行（神眼レース）"));
       const sgg = el("div", "set-debug");
       const jump = (label, preset) => {
         const b = el("button", "set-dbg-b", label);
@@ -1067,7 +1138,7 @@ function renderSettings() {
         ov.appendChild(box); ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
         document.body.appendChild(ov);
       };
-      app.appendChild(el("div", "as-sec", "🩺 レスポンシブ自己診断"));
+      app.appendChild(el("div", "as-sec", "⑤ 診断（🩺レスポンシブ）"));
       const dg = el("div", "set-debug");
       const d1 = el("button", "set-dbg-b", "🩺 今の画面を診断");
       d1.onclick = () => showRep(responsiveSelfCheck());
@@ -1080,7 +1151,7 @@ function renderSettings() {
 
     // 🧭 画面ジャンプ：全画面に番号で直接ジャンプ（開発・確認の高速化。js/nav.js SCREEN_INDEX）。
     if (typeof SCREEN_INDEX !== "undefined" && typeof goto === "function") {
-      app.appendChild(el("div", "as-sec", "🧭 画面ジャンプ（番号で直接表示）"));
+      app.appendChild(el("div", "as-sec", "⑥ 画面ジャンプ（番号で直接表示）"));
       const jg = el("div", "set-jump");
       SCREEN_INDEX.forEach(s => {
         const b = el("button", "set-jump-b", `<b>${s.no}</b><span>${s.label}</span>`);
