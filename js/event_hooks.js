@@ -233,7 +233,10 @@ function runEventHooks(hookName, context) {
       if (s && s.length) { speech = speech.concat(s); if (speechOnly) vnBudget--; }
     }
   }
-  if (speech.length) emitSpeech(speech);
+  // ★戻り値＝このフックのセリフが終わる Promise（2026-08-01）。呼び元が「喋り終わってから
+  //   続きを出す」を書けるようにするため（例＝開幕のミミの一言の直後に Lv.1 の称号を授ける）。
+  //   既存の呼び元は戻り値を使っていないので影響はない。
+  return speech.length ? emitSpeech(speech) : Promise.resolve();
 }
 
 // 既存イベントのセリフ群を“立ち絵つき”で再生する一点経路（dialogue.js）。
@@ -241,10 +244,10 @@ function runEventHooks(hookName, context) {
 // → event_registry.js のデータはそのまま、表示だけが立ち絵化される。
 function emitSpeech(lines) {
   if (typeof Dialogue !== "undefined" && Dialogue && Dialogue.play) {
-    Dialogue.play(lines);
-  } else {
-    for (let i = 0; i < lines.length; i++) showEvent(speakerLabel(lines[i].s), lines[i].t);
+    return Dialogue.play(lines);
   }
+  for (let i = 0; i < lines.length; i++) showEvent(speakerLabel(lines[i].s), lines[i].t);
+  return Promise.resolve();
 }
 
 // ===== UI dialogue queue =====

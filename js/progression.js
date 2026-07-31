@@ -96,6 +96,78 @@ function analysisUnlocked() {
 }
 // 暮らし還流台帳：暮らしの行動（育てる/引っ越す/食べる/習う）に物語側が反応する。
 // 形は UNLOCKS の toast と同じ（1到着1件・_unlocked_フラグで一度きり・表示のみ）。
+// =============================================================================
+// 🏅 暮らしレベルの昇格を祝う（2026-08-01・ユーザー指摘）
+// =============================================================================
+// ★第1話から上がるのに、今まで完全に無音だった（applyLivingLevelUps は runEventHooks を
+//   呼ぶだけで、カットインもトーストも出していなかった）。称号（LIVING_RANKS）は
+//   「いまどんな暮らしをしているか」を伝える一番の言葉なので、変わった瞬間に見せる。
+// ★UNLOCKS の「1回だけ」の仕組みには乗せられない（昇格は10回起きる）ので、
+//   最後に祝ったレベルを flags._livingCelebratedLv に数値で持つ。
+// ★Lv.1「ドロミズすすりマン」も祝う（ユーザー案）＝開幕でミミが最初の一言を喋った直後に授ける。
+//   称号システムがそこで一気に伝わり、しかも「ミミズが食べ物に見える」から始まる笑いになる。
+//   なので初期値が Lv1（＝新規プレイ）のときだけは、記録せずに祝う側へ倒す。
+// ★既存セーブ対策＝Lv2以上で初回評価に来たら「いまのレベルまで祝い済み」として記録するだけ。
+//   これが無いと、Lv6のセーブがホームに戻るたびに Lv2→3→4… と5回祝われる。
+function _livingCelebrate() {
+  try {
+    if (typeof LIVING_RANKS === "undefined") return null;
+    const p = state.player || {};
+    const lv = Math.max(1, p.villageLevel || (p.village && p.village.level) || 1);
+    const f = p.flags || {};
+    let seen = (typeof f._livingCelebratedLv === "number") ? f._livingCelebratedLv : null;
+    if (seen === null) {
+      if (lv > 1) { if (typeof setStoryFlag === "function") setStoryFlag("_livingCelebratedLv", lv); return null; }
+      seen = 0;                                     // 新規プレイ＝Lv.1 を祝う
+    }
+    if (lv <= seen) return null;
+    if (typeof setStoryFlag === "function") setStoryFlag("_livingCelebratedLv", lv);
+    const rk = LIVING_RANKS[lv - 1];
+    return rk ? { lv: lv, rk: rk } : null;
+  } catch (e) { return null; }
+}
+// 外から呼ぶ窓口。他のモーダル/VNが出ている間は譲る（1到着1モーダルの作法に合わせる）。
+function maybeCelebrateLiving() {
+  try {
+    if (document.querySelector(".navpop-ov, .dlg-overlay:not(.hidden), .mm-ov, .info-ov, .mv-ov")) return false;
+    const up = _livingCelebrate();
+    if (!up) return false;
+    _showLivingCutin(up.lv, up.rk);
+    return true;
+  } catch (e) { return false; }
+}
+function _showLivingCutin(lv, rk) {
+  // 上限（くらしスキルツリー）で頭打ちなら、そのことをここで一度だけ教える。
+  // ★第3話を読むまでは上限そのものが無い（data_ranks.js livingLevelCap は fail-open）ので、
+  //   読む前に「ツリーを進めないと上がらない」と言うのは嘘になる。読んだ後だけ出す。
+  let capLine = "";
+  try {
+    const treeOpen = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_3");
+    const cap = (typeof livingLevelCap === "function") ? livingLevelCap(state) : 10;
+    if (treeOpen && cap <= lv && lv < LIVING_RANKS.length) {
+      capLine = `<div class="mm-row"><span class="mm-ic">🌳</span><div><b>次の暮らしには、くらしツリー</b>` +
+        `<small>ここから上は、的中を重ねるだけでは上がりません。くらしスキルツリーを ${LIVING_NODES_PER_LV} 個進めるごとに、上の暮らしがひとつ開きます。</small></div></div>`;
+    }
+  } catch (e) {}
+  const ov = el("div", "navpop-ov");
+  const box = el("div", "navpop infopop");
+  box.innerHTML =
+    `<div class="navpop-t">${lv <= 1 ? "🏅 いまの暮らし" : "🏅 暮らしが変わった"}</div>` +
+    `<div class="infopop-body">` +
+      `<div class="mm-row"><span class="mm-ic">🏅</span><div><b>Lv.${lv}　${rk.title}</b><small>${rk.note}</small></div></div>` +
+      capLine +
+    `</div>`;
+  const btns = el("div", "navpop-btns");
+  const later = el("button", "navpop-x", "あとで"); later.onclick = function () { ov.remove(); };
+  const go = el("button", "navpop-go", "暮らしを見る ▸");
+  go.onclick = function () { ov.remove(); if (typeof goto === "function") goto("assets"); };
+  btns.appendChild(later); btns.appendChild(go); box.appendChild(btns);
+  ov.appendChild(box);
+  ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+  try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
+}
+
 const KURASHI_WATCH = [
   { id: "k_tree5", tier: "toast",
     cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 5; },
@@ -162,6 +234,11 @@ function progressionCheckOnHome() {
         _showStoryCutin(_ch);
         cutinDone = true;
       }
+    }
+    // 🏅 暮らしレベルの昇格（Lv.2以降）＝ホーム到着で1件。1到着1モーダルの枠を使う。
+    if (!cutinDone) {
+      const _up = _livingCelebrate();
+      if (_up) { _showLivingCutin(_up.lv, _up.rk); cutinDone = true; }
     }
     for (const u of UNLOCKS.concat(KURASHI_WATCH)) {
       if (_unlockNotified(u.id)) continue;

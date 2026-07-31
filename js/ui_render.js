@@ -1769,7 +1769,12 @@ function gradeBadgeHTML(rank) {
 const RACE_TIME_LABEL = { 1: "🌅朝", 2: "☀️昼", 3: "🌇夕", 4: "🌆薄暮", 5: "🌙夜" };
 function renderRaceSelect() {
   state.ui.screen = "race_select";
-  runEventHooks("beforeRaceSelect");
+  // ★開幕のミミの一言（first_race_intro_mimi）が終わった直後に、Lv.1「ドロミズすすりマン」を
+  //   授ける（ユーザー案）。称号システムがここで一気に伝わり、しかも笑いになる。
+  //   runEventHooks は喋り終わりの Promise を返すので、その後に出す＝セリフに被らない。
+  Promise.resolve(runEventHooks("beforeRaceSelect")).then(function () {
+    try { if (typeof maybeCelebrateLiving === "function") maybeCelebrateLiving(); } catch (e) {}
+  });
   const app = beginScreen();
   app.appendChild(screenHeader("レース選択", "images/race_header.webp"));
 
