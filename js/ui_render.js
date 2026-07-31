@@ -393,7 +393,11 @@ function buyPhoneAndGoLive() {
 // 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。
 // onClose（任意）＝閉じた時に1回だけ呼ぶ。スカウト成立→八竜集結VN、配信開通→マクラのツアー等の
 // 「ポップの後に続きを再生する」結線が使う（従来は第3引数が黙って無視されていた）。
-function showInfoPopup(title, html, onClose) {
+// action（任意）＝{ label, fn }。渡すと「とじる（脇役）＋その場から行ける主役ボタン」の2択になる。
+// ★足した理由（2026-08-01・P-9）：案内文で「◯◯へ行ってね」と書くだけの導線が実際に迷子を生んでいた
+//   （空腹ポップが、IA再編で廃止済みの「ホームの🍽ごはん」を案内し続けていた）。
+//   文字で行き先を書くくらいなら、その場から行けるようにする。
+function showInfoPopup(title, html, onClose, action) {
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop infopop");
   box.innerHTML = `<div class="navpop-t">${title}</div><div class="infopop-body">${html}</div>`;
@@ -404,8 +408,16 @@ function showInfoPopup(title, html, onClose) {
     if (typeof onClose === "function") { try { onClose(); } catch (e) {} }
   };
   const btns = el("div", "navpop-btns");
-  const ok = el("button", "navpop-go", "わかった！"); ok.onclick = close;
-  btns.appendChild(ok); box.appendChild(btns);
+  if (action && action.label && typeof action.fn === "function") {
+    const cancel = el("button", "navpop-x", "とじる"); cancel.onclick = close;   // 脇役＝ガラス
+    const go = el("button", "navpop-go", action.label);                          // 主役＝金
+    go.onclick = () => { close(); try { if (window.Sfx) Sfx.play("nav"); } catch (e) {} try { action.fn(); } catch (e) {} };
+    btns.appendChild(cancel); btns.appendChild(go);
+  } else {
+    const ok = el("button", "navpop-go", "わかった！"); ok.onclick = close;
+    btns.appendChild(ok);
+  }
+  box.appendChild(btns);
   ov.appendChild(box);
   ov.onclick = (e) => { if (e.target === ov) close(); };
   document.body.appendChild(ov);
@@ -2970,9 +2982,17 @@ function showBetConfirm() {
       // ★G9：空腹UIとキャラの結線＝第1話の「まず食え」をサケの声で再演（門番advisorMet・fail-closed）。
       const sakeLine = (typeof advisorMet === "function" && advisorMet("sake"))
         ? `<div class="mm-row"><span class="mm-ic">🐲</span><div><b>サケ</b><small>「まず食え。……話は、その後だ。」</small></div></div>` : "";
+      // ★P-9（2026-08-01・ユーザー指摘）：ここは「ホームの🍽ごはんへ」と案内していたが、
+      //   🍽ごはんタブはIA再編で廃止済み＝存在しない場所を指していた。しかもボタンが無く、
+      //   走れないと言われた側は自力で辿るしかなかった。行き先を文字で書かず、ここから飛ばす。
+      const _freeMeal = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
       if (typeof showInfoPopup === "function") showInfoPopup("🍖 おなかがすいて走れない…",
         sakeLine +
-        `<div class="mm-row"><span class="mm-ic">🍽</span><div><b>ごはんを食べよう</b><small>ホームの🍽ごはんへ。ハズレた日は1品「店のおごり」が出ます。</small></div></div>`);
+        `<div class="mm-row"><span class="mm-ic">🍽</span><div><b>ごはんを食べよう</b><small>` +
+          (_freeMeal ? "きょうは1品「店のおごり」が出ます。" : "食べればまた走れます。") +
+          `ヘッダーの🍖おなかピル、🏝おでかけの屋台からも行けます。</small></div></div>`,
+        null,
+        { label: "🍽 ごはんへ ▸", fn: function () { if (typeof renderMeals === "function") renderMeals(); } });
       return;
     }
     const t = document.getElementById("tix-card");
