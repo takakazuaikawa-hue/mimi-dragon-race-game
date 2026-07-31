@@ -36,7 +36,23 @@ const eventHooks = {
   onRankUp: [],
   onMilestone: [],
   // §30 total-asset progression: fired when a new story/lifestyle stage unlocks.
-  onStoryUnlock: []
+  onStoryUnlock: [],
+
+  // ── 島側の行動フック（2026-08-01・R1／正本 docs/REWARD_LOOP_DESIGN.md）──────────
+  // ★原則（ユーザー決裁）：「プレイヤーが何かをやるたびに、その見返りとしてイベントが見られる」。
+  // 実測で分かったこと：**個別の反応は既にある**（食べれば react、服は DLG.OUTFIT、
+  //   スポットは到着VN、撮影は☆評価、ノードは showLifeCutin、スカウトは竜ごとの一言）。
+  //   空いていたのは「節目」と「横断」＝島でやったことに顧問もSNSも反応しないこと。
+  //   レース側は afterRaceSelect 15本・afterEntryList 7本と厚いのに、島側はフックすら無かった。
+  // ★このフック群は**既存の個別反応を置き換えない**。その上に世界の反応を重ねるための器。
+  // ★R1の時点では登録イベント0本＝挙動は完全に不変（data_chapters.js と同じ入り方）。
+  onMeal: [],        // ctx { id, meal, totalEaten }
+  onSpotVisit: [],   // ctx { spotId, spot, areaId, totalSeen }
+  onPhoto: [],       // ctx { spotId, stars, masterpieces }
+  onOutfit: [],      // ctx { id, outfit, totalOwned }
+  onLifeNode: [],    // ctx { node, totalNodes, livingUp }
+  onLesson: [],      // ctx { id, skill, level }
+  onScout: []        // ctx { dragonId, totalScouted }
 };
 
 // §10 §16 story flags — persisted via player.flags (resides in state.js).
