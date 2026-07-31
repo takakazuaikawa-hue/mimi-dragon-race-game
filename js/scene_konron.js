@@ -17,7 +17,7 @@
 const KW_COLS = 32, KW_ROWS = 24;
 const KW_MAPW = 1920, KW_MAPH = 1440;
 const KW_CW = KW_MAPW / KW_COLS, KW_CH = KW_MAPH / KW_ROWS;
-const KW_V = "20260729b";
+const KW_V = "20260801a";
 
 // ── エリア台帳。map は背景画（1920×1440）に対する当たり判定＝32×24のマス目。
 //   '#'=入れない / '.'=歩ける。背景を10%グリッドで実測して起こし、赤塗り合成で突き合わせて是正した。
@@ -474,7 +474,17 @@ function renderKonronWalk(areaId, at) {
   stage.className = "kw-stage";
   app.appendChild(stage);
 
-  const imgs = { bg: area.img + "?v=" + KW_V, mimi: "images/scene/konron/mimi_walk.webp?v=" + KW_V };
+  // ★結線漏れの修正（Q-4・2026-08-01）：`mimi_walk_tarzan.webp` は納品済みなのに
+  //   コードから一度も参照されていなかった（tarzan画像7枚すべてが孤児だった）。
+  //   買った服が島を歩く自分に出る＝「買ったものが見える」いちばん素直な見返り。
+  //   ★シートは 288×384 で既定シートと同一レイアウト＝差し替えるだけでコマ割りは不変（実測確認済み）。
+  //   ★衣装が増えたらこの表に1行足すだけ。載っていない衣装は既定シートに落ちる（fail-safe）。
+  const KW_WALK_SHEET = { tarzan: "mimi_walk_tarzan.webp" };
+  const _kwFit = (typeof currentOutfitId === "function") ? currentOutfitId() : "";
+  const imgs = {
+    bg: area.img + "?v=" + KW_V,
+    mimi: "images/scene/konron/" + (KW_WALK_SHEET[_kwFit] || "mimi_walk.webp") + "?v=" + KW_V
+  };
   imgs.folk = "images/scene/konron/folk.webp?v=" + KW_V;                    // 旧・1枚まとめシート（新シートが欠けた時の受け皿）
   // ★このエリアに出る村人ぶんだけ読む（6人ぶん常に読むと無駄が大きい）。欠けたら null＝旧シートへ落ちる。
   (area.npcs || []).forEach(function (n) {
