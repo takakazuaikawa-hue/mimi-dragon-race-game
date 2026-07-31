@@ -90,9 +90,21 @@ function renderStory() {
       ? `公開条件 ／ ${(typeof chapterUnlockHint === "function" && chapterUnlockHint(ch.id)) || ("総資産 " + fmtCoins(storyUnlockAt(ch.id)) + " で公開")}`
       : met ? (ch.id === "ED" ? "次なる物語へ——最終話。" : ch.title)
       : "未視聴 ／ タップで再生";
+    // ★F7（2026-08-01・章デザイン監査）：開いた瞬間に取り消せない状態遷移が走る章がある
+    //   （第5話＝epilogueStart で終章が起動する／導入VNは二度と再生されない）。
+    //   再生前に知らせる手段が無かったので、解禁済みかつ未読の時だけ1行添える。
+    //   ★固有名は出さない（R7＝未読の章の登場人物・章題を伏せる規則）。
+    let irrev = "";
+    try {
+      const _cm = (typeof chapterMeta === "function") ? chapterMeta(ch.id) : null;
+      const _read = (typeof chapterRead === "function") ? chapterRead(ch.id) : false;
+      if (unlocked && !_read && _cm && _cm.irreversible && _cm.irreversible.length) {
+        irrev = `<span class="news-irrev">⚠️ 再生すると物語が次の段階へ進みます（戻せません）</span>`;
+      }
+    } catch (e) {}
     art.innerHTML = photo +
       `<span class="news-art-tx"><span class="news-kicker">${kicker}</span>` +
-        `<span class="news-head">${head}</span><span class="news-lead2">${lead2}</span></span>` +
+        `<span class="news-head">${head}</span><span class="news-lead2">${lead2}</span>${irrev}</span>` +
       (unlocked ? `<span class="news-art-go">▶</span>` : `<span class="news-art-seal">🔒</span>`);
     if (unlocked) art.onclick = () => renderStoryChapter(ch.id);
     arts.appendChild(art);

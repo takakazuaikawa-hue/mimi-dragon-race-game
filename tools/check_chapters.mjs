@@ -129,6 +129,18 @@ test("★F4の回帰：ED を正規に再現すると I9 が出ない（グル�
   assert(unlocked === true, "poroGourmetRaceUnlocked が立っていない＝グルメレースが開かない");
 });
 
+test("★F5の回帰：shinganDevUnlock が門番の破れた state を作らない", () => {
+  const ctx = fresh();
+  runInContext(`__r = shinganDevUnlock({ replay: true })`, ctx);
+  const p = runInContext("chapterInvariants(state)", ctx);
+  assert(p.length === 0, `壊れた state を作った:\n      - ${p.join("\n      - ")}`);
+  assert(ctx.__r.unlocked === true, "神眼レースが解放されていない");
+  assert(ctx.__r.allScouted === true, "8頭が揃っていない");
+  // 門番＝既読章の顧問が全員登場している（従来は第5話だけ既読で mizu/sumika/makura が false だった）
+  const met = runInContext(`["sake","mizu","sumika","makura","celestia"].map(k => advisorMet(k))`, ctx);
+  assert(met.every(Boolean), `顧問が未登場のまま: ${JSON.stringify(met)}`);
+});
+
 test("健全な新規セーブでは不変条件に問題が無い", () => {
   const ctx = fresh();
   const p = runInContext("chapterInvariants(state)", ctx);

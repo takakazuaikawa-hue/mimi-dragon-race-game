@@ -5040,6 +5040,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .news-art-consult .news-art-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .news-art-consult .news-head { font-size: 15px; text-shadow: none; }
 .news-lead2 { font-size: 11px; line-height: 1.55; color: #aab0bb; }
+/* ★不可逆な章の事前告知（F7）。再生すると戻せない章にだけ出る1行。固有名は出さない。 */
+.news-irrev { display: block; margin-top: 5px; font-size: 10.5px; line-height: 1.5; font-weight: 700;
+  color: #ffc4ae; }
 .news-quote { font-family: var(--nmin); font-size: 12px; line-height: 1.7; color: #e8eaef; margin-top: 4px; }
 .news-censor { font-family: monospace; letter-spacing: -1px; color: #6d7480; }
 /* 再生ボタン＝写真の右下に浮かべる（ヒーローカードの作法） */

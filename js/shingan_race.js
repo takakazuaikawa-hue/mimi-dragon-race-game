@@ -243,19 +243,34 @@ function _sgSolve(iters) {
 //   ★replay:true で intro/cleared/failShown を戻す＝前口上から一枚絵まで通しで再確認できる。
 function shinganDevUnlock(opts) {
   const o = opts || {}, p = state.player;
-  // ① 第5話既読（chapterRead("5") が見る唯一のフラグ）
-  if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_5", true);
-  // ② 到達最高資産＝ED解放額（assetsPeak は assetsPeak/totalAssets の大きい方）
+  // ★F5（2026-08-01・章デザイン監査）：ここは _chapter_intro_5 **だけ** を立てていたので、
+  //   第1〜4話は未読・metMakura も未セットという「門番の破れた」本番セーブを作れてしまっていた
+  //   （advisorMet が mizu/sumika/makura すべて false なのにセレスティアだけ登場済み＝
+  //     chapterInvariants の I1/I2/I8 が赤くなる状態）。
+  //   章の状態は js/data_chapters.js の1枚の表に集約済みなので、そちらへ委譲する。
+  //   "EP"＝終章まで＝第1〜5話既読・metMakura・終章起動・ポロ発見・8頭スカウトが全部そろう。
+  if (typeof chapterApply === "function") {
+    chapterApply("EP", { read: true });
+  } else {
+    // フォールバック（data_chapters.js 未読込時のみ）。従来どおりの最小限。
+    if (typeof setStoryFlag === "function") {
+      ["_chapter_intro_1", "_chapter_intro_2", "_chapter_intro_3", "_chapter_intro_4", "_chapter_intro_5",
+       "metMakura", "poroFound", "dragonScoutUnlocked", "dragonStableUnlocked"].forEach(f => setStoryFlag(f, true));
+    }
+    p.collection = p.collection || {};
+    SHINGAN_ROSTER.forEach(d => {
+      if (d.id === "poro") return;
+      p.collection[d.id] = Object.assign({}, p.collection[d.id], { scouted: true, seen: true });
+    });
+    if (typeof epilogueStart === "function") epilogueStart();
+  }
+  // 神眼レースの解放は「第5話既読 ∧（到達最高10億 ∨ メーター押し切り）」。
+  // chapterApply("EP") が満たすのは1億までなので、ここで10億まで積む。
   const need = (typeof storyUnlockAt === "function" && storyUnlockAt("ED")) || 1000000000;
   p.assetsPeak = Math.max(p.assetsPeak || 0, need);
   p.maxCoinsReached = Math.max(p.maxCoinsReached || 0, need);
-  // ③ 8頭すべて出走可能に。★ポロだけはスカウトではなく物語フラグ（poroFound）が正。
-  p.collection = p.collection || {};
-  SHINGAN_ROSTER.forEach(d => {
-    if (d.id === "poro") { if (typeof setStoryFlag === "function") setStoryFlag("poroFound", true); return; }
-    p.collection[d.id] = Object.assign({}, p.collection[d.id], { scouted: true, seen: true });
-  });
-  // ④ 通しで見たいときは演出フラグを戻す
+  if (typeof recomputeAssets === "function") { try { recomputeAssets(state); } catch (e) {} }
+  // 通しで見たいときは演出フラグを戻す
   const sg = shinganData();
   if (o.replay) { sg.intro = false; sg.cleared = false; sg.failShown = false; sg.best = null; }
   if (typeof saveGame === "function") saveGame();
