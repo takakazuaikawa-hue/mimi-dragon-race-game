@@ -187,12 +187,26 @@ function renderEconomy() {
 // I4 決戦の備え＝4つの軸の到達状況（提示のみ・表示専用）。ラベルは固有名を出さない（R7）。
 function _finalPrepList() {
   const p = state.player || {}, col = p.collection || {};
-  let scouted = 0; try { scouted = Object.values(col).filter(function (e) { return e && e.scouted; }).length; } catch (e) {}
+  // ★実バグの修正（2026-08-01・F6の検証中に実測で発見）：ここは「スカウト済みの竜を種類を問わず
+  //   数える」実装だったが、最終決戦（神眼レース）が要求するのは**特定の8頭**（SHINGAN_ROSTER）。
+  //   別の竜を8頭集めると「✅ 8/8頭」と出るのに、神眼レースの画面では出走できず
+  //   「8頭全員のスカウトが必要」で止まる＝最後の最後で壁に当たる誤誘導だった（再現確認済み）。
+  //   正本 shinganScouted() で、要求されている8頭だけを数える。
+  let scouted = 0, need = 8;
+  try {
+    if (typeof SHINGAN_ROSTER !== "undefined" && typeof shinganScouted === "function") {
+      need = SHINGAN_ROSTER.length;
+      scouted = SHINGAN_ROSTER.filter(function (d) { return shinganScouted(d.id); }).length;
+    } else {
+      scouted = Object.values(col).filter(function (e) { return e && e.scouted; }).length;   // fail-open（旧挙動）
+    }
+  } catch (e) {}
   const tier = (typeof islandTier === "function") ? islandTier() : 0;
   let advs = 0; try { advs = ["sake", "mizu", "sumika", "makura", "celestia"].filter(function (k) { return typeof advisorMet === "function" && advisorMet(k); }).length; } catch (e) {}
   const seen = (typeof getStoryFlag === "function") && getStoryFlag("_chapter_intro_5");
   return [
-    { ic: "🐲", label: "竜を集める",     ok: scouted >= 8, now: scouted + "/8 頭" },
+    // ★固有名は出さない（R7＝未登場の竜の名前を漏らさない）が、「決戦に出る顔ぶれ」であることは示す。
+    { ic: "🐲", label: "決戦に出る竜を集める", ok: scouted >= need, now: scouted + "/" + need + " 頭" },
     { ic: "🏝️", label: "島を育てる",     ok: tier >= 2,    now: (typeof ISLAND_TIER_NAME !== "undefined" ? ISLAND_TIER_NAME[tier] : "") },
     { ic: "🎓", label: "みんなの助言を得る", ok: advs >= 5,  now: advs + "/5 人" },
     { ic: "📖", label: "物語を見届ける", ok: !!seen,       now: seen ? "済" : "これから" }
