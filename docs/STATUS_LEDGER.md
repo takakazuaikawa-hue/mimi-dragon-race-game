@@ -31,8 +31,8 @@
 
 | ID | 中身 | 状態 | 根拠 |
 |---|---|---|---|
-| **★次の本線** | 登り道設計（再実測→5区間表→台詞増量） | **指示書あり・未着手** | `docs/PACING_EXECUTION_DIRECTIVE.md`（方針の正本=PACING_DESIGN_RESEARCH v2。**動詞の門は撤回済み＝実装禁止**） |
-| **★次の本線** | 歩ける島の脱β完成 | **指示書あり・未着手**（folk5欠落＝実バグ確認済み） | `docs/KONRON_WALK_COMPLETION_DIRECTIVE.md`（§1に2026-08-01の実測表） |
+| **★次の本線** | 登り道設計 | **STEP1実測✅／STEP2設計書✅（検収待ち）／STEP3台詞✅** | `docs/PACING_EXECUTION_DIRECTIVE.md`（方針の正本=PACING_DESIGN_RESEARCH v2。**動詞の門は撤回済み＝実装禁止**） |
+| **★次の本線** | 歩ける島の脱β完成 | **W1〜W3✅／W6=7エリア目「大翼通り」新設✅／W4目視プレイテストのみ未／W5(β外し)は基準未達で保留** | `docs/KONRON_WALK_COMPLETION_DIRECTIVE.md`（§1に2026-08-01の実測表） |
 | R5 | くらしツリーの事前取得（どのイベントにどのノードを対応させるか） | **決裁待ち** | 対応表が未決。実装は決裁後 |
 | R6 / F8 / F9 | 章ゲートを数値から出来事へ | **決裁待ち** | `docs/CHAPTER3_PROGRESSION_FIX.md` |
 | P-6 | UI装飾 第2波（絵文字→線アイコン・モール画面が基準） | 未着手 | |
