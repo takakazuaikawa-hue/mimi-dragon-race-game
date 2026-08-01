@@ -1509,6 +1509,31 @@ table.entry-table {
 .entry-table .style-chase { color: #c080ff; }
 .entry-table .mark { font-size: 16px; }
 
+/* ★出走表を縦持ちの幅に収める（2026-08-01）。
+   直す前：14列で必要幅478px／入る幅385px＝93pxはみ出し、しかも包みが overflow-x:visible。
+   逃げ場が無いので列が潰れ、竜名が1文字ずつ縦に折り返って行の高さが153〜193pxになっていた。
+   能力6列を1列へ畳み、特徴を竜名の下へ落として8列に。詰めも 8px→4px、文字も1px小さくする。 */
+.entry-table { font-size: 12px; table-layout: auto; }
+/* 詰めは3px。折り返し禁止にしたら「前走◎」で近走列が48pxに広がり19pxはみ出したので、
+   8列×左右で16px、能力の字幅で6px を取り戻して収める（実測して詰めた値） */
+.entry-table th, .entry-table td { padding: 5px 3px; vertical-align: middle; }
+/* ★折り返し禁止は全セルに掛ける。竜名だけ直しても「先行」「凡走」が縦積みのまま残った（実測）。
+   折り返してよいのは、竜名の下に敷いた説明文（特徴）だけ。 */
+.entry-table th, .entry-table td { white-space: nowrap; }
+.entry-table th { font-size: 11px; }
+.et-name { min-width: 92px; }
+.et-name .dragon-icon-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.et-name .dragon-icon-row b { font-size: 12px; }
+/* 特徴＝比べる数値ではなく説明文。列にせず竜名の下の小さな行にする */
+.entry-table .dragon-traits { display: block; margin-top: 1px; font-size: 9.5px; line-height: 1.25;
+  color: var(--mist-soft); white-space: normal; }
+/* 能力＝見出し「速耐回翼火気」と同じ順で6文字を等幅に並べる（見出しがそのまま凡例） */
+.et-stats-h { letter-spacing: 2.5px; text-align: center; }
+.et-stats { white-space: nowrap; text-align: center; }
+.et-stats i { display: inline-block; width: 12px; font-style: normal; font-weight: 700; text-align: center; }
+/* 念のための逃げ場：それでも入らない幅の端末では潰さずに流す */
+.ana-pane { overflow-x: auto; }
+
 .popularity-rank { display: inline-block; width: 22px; text-align: center; background: #604040; border-radius: 3px; font-weight: bold; }
 .popularity-rank.p1 { background: #d44040; color: #fff; }
 .popularity-rank.p2 { background: #4060d4; color: #fff; }

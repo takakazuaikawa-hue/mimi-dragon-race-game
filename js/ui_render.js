@@ -2466,13 +2466,20 @@ function renderRaceDetail(race) {
     // -- pane: 出走表 (entry table) --
     const paneForm = el("div", "ana-pane active"); paneForm.dataset.pane = "form";
     const tbl = el("table", "entry-table");
+    // ★出走表の作り直し（2026-08-01・ユーザー指摘「レイアウトひどくない？」）。
+    //   実測：表の必要幅478px に対し入る幅385px＝93pxはみ出し。しかも包みが overflow-x:visible で
+    //   横スクロールもできないため、列が潰れて**竜名が1文字ずつ縦に折り返り**、行の高さが153〜193pxになっていた。
+    //   （PC想定の14列テーブルを、縦持ち固定幅の画面にそのまま置いていたのが元）。
+    //   直し方：横スクロールを足す“つぎはぎ”ではなく、**列を畳む**。情報は1つも捨てない。
+    //     ・能力6列（速耐回翼火気）→ 1列に横並び。見出しの並び順がそのまま凡例になる
+    //     ・特徴（「先行 / 素直 / 人気」）→ 竜名の下の小さな行へ。比べる数値ではなく説明文なので列に向かない
+    //   14列 → 8列。念のため包み側に overflow-x:auto を残し、狭い端末でも潰れずに流れるようにする。
     tbl.innerHTML = `
       <thead><tr>
         <th>人気</th><th>竜名</th><th>脚質</th>
-        <th>速</th><th>耐</th><th>回</th><th>翼</th><th>火</th><th>気</th>
+        <th class="et-stats-h" title="速さ・耐久・旋回・翼・火・気性">速耐回翼火気</th>
         <th>印</th><th>近</th>
-        <th>単オッズ</th><th>複オッズ</th>
-        <th>特徴</th>
+        <th>単</th><th>複</th>
       </tr></thead>
     `;
     const tbody = el("tbody");
@@ -2480,21 +2487,19 @@ function renderRaceDetail(race) {
       const d = DRAGONS.find(x => x.id === od.dragonId);
       const tr = el("tr");
       const rk = od.popularityRank;
+      // 能力6つは見出し「速耐回翼火気」と同じ順で横に並べる＝見出しがそのまま凡例になる
+      const stats = [d.stats.speed, d.stats.stamina, d.stats.turn, d.stats.wing, d.stats.fire, d.stats.nerve]
+        .map(v => `<i class="rank-${statRank(v)}">${statRank(v)}</i>`).join("");
       tr.innerHTML = `
         <td><span class="popularity-rank p${rk<=3?rk:""}">${rk}</span></td>
-        <td><span class="dragon-icon-row">${dragonIconPlaceholder(d)}<b>${d.name}</b></span></td>
+        <td class="et-name"><span class="dragon-icon-row">${dragonIconPlaceholder(d)}<b>${d.name}</b></span>
+          <span class="dragon-traits">${d.traits.join("・")}</span></td>
         <td class="style-${d.style}">${STYLE_LABEL[d.style]}</td>
-        <td class="num rank-${statRank(d.stats.speed)}">${statRank(d.stats.speed)}</td>
-        <td class="num rank-${statRank(d.stats.stamina)}">${statRank(d.stats.stamina)}</td>
-        <td class="num rank-${statRank(d.stats.turn)}">${statRank(d.stats.turn)}</td>
-        <td class="num rank-${statRank(d.stats.wing)}">${statRank(d.stats.wing)}</td>
-        <td class="num rank-${statRank(d.stats.fire)}">${statRank(d.stats.fire)}</td>
-        <td class="num rank-${statRank(d.stats.nerve)}">${statRank(d.stats.nerve)}</td>
+        <td class="et-stats">${stats}</td>
         <td class="mark">${d.newspaperMark || "-"}</td>
         <td class="num">${recentResultLabel(d.recentResult)}</td>
         <td class="num odds-win">${od.winOdds.toFixed(1)}</td>
         <td class="num odds-place">${od.placeOdds.toFixed(1)}</td>
-        <td class="dragon-traits">${d.traits.join(" / ")}</td>
       `;
       if (state.ui.debug) {
         tr.appendChild(el("td", "debug-info", `pop=${od.popularityPower.toFixed(1)} winP=${(od.marketWinProb*100).toFixed(1)}% placeP=${(od.marketPlaceProb*100).toFixed(1)}%`));
