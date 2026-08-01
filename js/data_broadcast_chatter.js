@@ -36,6 +36,10 @@
 // （検査が「用意した本数に対してどれだけ出たか」を見るのに使う）
 const BC_CHATTER_WINDOW = 40;
 
+// ★このレース（台本1本）で tips を出したか。entry の抽選で毎回リセットされる
+//   （台本は entry→mid の順で1回ずつ組む）。永続化しない＝ページを跨いだら気にしない。
+let _bcTipsServedThisRace = false;
+
 const BC_CHATTER = [
   { id: "sumika_dragon_01", cm: "sumika", topic: "dragon", at: "entry", line: "竜の鱗は月に一度、乾いた布で拭くとよく持ちます。" },
   { id: "sumika_dragon_02", cm: "sumika", topic: "dragon", at: "entry", line: "竜も人と同じで、寝不足の日は瞳の艶が違うのでございます。" },
@@ -478,15 +482,23 @@ function bcChatterPick(cmKey, at, sit) {
   try {
     if (!cmKey || !BC_CHATTER.length) return null;
     const L = bcChatterLedger();
+    // ★tipsの出し方（2026-08-02・ユーザー決裁「ヒントは一回聞ければ十分。頻度を上げると
+    //   耳障り。実況解説の面白さが第一」）。3つの規則：
+    //   ①1レースに tips は最大1本（entry で出したら mid では出さない＝講義にしない）
+    //   ②未使用の tips は他より先に出す＝各ヒントは早いうちに一度だけ届く
+    //   ③一度聞いた tips はほぼ再登場しない（+100000 で実質最後尾。雑談の面白さを主役に戻す）
+    if (at === "entry") _bcTipsServedThisRace = false;   // entry は台本1本につき1回＝レースの区切り
     const pool = BC_CHATTER.filter(r =>
-      r.cm === cmKey && r.at === at && bcChatterFits(r, sit));
+      r.cm === cmKey && r.at === at && bcChatterFits(r, sit) &&
+      !(_bcTipsServedThisRace && r.topic === "tips"));
     if (!pool.length) return null;
-    // ★未使用のtips（当てるための知識）だけは、他の未使用より先に出す（2026-08-02）。
-    //   台帳の末尾に足したため、LRUだと何十レースも順番待ちになる。教える知識は
-    //   序盤にこそ価値がある。一度出たら通常のローテーションに合流する。
-    const at_ = r => (L.used[r.id] == null ? (r.topic === "tips" ? -2 : -1) : L.used[r.id]);
+    const at_ = r => {
+      if (L.used[r.id] == null) return r.topic === "tips" ? -2 : -1;   // ②未使用tips最優先
+      return r.topic === "tips" ? L.used[r.id] + 100000 : L.used[r.id]; // ③既読tipsは実質最後尾
+    };
     let best = pool[0];
     for (let i = 1; i < pool.length; i++) if (at_(pool[i]) < at_(best)) best = pool[i];
+    if (best && best.topic === "tips") _bcTipsServedThisRace = true;   // ①このレースはもう出さない
     return best;
   } catch (e) { return null; }
 }
