@@ -3041,7 +3041,16 @@ function showBetConfirm() {
     }
     const t = document.getElementById("tix-card");
     yes.disabled = true; no.disabled = true;
-    if (t) { t.classList.add("tear"); try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} }
+    if (t) {
+      // ★半券を畳む前に、本体の幅を今の値で固定する（2026-08-01）。
+      //   .tix-main は flex:1 1 auto なので、半券が0になると**本体が伸びて隙間を埋め戻し**、
+      //   券全体の幅が348pxのまま変わらない＝直したいことがそのまま起きない。
+      //   ここで固定しておくと、減った52pxぶん券そのものが短くなる。
+      const _mn = t.querySelector(".tix-main");
+      if (_mn) _mn.style.width = Math.round(_mn.getBoundingClientRect().width) + "px";
+      t.classList.add("tear");
+      try { if (window.Sfx) Sfx.play("tick"); } catch (e) {}
+    }
     setTimeout(() => {
       closeBetConfirm();
       if (typeof hungerSpendRace === "function") try { hungerSpendRace(); } catch (e) {}   // 出走＝おなか−25

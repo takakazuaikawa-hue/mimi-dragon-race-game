@@ -7334,12 +7334,24 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .tix-row.tix-pay b { color: #9a2b22; font-size: 15px; }
 .tix-stub { flex: none; width: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   border-left: 2px dashed rgba(43,38,32,.5); background: rgba(154,43,34,.08); padding: 8px 4px;
-  transition: transform .38s ease, opacity .38s ease; }
+  overflow: hidden; white-space: nowrap;
+  transition: transform .26s ease, opacity .26s ease,
+              width .26s ease, padding .26s ease, border-left-width .26s ease; }
 .tix-stub span { font-size: 8px; letter-spacing: .2em; color: #6a5f4c; writing-mode: vertical-rl; }
 .tix-stub b { font-size: 10px; color: #9a2b22; }
 .tix-stub i { font-style: normal; font-size: 12px; font-weight: 900; }
 .tix.tear { transform: rotate(-2deg) translateY(2px); }
-.tix.tear .tix-stub { transform: translate(18px, -14px) rotate(14deg); opacity: 0; }
+/* ★千切ったら券は短くなる（2026-08-01・ユーザー指摘「切った後の券も同じ大きさ」）。
+   直す前：半券は transform で右上へ飛ばしていたが、transform はレイアウトを動かさないので
+   抜けた52pxの隙間が残り、券全体の幅は348pxのまま＝「半券だけ消えて券の長さは不変」だった。
+   しかも .tix は overflow:hidden で半券は右端ぴったり。**飛んでいく動きは一度も見えていない**
+   （実測：券の右端669px＝半券の右端669px）。見えない動きは捨てる。
+   代わりに、ちぎり線（左の破線）を軸に半券の幅そのものを0へ畳む。
+   券は 348px → 296px に短くなり、手元には本体だけが残る。 */
+.tix.tear .tix-stub {
+  width: 0; padding-left: 0; padding-right: 0; border-left-width: 0; opacity: 0;
+  transform: rotate(6deg); transform-origin: left center;
+}
 @media (prefers-reduced-motion: reduce) { .tix, .tix-stub { transition: none; } }
 .bcf-q { text-align: center; font-size: 12px; color: var(--mist-soft); margin-top: 10px; }
 
