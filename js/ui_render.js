@@ -62,7 +62,12 @@ function beginScreen() {
   const app = $("app");
   const screen = state.ui.screen;
   const prev = _prevScreen;
-  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip", "kiko-page", "yt-page");   // 観光(.kt-page)/暮らし(.lr-page)/紀行(.kiko-page)/メディア(.yt-page)のテーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
+  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip", "kiko-page", "yt-page", "kw-page");   // 観光(.kt-page)/暮らし(.lr-page)/紀行(.kiko-page)/メディア(.yt-page)のテーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
+  // ★kw-page（島歩き）を足した理由（2026-08-01・ユーザー報告「島の一枚絵が消えた」）：
+  //   scene_konron.js が #app に付けたきり、誰も外していなかった。.kw-page は #app を
+  //   display:flex／column にするので、島の観光ページ(.kt-page)へ戻ると **ヒーローの一枚絵が潰れる**。
+  //   つまり「島を歩く → 島の地図へ戻る」を一度でもやると、以後ずっと絵が出ない。
+  //   テーマ級のクラスは、付けた画面で外すのではなく全画面共通のここで剥がすのが正しい（上の並びと同じ扱い）。
   if (screen !== "home") document.body.classList.remove("home-mode");   // ホーム以外は#header表示
   // ★BUGFIX：title-mode は body を position:fixed / overflow:hidden にする全画面レイアウト。
   //   従来 renderHome でしか外しておらず、タイトルからホームを経由せずに他画面へ入ると

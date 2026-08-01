@@ -1407,7 +1407,7 @@ function startRaceCanvas(container, ctx) {
   // ---- PRE-START idle: cute, 思想-driven fidget at the gate during the 3-2-1. ----
   // Eager 逃げ types prance & lean forward; calm temperaments stand composed; the
   // sleepy chaser yawns; nervous types fidget. Purely cosmetic — the gun fires the same.
-  const PRE_TOTAL = 3.0;
+  const PRE_TOTAL = 5.0;   // ★S.preT の初期値と必ず揃える（揃えないと発走前の仕草の進み具合が狂う）
   function prestartBehaviorOf(dr) {
     const beh = { jump: 0, spin: 0, squash: 1, down: false, mood: "serious", lean: 0 };
     const id = dr.id, pd = persoOf(id);
@@ -1669,7 +1669,11 @@ function startRaceCanvas(container, ctx) {
     // --- presentation drama ---
     entryT: ENTRY_DUR,  // entrance walk-in (holds τ; the field parades to the gate first)
     mood: {},           // per-dragon held expression {m,t} — debounces face flicker
-    preT: 3.0,          // pre-start 3-2-1 countdown (holds τ at the gate)
+    // ★3.0→5.0（2026-08-01・ユーザー案「スタートまでの時間を長くする」の採用形）。
+    //   入場7行が0〜5.9秒に1秒間隔で詰まっていた（実測）。滞留2.6秒を敷くと入場だけで
+    //   場所が足りず、紹介が捨てられてしまう。+2秒ぶんの席を作ってから間引く。
+    //   ★レース本体（τの進み）は不変。増えるのは発走前の間だけ。スキップは従来どおり効く。
+    preT: 5.0,          // pre-start countdown (holds τ at the gate)
     goFlash: 0,         // "GO！" burst after the countdown
     zoomBump: 0,        // extra push-in impulse from overtakes / close battles
     photoT: 0,          // R8-W1: フォトフィニッシュ静止1拍の残り秒（>0の間 世界を止める・表示のみ）
@@ -1767,6 +1771,92 @@ function startRaceCanvas(container, ctx) {
     }
   }
   const shownLines = [];
+  // ★テロップの投入口はこの1本に集約する（2026-08-01）。
+  //   理由：以前は shownLines.push が7箇所に散っていて、「1フレームに何行入ったか」も
+  //   「入ったのに喋られずに消えた行がどれか」も外から測れなかった。
+  //   計測（__telopLog）と最低滞留（B2-1のキュー）は、どちらもこの一点に載せる。
+  // ── 実況の「最低滞留時間」（2026-08-01・実測にもとづく）─────────────────
+  //   計測（1×・49秒・42行）：1行の中央値は23字＝日本語500字/分なら**読むのに約2.76秒**。
+  //   ところが表示の間隔は中央1.19秒・最短0.16秒しかなかった。要る時間の43%。
+  //   実況側だけ（1.76秒）解説側だけ（2.07秒）で見ても足りず、両方を追うと1.19秒になる。
+  //   ＝「忙しすぎて読めない」の正体。レースの長さではなく、**行の密度**の問題。
+  //   ★レースの尺・τの進み・着順・オッズ・配当は一切触らない。出す/出さないだけを決める。
+  //
+  //   方針：直前の表示から MIN_DWELL 経つまで次を出さない。詰まったら
+  //     ・核（勝負が動いた事実）＝キューに積んで必ず出す
+  //     ・言い直し（shape）や雑談（chat）＝捨てる。実測で shape が11本と最多で、
+  //       「先頭はアカネ／現在コガネが前／先頭は変わらずコガネ」と同じことを繰り返していた。
+  //   副産物：46.5秒「モム先頭！」と46.7秒「前に出ました——アカネ！」のような
+  //     0.2秒差で食い違って見える衝突も、片方が遅れて出ることで消える。
+  //   ★滞留は一律ではなく**いま出ている行の長さに比例**させる（2026-08-01・再計測で修正）。
+  //     一律2.6秒で回したら、間隔は全部きっちり2600msになった代わりに、終盤の core が
+  //     3本落ちた（final 2・course 1）。受け入れ条件「核行のドロップ0」に反する。
+  //     原因は明らか：終盤の「前に出ました——アカネ！」は12字＝1.4秒で読めるのに、
+  //     23字の行と同じ席を要求していた。指示書が引く 500字/分 をそのまま滞留に使う。
+  //     下限1.5秒（これ以下は何字でも目が追えない）／上限2.9秒（長い1行に画面を占領させない）。
+  const TELOP_CPM = 500;                       // 日本語の読速（指示書 B1 の基準）
+  const TELOP_DWELL_MIN = 1500, TELOP_DWELL_MAX = 2900;
+  const TELOP_CORE_TAGS = { start: 1, countdown: 1, signature: 1, cutin: 1, lead: 1, final: 1, goal: 1, course: 1 };
+  let _telopLastAt = -1e9, _telopLastLen = 20, _telopQ = [], _telopDrop = 0, _getawaySeen = 0;
+  function _telopDwell() {
+    const need = _telopLastLen / TELOP_CPM * 60 * 1000;
+    const ms = Math.max(TELOP_DWELL_MIN, Math.min(TELOP_DWELL_MAX, need));
+    // 倍速を選んだ人は自分で選んでいる＝滞留も同じだけ縮める
+    const sp = (typeof S !== "undefined" && S && S.speed) ? S.speed : 1;
+    return ms / Math.max(1, sp);
+  }
+  function _telopIsCore(tag) {
+    if (TELOP_CORE_TAGS[tag]) return true;
+    if (tag === "getaway" && _getawaySeen < 1) return true;   // 出遅れ・逃げの第一報だけは核
+    return false;
+  }
+  function _telopShow(line, side, tag) {
+    shownLines.push({ line: line, side: side });
+    if (tag === "getaway") _getawaySeen++;
+    _telopLastAt = performance.now();
+    _telopLastLen = (line || "").length;        // 次の行を待たせる長さ＝いま出した行の長さで決まる
+    _telopLog("say", side, line, tag);
+    speak(side, line);
+  }
+  function _telopLog(ev, side, line, tag) {
+    try {
+      if (window.__telopLog) window.__telopLog.push({
+        t: performance.now(), ev: ev, side: side, n: (line || "").length, tag: tag || "", line: line
+      });
+    } catch (e) {}
+  }
+  // ★テロップの投入口はこの1本に集約する（2026-08-01）。
+  //   理由：以前は shownLines.push が7箇所に散っていて、「1フレームに何行入ったか」も
+  //   「入ったのに喋られずに消えた行がどれか」も外から測れなかった。
+  //   計測（__telopLog）と最低滞留は、どちらもこの一点に載せる。
+  function pushLine(line, side, opt) {
+    const tag = (opt && opt.tag) || "";
+    _telopLog("push", side, line, tag);
+    if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag); return; }
+    // ★間に合わない行は、まず積む（核も雑談も区別せず）。間が空けば雑談も1本通る。
+    _telopQ.push({ line: line, side: side, tag: tag });
+    // ★あふれたら「雑談から」間引く。核は最後まで残す。
+    //   積みすぎると「もう終わった話」が後から出るので、雑談を含むうちは上限2本。
+    //   ★ただし全部が核のときだけ上限を4本に緩める（2026-08-01・再計測で追加）。
+    //     一律2本だと終盤に core が押し出され、実測で final が2本落ちた。勝負が動いた
+    //     事実は少し遅れてでも言うほうがいい。それでも溢れるぶんはゴールの決め台詞に譲る。
+    for (;;) {
+      let i = _telopQ.findIndex(function (x) { return !_telopIsCore(x.tag); });   // 雑談を先に
+      const cap = (i < 0) ? 4 : 2;
+      if (_telopQ.length <= cap) break;
+      if (i < 0) i = 0;                                                           // 全部が核なら古い方から
+      const o = _telopQ.splice(i, 1)[0];
+      _telopDrop++; _telopLog("drop", o.side, o.line, o.tag);
+    }
+  }
+  // 毎フレーム呼ぶ：滞留が明けたらキューから1本出す
+  function telopPump() {
+    if (!_telopQ.length) return;
+    if (performance.now() - _telopLastAt < _telopDwell()) return;
+    const it = _telopQ.shift();
+    _telopShow(it.line, it.side, it.tag);
+  }
+  try { window.__telopStats = function () { return { dropped: _telopDrop, queued: _telopQ.length }; }; } catch (e) {}
   // R8-W3 実況の強弱：山場ワードを含む最新行は「絶叫」スタイル（金・大きめ）＝表示のみ
   const TELOP_HOT = /先頭|差し切|抜け出|かわし|接戦|並ん|仕掛け|伸び|ゴール|突き放|猛追|一気|捕らえ/;
   // ---- ゆっくり実況の描画：左右それぞれ「最新の一言」だけを吹き出しに出す ----
@@ -1862,35 +1952,49 @@ function startRaceCanvas(container, ctx) {
     telopSchedule.forEach(t => {
       if (t.tag === "start" && !t.fired) {
         t.fired = true;
-        shownLines.push({ line: t.line, side: t.side });
+        pushLine(t.line, t.side, t);
         changed = true;
       }
     });
     if (changed) renderTelop();
   }
-  function renderTelop() {
-    const last = shownLines[shownLines.length - 1];
-    if (last) speak(last.side, last.line);
-  }
+  // ★2026-08-01：喋る責任は pushLine（→ _telopShow）へ移した。
+  //   以前ここは「最後に積まれた1行」だけを喋っていた。つまり1フレームに2行入ると
+  //   先の1行は shownLines に残るのに**一度も表示されない**（計測で実際に1件あった）。
+  //   いまは投入口が滞留を見て1本ずつ出すので、ここで喋ると二重になる。呼び出し側は残す
+  //   （スクラブ復元など、意味のある呼び名として）が、中身は空にしておく。
+  function renderTelop() { /* no-op（表示は _telopShow が行う） */ }
   // 決着時に、まだ言っていない行（＝ゴールの決め台詞と、その直前の一言）を吐き出す。
   // ★実況側と解説側の「最後の1本ずつ」だけを出す。全部まとめて流すと一瞬で
   //   上書きされて読めないので、決め台詞が残るようにする。
   function flushTelop() {
     const rest = telopSchedule.filter(t => !t.fired);
-    if (!rest.length) return;
     rest.forEach(t => { t.fired = true; });
+    // ★キューに積んだまま出せていない行も候補に入れる（2026-08-01・実機で踏んだバグの修正）。
+    //   滞留の関門を入れたことで `fired` の意味が「表示した」→「関門に出した」に変わった。
+    //   ゴールの決め台詞は決着の直前にキューへ入るので、rest（未fired）は空になり、
+    //   ここが素通りして**決め台詞が一度も出ない**（吹き出しが「半身のリードを保つ！」で止まっていた）。
+    const pool = _telopQ.concat(rest);
+    _telopQ.length = 0;
+    if (!pool.length) return;
     const lastOf = (side) => {
-      for (let i = rest.length - 1; i >= 0; i--) if (rest[i].side === side) return rest[i];
+      for (let i = pool.length - 1; i >= 0; i--) if (pool[i].side === side) return pool[i];
       return null;
     };
     const c = lastOf("color"), l = lastOf("call");
-    if (c) { shownLines.push({ line: c.line, side: "color" }); speak("color", c.line); }
-    if (l) { shownLines.push({ line: l.line, side: "call" });  speak("call",  l.line); }
+    // ★決め台詞は滞留の関門を通さない（_telopShow を直接呼ぶ）。ゴールの一言だけは
+    //   何があっても言い切る＝この画面の約束。残りは捨てる（間引きとして正直に計上する）。
+    //   （終わったあとに「そろそろ後ろが動く」等が出てくると、いちばん興が冷める）
+    pool.forEach(function (o) {
+      if (o !== c && o !== l) { _telopDrop++; _telopLog("drop", o.side, o.line, o.tag); }
+    });
+    if (c) _telopShow(c.line, "color", "goal");
+    if (l) _telopShow(l.line, "call", "goal");
   }
   function pumpTelop() {
     let changed = false;
     for (const t of telopSchedule) {
-      if (!t.fired && S.tau >= t.tau) { t.fired = true; shownLines.push({ line: t.line, side: t.side }); changed = true; }
+      if (!t.fired && S.tau >= t.tau) { t.fired = true; pushLine(t.line, t.side, t); changed = true; }
     }
     if (changed) renderTelop();
   }
@@ -1915,13 +2019,13 @@ function startRaceCanvas(container, ctx) {
       _entryLines.forEach(t => {
         if (t.fired) return;
         t.fired = true;
-        shownLines.push({ line: t.line, side: t.side });
+        pushLine(t.line, t.side, t);
         cdChanged = true;
       });
       _cdLines.forEach(t => {
         if (t.fired) return;
         t.fired = true;
-        shownLines.push({ line: t.line, side: t.side });
+        pushLine(t.line, t.side, t);
         cdChanged = true;
       });
       if (cdChanged) renderTelop();
@@ -1943,7 +2047,7 @@ function startRaceCanvas(container, ctx) {
       const at = _entryLines._at[i];
       if (!t.fired && spent >= at) {
         t.fired = true;
-        shownLines.push({ line: t.line, side: t.side });
+        pushLine(t.line, t.side, t);
         changed = true;
       }
     });
@@ -3550,18 +3654,23 @@ function startRaceCanvas(container, ctx) {
     // (the entrance 煽り now shows in the 実況 telop below the canvas — see pumpEntranceTelop)
     // --- start 3-2-1 countdown / GO burst ---
     if (S.preT > 0 && S.entryT <= 0) {
-      const n = Math.min(3, Math.max(1, Math.ceil(S.preT)));
-      const frac = S.preT - Math.floor(S.preT);     // ~1 right after a tick → 0 before next
-      const pulse = 0.7 + frac * 0.75;
-      cctx.save();
-      cctx.globalAlpha = clamp(0.2 + frac, 0, 1);
-      cctx.translate(cw / 2, ch * 0.40); cctx.scale(pulse, pulse);
-      cctx.font = "bold 66px system-ui, sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.lineWidth = 6; cctx.strokeStyle = "rgba(10,12,24,0.7)";
-      cctx.fillStyle = "#fff";
-      cctx.strokeText(String(n), 0, 0); cctx.fillText(String(n), 0, 0);
-      cctx.restore();
+      // ★数字は最後の3秒だけ（2026-08-01）。preT を 3.0→5.0 にしたので、そのまま描くと
+      //   Math.min(3,…) で頭打ちになり「3・3・3・2・1」と同じ数字が3回出る。
+      //   増やした2秒は数字を出さない「静まる間」に使い、実況を読む席にする。
+      if (S.preT <= 3.0) {
+        const n = Math.min(3, Math.max(1, Math.ceil(S.preT)));
+        const frac = S.preT - Math.floor(S.preT);     // ~1 right after a tick → 0 before next
+        const pulse = 0.7 + frac * 0.75;
+        cctx.save();
+        cctx.globalAlpha = clamp(0.2 + frac, 0, 1);
+        cctx.translate(cw / 2, ch * 0.40); cctx.scale(pulse, pulse);
+        cctx.font = "bold 66px system-ui, sans-serif";
+        cctx.textAlign = "center"; cctx.textBaseline = "middle";
+        cctx.lineWidth = 6; cctx.strokeStyle = "rgba(10,12,24,0.7)";
+        cctx.fillStyle = "#fff";
+        cctx.strokeText(String(n), 0, 0); cctx.fillText(String(n), 0, 0);
+        cctx.restore();
+      }
       cctx.globalAlpha = 0.85; cctx.fillStyle = "#ffe9a8";
       cctx.font = "bold 13px system-ui, sans-serif"; cctx.textAlign = "center";
       cctx.fillText("位置について…", cw / 2, ch * 0.40 + 54);
@@ -3965,7 +4074,11 @@ function startRaceCanvas(container, ctx) {
     } else {
       // 間が空いたら埋める（フェーズで頻度を変える＝終盤ほど賑やかに）
       const interval = phaseIdx >= 4 ? 900 : phaseIdx >= 3 ? 1300 : 2000;
-      if (tNow > chatNextAt) {
+      // ★視聴者チャットは「全部読ませる」ものではない＝賑わいの表現。頻度も速度もこのまま。
+      //   ただし実況の新しい行が出た直後の0.8秒だけは譲る。画面の二箇所で同時に文字が
+      //   動くと、視線が奪い合いになってどちらも読めない。ぶつかる瞬間だけ外す。
+      if (performance.now() - _telopLastAt < 800) { /* 実況が出た直後は譲る（次のフレームで再挑戦） */ }
+      else if (tNow > chatNextAt) {
         chatNextAt = tNow + interval;
         pushChat(phaseIdx >= 3 ? "final" : (tNow < 3000 ? "start" : "idle"), mineName);
         if (phaseIdx >= 3) viewersTargetAdd += Math.round(viewersBase * 0.03);
@@ -4108,6 +4221,7 @@ function startRaceCanvas(container, ctx) {
       S.entryT -= dt * S.speed;
       if (S.entryT < 0) S.entryT = 0;
       pumpEntranceTelop();   // the 煽り appears in the 実況 (commentary) as the field parades in
+      telopPump();           // ★滞留が明けたらキューから1本（入場中も同じ間合いで読ませる）
       pumpRollCall();        // ★A-2 入場ロールコール：到着順に1頭ずつ紹介（表示のみ）
       // 入場が終わったら紹介も終了＝名札を必ず片付ける（消し忘れるとレース中ずっと残る・実測）
       if (S.entryT <= 0) S.roll = -1;
@@ -4126,6 +4240,7 @@ function startRaceCanvas(container, ctx) {
     if (S.preT > 0) {
       S.preT -= dt * S.speed;
       pumpEntranceTelop();   // ★カウントダウン中も実況を進める（ここも return するため無言になっていた）
+      telopPump();
       if (S.preT <= 0) {
         S.preT = 0;
         S.goFlash = 0.85;
@@ -4324,6 +4439,7 @@ function startRaceCanvas(container, ctx) {
     }
 
     pumpTelop();
+    telopPump();   // ★積まれた核の行を、滞留が明けた順に1本ずつ
 
     // safety net only: the run-out block ends the race after the winner crosses.
     // This catches the degenerate case where no winner-crossing was ever detected.

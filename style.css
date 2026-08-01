@@ -8595,6 +8595,13 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   opacity: 0; transform: translateY(-4px); transition: opacity .18s, transform .18s; pointer-events: none; }
 .kw-prompt.on, .kw-toast.on { opacity: 1; transform: translateY(0); }
 .kw-toast { border-color: rgba(255,205,140,.42); background: rgba(38,26,16,.9); color: #ffe9c9; }
+/* ★返事はヒントより上（2026-08-01）。
+   .kw-prompt と .kw-toast は位置がまったく同じで、以前は z-index も同じ 3 だった。
+   HUD の DOM順が toast → prompt なので、同順位では prompt が必ず上に描かれ、
+   入口やNPCの前で🔍を押した返事が prompt の真下に隠れていた（＝押しても無反応に見えた）。
+   トーストを上の段に置き、出ている間だけヒントを伏せる。読み終われば元どおりヒントに戻る。 */
+.kw-toast { z-index: 4; }
+.kw-hud.toasting .kw-prompt { opacity: 0; transform: translateY(-4px); }
 .kw-prompt .kw-p-ic { font-size: 16px; margin-right: 6px; }
 .kw-prompt b { color: #ffe6c0; }
 /* 島歩きを抜ける前の予告（ユーザー指摘：黙って画面が変わると迷子になる）。

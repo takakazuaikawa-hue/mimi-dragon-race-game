@@ -68,6 +68,13 @@ const KW_AREAS = {
         go: function () { kwTalkKeeper(); } },
       { c: 5, r: 10, ic: "⛴️", n: "桟橋（島の地図へ）", hint: "船着き場から戻る",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
+      // ★一期一会（A2）：朝と未明だけ、霧の桟橋。スポット kirimina（霧港）。
+      //   ★3つの時間限定入口のうち、これだけ pgInSeason の🌟見頃と一致しない（kirimina の time は "夕〜夜"）。
+      //     承知のうえ。この入口の手がかりは、同じ広場の老人が朝だけ言う
+      //     「朝は霧でな。山どころか、桟橋の先も見えやしない」＝台詞から入口へ辿りつく筋を優先した。
+      //     見頃ボーナス目当てに時間を夕夜へ「直さない」こと（手がかりの側が壊れる）。
+      { c: 6, r: 14, ic: "🌫", n: "朝霧の桟橋", hint: "霧の中をのぞく", stay: true, when: ["朝", "未明"],
+        go: function () { kwShoot("kirimina"); } },
       { c: 21, r: 12, ic: "🏁", n: "レース場へつづく坂", hint: "坂をのぼる", area: "race" },
       // ★W6（2026-08-01）：大翼通り＝内陸の石造市街へ。林の奥の石段でつながる。
       { c: 22, r: 19, ic: "🏛️", n: "大翼通りへの石段", hint: "石段をのぼる", area: "town" },
@@ -76,9 +83,12 @@ const KW_AREAS = {
         go: function () { kwShoot("ura_bistro"); } },
     ],
     npcs: [
-      { c: 15, r: 13, s: 0, line: "この広場はね、船が入る朝がいちばん騒がしいんだ。" },
-      { c: 12, r: 17, s: 1, line: "市場の湯気、いい匂いでしょう。つい寄っちゃうのよね。" },
-      { c: 7, r: 15, s: 2, line: "今日の海は凪だ。桟橋から山がよく見えるよ。" },
+      { c: 15, r: 13, s: 0, line: "この広場はね、船が入る朝がいちばん騒がしいんだ。",
+        linesByTime: { "朝": "朝の船はいいよ。積んでくるのは魚だけじゃない、今日のうわさもだ。", "夜": "夜の広場は、石畳が昼の熱をまだ持ってる。座ってごらん、あったかいから。" } },
+      { c: 12, r: 17, s: 1, line: "市場の湯気、いい匂いでしょう。つい寄っちゃうのよね。",
+        linesByTime: { "宵": "宵の市場が本番よ。提灯に火が入ると、値段より先に匂いで選んじゃうの。", "未明": "こんな時間に？　……まあ、仕込みの湯気だけは、もう立ってるけどね。" } },
+      { c: 7, r: 15, s: 2, line: "今日の海は凪だ。桟橋から山がよく見えるよ。",
+        linesByTime: { "朝": "朝は霧でな。山どころか、桟橋の先も見えやしない。それがまた、いいんだ。", "夕暮れ": "夕方の湾は、水がぜんぶ橙になる。山の影だけが、黒く残ってな。" } },
     ],
   },
 
@@ -124,7 +134,8 @@ const KW_AREAS = {
       { c: 23, r: 19, ic: "🏛️", n: "大翼通りへの路地", hint: "人波にまじる", area: "town" },
     ],
     npcs: [
-      { c: 12, r: 16, s: 3, line: "ぼく、いつか自分の竜であそこを走るんだ！" },
+      { c: 12, r: 16, s: 3, line: "ぼく、いつか自分の竜であそこを走るんだ！",
+        linesByTime: { "朝": "朝の走路、さわってみて！　まだ冷たいんだ。竜が走ると、あったかくなるんだって。", "夜": "夜は入っちゃだめなんだ。……でも、柵のとこまでなら見ていいって。" } },
       // ★W1（2026-08-01）：s:4 は `folk5.webp` を指すが**そのシートは納品されていない**。
       //   結果この予想屋だけ旧まとめシート(folk.webp)に落ち、①画風が違う ②正面コマしか無いので
       //   横に歩いても正面を向いたまま、という二重の粗になっていた（実測で確認）。
@@ -133,7 +144,8 @@ const KW_AREAS = {
       //   ★村人の使い回しは既存設計と同じ頻度（s:1 と s:2 は既に3エリアで再利用されている）。
       //   ★6人目を本当に作るなら発注仕様は docs/CODEX_ORDER_WALK_SCOUT.md（288×384・3×3）。
       //     置くだけで自動的に読まれる（ここを s:4 に戻すだけ）＝任意の増補として残す。
-      { c: 23, r: 16, s: 0, line: "本日の第一。荒れますよ、この風は。" },
+      { c: 23, r: 16, s: 0, line: "本日の第一。荒れますよ、この風は。",
+        linesByTime: { "未明": "この時間はな、走路の手入れだ。ならしたばかりの土は、踏むのがもったいない。", "宵": "終わったあとの砂を掃くのが、いちばん静かな仕事でね。" } },
     ],
   },
 
@@ -178,8 +190,10 @@ const KW_AREAS = {
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],
     npcs: [
-      { c: 13, r: 9, s: 5, line: "湯にはね、負けた日ほど長く浸かるのがいいのよ。" },
-      { c: 17, r: 17, s: 1, line: "ここのお湯、竜の鱗にも効くんですって。" },
+      { c: 13, r: 9, s: 5, line: "湯にはね、負けた日ほど長く浸かるのがいいのよ。",
+        linesByTime: { "夜": "夜のお湯はね、長湯していいの。だれも急かさないから。", "朝": "朝湯は罪よ。……でも、いちばんおいしいのも朝湯なの。" } },
+      { c: 17, r: 17, s: 1, line: "ここのお湯、竜の鱗にも効くんですって。",
+        linesByTime: { "未明": "一番湯、いま張ったばかり。まだ湯船に、湯気しかいませんよ。", "夕暮れ": "夕方は湯の色が変わるんです。……ほんとうは、空の色ですけどね。" } },
     ],
   },
 
@@ -223,12 +237,18 @@ const KW_AREAS = {
       //   fail-closed（KM_HIDDEN.mango を満たすまで存在ごと出ない）。撮影はオーバーレイなので stay 必須。
       { c: 17, r: 8, ic: "❓", n: "小屋のあいだの小径", hint: "内陸へ入ってみる", stay: true, hidden: "mango",
         go: function () { kwShoot("mango"); } },
+      // ★一期一会（A2）：夕暮れにだけ現れる磯。hint に時間を書かない＝居合わせた人が見つける。
+      //   スポット bangara（バンガラ溶岩海岸・定義の time も "夕方"）＝設定と時間が噛み合う。
+      { c: 7, r: 11, ic: "🌇", n: "夕焼けの磯", hint: "波打ちぎわへ下りる", stay: true, when: ["夕暮れ"],
+        go: function () { kwShoot("bangara"); } },
       { c: 14, r: 22, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],
     npcs: [
-      { c: 11, r: 14, s: 2, line: "この浜はな、夕方になると波の音がいちばん静かになる。" },
-      { c: 20, r: 18, s: 3, line: "貝がら、いっぱい拾ったよ！　ほら、これ竜のかたち！" },
+      { c: 11, r: 14, s: 2, line: "この浜はな、夕方になると波の音がいちばん静かになる。",
+        linesByTime: { "夕暮れ": "ほら、いまだ。波の音が、いちばん静かになる時間。", "夜": "夜の浜は、音でわかるんだ。潮が引いてるか、満ちてるか。目はいらん。" } },
+      { c: 20, r: 18, s: 3, line: "貝がら、いっぱい拾ったよ！　ほら、これ竜のかたち！",
+        linesByTime: { "夕暮れ": "見て、太陽が海にじゅっ、て入るんだよ。音はしないけど、ぜったい じゅっ、なの。", "昼": "あついー！　砂、はだしで歩けないよ。……でも、なみのとこは冷たい！" } },
     ],
   },
 
@@ -271,15 +291,27 @@ const KW_AREAS = {
       //   （スポット定義の line がまさにそう書いてある＝設定と条件が噛み合う）。fail-closed。
       { c: 14, r: 17, ic: "❓", n: "かごの奥の引き戸", hint: "のぞいてみる", stay: true, hidden: "ryoshimeshi",
         go: function () { kwShoot("ryoshimeshi"); } },
+      // ★同じく、時間で応える一杯屋（もう1つの行き止まりだった入口）。
       { c: 20, r: 18, ic: "🍶", n: "波止場の一杯", hint: "のぞいてみる", stay: true,
-        go: function () { kwToast("🍶 昼から一杯やってる漁師たち。……いい顔してるなあ。"); } },
+        go: function () {
+          kwPeek({
+            "未明": "🍶 だれもいない。ゆうべの徳利が、まだ並んだまま置いてある。",
+            "朝":   "🍶 朝から開いてる。夜どおし漁だった人たちの「おつかれさま」の時間なんだ。",
+            "昼":   "🍶 昼から一杯やってる漁師たち。……いい顔してるなあ。",
+            "夕暮れ": "🍶 いちばん混む時間。入口まで人があふれて、笑い声が波の音に勝ってる。",
+            "宵":   "🍶 だれかが唄いだした。知らない歌なのに、みんな二番から入ってくる。",
+            "夜":   "🍶 のこったのは二人だけ。だまって、おなじ方を見て飲んでる。"
+          }, "🍶 昼から一杯やってる漁師たち。……いい顔してるなあ。");
+        } },
       { c: 14, r: 21, ic: "🏖️", n: "浜へもどる砂道", hint: "波の音の方へ", area: "beach" },
       { c: 8, r: 7, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],
     npcs: [
-      { c: 12, r: 16, s: 2, line: "今朝はホシウオが跳ねたよ。銀色がいっぺんに、ぱーっとな。" },
-      { c: 18, r: 19, s: 5, line: "網はね、繕うのが仕事の半分。座ってるように見えるだろ？" },
+      { c: 12, r: 16, s: 2, line: "今朝はホシウオが跳ねたよ。銀色がいっぺんに、ぱーっとな。",
+        linesByTime: { "未明": "これから出るとこだ。……見送りは縁起がいいんだよ、ほんとうはね。", "宵": "帰ってきた船から、順に灯りを消してく。ぜんぶ消えたら、今日はおしまい。" } },
+      { c: 18, r: 19, s: 5, line: "網はね、繕うのが仕事の半分。座ってるように見えるだろ？",
+        linesByTime: { "未明": "見送りかい。……ここの朝は、船が出てからが長いんだ。", "昼": "日が高いうちは、糸がよく見える。目のいい時間に、細かいとこをやるのさ。" } },
     ],
   },
 
@@ -316,15 +348,27 @@ const KW_AREAS = {
     doors: [
       { c: 17, r: 9, ic: "📷", n: "滝つぼの見晴らし台", hint: "写真をとる", stay: true,
         go: function () { kwShoot("lumina"); } },
+      // ★時間で応える小屋。留守の時刻と、在宅の時刻がある＝また来る理由になる。
       { c: 25, r: 11, ic: "🛖", n: "きこりの山小屋", hint: "のぞいてみる", stay: true,
-        go: function () { kwToast("🛖 薪の匂い。留守みたい……鍋だけ、まだあったかい。"); } },
+        go: function () {
+          kwPeek({
+            "未明": "🛖 まだ暗いのに、中で火を熾す音がする。……もう起きてるんだ。",
+            "朝":   "🛖 いた。斧を研ぎながら「山はこれからだよ」って。手だけは、ずっと動いてる。",
+            "昼":   "🛖 薪の匂い。留守みたい……鍋だけ、まだあったかい。",
+            "夕暮れ": "🛖 帰ってきたところだった。背中の薪、わたしより大きい。",
+            "宵":   "🛖 窓に灯り。中から鼻歌がもれてる。……のぞくのは、やめておこう。",
+            "夜":   "🛖 まっ暗。でも軒下に、明日ぶんの薪がきちんと積んである。"
+          }, "🛖 薪の匂い。留守みたい……鍋だけ、まだあったかい。");
+        } },
       { c: 6, r: 18, ic: "♨️", n: "温泉郷へのぼる道", hint: "湯けむりの方へ", area: "onsen" },
       { c: 11, r: 19, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],
     npcs: [
-      { c: 9, r: 16, s: 1, line: "しぶきの虹、朝いちばんがいちばん濃いのよ。" },
-      { c: 22, r: 12, s: 3, line: "丸太、すべるから気をつけてね。ぼくは三回落ちた。" },
+      { c: 9, r: 16, s: 1, line: "しぶきの虹、朝いちばんがいちばん濃いのよ。",
+        linesByTime: { "朝": "ほら、いま出てる。朝の虹はね、二重になる日があるの。", "夜": "夜は虹のかわりに、星が水に映るのよ。おなじ方向に流れて見えるでしょう。" } },
+      { c: 22, r: 12, s: 3, line: "丸太、すべるから気をつけてね。ぼくは三回落ちた。",
+        linesByTime: { "朝": "あさは苔がぬれてて、いちばんすべるよ。ぼくが落ちたの、ぜんぶ朝。", "夕暮れ": "夕方はね、滝のうしろが金色になるんだ。ちょっとだけだよ。" } },
     ],
   },
 
@@ -376,12 +420,19 @@ const KW_AREAS = {
         go: function () { kwShoot("admin"); } },
       { c: 21, r: 17, ic: "📋", n: "予想屋小路", hint: "のぞいてみる", stay: true,
         go: function () { kwShoot("yosou"); } },
+      // ★一期一会（A2）：宵と夜だけ灯るラウンジ（スポット定義の time も "夜"）。
+      //   lounge は tier2 の店なので spotGate で資産条件も AND する（指示書 A2 の指定どおり）。
+      { c: 25, r: 12, ic: "🍸", n: "ドラゴンベル・ラウンジ", hint: "灯りをのぞく", stay: true,
+        when: ["宵", "夜"], spotGate: "lounge",
+        go: function () { kwShoot("lounge"); } },
       { c: 19, r: 22, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],
     npcs: [
-      { c: 11, r: 12, s: 1, line: "お役所も、レース局も、ぜんぶこの通りの住人よ。かたい街に見えて、なかは下町なの。" },
-      { c: 22, r: 12, s: 3, line: "北の門をぬけるとレース場！ 今日はだれが勝つかなあ。" },
+      { c: 11, r: 12, s: 1, line: "お役所も、レース局も、ぜんぶこの通りの住人よ。かたい街に見えて、なかは下町なの。",
+        linesByTime: { "宵": "宵になるとね、役所の窓から順に灯りが消えるの。あれ、見てて気持ちいいのよ。", "朝": "朝はみんな同じ方向に歩いてくの。逆に歩くと、なんだか悪いことしてる気になるわ。" } },
+      { c: 22, r: 12, s: 3, line: "北の門をぬけるとレース場！ 今日はだれが勝つかなあ。",
+        linesByTime: { "昼": "北の門から、わーって声がきこえる時があるんだ。あれ、なにか起きたときの音。", "夜": "夜の大通り、ランプがずーっと並んでてね。ぼく、走って数えたことあるよ。" } },
     ],
   },
 };
@@ -410,6 +461,23 @@ function kwBlocked(wx, wy) { return kwCell(Math.floor(wx / KW_CW), Math.floor(wy
 
 // 隠しスポットは条件を満たすまで**存在ごと出さない**（副作用のある _kmHiddenOk ではなく生の条件を見る）
 function kwDoorVisible(d) {
+  // ★時間限定の入口（2026-08-01・一期一会）：`when: ["夕暮れ","宵"]` を持つ入口は
+  //   その時間帯にしか**存在ごと現れない**。道標の煙も含めて kwDoors() 一点を通るので、
+  //   ここで落とせば「入口は消えたのに道標だけ残る」は起きない。
+  //   ★KM_HIDDEN に時間条件を入れてはいけない。あれはピン式の島地図のスポット可視も
+  //     束ねているので、ピン地図側のスポットまで時間で消える（副作用）。歩き専用の when を使う。
+  if (d.when) {
+    try { if (d.when.indexOf(kwNow().k) < 0) return false; } catch (e) { return false; }
+  }
+  // ★資産ゲート：ピン式地図の tier 条件を、歩きの入口にも AND で効かせる（指示書 A2）。
+  //   歩きが資産関門の抜け道にならないようにするため。時間条件とは独立に判定する。
+  if (d.spotGate) {
+    try {
+      const s = (typeof KONRON_SPOTS !== "undefined") && KONRON_SPOTS[d.spotGate];
+      if (!s) return false;
+      if (typeof _kmSpotOpen === "function" && !_kmSpotOpen(s)) return false;
+    } catch (e) { return false; }
+  }
   if (!d.hidden) return true;
   try { const h = (typeof KM_HIDDEN !== "undefined") && KM_HIDDEN[d.hidden]; return !!(h && h.cond()); }
   catch (e) { return false; }
@@ -441,6 +509,17 @@ function kwShoot(id) {
   if (typeof _kmStartShoot === "function") _kmStartShoot(id);
   else kwToast("📷 いまは撮れない。");
 }
+// ★「のぞく」入口（2026-08-01）。
+//   きっかけ：ユーザーが きこりの山小屋 に入れないと報告。押しても毎回まったく同じ一行が返るだけで、
+//   灯りのついた小屋に近づいた期待に何も返していなかった（46ある入口のうち、こうなっていたのは2つ）。
+//   ★到達できる＝遊べる、ではない。BFS の到達判定は「押した先に中身があるか」を一度も見ていなかった。
+//   直し方：中に入る画面を新設するのではなく、**時間で応える**。訪ねる時刻で返る言葉が変わるので、
+//   「留守だった小屋に、朝また来てみる」が成立する。絵も画面も足さずに、行き止まりが往復路になる。
+function kwPeek(byTime, fallback) {
+  let k = "昼";
+  try { k = kwNow().k; } catch (e) {}
+  kwToast((byTime && byTime[k]) || fallback);
+}
 // 宿の人の一言＝門番を通す（未登場のキャラの名前は出さない）
 function kwTalkKeeper() {
   const met = (typeof rpgKeeperMet === "function" && rpgKeeperMet());
@@ -450,14 +529,27 @@ function kwTalkKeeper() {
     : "いらっしゃい。ここらは歩いて回れるからね、ゆっくりしていきな。";
   kwToast("🏨 " + who + "「" + line + "」");
 }
+// ★重大バグの修正（2026-08-01・ユーザー報告「きこりの山小屋に入れない」）。
+//   真因は中身が無いことではなく、**言葉が一度も見えていなかった**こと。
+//   .kw-toast と .kw-prompt は left/right/top がまったく同じで z-index も同じ 3。
+//   HUD の DOM順が toast → prompt なので、同順位なら後ろの prompt が必ず上に描かれる。
+//   入口やNPCの前に立つと prompt が出ている＝そこで🔍を押すと、返事は prompt の**真下**に出る。
+//   実測：どちらも rect [281,134,430,53] で完全一致。プレイヤーには「押しても何も起きない」に見える。
+//   → 入口17件・NPC15人の台詞が、立ち止まって話しかけるかぎり全部隠れていた。
+//   直し方：トーストを出している間だけ prompt を伏せ、トーストを上の段（z-index 4）に置く。
+//   ヒントより返事が優先＝返事を読んでから、またヒントに戻る。
 function kwToast(msg) {
   if (!KW || !KW.hud) return;
   const n = KW.hud.querySelector(".kw-toast");
   if (!n) return;
   n.textContent = msg;
   n.classList.add("on");
+  KW.hud.classList.add("toasting");                     // ← この間だけ prompt を伏せる（CSS側）
   clearTimeout(KW._toastT);
-  KW._toastT = setTimeout(() => n.classList.remove("on"), 3600);
+  KW._toastT = setTimeout(function () {
+    n.classList.remove("on");
+    if (KW && KW.hud) KW.hud.classList.remove("toasting");
+  }, 3600);
 }
 
 function kwExit() {
@@ -631,11 +723,18 @@ function kwSetup(a, S) {
     if (Math.hypot((p[0] + 0.5) * KW_CW - KW.mimi.x, (p[1] + 0.5) * KW_CH - KW.mimi.y) < 120) { k--; continue; }
     KW.spark.push({ x: (p[0] + 0.5) * KW_CW, y: (p[1] + 0.5) * KW_CH, txt: t });
   }
+  // ★一期一会（A3）：その時間にしか無いものは、抽選に混ぜず**確定で**置く。
+  //   ポロ枠は KW.poroImg を見るので、この行より前で代入されていること（上の KW.poroImg = a.poro）。
+  kwMoments(KW.areaId, "spark").forEach(function (mo) {
+    if (!spots.length) return;
+    const p = spots.splice((Math.random() * spots.length) | 0, 1)[0];
+    KW.spark.push({ x: (p[0] + 0.5) * KW_CW, y: (p[1] + 0.5) * KW_CH, txt: mo.text, once: mo.once || null });
+  });
   KW.found = []; KW.steps = 0; KW.idle = 0; KW.lastMuse = -1; KW.met = {};
   // すれちがいNPC＝歩ける範囲をゆっくり気ままに歩く
   KW.npcs = (ar.npcs || []).map(function (n) {
     const s = n.s | 0;
-    return { x: (n.c + 0.5) * KW_CW, y: (n.r + 0.5) * KW_CH, s: s, line: n.line,
+    return { x: (n.c + 0.5) * KW_CW, y: (n.r + 0.5) * KW_CH, s: s, line: n.line, linesByTime: n.linesByTime || null,
              // 専用シート（3列×3行）。未納品なら null＝旧・1枚まとめシートで描く。
              sheet: a["folk" + (s + 1)] || null,
              dir: 0, face: 1,
@@ -690,7 +789,8 @@ function kwUpdate(dt, S) {
     KW.idle += dt;
     if (KW.idle > 1.3) {
       KW.idle = -6.5;                                    // 次の一言まで少し間を置く（うるさくしない）
-      const pool = (KW_MUSE[KW.areaId] || []).concat(KW_MUSE_TIME[kwNow().k] || []);
+      const pool = (KW_MUSE[KW.areaId] || []).concat(KW_MUSE_TIME[kwNow().k] || [])
+        .concat(kwMoments(KW.areaId, "ambient").map(function (mo) { return mo.text; }));
       if (pool.length) {
         let i = (Math.random() * pool.length) | 0;
         if (i === KW.lastMuse) i = (i + 1) % pool.length; // 同じ文を続けない
@@ -706,6 +806,8 @@ function kwUpdate(dt, S) {
     if (Math.hypot(sp2.x - m.x, sp2.y - m.y) < 34) {
       KW.spark.splice(s, 1);
       KW.found.push(sp2.txt);
+      // 一度きりの出来事（ポロの貝がらなど）は拾った時点で閉じる。
+      if (sp2.once && typeof setStoryFlag === "function") setStoryFlag(sp2.once, true);
       kwToast(sp2.txt);
       try { if (window.Sfx) Sfx.play("nav"); } catch (e) {}
     }
@@ -788,7 +890,14 @@ function kwAct() {
   if (!KW || !KW.near) { kwToast("🔍 ……とくに何もない。"); return; }
   const d = KW.near;
   try { if (window.Sfx) Sfx.play("nav"); } catch (e) {}
-  if (KW.nearKind === "npc") { KW.met[d.s] = 1; kwToast("💬 「" + d.line + "」"); return; }
+  // ★A4：時間帯の台詞があればそちらを優先。無ければ従来の line に落ちる（後方互換・fail-safe）。
+  if (KW.nearKind === "npc") {
+    KW.met[d.s] = 1;
+    let ln = d.line;
+    try { const t = d.linesByTime && d.linesByTime[kwNow().k]; if (t) ln = t; } catch (e) {}
+    kwToast("💬 「" + ln + "」");
+    return;
+  }
   if (d.area) { kwGo(d.area); return; }                  // エリア移動
   if (d.stay) { try { d.go(); } catch (e) {} return; }   // その場に留まる（オーバーレイ／一言）
   // ★まだ開いていない行き先は、**その場で断る**（2026-08-01・実プレイで発見したバグの修正）。
@@ -948,7 +1057,7 @@ const KW_MUSE_TIME = {
 };
 // ② 寄り道で見つかるもの（きらめき）。役に立たないものだけ＝集めても何も強くならない。
 const KW_FINDS = {
-  city: ["🐚 白い貝がら。港なのに、なんでここに？", "🐈 日なたで寝てる猫。起こさないように、そっと。",
+  city: ["🐚 白い貝がら。港なのに、なんでここに？", "🧦 干したままの洗濯もの。取り込むの、忘れてるよ。",
          "🪵 削りかけの木くず。だれかの仕事のとちゅう。", "🌼 石のすきまに、ちいさい花。",
          "🎣 ほどけた釣り糸。結び目のかたちが、きれい。", "🍋 転がってた柑橘。いい匂いだけ、もらった。"],
   race: ["🎫 風に飛ばされた古い馬券……じゃなくて、竜券。", "🪶 柵にひっかかった羽根。だれの？",
@@ -960,13 +1069,66 @@ const KW_FINDS = {
   beach: ["🪸 桃色のさんごのかけら。", "🍶 中身のないびん。手紙は……入ってない。",
           "🐚 巻き貝。耳にあてたら、ちゃんと海だった。", "🪁 ちぎれた凧の尾。どこから来たの。",
           "🦀 横歩きのカニ。目が合った気がする。", "🌴 落ちてた椰子の実。……重い。"],
-  fishing: ["🪝 錆びた釣り針。だれかの取り逃がしたやつ。", "🐟 うろこが一枚。日にかざすと虹になる。",
+  fishing: ["🪝 錆びた釣り針。だれかの取り逃がしたやつ。", "🐟 うろこが一枚。かざすと、角度でいろが変わる。",
             "🧵 ほどけた網の糸。指に巻いてみた。", "🪣 ひび割れた桶。底に雨水と、空。",
             "⚓ ちいさな錨の飾り。お守りかな。", "🐚 ふたつで一組の貝。片方だけ落ちてた。"],
   falls: ["💧 葉っぱのくぼみに、まるい水。こぼすのがもったいない。", "🍄 丸太のかげの、赤いきのこ。さわらないでおく。",
           "🪶 濡れた羽根。持ち上げたら、ずっしり。", "🪨 まっ平らな石。だれかが座ってた形。",
-          "🌈 しぶきの虹。手を入れると消える。ずるい。", "🍃 流れてきた大きな葉。舟にしたら乗れそう。"],
+          "💦 しぶきのかたまり。手を入れると、消える。ずるい。", "🍃 流れてきた大きな葉。舟にしたら乗れそう。"],
+  // ★7エリア目「大翼通り」は新設時にここへ足し忘れていた＝寄り道の理由が一つも無かった（2026-08-01 実測で発覚）。
+  town: ["📄 石畳にはりついた古い號外。見出しだけ読める。", "🔩 落ちてた真鍮のボタン。役所の制服のやつかな。",
+         "🕰 時計屋の窓に、合ってない時計が三つ。どれか一つは合ってる。", "🪧 はがれかけの貼り紙。『たずね人』……見つかったのかな。",
+         "☕ 冷めたコーヒーの紙コップ。まだ、湯気のあとが内側に。", "🎩 風で転がってきた帽子。追いかける人は、まだ来ない。"],
 };
+
+// ③ 一期一会＝「その時間に居合わせた人だけが会うもの」。
+//   ★設計の芯：時間で内容が変わるのではなく、**時間でしか会えない**から意味が出る。
+//     だから spark（きらめき）は KW_FINDS と競争させず**必ず1つ置く**。来た甲斐が確実に返らないと、
+//     プレイヤーは「夜に来ると何かある」というルール自体を学習できない。
+//   ★密度は 1エリア×1時間帯に1本まで。増やすと環境音になって、出会いでなくなる。
+//   kind: "spark"  … 近づくと拾う（きらめきの5つ目として確定配置）
+//   kind: "ambient"… 立ち止まった時のひとりごと候補に、その時間帯だけ混ざる（繰り返し出てよい）
+//   area: "*"      … エリアを問わない／times 省略＝時間を問わない
+//   poro: true     … ポロ随行中のみ。★ポロに台詞は書かない（しぐさの描写だけ）
+//   once: "<flag>" … 一度きり。指定が無いものは何度でも起きてよい（季節の風物は毎回あって自然）
+const KW_MOMENTS = [
+  { area: "city",    times: ["夜"],     kind: "spark",   text: "🐈 路地のすみに、猫が三匹まるく座ってる。……会議中みたい。じゃまはやめよう。" },
+  { area: "city",    times: ["朝"],     kind: "ambient", text: "市場のセリの声。数字が飛びかって、ちょっとレース場みたい。" },
+  { area: "race",    times: ["朝"],     kind: "spark",   text: "🐾 まだ湿ってる、大きな足あと。今朝、だれかここを走ったんだ。" },
+  { area: "race",    times: ["夜"],     kind: "ambient", text: "だれもいない走路を、風だけが走っていく。" },
+  { area: "onsen",   times: ["宵"],     kind: "ambient", text: "いま、灯籠にぜんぶ火が入った。……宵だ。" },
+  { area: "onsen",   times: ["未明"],   kind: "spark",   text: "♨️ 湯気がまっすぐ立ってる。今日の一番湯、まだだれも入ってない。" },
+  { area: "beach",   times: ["夜"],     kind: "spark",   text: "🌊 波打ちぎわが、ぼんやり光ってる。……夜光虫だ。" },
+  { area: "beach",   times: ["夕暮れ"], kind: "ambient", text: "浜がぜんぶ、橙いろ。" },
+  { area: "fishing", times: ["未明"],   kind: "ambient", text: "船が一列に出ていく。灯りが海にならんでる。" },
+  { area: "fishing", times: ["昼"],     kind: "spark",   text: "🎶 網直し場から鼻歌。手は止まってないのに、ずっと同じ節。" },
+  { area: "falls",   times: ["朝"],     kind: "spark",   text: "🌈 しぶきの虹が、朝は二重にかかってる。……こんなの、朝しか見られない。" },
+  { area: "falls",   times: ["夜"],     kind: "ambient", text: "滝の音のむこうに、星。水と光が、おなじ方向に流れてる。" },
+  { area: "town",    times: ["宵"],     kind: "ambient", text: "通りのランプが順番に灯っていく。点けてまわる人の足音。" },
+  { area: "town",    times: ["未明"],   kind: "spark",   text: "🥖 まだ暗いのに、パン屋の窓だけ明るい。粉の匂いが、通りに出てる。" },
+  // ★実測で足した4本（2026-08-01）：時間帯ごとの本数を数えたら 昼=1・夕暮れ=1 しか無かった。
+  //   そこがいちばん遊ばれる時間帯なので、空のままだと「時間で島が変わる」ことに気づけない。
+  { area: "city",    times: ["昼"],     kind: "ambient", text: "日ざしで石畳がまっ白。みんな、軒の下だけを選んで歩いてる。" },
+  { area: "town",    times: ["昼"],     kind: "spark",   text: "📯 役所の鐘が鳴った。……お昼だ。通りの人の歩く速さが、いっせいに変わった。" },
+  { area: "race",    times: ["夕暮れ"], kind: "spark",   text: "🏁 だれもいないゴール板が、夕日で金色になってる。今日ここを最初に通ったの、だれだろ。" },
+  { area: "fishing", times: ["夕暮れ"], kind: "ambient", text: "干した網が、逆光でぜんぶ金の糸に見える。" },
+  { area: "*",                          kind: "spark",   text: "🥹 ポロが立ち止まって、砂をほじってる。……貝がら。くれるらしい。",
+    poro: true, once: "_kw_m_poro_shell" },
+];
+
+// いまの時間・いまのエリアで成立する一期一会を返す（kind でふるい分け）。
+function kwMoments(areaId, kind) {
+  let k = "昼";
+  try { k = kwNow().k; } catch (e) {}
+  return KW_MOMENTS.filter(function (m) {
+    if (m.kind !== kind) return false;
+    if (m.area !== "*" && m.area !== areaId) return false;
+    if (m.times && m.times.indexOf(k) < 0) return false;
+    if (m.poro && !(KW && KW.poroImg)) return false;
+    if (m.once && typeof getStoryFlag === "function" && getStoryFlag(m.once)) return false;
+    return true;
+  });
+}
 
 // 入口アイコン → 道標スプライト（images/scene/konron/props/）。載っていないアイコンは灯りのまま。
 const KW_SIGN = {

@@ -61,4 +61,32 @@ console.log(`接続グラフ: city から到達 ${vis.size}/${all.length} ${vis.
 for (const [k, outs] of Object.entries(g)) for (const o of outs) {
   if (!(g[o] || []).includes(k)) console.log(`  ⚠️ 片道: ${k} → ${o} （${o} から ${k} へ戻れない）`);
 }
+
+// ★入口の「中身」検査（2026-08-01 追加）。
+//   きっかけ：ユーザーが きこりの山小屋 に入れないと報告。BFS は「そこまで歩けるか」しか見ておらず、
+//   押した先に何があるかを一度も検査していなかった＝到達できても行き止まりを見逃す。
+//   到達性が緑なだけで「遊べる」と言わないために、押した結果の種類をここで数える。
+console.log("\n── 入口を押した先に何があるか ──");
+const KIND = (t) => {
+  if (/area:"/.test(t)) return "→エリア移動";
+  if (/kwShoot\(/.test(t)) return "📷撮影";
+  if (/kwStall\(/.test(t)) return "🍽️屋台";
+  if (/kwPeek\(/.test(t)) return "👀のぞく(時間で変わる)";
+  if (/renderKonronMap/.test(t)) return "→島の地図";
+  if (/kwTalkKeeper/.test(t)) return "💬宿の人";
+  if (/render\w+\(/.test(t)) return "→他画面";
+  if (/kwToast\(/.test(t)) return "DEAD";        // 固定1行だけ＝行き止まり
+  return "UNKNOWN";
+};
+const tally = {}; const dead = [];
+for (const [key, a] of Object.entries(AREAS)) for (const d of (a.doors || [])) {
+  const text = (d.area ? 'area:"' + d.area + '"' : "") + String(d.go || "") + String(d.open || "");
+  const k = KIND(text);
+  tally[k] = (tally[k] || 0) + 1;
+  if (k === "DEAD" || k === "UNKNOWN") dead.push(`${key} ${d.ic || ""}${d.n}（${k}）`);
+}
+Object.entries(tally).sort((x, y) => y[1] - x[1]).forEach(([k, v]) => console.log(`  ${String(v).padStart(3)} ${k}`));
+if (dead.length) { console.log(`  ❌ 行き止まりの入口 ${dead.length}件: ${dead.join(" / ")}`); fail += dead.length; }
+else console.log("  ✅ 行き止まりの入口なし（固定1行だけで終わる入口は0）");
+
 process.exit(fail === 0 ? 0 : 1);

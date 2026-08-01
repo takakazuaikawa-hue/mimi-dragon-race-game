@@ -121,17 +121,39 @@
       wrap.appendChild(pad);
       S.pad = pad;
 
+      // ★タップの最短押し時間（2026-08-01・自分で歩いて見つけた不具合）。
+      //   pointerdown で1・pointerup で0にしていたので、軽くタップすると**その間に1フレームも
+      //   挟まらず、1歩も動かなかった**（実測：方向キーを2回叩いて歩数0）。
+      //   指を置いて動かす操作は成立していたが、「とんとん」と押す遊び方が無反応だった。
+      //   離しても最低 PAD_MIN_MS だけ入力を保つ＝1タップでほぼ1マス進む（330px/秒 × 0.18秒 ≈ 59px、1マス60px）。
+      var PAD_MIN_MS = 180;
+      var padAt = {};
+      function padRelease(k, b) {
+        S.input[k] = 0;
+        if (b) b.classList.remove("on");
+      }
       function padDown(e) {
         var b = e.target.closest("[data-k]"); if (!b) return;
         var k = b.getAttribute("data-k");
         e.preventDefault();
         if (k === "act") { if (opts.onAct) { try { opts.onAct(); } catch (er) {} } return; }
         S.input[k] = 1; b.classList.add("on");
+        padAt[k] = (window.performance && performance.now) ? performance.now() : 0;
+      }
+      function padUpKey(k, b) {
+        if (k === "act") return;
+        var held = ((window.performance && performance.now) ? performance.now() : 0) - (padAt[k] || 0);
+        if (held >= PAD_MIN_MS) { padRelease(k, b); return; }
+        setTimeout(function () { padRelease(k, b); }, PAD_MIN_MS - held);   // ★離しても最低ぶんは歩かせる
       }
       function padUp(e) {
         var b = e.target.closest && e.target.closest("[data-k]");
-        if (b) { var k = b.getAttribute("data-k"); if (k !== "act") S.input[k] = 0; b.classList.remove("on"); }
-        else { S.input.up = S.input.down = S.input.left = S.input.right = 0; [].forEach.call(pad.querySelectorAll(".on"), function (n) { n.classList.remove("on"); }); }
+        if (b) { padUpKey(b.getAttribute("data-k"), b); }
+        else {
+          ["up", "down", "left", "right"].forEach(function (k) {
+            padUpKey(k, pad.querySelector('[data-k="' + k + '"]'));
+          });
+        }
       }
       pad.addEventListener("pointerdown", padDown);
       pad.addEventListener("pointerup", padUp);
