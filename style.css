@@ -1531,6 +1531,26 @@ table.entry-table {
 .et-stats-h { letter-spacing: 2.5px; text-align: center; }
 .et-stats { white-space: nowrap; text-align: center; }
 .et-stats i { display: inline-block; width: 12px; font-style: normal; font-weight: 700; text-align: center; }
+/* ★脚質（先行/逃げ/差し/追込）だけは折り返してよい（2026-08-01・ユーザー判断
+   「二文字なので縦でもいいよ」）。全セル nowrap のままだと3pxだけはみ出して
+   横スクロールバーが出ていた。ここに逃げ幅を作れば表が枠に収まり、バーが消える。
+   ※列幅は表全体で共通なので、折り返すなら8頭ぶん揃って2段になる（バラつかない）。 */
+.entry-table td.style-front, .entry-table td.style-escape,
+.entry-table td.style-late, .entry-table td.style-chase { white-space: normal; line-height: 1.15; }
+/* ★揃えを列の中身に合わせる（2026-08-01・ユーザー指摘）。
+   直す前は元の .entry-table td が一律 text-align:left で、唯一の例外が .num（右揃え）だった。
+   そのため「前走◎/好走/凡走」まで右に寄り、順位バッジ・印・脚質は左に寄っていた。
+   規則：読む文字＝左／数字＝右（等幅数字で桁を揃える）／記号・バッジ・短いラベル＝中央。
+   列順は上の thead 定義で固定（人気/竜名/脚質/能力/印/近/単/複）。 */
+.entry-table th:nth-child(2), .entry-table td:nth-child(2) { text-align: left; }     /* 竜名＝読む文字 */
+.entry-table th:nth-child(1), .entry-table td:nth-child(1),                          /* 人気＝バッジ */
+.entry-table th:nth-child(3), .entry-table td:nth-child(3),                          /* 脚質＝短いラベル */
+.entry-table th:nth-child(4), .entry-table td:nth-child(4),                          /* 能力＝記号列 */
+.entry-table th:nth-child(5), .entry-table td:nth-child(5),                          /* 印＝記号 */
+.entry-table th:nth-child(6), .entry-table td:nth-child(6) { text-align: center; }    /* 近走＝短いラベル（数字ではない） */
+.entry-table th:nth-child(7), .entry-table td:nth-child(7),
+.entry-table th:nth-child(8), .entry-table td:nth-child(8) {                          /* 単・複＝数字 */
+  text-align: right; font-variant-numeric: tabular-nums; }
 /* 念のための逃げ場：それでも入らない幅の端末では潰さずに流す */
 .ana-pane { overflow-x: auto; }
 
