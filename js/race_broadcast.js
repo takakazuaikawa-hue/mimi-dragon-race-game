@@ -446,7 +446,15 @@ function buildBroadcast(timeline, ctx, opts) {
   const situation = {
     region: race.region || "",
     weather: weather ? weather.label : "",
-    dragons: (timeline.order || []).slice()
+    dragons: (timeline.order || []).slice(),
+    // ★攻略ヒント用の状況（2026-08-02・実機プレイ指摘「実況に当てるための有用なヒントを」）。
+    //   ヒントは**その状況のレースでだけ**流す＝雑談が状況に接続していないと浮くため。
+    //   値はエンジンの入力そのもの（race_engine.js の paceClassify / race.distance / 区間キー）。
+    //   ★読むだけ。賭け情報は引き続き持ち込まない。
+    pace: (ctx.raceResult && ctx.raceResult.pace && ctx.raceResult.pace.type) || "",
+    dist: race.distance || "",
+    early: race.early || "",
+    late: race.late || ""
   };
 
   call(0.000, "entry", "venue", { label: race.region || "" }, "entry");

@@ -25,8 +25,11 @@
 //   cm     … sake / mizu / sumika / makura / celestia / unme
 //   topic  … dragon（竜）/ course（レース場）/ island（島と町）/
 //            history（島の歴史）/ gourmet（食）/ life（世間話・体調・家族）/
-//            pun（ダジャレ）
+//            pun（ダジャレ）/ tips（★当てるための本当の知識＝末尾の節を読んでから足すこと）
 //   at     … entry（パレード中）/ mid（中盤の谷）
+//   状況条件（任意・tips向け）… pace: ["high","very_high"] / dist: ["long"] /
+//            early: "mist_start" / late: "final_grand_turn" ＝race_engine の語彙そのまま。
+//            条件つきの行はその状況のレースでしか流れない（浮かない）。
 // =============================================================================
 
 // 持ち球を一巡するまで同じ台詞を出さない仕組みなので、この本数は目安。
@@ -372,6 +375,58 @@ const BC_CHATTER = [
   { id: "unme_pun_02", cm: "unme", topic: "pun", at: "mid", line: "竜と、たつ。……はい、次いきましょう。知らんけど！" },
   { id: "unme_pun_03", cm: "unme", topic: "pun", at: "mid", line: "はっ、はっ、……くしゅん。はい、以上ですぅ。" },
   { id: "unme_pun_04", cm: "unme", topic: "pun", at: "entry", line: "霧、きり、きりがない。……もうやめますぅ。" },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ★topic: "tips"＝当てるための「本当の知識」（2026-08-02・実機プレイのユーザー要望
+  //   「実況や解説に有用なヒントが無いとレースをスキップされる」）。
+  //   冒頭の「レース展開の説明はしない」の**例外枠**としてユーザー指示で新設。
+  //   ▼絶対規律：**ここに書いてよいのは race_engine.js で裏取りした事実だけ**。
+  //     嘘のヒントは無いより悪い。各行に根拠のエンジン箇所を添える。追加時も同じ作法で。
+  //   ▼状況条件（pace/dist/early/late）を持つ行は、その状況のレースでしか流れない
+  //     ＝雑談は状況に接続していないと浮く（bcChatterFits）。
+  // ═══════════════════════════════════════════════════════════════════════
+  // 【時間帯は無関係】runRace は時刻・レース番号を一切読まない（第1〜第5は演出のみ）
+  { id: "unme_tips_time", cm: "unme", topic: "tips", at: "entry",
+    line: "女神まめちしき〜！　朝のレースも夜のレースも、竜の速さは変わりませーん！　時間で選ばなくてよし！" },
+  // 【試走＝本番の状態】trialForms がそのまま runRace に渡る＝試走タブの体調・集中は当日の走りに直結
+  { id: "unme_tips_trial", cm: "unme", topic: "tips", at: "entry",
+    line: "試走、見ました？　あれ本番の調子そのまんまですからね！　見ないで買う人、女神ちょっと心配でーす！" },
+  // 【運の幅】randomPower＝±5〜±9（気性が低いほど大きい）。実力差が大きければ覆らない
+  { id: "unme_tips_luck", cm: "unme", topic: "tips", at: "mid",
+    line: "運はがんばっても体ひとつぶん！　実力が離れてたら届きませーん。接戦のときだけ、わたしの出番でーす！" },
+  // 【ハイペース】paceClassify＝逃げ×25+先行×12で加点 → PACE_STYLE_MOD で差し+10/追込+8・逃げ-8〜-14
+  { id: "unme_tips_pace_hi", cm: "unme", topic: "tips", at: "entry", pace: ["high", "very_high"],
+    line: "今日は前に行きたい子だらけ！　飛ばし合いの日は、後ろで待ってる子がおいしいんですよね〜。ふふ〜ん。" },
+  // 【スローペース】PACE_STYLE_MOD.slow＝逃げ+12/先行+8・追込-8＝前がそのまま残りやすい
+  { id: "sake_tips_pace_slow", cm: "sake", topic: "tips", at: "entry", pace: ["slow"],
+    line: "逃げたがる竜が少ねえな。こういう日は前がそのまま残る。後ろからの一発は、期待しすぎるな。" },
+  // 【長丁場】sectionStaminaCost×DISTANCE.mult＝距離が長いほど消耗が拡大。速さはスタミナを助けない
+  { id: "sake_tips_long", cm: "sake", topic: "tips", at: "entry", dist: ["long", "marathon"],
+    line: "長丁場だ。速さより息が保つかを見ろ。スタミナと気性、この二つだ。速いだけの竜は最後に止まる。" },
+  // 【気性】randomPower のブレ縮小・positionPower の不利半減(nerve≥75)・崩れ時の減点緩和・スタミナ+0.2
+  { id: "sake_tips_nerve", cm: "sake", topic: "tips", at: "mid",
+    line: "気性の据わった竜はブレねえ。混みでも慌てず、荒れた日も崩れにくい。迷ったら気性を見ろ。" },
+  // 【長い直線】relStatMap: long_final_straight→speed（終盤の効率が速さで決まる）
+  { id: "sake_tips_straight", cm: "sake", topic: "tips", at: "entry", late: "long_final_straight",
+    line: "ゴール前は長い直線だ。終いは結局、素の速さがモノを言う。" },
+  // 【ハイペースの相場観】ミズ版（第4話以降の解説者用に同じ事実を別の声で）
+  { id: "mizu_tips_pace_hi", cm: "mizu", topic: "tips", at: "mid", pace: ["high", "very_high"],
+    line: "前に行く竜が多い日はね、先頭の値が上がりすぎるの。安く拾うなら、後ろで脚をためてる子よ。" },
+  // 【運の幅】ミズ版
+  { id: "mizu_tips_luck", cm: "mizu", topic: "tips", at: "mid",
+    line: "運の振れは誰にもある。でも実力差が大きければ運は誤差。互角のときだけ、運が主役になるのよ。" },
+  // 【大旋回ゴール】relStatMap: final_grand_turn→turn
+  { id: "makura_tips_turn", cm: "makura", topic: "tips", at: "entry", late: "final_grand_turn",
+    line: "最後に大きな旋回が待つコースです。旋回の得意な子、要チェックですよ。" },
+  // 【追い風直線】relStatMap: tailwind_straight→wing
+  { id: "makura_tips_wing", cm: "makura", topic: "tips", at: "entry", late: "tailwind_straight",
+    line: "ゴール前は追い風の直線。翼の強い子がぐんと伸びる形です。" },
+  // 【火山ゴール】relStatMap: volcanic_finish→fire
+  { id: "sumika_tips_fire", cm: "sumika", topic: "tips", at: "entry", late: "volcanic_finish",
+    line: "火山の際を駆け抜けるゴールでございます。火に強い子が最後まで涼しい顔をいたしますね。" },
+  // 【霧の発走】relStatMap: mist_start→nerve
+  { id: "sumika_tips_mist", cm: "sumika", topic: "tips", at: "entry", early: "mist_start",
+    line: "霧の中の発走でございます。気性の落ち着いた子は、見えなくても慌てません。" },
 ];
 
 // ── 直近に出したものを覚えておく台帳 ────────────────────────
@@ -392,12 +447,20 @@ function bcChatterLedger() {
   } catch (e) { return { n: 0, used: {}, save: null }; }
 }
 
-// 条件（region / weather / dragon）がこのレースに合うか
+// 条件（region / weather / dragon / pace / dist / early / late）がこのレースに合うか
 function bcChatterFits(rec, sit) {
   if (!rec) return false;
   if (rec.region && (!sit || String(sit.region || "").indexOf(rec.region) < 0)) return false;
   if (rec.weather && (!sit || String(sit.weather || "").indexOf(rec.weather) < 0)) return false;
   if (rec.dragon && (!sit || !(sit.dragons || []).some(d => d === rec.dragon))) return false;
+  // ★攻略ヒント用の状況絞り（2026-08-02）。配列＝いずれか一致。語彙は race_engine.js のまま
+  //   （pace: slow/standard/high/very_high・dist: short/mid/long/marathon・early/late: 区間キー）。
+  //   ヒントは「その状況のレースでだけ」流す＝雑談は状況に接続していないと浮くため。
+  const _in = (want, has) => Array.isArray(want) ? want.indexOf(has) >= 0 : want === has;
+  if (rec.pace  && (!sit || !_in(rec.pace,  sit.pace)))  return false;
+  if (rec.dist  && (!sit || !_in(rec.dist,  sit.dist)))  return false;
+  if (rec.early && (!sit || !_in(rec.early, sit.early))) return false;
+  if (rec.late  && (!sit || !_in(rec.late,  sit.late)))  return false;
   return true;
 }
 
@@ -418,7 +481,10 @@ function bcChatterPick(cmKey, at, sit) {
     const pool = BC_CHATTER.filter(r =>
       r.cm === cmKey && r.at === at && bcChatterFits(r, sit));
     if (!pool.length) return null;
-    const at_ = r => (L.used[r.id] == null ? -1 : L.used[r.id]);
+    // ★未使用のtips（当てるための知識）だけは、他の未使用より先に出す（2026-08-02）。
+    //   台帳の末尾に足したため、LRUだと何十レースも順番待ちになる。教える知識は
+    //   序盤にこそ価値がある。一度出たら通常のローテーションに合流する。
+    const at_ = r => (L.used[r.id] == null ? (r.topic === "tips" ? -2 : -1) : L.used[r.id]);
     let best = pool[0];
     for (let i = 1; i < pool.length; i++) if (at_(pool[i]) < at_(best)) best = pool[i];
     return best;
