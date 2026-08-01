@@ -3041,7 +3041,65 @@ function showBetConfirm() {
     }
     const t = document.getElementById("tix-card");
     yes.disabled = true; no.disabled = true;
-    if (t) { t.classList.add("tear"); try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} }
+    // ★千切り演出（2026-08-02・実機デモでユーザー決裁：破断面=A案の毛羽3px／落ち方=短い落下＋消え）。
+    //   3つの学び：
+    //   ①半券は transform で飛ばしても .tix の overflow:hidden に切られて**一度も見えていなかった**
+    //     → 分身を body 直下(fixed)に置いて券の外で飛ばす。
+    //   ②「ちぎった感」の核心は**抜けた跡が空白のまま残る**こと（ユーザー指摘）
+    //     → 券の外枠幅を固定し、半券の場所ごと clip-path で切り落とす（再センタリングさせない）。
+    //   ③失敗＝b055268（幅を縮めるだけ）は「短くなった」であって「破れた」ではない。演出の合否は数値でなく見た目。
+    //   表示専用＝レースの数値・進行に非干渉。失敗時は catch で従来の tear（CSSフェード）に落ちる。
+    const _tixTear = (tt) => {
+      const st = tt.querySelector(".tix-stub"), mn = tt.querySelector(".tix-main");
+      if (!st || !mn) return;
+      // 毛羽の破断面（決定的乱数＝毎回同じ形。side: right=本体の右端 / left=半券の左端）
+      const teeth = (amp, step, X, H, side) => {
+        let seed = 7;
+        const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+        const edge = []; let y = 0;
+        while (y < H) {
+          const dy = step * (0.6 + rnd() * 0.8), dx = amp * (0.35 + rnd() * 0.65);
+          y = Math.min(H, y + dy);
+          edge.push([dx, Math.round(y - dy / 2)], [0, Math.round(y)]);
+        }
+        if (side === "right") {
+          const pts = ["0px 0px", X + "px 0px"];
+          edge.forEach(([dx, py]) => pts.push((X - dx) + "px " + py + "px"));
+          pts.push("0px " + H + "px");
+          return "polygon(" + pts.join(", ") + ")";
+        }
+        const pts = [amp + "px 0px", "100% 0px", "100% " + H + "px", amp + "px " + H + "px"];
+        edge.slice().reverse().forEach(([dx, py]) => pts.push((amp - dx) + "px " + py + "px"));
+        return "polygon(" + pts.join(", ") + ")";
+      };
+      const H = tt.offsetHeight, boundary = st.offsetLeft;
+      const sr = st.getBoundingClientRect();
+      tt.style.width = tt.offsetWidth + "px";     // ②外枠は動かさない＝抜けた跡が空白で残る
+      st.style.visibility = "hidden";
+      tt.style.clipPath = teeth(3, 7, boundary + 2, H, "right");
+      // 動きを減らす設定の人には飛ばさない（切り落としだけで意味は通る）
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const c = st.cloneNode(true);
+      c.className = "tix-stub tix-stub-fly";
+      Object.assign(c.style, {
+        position: "fixed", left: sr.left + "px", top: sr.top + "px",
+        width: sr.width + "px", height: sr.height + "px", margin: "0", zIndex: 9999,
+        visibility: "visible", pointerEvents: "none",
+        background: "repeating-linear-gradient(0deg, rgba(120,96,60,.05) 0 1px, transparent 1px 4px), #f4ead2",
+        borderLeft: "none", boxShadow: "0 8px 18px rgba(0,0,0,.45)",
+        clipPath: teeth(3, 7, 0, Math.round(sr.height), "left"),
+        transition: "transform .5s cubic-bezier(.3,.1,.6,1), opacity .5s ease"
+      });
+      document.body.appendChild(c);
+      void c.offsetWidth;                          // 開始位置を確定（rAFに頼らない＝1押しで確実に動く）
+      setTimeout(() => { c.style.transform = "translate(46px, 84px) rotate(28deg)"; c.style.opacity = "0"; }, 20);
+      setTimeout(() => { try { c.remove(); } catch (e) {} }, 650);   // モーダルより後まで残さない
+    };
+    if (t) {
+      try { _tixTear(t); } catch (e) {}            // fail-safe：失敗しても従来の tear に落ちる
+      t.classList.add("tear");
+      try { if (window.Sfx) Sfx.play("tick"); } catch (e) {}
+    }
     setTimeout(() => {
       closeBetConfirm();
       if (typeof hungerSpendRace === "function") try { hungerSpendRace(); } catch (e) {}   // 出走＝おなか−25

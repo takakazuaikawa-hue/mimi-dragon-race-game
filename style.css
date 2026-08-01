@@ -7338,9 +7338,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .tix-stub span { font-size: 8px; letter-spacing: .2em; color: #6a5f4c; writing-mode: vertical-rl; }
 .tix-stub b { font-size: 10px; color: #9a2b22; }
 .tix-stub i { font-style: normal; font-size: 12px; font-weight: 900; }
-.tix.tear { transform: rotate(-2deg) translateY(2px); }
+/* ★千切り演出（2026-08-02・実機デモでA案決裁）。
+   .tix を最初から独自の描画層に載せる＝切る瞬間に rotate/clip-path が付いても
+   文字のなめらか処理（アンチエイリアス）の方式が切り替わらず、濃さが揺れない（ユーザー指摘）。
+   半券の飛びは JS（_tixTear）が body 直下の分身で行う。overflow:hidden の券内で
+   transform しても一度も見えていなかったため（実測）。下の .tix-stub 規則は
+   JS が失敗したときの受け皿として残す（fail-safe）。 */
+.tix { transform: translateZ(0); will-change: transform, clip-path; }
+.tix.tear { transform: translateZ(0) rotate(-2deg) translateY(2px); }
 .tix.tear .tix-stub { transform: translate(18px, -14px) rotate(14deg); opacity: 0; }
-@media (prefers-reduced-motion: reduce) { .tix, .tix-stub { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .tix, .tix-stub, .tix-stub-fly { transition: none !important; } }
 .bcf-q { text-align: center; font-size: 12px; color: var(--mist-soft); margin-top: 10px; }
 
 /* ===== K3-A1 聖龍日報・経済面クリップ（暮らし×物語＝物語画面と同じ紙の言語） ===== */
