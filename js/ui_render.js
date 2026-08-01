@@ -2391,6 +2391,27 @@ function renderRaceDetail(race) {
     const moreBtn = card.querySelector(".bp-more");
     const drawer = card.querySelector(".bp-drawer");
     let lv = 0;   // 0=閉 1=気配 2=気配+データ
+    // ★C4 竜の姿（2026-08-02・実機プレイ指摘「買う竜の姿が見えた方が買いやすい」）。
+    //   レース画面と同じ HD-2D スプライト（images/dragons/<id>.png）を「▾見る」の1段目に出す。
+    //   グレー背景のキー抜き・被写体bboxはレース側の _rcDragonSprite をそのまま再利用
+    //   （二重実装しない）。読めるまでは何も出さず、読めなければ枠ごと出さない（fail-safe）。
+    const paintSprite = (host, tries) => {
+      if (!host.isConnected) return;                        // ドロワーが閉じられたら中断
+      if (typeof _rcDragonSprite !== "function") return;
+      const e2 = _rcDragonSprite(d.id);
+      if (e2.bad) { host.remove(); return; }
+      if (!e2.ok) { if ((tries || 0) < 40) setTimeout(() => paintSprite(host, (tries || 0) + 1), 120); else host.remove(); return; }
+      const box = e2.box, src = e2.cv || e2.img;
+      const H = 96, s = H / box.h, W = Math.round(box.w * s);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      cv.style.width = W + "px"; cv.style.height = H + "px";
+      const g = cv.getContext("2d");
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
+      g.drawImage(src, box.x, box.y, box.w, box.h, 0, 0, cv.width, cv.height);
+      host.innerHTML = ""; host.appendChild(cv);
+    };
     const openTo = (n) => {
       lv = n;
       if (n === 0) { drawer.hidden = true; drawer.innerHTML = ""; moreBtn.textContent = "▾ 見る"; card.classList.remove("expanded"); return; }
@@ -2407,6 +2428,10 @@ function renderRaceDetail(race) {
           `</span>`;
       }
       drawer.innerHTML = html; drawer.hidden = false;
+      // 竜の姿は innerHTML の後に差す（毎回作り直し＝段の切替でも消えない）
+      const spHost = el("span", "bp-sprite");
+      drawer.insertBefore(spHost, drawer.firstChild);
+      paintSprite(spHost, 0);
       moreBtn.textContent = n >= 2 ? "▴ とじる" : "▾ データも見る";
       card.classList.add("expanded");
     };

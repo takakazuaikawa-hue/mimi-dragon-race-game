@@ -1634,6 +1634,10 @@ table.entry-table {
 .bet-pick-card .bp-drawer[hidden] { display: none; }
 @keyframes bpDrawer { from { opacity: 0; transform: translateY(-4px); } }
 .bet-pick-card .bp-tell { font-size: 11.5px; line-height: 1.6; color: #e6dcff; }
+/* ★C4 竜の姿（2026-08-02）：▾見るの1段目にHD-2Dスプライト。中央・足元に淡い台座で浮きを防ぐ */
+.bet-pick-card .bp-sprite { display: flex; justify-content: center; padding: 4px 0 6px;
+  background: radial-gradient(ellipse 60% 22% at 50% 92%, rgba(255,255,255,.10), transparent 70%); }
+.bet-pick-card .bp-sprite canvas { display: block; image-rendering: auto; }
 .bet-pick-card .bp-data { display: flex; flex-direction: column; gap: 5px; }
 .bet-pick-card .bpd-row { font-size: 11px; color: #cfc6ea; }
 .bet-pick-card .bpd-row i { font-style: normal; font-size: 9.5px; font-weight: 800; color: #9a8fc4; margin-right: 4px; }
