@@ -2514,10 +2514,12 @@ function renderRaceDetail(race) {
     if (showTrial) {
       const paneTrial = el("div", "ana-pane"); paneTrial.dataset.pane = "trial";
       const trialTbl = el("table", "trial-table");
+      // ★見出しから「試走」を外す（2026-08-01）。この表そのものが試走なので、
+      //   3列に同じ語を繰り返しても情報が増えない。列幅だけを食って竜名を潰していた。
       trialTbl.innerHTML = `<thead><tr>
         <th>竜名</th><th>体調</th><th>集中</th>
-        <th>試走スタート</th><th>試走旋回</th><th>試走終い</th>
-        <th>騎手呼吸</th><th>注釈</th>
+        <th>出足</th><th>旋回</th><th>終い</th>
+        <th>呼吸</th><th>注釈</th>
       </tr></thead>`;
       const tbody2 = el("tbody");
       sorted.forEach(od => {

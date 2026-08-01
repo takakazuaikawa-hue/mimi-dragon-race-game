@@ -1509,18 +1509,42 @@ table.entry-table {
 .entry-table .style-chase { color: #c080ff; }
 .entry-table .mark { font-size: 16px; }
 
-/* ★出走表を縦持ちの幅に収める（2026-08-01）。
-   直す前：14列で必要幅478px／入る幅385px＝93pxはみ出し、しかも包みが overflow-x:visible。
-   逃げ場が無いので列が潰れ、竜名が1文字ずつ縦に折り返って行の高さが153〜193pxになっていた。
-   能力6列を1列へ畳み、特徴を竜名の下へ落として8列に。詰めも 8px→4px、文字も1px小さくする。 */
-.entry-table { font-size: 12px; table-layout: auto; }
+/* =====================================================================
+   相談役パネルの表の作法（2026-08-01）
+   ---------------------------------------------------------------------
+   きっかけ：出走表が縦持ちの幅に入らず潰れていた（必要幅478px／枠385px＝93pxはみ出し、
+   包みは overflow-x:visible で逃げ場も無し）。竜名が1文字ずつ縦に折り返り、行の高さ153〜193px。
+   ★そして最初は出走表だけを直し、隣の試走表を同じまま残した。それは規則ではなく
+     その場しのぎ。以後この節は**パネル内のすべての表に効く共通規則**として書く。
+
+   五箇条：
+     ① 1列＝1つの比べるもの。比べない説明文（特徴・注釈）は列にしない
+        ＝名前の下に敷くか、最後の1列に逃がす
+     ② 見出しには「その表の中で意味が変わる語」だけを書く
+        ＝表全体が試走なら見出しに「試走」を繰り返さない（列幅を食うだけ）
+     ③ 揃えは中身で決める：読む文字＝左／数字＝右（等幅数字）／記号・等級・短いラベル＝中央
+     ④ 折り返してよいのは説明文だけ。名前・ラベルは折り返さない
+        （例外：2文字で意味が壊れないものは、幅が要るときだけ許す＝脚質）
+     ⑤ 枠に収めるのが既定。横スクロールバーは最後の逃げ場であって設計ではない
+   ===================================================================== */
+.entry-table, .trial-table { font-size: 12px; table-layout: auto; }
 /* 詰めは3px。折り返し禁止にしたら「前走◎」で近走列が48pxに広がり19pxはみ出したので、
    8列×左右で16px、能力の字幅で6px を取り戻して収める（実測して詰めた値） */
-.entry-table th, .entry-table td { padding: 5px 3px; vertical-align: middle; }
-/* ★折り返し禁止は全セルに掛ける。竜名だけ直しても「先行」「凡走」が縦積みのまま残った（実測）。
-   折り返してよいのは、竜名の下に敷いた説明文（特徴）だけ。 */
-.entry-table th, .entry-table td { white-space: nowrap; }
-.entry-table th { font-size: 11px; }
+.entry-table th, .entry-table td,
+.trial-table th, .trial-table td { padding: 5px 3px; vertical-align: middle; }
+/* ④ 折り返し禁止は全セルに掛ける。竜名だけ直しても「先行」「凡走」が縦積みのまま残った（実測）。
+   折り返してよいのは説明文（特徴・注釈）だけ＝下でそれぞれ normal に戻す。 */
+.entry-table th, .entry-table td,
+.trial-table th, .trial-table td { white-space: nowrap; }
+.entry-table th, .trial-table th { font-size: 11px; }
+/* ① 注釈＝比べる等級ではなく説明文。折り返してよい・小さく・控えめに */
+.trial-table .trial-note { white-space: normal; font-size: 10px; line-height: 1.3; color: var(--mist-soft); }
+/* ③ 試走表の揃え（竜名/体調/集中/出足/旋回/終い/呼吸/注釈）。
+   等級A〜Dは記号なので中央、竜名と注釈は読む文字なので左。 */
+.trial-table th:nth-child(1), .trial-table td:nth-child(1),
+.trial-table th:nth-child(8), .trial-table td:nth-child(8) { text-align: left; }
+.trial-table th:nth-child(n+2):nth-child(-n+7),
+.trial-table td:nth-child(n+2):nth-child(-n+7) { text-align: center; }
 .et-name { min-width: 92px; }
 .et-name .dragon-icon-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .et-name .dragon-icon-row b { font-size: 12px; }
