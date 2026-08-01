@@ -3110,7 +3110,9 @@ function showBetConfirm() {
       });
       document.body.appendChild(c);
       void c.offsetWidth;                          // 開始位置を確定（rAFに頼らない＝1押しで確実に動く）
-      setTimeout(() => { c.style.transform = "translate(46px, 84px) rotate(28deg)"; c.style.opacity = "0"; }, 20);
+      // ★飛距離はごく短く（2026-08-02・ユーザー決裁「落下距離を短く。元のままがちょうどよかった」）。
+      //   数値は改修前のCSS（.tix.tear .tix-stub）と同じ 18px/-14px/14deg＝その場でふわりと外れて消える。
+      setTimeout(() => { c.style.transform = "translate(18px, -14px) rotate(14deg)"; c.style.opacity = "0"; }, 20);
       setTimeout(() => { try { c.remove(); } catch (e) {} }, 650);   // モーダルより後まで残さない
     };
     if (t) {

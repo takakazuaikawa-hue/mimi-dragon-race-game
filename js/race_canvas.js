@@ -1832,6 +1832,15 @@ function startRaceCanvas(container, ctx) {
   function pushLine(line, side, opt) {
     const tag = (opt && opt.tag) || "";
     _telopLog("push", side, line, tag);
+    // ★スタートの一声は絶対同期（2026-08-02・実機プレイ指摘「スタートがずれてた」）。
+    //   真犯人は滞留キュー：カウントダウン時に入場の残り行が積まれると、ゲートが開いた瞬間の
+    //   「一斉に飛び出します！」がその後ろで待たされていた。発走前の積み残しは全部捨てて即出す。
+    //   （走り出した後に入場の話が出てくるのは、遅い実況どころか間違った実況になる）
+    if (tag === "start") {
+      while (_telopQ.length) { const o = _telopQ.shift(); _telopDrop++; _telopLog("drop", o.side, o.line, o.tag); }
+      _telopShow(line, side, tag);
+      return;
+    }
     if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag); return; }
     // ★間に合わない行は、まず積む（核も雑談も区別せず）。間が空けば雑談も1本通る。
     _telopQ.push({ line: line, side: side, tag: tag });
@@ -1898,6 +1907,9 @@ function startRaceCanvas(container, ctx) {
     //   「セラムが3番手／セラムが2番手」のような似た行が並ぶだけで、読みにくく冗長。
     //   高さも文字量で動いてレイアウトが揺れる原因になっていた。
     while (arr.length > 1) arr.shift();
+    // ★欠けの計測器を配線し直す（2026-08-02）：noteTypeCut は定義だけあって一度も呼ばれておらず、
+    //   「前の行を打ち終わる前に消した」件数が常に0を返す死んだ監査だった。差し替え直前に数える。
+    noteTypeCut(key, bub);
     bub.innerHTML = "";
     const d = document.createElement("div");
     d.className = "rcy-now";
