@@ -71,7 +71,17 @@ KURASHI_STORY_WEAVE.md（暮らし還流）／HOME_COMMERCIAL_REDESIGN.md（ホ�
 3. **結線**：NEXT_SUGGEST の入口/出口（§3）＋還流するなら KURASHI_WATCH/小イベント/手紙（KURASHI_STORY_WEAVE）
 
 ## 5. 実装ウェーブ
-- **M1 次の一手エンジン**：next_suggest.js＋レース結果の勝ち飯/負け飯（最重要の断線＝結果→島時間）
-- **M2 各駅の出口**：食事/観光/SNSの出口チップ・ホームの「今日の一枚」ミラー
-- **M3 発見の余白監査**：告知7:余白3になっているか棚卸し・？？？枠の追加
+
+### ✅ M1〜M3 すべて完了（2026-08-01 に実体で確認して閉じた）
+
+| | 状態 | 何を見て確かめたか |
+|---|---|---|
+| **M1 次の一手エンジン** | ✅ | `js/next_suggest.js` の NEXT_SUGGEST 台帳が稼働 |
+| **M2 各駅の出口** | ✅ | 出口チップは**4画面すべて結線済み**＝`ui_render.js`(result)／`ui_meta.js`(meals)／`ui_konron_map.js`(konron)／`ui_sns.js`(sns) が `nextSuggestRow()` を呼んでいる |
+| ↑ ホームの「今日の一枚」ミラー | ✅ **見送りが結論** | M3の重複告知削減で意図的に落とした（`next_suggest.js:30`）。今日の一枚は崑崙マップのストリップと食事あとの導線の2箇所で足りており、ホームに三重に出すと告知過多になる |
+| **M3 発見の余白監査** | ✅ | `★M3` の判断が `next_suggest.js`／`progression.js`（ロケ名と生息竜は伏せる）／`photo_game.js`（何が出るかは教えない）／`ui_konron_map.js`（告知しない発見）に残る。`？？？` 枠は10ファイル・**63箇所** |
+
+★この節は長く「未着手」と書かれたままだった（[[stale-doc-status-trap]] の4件目）。
+**設計文書は書いた瞬間の仮説。状態の正本は `docs/STATUS_LEDGER.md`。**
+
 - 以後：新機能はすべて§4の3点セットで追記（この文書の表に1行足す）

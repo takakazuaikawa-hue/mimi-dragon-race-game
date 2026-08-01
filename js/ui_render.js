@@ -1850,6 +1850,27 @@ function renderRaceSelect() {
   sortSeg.appendChild(sRegion); sortSeg.appendChild(sRank);
   const lockToggle = el("button", "rs-lockbtn", "");
   ctrl.appendChild(sortSeg); ctrl.appendChild(lockToggle);
+  // ★距離しぼり（P-7・2026-08-01）。
+  //   実測：第4話相当（ランク4）で35レース＝**5.7画面ぶんのスクロール**。長い。
+  //   ただし直し方として「検索ボックス」は採らない。レースに覚えられる固有名が無く
+  //   （「グランドクロック第三」等）、プレイヤーは**打ち込む言葉を持っていない**＝空振りする。
+  //   「おすすめレース」も置かない。どれが自分に良いかを画面が教えるのは答えを渡すこと。
+  //   置くのは**プレイヤー自身の仮説を試す道具**：勝敗を分けるのは距離なので、
+  //   「短距離は逃げが残るのでは？」と思った人が短距離だけ並べて確かめられるようにする。
+  //   ★純粋な表示フィルタ。着順・オッズ・配当・出走表には一切触れない。
+  const DIST_SEG = [["all", "全部"], ["short", "短"], ["mid", "中"], ["long", "長"], ["marathon", "超長"]];
+  if (!state.ui.raceDist) state.ui.raceDist = "all";
+  const distSeg = el("div", "rs-seg rs-seg--dist");
+  const distBtns = DIST_SEG.map(([k, lb]) => {
+    const b = el("button", "rs-seg-b", lb);
+    b.onclick = () => { state.ui.raceDist = k; syncCtrl(); renderList(); };
+    distSeg.appendChild(b); return { k: k, b: b };
+  });
+  // ★2段目としてひとまとまりにする（📏だけ1段目の右端に取り残されるのを防ぐ）
+  const distRow = el("div", "rs-distrow");
+  distRow.appendChild(el("span", "rs-seg-lb", "📏 距離"));
+  distRow.appendChild(distSeg);
+  ctrl.appendChild(distRow);
   app.appendChild(ctrl);
 
   const listWrap = el("div", "rs-list");
@@ -1871,9 +1892,11 @@ function renderRaceSelect() {
       });
     }
     let shownAny = 0, hiddenLocked = 0;
+    const dist = state.ui.raceDist || "all";
     groups.forEach(g => {
-      const vis = g.races.filter(r => showLocked || r.rank <= state.player.rank);
-      hiddenLocked += g.races.length - vis.length;
+      const inDist = g.races.filter(r => dist === "all" || r.distance === dist);
+      const vis = inDist.filter(r => showLocked || r.rank <= state.player.rank);
+      hiddenLocked += inDist.length - vis.length;
       if (!vis.length) return;
       shownAny += vis.length;
       const head = el("div", "rs-grp-head",
@@ -1883,7 +1906,10 @@ function renderRaceSelect() {
       vis.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank, g.hideRegion)));
       listWrap.appendChild(body);
     });
-    if (!shownAny) listWrap.appendChild(el("div", "condition-line", "表示できるレースがありません。「すべて表示」で先のレースも見られます。"));
+    if (!shownAny) listWrap.appendChild(el("div", "condition-line",
+      dist !== "all"
+        ? "この距離で、いま行けるレースはありません。📏を「全部」に戻すか、「すべて表示」で先のレースも見られます。"
+        : "表示できるレースがありません。「すべて表示」で先のレースも見られます。"));
     else if (!showLocked && hiddenLocked > 0) listWrap.appendChild(el("div", "rs-morehint", `🔒 ほか ${hiddenLocked} レースはランクを上げると解放（「すべて表示」でプレビュー）`));
   }
   function syncCtrl() {
@@ -1891,6 +1917,7 @@ function renderRaceSelect() {
     sRank.classList.toggle("on", mode === "rank");
     lockToggle.classList.toggle("on", state.ui.raceShowLocked);
     lockToggle.innerHTML = state.ui.raceShowLocked ? "🔓 すべて表示中" : "▶ 今いけるレース";
+    distBtns.forEach(function (d) { d.b.classList.toggle("on", (state.ui.raceDist || "all") === d.k); });
   }
   sRegion.onclick = () => { mode = "region"; state.ui.raceMode = "region"; syncCtrl(); renderList(); };
   sRank.onclick = () => { mode = "rank"; state.ui.raceMode = "rank"; syncCtrl(); renderList(); };

@@ -9159,6 +9159,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    （見出しは追従しなくなったので、元の半透明な金の帯のまま＝見た目は変えない） */
 .rs-ctrl { background: linear-gradient(180deg, #12161c 88%, rgba(18,22,28,0)); }
 
+/* ★距離しぼり（P-7・2026-08-01）。
+   第4話相当で35レース＝5.7画面ぶんのスクロールという実測に対する答え。
+   検索ボックスではなく「自分の仮説を試す絞り込み」なので、並べ替えと同じ見た目の
+   セグメントにして、操作バーの2段目に置く（1段目の 並べ替え/今いける を狭めない）。 */
+.rs-ctrl { flex-wrap: wrap; }
+.rs-distrow { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; }
+.rs-seg-lb { flex: none; font-size: 11.5px; font-weight: 800; color: var(--mist-soft); white-space: nowrap; }
+.rs-seg--dist { flex: 1 1 auto; justify-content: space-between; }
+.rs-seg--dist .rs-seg-b { padding: 6px 0; flex: 1 1 0; text-align: center; font-size: 12px; }
+
 /* 目標から行き先へ直接飛ぶボタン（ユーザー指摘：モールの入口が分かりにくい＝島タブの奥にしか無かった） */
 .goal-go { flex: none; margin-left: 8px; padding: 7px 12px; border-radius: 999px; cursor: pointer;
   font-size: 12px; font-weight: 800; white-space: nowrap; color: #2a1d05;
