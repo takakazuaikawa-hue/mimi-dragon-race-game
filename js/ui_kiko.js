@@ -224,11 +224,13 @@ function renderKiko() {
   app.appendChild(tl);
   try {
     const cleared = (typeof kurashiChapter === "function") && kurashiChapter() >= 6;
+    // ★文言修正（2026-08-02・実機プレイ指摘「得点になるって書いてあるけど意味不明」）。
+    //   実体＝クリア後に開く「コレクション採点」画面。何が起きる場所なのかを具体で言う。
     const row = el("button", "kiko-score" + (cleared ? "" : " locked"),
-      cleared ? `🏆 やり込み得点（総集編）を見る ›` : `🔒 総集編 — 物語を最後まで見届けると、日々のすべてが得点になる`);
+      cleared ? `🏆 総集編 — 旅の集めもの、ぜんぶ採点 ›` : `🔒 総集編 — クリア後に開放（集めた竜・食べた品・撮った写真をふり返って採点）`);
     row.onclick = cleared ? () => { state.ui._kikoBack = true; renderCollectionScore(); }
-      : () => { if (typeof showInfoPopup === "function") showInfoPopup("🏆 ？？？",
-          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>物語を最後まで見届けると開放されます。</small></div></div>`); };
+      : () => { if (typeof showInfoPopup === "function") showInfoPopup("🏆 総集編とは",
+          `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>クリア後に開きます</b><small>物語を最後まで見届けると、それまでに集めた竜・食べた品・撮った写真などを、まとめてふり返って採点できる画面です。</small></div></div>`); };
     app.appendChild(row);
   } catch (e) {}
 

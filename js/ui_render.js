@@ -1783,6 +1783,16 @@ function renderRaceSelect() {
   const app = beginScreen();
   app.appendChild(screenHeader("レース選択", "images/race_header.webp"));
 
+  // ★金欠ガード（2026-08-02・実機プレイ指摘「コイン0でもレースに進めてしまう」）。
+  //   賭けられないのにレースを選ばせるのは行き止まり。目立つ一枚を最上部に置き、無心へ送る。
+  //   レース一覧自体は下見できるよう残す（表示専用・数値非干渉）。
+  if (((state.player && state.player.coins) || 0) <= 0) {
+    const bk = el("button", "broke-cta",
+      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>コインが尽きています</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
+    bk.onclick = () => renderHome();
+    app.appendChild(bk);
+  }
+
   // 本日の注目レース — a prominent, daily-rotating spotlight
   try {
     const feat = featuredRaceToday();
@@ -2048,6 +2058,14 @@ function renderRaceDetail(race) {
   runEventHooks("afterDragonPreview", { race, tags: tense ? ["tense_race"] : [] });
 
   const app = beginScreen();
+  // ★金欠ガード（2026-08-02）：レース選択と同じ一枚を賭け画面にも。賭けられないまま
+  //   スリップまで進んで詰まるのを防ぐ（出走表の下見はできるよう画面自体は出す）。
+  if (((state.player && state.player.coins) || 0) <= 0) {
+    const bk = el("button", "broke-cta",
+      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>コインが尽きています</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
+    bk.onclick = () => renderHome();
+    app.appendChild(bk);
+  }
   // Popularity-sorted entries — shared by the pick cards and the dragon-info table.
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
   const betCap = RANKS[race.rank].maxWager * (VILLAGE_MULT[state.player.villageLevel] || 1.0);
@@ -3642,7 +3660,13 @@ function renderResult() {
     const r = c.betResult;
     const winnerOd = c.oddsResult.oddsData.find(o => o.dragonId === c.raceResult.entries[0].dragon.id);
     runEventHooks("afterRaceResult", { race: c.race, hit: r.hit, popularityRank: winnerOd.popularityRank, bigLoss: !r.hit && r.wager >= 500 });
-    if (state.player.coins <= 0) runEventHooks("onBankruptcy", { race: c.race });
+    // ★破産時（2026-08-02・実機プレイ指摘）：サケの「無心するんだ」を聞き終えたら**ホームへ送る**。
+    //   従来は台詞だけで結果画面に残され、コイン0のままレース選択へ進めてしまい行き止まりだった。
+    //   runEventHooks は台詞終了の Promise を返すので、喋り終わってから移動する。
+    if (state.player.coins <= 0) {
+      const _p = runEventHooks("onBankruptcy", { race: c.race });
+      if (_p && _p.then) _p.then(() => { if (state.player.coins <= 0) renderHome(); });
+    }
     // 🎉 的中時＝結果画面のファンファーレ（「ファンファーレの日々」）。1レースにつき1回だけ・単発（ループ無し）。
     //   結果は zone=other なので bgm_zones は奪わず、ホームへ戻ると自然停止。外れは従来どおり無音。
     if (r.hit && window.RaceBgm && RaceBgm.playFile) { try { RaceBgm.playFile("bgm/racebgm/fanfare-days.mp3", { once: true }); } catch (e) {} }

@@ -151,8 +151,41 @@ registerEvent({
   condition: { once: false },
   actions: [
     // ★声表準拠（ミミ＝短文の畳みかけ→一拍→飯に着地。自分に「おめでとう」と言わせない・システム文の読み上げ禁止）
+    // ★実機プレイ指摘（2026-08-02）：ランクは3本レール（実力/皆勤/大勝）なので**全敗でも上がる**のが正常。
+    //   その時に「うそ！行けちゃう？」と喜ぶのは実績と噛み合わず違和感。台詞が戦績を見て分岐する。
+    //   全敗昇格＝喜びでなく「場数を踏んだ手応え」のテンションで（ユーザー言「慣れてきたな、ミミ」）。
     { type: "dialogue", speaker: "mimi", e: "happy",
-      text: "え、うそ、上のクラス……行ける？ 行けちゃう？　……よし、行く前に腹ごしらえ！" }
+      text: function () {
+        const w = (state.player && state.player.wins) || 0;
+        if (w === 0) return "上のクラス……勝ってないのに？　……ううん、場数だ。走った数だけ、慣れてきたんだ。……ごはん食べて、次いこ。";
+        return "え、うそ、上のクラス……行ける？ 行けちゃう？　……よし、行く前に腹ごしらえ！";
+      } }
+  ]
+});
+
+// ★序盤の連敗ケア（2026-08-02・実機プレイ指摘「序盤に負け続けるとプレイヤーが苦しい。
+//   ほめたり解説したり励ましたり、複勝やワイドを勧める必要がある」）。
+//   既存「連敗の夜」(g5_losing_night) は第4話後＋ミズの門番つき＝序盤には出ない。
+//   これは**最初から会っているサケ**が3連敗（未勝利）で一度だけ言う。
+//   賭式の推奨は会話のみ＝レース数値・オッズ・配当に非干渉。
+registerEvent({
+  id: "early_losing_care",
+  hook: "afterRaceResult",
+  condition: { once: true,
+    test: ctx => ((state.player && state.player.missRun) || 0) >= 3
+               && ((state.player && state.player.wins) || 0) === 0 },
+  priority: 7,
+  actions: [
+    { type: "dialogue", speaker: "sake_udada",
+      text: "3連敗か。……いい経験しているな、ミミ。外した数だけ、竜の見方は増える。" },
+    { type: "dialogue", speaker: "mimi", expr: "sad",
+      text: "でも師匠、お財布が……単勝、ぜんぜん当たらないです……。" },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "単勝は一番むずかしい賭式だ。1着をぴたりと当てるんだからな。……まずは複勝でいい。3着までに入れば拾える。" },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "ワイドもいいぞ。2頭選んで、両方が3着以内なら的中だ。当てる感覚を体に入れてから、単勝に戻ってこい。" },
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "拾い方から、覚える……。よし、次は複勝でいってみます！" }
   ]
 });
 

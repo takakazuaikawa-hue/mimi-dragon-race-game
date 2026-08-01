@@ -8,6 +8,19 @@
 // 完全に表示専用＝レースの着順・オッズ・配当・FinalPower には一切影響しない。
 
 var NEXT_SUGGEST = [
+  // ── ★金欠（2026-08-02・実機プレイ指摘）：コイン0のときは「無心する」**一択**。──
+  //   「次のレースへ」等を並べても賭けられず行き止まりになるだけ。exclusive=true は
+  //   nextSuggestRow が他の候補を全部伏せて1つだけ出す（表示専用・レース数値に非干渉）。
+  { at: "result", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
+    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+    go: function () { renderHome(); } },
+  { at: "meals", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
+    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+    go: function () { renderHome(); } },
+  { at: "konron", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
+    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+    go: function () { renderHome(); } },
+
   // ── レース結果（勝ち）：結果→島時間の結線（M1・最重要の断線だった）──
   { at: "result", weight: 90, icon: "🍽", label: "勝ち飯を食べにいく", sub: "今日の一勝を、うまい飯で締める",
     cond: function (ctx) { return !!(ctx && ctx.hit); }, go: function () { renderMeals(); } },
@@ -52,11 +65,13 @@ var NEXT_SUGGEST = [
 // 区切り画面用の提案行を生成（無ければ null＝何も出さない）。
 function nextSuggestRow(at, ctx) {
   try {
-    const cands = NEXT_SUGGEST
+    let cands = NEXT_SUGGEST
       .filter(function (s) { return s.at === at; })
       .filter(function (s) { try { return !s.cond || s.cond(ctx); } catch (e) { return false; } })
-      .sort(function (a, b) { return (b.weight || 0) - (a.weight || 0); })
-      .slice(0, 2);
+      .sort(function (a, b) { return (b.weight || 0) - (a.weight || 0); });
+    // ★exclusive＝この候補が成立したら他を出さない（金欠の「無心する」一択に使う）
+    const ex = cands.find(function (s) { return s.exclusive; });
+    cands = ex ? [ex] : cands.slice(0, 2);
     if (!cands.length) return null;
     const row = el("div", "nx-row");
     row.appendChild(el("div", "nx-k", "このあとの島時間"));
