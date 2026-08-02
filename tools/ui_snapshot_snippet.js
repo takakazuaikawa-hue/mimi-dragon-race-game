@@ -11,6 +11,10 @@
 // ★transform/opacity/filter はアニメで揺れるので測らない＝そこを触る工事には使えない。
 // 実績：2026-08-02 角丸トークン化で --r-4 の衝突（4px→22px化け）をこのゲートが検出した。
 // 見た目の指紋：各画面のDOMを歩き、デザインに関わる計算済みスタイルをハッシュ化する。
+// ★日付の罠（2026-08-03 実測）：SNSの日替わりフィードは _epochDay で回転する。基準と照合を
+//   **同じ日**に行うこと。日をまたぐと sns だけ「1要素挿入→以降ハッシュ玉突き」の形の差分が出る
+//   （返信つき投稿が並んだ日は ig-comlink ボタンが増える等）。それはCSSの罪ではない＝
+//   その日の基準を取り直してから工事する。
 // アニメで揺れる transform/opacity/filter は除外（トークン置換はそこに触らないため）。
 (function(){
   var SCREENS=["race_select","meals","assets","life_tree","collection","story","goals","help","settings","economy","kiko","media","village","mall","konron_guide","konron_gallery","sns","home"];

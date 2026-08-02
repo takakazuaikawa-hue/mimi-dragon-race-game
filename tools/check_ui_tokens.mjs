@@ -15,9 +15,11 @@ import { dirname, join } from "node:path";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const css = readFileSync(join(ROOT, "style.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 
-// ── ラチェットの天井（2026-08-02 実測。減ったらここを下げる。上げるのは禁止） ──
+// ── ラチェットの天井（実測。減ったらここを下げる。上げるのは禁止） ──
 const CEILING = {
-  radiusLiteral: 167,   // border-radius の直書き（11px/13px/99px/3px 等の端数）
+  radiusLiteral: 167,     // border-radius の直書き（11px/13px/99px/3px 等の端数）
+  hexLiteral: 1885,       // 16進色の直書き（url行・変数定義行を除く）※初回実行時に較正
+  paddingLiteral: 525,   // padding一括指定の直書き（var/env/max/clamp/定義行を除く）※同上
 };
 // まだ統治していない領域（情報表示のみ・将来の工事の物差し）
 const INFO_ONLY = true;
@@ -47,20 +49,48 @@ info("残債の内訳: " + Object.entries(litDist).sort((a, b) => b[1] - a[1]).s
 // ② トークン定義の一意性（並行系の検出＝--r-4事故の再発防止）
 console.log("\n2) トークン定義の一意性");
 const defs = {};
-for (const m of css.matchAll(/(--(?:r|rd|e)-[\w-]+)\s*:\s*([^;}]+)[;}]/g)) {
+for (const m of css.matchAll(/(--(?:r|rd|e|hx|pd)-[\w-]+|--white|--black)\s*:\s*([^;}]+)[;}]/g)) {
   (defs[m[1]] = defs[m[1]] || new Set()).add(m[2].trim());
 }
 const dup = Object.entries(defs).filter(([, vals]) => vals.size > 1);
 if (dup.length) dup.forEach(([k, vals]) => bad(`${k} が複数の値で定義されている: ${[...vals].join(" と ")}（後勝ちで片方が死ぬ）`));
-else ok(`--r-* / --rd-* / --e-* の定義はすべて一意（${Object.keys(defs).length} 個）`);
+else ok(`--r/--rd/--e/--hx/--pd/--white/--black の定義はすべて一意（${Object.keys(defs).length} 個）`);
 
-// ③ 未統治の領域（情報のみ・次の工事の規模感）
+// ③ 16進色の直書き（第2弾で統治開始。url行と変数定義行は数えない＝置換時と同じ物差し）
+console.log("\n3) 色（統治済みの領域）");
+let hexLit = 0;
+for (const line of css.split("\n")) {
+  if (line.includes("url(")) continue;
+  if (/--[\w-]+\s*:/.test(line)) continue;
+  hexLit += (line.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length;
+}
+if (hexLit > CEILING.hexLiteral)
+  bad(`16進の直書きが増えた: ${hexLit} > 天井 ${CEILING.hexLiteral}。既存パレット（--gold系/--white等）か --hx-* を使うこと`);
+else {
+  ok(`16進の直書き ${hexLit} ≦ 天井 ${CEILING.hexLiteral}`);
+  if (hexLit < CEILING.hexLiteral) info(`※ CEILING.hexLiteral を ${hexLit} に下げて更新すること`);
+}
+
+// ④ padding の直書き（第3弾で統治開始）
+console.log("\n4) 余白（統治済みの領域）");
+let padLit = 0;
+for (const m of css.matchAll(/(?<![-\w])padding:\s*([^;}]+)[;}]/g)) {
+  const v = m[1].trim();
+  if (!/^var\(|env\(|max\(|clamp\(/.test(v)) padLit++;
+}
+if (padLit > CEILING.paddingLiteral)
+  bad(`padding の直書きが増えた: ${padLit} > 天井 ${CEILING.paddingLiteral}。--pd-* を使うこと`);
+else {
+  ok(`padding の直書き ${padLit} ≦ 天井 ${CEILING.paddingLiteral}`);
+  if (padLit < CEILING.paddingLiteral) info(`※ CEILING.paddingLiteral を ${padLit} に下げて更新すること`);
+}
+
+// ⑤ 未統治の領域（情報のみ）
 if (INFO_ONLY) {
-  console.log("\n3) 未統治の領域（参考・まだ検査しない）");
+  console.log("\n5) 未統治の領域（参考・まだ検査しない）");
   const count = (re) => (css.match(re) || []).length;
-  info(`padding直書き: ${count(/padding[^:]*:\s*[^v;}][^;}]*[;}]/g)} 箇所`);
-  info(`box-shadow直書き: ${count(/box-shadow:\s*[^v;}][^;}]*[;}]/g)} 箇所`);
-  info(`16進色の直書き: ${count(/#[0-9a-fA-F]{3,8}\b/g)} 箇所`);
+  info(`box-shadow直書き: ${count(/box-shadow:\s*[^v;}][^;}]*[;}]/g)} 箇所（341種/371箇所＝ほぼ全て一点もの。`);
+  info(`  無変化トークン化のてこが無いため、統治は「--e-1/2/3へ寄せる＝見た目が変わる別工事（要決裁）」で行う）`);
 }
 
 console.log(ng ? `\n[31m✗ ${ng}件の逆行[0m\n` : "\n[32m✅ 土台は腐っていない[0m\n");
