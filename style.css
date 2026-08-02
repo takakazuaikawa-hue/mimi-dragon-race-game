@@ -1842,6 +1842,12 @@ table.entry-table {
 .kiko-post-tags { margin-top: 9px; font-size: 11.5px; font-weight: 800; color: #6cb7dd; }
 .kiko-sec { margin: 18px 16px 8px; font-size: 12px; font-weight: 900; color: #b08a52; letter-spacing: .1em; }
 
+/* 🍽️ ついでに一皿（撮影後の誘い・グルマン段の出会い口） */
+.km-dish { display: flex; align-items: center; gap: 10px; margin: 12px 0 2px; padding: 12px 14px;
+  border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); }
+.km-dish-ic { flex: none; font-size: 26px; }
+.km-dish-nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 900; }
+
 /* ===== ✍️ 自動生成の記事（kiko_articles.js・2026-08-02） =====================
    実プレイの出来事から書かれた「読める記事」。見出し＋2〜3段落＋写真＋読者コメント。
    過去記事は .fold で畳む（見出しだけ見えて、タップで開く）。 */

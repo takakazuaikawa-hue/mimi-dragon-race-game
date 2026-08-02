@@ -68,6 +68,22 @@ function _kikoPick(arr, seed) { return (arr && arr.length) ? arr[_kikoSeed(seed)
 function _kikoCoins(n) { try { return (typeof fmtCoins === "function") ? fmtCoins(n) : (n + "コイン"); } catch (e) { return n + "コイン"; } }
 function _kikoFind(mats, t) { for (var i = mats.length - 1; i >= 0; i--) if (mats[i].t === t) return mats[i]; return null; }
 
+// ★§2接続：まだ出会っていない一皿の「うわさ」を1行だけ拾う（食レポ回の結びに置く）。
+//   ネタバレしない＝品名は出さず、場所と刻だけ。無ければ空文字（記事はそのまま成立する）。
+function _kikoRumor() {
+  try {
+    if (typeof MEALS === "undefined" || typeof mealUnlocked !== "function") return "";
+    var yet = MEALS.filter(function (m) { return m.where && !m.quiz && !mealUnlocked(m); });
+    if (!yet.length) return "";
+    var m = yet[_kikoSeed("r" + yet.length + (state.player.completedRaces || 0)) % yet.length];
+    // 刻の指定がある品だけ「その時間にしか出ない」と言う（無い品に言うと嘘になる）
+    var body = (m.time && m.time.length)
+      ? (m.where + "に、" + m.time[0] + "から" + m.time[m.time.length - 1] + "のあいだにしか出ない一皿があるそうです。")
+      : (m.where + "に、わたしがまだ知らない一皿があるそうです。");
+    return "ところで、まだ食べたことのないものの話を聞きました。" + body + "……行きます。ぜったい行きます。";
+  } catch (e) { return ""; }
+}
+
 // =========================================================================
 // 切り口テンプレ 8本（データ駆動）
 //   take(mats) → 使う素材（無ければ null）／ headline(d, ctx) / paras(d, ctx)
@@ -141,11 +157,14 @@ var KIKO_CUTS = [
     headline: function (d) { return (d.ic || "🍜") + " " + d.name + "に、出会ってしまった"; },
     paras: function (d) {
       var lead = d.where ? (d.where + "で、" + d.name + "。") : ("島で、" + d.name + "。");
-      return [
+      var out = [
         lead + "——出会ってしまいました。",
         d.react || d.note || "ひとくちで、その日の順位がどうでもよくなる味でした。",
         (d.note && d.react ? d.note + "　" : "") + "おいしいものを見つけた日は、負けていても記事が1本増えるので、実質勝ちです。……実質。"
       ];
+      var rumor = _kikoRumor();   // まだ出会っていない一皿の噂（§2接続・品名は伏せる）
+      if (rumor) out.push(rumor);
+      return out;
     }
   },
   // ── 📷 絶景回（☆3） ──

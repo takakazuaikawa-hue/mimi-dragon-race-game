@@ -25,6 +25,7 @@ var MEALS = [
     react: "ジュッ……！　甘辛いタレがしみて……うまっ！　これは勝てる、勝てるやつだ……！",
     note: "レース場の鉄板。負けても、これ食べれば次いける気がする。" },
   { id: "t_ramen", tier: "track", icon: "🍜", name: "一発逆転ラーメン",
+    where: "レース場・場外の屋台", time: ["宵","夜"], scent: "背脂の匂い。湯切りの、しゃんしゃんという音。",
     react: "ズルルッ……！　背脂がぶわっ。単勝ぜんぶ溶けてても、この一杯さえあれば、心は満タンっ！",
     note: "夜の場外でずるずる。スープまで飲み干すのが流儀。" },
   { id: "t_dote", tier: "track", icon: "🍢", name: "どて煮ホルモン",
@@ -36,6 +37,7 @@ var MEALS = [
     react: "もちもち3個刺し。当たれば最高、外れても……まあ、団子はうまいから、ヨシ！",
     note: "縁起かつぎの三色。当たった日は5本食べる。" },
   { id: "t_dog", tier: "track", icon: "🌭", name: "場外ホットドッグ",
+    where: "レース場・場外の屋台", time: ["朝","昼","夕暮れ"], scent: "鉄板でソーセージがはぜる音。ケチャップの、甘い匂い。",
     react: "ケチャップびゃーっ。立ち食いって、なんでこんなにうまいの？　これぞレース場の味……！",
     note: "歩きながら頬張る。マスタードは強気の全がけ。" },
 
@@ -299,6 +301,24 @@ const MEAL_PHOTOS = {
   s_karaage: "images/meals/s_karaage.webp"
 };
 MEALS.forEach(function (m) { if (!m.photo && MEAL_PHOTOS[m.id]) m.photo = MEAL_PHOTOS[m.id]; });
+
+// ★出会いの設計・グルマン段（2026-08-02）：この段は quiz（主役の食材あて）なので、屋台と同じ
+//   where／？？？カードの経路は使えない（mystery分岐は !m.quiz が前提）。かわりに**観光スポット**と
+//   結ぶ＝そのお店で写真を撮った流れで「ついでに一皿」と誘われる（その場の文脈でだけ出る）。
+//   値は KONRON_SPOTS のキー。品名・note がもともと店を指していたものを、そのまま結線しただけ。
+const MEAL_SPOTS = {
+  g_paella:  "ryoshimeshi",   // 漁師町のまかない食堂 ←→ 漁師町のまかないパエリア
+  g_pasta:   "backbistro",    // 看板のない路地裏ビストロ ←→ 路地裏のシンプル塩パスタ
+  g_steak:   "lavasteak",     // 溶岩焼きステーキ・竜窯 ←→ 火山焼きの溶岩ステーキ
+  g_pudding: "kissaten",      // 湾岸レトロ喫茶 みすと ←→ 港のかためプリン
+  g_ajillo:  "quaybar"        // 船着き場のバル ←→ 漁港のアヒージョ
+};
+MEALS.forEach(function (m) { if (MEAL_SPOTS[m.id]) m.spot = MEAL_SPOTS[m.id]; });
+// スポットid → その店の一皿（撮影後の誘いで使う逆引き）
+function mealAtSpot(spotId) {
+  for (var i = 0; i < MEALS.length; i++) if (MEALS[i].spot === spotId) return MEALS[i];
+  return null;
+}
 
 function mealData() {
   var p = state.player;

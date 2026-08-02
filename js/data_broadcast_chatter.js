@@ -90,6 +90,8 @@ const BC_CHATTER = [
   { id: "sumika_gourmet_05", cm: "sumika", topic: "gourmet", at: "mid", line: "焦げた鍋は重曹で煮ると落ちます。捨てるのはまだ早うございますよ。" },
   { id: "sumika_gourmet_06", cm: "sumika", topic: "gourmet", at: "mid", line: "冷めた握り飯は、軽く炙るだけで見違えるものでございます。" },
   { id: "sumika_gourmet_07", cm: "sumika", topic: "gourmet", at: "entry", line: "残った野菜は酢に漬けておきますと、翌週まで持ってくれますね。" },
+  // ★うわさ（2026-08-02・食の出会い）
+  { id: "sumika_gourmet_08", cm: "sumika", topic: "gourmet", at: "mid", line: "煮込みの屋台は日が傾いてからでございます。昼に伺っても、まだ火が入っておりません。" },
   { id: "sumika_life_01", cm: "sumika", topic: "life", at: "entry", line: "この時期は膝が痛みます。年を重ねるとは、そういうことですね。" },
   { id: "sumika_life_02", cm: "sumika", topic: "life", at: "mid", line: "うちの坊ちゃんが、また靴下に穴を開けてお戻りになりました。" },
   { id: "sumika_life_03", cm: "sumika", topic: "life", at: "mid", line: "繕い物は日の高いうちに。夜は針の穴が見えないのでございます。" },
@@ -145,6 +147,9 @@ const BC_CHATTER = [
   { id: "makura_gourmet_05", cm: "makura", topic: "gourmet", at: "mid", line: "汁物の屋台さ、器が熱すぎて毎回持てないの。学習しないアタシ。" },
   { id: "makura_gourmet_06", cm: "makura", topic: "gourmet", at: "entry", line: "食べ歩きは片手で持てるやつ一択。両手ふさがると詰むって。" },
   { id: "makura_gourmet_07", cm: "makura", topic: "gourmet", at: "mid", region: "ルミナ地域", line: "冷たい果実水、これ夏に飲むと生き返るから。ほんと生き返る。" },
+  // ★うわさ（2026-08-02・食の出会い）：場所×刻をそっと置く。告知はしない＝聞いた人だけが得をする。
+  { id: "makura_gourmet_08", cm: "makura", topic: "gourmet", at: "mid", line: "場外のラーメンさ、陽が落ちてからしか出ないの。昼に行って、二回フラれてる。" },
+  { id: "makura_gourmet_09", cm: "makura", topic: "gourmet", at: "entry", line: "屋台って、行く時間で品ぞろえ替わるんだよ。同じ店なのにさ、ずるくない？" },
   { id: "makura_life_01", cm: "makura", topic: "life", at: "mid", line: "昨日寝てないんだよね。え、待って、これ言うとこじゃないか。" },
   { id: "makura_life_02", cm: "makura", topic: "life", at: "mid", line: "最近ずっと同じ曲聴いてる。飽きるまでいくタイプなんだよ。" },
   { id: "makura_life_03", cm: "makura", topic: "life", at: "entry", line: "喉、朝から死んでるんだけど。声出すの仕事なのに終わってる。" },

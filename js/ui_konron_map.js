@@ -724,7 +724,39 @@ function _kmStartShoot(id) {
       if (typeof saveGame === "function") saveGame();
     } catch (e) {}
     _kmRenderPanel();                              // ☆表示を更新
+    _kmOfferDish(id);                              // 🍽️「ついでに一皿」（その店の料理と結ばれていれば）
   });
+}
+
+// ★出会いの設計・グルマン段（2026-08-02）：撮った流れで、その店の一皿に誘う。
+//   ここでしか出会えない＝メニューから選ぶのではなく、島を歩いた文脈で見つける。
+//   出さない条件（すべて fail-closed）：結線が無い／段が未開放／もう解いた／連続で出さない。
+function _kmOfferDish(spotId) {
+  try {
+    if (typeof mealAtSpot !== "function" || typeof showMealDetail !== "function") return;
+    const m = mealAtSpot(spotId); if (!m) return;
+    if (typeof mealTierUnlocked === "function" && !mealTierUnlocked(m.tier)) return;   // まだ開いていない段
+    if (typeof mealUnlocked === "function" && mealUnlocked(m)) return;                 // もう解いた品
+    const ov = document.createElement("div"); ov.className = "navpop-ov";
+    const box = document.createElement("div"); box.className = "navpop";
+    const close = () => ov.remove();
+    box.innerHTML =
+      '<h3 class="navpop-h">🍽️ ついでに一皿</h3>' +
+      '<p class="navpop-sub">カメラをしまっていたら、奥から声がかかった。<br>' +
+      "「写真より、こっちのほうが早いよ。……食べてく？」</p>" +
+      '<div class="km-dish"><span class="km-dish-ic">' + m.icon + "</span>" +
+      '<span class="km-dish-nm">' + m.name + "</span></div>";
+    const btns = document.createElement("div"); btns.className = "navpop-btns";
+    const go = document.createElement("button");
+    go.className = "navpop-ok"; go.textContent = "いただきます";
+    go.onclick = () => { close(); showMealDetail(m); };   // ★引数は品オブジェクト（idではない）
+    const no = document.createElement("button");
+    no.className = "navpop-cancel"; no.textContent = "また今度";
+    no.onclick = close;
+    btns.appendChild(go); btns.appendChild(no); box.appendChild(btns);
+    ov.appendChild(box); ov.onclick = e => { if (e.target === ov) close(); };
+    document.body.appendChild(ov);
+  } catch (e) {}
 }
 // エリアの写真スポット進捗（seen/total）。total=0のエリアは対象外。
 function _kmAreaProg(area) {
