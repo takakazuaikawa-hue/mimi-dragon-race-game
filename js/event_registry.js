@@ -219,20 +219,44 @@ registerEvent({
   condition: { once: true,
     test: () => (typeof mimiDebtLeft === "function") && mimiDebtLeft() > 0 },
   actions: [
+    // ★第2便決裁「3万は10億を持つ人間の借金として軽い」→ 総額300万・サケ297万立替の構図。
     { type: "dialogue", speaker: "sake_udada",
-      text: "ところでミミ。お前の船賃と宿代、村に借りがある。——しめて3万だ。" },
+      text: "ところでミミ。お前の船賃、宿代、装備の立替——ぜんぶで300万ある。" },
     { type: "dialogue", speaker: "mimi", expr: "panic",
-      text: "さ、さんまん！？　わたし、着いた日から借金まみれ……！" },
+      text: "さんびゃくまん！？！？　け、桁がおかしいですよ師匠！！　わたし、着いた日から大借金……！" },
     { type: "dialogue", speaker: "sake_udada",
-      // ★新規開始でも到達資産≈3000があるため、表示は最初から「−2.7万」ほど。
+      text: "案ずるな。297万はおれが立て替えた。……竜王女の顔も、たまには役に立つ。" },
+    { type: "dialogue", speaker: "sake_udada",
+      // ★新規開始でも到達資産≈3000があるため、自力分の表示は最初から「−2.7万」ほど。
       //   ズレを謝るのではなく教材にする＝「走った分がもう返っている」で仕組みが一言で伝わる。
       text: function () {
         const left = (typeof mimiDebtLeft === "function") ? mimiDebtLeft() : 30000;
-        return "慌てるな。帳場を見ろ——初レースぶんで、もう残り" + fmtCoins(left) + "まで返っとる。走って名を上げろ。勝ち星も、評判も、覚えた竜も、ぜんぶ返済のうちだ。" ;
+        return "お前の自力分は3万。帳場を見ろ——初レースぶんで、もう残り" + fmtCoins(left) + "まで返っとる。走って名を上げろ。勝ち星も、評判も、覚えた竜も、ぜんぶ返済のうちだ。";
       } },
     { type: "dialogue", speaker: "mimi", expr: "happy",
-      text: "名前で返す借金……！　よーし、走って、覚えて、返しますっ！" }
+      text: "3万……ううん、297万も……！　よし、走って、覚えて、ぜんぶ返しますっ！" }
   ]
+});
+
+// ★サケへの恩返し（2026-08-02）：自分の資産が借金の総額300万を超えた日、立替分を返しに行く。
+//   コインは動かさない（表示・物語専用）＝サケが受け取らない形で決着する中盤のビート。
+registerEvent({
+  id: "sake_repay",
+  hook: "afterRaceResult",
+  priority: 7,
+  condition: { once: true, requiredFlag: "assetsRevealed",
+    test: () => (typeof MIMI_DEBT_TOTAL !== "undefined") && assetsPeak(state) >= MIMI_DEBT_TOTAL },
+  actions: [
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "師匠！　わたしの資産、300万を超えました。……立て替えの297万、お返しします！" },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "——帳場はとっくに黒字だ。お前の走りが島に客を呼んだ。その分でな。" },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "その金は竜と飯に使え。借りを気にする暇があったら、次を勝て。" },
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "っ……はい！　ぜんぶ、走りで返します！" }
+  ],
+  effects: { setFlags: { sakeDebtSettled: true } }
 });
 
 registerEvent({

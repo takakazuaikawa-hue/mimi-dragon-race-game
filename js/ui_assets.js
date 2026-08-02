@@ -94,9 +94,9 @@ function renderAssets() {
       ? `<div class="lr-room-info"><div class="lr-room-lbl">資産</div>` +
           `<div class="lr-room-total">${fmtCoins(total)}</div>` +
           `<div class="lr-room-p">内訳を見る ▸</div></div>`
-      : `<div class="lr-room-info"><div class="lr-room-lbl">💸 のこり借金</div>` +
+      : `<div class="lr-room-info"><div class="lr-room-lbl">💸 のこり借金（自力分）</div>` +
           `<div class="lr-room-total lr-debt">−${fmtCoins((typeof mimiDebtLeft === "function") ? mimiDebtLeft() : 0)}</div>` +
-          `<div class="lr-room-p">名を上げて返す（勝ち星・評判・記録）</div></div>`);
+          `<div class="lr-room-p">名を上げて返す ／ サケ立替 297万</div></div>`);
   app.appendChild(hero);
   // 旧「暮らしP ◇n」の枠を、資産の内訳（計算式）への入口に置き換え。
   // 残高が出るのに減らない指標を見せるより、「何がいくらで合計いくらか」を開ける方が役に立つ。
