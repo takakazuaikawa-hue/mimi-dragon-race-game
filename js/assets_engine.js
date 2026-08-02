@@ -150,17 +150,27 @@ function assetsPeak(st) {
   return Math.max(p.assetsPeak || 0, p.totalAssets || 0);
 }
 
+// ★ミミの借金（2026-08-02・ユーザー決裁「最初は借金がかさんでいた主人公が、返し終えると
+//   3話で資産形成に入る方が物語に合う」）。**完全に表示上の物語**＝内部の資産計算・関門・
+//   レース数値には一切影響しない。
+//   額は3万＝第3話の関門（総資産3万）と同額。つまり「到達最高資産が3万になる」ことを
+//   序盤は「借金を返し終える」として見せる。名声・記録・稼ぎ＝村への信用＝返済、という設定。
+const MIMI_DEBT0 = 30000;
+function mimiDebtLeft() {
+  try { return Math.max(0, MIMI_DEBT0 - assetsPeak(state)); } catch (e) { return 0; }
+}
+
 // ★資産という「概念」が開示済みか（2026-08-02・ASSET_ONBOARDING_REDESIGN §3）。
-//   第3話後半のイベントB（ミズ「あなた、もう値がついてるのよ」）で assetsRevealed が立つ。
-//   フラグ単独に頼らず開示条件そのもの（第3話既読 ∧ 2勝 or 到達3万）でも開く＝
-//   イベントの発火タイミング待ちでUIが詰まらない。エラー時は**開く**（fail-open）＝
-//   進行に必要な画面を計算事故で没収しない。内部の資産計算・関門判定には一切影響しない。
+//   借金決裁により条件は**完済（到達3万）のみ**に一本化＝「返し終えた瞬間に、
+//   自分に値がついていたと知る」が一本の物語になる（旧: 2勝でも開いたが、借金が
+//   残ったまま「値がついてる」と言われる矛盾が生まれるため撤去）。
+//   フラグ単独に頼らず条件そのものでも開く＝イベント待ちでUIが詰まらない。
+//   エラー時は**開く**（fail-open）＝進行に必要な画面を計算事故で没収しない。
 function assetsConceptOpen() {
   try {
     if (typeof getStoryFlag === "function" && getStoryFlag("assetsRevealed")) return true;
-    const p = (state && state.player) || {};
     return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_3"))
-        && (((p.wins || 0) >= 2) || assetsPeak(state) >= 30000);
+        && assetsPeak(state) >= MIMI_DEBT0;
   } catch (e) { return true; }
 }
 

@@ -86,22 +86,23 @@ function renderAssets() {
     //   未納品の衣装があるので onerror で既定の1枚に落とす（欠けても壊さない）。
     `<img class="lr-room-mimi" src="${_lrRoomMimiSrc()}" alt="ミミ" decoding="async"` +
       ` onerror="this.onerror=null;this.src='images/cast/mini/mimi_loading1_mini.png'">` +
-    // ★段階開示（2026-08-02・ASSET_ONBOARDING_REDESIGN §3）：
-    //   資産の開示前は「資産 4.12万」を見せない（未紹介の合成数値＝初見の違和感の根・ユーザー指摘）。
-    //   第3話（暮らし開放）〜開示前＝「暮らしの値段」として生活資産だけ。それ以前＝金額行なし。
+    // ★段階開示（2026-08-02・ASSET_ONBOARDING_REDESIGN §3＋借金決裁）：
+    //   完済前＝「💸のこり借金」のカウントダウン（内部で積む資産を、返済の物語として見せる。
+    //   序盤に意味の分からない合成数値を見せず、しかも数字に目標が宿る）。
+    //   完済後＝従来どおり「資産＋内訳を見る」。表示だけ＝計算・関門は不変。
     ((typeof assetsConceptOpen !== "function") || assetsConceptOpen()
       ? `<div class="lr-room-info"><div class="lr-room-lbl">資産</div>` +
           `<div class="lr-room-total">${fmtCoins(total)}</div>` +
           `<div class="lr-room-p">内訳を見る ▸</div></div>`
-      : (_ch3unlocked
-        ? `<div class="lr-room-info"><div class="lr-room-lbl">暮らしの値段</div>` +
-            `<div class="lr-room-total">${fmtCoins((a && a.livingValue) || 0)}</div></div>`
-        : ""));
+      : `<div class="lr-room-info"><div class="lr-room-lbl">💸 のこり借金</div>` +
+          `<div class="lr-room-total lr-debt">−${fmtCoins((typeof mimiDebtLeft === "function") ? mimiDebtLeft() : 0)}</div>` +
+          `<div class="lr-room-p">名を上げて返す（勝ち星・評判・記録）</div></div>`);
   app.appendChild(hero);
   // 旧「暮らしP ◇n」の枠を、資産の内訳（計算式）への入口に置き換え。
   // 残高が出るのに減らない指標を見せるより、「何がいくらで合計いくらか」を開ける方が役に立つ。
   const _roomPEl = hero.querySelector(".lr-room-p");
-  if (_roomPEl) {
+  // ★完済前の .lr-room-p は「名を上げて返す」の説明文＝内訳リンクにしない（資産のリーク防止）
+  if (_roomPEl && ((typeof assetsConceptOpen !== "function") || assetsConceptOpen())) {
     _roomPEl.style.cursor = "pointer";
     _roomPEl.onclick = () => { if (typeof showAssetBreakdown === "function") showAssetBreakdown(); };
   }

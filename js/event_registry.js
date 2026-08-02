@@ -209,16 +209,44 @@ function _assetsRevealBrag(voice) {
     return bits.join("。") + tail;
   } catch (e) { return "走って、覚えて、撮ってきた" + tail; }
 }
+// ★借金の紹介（2026-08-02・ユーザー決裁「最初は借金がかさんでいた主人公」）。
+//   初レースの結果後に一度だけ、サケが「村への借り＝3万」を告げる＝序盤の目標が立つ。
+//   額は MIMI_DEBT0（第3話の関門と同額）。表示上の物語＝数値・関門は不変。
+registerEvent({
+  id: "debt_intro",
+  hook: "afterRaceResult",
+  priority: 8,
+  condition: { once: true,
+    test: () => (typeof mimiDebtLeft === "function") && mimiDebtLeft() > 0 },
+  actions: [
+    { type: "dialogue", speaker: "sake_udada",
+      text: "ところでミミ。お前の船賃と宿代、村に借りがある。——しめて3万だ。" },
+    { type: "dialogue", speaker: "mimi", expr: "panic",
+      text: "さ、さんまん！？　わたし、着いた日から借金まみれ……！" },
+    { type: "dialogue", speaker: "sake_udada",
+      // ★新規開始でも到達資産≈3000があるため、表示は最初から「−2.7万」ほど。
+      //   ズレを謝るのではなく教材にする＝「走った分がもう返っている」で仕組みが一言で伝わる。
+      text: function () {
+        const left = (typeof mimiDebtLeft === "function") ? mimiDebtLeft() : 30000;
+        return "慌てるな。帳場を見ろ——初レースぶんで、もう残り" + fmtCoins(left) + "まで返っとる。走って名を上げろ。勝ち星も、評判も、覚えた竜も、ぜんぶ返済のうちだ。" ;
+      } },
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "名前で返す借金……！　よーし、走って、覚えて、返しますっ！" }
+  ]
+});
+
 registerEvent({
   id: "assets_reveal_mizu",
   hook: "afterRaceResult",
   priority: 9,
   condition: { once: true, requiredFlag: "_chapter_intro_3",
     test: () => !getStoryFlag("assetsRevealed")
-             && (((state.player.wins || 0) >= 2) || assetsPeak(state) >= 30000)
+             && (typeof mimiDebtLeft !== "function" || mimiDebtLeft() <= 0)
+             && assetsPeak(state) >= 30000
              && (typeof advisorMet === "function") && advisorMet("mizu") },
   actions: [
-    { type: "dialogue", speaker: "mizu", text: "ねえミミ。気づいてないの？　あなた——もう、値がついてるのよ。" },
+    { type: "dialogue", speaker: "mizu", text: "ミミ、聞いた？　村への借り、ぜんぶ消えたそうよ。——完済、おめでとう。" },
+    { type: "dialogue", speaker: "mizu", text: "それでね。気づいてないの？　あなた——もう、値がついてるのよ。" },
     { type: "dialogue", speaker: "mimi", expr: "surprised", text: "ね、値段…！？　わたしにですか！？" },
     { type: "dialogue", speaker: "mizu", text: () => _assetsRevealBrag("mizu") },
     { type: "dialogue", speaker: "mizu", text: "暮らしも、評判も、記録も、ぜんぶ足したものを『資産』と呼ぶの。物語はこの数字で先へ進むわ。……ふふ、まだ序の口だけどね。" },
@@ -234,10 +262,12 @@ registerEvent({
   priority: 8,
   condition: { once: true, requiredFlag: "_chapter_intro_3",
     test: () => !getStoryFlag("assetsRevealed")
-             && (((state.player.wins || 0) >= 2) || assetsPeak(state) >= 30000)
+             && (typeof mimiDebtLeft !== "function" || mimiDebtLeft() <= 0)
+             && assetsPeak(state) >= 30000
              && !((typeof advisorMet === "function") && advisorMet("mizu")) },
   actions: [
-    { type: "dialogue", speaker: "sake_udada", text: "ミミ。お前、自分に値がついてるのを知ってるか。" },
+    { type: "dialogue", speaker: "sake_udada", text: "ミミ。帳場を見た。村への借り、今日でぜんぶ消えたぞ。——完済だ。よくやった。" },
+    { type: "dialogue", speaker: "sake_udada", text: "それでな。お前、自分に値がついてるのを知ってるか。" },
     { type: "dialogue", speaker: "mimi", expr: "surprised", text: "え、値段……わたしにですか！？" },
     { type: "dialogue", speaker: "sake_udada", text: () => _assetsRevealBrag("sake") },
     { type: "dialogue", speaker: "sake_udada", text: "暮らし、評判、記録。積んだもの全部の値打ちを『資産』と呼ぶ。物語はこの数字で先へ進むぞ。" },

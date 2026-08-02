@@ -8136,6 +8136,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .lr-room-lbl { font-size: 10px; letter-spacing: .04em; color: rgba(255,255,255,.72); }
 .lr-room-total { font-size: 27px; font-weight: 800; color: #fff; line-height: 1.05;
   font-variant-numeric: tabular-nums; text-shadow: 0 2px 7px rgba(0,0,0,.55); }
+/* ★のこり借金（完済前だけの表示・2026-08-02 借金決裁）＝赤系で「負っている」ことを一目に */
+.lr-room-total.lr-debt { color: #ff9d8a; }
 .lr-room-p { font-size: 11px; font-weight: 700; color: var(--gold-bright); margin-top: 1px; }
 /* 引っ越し：部屋ヒーロー直下の主アクション（コインで一段上の部屋へ）。 */
 .lr-move { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; cursor: pointer;
