@@ -206,7 +206,8 @@ function checkDailyLogin() {
   const yld = Math.floor(Math.max(0, state.player.totalAssets || 0) * (0.001 + 0.001 * tier));   // 🏦 資産の実り
   const base = Math.max(200, royalty + yld);
   const bonus = Math.floor(base * LOGIN_DAY_MULT[cycleDay - 1]);
-  return { today, streak, cycleDay, bonus, royalty, yield: yld, base, fill, tier };
+  // ★followers は表示の内訳（📡インプレッション）を割るためだけに持ち回る。式・受取額には無関係。
+  return { today, streak, cycleDay, bonus, royalty, yield: yld, base, fill, tier, followers: fol };
 }
 function claimDailyLogin(info) {
   if (!info) return;

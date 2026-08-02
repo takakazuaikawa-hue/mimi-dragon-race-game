@@ -259,12 +259,59 @@ registerEvent({
   effects: { setFlags: { sakeDebtSettled: true } }
 });
 
+// A（スミカの家計簿）が済んだか＝B（資産の開示）の露払い。
+// ★実測で分かったこと：effects を持つイベントは「1フック1VN」の予算を素通りして必ず発火し、
+//   セリフは同じ会話に**連結**される。だからフラグを見るだけでは、AとBが同じレースで
+//   ひと続きに喋ってしまう（第3話の前半と後半という段が消える）。→ 1レース分あける。
+function _assetsIntroDone() {
+  try {
+    if (!getStoryFlag("assetsIntroSeen")) {
+      return !((typeof advisorMet === "function") && advisorMet("sumika"));   // fail-open：Aが起きえない筋ではBを止めない
+    }
+    var p = state.player;
+    if (p.assetsIntroRace == null) { p.assetsIntroRace = p.completedRaces || 0; return false; }   // いま同じレースで立った
+    return (p.completedRaces || 0) > p.assetsIntroRace;
+  } catch (e) { return true; }
+}
+
+// ★イベントA（2026-08-02・ASSET_ONBOARDING_REDESIGN §4-A）：第3話前半＝暮らしの開放と同時に、
+//   スミカが「暮らしの値段」という語を初出させる（ヒーローの表示語と一致させるため、ここが唯一の初出）。
+//   まだ「資産」の語は出さない＝開示はイベントB（assets_reveal_*）の役目。順番を混ぜない。
+registerEvent({
+  id: "assets_intro_sumika",
+  hook: "afterRaceResult",
+  priority: 10,                                   // Bより先に出る（10 > 9/8）
+  condition: { once: true, requiredFlag: "_chapter_intro_3",
+    test: () => !getStoryFlag("assetsRevealed")
+             && (typeof advisorMet === "function") && advisorMet("sumika") },
+  actions: [
+    { type: "dialogue", speaker: "sumika",
+      text: "ミミ様。差し出がましいのですが……ミミ様の暮らし、帳面につけてみました。" },
+    { type: "dialogue", speaker: "mimi", expr: "surprised",
+      text: "ちょ、帳面！？　わ、わたしの生活、そんなに見られてたんですか……！" },
+    { type: "dialogue", speaker: "sumika",
+      text: "お部屋、お召し物、湯呑みひとつまで。——ぜんぶ合わせて『暮らしの値段』でございます。" },
+    { type: "dialogue", speaker: "mimi",
+      text: "わたしの生活に、値段……。……あの、正直に聞きます。しょぼいですか？" },
+    { type: "dialogue", speaker: "sumika",
+      text: "粗末とは言わせません。ミミ様は、床で寝ておられた頃から、ちゃんとここまで積まれた。" },
+    { type: "dialogue", speaker: "sumika",
+      text: "帳面は、増えたものを数えるためのものです。……ここから、増やしてまいりましょう。" },
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "……はいっ！　まずは湯呑みを、もう一個！" }
+  ],
+  // ★このフラグが B（assets_reveal_*）の露払いになる。実測でA・Bが同じレースに乗ると、
+  //   1フック1VNの予算でBの台詞と「島の経済が開放」の報せだけが飲まれていた（フラグは立つ）。
+  effects: { setFlags: { assetsIntroSeen: true } }
+});
+
 registerEvent({
   id: "assets_reveal_mizu",
   hook: "afterRaceResult",
   priority: 9,
   condition: { once: true, requiredFlag: "_chapter_intro_3",
     test: () => !getStoryFlag("assetsRevealed")
+             && _assetsIntroDone()                                   // ★A（スミカ）を先に済ませる
              && (typeof mimiDebtLeft !== "function" || mimiDebtLeft() <= 0)
              && assetsPeak(state) >= 30000
              && (typeof advisorMet === "function") && advisorMet("mizu") },
@@ -286,6 +333,7 @@ registerEvent({
   priority: 8,
   condition: { once: true, requiredFlag: "_chapter_intro_3",
     test: () => !getStoryFlag("assetsRevealed")
+             && _assetsIntroDone()                                   // ★A（スミカ）を先に済ませる
              && (typeof mimiDebtLeft !== "function" || mimiDebtLeft() <= 0)
              && assetsPeak(state) >= 30000
              && !((typeof advisorMet === "function") && advisorMet("mizu")) },
@@ -298,6 +346,40 @@ registerEvent({
     { type: "system_message", text: "🏦 「島の経済」が開放された！（暮らし → 島の経済）　あなたの資産の内訳が見られます。" }
   ],
   effects: { setFlags: { assetsRevealed: true } }
+});
+
+// ★イベントC（2026-08-02・ASSET_ONBOARDING_REDESIGN §4-C）：第4話＝スマホを買って配信を始めた後。
+//   毎朝の受取に「📡 インプレッション」という現代の語が加わる。★式は不変＝印税の内訳を
+//   「読みに来た分」と「配信が届いた分」に**表示上だけ**分ける（合計は従来と1コインも変わらない）。
+registerEvent({
+  id: "impression_intro_makura",
+  hook: "afterRaceResult",
+  priority: 6,
+  // ★スマホを買ったその走に重ねない（購入の場面と講座がひと続きの会話になってしまう）。
+  //   既存の作法どおり unlockDelayRace で1走あける。
+  condition: { once: true, requiredFlag: "phoneBought",
+    test: () => {
+      var c = (typeof advisorMet === "function") && advisorMet("makura");
+      return (typeof unlockDelayRace === "function") ? unlockDelayRace("impression_intro", c, 1) : c;
+    } },
+  actions: [
+    { type: "dialogue", speaker: "makura",
+      text: "ミミさん、毎朝入ってるあのお金、なんだか知ってます？　半分は印税。紀行の読者が、記録を読みに来てる分。" },
+    { type: "dialogue", speaker: "mimi",
+      text: "はい、それは聞きました！　……半分？　じゃあ、残りは？" },
+    { type: "dialogue", speaker: "makura",
+      text: "インプレッション。配信が“届いた”数のことです。スマホ持った時点で、ミミさんはもう届く側なんですよ。" },
+    { type: "dialogue", speaker: "mimi", expr: "surprised",
+      text: "とど、届いてる……！？　わたし、屋台の湯気しか撮ってないですけど！？" },
+    { type: "dialogue", speaker: "makura",
+      text: "それがいいんですよ。読者を増やすのは走りと勝ち星。届く中身を厚くするのは、図鑑と写真と食べ歩き。" },
+    { type: "dialogue", speaker: "makura",
+      text: "どっちも伸びると、掛け算で入りが増える。……ミミさん、両方やってるでしょ。だから増えてるんです。" },
+    { type: "dialogue", speaker: "mimi", expr: "happy",
+      text: "食べ歩きが、仕事……！？　わたし、天職を見つけたかもしれません！" },
+    { type: "system_message", text: "📡 毎朝の受取に「インプレッション」の行が加わった！（受け取る額は今までと同じ／内訳の呼び名が増えました）" }
+  ],
+  effects: { setFlags: { impressionKnown: true } }
 });
 
 registerEvent({

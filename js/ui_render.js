@@ -526,7 +526,7 @@ function showMoneyMap() {
     <div class="mm-row"><span class="mm-ic">🏦</span><div><b>資産</b><small>いま持っているものの合計＝${parts}。<u>使えば減り、島に投資すればコインが施設に変わるだけで合計は保たれる</u>。内訳はいつでも開けます。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🔓</span><div><b>解放は「これまでの最高額」で判定</b><small>お話やお店が開く条件だけは、<u>これまでに届いた一番高い資産</u>で見ます。だから資産を使っても、読めた話が読めなくなることはありません。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🏅</span><div><b>ランク</b><small>出走と勝利で昇格。新しいレースが解放される。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">💛</span><div><b>救済</b><small>コインが0でも大丈夫。村Lv1で <b>${fmtCoins(r1)}</b> から始まり、村・暮らし・名声が育つほど増えます。借金ではありません。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">💛</span><div><b>救済</b><small>コインが0でも大丈夫。暮らしレベル1で <b>${fmtCoins(r1)}</b> から始まり、暮らしと名声が育つほど増えます。借金ではありません。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🗼</span><div><b>モールの持ちもの</b><small>お買い物ダンジョンの中だけで使う <b>🪙G</b>・<b>🎟️チケット</b>・<b>✨評判</b>。<u>衣装の購入はコイン</u>で、Gでは買えません。</small></div></div>
     <div class="mm-row"><span class="mm-ic">💗</span><div><b>視聴者・いいね</b><small>配信のにぎわい（飾り）。勝負には影響しない。</small></div></div>`);
 }
@@ -872,7 +872,7 @@ function renderVillage() {
   hero.innerHTML =
     `<div class="vil-hero-top"><div class="vil-hero-id"><div class="vil-name">🏘️ ${v.name}</div>` +
       `<div class="vil-sub">ミミと竜たちが暮らす、再起の拠点。</div></div>` +
-      `<div class="vil-lv"><span>村Lv</span><b>${v.level}</b></div></div>`;
+      `<div class="vil-lv"><span>暮らしLv</span><b>${v.level}</b></div></div>`;
   app.appendChild(hero);
 
   // 村の効果（救済・賭金倍率・解放竜）をタイルで
@@ -902,7 +902,7 @@ function renderVillage() {
   const road = el("div", "card vil-road");
   if (v.level >= 10) {
     road.innerHTML =
-      `<div class="vil-road-top"><b>村Lv 10</b><span>ここまで</span></div>` +
+      `<div class="vil-road-top"><b>暮らしLv 10</b><span>ここまで</span></div>` +
       `<div class="vil-road-bar"><i style="width:100%"></i></div>` +
       `<div class="vil-road-note">村はもう満ちている。あとは、走るだけ。</div>`;
   } else {
@@ -1516,9 +1516,9 @@ function renderHelp() {
   const _rMax = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[10]) ? RESCUE_COINS[10] : 0;
   const _rNow = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, state.player.rank) : 0;
   app.appendChild(section("rescue", "救済システム", [
-    `コインが0になっても安心。サケ・ウダダが村の予備コインを渡してくれます（村Lv1で <b>${fmtCoins(_r1)}</b>` +
-      (_rMax ? `、村Lv10まで育てば <b>${fmtCoins(_rMax)}</b>` : "") + `）。`,
-    `村・暮らし・名声が育つほど上乗せされます。<b>いまのあなたの救済見込みは ${fmtCoins(_rNow)}</b>。`,
+    `コインが0になっても安心。サケ・ウダダが島の予備コインを渡してくれます（暮らしレベル1で <b>${fmtCoins(_r1)}</b>` +
+      (_rMax ? `、暮らしレベル10まで育てば <b>${fmtCoins(_rMax)}</b>` : "") + `）。`,
+    `暮らしと名声が育つほど上乗せされます。<b>いまのあなたの救済見込みは ${fmtCoins(_rNow)}</b>。`,
     "借金ではありません。小さく賭けて立て直しましょう。"
   ]));
 
@@ -4156,9 +4156,19 @@ function showLoginBonus(info) {
   // ★資産の行は概念の開示後だけ（2026-08-02・ASSET_ONBOARDING_REDESIGN §3）。
   //   開示前のプレイヤーに「総資産」という未紹介の語を毎朝見せない。式・受取額は不変。
   const _assetsOpen = (typeof assetsConceptOpen === "function") ? assetsConceptOpen() : true;
+  // ★📡 インプレッション（2026-08-02・§4-C）：第4話でマクラの講座を受けた後だけ、印税の行が
+  //   「読みに来た分」と「配信が届いた分」の2行に割れる。★式は不変＝引き算で分けるので
+  //   合計は1コインもずれない（royalty そのものには一切手を触れていない）。
+  const _impOpen = (typeof getStoryFlag === "function") && getStoryFlag("impressionKnown");
+  const _base = Math.floor((info.followers || 0) * 0.5);
+  const _read = Math.min(info.royalty || 0, Math.max(0, _base));
+  const _imp = (info.royalty || 0) - _read;
+  const royaltyHtml = (_impOpen && _imp > 0)
+    ? `<div class="lb-part"><span>📖 紀行の印税</span><small>記録を読みに来た読者</small><b>${fmtCoins(_read)}</b></div>` +
+      `<div class="lb-part"><span>📡 インプレッション</span><small>配信が届いた分 — 記録の充実 ${Math.round((info.fill || 0) * 100)}%</small><b>${fmtCoins(_imp)}</b></div>`
+    : `<div class="lb-part"><span>📖 紀行の印税</span><small>読者 × 記録の充実 ${Math.round((info.fill || 0) * 100)}%</small><b>${fmtCoins(info.royalty)}</b></div>`;
   const partsHtml = hasParts
-    ? `<div class="lb-parts">` +
-        `<div class="lb-part"><span>📖 紀行の印税</span><small>読者 × 記録の充実 ${Math.round((info.fill || 0) * 100)}%</small><b>${fmtCoins(info.royalty)}</b></div>` +
+    ? `<div class="lb-parts">` + royaltyHtml +
         (_assetsOpen
           ? `<div class="lb-part"><span>🏦 資産の実り</span><small>総資産と島づくり投資が働いた分</small><b>${fmtCoins(info.yield)}</b></div>`
           : "") +
