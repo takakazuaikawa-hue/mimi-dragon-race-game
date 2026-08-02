@@ -1,0 +1,139 @@
+# 🚀 Opus 5 続行指示書（2026-08-02・Fable 5作成）— 紀行記事エンジン／食48品展開／資産M2-M4
+
+> **方向はすべて決裁済み**。正本＝`docs/KIKO_MEALS_APPEAL_DIRECTIVE.md`（紀行/食）・
+> `docs/ASSET_ONBOARDING_REDESIGN.md`（資産/借金/ツリー）・状態＝`docs/STATUS_LEDGER.md`。
+> 本書は**実装手順と罠**だけを書く。設計の再議論はしない。
+
+---
+
+## §0 絶対規律（この repo 特有の罠・全バッチ共通）
+
+1. **レースの着順・オッズ・配当・FinalPower は不可侵**。全作業は表示/コレクション/会話のメタ。
+2. **デプロイ＝origin/main を親にした git plumbing**。ローカル HEAD は `codex/title-logo-wiring`
+   （mainより109コミット古い）**かつ core.autocrlf=true のため `git diff origin/main` は
+   無関係な127ファイルを差分と誤報する**。手順：
+   ```
+   変更ファイルの実差分確認: git hash-object <f> と git rev-parse origin/main:<f> を比較
+   GIT_INDEX_FILE=$(mktemp -u) && git read-tree origin/main
+   → 自分が触ったファイルだけ git update-index --add --cacheinfo 100644,$(git hash-object -w <f>),<f>
+   → write-tree → commit-tree -p origin/main → push <sha>:refs/heads/main と :refs/heads/flying-pixel-dragons
+   ```
+   （--add を忘れると新規ファイルで "missing --add option" で落ちる）
+3. **?v= バンプは perl のみ**（PowerShell は文字化けする）：`perl -pi -e 's/\?v=旧/?v=新/g' index.html`
+4. **検証後は必ず `resetGame()`**（テスト汚染をセーブに残さない）。`window._kmIslandNow` の
+   差し替えは delete で消えない＝**リロードで戻す**。
+5. 実機検証は preview `mimi-dragon`（port 8766）。Browser ペイン非表示中は rAF が止まり
+   スクショが古いまま返ることがある→**DOM実測（getComputedStyle/rect/elementFromPoint）を正**とし、
+   「textContent にある」ではなく「**見えている**」を確認する（z-index/opacity/隠れの前科あり）。
+6. 台詞の規律：`**強調**` はVNで装飾されず**そのまま出る**＝使用禁止。台詞 `text` は
+   `function(ctx)` 可（実数の差し込みに使う）。話者門番＝`speakerAllowed`/`advisorMet` は
+   fail-closed。1フック1VN（vnBudget）。キャラの声表は `event_registry.js` 冒頭ブロック厳守。
+   **キリル文字・英単語の混入前科あり**→ 仕上げに `perl -ne 'print if /[\x{0400}-\x{04FF}]/'` でスキャン。
+7. **計器禁止**：進捗バー/残り％/先月比/目標カウンタを1つでも足したら失敗（ユーザー全却下の前科）。
+8. 機械検証は `node --check` → `tools/check.mjs` → 各バッチの専用チェック（下記）。
+9. 完了と言う前に**自分で触る**。到達可能性や textContent は「遊べる」の証明にならない。
+
+---
+
+## §1 バッチ1：紀行の記事エンジン（Part A・決裁済み設計の実装）
+
+**芯**：実プレイの出来事から「読める記事」を生成。**出来事駆動＋下限保証**・実時間に非依存。
+
+### 実装
+1. **素材キュー** `state.player.kikoMat = []`（要素 `{ t: 種別, d: データ, race: 通算レース数 }`・最大20で古いものから捨てる）。
+   ヘルパー `kikoMatPush(t, d)`（try-catch・保存は saveGame 任せ）を新設し、以下から呼ぶ：
+   - 結果画面の settle 後（ui_render）：`win`（勝利・レース名/オッズ）・`bigwin`（配当10倍超）・
+     `lose3`（missRun3以上）
+   - `eatMeal`（meals.js）：初食のみ `newMeal`（品名/where）
+   - 撮影成功（ui_konron_map の photoStars 更新点）：☆2以上 `photo`（スポット名/☆）
+   - `sake_repay`・`assets_reveal_*` 発火時：`story`
+2. **生成** `js/kiko_articles.js`（新設・classic script・index.html へ `<script>` 追記＝開閉数の検査に注意）：
+   - `kikoMaybeWrite()` を renderHome 到着時に呼ぶ（progression の cut-in と競合しない＝
+     モーダルを出さない。紀行タブに未読ドットを立てるだけ）
+   - 条件：素材2件以上 or 強素材（win/bigwin/story）1件 → 1本生成。
+     素材ゼロでも `(通算レース数 - 最終記事のレース数) >= 3` なら**日常回**を1本（下限保証）
+   - 記事 `{ id, cut: 切り口id, headline, paras: [2〜3段落], photo?, mats }` を
+     `state.player.kikoArts`（先頭挿入・**最大5本**）へ。**殿堂** `kikoHof`（bigwin 等のレア記事のみ・上限なし）
+3. **切り口テンプレ8本**（データ駆動・`KIKO_CUTS` 台帳）：
+   勝利回／大穴バズ回（殿堂行き）／敗戦記（負けた日ほど面白い）／食レポ回（newMeal素材）／
+   絶景回（photo素材）／散歩回／連敗しみじみ回／日常回。
+   各 `{ id, cond(mats), headline(mats), paras(mats) }`。**文体＝ミミ**（短文の畳みかけ→一拍→飯に着地。
+   実データを必ず差し込む：レース名・実オッズ・品名・スポット名。写真素材があれば記事に載せる）
+4. **紀行画面**（ui_kiko.js）：ヘッダー直下に「✍️ 最新記事」カード（全文表示・写真つき）、
+   過去記事はタップで開閉、殿堂セクション。記事末尾に読者コメント2〜3件
+   （既存SNSのファン名資産を流用。**未登場キャラの名前は出さない**＝門番確認）
+5. **理由つき前回比**（M4）：紀行を開いた時、前回訪問時のフォロワー（`kikoLastFol` に保存）との差が
+   正なら「👀 読者 +N人（勝利 +40×n／完走 +15×m …）」を1行だけ。式＝goalFollowers の項
+   （800+名声×2+完走×15+勝利×40）から逆算できる分だけ帰属表示。グラフ・目標は置かない。
+
+### 受け入れ
+- 新規データ→3レース走る→日常回1本／勝利→勝利回／初食→食レポ回（実機で3種を確認）
+- 記事本文に実データ（レース名・オッズ・品名）が入っている・？？？や undefined が出ない
+- kikoArts が5本で回転・殿堂に bigwin 記事が残る・resetGame で消える
+
+---
+
+## §2 バッチ2：食の48品展開（Part B・試作10品の拡張）
+
+**現物**＝`js/meals.js` の `where`（噂）/`time`（kwNow語彙6種のみ）/`scent`（気配1行）。
+屋台側＝`js/scene_konron.js` の `kwStall(title, ids)`（ids はハードコード配列）。
+
+### 実装
+1. **track残りの配置**：`t_ramen`（夜の場外＝新規に場外屋台の ids へ追加 or 夜専用）
+   `t_dog`（レース場・昼）等、track 全品に where/time/scent を付与し、既存5屋台の ids へ追記。
+2. **gourman段（5品）**：観光スポットのグルメ写真（`kirimina_gourmet` 等の `_gourmet.webp` がある
+   スポット）と結線＝該当スポットの**撮影後に「ついでに一皿」導線**（`_kmStartShoot` 完了 onDone に
+   showMealDetail への小さな誘い・その場の文脈でのみ）。where は「霧港の食堂」等スポット名で。
+3. **home段・shinbo段は不変**（home＝whereなしでいつでも／shinbo＝quiz・出会い対象外。
+   ★quiz品に where を付けないこと＝mystery分岐は !m.quiz 前提）。
+4. **うわさの散布（余白3割の側・告知しない）**：
+   - 島歩きNPCの `linesByTime` に2〜3本（「夜の場外の煮込み、あれはうまい」）
+   - `BC_CHATTER` の gourmet topic に2〜3本（既存の作法どおり1行ずつ・cm はスミカ/ウンメ）
+   - 紀行の食レポ回テンプレに「まだ出会っていない一皿の噂」を1行（§1と接続）
+5. **機械検査 `tools/check_meals.mjs`（新設）**：MEALS を走査し
+   ①where付き eat品が、いずれかの kwStall の ids（scene_konron を文字列走査）または
+   スポット結線に**必ず含まれる**＝出会えない品ゼロ
+   ②time の語彙が kwNow の6種（未明/朝/昼/夕暮れ/宵/夜）のみ
+   ③quiz品に where が無い
+   を赤/緑で出す。`tools/check.mjs` と同様に単体実行できる形。
+
+### 受け入れ
+- check_meals 全緑・実機で「昼と夜で品揃えが替わる」を2屋台で目視・新規データで
+  未食→？？？→食べて開示の流れが崩れていない・ホームの再食テンポ不変
+
+---
+
+## §3 バッチ3：資産オンボーディング M2〜M4（正本 §3〜§6）
+
+1. **イベントA（スミカの家計簿）**：第3話前半（`_chapter_intro_3` 立った直後の afterRaceResult・once）。
+   台本骨子は正本 §4。スミカは正体伏せでも喋れる（castNameSafe 経由の表示を確認）。
+   「暮らしの値段」の語をここで初出させる（ヒーローの表示語と一致）。
+2. **イベントC（マクラのインプレッション講座）**：第4話・スマホ購入後（配信フラグ）・once。
+   以後、ログイン受取の内訳に「📡 インプレッション」行（**フォロワー由来部分の呼称**＝
+   royalty の読者項。式は不変・表示の区分けだけ）。開示前と同じく段階表示に注意。
+3. **ツリーのギャグカットイン（ハイブリッド・決裁済み）**：
+   - まず**対応表を作ってユーザー決裁に出す**（実装より先）：全ノードを走査し
+     「文脈イベントで無料授与するノード（イベント名つき）／コイン購入のまま残すノード」の一覧。
+     ★ノードの cost は資産帯ゲートを兼ねる＝無料授与でも**資産帯の解放段は尊重**する前提で表を作る
+   - 決裁後：授与カットイン（軽量フラッシュ0.9秒・タップで即閉じ・progressionのモーダルとは別の型）
+     ＋ツリー画面の全ノードに**入手ヒント**（「食べ歩き◯品で」「章の出来事で」「🪙購入」）
+   - 暮らしレベルアップの既存カットインは簡素化（画面へ飛ばない・正本D3）
+4. **語彙残骸**：grep「村レベル」「村Lv」でプレイヤー可視の残りを掃除（コード内部名は触らない）。
+
+### 受け入れ
+- 新規→第3話前半でA→完済でB（実装済み）→第4話でC、の順で1回ずつ・二重発火なし
+- インプレッション行は第4話以降のみ・合計額は従来と同一（式不変の機械確認）
+- ツリー対応表はユーザー決裁を得てから実装（勝手に進めない）
+
+---
+
+## §4 残っている小物（手すき時）
+- C5：デバッグ盤にオープニングstoryのON/OFFトグル（「初めから」の物語再生と併せて）
+- 実況の台詞欠け：計器は設置済み（`window.__telopCut`／speak内 noteTypeCut）。
+  再現したら数字で報告してから直す（推測で直さない）
+- D4（物語の文章送り刷新）と P-6（UI装飾）は**リサーチからの別発注**＝この指示書の範囲外
+
+## 順番の推奨
+§1（紀行）→ §2（食48品）→ §3（資産M2-M4）。§1と§2は独立なので並行可。
+各バッチごとに：構文→check.mjs→実機（自分で触る）→resetGame→perlバンプ→plumbingデプロイ
+→`docs/STATUS_LEDGER.md` 更新→コミット文に「何を見て確かめたか」。
