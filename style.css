@@ -3405,10 +3405,21 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   display: flex; flex-direction: column; align-items: center; text-align: center; }
 /* 透過ロゴは9:16枠の上半分へ。320px幅でも左右を切らず、ミミの顔とCTAを塞がない。 */
 .title-head { position: relative; margin-top: clamp(48px, 8dvh, 72px); width: 100%; }
-/* タイトル背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない） */
+/* タイトル背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない）
+   ★2026-08-02 実測で作り直した：旧設定は radial の中心がロゴの中央にあり、
+     サブタイトル（ロゴ画像の下端 74〜89%）ではほぼ透明まで落ちていた。実際に背景の輝度を
+     9点サンプリングすると 32〜200 とばらつき、明るい門のあたりで文字とのコントラストが
+     **1.28:1**（読めない水準）だった＝スクリムがいちばん要る場所でいちばん薄かった。
+   → ①縦に長い楕円へ広げてサブタイトル帯まで濃さを保つ ②backdrop-filter で背景そのものを
+     沈める（どんな絵が来ても効く保険）。縁はマスクでぼかして四角い幕に見せない。 */
 .title-screen:has(.title-photo .photo-fill) .title-head::before {
-  content: ""; position: absolute; inset: -22% -10%; z-index: -1; border-radius: 28px;
-  background: radial-gradient(76% 82% at 50% 50%, rgba(8,9,14,0.64), rgba(8,9,14,0.28) 56%, transparent 80%);
+  content: ""; position: absolute; inset: -24% -12% -14%; z-index: -1; border-radius: 32px;
+  background: radial-gradient(74% 96% at 50% 46%,
+    rgba(6,7,11,0.72), rgba(6,7,11,0.52) 50%, rgba(6,7,11,0.24) 72%, transparent 88%);
+  -webkit-backdrop-filter: brightness(0.54) saturate(0.92) blur(2px);
+  backdrop-filter: brightness(0.54) saturate(0.92) blur(2px);
+  -webkit-mask-image: radial-gradient(72% 92% at 50% 47%, #000 46%, rgba(0,0,0,.55) 70%, transparent 89%);
+  mask-image: radial-gradient(72% 92% at 50% 47%, #000 46%, rgba(0,0,0,.55) 70%, transparent 89%);
 }
 .title-logo { margin: 0; line-height: 1.0; font-weight: 900; font-size: clamp(30px, 11vw, 54px); letter-spacing: 0.02em; white-space: nowrap; }
 .title-logo--image { font-size: 0; line-height: 0; white-space: normal; }
