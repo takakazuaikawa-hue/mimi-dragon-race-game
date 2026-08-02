@@ -2317,7 +2317,7 @@ function renderRaceDetail(race) {
     <!-- ★根拠(どうしてこの子?)はここから撤去。スキップできる位置だと「選ばない」が大多数になり
          C-3の答え合わせが育たないため、出走確定の投票券ダイアログで必ず選ばせる方式に変更。 -->
     <div class="slip-actions"><button id="bet-confirm" type="button" disabled>🔔 出走直前！この予想で観る ▶</button></div>
-    <div class="condition-line slip-note">所持 ${fmtCoins(state.player.coins)} ／ この一戦の上限 ${fmtCoins(betCap)}<span class="cl-note">（村Lv${state.player.villageLevel}補正込）</span></div>
+    <div class="condition-line slip-note">所持 ${fmtCoins(state.player.coins)} ／ この一戦の上限 ${fmtCoins(betCap)}<span class="cl-note">（暮らしLv${state.player.villageLevel}補正込）</span></div>
   `;
   app.appendChild(slip);
 
@@ -4133,15 +4133,20 @@ function showLoginBonus(info) {
   }).join("");
   // 旧セーブ／万一の欠損では内訳を出さず合計だけ（fail-soft）
   const hasParts = (info.royalty != null && info.yield != null);
+  // ★資産の行は概念の開示後だけ（2026-08-02・ASSET_ONBOARDING_REDESIGN §3）。
+  //   開示前のプレイヤーに「総資産」という未紹介の語を毎朝見せない。式・受取額は不変。
+  const _assetsOpen = (typeof assetsConceptOpen === "function") ? assetsConceptOpen() : true;
   const partsHtml = hasParts
     ? `<div class="lb-parts">` +
-        `<div class="lb-part"><span>📖 紀行の印税</span><small>人望 × 記事の充実 ${Math.round((info.fill || 0) * 100)}%</small><b>${fmtCoins(info.royalty)}</b></div>` +
-        `<div class="lb-part"><span>🏦 資産の実り</span><small>総資産と島づくり投資が働いた分</small><b>${fmtCoins(info.yield)}</b></div>` +
+        `<div class="lb-part"><span>📖 紀行の印税</span><small>読者 × 記録の充実 ${Math.round((info.fill || 0) * 100)}%</small><b>${fmtCoins(info.royalty)}</b></div>` +
+        (_assetsOpen
+          ? `<div class="lb-part"><span>🏦 資産の実り</span><small>総資産と島づくり投資が働いた分</small><b>${fmtCoins(info.yield)}</b></div>`
+          : "") +
       `</div>`
     : "";
   ov.innerHTML =
     `<div class="login-card">` +
-      `<div class="lb-title">📖 きょうの『紀行』売上</div>` +
+      `<div class="lb-title">📖 今日の印税</div>` +
       `<div class="lb-streak">『ドラゴンレース紀行』好評連載中 — ${info.streak}日連続</div>` +
       `<div class="lb-strip">${strip}</div>` +
       partsHtml +

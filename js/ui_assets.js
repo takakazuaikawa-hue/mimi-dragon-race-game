@@ -86,15 +86,25 @@ function renderAssets() {
     //   未納品の衣装があるので onerror で既定の1枚に落とす（欠けても壊さない）。
     `<img class="lr-room-mimi" src="${_lrRoomMimiSrc()}" alt="ミミ" decoding="async"` +
       ` onerror="this.onerror=null;this.src='images/cast/mini/mimi_loading1_mini.png'">` +
-    `<div class="lr-room-info"><div class="lr-room-lbl">資産</div>` +
-      `<div class="lr-room-total">${fmtCoins(total)}</div>` +
-      `<div class="lr-room-p">内訳を見る ▸</div></div>`;
+    // ★段階開示（2026-08-02・ASSET_ONBOARDING_REDESIGN §3）：
+    //   資産の開示前は「資産 4.12万」を見せない（未紹介の合成数値＝初見の違和感の根・ユーザー指摘）。
+    //   第3話（暮らし開放）〜開示前＝「暮らしの値段」として生活資産だけ。それ以前＝金額行なし。
+    ((typeof assetsConceptOpen !== "function") || assetsConceptOpen()
+      ? `<div class="lr-room-info"><div class="lr-room-lbl">資産</div>` +
+          `<div class="lr-room-total">${fmtCoins(total)}</div>` +
+          `<div class="lr-room-p">内訳を見る ▸</div></div>`
+      : (_ch3unlocked
+        ? `<div class="lr-room-info"><div class="lr-room-lbl">暮らしの値段</div>` +
+            `<div class="lr-room-total">${fmtCoins((a && a.livingValue) || 0)}</div></div>`
+        : ""));
   app.appendChild(hero);
   // 旧「暮らしP ◇n」の枠を、資産の内訳（計算式）への入口に置き換え。
   // 残高が出るのに減らない指標を見せるより、「何がいくらで合計いくらか」を開ける方が役に立つ。
   const _roomPEl = hero.querySelector(".lr-room-p");
-  _roomPEl.style.cursor = "pointer";
-  _roomPEl.onclick = () => { if (typeof showAssetBreakdown === "function") showAssetBreakdown(); };
+  if (_roomPEl) {
+    _roomPEl.style.cursor = "pointer";
+    _roomPEl.onclick = () => { if (typeof showAssetBreakdown === "function") showAssetBreakdown(); };
+  }
 
   // ★引っ越し：コインで部屋を一段上げる（総資産では自動で上がらない）。くらしツリーと同じ「コインで解放」の作法。
   if (typeof canMoveRoom === "function") {
@@ -262,7 +272,11 @@ function renderAssets() {
     return met ? `images/cast/mini/${m.id}_mini.png` : null;
   };
   // 🏦 島の経済：島の景気・名声・フォロワー・レース経済を一望（終章中は絶滅メーター本体もここに）。js/ui_economy.js
-  if (typeof renderEconomy === "function") {
+  // ★資産の概念が開示されるまで（第3話後半のイベントB＝ミズ「値がついてるのよ」）は
+  //   **入口ごと出さない**（🔒表示もしない＝ユーザー決裁・ASSET_ONBOARDING_REDESIGN §3）。
+  //   未紹介の「総資産」がいきなり見えるのが初見の違和感の根だったため。開示条件は assetsConceptOpen()。
+  if (typeof renderEconomy === "function" &&
+      ((typeof assetsConceptOpen !== "function") || assetsConceptOpen())) {
     const epOn = (typeof epilogueOn === "function") && epilogueOn();
     ent.appendChild(entry("🏦", "島の経済", epOn ? "総資産・名声・村の景気… ＋ ☄️絶滅メーターの綱引き" : "総資産・名声・フォロワー・村の景気＝島の経済状態", epOn ? "☄️終章" : "", () => renderEconomy()));
   }

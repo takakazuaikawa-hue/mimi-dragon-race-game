@@ -67,7 +67,7 @@ function screenMap() {
     result:          function () { hasResult ? renderResult() : renderRaceSelect(); },
     analysis:        function () { hasResult ? renderAnalysis() : renderRaceSelect(); },
     assets:          function () { renderAssets(); },
-    economy:         function () { opt("renderEconomy", "renderAssets")(); },
+    economy:         function () { (((typeof assetsConceptOpen !== "function") || assetsConceptOpen()) ? opt("renderEconomy", "renderAssets") : opt("renderAssets", "renderHome"))(); },   // ★資産の開示前は暮らしへ（ASSET_ONBOARDING §3）
     island_build:    function () { opt("renderIslandBuild", "renderEconomy")(); },
     collection_score: function () { opt("renderCollectionScore", "renderAssets")(); },
     konron_map:      function () { opt("renderKonronMap", "renderHome")(); },

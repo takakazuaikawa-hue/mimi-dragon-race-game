@@ -150,6 +150,20 @@ function assetsPeak(st) {
   return Math.max(p.assetsPeak || 0, p.totalAssets || 0);
 }
 
+// ★資産という「概念」が開示済みか（2026-08-02・ASSET_ONBOARDING_REDESIGN §3）。
+//   第3話後半のイベントB（ミズ「あなた、もう値がついてるのよ」）で assetsRevealed が立つ。
+//   フラグ単独に頼らず開示条件そのもの（第3話既読 ∧ 2勝 or 到達3万）でも開く＝
+//   イベントの発火タイミング待ちでUIが詰まらない。エラー時は**開く**（fail-open）＝
+//   進行に必要な画面を計算事故で没収しない。内部の資産計算・関門判定には一切影響しない。
+function assetsConceptOpen() {
+  try {
+    if (typeof getStoryFlag === "function" && getStoryFlag("assetsRevealed")) return true;
+    const p = (state && state.player) || {};
+    return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_3"))
+        && (((p.wins || 0) >= 2) || assetsPeak(state) >= 30000);
+  } catch (e) { return true; }
+}
+
 /**
  * Recompute every asset component + 総資産 + asset level, then re-unlock living
  * assets at the new level. Because livingValue feeds 総資産 which feeds the

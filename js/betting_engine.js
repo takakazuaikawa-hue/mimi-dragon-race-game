@@ -16,7 +16,7 @@ function validateBet(bet, race) {
   if (!Number.isInteger(bet.wager) || bet.wager <= 0) return "賭金は正の整数で入力してください。";
   if (bet.wager > state.player.coins) return "所持コインが不足しています。";
   const cap = getAllowedMaxWager(state.player, race);
-  if (bet.wager > cap) return `このランクの最大賭金は ${fmtCoins(cap)} です（村Lv${state.player.villageLevel}補正含む）。`;
+  if (bet.wager > cap) return `このランクの最大賭金は ${fmtCoins(cap)} です（暮らしLv${state.player.villageLevel}補正含む）。`;
   if (!["win","place","wide"].includes(bet.type)) return "賭式が不正です。";
   if (bet.type === "wide") {
     if (!bet.selections || bet.selections.length !== 2) return "ワイド竜は2頭選んでください。";

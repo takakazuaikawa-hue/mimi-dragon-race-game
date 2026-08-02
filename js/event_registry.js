@@ -189,6 +189,63 @@ registerEvent({
   ]
 });
 
+// ★資産の初開示＝イベントB（2026-08-02・ASSET_ONBOARDING_REDESIGN §3-§4）。
+//   第3話後半（2勝 or 到達3万）で、ミズが「値がついている」ことを初めて教える。
+//   1話から内部で積んでいた資産が、ここで初めて数字として開く＝サプライズ。
+//   褒めの原則：数字の出どころを本人の行動で言う。UIの開示は assetsConceptOpen()（同条件）が担う。
+function _assetsRevealBrag(voice) {
+  const tail = voice === "sake"
+    ? "。——市場はぜんぶ見てる。それがお前の値段だ。"
+    : "。——市場はぜんぶ見てるの。それが今の値段よ。";
+  try {
+    const col = state.player.collection || {};
+    let dex = 0; for (const k in col) if (col[k] && col[k].unlocked) dex++;
+    const ph = Object.keys(((state.player.kurashi || {}).photoStars) || {}).length;
+    const bits = [];
+    if (state.player.rank >= 2) bits.push("ランクを" + state.player.rank + "まで上げた");
+    if (dex > 0) bits.push("竜を" + dex + "頭おぼえた");
+    if (ph > 0) bits.push("写真を" + ph + "枚撮った");
+    if (!bits.length) bits.push("走って、負けて、また走った");
+    return bits.join("。") + tail;
+  } catch (e) { return "走って、覚えて、撮ってきた" + tail; }
+}
+registerEvent({
+  id: "assets_reveal_mizu",
+  hook: "afterRaceResult",
+  priority: 9,
+  condition: { once: true, requiredFlag: "_chapter_intro_3",
+    test: () => !getStoryFlag("assetsRevealed")
+             && (((state.player.wins || 0) >= 2) || assetsPeak(state) >= 30000)
+             && (typeof advisorMet === "function") && advisorMet("mizu") },
+  actions: [
+    { type: "dialogue", speaker: "mizu", text: "ねえミミ。気づいてないの？　あなた——もう、値がついてるのよ。" },
+    { type: "dialogue", speaker: "mimi", expr: "surprised", text: "ね、値段…！？　わたしにですか！？" },
+    { type: "dialogue", speaker: "mizu", text: () => _assetsRevealBrag("mizu") },
+    { type: "dialogue", speaker: "mizu", text: "暮らしも、評判も、記録も、ぜんぶ足したものを『資産』と呼ぶの。物語はこの数字で先へ進むわ。……ふふ、まだ序の口だけどね。" },
+    { type: "dialogue", speaker: "mimi", expr: "happy", text: "わたしの積んできたもの、ぜんぶ数字になってた……。よし、見に行ってみよう！" },
+    { type: "system_message", text: "🏦 「島の経済」が開放された！（暮らし → 島の経済）　あなたの資産の内訳が見られます。" }
+  ],
+  effects: { setFlags: { assetsRevealed: true } }
+});
+// サケ代役版（ミズ未登場のケース・fail-closed対策）。内容は同じ事実を親方の声で。
+registerEvent({
+  id: "assets_reveal_sake",
+  hook: "afterRaceResult",
+  priority: 8,
+  condition: { once: true, requiredFlag: "_chapter_intro_3",
+    test: () => !getStoryFlag("assetsRevealed")
+             && (((state.player.wins || 0) >= 2) || assetsPeak(state) >= 30000)
+             && !((typeof advisorMet === "function") && advisorMet("mizu")) },
+  actions: [
+    { type: "dialogue", speaker: "sake_udada", text: "ミミ。お前、自分に値がついてるのを知ってるか。" },
+    { type: "dialogue", speaker: "mimi", expr: "surprised", text: "え、値段……わたしにですか！？" },
+    { type: "dialogue", speaker: "sake_udada", text: () => _assetsRevealBrag("sake") },
+    { type: "dialogue", speaker: "sake_udada", text: "暮らし、評判、記録。積んだもの全部の値打ちを『資産』と呼ぶ。物語はこの数字で先へ進むぞ。" },
+    { type: "system_message", text: "🏦 「島の経済」が開放された！（暮らし → 島の経済）　あなたの資産の内訳が見られます。" }
+  ],
+  effects: { setFlags: { assetsRevealed: true } }
+});
+
 registerEvent({
   id: "milestone_10k",
   hook: "onMilestone",
