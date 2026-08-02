@@ -85,10 +85,23 @@ function classify(v){
   return "var(--e-3)";
 }
 var lastCount = 0;
+// ★明るい面のページ（紀行ブログ/観光/暮らし）は世界が別＝各ページのコンセプトを守る：
+//   ・影は同じ「3段」だが、クリーム紙用の淡い暖色影に差し替える（ダーク用の黒92%を
+//     そのまま当てると、下の部品が影に巻き込まれて暗く沈む＝ユーザー実見の指摘）
+//   ・金色の統一はダーク面の話なので、明るい面では元の色を復元する
+var LIGHT_SCOPES = "#app.kiko-page, #app.kt-page, #app.lr-page";
+var LIGHT_ORIG = { "--hx-ffe6a8":"#ffe6a8","--hx-ffd98a":"#ffd98a","--hx-ffd76a":"#ffd76a",
+  "--hx-ffd870":"#ffd870","--hx-ffe08a":"#ffe08a","--hx-d4a850":"#d4a850","--hx-fff4e0":"#fff4e0" };
 function apply(){
   var doc=document.getElementById("frame").contentDocument;
   var css=[":root{"];
   for (var k in GOLD_MAP) css.push(k+":"+GOLD_MAP[k]+";");
+  css.push("}");
+  css.push(LIGHT_SCOPES+"{");
+  for (var k2 in LIGHT_ORIG) css.push(k2+":"+LIGHT_ORIG[k2]+";");
+  css.push("--e-1: 0 1px 2px rgba(60,45,20,.10), 0 6px 14px -8px rgba(60,45,20,.20);");
+  css.push("--e-2: 0 2px 6px rgba(60,45,20,.12), 0 12px 26px -14px rgba(60,45,20,.24);");
+  css.push("--e-3: 0 6px 16px rgba(60,45,20,.14), 0 24px 48px -20px rgba(60,45,20,.28);");
   css.push("}");
   lastCount=0;
   for (var s=0;s<doc.styleSheets.length;s++){
@@ -96,6 +109,9 @@ function apply(){
     eachRule(rules, null, function(r, media){
       var v=r.style.boxShadow;
       if(!v) return;
+      // ★状態ルールは統一しない：通常＝段1／ホバーで段2、のような「浮き上がる差」が
+      //   同じ段に丸められて消えるのを防ぐ（ユーザーの質問で見つかった欠陥）。
+      if(/:hover|:active|:focus/.test(r.selectorText||"")) return;
       var to=classify(v);
       if(to && to!==v){
         lastCount++;

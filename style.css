@@ -9410,6 +9410,23 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .lrank-bar > div { height: 100%; border-radius: var(--r-full); background: linear-gradient(90deg, #f3bd54, var(--gold-bright)); transition: width .5s ease; }
 .lrank-next { margin-top: 6px; font-size: 11.5px; line-height: 1.6; color: var(--mist-soft); }
 .lrank-next b { color: var(--gold-bright); }
+/* ★可読性修正（2026-08-03・ユーザー指摘「文字色が視認しにくい」）：
+   .lrank はダークテーマの文字色（--gold-bright / --mist-soft / 淡ラベンダー）で書かれていたが、
+   描画されるのは**明るい lr-page（クリーム #f7f2ea）だけ**＝淡金 on クリームで実測 約1.2:1、
+   事実上読めなかった。枠・構成は変えず、明るい面用の文字色をスコープで上書きする。
+   （カードを将来ダーク面で使う時は素の .lrank-* がそのまま生きる） */
+.lr-page .lrank-h { color: var(--lt-cap); opacity: 1; }
+.lr-page .lrank-title { color: var(--lt-gold); }
+.lr-page .lrank-note { color: var(--lt-sub); }
+.lr-page .lrank-gain { color: var(--lt-mut); }
+.lr-page .lrank-gain b { color: var(--lt-ink); }
+.lr-page .lrank-bar { background: rgba(43,38,32,.12); }
+.lr-page .lrank-next { color: var(--lt-mut); }
+.lr-page .lrank-next b { color: var(--lt-gold); }
+.lr-page .lrank-block { color: var(--lt-ink); background: rgba(28,110,87,.10); border-color: rgba(28,110,87,.4); }
+.lr-page .lrank-block b { color: var(--lt-jade); }
+.lr-page .lrank-block small { color: var(--lt-sub); }
+
 /* 暮らしレベルが「ツリー待ち」で頭打ちのとき＝理由と導線を必ず見せる */
 .lrank-bar.blocked > div { background: linear-gradient(90deg, #6a6274, #8d8598); }
 .lrank-block { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 9px; padding: 9px 11px;
@@ -9468,6 +9485,14 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   --hx-ffe6a8: #ffe6a8;  --hx-ffd98a: #ffd98a;  --hx-ffd76a: #ffd76a;  --hx-ffd870: #ffd870;
   --hx-ffe08a: #ffe08a;  --hx-fff4e0: #fff4e0;  --hx-d4a850: #d4a850;  --hx-2a1d06: #2a1d06;
   --hx-160f2b: #160f2b;  --hx-fafafa: #fafafa;  --hx-888: #888;  --hx-666: #666;
+  /* ☀️ 明るい面（kiko/kt/lr ページ）の文字の役割色。クリーム紙の上で読める濃さで揃える。
+     2026-08-03 lrank可読性修正で初出＝明るい面の統一（S1）はこの系を窓口に育てる。 */
+  --lt-ink: #2b2620;     /* 本文の最濃 */
+  --lt-sub: #5d554b;     /* 説明文 */
+  --lt-mut: #6b6157;     /* 補足 */
+  --lt-cap: #8a7f72;     /* 見出しラベル */
+  --lt-gold: #8a5f10;    /* 金の役割色（クリーム上で約5:1） */
+  --lt-jade: #1c6e57;    /* 翡翠の役割色 */
   /* 🧱 余白トークン（土台工事第3弾・2026-08-03）＝直書きの最頻17種を完全一致で寄せた。
      値をそのまま名に刻む移行トークン。将来スペーシング尺（4/8グリッド等）を決めるとき
      ここを窓口に一括で動かす（それは見た目が変わる別工事＝要決裁）。 */
@@ -9479,6 +9504,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   --e-1: 0 1px 2px rgba(0,0,0,.30), 0 8px 20px -14px rgba(0,0,0,.75);
   --e-2: 0 2px 8px rgba(0,0,0,.36), 0 18px 40px -22px rgba(0,0,0,.85);
   --e-3: 0 10px 24px rgba(0,0,0,.42), 0 40px 84px -30px rgba(0,0,0,.92);
+  /* ↑この3段は**ダークな島世界用**の濃さ。明るい紙面ではすぐ下の上書きが効く。 */
   /* 光は上から一方向（全部品で共通） */
   --lift: inset 0 1px 0 rgba(255,255,255,.16);
   --hair-gold: rgba(202,162,74,.46);
@@ -9492,6 +9518,18 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
     linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 2px),
     linear-gradient(0deg, rgba(0,0,0,.30), rgba(0,0,0,0) 4px),
     linear-gradient(180deg, rgba(238,244,240,.10), rgba(238,244,240,.04));
+}
+
+/* ☀️ 明るい紙面（紀行ブログ/観光/暮らし）では、影3段を淡い暖色に差し替える（2026-08-03）。
+   ★きっかけ＝実機指摘「上の影に巻き込まれて暗く見える」：`.card { box-shadow: var(--e-1) }` が
+   後勝ちで `.card.lr-room` にも効き、ダーク用の黒75%の影がクリーム地に落ちて、直下の
+   ボタンが影に沈んでいた。段の**構造**（面<浮き<窓）は同じまま、紙に合う濃さへ。
+   ※これは意図したテーマ上書き＝ check_ui_tokens.mjs の一意性検査は :root 内の二重定義だけを
+   事故として扱う（スコープ上書きは正当なCSS）。 */
+#app.kiko-page, #app.kt-page, #app.lr-page {
+  --e-1: 0 1px 2px rgba(60,45,20,.10), 0 6px 14px -8px rgba(60,45,20,.20);
+  --e-2: 0 2px 6px rgba(60,45,20,.12), 0 12px 26px -14px rgba(60,45,20,.24);
+  --e-3: 0 6px 16px rgba(60,45,20,.14), 0 24px 48px -20px rgba(60,45,20,.28);
 }
 
 /* ── ボタン：金＝主役／ガラス＝脇役。1画面に金の塗りはひとつ ─────────────── */

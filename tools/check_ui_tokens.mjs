@@ -47,14 +47,22 @@ radiusLit.forEach((v) => { litDist[v] = (litDist[v] || 0) + 1; });
 info("残債の内訳: " + Object.entries(litDist).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([v, n]) => `${v}(${n})`).join(" "));
 
 // ② トークン定義の一意性（並行系の検出＝--r-4事故の再発防止）
+//   ★スコープ対応（2026-08-03）：#app.kiko-page 等での**テーマ上書き**は正当なCSSなので
+//   事故扱いしない。事故＝「:root 同士で同じ名前を別の値に定義」（後勝ちで片方が死ぬ）だけ。
 console.log("\n2) トークン定義の一意性");
-const defs = {};
-for (const m of css.matchAll(/(--(?:r|rd|e|hx|pd)-[\w-]+|--white|--black)\s*:\s*([^;}]+)[;}]/g)) {
-  (defs[m[1]] = defs[m[1]] || new Set()).add(m[2].trim());
+const rootDefs = {}, scopedDefs = {};
+for (const rm of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  const sel = rm[1].trim();
+  for (const m of rm[2].matchAll(/(--(?:r|rd|e|hx|pd|lt)-[\w-]+|--white|--black)\s*:\s*([^;}]+)(?:;|$)/g)) {
+    const bucket = /:root/.test(sel) ? rootDefs : scopedDefs;
+    (bucket[m[1]] = bucket[m[1]] || new Set()).add(m[2].trim());
+  }
 }
-const dup = Object.entries(defs).filter(([, vals]) => vals.size > 1);
-if (dup.length) dup.forEach(([k, vals]) => bad(`${k} が複数の値で定義されている: ${[...vals].join(" と ")}（後勝ちで片方が死ぬ）`));
-else ok(`--r/--rd/--e/--hx/--pd/--white/--black の定義はすべて一意（${Object.keys(defs).length} 個）`);
+const dup = Object.entries(rootDefs).filter(([, vals]) => vals.size > 1);
+if (dup.length) dup.forEach(([k, vals]) => bad(`${k} が :root で複数回定義されている: ${[...vals].join(" と ")}（後勝ちで片方が死ぬ）`));
+else ok(`:root のトークン定義はすべて一意（${Object.keys(rootDefs).length} 個）`);
+const scopedNames = Object.keys(scopedDefs);
+if (scopedNames.length) info(`テーマ上書き（正当）: ${scopedNames.join(" ")}`);
 
 // ③ 16進色の直書き（第2弾で統治開始。url行と変数定義行は数えない＝置換時と同じ物差し）
 console.log("\n3) 色（統治済みの領域）");
