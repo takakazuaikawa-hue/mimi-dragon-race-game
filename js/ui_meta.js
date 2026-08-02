@@ -61,6 +61,12 @@ function renderMeals() {
   state.ui.screen = "meals";
   const app = beginScreen();
   app.appendChild(el("h2", null, `🍽️ 食事 ― みみの食べ歩き <img class="news-men news-men--h2" src="images/kurashi/men_gurume.webp" alt="グルメ面" onerror="this.remove()">`));
+  // ★食べ歩き帳の顔（2026-08-02・ユーザー依頼「ご飯食べてるミミの専用絵」）。
+  //   Higgsfieldで既存立ち絵を参照に生成した一枚絵（夜の屋台でラーメンをすするミミ）。
+  //   欠けても画面は壊さない（onerror で枠ごと消える）。
+  const _mealHero = el("div", "meal-hero");
+  _mealHero.innerHTML = `<img src="images/cast/mimi/mimi_eating_art.png" alt="" decoding="async" onerror="this.closest('.meal-hero').remove()">`;
+  app.appendChild(_mealHero);
   const all = (typeof mealStatsAll === "function") ? mealStatsAll() : { got: 0, total: 0 };
   const ob = el("div", "goals-bar");
   ob.innerHTML = `<i style="width:${all.total ? Math.round(all.got / all.total * 100) : 0}%"></i><b>${all.got} / ${all.total} 品</b>`;

@@ -9262,6 +9262,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rs-seg--dist { flex: 1 1 auto; justify-content: space-between; }
 .rs-seg--dist .rs-seg-b { padding: 6px 0; flex: 1 1 0; text-align: center; font-size: 12px; }
 
+/* ★食べ歩き帳のヒーロー（2026-08-02・ご飯を食べるミミの専用一枚絵） */
+.meal-hero { margin: 2px 0 10px; border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(255,205,140,.35); box-shadow: 0 10px 26px rgba(0,0,0,.4); }
+.meal-hero img { display: block; width: 100%; height: auto; }
+
 /* ★B改・食べ物との出会い（2026-08-02）：屋台の「？？？＋気配」と発見バナー */
 .kw-mystery .meal-card-ic { filter: grayscale(1); opacity: .85; }
 .kw-mystery .kw-scent { display: block; margin-top: 2px; font-size: 9.5px; line-height: 1.4;
