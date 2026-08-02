@@ -635,6 +635,12 @@ function renderKonronWalk(areaId, at) {
   if (typeof Scene === "undefined" || !Scene.create) { renderKonronMap(); return; }
   const area = KW_AREAS[areaId] || KW_AREAS.city;
   const areaKey = KW_AREAS[areaId] ? areaId : "city";
+  // 歩いたエリアの記録（表示専用メタ・くらしツリーの授与条件が読む。数値には非干渉）
+  try {
+    const kz = state.player.kurashi || (state.player.kurashi = {});
+    const seen = kz.areasWalked || (kz.areasWalked = {});
+    if (!seen[areaKey]) { seen[areaKey] = 1; if (typeof saveGame === "function") saveGame(); }
+  } catch (e) {}
   // 戻ってきた時は**出て行った場所に立たせる**（毎回スタート地点に飛ばされると歩き直しになる）
   const resume = (at && at.area === areaKey) ? { x: at.x, y: at.y } : null;
   state.ui.screen = "konron_walk";

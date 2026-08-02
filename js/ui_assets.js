@@ -608,10 +608,14 @@ function renderLifeTree() {
     if (stt === "unlocked") right = `<span class="lt-node-cost done">✓</span>`;
     else if (stt === "ready") right = `<button class="lt-buy">取り入れる<b>${_coinTag || " 🪙0"}</b></button>`;
     else right = `<span class="lt-node-cost lock">${_coinTag || "🪙0"}</span>`;
+    // 🌱 入手ヒント（2026-08-02・決裁）：どこで取れるかが見えるとバランスが取れる。
+    //   イベント授与の22件は「◯◯の日に授かる」、それ以外は「コインで購入」。
+    const _hint = (typeof lifeNodeHint === "function") ? lifeNodeHint(node) : "";
     const row = el("div", "lt-node " + stt + cz,
       `<div class="lt-node-rail"><div class="lt-node-dot">${dot}</div></div>` +
       `<div class="lt-node-body"><div class="lt-node-title">${node.title}</div>` +
-        `<div class="lt-node-desc">${desc}</div></div>` +
+        `<div class="lt-node-desc">${desc}</div>` +
+        (_hint ? `<small class="lt-hint">${_hint}</small>` : "") + `</div>` +
       `<div class="lt-node-right">${right}</div>`);
     if (stt === "ready") {
       const btn = row.querySelector(".lt-buy");

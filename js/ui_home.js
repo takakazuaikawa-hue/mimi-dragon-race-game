@@ -111,6 +111,8 @@ function renderHome() {
   // ✍️ 紀行の記事：ホーム到着＝一日の息継ぎ。溜まった素材から1本だけ書かれる。
   //   ★モーダルは出さない（progressionのカットインと競合させない）＝紀行タブのドットだけで知らせる。
   if (typeof kikoMaybeWrite === "function") kikoMaybeWrite();
+  // 🌱 くらしツリーの授与：条件を満たしたノードを軽いカットインで授ける（同じ息継ぎで）
+  if (typeof lifeGrantTick === "function") setTimeout(function () { try { lifeGrantTick(); } catch (e) {} }, 260);
   // daily login reward — checked once per session, shown just after home paints
   // ★D4解消（FTUE保護）：初出走前は文脈のない報酬ポップを出さない＝初回導線（→レースへ）に集中させる。
   let _doGreet = false;   // 挨拶はVNではなく“配信の吹き出し”で（大立ち絵と二重にしない）
