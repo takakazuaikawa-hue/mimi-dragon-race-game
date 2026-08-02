@@ -113,6 +113,10 @@ function _livingCelebrate() {
   try {
     if (typeof LIVING_RANKS === "undefined") return null;
     const p = state.player || {};
+    // ★FTUE保護（2026-08-03 実機指摘「レース前に出るのはおかしい／暮らしへ飛ばれると
+    //   チュートリアルの流れが収まらない」）：初出走までは何も出さず、記録も進めない
+    //   （＝初レース後の最初のホーム到着で祝う）。ログボのD4解消と同じ作法。
+    if ((p.completedRaces || 0) < 1) return null;
     const lv = Math.max(1, p.villageLevel || (p.village && p.village.level) || 1);
     const f = p.flags || {};
     let seen = (typeof f._livingCelebratedLv === "number") ? f._livingCelebratedLv : null;
@@ -156,8 +160,9 @@ function _showLivingCutin(lv, rk) {
   } catch (e) {}
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop infopop");
+  // ★大項目「いまの暮らし」は撤去（2026-08-03 実機指摘「冗長」）＝本文の行が
+  //   🏅・Lv・称号を既に持っているので、見出しは重ねない。
   box.innerHTML =
-    `<div class="navpop-t">${lv <= 1 ? "🏅 いまの暮らし" : "🏅 暮らしが変わった"}</div>` +
     `<div class="infopop-body">` +
       `<div class="mm-row"><span class="mm-ic">🏅</span><div><b>Lv.${lv}　${rk.title}</b><small>${rk.note}</small></div></div>` +
       capLine +

@@ -9494,6 +9494,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   --lt-cap: #8a7f72;     /* 見出しラベル */
   --lt-gold: #8a5f10;    /* 金の役割色（クリーム上で約5:1） */
   --lt-jade: #1c6e57;    /* 翡翠の役割色 */
+  /* 🖼 意匠フレームの内側の実色（frame_gold.png から実測サンプリング・2026-08-03）。
+     窓の地色をこれに合わせて枠と溶かす＝「境界がなじんでいない」（ユーザー診断）の解。 */
+  --frame-in-1: #1a2e33;   /* 中央（やや明るい青緑紺） */
+  --frame-in-2: #16262c;   /* 縁（枠の内端と同じ濃さ） */
   /* 🧱 余白トークン（土台工事第3弾・2026-08-03）＝直書きの最頻17種を完全一致で寄せた。
      値をそのまま名に刻む移行トークン。将来スペーシング尺（4/8グリッド等）を決めるとき
      ここを窓口に一括で動かす（それは見た目が変わる別工事＝要決裁）。 */
@@ -9591,9 +9595,11 @@ button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2p
   border: 28px solid transparent;
   border-image: url("images/ui/frame_gold.png") 150 / 28px stretch;
   background-clip: padding-box;           /* 地の塗りを枠の下に漏らさない */
+  /* ★地色は枠の絵の内側の実色に合わせる（旧plate=紫寄りの暗色だと色相が違い、
+     枠との出会いに継ぎ目が見えて「二重の枠」に読めた＝ユーザー診断どおり境界の問題）。 */
   background-image:
-    linear-gradient(180deg, rgba(255,224,160,.10), rgba(255,224,160,0) 64px),
-    linear-gradient(180deg, rgba(34,38,46,.985), rgba(20,23,29,.985));
+    linear-gradient(180deg, rgba(255,224,160,.08), rgba(255,224,160,0) 64px),
+    radial-gradient(140% 120% at 50% 46%, var(--frame-in-1), var(--frame-in-2) 78%);
   box-shadow: var(--e-3);
 }
 .navpop-btns button { border-radius: var(--r-2); }
