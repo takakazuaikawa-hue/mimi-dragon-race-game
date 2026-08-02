@@ -59,7 +59,29 @@ var NEXT_SUGGEST = [
 
   // ── SNSのあと（M2）：一日の締め ──
   { at: "sns", weight: 90, icon: "🌙", label: "ホームへ（配信締め）", sub: "今日もおつかれさま。また明日",
-    cond: function () { return true; }, go: function () { renderHome(); } }
+    cond: function () { return true; }, go: function () { renderHome(); } },
+
+  // ── 📖 紀行のあと（2026-08-02・記事エンジンを足したので拡張契約を履行）────────
+  //   記事エンジンで紀行が「読んで終わる駅」になったのに出口が無かった＝行き止まり。
+  //   ★出口は**いま読んだ記事の切り口**で変える（読んだ話の続きにあたる場所へ送る）。
+  { at: "kiko", weight: 92, icon: "🍜", label: "その一皿を、もう一度", sub: "食レポの続きは、食べ歩き帳で",
+    cond: function () { try { var a = state.player.kikoArts; return !!(a && a[0] && a[0].cut === "meal"); } catch (e) { return false; } },
+    go: function () { renderMeals(); } },
+  { at: "kiko", weight: 92, icon: "📷", label: "撮った写真を見にいく", sub: "記事に載せた一枚は、フォト日記に",
+    cond: function () { try { var a = state.player.kikoArts;
+      return !!(a && a[0] && (a[0].cut === "view" || a[0].cut === "walk")) && konronMapUnlocked(); } catch (e) { return false; } },
+    go: function () { renderKonronGallery(); } },
+  { at: "kiko", weight: 70, icon: "🐲", label: "次のレースへ", sub: "書いたら、また走る。それが連載",
+    cond: function () { return typeof hungerCanRace !== "function" || hungerCanRace(); },
+    go: function () { renderRaceSelect(); } },
+  { at: "kiko", weight: 40, icon: "🌙", label: "ホームへ戻る", sub: "今日のぶんは、書けた",
+    cond: function () { return true; }, go: function () { renderHome(); } },
+
+  // ★紀行への「入口」チップは**置かない**（2026-08-02・実測して取り下げた）。
+  //   結果画面は上位2件しか出さず、勝ち飯/負け飯(90)と今日走った土地(78)が常に埋める。
+  //   weight 60 で足したところ一度も表に出ない死にコードだったので削除した。重みを上げれば
+  //   出せるが、それは島の一日ループの本線（飯・地図）を押しのけるだけで割に合わない。
+  //   紀行の告知はホームの紀行タブのドット1口で足りている（M3＝告知を増やしすぎない）。
 ];
 
 // 区切り画面用の提案行を生成（無ければ null＝何も出さない）。

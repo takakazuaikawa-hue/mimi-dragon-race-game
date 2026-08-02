@@ -287,6 +287,9 @@ function renderKiko() {
     app.appendChild(row);
   } catch (e) {}
 
+  // ▸ このあとの島時間（M2の出口チップ）＝紀行は「読んで終わる駅」なので行き止まりにしない
+  try { const _nx = (typeof nextSuggestRow === "function") && nextSuggestRow("kiko"); if (_nx) app.appendChild(_nx); } catch (e) {}
+
   const actions = el("div", "actions");
   const back = el("button", "secondary", "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(back);
