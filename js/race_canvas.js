@@ -1798,6 +1798,7 @@ function startRaceCanvas(container, ctx) {
   const TELOP_DWELL_MIN = 1500, TELOP_DWELL_MAX = 2900;
   const TELOP_CORE_TAGS = { start: 1, countdown: 1, signature: 1, cutin: 1, lead: 1, final: 1, goal: 1, course: 1 };
   let _telopLastAt = -1e9, _telopLastLen = 20, _telopQ = [], _telopDrop = 0, _getawaySeen = 0;
+  let _telopStartLine = null;   // スタートの一声（これによる割り込みは仕様＝欠けに数えない）
   function _telopDwell() {
     const need = _telopLastLen / TELOP_CPM * 60 * 1000;
     const ms = Math.max(TELOP_DWELL_MIN, Math.min(TELOP_DWELL_MAX, need));
@@ -1838,6 +1839,7 @@ function startRaceCanvas(container, ctx) {
     //   （走り出した後に入場の話が出てくるのは、遅い実況どころか間違った実況になる）
     if (tag === "start") {
       while (_telopQ.length) { const o = _telopQ.shift(); _telopDrop++; _telopLog("drop", o.side, o.line, o.tag); }
+      _telopStartLine = line;                 // ★この行による差し替えは「欠け」に数えない（仕様）
       _telopShow(line, side, tag);
       return;
     }
@@ -1909,7 +1911,9 @@ function startRaceCanvas(container, ctx) {
     while (arr.length > 1) arr.shift();
     // ★欠けの計測器を配線し直す（2026-08-02）：noteTypeCut は定義だけあって一度も呼ばれておらず、
     //   「前の行を打ち終わる前に消した」件数が常に0を返す死んだ監査だった。差し替え直前に数える。
-    noteTypeCut(key, bub);
+    //   ★スタートの一声だけは「積み残しを捨てて即出す」のが仕様（ゲートと声を合わせるため）なので、
+    //     その1回は欠けに数えない＝計器が0でないときだけ本当の異常、と読めるようにする。
+    noteTypeCut(key, bub, (line === _telopStartLine));
     bub.innerHTML = "";
     const d = document.createElement("div");
     d.className = "rcy-now";
@@ -1948,7 +1952,13 @@ function startRaceCanvas(container, ctx) {
     el.dataset.full = s;
   }
   // 差し替え時、前の行が打ち終わっていたかを見る（読めたかの計測）
-  function noteTypeCut(key, bub) {
+  //   byStart=true（スタートの一声による割り込み）は仕様なので数えない。
+  //   ★2026-08-02 の実測：滞留は「行の長さに比例（500字/分・下限1.5秒）」、打つ速さは45字/秒。
+  //     つまり打ち切れないのは 130字を超える行だけだが、実際に組み上がる実況行は
+  //     30レース×23,505行を測って**最長49字**（130字超は0）。よって長さ由来の欠けは起きない。
+  //     この計器が0でないときは、滞留かタグの設計が壊れた合図として読むこと。
+  function noteTypeCut(key, bub, byStart) {
+    if (byStart) return;
     const cur = bub.querySelector(".rcy-now");
     if (cur && cur.dataset.full && cur.textContent.length < cur.dataset.full.length) {
       _typeCut[key]++;
