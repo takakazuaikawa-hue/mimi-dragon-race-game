@@ -2527,6 +2527,31 @@ table.entry-table {
   color: #f3ecdd; font-size: 15px; line-height: 1.85; min-height: 5.55em;   /* ≒3行ぶんを確保＝発話ごとに枠が伸縮してガタつかない（短文でも高さ一定） */
   white-space: pre-wrap; word-break: break-word;
 }
+/* ===== ✒️ 文章送り＝C案「にじんで浮かび上がる」（2026-08-02・デモで決裁） =========
+   旧実装は textContent=slice(0,n) で1文字1文字が「パッ」と差し替わり、機械の印字に
+   見えていた（D4「文章送りがダサい」の正体）。ここでは1文字を span にして、
+   ぼけ・下・透明 → くっきり・定位置・不透明 を 190ms で解く。
+   ★数字/英字の連なりは dialogue.js 側で1つの span にまとめてある（「297万」が
+     行末で 29／7万 に割れるのを防ぐ。日本語はどこで折れてよい）。 */
+.dlg-text .dch {
+  display: inline-block; white-space: pre-wrap;
+  opacity: 0; transform: translateY(5px); filter: blur(2.4px);
+}
+.dlg-text .dch.in {
+  opacity: 1; transform: none; filter: blur(0);
+  transition: opacity .19s ease-out, transform .19s cubic-bezier(.2,.9,.3,1), filter .19s ease-out;
+}
+/* タップで「いま出せ」と言われた時は遷移を切る（じわっと出ると飛ばしたい気持ちに逆らう） */
+.dlg-text.instant .dch, .dlg-text.instant .dch.in {
+  opacity: 1; transform: none; filter: none; transition: none;
+}
+/* 名前プレートは“話者の替わり目だけ”すっと入る（毎行だと騒がしい） */
+.dlg-name.in { animation: dlgNameIn .34s cubic-bezier(.2,1.2,.35,1) both; }
+@keyframes dlgNameIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .dlg-text .dch { opacity: 1; transform: none; filter: none; transition: none; }
+  .dlg-name.in { animation: none; }
+}
 .dlg-next {
   position: absolute; right: 16px; bottom: 9px; color: var(--gold-bright);
   font-size: 13px; animation: dlg-bounce 1.05s ease-in-out infinite;

@@ -254,6 +254,10 @@
      ===================================================================== */
   var queue = null, idx = 0, resolveFn = null, opts = {};
   var typing = false, typeTimer = 0, full = "", shown = 0;
+  var typeCells = [];            // ★C案：いま打っている行の1文字ぶんの span たち
+  var lastSpeakerName = null;    // ★話者が替わったときだけ名前プレートを入れ直す（毎行だと騒がしい）
+  // 句読点の息継ぎ（読む速さは変えず、リズムだけ台詞に寄せる）。既存の {w:ms} 指定とは加算。
+  var DLG_PAUSE = { "、": 90, "，": 90, "。": 190, "！": 190, "？": 190, "…": 70, "—": 70 };
   var chain = Promise.resolve(); // 多重 play() を直列化
 
   var REDUCE = false;
@@ -337,6 +341,11 @@
       d.name.style.display = c.name ? "" : "none";
       d.name.textContent = c.name || "";
       d.name.style.setProperty("--cg", c.color || "#caa24a");
+      // ★C案：話者が替わったときだけプレートを入れ直す（毎行だと騒がしいので替わり目だけ）
+      if (!REDUCE && c.name && c.name !== lastSpeakerName) {
+        d.name.classList.remove("in"); void d.name.offsetWidth; d.name.classList.add("in");
+      }
+      lastSpeakerName = c.name || null;
       // ★感情アニメ（fx: shake/hop/nod/flash）＝話者の立ち絵imgに一発アニメ。reduced-motionでは無効。
       //   fx無指定の行でも前回のfxクラスを必ず除去（残留すると呼吸アニメが止まるため）。
       var fim = d.slots[side].img;
@@ -409,20 +418,50 @@
     d.next.style.visibility = "hidden";
     var lineWait = (line && line.w) || 0;   // 行末の間（次行送り前ではなく▼表示までの溜め）
     if (REDUCE || opts.instant) { d.text.textContent = full; typing = false; d.next.style.visibility = "visible"; maybeAuto(); return; }
-    d.text.textContent = "";
     clearTimeout(typeTimer);
     var speed = opts.speed || 22;
+
+    // ★C案（2026-08-02・デモで決裁）：1文字ずつ「にじんで浮かび上がる」。
+    //   旧実装は textContent = full.slice(0,n) で、1文字1文字が「パッ」と差し替わるため
+    //   機械の印字に見えていた（＝D4「文章送りがダサい」の正体）。span にして
+    //   透明+5px下+ぼけ → 不透明+定位置+くっきり、を190msで解く。
+    //   ★数字と英字の連なりは1つの span にまとめる（1文字ずつ inline-block にすると
+    //     「297万」が行末で 29／7万 に割れるため。日本語はどこで折れてよい）。
+    var units = [];
+    for (var ui = 0; ui < full.length;) {
+      var mU = /^[0-9A-Za-z][0-9A-Za-z.,%\-]*/.exec(full.slice(ui));
+      if (mU && mU[0].length > 1) { units.push({ s: mU[0], at: ui }); ui += mU[0].length; }
+      else { units.push({ s: full[ui], at: ui }); ui++; }
+    }
+    d.text.className = "dlg-text";           // 前行の「一気に表示」を解除
+    d.text.textContent = "";
+    var cells = units.map(function (u) {
+      var sp = document.createElement("span");
+      sp.className = "dch"; sp.textContent = u.s;
+      d.text.appendChild(sp);
+      return sp;
+    });
+    typeCells = cells;
+
+    var k = 0;                               // いま出す unit の番号
     (function tick() {
       if (!typing) return;
-      shown++;
-      d.text.textContent = full.slice(0, shown);
-      if (shown % 3 === 0 && global.Sfx && Sfx.play && !opts.silent) { try { Sfx.play("tick"); } catch (e) {} }   // タイプ音（3文字ごと・小さく）
-      if (shown >= full.length) {
+      var u = units[k], sp = cells[k];
+      if (sp) sp.classList.add("in");
+      shown = u.at + u.s.length;             // 打った文字数（外の判定と互換）
+      k++;
+      if (Math.floor(shown / 3) !== Math.floor((shown - u.s.length) / 3)
+          && global.Sfx && Sfx.play && !opts.silent) { try { Sfx.play("tick"); } catch (e) {} }   // タイプ音（3文字ごと・小さく）
+      if (k >= units.length) {
         typing = false;
-        setTimeout(function () { if (!typing) { d.next.style.visibility = "visible"; maybeAuto(); } }, lineWait);
+        setTimeout(function () { if (!typing) { d.next.style.visibility = "visible"; maybeAuto(); } }, lineWait + 190);
         return;
       }
-      typeTimer = setTimeout(tick, speed + (waits[shown] || 0));   // ★{w:ms} の位置で溜める
+      // {w:ms} の溜め＋句読点の息継ぎ（読む速さは変えず、リズムだけ台詞に寄せる）
+      var extra = 0;
+      for (var w = u.at; w < u.at + u.s.length; w++) extra += (waits[w + 1] || 0);
+      extra += (DLG_PAUSE[u.s[u.s.length - 1]] || 0);
+      typeTimer = setTimeout(tick, speed * u.s.length + extra);
     })();
   }
 
@@ -439,7 +478,15 @@
   function advance() {
     if (typing) { // タイプ中なら一気に表示
       typing = false; clearTimeout(typeTimer);
-      dom.text.textContent = full; dom.next.style.visibility = "visible"; maybeAuto();
+      // ★C案：残りの文字にも .in を付ける。ただし「いま出せ」というタップなので
+      //   .instant で遷移を切る（じわっと出ると、飛ばしたい気持ちに逆らう）。
+      if (typeCells.length) {
+        dom.text.classList.add("instant");
+        for (var i = 0; i < typeCells.length; i++) typeCells[i].classList.add("in");
+      } else {
+        dom.text.textContent = full;
+      }
+      dom.next.style.visibility = "visible"; maybeAuto();
       return;
     }
     clearTimeout(autoTimer);
