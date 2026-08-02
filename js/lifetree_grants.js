@@ -118,33 +118,37 @@ function lifeGrantScan() {
   return got;
 }
 
-// ── 授与カットイン（軽い型・0.9秒・タップで即閉じ） ──────────────────────
-//   progression のモーダルとは別物＝画面を奪わず、続けて複数出ても流れが止まらない。
+// ── 授与カットイン ───────────────────────────────────────────────────────
+//   ★2026-08-03 ユーザー決裁：自作の緑カード（0.9秒）は廃止。**ツリー画面で買った時と同じ**
+//   元のカットイン（showLifeCutin＝閃光＋集中線＋斜め帯・チープで良いやつ）へ一本化する。
+//   複数たまっていたら、前のが閉じてから次を出す（重ねない・読む前に消さない）。
 function lifeGrantCutIn(list, done) {
   if (!list || !list.length) { if (done) done(); return; }
   var i = 0;
   function next() {
     if (i >= list.length) { if (done) done(); return; }
     var g = list[i++];
-    var ov = document.createElement("div");
-    ov.className = "lg-cut";
-    ov.innerHTML =
-      '<div class="lg-card">' +
-        '<div class="lg-kicker">🌱 ' + g.at + '</div>' +
-        '<div class="lg-node">' + g.node + '</div>' +
-        '<div class="lg-quip">' + g.quip + "</div>" +
-        '<div class="lg-note">くらしツリーに、ひとつ加わった</div>' +
-      "</div>";
-    var closed = false;
-    var close = function () {
-      if (closed) return; closed = true;
-      ov.classList.add("out");
-      setTimeout(function () { try { ov.remove(); } catch (e) {} next(); }, 180);
-    };
-    ov.onclick = close;
-    document.body.appendChild(ov);
-    try { if (typeof Sfx !== "undefined" && Sfx && Sfx.play) Sfx.play("unlock"); } catch (e) {}
-    setTimeout(close, 900);
+    var node = _lgNode(g.node);
+    if (node && typeof showLifeCutin === "function") {
+      showLifeCutin(node);
+      // 元カットインは自動2.4秒/タップ即閉じ。#lt-cutin が消えるのを見てから次へ（+0.3秒の息）
+      var watch = setInterval(function () {
+        if (!document.getElementById("lt-cutin")) { clearInterval(watch); setTimeout(next, 300); }
+      }, 150);
+    } else {
+      // 予備（元カットインが無い環境）：タップで閉じるまで消えないカード
+      var ov = document.createElement("div");
+      ov.className = "lg-cut";
+      ov.innerHTML =
+        '<div class="lg-card">' +
+          '<div class="lg-kicker">🌱 ' + g.at + '</div>' +
+          '<div class="lg-node">' + g.node + '</div>' +
+          '<div class="lg-note">タップで閉じる</div>' +
+        "</div>";
+      ov.onclick = function () { try { ov.remove(); } catch (e) {} next(); };
+      document.body.appendChild(ov);
+      try { if (typeof Sfx !== "undefined" && Sfx && Sfx.play) Sfx.play("unlock"); } catch (e) {}
+    }
   }
   next();
 }

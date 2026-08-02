@@ -655,7 +655,7 @@ function showLifeCutin(node) {
       const o = document.getElementById("lt-cutin");
       if (o) { o.classList.add("out"); setTimeout(() => { if (o) o.remove(); }, 260); }
       _ltCutinTimer = null;
-    }, 1150);
+    }, 2400);   // ★1150→2400ms（2026-08-03 実機指摘「クリックする前に消えて読めない」。見た目は不変・タップ即閉じは維持）
   } catch (e) {}
 }
 
