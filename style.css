@@ -9262,6 +9262,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .rs-seg--dist { flex: 1 1 auto; justify-content: space-between; }
 .rs-seg--dist .rs-seg-b { padding: 6px 0; flex: 1 1 0; text-align: center; font-size: 12px; }
 
+/* ★B改・食べ物との出会い（2026-08-02）：屋台の「？？？＋気配」と発見バナー */
+.kw-mystery .meal-card-ic { filter: grayscale(1); opacity: .85; }
+.kw-mystery .kw-scent { display: block; margin-top: 2px; font-size: 9.5px; line-height: 1.4;
+  color: var(--mist-soft); font-weight: 600; white-space: normal; }
+.meal-scent { margin: 8px 0 2px; font-size: 12px; line-height: 1.7; color: #cfd8ea; font-style: normal; }
+.meal-found { margin: 6px 0; padding: 7px 10px; border-radius: 10px; text-align: center;
+  font-size: 13px; font-weight: 900; color: #ffe9b0;
+  background: linear-gradient(90deg, rgba(255,205,120,.18), rgba(255,205,120,.06));
+  border: 1px solid rgba(255,205,120,.45); }
+
 /* ★金欠CTA（2026-08-02・実機プレイ指摘）：コイン0のときレース選択/賭け画面の最上部に出す一枚。
    目立たせるが、下のレース一覧の下見は妨げない（バナー1枚だけ・押すとホームへ）。 */
 .broke-cta { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;

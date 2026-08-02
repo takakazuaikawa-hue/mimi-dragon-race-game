@@ -111,7 +111,17 @@ function renderMeals() {
       const _cardPrice = (!m.quiz && typeof mealPrice === "function")
         ? `<span class="meal-card-price">🪙${mealPrice(m).toLocaleString("ja-JP")}</span>` : "";
       card.innerHTML = `${thumb}<span class="meal-card-nm">${un ? m.name : "？？？"}${_cardPrice}</span>`;
-      card.onclick = () => showMealDetail(m);
+      // ★B改・出会いの設計（2026-08-02・ユーザー決裁「選ぶ段階がつまらない。探し出す喜び・
+      //   出会う喜びを」）：where を持つ未食の品は、**ここ（一覧）からは食べられない**。
+      //   タップすると出会いのヒント（場所×時間の噂）だけが出る＝島へ探しに行く動機になる。
+      //   出会った後はいつでもここから食べ直せる（おなか回復のテンポは不変）。
+      //   where の無い品（自宅ごはん等）は従来どおり＝食えない品が生まれない fail-safe。
+      if (!un && m.where && !m.quiz) {
+        card.onclick = () => { if (typeof showInfoPopup === "function") showInfoPopup("👃 うわさ",
+          `<div class="mm-row"><span class="mm-ic">❔</span><div><b>まだ出会っていない一皿</b><small>${m.scent || "……いい匂いがするらしい。"}<br>うわさ：<u>${m.where}</u>${m.time ? "（" + m.time.join("・") + "の刻）" : ""}にあるとか。</small></div></div>`); };
+      } else {
+        card.onclick = () => showMealDetail(m);
+      }
       grid.appendChild(card);
     });
     app.appendChild(grid);
@@ -126,9 +136,16 @@ function showMealDetail(m) {
   const box = el("div", "navpop meal-pop");
   // 閉じる時、食事画面なら再描画＝食べた/解いたカードが即「取得済み」に反映される。
   const _closeMeal = () => { ov.remove(); if (state.ui.screen === "meals" && typeof renderMeals === "function") renderMeals(); };
-  const head = () => (m.photo
-    ? `<img class="meal-pop-photo" src="${m.photo}" alt="" decoding="async"><div class="meal-pop-ic meal-pop-ic--over">${m.icon}</div><div class="navpop-t">${m.name}</div>`
-    : `<div class="meal-pop-ic">${m.icon}</div><div class="navpop-t">${m.name}</div>`);
+  // ★B改・出会いの演出（2026-08-02）：where を持つ品は、食べるまで名前も写真も伏せる。
+  //   屋台で「？？？＋気配」→ 食べた瞬間に名前と全力の講評が開く＝発見が遊びの山になる。
+  //   この関数内で食べた直後の1回だけ「出会った！」バナーを立てる。
+  let _justFound = false;
+  const _mystery = () => !mealEaten(m.id) && !!m.where && !m.quiz;
+  const head = () => (_mystery()
+    ? `<div class="meal-pop-ic">❔</div><div class="navpop-t">？？？</div>`
+    : (m.photo
+      ? `<img class="meal-pop-photo" src="${m.photo}" alt="" decoding="async"><div class="meal-pop-ic meal-pop-ic--over">${m.icon}</div><div class="navpop-t">${m.name}</div>`
+      : `<div class="meal-pop-ic">${m.icon}</div><div class="navpop-t">${m.name}</div>`));
   // 観光の写真ビューアーと同じ「タップで拡大／縮小」。box.innerHTML更新のたびに呼び直す（要素が作り直されるため）。
   const _wirePhotoZoom = () => {
     const ph = box.querySelector(".meal-pop-photo");
@@ -153,8 +170,11 @@ function showMealDetail(m) {
         : "所持 " + _bal + " → 残り 🪙" + (_coins - _price).toLocaleString("ja-JP");
       let _html = head();
       _html += eaten
-        ? `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`
-        : `<div class="meal-prompt">ひとくち、いってみる？</div>`;
+        ? (_justFound ? `<div class="meal-found">🎉 あたらしい一皿と、出会った！</div>` : "") +
+          `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`
+        : (m.where && m.scent
+          ? `<div class="meal-scent">${m.scent}</div><div class="meal-prompt">ひとくち、いってみる？</div>`
+          : `<div class="meal-prompt">ひとくち、いってみる？</div>`);
       _html += `<div class="meal-buy${(_short || _full) ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
         `<small>${_balTxt}</small></div>`;
       box.innerHTML = _html;
@@ -162,7 +182,7 @@ function showMealDetail(m) {
       const btns = el("div", "navpop-btns");
       const eat = el("button", "navpop-go" + (_full ? " is-off" : ""), eaten ? "🍴 もう一度食べる" : "🍴 いただきます！");
       if (_full) eat.disabled = true;
-      else eat.onclick = () => { eatMeal(m.id); if (window.Sfx) Sfx.play("coin"); render(); };
+      else eat.onclick = () => { _justFound = !mealEaten(m.id) && !!m.where; eatMeal(m.id); if (window.Sfx) Sfx.play(_justFound ? "unlock" : "coin"); render(); };
       const later = el("button", "navpop-cancel", eaten ? "閉じる" : "また今度"); later.onclick = () => _closeMeal();
       btns.appendChild(eat); btns.appendChild(later); box.appendChild(btns);
     } else {

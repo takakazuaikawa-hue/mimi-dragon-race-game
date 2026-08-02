@@ -970,23 +970,35 @@ function kwStall(title, ids) {
     if (typeof renderMeals === "function") { kwMarkReturn(); kwExit(); renderMeals(); }
     return;
   }
+  // ★B改・出会いの設計（2026-08-02）：
+  //   ①品揃えは時間帯で入れ替わる（m.time があればその刻だけ並ぶ＝一期一会の食版）
+  //   ②未食の品は「？？？＋気配」で並ぶ＝名前は食べた瞬間に開く（発見が遊びの山）
+  const _nowK = (function () { try { return kwNow().k; } catch (e) { return "昼"; } })();
   const items = ids.map(function (id) { return MEALS.find(function (m) { return m.id === id; }); })
-                   .filter(Boolean);
-  if (!items.length) { kwToast("🍽️ ……今日はもう店じまいらしい。"); return; }
+                   .filter(Boolean)
+                   .filter(function (m) { return !m.time || m.time.indexOf(_nowK) >= 0; });
+  if (!items.length) { kwToast("🍽️ ……この時間は店じまいらしい。刻を変えて、また来よう。"); return; }
   const ov = document.createElement("div"); ov.className = "navpop-ov";
   const box = document.createElement("div"); box.className = "navpop kw-stall";
   const close = function () { ov.remove(); };
   let html = '<h3 class="navpop-h">' + title + "</h3>" +
-             '<p class="navpop-sub">きょう並んでいるのは、この' + items.length + "品。</p>" +
+             '<p class="navpop-sub">' + _nowK + "の品揃えは、この" + items.length + "品。</p>" +
              '<div class="meal-grid kw-stall-grid">';
   items.forEach(function (m) {
     const got = (typeof mealEaten === "function") && mealEaten(m.id);
     const price = (typeof mealPrice === "function") ? mealPrice(m) : 0;
-    html += '<button class="meal-card' + (got ? " got" : "") + '" data-id="' + m.id + '">' +
-            '<span class="meal-card-ic">' + m.icon + "</span>" +
-            '<span class="meal-card-nm">' + m.name +
-            (price ? '<span class="meal-card-price">🪙' + price.toLocaleString("ja-JP") + "</span>" : "") +
-            "</span></button>";
+    if (!got && m.where) {
+      // 未食＝気配だけの謎の一皿（気配は横取りせず、詳細ポップ側でも同じ文を見せる）
+      html += '<button class="meal-card kw-mystery" data-id="' + m.id + '">' +
+              '<span class="meal-card-ic">❔</span>' +
+              '<span class="meal-card-nm">？？？<small class="kw-scent">' + (m.scent || "……いい匂い。") + "</small></span></button>";
+    } else {
+      html += '<button class="meal-card' + (got ? " got" : "") + '" data-id="' + m.id + '">' +
+              '<span class="meal-card-ic">' + m.icon + "</span>" +
+              '<span class="meal-card-nm">' + m.name +
+              (price ? '<span class="meal-card-price">🪙' + price.toLocaleString("ja-JP") + "</span>" : "") +
+              "</span></button>";
+    }
   });
   html += "</div>";
   box.innerHTML = html;
