@@ -108,6 +108,9 @@ function renderHome() {
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   // ⚔️ 竜帝の戴冠衣：押し戻した瞬間にVN/ポップアップが開いていて見送られた場合の拾い直し（自身が門番）。
   if (typeof maybeGrantDragonRobe === "function") maybeGrantDragonRobe();
+  // ✍️ 紀行の記事：ホーム到着＝一日の息継ぎ。溜まった素材から1本だけ書かれる。
+  //   ★モーダルは出さない（progressionのカットインと競合させない）＝紀行タブのドットだけで知らせる。
+  if (typeof kikoMaybeWrite === "function") kikoMaybeWrite();
   // daily login reward — checked once per session, shown just after home paints
   // ★D4解消（FTUE保護）：初出走前は文脈のない報酬ポップを出さない＝初回導線（→レースへ）に集中させる。
   let _doGreet = false;   // 挨拶はVNではなく“配信の吹き出し”で（大立ち絵と二重にしない）
@@ -943,7 +946,10 @@ function renderHome() {
   // 🌳暮らし＝「する」専用（ツリー/習い事/経済/島づくり/相談）。
   bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets(), { img: "kurashi" }));
   // 📖紀行＝ミミのブログ（全記録のハブ）。売上が受け取れる日はドット。
-  const _kikoDue = (() => { try { return !!checkDailyLogin(); } catch (e) { return false; } })();
+  const _kikoDue = (() => {
+    try { if (typeof kikoHasUnread === "function" && kikoHasUnread()) return true; } catch (e) {}   // 未読の新記事
+    try { return !!checkDailyLogin(); } catch (e) { return false; }
+  })();
   if ((p.completedRaces || 0) >= 1) {
     bar.appendChild(tikTab("📖", "紀行", () => renderKiko(), { dot: _kikoDue }));
   } else {

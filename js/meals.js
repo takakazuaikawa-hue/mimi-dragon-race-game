@@ -312,7 +312,22 @@ function mealEaten(id) { return !!mealData().eaten[id]; }
 function mealSolved(id) { return !!mealData().solved[id]; }
 // 開放済み＝eatは食べた、guessは正解した。
 function mealUnlocked(m) { return m.quiz ? mealSolved(m.id) : mealEaten(m.id); }
-function eatMeal(id) { var d = mealData(); if (!d.eaten[id]) { d.eaten[id] = true; if (typeof FieldStats !== "undefined") FieldStats.bump("tourEats");   /* ★K1 料理教室の実地（食べ歩き） */ if (typeof saveGame === "function") saveGame(); } }
+function eatMeal(id) {
+  var d = mealData();
+  if (!d.eaten[id]) {
+    d.eaten[id] = true;
+    if (typeof FieldStats !== "undefined") FieldStats.bump("tourEats");   /* ★K1 料理教室の実地（食べ歩き） */
+    // ✍️ 紀行の素材：初食だけ「食レポ回」のネタになる（再食では積まない）
+    try {
+      if (typeof kikoMatPush === "function") {
+        var m = null;
+        for (var i = 0; i < MEALS.length; i++) if (MEALS[i].id === id) { m = MEALS[i]; break; }
+        if (m) kikoMatPush("newMeal", { name: m.name, ic: m.icon, where: m.where || "", react: m.react || "", note: m.note || "" });
+      }
+    } catch (e) {}
+    if (typeof saveGame === "function") saveGame();
+  }
+}
 function solveMeal(id) { var d = mealData(); if (!d.solved[id]) { d.solved[id] = true; if (typeof saveGame === "function") saveGame(); } }
 function mealTierStats(tierId) {
   var list = mealsByTier(tierId), got = 0;

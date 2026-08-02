@@ -2991,6 +2991,26 @@ function settleRace() {
       mission: _mission
     };
   } catch (e) { c.gainLedger = null; }
+  // ✍️ 紀行の素材（このレースから「記事のネタ」を1件だけ拾う）。表示専用メタ＝ここまでの
+  //   数値には一切触れない。記事の生成はホーム到着時（kikoMaybeWrite）で、ここは仕込むだけ。
+  try {
+    if (typeof kikoMatPush === "function") {
+      const _rn = (typeof raceFullName === "function") ? raceFullName(c.race) : ((c.race && c.race.cup) || "レース");
+      if (betResult.hit) {
+        const _od = (typeof betOdds === "function") ? betOdds(c.bet, c.oddsResult) : 0;
+        const _dg = (c.bet.selections || []).map(id => {
+          const d = (typeof DRAGONS !== "undefined") && DRAGONS.find(x => x.id === id); return d ? d.name : "";
+        }).filter(Boolean).join("＋") || "あの子";
+        const _mult = betResult.wager > 0 ? (betResult.payout / betResult.wager) : 0;
+        const _base = { race: _rn, dragon: _dg, odds: _od.toFixed(1), payout: betResult.payout,
+                        type: ({ win: "単勝", place: "複勝", wide: "ワイド" }[c.bet.type] || "") };
+        if (_mult >= 10) kikoMatPush("bigwin", Object.assign({ mult: _mult.toFixed(1) }, _base));
+        else if (c.bet.type === "win") kikoMatPush("win", _base);
+      } else if ((state.player.missRun || 0) >= 3) {
+        kikoMatPush("lose3", { run: state.player.missRun, race: _rn });
+      }
+    }
+  } catch (e) {}
   saveGame();
   updateHeader();
   // ★レース直後に全画面モーダルは出さない（「いきなり出て雑」＝ユーザー指摘）。

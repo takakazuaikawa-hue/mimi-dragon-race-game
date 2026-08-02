@@ -694,6 +694,13 @@ function _kmStartShoot(id) {
       if (stars > prev) ps[id] = stars;            // ベスト更新
       // 傑作の累計（旅ノート/SNS/日報が後で拾う・表示専用メタ）
       if (stars >= 3 && prev < 3) kz.masterpieces = (kz.masterpieces || 0) + 1;
+      // ✍️ 紀行の素材：☆2以上の一枚は「絶景回／散歩回」のネタになる（写真そのものが記事に載る）
+      try {
+        if (stars >= 2 && typeof kikoMatPush === "function") {
+          const _sp = KONRON_SPOTS[id] || {};
+          kikoMatPush("photo", { spot: _sp.name || "島のどこか", stars: stars, src: _sp.photo || "" });
+        }
+      } catch (e) {}
       // ★K1 撮影連動の実地稽古（スポットのカテゴリ・見頃に応じて習い事が上達）
       if (typeof FieldStats !== "undefined") {
         const s = KONRON_SPOTS[id] || {};

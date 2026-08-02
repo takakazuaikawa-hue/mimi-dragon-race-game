@@ -106,6 +106,38 @@ function _kikoTodaysPost() {
   return posts[((day % posts.length) + posts.length) % posts.length];
 }
 
+// ── ✍️ 記事カードの組み立て（kiko_articles.js が書いた記事を紙面にする）──────
+//   最新記事は開いた状態、過去記事はタップで開閉。読者コメントは最新＋殿堂だけに付ける
+//   （過去記事まで全部に付けると紙面がコメントで埋まって、記事が読めなくなるため）。
+function _kikoArtCard(art, opts) {
+  opts = opts || {};
+  const card = el("div", "kiko-art" + (art.rare ? " rare" : "") + (opts.fold ? " fold" : ""));
+  const kicker = opts.kicker || (art.rare ? "💥 殿堂入りの記事" : "✍️ 最新記事");
+  let html =
+    `<div class="kiko-post-k">${kicker}</div>` +
+    `<div class="kiko-art-t">${art.headline}</div>`;
+  if (art.photo) html += `<div class="kiko-art-ph"><img src="${art.photo}" alt="" decoding="async" onerror="this.closest('.kiko-art-ph').remove()"></div>`;
+  html += `<div class="kiko-art-b">` + art.paras.map(p => `<p>${p}</p>`).join("") + `</div>`;
+  html += `<div class="kiko-post-tags">#${art.tag} #崑崙島 #ドラゴンレース</div>`;
+  if (opts.comments) {
+    const cs = (typeof kikoComments === "function") ? kikoComments(art) : [];
+    if (cs.length) {
+      html += `<div class="kiko-cmt-h">💬 読者から</div>`;
+      cs.forEach(c => {
+        html += `<div class="kiko-cmt"><span class="kcm-av">${c.ic}</span><div class="kcm-b">` +
+          `<div class="kcm-h"><b>${c.n}</b><span>${c.h}</span></div>` +
+          `<div class="kcm-t">${c.t}</div><div class="kcm-f">★ ${c.fav}</div></div></div>`;
+      });
+    }
+  }
+  card.innerHTML = html;
+  if (opts.fold) {
+    const t = card.querySelector(".kiko-art-t");
+    if (t) t.onclick = () => card.classList.toggle("fold");
+  }
+  return card;
+}
+
 // ── 🐦 あゆみ（昔のTwitter風）のつぶやき文面。目標id→当時のミミのツイート。──
 //   声表：短文の畳みかけ・！多め・飯に着地しがち・自分に「おめでとう」と言わない。
 //   ★未登場キャラの固有名は書かない（表示側でも goalMasked で二重に防護）。
@@ -155,22 +187,43 @@ function renderKiko() {
 
   // ヘッダー＝ブログの顔（ロゴ・著者・読者数・累計売上）
   const head = el("div", "kiko-head");
+  // ★M4 理由つき前回比＝前回ここを開いてから増えた読者を「なぜ増えたか」つきで1行だけ。
+  //   グラフも目標カウンタも置かない（計器禁止）。増えていない時は何も出さない。
+  const rd = (typeof kikoReaderDelta === "function") ? kikoReaderDelta() : null;
   head.innerHTML =
     `<div class="kiko-logo">📖 ドラゴンレース紀行</div>` +
     `<div class="kiko-byline">by ミミ🐰 <span class="kiko-badge">連載中</span></div>` +
     `<div class="kiko-stats"><span>👀 読者 <b>${fol.toLocaleString("ja-JP")}</b>人</span>` +
-    `<span>💰 累計売上 <b>${fmtCoins(earned)}</b></span></div>`;
+    `<span>💰 累計売上 <b>${fmtCoins(earned)}</b></span></div>` +
+    (rd ? `<div class="kiko-delta">前回から <b>+${rd.diff.toLocaleString("ja-JP")}</b> 人${rd.why ? `（${rd.why}）` : ""}</div>` : "");
   app.appendChild(head);
 
-  // ✍️ 今日の更新
-  const post = _kikoTodaysPost();
-  const art = el("div", "kiko-post");
-  art.innerHTML =
-    `<div class="kiko-post-k">✍️ 今日の更新</div>` +
-    `<div class="kiko-post-t">${post.title}</div>` +
-    `<div class="kiko-post-b">${post.body}</div>` +
-    `<div class="kiko-post-tags">#${post.tag} #崑崙島 #ドラゴンレース</div>`;
-  app.appendChild(art);
+  // ✍️ 記事（実プレイの出来事から書かれたもの）。まだ1本も無ければ、従来の「今日の更新」。
+  const arts = (p.kikoArts && p.kikoArts.length) ? p.kikoArts : null;
+  if (arts) {
+    app.appendChild(_kikoArtCard(arts[0], { comments: true }));
+    if (arts.length > 1) {
+      app.appendChild(el("div", "kiko-sec", "これまでの記事"));
+      for (let i = 1; i < arts.length; i++)
+        app.appendChild(_kikoArtCard(arts[i], { fold: true, kicker: `📄 ${arts[i].race}戦めのころ` }));
+    }
+  } else {
+    const post = _kikoTodaysPost();
+    const art = el("div", "kiko-post");
+    art.innerHTML =
+      `<div class="kiko-post-k">✍️ 今日の更新</div>` +
+      `<div class="kiko-post-t">${post.title}</div>` +
+      `<div class="kiko-post-b">${post.body}</div>` +
+      `<div class="kiko-post-tags">#${post.tag} #崑崙島 #ドラゴンレース</div>`;
+    app.appendChild(art);
+  }
+  // 💥 殿堂＝大穴を当てた日の記事だけが残る（通算5本の回転から外れる・収集）
+  if (p.kikoHof && p.kikoHof.length) {
+    app.appendChild(el("div", "kiko-sec", "殿堂入り"));
+    p.kikoHof.forEach((a, i) => app.appendChild(_kikoArtCard(a, { fold: i > 0, comments: i === 0 })));
+  }
+  // 開いた＝既読（ホームの紀行タブのドットが消える）
+  try { p.kikoUnread = false; if (typeof saveGame === "function") saveGame(); } catch (e) {}
 
   // カテゴリ（チップ→既存画面へ）
   app.appendChild(el("div", "kiko-sec", "カテゴリ"));
