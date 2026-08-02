@@ -9468,9 +9468,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 :root {
   /* 角丸＝4段だけ（チップ/部品/カード/窓）。以後これ以外を増やさない。 */
   --r-1: 9px; --r-2: 12px; --r-3: 16px; --r-4: 22px;
-  /* ＋形状2種（段ではなく形。値を動かすことは無い） */
+  /* ＋形状3種（段ではなく形。値を動かすことは無い） */
   --r-full: 999px;   /* ピル形 */
   --r-round: 50%;    /* 正円 */
+  --r-0: 0;          /* 角なし（意匠フレームが四隅を担う窓など） */
   /* 🧱 移行トークン（2026-08-02・土台工事第1弾）＝4段の外にある現状値の**仮の住所**。
      値は実測の直書きそのまま＝この置換で見た目は1pxも変わらない（18画面の計算済み
      スタイルのハッシュ一致で機械検証）。最終的には上の4段へ寄せて消すのが目標だが、
@@ -9579,24 +9580,22 @@ button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2p
   box-shadow: var(--e-1);
 }
 
-/* ── 窓（モーダル）：いちばん高い影＋金の内側の光。飾りは四隅の交点だけ ──── */
+/* ── 窓（モーダル）：意匠フレーム（S2・2026-08-03 ユーザー決裁「OK」）──────────
+   生成した金枠（四隅=竜・辺=鱗紋・images/ui/frame_gold.png 512px）を 9-slice で貼る。
+   四隅は絵のまま保護し、辺だけ伸びる＝どんな大きさの窓でも意匠が崩れない。
+   ★決裁時の指摘「枠が二重」＝旧1px金線と四隅のLかざり（::before/::after）が
+   フレームの内側に残っていたため、窓の飾りはフレームに**一本化**（旧かざりは撤去）。 */
 .navpop {
   position: relative;
-  border-radius: var(--r-4);
-  border: 1px solid var(--hair-gold);
+  border-radius: var(--r-0);              /* 四隅の形はフレームの絵が担う */
+  border: 28px solid transparent;
+  border-image: url("images/ui/frame_gold.png") 150 / 28px stretch;
+  background-clip: padding-box;           /* 地の塗りを枠の下に漏らさない */
   background-image:
     linear-gradient(180deg, rgba(255,224,160,.10), rgba(255,224,160,0) 64px),
     linear-gradient(180deg, rgba(34,38,46,.985), rgba(20,23,29,.985));
-  box-shadow: var(--e-3), inset 0 1px 0 rgba(255,224,160,.20);
+  box-shadow: var(--e-3);
 }
-/* ★装飾は全周に回さない（＝ロゴが読めなくなったのと同じ轍を踏まない）。角の2箇所だけ。 */
-.navpop::before, .navpop::after {
-  content: ""; position: absolute; width: 18px; height: 18px; pointer-events: none; opacity: .55;
-}
-.navpop::before { top: 7px; left: 7px;
-  border-top: 1.5px solid var(--gold-bright); border-left: 1.5px solid var(--gold-bright); border-top-left-radius: 14px; }
-.navpop::after { bottom: 7px; right: 7px;
-  border-bottom: 1.5px solid var(--gold-bright); border-right: 1.5px solid var(--gold-bright); border-bottom-right-radius: 14px; }
 .navpop-btns button { border-radius: var(--r-2); }
 
 /* ── デバッグ盤「① いまの状態」（F3・2026-08-01）─────────────────────────
