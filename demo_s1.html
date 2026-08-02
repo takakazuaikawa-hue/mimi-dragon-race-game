@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S1デモ — 影と金色の統一（決裁用）</title>
+<style>
+  html,body { margin:0; height:100%; background:#0a1013; }
+  #frame { border:0; width:100%; height:100%; display:block; }
+  /* 決裁トグル＝画面下中央。ゲームのUIと被らない最小の浮島 */
+  #s1bar { position:fixed; left:50%; bottom:10px; transform:translateX(-50%); z-index:99999;
+    display:flex; gap:6px; padding:6px; border-radius:999px;
+    background:rgba(10,14,18,.88); border:1px solid rgba(255,216,119,.5);
+    box-shadow:0 10px 30px rgba(0,0,0,.6); font-family:"Hiragino Sans","Yu Gothic",sans-serif; }
+  #s1bar button { border:0; border-radius:999px; padding:9px 18px; font-size:13px; font-weight:900;
+    background:transparent; color:#cfc7b8; cursor:pointer; }
+  #s1bar button.on { background:linear-gradient(180deg,#ffeaa6,#dc9c33); color:#3a2a08; }
+  #s1note { position:fixed; left:50%; bottom:58px; transform:translateX(-50%); z-index:99999;
+    font-size:11px; color:#9fb0a8; font-family:sans-serif; background:rgba(10,14,18,.7);
+    padding:3px 10px; border-radius:8px; pointer-events:none; }
+</style>
+</head>
+<body>
+<iframe id="frame" src="index.html"></iframe>
+<div id="s1note">おすすめの見比べ：ホーム／レース選択／暮らし（どの画面でも切替可）</div>
+<div id="s1bar">
+  <button id="bOff" class="on">元のまま</button>
+  <button id="bOn">S1 統一</button>
+</div>
+<script>
+// =========================================================================
+// S1デモ：ソースは書き換えない。iframe内の本物のゲームに対して、
+//   ① 金系の近似色（--hx-*）→ 既存 --gold 系へ（トークンの窓口があるので変数7個の差し替え）
+//   ② 影341種 → --e-1/2/3 の3段へ（実行時にCSSOMを書き換え・元値は控えて完全復元）
+// を当てたり外したりする。判断基準＝数値でなく体感（juice-approval-via-live-mock の型）。
+// ★守るもの：色つきの光（金のグロー等）・inset（ボタンの鍵エッジ）・@keyframes内＝
+//   これらは「影」ではなく「光と細工」なので統一の対象外。黒の浮き影だけを3段に寄せる。
+// =========================================================================
+var GOLD_MAP = {
+  "--hx-ffe6a8": "#ffd877",   // 淡金の文字色たち → --gold-bright
+  "--hx-ffd98a": "#ffd877",
+  "--hx-ffd76a": "#ffd877",
+  "--hx-ffd870": "#ffd877",
+  "--hx-ffe08a": "#ffd877",
+  "--hx-d4a850": "#e6b24a",   // 濁った金 → --gold
+  "--hx-fff4e0": "#f3ecdc"    // 温白 → --cream
+};
+var applied = false;
+// ★復元の設計：元のシートは一切書き換えない。ONで「上書きシート1枚」を注入し、
+//   OFFでそれを remove() するだけ＝復元は構造的に完全（簿記が要らない）。
+//   最初の版はルールを直接書き換えて控え簿で戻す方式だったが、復元漏れが実測で出たため
+//   この方式に替えた（.hl-goal が --e-2 のまま残った）。
+
+function eachRule(list, media, fn){
+  for (var i=0;i<list.length;i++){
+    var r=list[i];
+    try{
+      if (r.type===1) fn(r, media);                           // style rule
+      else if (r.type===4) eachRule(r.cssRules, r.media.mediaText, fn);   // @media（条件を持ち回る）
+      else if (r.type===12) eachRule(r.cssRules, media, fn);  // @supports
+      // r.type===7(@keyframes) は入らない＝アニメの影は演出なので触らない
+    }catch(e){}
+  }
+}
+// 影の分類：全層が黒(rgba(0,0,0,x))かつ inset 無し → ぼかし最大値で3段へ
+function classify(v){
+  if (!v || v==="none") return null;
+  var layers=[], depth=0, cur="";
+  for (var i=0;i<v.length;i++){ var c=v[i];
+    if(c==="(")depth++; if(c===")")depth--;
+    if(c===","&&depth===0){ layers.push(cur); cur=""; } else cur+=c; }
+  layers.push(cur);
+  var maxBlur=0;
+  for (var j=0;j<layers.length;j++){
+    var L=layers[j];
+    if (/inset/.test(L)) return null;                              // 細工＝残す
+    var colored = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(L);
+    if (colored){ if(+colored[1]>40||+colored[2]>40||+colored[3]>40) return null; }  // 色つきの光＝残す
+    else if (/#[0-9a-fA-F]{3,8}|var\(/.test(L)) return null;       // 色不明＝安全側で残す
+    var nums=L.match(/-?\d+\.?\d*px/g)||[];
+    if (nums[2]) maxBlur=Math.max(maxBlur, Math.abs(parseFloat(nums[2])));
+  }
+  if (maxBlur<=9) return "var(--e-1)";
+  if (maxBlur<=27) return "var(--e-2)";
+  return "var(--e-3)";
+}
+var lastCount = 0;
+function apply(){
+  var doc=document.getElementById("frame").contentDocument;
+  var css=[":root{"];
+  for (var k in GOLD_MAP) css.push(k+":"+GOLD_MAP[k]+";");
+  css.push("}");
+  lastCount=0;
+  for (var s=0;s<doc.styleSheets.length;s++){
+    var rules; try{ rules=doc.styleSheets[s].cssRules; }catch(e){ continue; }
+    eachRule(rules, null, function(r, media){
+      var v=r.style.boxShadow;
+      if(!v) return;
+      var to=classify(v);
+      if(to && to!==v){
+        lastCount++;
+        // 同じセレクタを同じ媒体条件で後出し＝同特異度の後勝ちで上書き（!importantは使わない）
+        var line=r.selectorText+"{box-shadow:"+to+";}";
+        css.push(media ? "@media "+media+"{"+line+"}" : line);
+      }
+    });
+  }
+  var st=doc.createElement("style");
+  st.id="__s1_override";
+  st.textContent=css.join("\n");
+  doc.head.appendChild(st);
+}
+function restore(){
+  var doc=document.getElementById("frame").contentDocument;
+  var st=doc.getElementById("__s1_override");
+  if(st) st.remove();
+}
+var bOn=document.getElementById("bOn"), bOff=document.getElementById("bOff");
+bOn.onclick=function(){ if(applied) return; apply(); applied=true; bOn.classList.add("on"); bOff.classList.remove("on"); };
+bOff.onclick=function(){ if(!applied) return; restore(); applied=false; bOff.classList.add("on"); bOn.classList.remove("on"); };
+// 検証用：書き換えた影の本数を外から読める
+window.__s1Count=function(){ return lastCount; };
+</script>
+</body>
+</html>
