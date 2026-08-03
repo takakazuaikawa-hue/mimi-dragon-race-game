@@ -9727,10 +9727,21 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
   position: relative;
   border-radius: var(--r-0);              /* 四隅の形はフレームの絵が担う */
   border: 28px solid transparent;
-  border-image: url("images/ui/frame_gold.png") 150 / 28px stretch;
-  background-clip: padding-box;           /* 地の塗りを枠の下に漏らさない */
-  /* ★地色は枠の絵の内側の実色に合わせる（旧plate=紫寄りの暗色だと色相が違い、
-     枠との出会いに継ぎ目が見えて「二重の枠」に読めた＝ユーザー診断どおり境界の問題）。 */
+  /* ?r2 は画像の版。index.html の ?v= は画像には効かない（CSS内のurlは別物）ので、
+     絵を差し替えたときはこの印を進めて古いキャッシュを外す。 */
+  border-image: url("images/ui/frame_gold.png?r2") 150 / 28px stretch;
+  /* ★「中の四角と枠のあいだに黒が入る」の解消（2026-08-04・実機指摘）。
+     原因は色の合わせ方ではなく、frame_gold.png そのものだった。金の飾りの内側に
+     不透明な暗色 rgb(19,32,37) が焼き込まれており（実測：元画像 x=90〜150）、
+     9-slice で 150→28px に縮むと金の内側に約11pxの暗い帯として現れる。
+     その内側から本体の地色 #1a2e33（上端は暖色の光で約(44,60,60)）が始まるので、
+     別の色どうしが出会って「もう一枚の枠」に見えていた。
+     → 画像側は飾りの内側を透明に抜き（tools 経由で加工・中心から塗りつぶし）、
+       CSS側は地の塗りを border-box まで広げる。これで地色が中心から金の飾りの
+       真下まで途切れず続き、帯そのものが無くなる。
+       ※ padding-box のままだと、抜いた輪の部分に背後の暗幕が透けて逆に悪化する。 */
+  background-clip: border-box;
+  /* 地色は枠の絵の内側の実色に合わせてある（紫寄りの旧plateだと色相が違って継ぎ目が出る）。 */
   background-image:
     linear-gradient(180deg, rgba(255,224,160,.08), rgba(255,224,160,0) 64px),
     radial-gradient(140% 120% at 50% 46%, var(--frame-in-1), var(--frame-in-2) 78%);
