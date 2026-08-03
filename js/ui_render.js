@@ -651,6 +651,8 @@ function showLifeCutin(node) {
     ov.onclick = () => { if (_ltCutinTimer) { clearTimeout(_ltCutinTimer); _ltCutinTimer = null; } ov.remove(); };
     document.body.appendChild(ov);
     try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+    // 🎉 S5：くらしツリーの取得/授与にも小さめの祝祭（カットインと同時・別レイヤ）
+    try { if (typeof celebrate === "function") celebrate("grant", { y: window.innerHeight * 0.5 }); } catch (e) {}
     _ltCutinTimer = setTimeout(() => {
       const o = document.getElementById("lt-cutin");
       if (o) { o.classList.add("out"); setTimeout(() => { if (o) o.remove(); }, 260); }
@@ -4079,6 +4081,13 @@ function celebrateResult(hero, ps, tier, info) {
   if (!hero || !document.body.contains(hero)) return;
   const si = state.current && state.current.streakInfo;
   try { if (window.Sfx) Sfx.play(ps.hit ? info.sfx : "miss"); } catch (e) {}
+  // 🎉 S5：的中の瞬間に紙吹雪＋触覚。大的中（tier2以上）は閃光つきの「大」バースト。
+  //   ★表示専用＝着順・配当・判定には一切干渉しない（音を鳴らすのと同じ層）。
+  try {
+    if (ps.hit && typeof celebrateFrom === "function") {
+      celebrateFrom(hero.querySelector(".rs-stamp") || hero, (tier >= 2) ? "big" : "win");
+    }
+  } catch (e) {}
   const stamp = hero.querySelector(".rs-stamp");
   if (stamp) stamp.classList.add("rs-stamp-go");
   if (!ps.hit) return;
@@ -4190,8 +4199,10 @@ function showLoginBonus(info) {
     const cnt = ov.querySelector("#lb-count");
     if (cnt) { if (typeof countUp === "function") countUp(cnt, info.bonus, 800); else cnt.textContent = fmtCoins(info.bonus); }
   });
-  ov.querySelector(".lb-claim").onclick = () => {
+  ov.querySelector(".lb-claim").onclick = (ev) => {
     if (typeof claimDailyLogin === "function") claimDailyLogin(info);
+    // 🎉 S5：押したボタンから紙吹雪＋触覚（表示専用・受取額には非干渉）
+    if (typeof celebrateFrom === "function") celebrateFrom(ev.currentTarget, "reward");
     ov.remove();
     if (state.ui.screen === "home") renderHome();
   };

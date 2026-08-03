@@ -9506,7 +9506,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
      スタイルのハッシュ一致で機械検証）。最終的には上の4段へ寄せて消すのが目標だが、
      値を動かす＝見た目が変わるので、それはユーザー決裁つきの別工事。
      残債（11px/13px/99px等の直書き）は tools/check_ui_tokens.mjs が数え続ける。 */
-  --rd-4: 4px;  --rd-6: 6px;  --rd-8: 8px;  --rd-10: 10px;  --rd-14: 14px;  --rd-18: 18px;
+  --rd-1: 1px;  --rd-4: 4px;  --rd-6: 6px;  --rd-8: 8px;  --rd-10: 10px;  --rd-14: 14px;  --rd-18: 18px;
   /* 🧱 色トークン（土台工事第2弾・2026-08-03）＝直書きの最頻値を完全一致で寄せた。
      --white/--black は普遍の役割名。--hx-* は移行トークン（値をそのまま名に刻む）＝
      とくに金系（ffe6a8/ffd98a/ffd76a/ffd870/ffe08a/d4a850）は既存 --gold 系の**近似ばらつき**で、
@@ -9630,23 +9630,52 @@ button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2p
 }
 @keyframes s4Breath { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
 
-/* ② 火の粉＝火山島の空気。小さな光がゆっくり昇る（位置は動くが pointer-events なし・
-   z-index 0 なので、文字にも操作にも一切干渉しない）。粒は背景画像なのでDOMは増えない。 */
-#app::after {
-  content: ""; position: fixed; inset: -10% 0 0; z-index: 0; pointer-events: none;
+/* ② 火の粉＝火山島の空気。小さな光がゆっくり昇る。
+   ★2026-08-03 やり直し（ユーザー実機「変化に気づかなかった」＝知覚できなければ効いていない）。
+     初版は #app::after（z-index 0）＝**コンテンツの背後**に置いたので、カードが並ぶ画面では
+     完全に隠れていた。ゲームの粒子は本来コンテンツの上に浮くレイヤなので body 直下へ移し、
+     粒も大きく明るくした（1.2〜2px/α.30〜.55 → 1.8〜3.4px/α.50〜.85）・周期も 34→22秒。
+     ★z-index 40＝#app(1) の上・すべてのオーバーレイ(120以上) の下。pointer-events none。 */
+body::after {
+  content: ""; position: fixed; inset: -12% 0 0; z-index: 40; pointer-events: none;
   background-image:
-    radial-gradient(1.6px 1.6px at 12% 82%, rgba(255,206,130,.55), transparent 60%),
-    radial-gradient(1.4px 1.4px at 31% 64%, rgba(255,226,170,.40), transparent 60%),
-    radial-gradient(2px 2px   at 57% 88%, rgba(255,190,110,.45), transparent 60%),
-    radial-gradient(1.3px 1.3px at 73% 55%, rgba(255,236,190,.38), transparent 60%),
-    radial-gradient(1.7px 1.7px at 88% 76%, rgba(255,200,120,.42), transparent 60%),
-    radial-gradient(1.2px 1.2px at 44% 40%, rgba(255,230,180,.30), transparent 60%);
+    radial-gradient(2.6px 2.6px at 12% 82%, rgba(255,206,130,.85), transparent 62%),
+    radial-gradient(2.2px 2.2px at 31% 64%, rgba(255,226,170,.70), transparent 62%),
+    radial-gradient(3.4px 3.4px at 57% 88%, rgba(255,190,110,.78), transparent 62%),
+    radial-gradient(2px 2px     at 73% 55%, rgba(255,236,190,.62), transparent 62%),
+    radial-gradient(2.8px 2.8px at 88% 76%, rgba(255,200,120,.72), transparent 62%),
+    radial-gradient(2px 2px     at 44% 40%, rgba(255,230,180,.55), transparent 62%),
+    radial-gradient(2.4px 2.4px at 66% 22%, rgba(255,214,150,.60), transparent 62%),
+    radial-gradient(1.8px 1.8px at 22% 30%, rgba(255,240,200,.50), transparent 62%);
   background-repeat: repeat-y;
-  background-size: 100% 46vh;
-  animation: s4Embers 34s linear infinite;
-  opacity: .9;
+  background-size: 100% 42vh;
+  animation: s4Embers 22s linear infinite;
 }
-@keyframes s4Embers { from { background-position: 0 0; } to { background-position: 0 -46vh; } }
+@keyframes s4Embers { from { background-position: 0 0; } to { background-position: 0 -42vh; } }
+/* 明るい紙面（紀行ブログ/観光/暮らし）とタイトルでは火の粉を出さない＝別世界の顔を守る */
+body:has(#app.kiko-page)::after, body:has(#app.kt-page)::after,
+body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
+
+/* =====================================================================
+   🎉 S5 祝祭（celebrate.js）＝受け取り・勝利・授与の瞬間に紙吹雪
+   z-index 45＝火の粉(40)より上・オーバーレイ(120)より下。操作は素通し。
+   ===================================================================== */
+.cb-layer { position: fixed; inset: 0; z-index: 45; pointer-events: none; overflow: hidden; }
+.cb-p {
+  position: fixed; display: block; border-radius: var(--rd-1);
+  transform: translate(-50%, -50%);
+  animation: cbFly var(--dur, 900ms) cubic-bezier(.15,.6,.35,1) var(--delay, 0ms) both;
+  will-change: transform, opacity;
+}
+@keyframes cbFly {
+  0%   { transform: translate(-50%,-50%) rotate(0deg) scale(.6); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 120px)) rotate(var(--rot)) scale(1); opacity: 0; }
+}
+.cb-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 42%, rgba(255,240,200,.55), transparent 55%);
+  animation: cbFlash .5s ease-out both; }
+@keyframes cbFlash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cb-layer { display: none; } }
 
 /* ③ 主役のボタン＝呼吸する光（既存のシャインとは別物の微光・重ねても喧嘩しない） */
 .title-cta, .navpop-go, .hl-race, .lt-buy { animation: s4Glow 8.5s ease-in-out infinite; }
@@ -9655,7 +9684,7 @@ button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2p
   50%     { filter: drop-shadow(0 0 10px rgba(255,216,119,.34)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #app::before, #app::after, .title-cta, .navpop-go, .hl-race, .lt-buy { animation: none !important; }
+  #app::before, body::after, .title-cta, .navpop-go, .hl-race, .lt-buy { animation: none !important; }
 }
 
 /* ── 面（カード）：上から1本の光＋いちばん低い影＋金の糸（S3・2026-08-03）──────
