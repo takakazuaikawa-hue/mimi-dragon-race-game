@@ -9739,7 +9739,15 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
      → 画像側は飾りの内側を透明に抜き（tools 経由で加工・中心から塗りつぶし）、
        CSS側は地の塗りを border-box まで広げる。これで地色が中心から金の飾りの
        真下まで途切れず続き、帯そのものが無くなる。
-       ※ padding-box のままだと、抜いた輪の部分に背後の暗幕が透けて逆に悪化する。 */
+       ※ padding-box のままだと、抜いた輪の部分に背後の暗幕が透けて逆に悪化する。
+
+     ★clip だけでは足りない：origin も border-box にすること（実機指摘「上下は埋まってなくない？」）。
+       background-clip を border-box にしても background-origin は既定の padding-box のままなので、
+       グラデーションは中身の箱の大きさで作られ、枠の下の帯には**タイルの反対側の端**が
+       繰り返して出る。放射グラデーションは横140%・縦120%で縦のほうが変化が急なため、
+       上下にだけ「いちばん暗いところ」が帯として現れていた（左右は横が平坦で目立たない）。
+       同じ理由で、9-slice の枠に地色を敷くときは clip と origin を必ず対で border-box にする。 */
+  background-origin: border-box;
   background-clip: border-box;
   /* 地色は枠の絵の内側の実色に合わせてある（紫寄りの旧plateだと色相が違って継ぎ目が出る）。 */
   background-image:
