@@ -108,7 +108,9 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 .hd-pill b { font-weight: 900; }
 .hd-coin { border-color: var(--gold-line);
   background: linear-gradient(180deg, rgba(62,48,18,0.6), rgba(28,22,10,0.62));
-  box-shadow: inset 0 0 0 1px rgba(255,216,119,0.12), 0 3px 12px -6px rgba(230,178,74,0.6); }
+  /* ★二重枠の解消：全画面のヘッダに出る＝いちばん目につく1件だった。
+     金の枠線のすぐ内側に明るさ違いの金リングがあり、丸ピルの縁で細い輪が2本に見えていた。 */
+  box-shadow: var(--lift), 0 3px 12px -6px rgba(230,178,74,0.6); }
 .hd-coin .hd-pill-ic { font-size: 15px; filter: drop-shadow(0 0 4px rgba(255,200,80,0.5)); }
 .hd-coin b { color: var(--gold-bright); font-size: 16px; }
 .hd-rank b { color: var(--cream); font-size: 14px; }
@@ -1727,11 +1729,14 @@ table.entry-table {
   background: linear-gradient(180deg, rgba(20,32,30,0.92), rgba(12,20,20,0.96));
   border: 1px solid var(--glass-border); }
 .rs-hero.rs-miss { background: linear-gradient(180deg, rgba(40,28,30,0.9), rgba(20,14,16,0.95)); border-color: rgba(255,120,110,0.25); }
-.rs-hero.rs-t1 { border-color: rgba(73,200,156,0.45); box-shadow: inset 0 0 0 1px rgba(73,200,156,0.22), 0 12px 30px -14px rgba(46,168,132,0.5); }
-.rs-hero.rs-t2 { border-color: rgba(230,178,74,0.55); box-shadow: inset 0 0 0 1px rgba(230,178,74,0.3), 0 14px 34px -14px rgba(230,178,74,0.55); }
-.rs-hero.rs-t3 { border-color: rgba(255,122,58,0.6); box-shadow: inset 0 0 0 1px rgba(255,122,58,0.32), 0 16px 40px -14px rgba(255,122,58,0.6);
+/* ★二重枠の解消（ティア枠）：内側リングが枠線と同色で「薄いほう」だったため、
+   明→暗の細い線が2本並んで見えていた。リングは枠線と**同じ色**にして1本の太い縁に融合する
+   （.lt-tab.on / .mall-card.worn で既に使っている作法に合わせた）。外側の光は段位のまま残す。 */
+.rs-hero.rs-t1 { border-color: rgba(73,200,156,0.45); box-shadow: inset 0 0 0 1px rgba(73,200,156,0.45), 0 12px 30px -14px rgba(46,168,132,0.5); }
+.rs-hero.rs-t2 { border-color: rgba(230,178,74,0.55); box-shadow: inset 0 0 0 1px rgba(230,178,74,0.55), 0 14px 34px -14px rgba(230,178,74,0.55); }
+.rs-hero.rs-t3 { border-color: rgba(255,122,58,0.6); box-shadow: inset 0 0 0 1px rgba(255,122,58,0.6), 0 16px 40px -14px rgba(255,122,58,0.6);
   background: linear-gradient(180deg, rgba(40,30,22,0.94), rgba(20,14,12,0.96)); }
-.rs-hero.rs-t4 { border-color: var(--gold-bright); box-shadow: inset 0 0 0 1px rgba(255,216,119,0.5), 0 18px 48px -12px rgba(255,180,80,0.7);
+.rs-hero.rs-t4 { border-color: var(--gold-bright); box-shadow: inset 0 0 0 1px var(--gold-bright), 0 18px 48px -12px rgba(255,180,80,0.7);
   background: linear-gradient(180deg, rgba(46,34,20,0.95), rgba(24,16,10,0.97)); }
 .rs-hero.rs-t4::before { content: ""; position: absolute; inset: -50% -15%; pointer-events: none; z-index: 0;
   background: conic-gradient(from 0deg, rgba(255,216,119,0) 0deg, rgba(255,216,119,0.16) 38deg, rgba(255,216,119,0) 76deg, rgba(255,216,119,0) 200deg, rgba(255,140,70,0.13) 240deg, rgba(255,216,119,0) 300deg);
@@ -1791,7 +1796,10 @@ table.entry-table {
 .login-card { width: 100%; max-width: 320px; text-align: center; padding: 22px 20px 20px; border-radius: var(--rd-18);
   background: linear-gradient(180deg, rgba(40,34,22,0.97), rgba(22,18,14,0.98));
   border: 1px solid var(--gold-bright);
-  box-shadow: 0 20px 60px -18px rgba(255,180,80,0.6), inset 0 0 0 1px rgba(255,216,119,0.3);
+  /* ★二重枠の解消（2026-08-03・実機指摘「各所で起きている」）：枠線のすぐ内側に
+     inset 0 0 0 1px の全周リングがあり、明るさの違う金の線が2本並んで「二重の枠」に見えていた。
+     第1波の設計言語＝「光は上から1本（--lift）」へ統一する。以下5箇所すべて同じ理由。 */
+  box-shadow: 0 20px 60px -18px rgba(255,180,80,0.6), var(--lift);
   animation: lbPop .4s cubic-bezier(.2,1.4,.4,1); }
 @keyframes lbPop { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .lb-title { font-size: 17px; font-weight: 900; letter-spacing: .04em;
@@ -2104,7 +2112,8 @@ table.entry-table {
 /* === 本日の注目レース (spec #37) === */
 .feat-race { position: relative; margin-bottom: 16px; padding: 16px 16px 14px; border-radius: var(--rd-14); overflow: hidden;
   background: linear-gradient(135deg, rgba(214,69,47,0.22), rgba(40,34,22,0.92) 62%), var(--plate);
-  border: 1px solid var(--gold-line); box-shadow: 0 12px 30px -14px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,216,119,0.15); }
+  /* ★二重枠の解消：金枠のすぐ内に明るい金リング＝2本線だった。上からの光1本に置換。 */
+  border: 1px solid var(--gold-line); box-shadow: 0 12px 30px -14px rgba(0,0,0,0.7), var(--lift); }
 .feat-race::before { content: ""; position: absolute; right: -30px; top: -30px; width: 120px; height: 120px; pointer-events: none;
   background: radial-gradient(circle, rgba(255,140,70,0.3), transparent 70%); }
 .feat-tag { position: relative; font-size: 11px; font-weight: 800; letter-spacing: .12em; color: var(--gold-bright); }
@@ -3865,7 +3874,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; border-radius: var(--rd-10);
   border: 1px solid #3a4a5a; background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
 }
-.mz-pick.honmei { border-color: rgba(255,210,120,0.55); box-shadow: inset 0 0 0 1px rgba(255,210,120,0.16); }
+/* ★二重枠の解消：本命だけ内側に薄いリングを足していた（対抗・穴は枠線1本）。
+   本命の「強さ」は残したいので、リングを枠線と同色にして1本の太い縁に融合する。 */
+.mz-pick.honmei { border-color: rgba(255,210,120,0.55); box-shadow: inset 0 0 0 1px rgba(255,210,120,0.55); }
 .mz-pick.taikou { border-color: rgba(150,180,220,0.45); }
 .mz-pick.ana    { border-color: rgba(205,135,215,0.45); }
 .mz-badge { font-size: 12.5px; font-weight: 900; white-space: nowrap; padding-top: 1px; }
@@ -3949,7 +3960,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* === the world vista: a composed daytime window onto the volcanic-jungle city === */
 .hw-vista { position: relative; height: 170px; border-radius: var(--rd-14); overflow: hidden;
   margin: 2px 0 14px; border: 1px solid rgba(231,242,236,0.16);
-  box-shadow: 0 12px 32px -16px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(255,255,255,0.04); }
+  /* ★二重枠の解消：明るい空の絵の上では、枠線と白リングが別々の線として読めていた。 */
+  box-shadow: 0 12px 32px -16px rgba(0,0,0,0.75); }
 .hw-vista > * { position: absolute; }
 .hwv-sky { inset: 0; background: linear-gradient(180deg,
   #6fb1c7 0%, #84bcc4 26%, #a9cdb4 50%, #d4d6a4 74%, #ecd9a4 90%, #e6cd97 100%); }
@@ -4077,7 +4089,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .as-hero {
   background: linear-gradient(165deg, rgba(70,58,30,.55), rgba(36,32,24,.62) 60%, rgba(24,28,30,.66));
   border: 1px solid rgba(202,162,74,.5);
-  box-shadow: inset 0 0 0 1px rgba(255,216,119,.14), 0 14px 38px -16px rgba(230,178,74,.55);
+  box-shadow: var(--lift), 0 14px 38px -16px rgba(230,178,74,.55);   /* ★二重枠の解消 */
   padding: 16px 16px 15px;
 }
 .as-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
@@ -4251,7 +4263,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* ===== §38 くらしスキルツリー ===== */
 .lt-hero { background: linear-gradient(165deg, rgba(70,58,30,.5), rgba(28,32,36,.6));
-  border: 1px solid rgba(202,162,74,.45); box-shadow: inset 0 0 0 1px rgba(255,216,119,.12); }
+  border: 1px solid rgba(202,162,74,.45); box-shadow: var(--lift); }   /* ★二重枠の解消 */
 .lt-hero-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .lt-hero-id { min-width: 0; }
 .lt-pcard { flex: none; text-align: center; min-width: 90px; padding: 9px 12px 7px;
@@ -4994,7 +5006,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* 習い事（アクティブスキル）— コンパクトな2列カード */
 .askill-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 9px; margin: 6px 0 14px; }
 .askill { background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 13px; padding: var(--pd-12); display: flex; flex-direction: column; }
-.askill.maxed { border-color: var(--gold-line); background: rgba(255,216,119,0.08); box-shadow: inset 0 0 0 1px rgba(255,216,119,0.18); }
+/* ★二重枠の解消：状態（最大／装備中）は「枠線の色が変わる」で表す＝線は1本のまま。
+   以前は枠線と別色のリングを内側に足していたので、細い線が2本並んで見えていた。 */
+.askill.maxed { border-color: var(--gold-line); background: rgba(255,216,119,0.08); box-shadow: var(--lift); }
 .askill-top { display: flex; align-items: center; gap: 9px; }
 .askill-ic { font-size: 25px; line-height: 1; flex: none; }
 .askill-id { flex: 1; min-width: 0; }
@@ -5022,7 +5036,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   background: rgba(255,216,119,.12); color: var(--gold-bright); border: 1px solid var(--gold-line); }
 .askill-equip:active { transform: translateY(1px); }
 .askill-equip.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--hx-2a1d06); border-color: var(--gold-bright); }
-.askill.equipped { box-shadow: inset 0 0 0 1px var(--gold-bright), 0 6px 18px -10px var(--gold-bright); }
+.askill.equipped { border-color: var(--gold-bright); box-shadow: 0 6px 18px -10px var(--gold-bright); }
 .askill-eqbanner { font-size: 12px; font-weight: 800; color: var(--gold-bright); background: rgba(255,216,119,.1);
   border: 1px solid var(--gold-line); border-radius: var(--rd-10); padding: var(--pd-8-12); margin: 2px 0 10px; }
 
@@ -5662,7 +5676,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .mv-exprs { display: flex; gap: 6px; justify-content: center; }
 .mv-expr { width: 38px; height: 32px; border-radius: var(--rd-8); border: 1px solid rgba(255,255,255,.18);
   background: rgba(255,255,255,.08); font-size: 16px; line-height: 1; cursor: pointer; }
-.mv-expr.on { border-color: #e6cd86; background: rgba(230,205,134,.22); box-shadow: inset 0 0 0 1px rgba(230,205,134,.5); }
+/* ★二重枠の解消：38×32pxの小さなボタンでは内外2本の線がとくに目立っていた。
+   大きなカード（.rs-hero等）は同色に融合して太い1本にしたが、この大きさで太い縁は重い。
+   選択中は「枠線の色＋下地の色」で十分読めるので、内側リングは外す。 */
+.mv-expr.on { border-color: #e6cd86; background: rgba(230,205,134,.22); }
 .mv-dots { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
 .mv-dot { width: 7px; height: 7px; border-radius: var(--r-round); background: rgba(255,255,255,.3); cursor: pointer;
   transition: background .15s, transform .15s; }
@@ -6386,7 +6403,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* §B 交渉メモ（学習の可視化） */
 .sc-memo { display: block; margin-top: 3px; font-size: 10.5px; font-weight: 700; color: #cbb890; }
 .sc-memo i { font-style: normal; font-weight: 900; }
-.sc-app.known { box-shadow: inset 0 0 0 1px rgba(255,215,106,.35); }
+.sc-app.known { border-color: rgba(255,215,106,.35); }   /* ★二重枠の解消：ガラス枠＋別色リング→枠線の色替え1本に */
 .sc-app-memo { position: absolute; top: 6px; right: 7px; font-style: normal; font-size: 9px; font-weight: 900;
   color: #2a2013; background: var(--hx-ffd76a); border-radius: 99px; padding: var(--pd-1-6); }
 .sc-app { position: relative; }
@@ -9093,7 +9110,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .stalk-grid { position: absolute; inset: 0; }
 .stalk-cell { position: absolute; box-sizing: border-box; border: 1px solid rgba(255,255,255,.055);
   display: flex; align-items: center; justify-content: center; }
-.stalk-cell.vis { background: rgba(255,214,90,.30); box-shadow: inset 0 0 0 1px rgba(255,214,90,.35); }
+/* ★二重枠の解消（しのびあし）：マスは薄い白の格子線を持っている。そこへ状態のリングを
+   内側に足すと、小さなマスの縁に色違いの線が2本並ぶ。状態は格子線そのものの色替えで表す。 */
+.stalk-cell.vis { background: rgba(255,214,90,.30); border-color: rgba(255,214,90,.35); }
 .stalk-cell.go { cursor: pointer; }
 .stalk-cell.go::after { content: ""; width: 34%; height: 34%; border-radius: var(--r-round);
   background: rgba(140,220,255,.4); border: 2px solid rgba(170,230,255,.75); animation: stalkGo 1.1s ease-in-out infinite; }
@@ -9161,11 +9180,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   animation: stalkPop .3s both; pointer-events: none; }
 
 /* しのびあし 土台直し（初見テスト反映）：陰マス・つぎの視界・草やぶ・予告・凡例・1行バナー */
-.stalk-cell.shade { background: rgba(20,60,30,.38); box-shadow: inset 0 0 0 1px rgba(60,120,70,.35); }
+.stalk-cell.shade { background: rgba(20,60,30,.38); border-color: rgba(60,120,70,.35); }
 /* ★「つぎ見られる」を黄と同系にしない。草むらの背景も黄緑＝同系3つが重なって見分け不能だった
    （ユーザー指摘）。赤紫の縞＋暗地なら、背景にも「いま見られる」黄にも埋もれない。 */
 .stalk-cell.nvis { background-image: repeating-linear-gradient(45deg, rgba(255,80,150,.5) 0 5px, rgba(10,6,14,.42) 5px 11px);
-  box-shadow: inset 0 0 0 1px rgba(255,110,170,.55); }
+  border-color: rgba(255,110,170,.55); }
 .stalk-cell.bushcell { background-color: rgba(30,80,40,.30); }
 .stalk-bush { font-size: 30px; }
 .stalk-mimi .stalk-hidegrass { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
