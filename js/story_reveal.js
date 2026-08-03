@@ -101,6 +101,19 @@ function srOpenReader(ch, onDone) {
     cue.textContent = "";
     cue.classList.remove("ready");
     typing = true;
+    // ★1文字＝1span（にじんで浮かぶ・VNのC案と同じ様式／2026-08-03）。
+    //   数字と英字の連なりは1つにまとめる＝inline-block を1字ずつにすると
+    //   「297万」が行末で 29／7万 に割れるため（日本語はどこで折れてよい）。
+    const cells = [];
+    for (let ci = 0; ci < text.length;) {
+      const m = /^[0-9A-Za-z][0-9A-Za-z.,%\-]*/.exec(text.slice(ci));
+      const chunk = (m && m[0].length > 1) ? m[0] : text[ci];
+      const sp = document.createElement("span");
+      sp.className = "srch"; sp.textContent = chunk;
+      line.appendChild(sp);
+      for (let k = 0; k < chunk.length; k++) cells.push(sp);   // 文字index→span（既存の刻みをそのまま使う）
+      ci += chunk.length;
+    }
 
     // ★文字送りは画面の更新に乗せる（setTimeout で回さない）。
     //   以前は setTimeout(1000/32 = 31.25ms) で1文字ずつ出していた。
@@ -125,7 +138,7 @@ function srOpenReader(ch, onDone) {
              : /[、…]/.test(c)   ? SR_MS_COMMA
              : SR_MS_CHAR;
       }
-      line.textContent = text.slice(0, shown);
+      for (let k = 0; k < shown; k++) { const sp = cells[k]; if (sp) sp.classList.add("in"); }
       if (shown >= text.length) {
         typing = false;
         line.classList.add("on");

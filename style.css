@@ -5149,7 +5149,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   --nink: #f2f3f6; --nink2: #98a0ac; --naccent: #ff5c7a; --nrule: rgba(255,255,255,.09);
   --ngold: #d6b26e; --npaper: #14161c; --npaper2: #0b0d11;
   --nsans: "Helvetica Neue", Arial, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
-  --nmin: "Yu Mincho","YuMincho","Hiragino Mincho ProN","Hiragino Mincho Pro","HG明朝E","MS PMincho","MS Mincho",serif;
+  --nmin: var(--font-narr);   /* :root の役割トークンへ委譲（値の二重管理をやめる） */
   font-family: var(--nsans);
 }
 /* 暮らしの「経済面新聞」(.card.news-clip in ui_economy) は島内新聞として存続＝明朝のまま */
@@ -8711,20 +8711,46 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .sr-ep { font-size: 12.5px; font-weight: 800; color: #fff2d8; letter-spacing: .04em; }
 .sr-cast { font-size: 11px; color: var(--cg, var(--gold-line)); font-weight: 700; }
 
-/* 文字＝絵の上に浮かせた札。札の外でも中でも、絵は生きている。 */
+/* 文字＝絵の上に浮かせた札。札の外でも中でも、絵は生きている。
+   ★2026-08-03 改修（実機指摘「物語の中の文章表示がダサい」）。直した3点：
+   ①**書体**＝この作品はナレーションを明朝で組む設計（--nmin・情熱大陸式の題字感）なのに、
+     肝心の物語リーダーだけ端末の汎用ゴシックだった＝設計の取りこぼし。明朝へ。
+   ②**札**＝白ガラスの縁＋角丸の汎用カードだった。左に金の罫（引用の柱）を立て、
+     縁は金の糸（S3と同じ language）に。地も紙に寄せた黒茶へ。
+   ③**文字の出方**＝VNはC案（にじんで浮かぶ）にしたのに、ここだけ slice のままだった。
+     同じ様式に揃える（下の .srch）。 */
 .sr-panel {
   position: relative; z-index: 3; margin: auto 12px 0;
-  padding: 15px 17px; border-radius: var(--r-3);
-  background: rgba(8,11,17,.72);
+  padding: 18px 18px 17px 20px;
+  border-radius: var(--r-2);
+  border-left: 3px solid var(--gold-line);      /* 引用の柱＝読み物であることの標し */
+  background:
+    linear-gradient(180deg, rgba(255,224,160,.055), rgba(255,224,160,0) 40px),
+    rgba(10,9,8,.76);
   -webkit-backdrop-filter: blur(9px) saturate(1.1);
           backdrop-filter: blur(9px) saturate(1.1);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 10px 34px rgba(0,0,0,.5);
+  border-top: 1px solid var(--hair-gold-2);
+  border-right: 1px solid var(--hair-gold-2);
+  border-bottom: 1px solid var(--hair-gold-2);
+  box-shadow: var(--e-2);
 }
 .sr-line {
-  margin: 0; font-size: clamp(16px, 4.5vw, 19px); line-height: 1.95;
-  color: #f4f7fb; font-weight: 500; letter-spacing: .02em;
-  text-shadow: 0 1px 6px rgba(0,0,0,.7);
+  margin: 0;
+  font-family: var(--font-narr);                 /* ★ナレーション＝明朝（作品の設計どおり） */
+  font-size: clamp(16.5px, 4.6vw, 20px);
+  line-height: 2.05;                             /* 明朝は行間を広く取るほど読みやすい */
+  color: #f6efe2;                                /* 冷たい青白 → 紙の温かい白へ */
+  font-weight: 400; letter-spacing: .045em;
+  text-shadow: 0 1px 8px rgba(0,0,0,.75);
+}
+/* 1文字ずつ「にじんで浮かび上がる」＝VN（dialogue.js）と同じ様式に統一 */
+.sr-line .srch {
+  display: inline-block; white-space: pre-wrap;
+  opacity: 0; transform: translateY(4px); filter: blur(2.2px);
+}
+.sr-line .srch.in {
+  opacity: 1; transform: none; filter: blur(0);
+  transition: opacity .2s ease-out, transform .2s cubic-bezier(.2,.9,.3,1), filter .2s ease-out;
 }
 .sr-cue {
   position: relative; z-index: 3; text-align: center;
@@ -9497,6 +9523,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   --lt-cap: #8a7f72;     /* 見出しラベル */
   --lt-gold: #8a5f10;    /* 金の役割色（クリーム上で約5:1） */
   --lt-jade: #1c6e57;    /* 翡翠の役割色 */
+  /* ✒️ 書体の役割（2026-08-03）：この作品は「UIクロームはサンセリフ／ナレーションは明朝」
+     という設計（情熱大陸式の題字感）。明朝の指定は .news スコープの中だけに置かれていて
+     物語リーダーからは**見えなかった**＝設計の取りこぼし。役割トークンとして :root へ昇格。 */
+  --font-narr: "Yu Mincho","YuMincho","Hiragino Mincho ProN","Hiragino Mincho Pro","HG明朝E","MS PMincho","MS Mincho",serif;
   /* 🖼 意匠フレームの内側の実色（frame_gold.png から実測サンプリング・2026-08-03）。
      窓の地色をこれに合わせて枠と溶かす＝「境界がなじんでいない」（ユーザー診断）の解。 */
   --frame-in-1: #1a2e33;   /* 中央（やや明るい青緑紺） */
@@ -9577,6 +9607,56 @@ button.secondary, .navpop-cancel, .navpop-x {
 }
 button.secondary:hover, .navpop-cancel:hover, .navpop-x:hover { border-color: var(--hair-gold); filter: none; }
 button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+/* =====================================================================
+   🫁 S4「息づき」（2026-08-03）＝止まっている画面を生かす
+   ─────────────────────────────────────────────────────────────────
+   リサーチの結論：商業のゲームUIは静止画面でも常に何かが動いている（Webは逆に
+   動きを最小化する）。本作は実測で9画面中6画面が無限アニメ0件＝ここが最大の差だった。
+   ★ただし「常時動く」を強くやると読書と予想の邪魔になる。方針は3つ：
+     ①動くのは**光**だけ（位置とレイアウトは1pxも動かさない＝読みやすさを壊さない）
+     ②周期を素数的にずらす（8.5s / 11s / 13s）＝全部が同時に脈打つ“不気味の谷”を避ける
+     ③prefers-reduced-motion では全部止める
+   ===================================================================== */
+/* ★実装の要：部品のクラスを名指しで動かすのは**やめた**（実測＝500のクラス族があり、
+   .card は一部の画面にしか無い。名指しでは6画面のうち0画面しか動かなかった）。
+   かわりに #app 自身の擬似要素2枚＝**どの画面にも必ず在るレイヤ**を動かす。 */
+
+/* ① 世界の底＝ゆっくりした明暗のうねり（島が呼吸している） */
+#app::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 6%, rgba(255,216,119,.075), transparent 60%);
+  animation: s4Breath 11s ease-in-out infinite;
+}
+@keyframes s4Breath { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+
+/* ② 火の粉＝火山島の空気。小さな光がゆっくり昇る（位置は動くが pointer-events なし・
+   z-index 0 なので、文字にも操作にも一切干渉しない）。粒は背景画像なのでDOMは増えない。 */
+#app::after {
+  content: ""; position: fixed; inset: -10% 0 0; z-index: 0; pointer-events: none;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 82%, rgba(255,206,130,.55), transparent 60%),
+    radial-gradient(1.4px 1.4px at 31% 64%, rgba(255,226,170,.40), transparent 60%),
+    radial-gradient(2px 2px   at 57% 88%, rgba(255,190,110,.45), transparent 60%),
+    radial-gradient(1.3px 1.3px at 73% 55%, rgba(255,236,190,.38), transparent 60%),
+    radial-gradient(1.7px 1.7px at 88% 76%, rgba(255,200,120,.42), transparent 60%),
+    radial-gradient(1.2px 1.2px at 44% 40%, rgba(255,230,180,.30), transparent 60%);
+  background-repeat: repeat-y;
+  background-size: 100% 46vh;
+  animation: s4Embers 34s linear infinite;
+  opacity: .9;
+}
+@keyframes s4Embers { from { background-position: 0 0; } to { background-position: 0 -46vh; } }
+
+/* ③ 主役のボタン＝呼吸する光（既存のシャインとは別物の微光・重ねても喧嘩しない） */
+.title-cta, .navpop-go, .hl-race, .lt-buy { animation: s4Glow 8.5s ease-in-out infinite; }
+@keyframes s4Glow {
+  0%,100% { filter: none; }
+  50%     { filter: drop-shadow(0 0 10px rgba(255,216,119,.34)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #app::before, #app::after, .title-cta, .navpop-go, .hl-race, .lt-buy { animation: none !important; }
+}
 
 /* ── 面（カード）：上から1本の光＋いちばん低い影＋金の糸（S3・2026-08-03）──────
    縁を白ガラスから**淡い金の糸**へ＝窓（竜フレーム）→ヒーロー（金線+光）→カード（金糸）
