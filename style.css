@@ -19,7 +19,10 @@
   --bg-world: radial-gradient(128% 92% at 50% 6%, #223440 0%, #16262d 38%, #0e1b1e 72%, #0a1417 100%);
   --glass: rgba(231,242,236,0.085);
   --glass-2: rgba(231,242,236,0.045);
-  --glass-border: rgba(231,242,236,0.20);
+  /* ★S3（2026-08-03）：中立の白ガラス縁 → 淡い金の糸へ。この1トークンで全暗面のカード/
+     行/チップの縁が一斉に温まる＝窓（竜フレーム）・金ボタンと同じ金でつながる。
+     旧値=rgba(231,242,236,0.20)（戻すならここだけ） */
+  --glass-border: rgba(216,190,132,0.24);
   --plate: linear-gradient(180deg, rgba(64,66,72,0.92), rgba(40,41,47,0.94));
   --plate-border: rgba(180,170,140,0.28);
   --radius: 12px;
@@ -9513,6 +9516,7 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   /* 光は上から一方向（全部品で共通） */
   --lift: inset 0 1px 0 rgba(255,255,255,.16);
   --hair-gold: rgba(202,162,74,.46);
+  --hair-gold-2: rgba(202,162,74,.30);   /* カード用の淡い金の糸（S3・強すぎない縁） */
   --key-gold: #9c6a1c;                      /* 金ボタンの“下の鍵” */
   /* 金の塗り＝上のハイライト線／下の内リム／本体グラデの3層。真鍮の質感を狙う。 */
   --btn-gold:
@@ -9574,12 +9578,14 @@ button.secondary, .navpop-cancel, .navpop-x {
 button.secondary:hover, .navpop-cancel:hover, .navpop-x:hover { border-color: var(--hair-gold); filter: none; }
 button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
 
-/* ── 面（カード）：上から1本の光＋いちばん低い影 ────────────────────────── */
+/* ── 面（カード）：上から1本の光＋いちばん低い影＋金の糸（S3・2026-08-03）──────
+   縁を白ガラスから**淡い金の糸**へ＝窓（竜フレーム）→ヒーロー（金線+光）→カード（金糸）
+   の3段の格が同じ金でつながる。カードは「簡素な縁」が格＝絵の枠は貼らない（貼ると窓が死ぬ）。 */
 .card {
   background-image:
     linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 1px),
     linear-gradient(180deg, rgba(238,244,240,.085), rgba(238,244,240,.032));
-  border: 1px solid rgba(238,244,240,.15);
+  border: 1px solid var(--hair-gold-2);
   border-radius: var(--r-3);
   box-shadow: var(--e-1);
 }
