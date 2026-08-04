@@ -78,16 +78,21 @@ function renderMeals() {
     _mealTab = (firstInc || tiers.find(t => _tUnlocked(t.id)) || tiers[0] || {}).id;
   }
   // ★段ごとの一枚絵（2026-08-04・ユーザー依頼「今は屋台めししかないから生成しましょう／
-  //   衣装はそれぞれのクラスに応じたそれっぽいミミに」）。1枚目の屋台めしを参照にして
-  //   衣装と場所を描き分けた4枚。段を切り替えると絵も変わる。
-  //     track   屋台をはしご    … つぎはぎの旅着・夜の屋台
-  //     home    わが家の味      … 部屋着のカーディガン・裸電球の小部屋
-  //     gourman 皿の主役を見抜く … よそ行きの襟付きワンピース・港のレストラン
-  //     shinbo  隠し味を当てる  … 藍の作務衣＋白い前掛け・割烹のカウンター
+  //   衣装はそれぞれのクラスに応じたそれっぽいミミに」→「既存の意匠から選んで欲しかった」）。
+  //   ★衣装は勝手に作らず、OUTFITS（data_assets.js）に実在するものから選ぶ。
+  //     その衣装の立ち絵そのものを参照に渡して描いてあるので、モールで着られる服と一致する。
+  //     段が上がるほど格も上がる並びにした。
+  //       track   屋台をはしご     … sukanpin   素寒貧ミミ（既存の絵を流用）
+  //       home    わが家の味       … darugi     ゆるだぼルーム着
+  //       gourman 皿の主役を見抜く … dara       きれいめコーデ
+  //       shinbo  隠し味を当てる   … departgirl デパートガール
+  //     ※ drago（DRADAを着た女）でも試したが、生成側でNSFW判定に弾かれた。
+  //       露出の多い衣装はこの経路を通らないので、選ぶときは注意。
   //   欠けても画面は壊さない（onerror で枠ごと消える）。
   const MEAL_HERO = { track: "hero_track", home: "hero_home", gourman: "hero_gourman", shinbo: "hero_shinbo" };
   const _heroFile = MEAL_HERO[_mealTab] || MEAL_HERO.track;
-  _mealHero.innerHTML = `<img src="images/meals/${_heroFile}.webp?v=1" alt="" decoding="async" onerror="this.closest('.meal-hero').remove()">`;
+  // ?v は絵の版。差し替えたら進める（index.html の ?v= は画像には効かない）。
+  _mealHero.innerHTML = `<img src="images/meals/${_heroFile}.webp?v=2" alt="" decoding="async" onerror="this.closest('.meal-hero').remove()">`;
   // 段タブ（アイコン＋進捗・完成は✓・未開放は🔒終章）
   const tabs = el("div", "meal-tabs");
   tiers.forEach(t => {
