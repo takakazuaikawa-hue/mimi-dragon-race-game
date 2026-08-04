@@ -3450,6 +3450,26 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   position: relative; z-index: 1;                 /* 帯の上に載せる */
   filter: drop-shadow(0 12px 22px rgba(0,0,0,.44)) drop-shadow(0 2px 3px rgba(0,0,0,.62));
 }
+/* ★ロゴのキラリ（2026-08-04）。最初は呼吸（ゆっくり拡縮）にしたがユーザー判断で撤回、
+   副題と同じ「時々光が走る」に統一した。
+   ロゴは透過画像なので、光をそのまま重ねると字のない余白まで白く光ってしまう。
+   ロゴ画像そのものをマスクにして、光が**字と飾りの上だけ**を走るようにする。 */
+.title-logo-wrap::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(104deg, transparent 43%, rgba(255,255,255,.12) 47%,
+                              rgba(255,255,255,.75) 50%, rgba(255,255,255,.12) 53%,
+                              transparent 57%) no-repeat;
+  background-size: 260% 100%;
+  -webkit-mask-image: url("images/title_logo2.webp?v=1"); mask-image: url("images/title_logo2.webp?v=1");
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  animation: titleShine 7.2s ease-in-out infinite;
+}
+/* ロゴと副題で共通の「時々一瞬だけ走る」時間割。7.2秒のうち走るのは約1.2秒。 */
+@keyframes titleShine {
+  0%, 83%   { background-position: -170% 0; }
+  100%      { background-position:  270% 0; }
+}
 .title-logo-wrap { position: relative; display: block; width: min(74vw, 312px); max-width: 100%; margin: 0 auto; }
 /* ── サブタイトル（2026-08-04・新ロゴへの差し替えに伴い「文字」にした）──────────
    新しいロゴの帯にはローマ字の副題が入っているので、ラノベ調の日本語副題は
@@ -3463,14 +3483,28 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .title-sub {
   /* ★下寄せ（margin-top:auto）。ロゴ直下だと空・遠景の城・飛ぶ竜という絵の主要な部分を
      塞いでいた。下の余白で開始の合図から離し、ミミの腿のあたりに落とす。 */
-  position: relative; margin: 0 auto clamp(26px, 7dvh, 62px); margin-top: auto;
+  position: relative; margin: 0 auto clamp(14px, 3.6dvh, 34px); margin-top: auto;
   max-width: 316px; padding: var(--pd-8) var(--pd-16);
   font-size: 11.5px; line-height: 1.72; letter-spacing: .02em; color: var(--hx-fff4e0);
-  background: linear-gradient(180deg, rgba(58,20,36,.72), rgba(28,8,18,.80));
+  /* ★時々キラリと光る（2026-08-04）。2枚重ねの上が光沢、下が臙脂の地。
+     背景レイヤーなので角丸で自動的に切り取られる＝overflow:hidden が要らない
+     （overflow を切ると両端の菱形 ::before/::after まで消える）。
+     長い間（6.4秒のうち5秒）は画面外に待たせ、走るのは一瞬＝「時々」にする。 */
+  background:
+    linear-gradient(104deg, transparent 43%, rgba(255,255,255,.10) 47%, rgba(255,255,255,.58) 50%,
+                            rgba(255,255,255,.10) 53%, transparent 57%) no-repeat,
+    linear-gradient(180deg, rgba(58,20,36,.72), rgba(28,8,18,.80));
+  background-size: 260% 100%, auto;
   border-radius: var(--r-1);
   box-shadow: inset 0 1px 0 rgba(255,216,119,.34), inset 0 -1px 0 rgba(255,216,119,.20),
               0 6px 18px -10px rgba(0,0,0,.85);
   backdrop-filter: blur(1.5px);
+  /* ロゴと同じ7.2秒。3.6秒ずらして交互に光らせる（同時に光ると忙しく見える）。 */
+  animation: titleSubShine 7.2s ease-in-out infinite 3.6s;
+}
+@keyframes titleSubShine {
+  0%, 83% { background-position: -170% 0, 0 0; }
+  100%    { background-position:  270% 0, 0 0; }
 }
 .title-sub::before, .title-sub::after {
   content: ""; position: absolute; top: 50%; width: 21px; height: 22px; transform: translateY(-50%);
@@ -3480,6 +3514,11 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .title-sub::before { left: -13px; }
 .title-sub::after  { right: -13px; }
 .title-sub b { color: var(--gold-bright); font-weight: 900; }
+/* 動きを減らす設定ではキラリを止める（光は画面外に置いたまま固定）。 */
+@media (prefers-reduced-motion: reduce) {
+  .title-logo-wrap::after { animation: none; background-position: -170% 0; }
+  .title-sub { animation: none; background-position: -170% 0, 0 0; }
+}
 /* タイトルロゴ＝3段積み（ミミの＝ピンク小／ドラゴンレース＋紀行＝金2行）。
    ★クラス名にタイトルの略称を入れない。改題のたびに古びるため中立な名前にしてある。 */
 .title-logo--main { white-space: normal; display: flex; flex-direction: column; align-items: center;
