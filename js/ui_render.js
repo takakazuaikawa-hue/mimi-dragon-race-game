@@ -193,6 +193,9 @@ function renderTitle() {
     </div>`;
   app.appendChild(wrap);
 
+  // ── 下段：意匠板 → 罫線 → 飾りバー2本（2026-08-04）──────────────────────
+  // 以前はここに「意匠板」「素の角丸ピル」「絵文字の丸ボタン」という別々の言語の
+  // 3つが並んでいて、せっかくの板が浮いていた。部品シートの罫線とバーで語彙を揃える。
   const acts = wrap.querySelector(".title-actions");
   // ★意匠板（ui_plaque.webp）を敷くので、文字は板の中の面へ寄せるため span で包む
   const start = el("button", "title-cta", "");
@@ -200,11 +203,21 @@ function renderTitle() {
   start.onclick = () => renderHome();
   acts.appendChild(start);
 
+  acts.appendChild(el("div", "title-rule"));
+
+  const menu = el("div", "title-menu");
   // §40 — 一枚絵を“全景”で鑑賞するモード：テキスト/UIを任意に隠して全画面表示。
   // タップでテキストに戻る。表示専用（状態は変えない）。
-  const artBtn = el("button", "title-artbtn", "🖼 イラストを全画面で見る");
+  const artBtn = el("button", "title-bar", "");
+  artBtn.innerHTML = "<span>イラスト</span>";
   artBtn.onclick = (e) => { e.stopPropagation(); wrap.classList.add("art-only"); };
-  acts.appendChild(artBtn);
+  menu.appendChild(artBtn);
+  // 音量は常設の🔊丸ボタンが担っていたが、意匠の中で浮くのでタイトルでは隠し、ここへ移す。
+  const volBtn = el("button", "title-bar", "");
+  volBtn.innerHTML = "<span>音量</span>";
+  volBtn.onclick = (e) => { e.stopPropagation(); if (typeof showVolumePanel === "function") showVolumePanel(); };
+  menu.appendChild(volBtn);
+  acts.appendChild(menu);
   wrap.appendChild(el("div", "title-artback", "タップでテキストを表示"));
   wrap.addEventListener("click", () => { if (wrap.classList.contains("art-only")) wrap.classList.remove("art-only"); });
 

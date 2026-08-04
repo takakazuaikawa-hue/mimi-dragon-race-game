@@ -3406,7 +3406,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 }
 /* real key-visual layer (drop images/title_bg.jpg); covers the CSS night-sky fallback */
 .title-photo { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
-.title-photo .photo-fill { filter: brightness(0.94) saturate(1.06); }
+/* ★絵の基準は上端（2026-08-04）。中央基準のままだと、縦が短い枠（PCの470×836枠や
+   低い画面）で上下が切られてミミの顔が上がり、副題の札が目にかぶった（実測）。
+   上端基準なら、切られるのは常に下（＝開始ボタンの下に敷く木の甲板）だけになる。 */
+.title-photo .photo-fill { filter: brightness(0.94) saturate(1.06); object-position: 50% 0%; }
 /* legibility scrim — only when a real image is present (else the CSS sky shows clean) */
 .title-photo:has(.photo-fill)::after {
   content: ""; position: absolute; inset: 0;
@@ -3449,14 +3452,25 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    ・文字の芯が rgb(176,139,115)＝淡い茶で明るい背景に沈む
    ・しかも「レベルアップ」だけ芯が rgb(47,32,7)＝ほぼ黒で、どこに置いても読めない
    という画像側の不具合を抱えていた。文字にすれば背景がどう変わっても必ず読める。 */
+/* ★意匠に合わせる（2026-08-04）。ここだけ「ただの角丸の黒」だと、金と紫の彫刻で
+   揃えた画面の中で一枚だけ言語が違って見えた。臙脂の面＋金の細線にし、両端へ
+   部品シートの菱形を置いて、飾りバーや意匠板と同じ語彙にする。 */
 .title-sub {
-  margin: 10px auto 0; max-width: 330px; padding: var(--pd-8) var(--pd-14);
+  position: relative; margin: 11px auto 0; max-width: 316px; padding: var(--pd-8) var(--pd-16);
   font-size: 11.5px; line-height: 1.72; letter-spacing: .02em; color: var(--hx-fff4e0);
-  background: linear-gradient(180deg, rgba(24,10,16,.62), rgba(16,6,12,.72));
-  border-radius: var(--r-full);
-  box-shadow: inset 0 1px 0 rgba(255,216,119,.22), 0 6px 18px -10px rgba(0,0,0,.8);
+  background: linear-gradient(180deg, rgba(58,20,36,.72), rgba(28,8,18,.80));
+  border-radius: var(--r-1);
+  box-shadow: inset 0 1px 0 rgba(255,216,119,.34), inset 0 -1px 0 rgba(255,216,119,.20),
+              0 6px 18px -10px rgba(0,0,0,.85);
   backdrop-filter: blur(1.5px);
 }
+.title-sub::before, .title-sub::after {
+  content: ""; position: absolute; top: 50%; width: 21px; height: 22px; transform: translateY(-50%);
+  background: url("images/ui_diamond.webp?v=1") center/100% 100% no-repeat;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.6));
+}
+.title-sub::before { left: -13px; }
+.title-sub::after  { right: -13px; }
 .title-sub b { color: var(--gold-bright); font-weight: 900; }
 /* タイトルロゴ＝3段積み（ミミの＝ピンク小／ドラゴンレース＋紀行＝金2行）。
    ★クラス名にタイトルの略称を入れない。改題のたびに古びるため中立な名前にしてある。 */
@@ -3479,9 +3493,34 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .title-novel { font-size: 12px; color: #e4dff1; margin: 13px auto 2px; max-width: 360px; line-height: 1.6; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 .title-dragon { display: block; margin: 6px auto 0; }
 
-/* 下段：開始ボタンを最下部にマージンを取って配置 */
-.title-actions { margin-top: auto; margin-bottom: clamp(30px, 7dvh, 72px); width: 100%;
-  display: flex; flex-direction: column; align-items: center; gap: 14px; }
+/* 下段：意匠板 → 罫線 → 飾りバー2本。gapは詰めて「ひとかたまり」に見せる
+   （3つが等間隔に散ると、板・罫線・バーが別々の部品に見えてしまう）。 */
+.title-actions { margin-top: auto; margin-bottom: clamp(22px, 5dvh, 54px); width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* 罫線（部品シートの ui_rule_s.webp＝中央に菱形）。板とバーの境目をつくる。 */
+.title-rule {
+  width: min(72vw, 286px); aspect-ratio: 556 / 61; margin: 2px 0 0;
+  background: url("images/ui_rule_s.webp?v=1") center/100% 100% no-repeat;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); pointer-events: none;
+}
+.title-menu { display: flex; gap: 8px; justify-content: center; width: 100%; }
+/* 飾りバー（ui_bar.webp）。焼き込みの "Continue" は板と同じ手で消してある。
+   紫の面はバーの中央（縦およそ17〜85%）なので、文字は素直に中央でよい。 */
+.title-bar {
+  position: relative; width: min(41vw, 162px); aspect-ratio: 558 / 118;
+  border: none; cursor: pointer; background: url("images/ui_bar.webp?v=1") center/100% 100% no-repeat;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--hx-fff4e0); font-size: clamp(11px, 3.1vw, 13px); font-weight: 800; letter-spacing: .06em;
+  text-shadow: 0 1px 2px rgba(0,0,0,.75);
+  filter: drop-shadow(0 5px 10px rgba(0,0,0,.5));
+}
+/* ★当たりを広げる。絵の比が 558:118 なので、横幅を画面に収めると高さが33pxしか出ず、
+   指で押すには小さい（44px未満）。見た目は変えずに、透明な板で上下だけ広げる。 */
+.title-bar::before { content: ""; position: absolute; inset: -7px -4px; }
+.title-bar:active { transform: translateY(2px); filter: drop-shadow(0 2px 5px rgba(0,0,0,.45)); }
+/* 🔊の常設ボタンはタイトルでは隠す（意匠の中で絵文字の丸だけ浮くため）。
+   機能は上の「音量」バーが担うので、届かなくなる操作は無い。 */
+body.title-mode #vol-fab { display: none !important; }
 /* ★開始ボタン＝生成した意匠板（images/ui_plaque.webp・2026-08-04）。
    部品シート title_ui.png から切り出し、焼き込まれていた英字 "Tap to Start" を
    「文字の帯を上下の綺麗な板から縦に補間して埋める」方式で消してある
