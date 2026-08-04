@@ -3409,7 +3409,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* ★絵の基準は上端（2026-08-04）。中央基準のままだと、縦が短い枠（PCの470×836枠や
    低い画面）で上下が切られてミミの顔が上がり、副題の札が目にかぶった（実測）。
    上端基準なら、切られるのは常に下（＝開始ボタンの下に敷く木の甲板）だけになる。 */
-.title-photo .photo-fill { filter: brightness(0.94) saturate(1.06); object-position: 50% 0%; }
+/* ★減光はやめた（2026-08-04・実機指摘「タイトル暗くない？」）。
+   夜の絵のころの名残で、明るい夕景では効きすぎていた。色の乗りだけ残す。 */
+.title-photo .photo-fill { filter: saturate(1.06); object-position: 50% 0%; }
 /* legibility scrim — only when a real image is present (else the CSS sky shows clean) */
 .title-photo:has(.photo-fill)::after {
   content: ""; position: absolute; inset: 0;
@@ -3417,8 +3419,8 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
     /* ★2026-08-04：夕景の明るいキービジュアルに差し替えたので、上半分の暗幕を薄くした
        （旧＝夜の絵に合わせた 0.52/0.40）。濃くする変更ではないので従来の決裁と矛盾しない。
        下端だけは開始ボタンの下地として残す。 */
-    linear-gradient(180deg, rgba(8,9,14,0.30) 0%, rgba(8,9,14,0.06) 30%, rgba(8,9,14,0.06) 54%, rgba(8,9,14,0.44) 76%, rgba(8,9,14,0.90) 100%),
-    radial-gradient(130% 48% at 50% 0%, rgba(8,9,14,0.26), transparent 60%);
+    linear-gradient(180deg, rgba(8,9,14,0.15) 0%, rgba(8,9,14,0.03) 30%, rgba(8,9,14,0.03) 54%, rgba(8,9,14,0.40) 78%, rgba(8,9,14,0.88) 100%),
+    radial-gradient(130% 48% at 50% 0%, rgba(8,9,14,0.10), transparent 60%);
 }
 /* the painted key-visual already shows Mimi + dragons → hide the pixel mascot when it's present */
 .title-screen:has(.title-photo .photo-fill) .title-dragon { display: none; }
@@ -3430,13 +3432,16 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    ロゴ＋副題を 33% までに収めて、顔から下を絵に明け渡す。 */
 .title-head { position: relative; margin-top: clamp(12px, 2.2dvh, 26px); width: 100%; }
 /* タイトル背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない）
-   ★2026-08-02 ユーザー決裁＝強い暗幕（backdrop-filter＋縦長楕円）は撤回。背景の一枚絵が
-     沈んで見えなくなったため、元のソフトな暗幕に戻した。サブタイトルの可読性
-     （明るい門の上で実測 1.28:1）は CSS ではなく**ロゴ画像側**（縁取り・帯の描き込み）で
-     解決する方針。このスクリムをこれ以上濃くしないこと。 */
+   ★2026-08-02 ユーザー決裁＝強い暗幕（backdrop-filter＋縦長楕円）は撤回。このスクリムを
+     これ以上濃くしないこと。
+   ★2026-08-04 実機指摘「タイトル暗くない？」→ 計算したらここが主犯だった。
+     ロゴの中心で 0.56 も乗り、空が元の絵の 28% の明るさになっていた。しかも副題(0.43)や
+     ミミの顔(0.20)にまで届いていた。これは**副題が焼き込みで読めなかった旧ロゴ**のための
+     暗幕で、新ロゴは自前の縁取りと発光を持ち、副題もHTMLの文字＋自前の札になったので
+     もう要らない。0.64→0.22 まで落とす（薄くする変更なので上の決裁と矛盾しない）。 */
 .title-screen:has(.title-photo .photo-fill) .title-head::before {
-  content: ""; position: absolute; inset: -22% -10%; z-index: -1; border-radius: 28px;
-  background: radial-gradient(76% 82% at 50% 50%, rgba(8,9,14,0.64), rgba(8,9,14,0.28) 56%, transparent 80%);
+  content: ""; position: absolute; inset: -18% -10%; z-index: -1; border-radius: 28px;
+  background: radial-gradient(76% 82% at 50% 50%, rgba(8,9,14,0.22), rgba(8,9,14,0.10) 56%, transparent 80%);
 }
 .title-logo { margin: 0; line-height: 1.0; font-weight: 900; font-size: clamp(30px, 11vw, 54px); letter-spacing: 0.02em; white-space: nowrap; }
 .title-logo--image { font-size: 0; line-height: 0; white-space: normal; }
@@ -3456,7 +3461,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    揃えた画面の中で一枚だけ言語が違って見えた。臙脂の面＋金の細線にし、両端へ
    部品シートの菱形を置いて、飾りバーや意匠板と同じ語彙にする。 */
 .title-sub {
-  position: relative; margin: 11px auto 0; max-width: 316px; padding: var(--pd-8) var(--pd-16);
+  /* ★下寄せ（margin-top:auto）。ロゴ直下だと空・遠景の城・飛ぶ竜という絵の主要な部分を
+     塞いでいた。下の余白で開始の合図から離し、ミミの腿のあたりに落とす。 */
+  position: relative; margin: 0 auto clamp(26px, 7dvh, 62px); margin-top: auto;
+  max-width: 316px; padding: var(--pd-8) var(--pd-16);
   font-size: 11.5px; line-height: 1.72; letter-spacing: .02em; color: var(--hx-fff4e0);
   background: linear-gradient(180deg, rgba(58,20,36,.72), rgba(28,8,18,.80));
   border-radius: var(--r-1);
@@ -3495,7 +3503,9 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 
 /* 下段：意匠板 → 罫線 → 飾りバー2本。gapは詰めて「ひとかたまり」に見せる
    （3つが等間隔に散ると、板・罫線・バーが別々の部品に見えてしまう）。 */
-.title-actions { margin-top: auto; margin-bottom: clamp(22px, 5dvh, 54px); width: 100%;
+/* 余った縦を吸うのは副題（margin-top:auto）に一本化する。ここにも auto があると
+   余白が半分ずつ配られて、副題が画面の真ん中＝ミミの胸の高さで止まってしまう。 */
+.title-actions { margin-top: 0; margin-bottom: clamp(22px, 5dvh, 54px); width: 100%;
   display: flex; flex-direction: column; align-items: center; gap: 6px; }
 /* 罫線（部品シートの ui_rule_s.webp＝中央に菱形）。板とバーの境目をつくる。 */
 .title-rule {
