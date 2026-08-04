@@ -376,18 +376,45 @@
     if (!REDUCE) { sl.wrap.classList.remove("in"); void sl.wrap.offsetWidth; sl.wrap.classList.add("in"); }
   }
 
+  // ★立ち絵は <img> を使い回して src だけ差し替える作り。ブラウザは新しい絵を読み終える
+  //   まで**前の絵を描き続ける**ので、そのあいだ前のキャラが残って見える
+  //   （実機報告：温泉を見たあとモールへ移ると、しばらくミズの温泉すがたのままだった）。
+  //   読み込み中は隠し、読めてから出す。前の絵を出しっぱなしにするより、一瞬なにも
+  //   居ないほうが正しい（別人が喋っているように見えるのを防ぐ）。
   function loadInto(sl, list, sym) {
     var i = 0, img = sl.img, symEl = sl.sym;
+    var token = (sl.token = (sl.token || 0) + 1);   // 途中で次の差し替えが始まったら古い方は捨てる
     function tryNext() {
-      if (i >= list.length) { img.style.display = "none"; symEl.textContent = sym || "💬"; symEl.style.display = ""; sl.wrap.classList.remove("sil"); return; }
+      if (token !== sl.token) return;
+      if (i >= list.length) { img.style.display = "none"; img.style.visibility = ""; symEl.textContent = sym || "💬"; symEl.style.display = ""; sl.wrap.classList.remove("sil"); return; }
       // ★エントリは 文字列 or {src, sil:true}。sil＝シルエット表示（例: 伏線お姉さん＝celestia を暗く落として正体を隠す）
       var entry = list[i], src = (typeof entry === "object" && entry) ? entry.src : entry, sil = !!(entry && entry.sil);
       img.style.display = ""; symEl.style.display = "none";
-      img.onerror = function () { i++; tryNext(); };
-      img.onload = function () { sl.wrap.classList.toggle("sil", sil); };
+      img.style.visibility = "hidden";              // ★ここで前の絵を消す（読めてから出す）
+      img.onerror = function () { if (token !== sl.token) return; i++; tryNext(); };
+      img.onload = function () {
+        if (token !== sl.token) return;
+        img.style.visibility = "";
+        sl.wrap.classList.toggle("sil", sil);
+      };
       img.src = src;
     }
     tryNext();
+  }
+
+  // ★会話を閉じるときに立ち絵を空にする。背景は clearBg で持ち越しを止めているのに
+  //   立ち絵だけ後始末が無く、次の会話が開いた最初の一瞬に前のキャラが出ていた。
+  function clearStandees() {
+    if (!dom) return;
+    ["left", "right"].forEach(function (side) {
+      var sl = dom.slots[side];
+      sl.token = (sl.token || 0) + 1;               // 読み込み中のものを無効化
+      sl.img.onload = sl.img.onerror = null;
+      sl.img.removeAttribute("src");
+      sl.img.style.visibility = "hidden";
+      sl.id = null; sl.expr = null; sl.imgOv = null; sl.has = false;
+      sl.wrap.classList.remove("has", "in", "active", "dim", "sil");
+    });
   }
 
   function activate(side) {
@@ -503,6 +530,7 @@
   function finish() {
     typing = false; clearTimeout(typeTimer); clearTimeout(autoTimer);
     clearBg();   // ★背景は台本ごと＝次の無関係な会話に前の場面を持ち越さない
+    clearStandees();   // ★立ち絵も同じ理由で空にする（前のキャラを次の会話へ持ち越さない）
     if (dom) dom.overlay.classList.add("hidden");
     document.removeEventListener("keydown", onKey, true);
     var r = resolveFn; resolveFn = null; queue = null;
