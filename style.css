@@ -1309,6 +1309,11 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
    タイトルで前例のある「画面ごとに body/#app へ状態を出して切り替える」やり方に合わせ、
    :has() で #app のクラスを見て効かせる（レース画面は #app.nav-racestart）。 */
 body:has(#app.nav-racestart) #header { display: none; }
+/* ★ゴール後はヘッダを戻す（実機指摘）。ここでコインが動くので、残高が見えないと困る。
+   走っている最中だけ隠す＝コインが動かない区間だけ、という切り分けにする。
+   ※ :has() の強さは中の指定で決まる。#app を含む上の行のほうが強いため、
+     こちらも #app を含めないと勝てない（実測で効かず気づいた）。 */
+body:has(#app.nav-racestart .rc-wrap.rc-ended) #header { display: flex; }
 #app.nav-racestart { padding-top: 2px; padding-bottom: 4px; --pad-t: 2px; --pad-b: 4px; }
 #app.nav-racestart .rc-wrap { margin-top: 0; }
 .rc-hud {

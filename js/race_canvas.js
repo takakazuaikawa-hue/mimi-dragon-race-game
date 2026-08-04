@@ -1076,7 +1076,7 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   ctx.globalAlpha = a;
   const nm = (typeof commentaryName === "function") ? commentaryName(id) : id;
   const label = "🏆 1着　" + nm;
-  ctx.font = "bold 16px system-ui, sans-serif";
+  ctx.font = "bold 16px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   const tw = ctx.measureText(label).width, rw = tw + 34, rh = 26, ry = baseY + 14;
   ctx.beginPath();
@@ -1145,7 +1145,7 @@ function rcMoodGlyph(ctx, x, y, ch, col, d) {
   // a mood symbol with a soft dark outline + a thin light rim so it reads cleanly (not flat text)
   ctx.save();
   ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.font = "900 " + (12 * d).toFixed(1) + "px 'Hiragino Maru Gothic ProN', 'Trebuchet MS', system-ui, sans-serif";
+  ctx.font = "900 " + (12 * d).toFixed(1) + "px 'Hiragino Maru Gothic ProN', 'Trebuchet MS', 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
   ctx.lineWidth = 3.2 * d; ctx.strokeStyle = "rgba(14,11,26,0.92)"; ctx.strokeText(ch, x, y);
   ctx.lineWidth = 1.1 * d; ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.strokeText(ch, x, y);
   ctx.fillStyle = col; ctx.fillText(ch, x, y);
@@ -1218,7 +1218,7 @@ function rcDrawDragonFace(ctx, cx, cy, dep, mood, now, col) {
     for (let i = 0; i < 3; i++) { const a = t * 4 + i * 2.0944; rcSparkle(ctx, sx + Math.cos(a) * 5 * d, sy + Math.sin(a) * 3 * d, 2.0 * d, "#ffe06a"); }
   } else if (mood === "yawn") {
     lid(0.8, -2.7, 1.2);
-    ctx.font = "italic 900 " + (9 * d).toFixed(1) + "px system-ui, sans-serif"; ctx.fillStyle = "rgba(190,210,255,0.95)";
+    ctx.font = "italic 900 " + (9 * d).toFixed(1) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif"; ctx.fillStyle = "rgba(190,210,255,0.95)";
     ctx.fillText("z", sx, sy + 1 * d); ctx.fillText("z", sx + 4 * d, sy - 4.5 * d);
   } else {
     openEye();   // neutral — a clean, bright open eye so the dragon never looks blank in-race
@@ -3046,7 +3046,7 @@ function startRaceCanvas(container, ctx) {
       cctx.fillRect(goalX - bw - 5, g.top - 22, bw * 2 + 10, 1.5);
       cctx.fillRect(goalX - bw - 5, g.top - 7.5, bw * 2 + 10, 1.5);
       cctx.fillStyle = "#fff";
-      cctx.font = "bold 11px system-ui, sans-serif";
+      cctx.font = "bold 11px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
       cctx.fillText("ゴール", goalX, g.top - 14);
       // finish tape (a bright line spanning the gate) until the leader breaks it
@@ -3095,7 +3095,7 @@ function startRaceCanvas(container, ctx) {
       sb2.addColorStop(0, rcShade(bannerCol, 26)); sb2.addColorStop(1, rcShade(bannerCol, -26));
       cctx.fillStyle = sb2; cctx.fillRect(spanL, gt - archH, spanW, bannerH);
       if (rh > 0.33) { cctx.fillStyle = "#ffe9a8"; cctx.fillRect(spanL, gt - archH, spanW, 2); cctx.fillRect(spanL, gt - archH + bannerH - 2, spanW, 2); }
-      cctx.fillStyle = "#fff"; cctx.font = "bold " + (9 + rh * 3).toFixed(0) + "px system-ui, sans-serif";
+      cctx.fillStyle = "#fff"; cctx.font = "bold " + (9 + rh * 3).toFixed(0) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle"; cctx.fillText("START", startGX, gt - archH + bannerH / 2);
       const flags = Math.round(2 + rh * 6), fy = gt - archH - 1, fdiv = (flags - 1) || 1;   // pennant bunting
       for (let i = 0; i < flags; i++) {
@@ -3472,14 +3472,14 @@ function startRaceCanvas(container, ctx) {
       cctx.lineWidth = 1.3;
       cctx.strokeStyle = isBet ? "rgba(255,243,196,0.7)" : (popRank[dr.id] === 1 ? "rgba(127,209,255,0.5)" : "rgba(255,255,255,0.28)");
       cctx.stroke();
-      cctx.font = "bold " + Math.round((isBet ? 11 : 10) * dep) + "px system-ui, sans-serif";
+      cctx.font = "bold " + Math.round((isBet ? 11 : 10) * dep) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
       cctx.fillStyle = isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.82)";
       cctx.fillText(rk, bodyCx, tagY + 0.5);
       cctx.textBaseline = "alphabetic";
       // name plate — 控えめなピル（半透明・小さめ）。賭け竜はほんのり金味。
       const nm = commentaryName(dr.id);
-      cctx.font = "9.5px system-ui, sans-serif";
+      cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       const nw = cctx.measureText(nm).width;
       const plw = nw + 10, plh = 13, plx = bodyCx - plw / 2, ply = baseY + 12;
       cctx.beginPath();
@@ -3501,9 +3501,9 @@ function startRaceCanvas(container, ctx) {
         const nm2 = commentaryName(dr.id);
         const sub = styleLb + (od2.winOdds != null ? "・単" + od2.winOdds.toFixed(1) : "");
         cctx.save();
-        cctx.font = "bold 12px system-ui, sans-serif";
+        cctx.font = "bold 12px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         const w1 = cctx.measureText(nm2).width;
-        cctx.font = "9.5px system-ui, sans-serif";
+        cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         const w2 = cctx.measureText(sub).width;
         const pw = Math.max(w1, w2) + 34, phh = 30;
         const px3 = bodyCx - pw / 2, py3 = y - 74 * dep;
@@ -3521,12 +3521,12 @@ function startRaceCanvas(container, ctx) {
         cctx.fill();
         // 人気番号
         cctx.textAlign = "left"; cctx.textBaseline = "middle";
-        cctx.font = "bold 12px system-ui, sans-serif";
+        cctx.font = "bold 12px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.fillStyle = "#ffd76a";
         cctx.fillText(String(od2.popularityRank || ""), px3 + 14, py3 + phh / 2);
         cctx.fillStyle = "#fff";
         cctx.fillText(nm2, px3 + 26, py3 + 10);
-        cctx.font = "9.5px system-ui, sans-serif";
+        cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.fillStyle = "#aab4c2";
         cctx.fillText(sub, px3 + 26, py3 + 22);
         cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
@@ -3536,7 +3536,7 @@ function startRaceCanvas(container, ctx) {
       // off-screen-behind indicator
       if (offLeft) {
         cctx.fillStyle = "rgba(255,255,255,0.6)";
-        cctx.font = "10px system-ui, sans-serif";
+        cctx.font = "10px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.fillText("◀", cw * 0.03, y);
       }
       cctx.globalAlpha = _prevAlpha;             // end per-dragon edge fade
@@ -3554,7 +3554,7 @@ function startRaceCanvas(container, ctx) {
         cctx.save();
         cctx.translate(p.x, p.y - rise);
         cctx.scale(0.6 + 0.4 * inK, 0.6 + 0.4 * inK);
-        cctx.font = "bold " + (p.sz || 15) + "px system-ui, sans-serif";
+        cctx.font = "bold " + (p.sz || 15) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
         cctx.globalAlpha = al;
         cctx.lineWidth = 4; cctx.strokeStyle = "rgba(8,10,20,0.9)"; cctx.strokeText(p.tx, 0, 0);
@@ -3713,7 +3713,7 @@ function startRaceCanvas(container, ctx) {
       cctx.save();
       rcHeart(cctx, tx - 3, ty, 8, "#ff6a86", 0.95);
       cctx.textAlign = "right"; cctx.textBaseline = "middle";
-      cctx.font = "bold 14px system-ui, sans-serif";
+      cctx.font = "bold 14px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.7)";
       cctx.strokeText(lcTxt, tx - 16, ty - 3);
       cctx.fillStyle = "#fff"; cctx.fillText(lcTxt, tx - 16, ty - 3);
@@ -3725,7 +3725,7 @@ function startRaceCanvas(container, ctx) {
     for (const f of S.floats) {
       cctx.globalAlpha = clamp(f.life, 0, 1);
       cctx.lineWidth = 3; cctx.strokeStyle = "rgba(8,10,20,0.8)";
-      cctx.font = (f.big ? "bold 20px" : "bold 13px") + " system-ui, sans-serif";
+      cctx.font = (f.big ? "bold 20px" : "bold 13px") + " 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.strokeText(f.text, f.x, f.y);
       cctx.fillStyle = f.color;
       cctx.fillText(f.text, f.x, f.y);
@@ -3745,7 +3745,7 @@ function startRaceCanvas(container, ctx) {
         cctx.save();
         cctx.globalAlpha = clamp(0.2 + frac, 0, 1);
         cctx.translate(cw / 2, ch * 0.40); cctx.scale(pulse, pulse);
-        cctx.font = "bold 66px system-ui, sans-serif";
+        cctx.font = "bold 66px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.textAlign = "center"; cctx.textBaseline = "middle";
         cctx.lineWidth = 6; cctx.strokeStyle = "rgba(10,12,24,0.7)";
         cctx.fillStyle = "#fff";
@@ -3753,7 +3753,7 @@ function startRaceCanvas(container, ctx) {
         cctx.restore();
       }
       cctx.globalAlpha = 0.85; cctx.fillStyle = "#ffe9a8";
-      cctx.font = "bold 13px system-ui, sans-serif"; cctx.textAlign = "center";
+      cctx.font = "bold 13px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif"; cctx.textAlign = "center";
       cctx.fillText("位置について…", cw / 2, ch * 0.40 + 54);
       cctx.globalAlpha = 1;
     } else if (S.goFlash > 0) {
@@ -3761,7 +3761,7 @@ function startRaceCanvas(container, ctx) {
       cctx.save();
       cctx.globalAlpha = k;
       cctx.translate(cw / 2, ch * 0.40); cctx.scale(1 + (1 - k) * 0.9, 1 + (1 - k) * 0.9);
-      cctx.font = "bold 72px system-ui, sans-serif";
+      cctx.font = "bold 72px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
       cctx.lineWidth = 6; cctx.strokeStyle = "rgba(120,60,0,0.55)";
       cctx.fillStyle = "#ffe06a";
@@ -3779,7 +3779,7 @@ function startRaceCanvas(container, ctx) {
       cctx.fillRect(pgx - 1, 0, 2, ch);
       if (timeline.photoFinish) {
         cctx.save();
-        cctx.font = "800 13px system-ui, sans-serif";
+        cctx.font = "800 13px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.textAlign = "center"; cctx.textBaseline = "middle";
         const pw = cctx.measureText("📸 写真判定").width + 22;
         cctx.fillStyle = "rgba(14,18,34,0.78)";
@@ -3806,7 +3806,7 @@ function startRaceCanvas(container, ctx) {
       const a = Math.min(clamp(inP / 0.35, 0, 1), outP);
       const accent = (RC_THEME[ts.key] || RC_THEME.straight).accent;
       cctx.save();
-      cctx.font = "bold 19px system-ui, sans-serif";
+      cctx.font = "bold 19px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       const tw = cctx.measureText(ts.label).width;
       const iconW = 30, padX = 14, h = 42, slant = 14;
       const bw = Math.min(cw * 0.62, iconW + tw + padX * 2 + 16);
@@ -3829,11 +3829,11 @@ function startRaceCanvas(container, ctx) {
       // content (upright text on the slanted band)
       const cx = x + slant + 12;
       cctx.textBaseline = "middle"; cctx.textAlign = "center";
-      cctx.font = "20px system-ui, sans-serif"; cctx.fillStyle = "#fff";
+      cctx.font = "20px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif"; cctx.fillStyle = "#fff";
       cctx.fillText(ts.icon, cx + 9, y0 + h / 2);
-      cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 19px system-ui, sans-serif";
+      cctx.textAlign = "left"; cctx.fillStyle = "#fff"; cctx.font = "bold 19px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.fillText(ts.label, cx + iconW, y0 + (ts.demand ? 15 : h / 2));
-      if (ts.demand) { cctx.fillStyle = accent; cctx.font = "bold 11px system-ui, sans-serif"; cctx.fillText("▶ " + ts.demand, cx + iconW, y0 + 31); }
+      if (ts.demand) { cctx.fillStyle = accent; cctx.font = "bold 11px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif"; cctx.fillText("▶ " + ts.demand, cx + iconW, y0 + 31); }
       // impact flash right after it lands
       const flash = (t >= 0.26) ? clamp(1 - (t - 0.26) / 0.16, 0, 1) : 0;
       if (flash > 0) {
@@ -3857,7 +3857,7 @@ function startRaceCanvas(container, ctx) {
       cctx.fillStyle = "rgba(255,224,106,0.92)";
       cctx.fillRect(0, by - 23, cw, 3);
       cctx.fillRect(0, by + 20, cw, 3);
-      cctx.font = "bold 30px system-ui, sans-serif";
+      cctx.font = "bold 30px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
       cctx.lineWidth = 5; cctx.strokeStyle = "rgba(8,10,22,0.7)";
       cctx.fillStyle = "#fff";
@@ -3890,9 +3890,9 @@ function startRaceCanvas(container, ctx) {
       cctx.globalAlpha = Math.min(1, rtd / 0.22);
       // ※「ゴールイン！」の素テキストは撤去（デザイン済みの .rc-goalband 帯と重複するため）。
       //   ゴールの合図は帯に一本化し、canvas側は「1着 ◯◯」と配当プレートに専念する。
-      cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 25px system-ui, sans-serif";
+      cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 25px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       if (!hasCut) {
-        cctx.fillStyle = "#fff"; cctx.font = "bold 15px system-ui, sans-serif";
+        cctx.fillStyle = "#fff"; cctx.font = "bold 15px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.14 + 24);
       }
       cctx.globalAlpha = 1;
@@ -3940,33 +3940,41 @@ function startRaceCanvas(container, ctx) {
         const fit = (txt, base, min) => {
           let f = base;
           while (f > min) {
-            cctx.font = "bold " + f + "px system-ui, sans-serif";
+            cctx.font = "bold " + f + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
             if (cctx.measureText(txt).width <= inner) break;
             f -= 1;
           }
           return f;
         };
+        // ★縦の中心（2026-08-04・実機指摘「高さの中心がずれてます」）。
+        //   原因は2つ。①文字の基準線を指定しておらず、その時どうなっているかに依存していた。
+        //   ②バーの平らな面は絵の縦 27〜99px／118＝中心が53.4%で、バーの真ん中(50%)ではない。
+        //   基準線を middle に固定し、面の中心に合わせる。
+        cctx.textBaseline = "middle";
+        const midY = useArt ? (0.534 - 0.5) * ph : 0;
         const oneLine = word + "　" + amount;
         const f1 = fit(oneLine, useArt ? 20 : 22, 15);
         // 1行にすると字が小さくなりすぎる組み合わせ（例：伝説の的中！＋123,456,789）は
         // 2行のほうが大きく出せる。17px を境にする。
         if (f1 >= 17) {
           // 1行で収まる＝そのほうが読みやすい
-          cctx.font = "bold " + f1 + "px system-ui, sans-serif";
+          cctx.font = "bold " + f1 + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
           const wW = cctx.measureText(word + "　").width, allW = cctx.measureText(oneLine).width;
           cctx.textAlign = "left";
-          cctx.fillStyle = col; cctx.fillText(word, -allW / 2, 7);
-          cctx.fillStyle = "#fff"; cctx.fillText(amount, -allW / 2 + wW, 7);
+          cctx.fillStyle = col; cctx.fillText(word, -allW / 2, midY);
+          cctx.fillStyle = "#fff"; cctx.fillText(amount, -allW / 2 + wW, midY);
           cctx.textAlign = "center";
         } else {
-          // 入らなければ2行。各行それぞれ縮めて必ず面の中に収める。
+          // 入らなければ2行。各行それぞれ縮めて必ず面の中に収め、2行の塊を面の中心に置く。
           const fw = fit(word, useArt ? 20 : 22, 13);
-          cctx.fillStyle = col; cctx.font = "bold " + fw + "px system-ui, sans-serif";
-          cctx.fillText(word, 0, useArt ? -9 : -12);
           const fa = fit(amount, useArt ? 19 : 21, 12);
-          cctx.fillStyle = "#fff"; cctx.font = "bold " + fa + "px system-ui, sans-serif";
-          cctx.fillText(amount, 0, useArt ? 14 : 15);
+          const gap = (fw + fa) * 0.58;                 // 行間＝2行の中心どうしの距離
+          cctx.fillStyle = col; cctx.font = "bold " + fw + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+          cctx.fillText(word, 0, midY - gap / 2);
+          cctx.fillStyle = "#fff"; cctx.font = "bold " + fa + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+          cctx.fillText(amount, 0, midY + gap / 2);
         }
+        cctx.textBaseline = "alphabetic";
         cctx.restore();
       }
       cctx.restore();
@@ -4721,6 +4729,9 @@ function startRaceCanvas(container, ctx) {
       crowdGlow.classList.add("is-standing");
     }
     wrap.classList.add("rc-ended");     // CSS側でゴール後レイアウトに切替（着順を畳む・操作を主役に）
+    // ★ゴールでヘッダが戻る＝上に40px増えるので、走る絵を測り直して収める
+    //   （growToFit は下限 baseH までしか縮まないので、レース画面が潰れることはない）。
+    try { requestAnimationFrame(growToFit); setTimeout(growToFit, 240); } catch (_) {}
     _goalChatLeft = 3;                  // 余韻コメントを3本だけ流して打ち止め
     chatNextAt = 0;
   }
