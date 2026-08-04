@@ -3521,40 +3521,36 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* 🔊の常設ボタンはタイトルでは隠す（意匠の中で絵文字の丸だけ浮くため）。
    機能は上の「音量」バーが担うので、届かなくなる操作は無い。 */
 body.title-mode #vol-fab { display: none !important; }
-/* ★開始ボタン＝生成した意匠板（images/ui_plaque.webp・2026-08-04）。
-   部品シート title_ui.png から切り出し、焼き込まれていた英字 "Tap to Start" を
-   「文字の帯を上下の綺麗な板から縦に補間して埋める」方式で消してある
-   （行ごとの平均で塗ると板の陰影に合わず字が浮く。縦の補間なら陰影が続く）。
-   板の中の面は 縦39.5〜73.5% / 横25.7〜74.5%（実測）。文字はそこへ置く。
-   絵は 891x385＝比2.31。文字を面の中央に置くため padding で位置を作る。 */
+/* ★開始の合図（2026-08-04・リサーチで作り直し）────────────────────────────
+   最初は切り出した意匠板（ui_plaque.webp）を大きく置いていたが、ユーザー指摘
+   「はじめるの主張が強い／普通ゲームってこんなだっけ？」を受けて調べたところ、
+   タイトル画面の慣例は逆だった。
+     ・「TAP TO STARTはボタンらしいデザインではなくテキストでデザインされることが多い」
+       画面内のどこをタップしても遷移する仕様（ゲームアプリのUIデザイン／実務者記事）
+     ・視線誘導は明滅などの簡単なアニメーションでよく、派手でなくてよい
+     ・文言は世界観に合わせる（実例：ENGINE START／下水道に入る／タッチしてください！）
+   「箱があるほうが指で押せる」はWebのUIの理屈で、ここには当てはまらなかった。
+   画面ぜんぶが開始の当たりなので、この文字は合図であって的ではない。
+   意匠板の絵は消さずに残してある（ロゴの出ない画面の見出しなどに回せる）。 */
 .title-cta {
-  position: relative; overflow: visible;
-  width: min(84vw, 348px); aspect-ratio: 891 / 385; min-width: 0; padding: 0;
-  font-size: clamp(19px, 5.6vw, 24px); font-weight: 900; letter-spacing: 0.06em; color: #4a2d08;
-  background: url("images/ui_plaque.webp?v=1") center/100% 100% no-repeat;
-  border: none; border-radius: var(--r-0); cursor: pointer; box-shadow: none;
-  filter: drop-shadow(0 10px 20px rgba(0,0,0,.55));
-  animation: title-cta-pulse 2.2s ease-in-out infinite;
-  /* 面（縦39.5〜73.5%）の中心＝56.5% に文字を置く */
-  display: flex; align-items: center; justify-content: center;
-  text-shadow: 0 1px 0 rgba(255,248,220,.75);
+  position: relative; display: inline-flex; align-items: center; gap: 12px;
+  padding: var(--pd-8) var(--pd-16); min-width: 0;
+  font-size: clamp(15px, 4.4vw, 18px); font-weight: 800; letter-spacing: .14em;
+  color: var(--hx-fff4e0); background: none; border: none; border-radius: var(--r-0);
+  cursor: pointer; box-shadow: none;
+  text-shadow: 0 2px 6px rgba(0,0,0,.9), 0 0 18px rgba(255,200,90,.35);
+  animation: title-cta-blink 2.6s ease-in-out infinite;
 }
-/* 面の中心（39.5%と73.5%の中点＝56.5%）へ正確に置く。flexの中央だとボタン全体の
-   中央になり、上に飾りが張り出している板では文字が上寄りに見える（実測で5%ずれた）。 */
-.title-cta > span { position: absolute; left: 0; right: 0; top: 56.5%; transform: translateY(-50%); }
-/* シャイン（光沢）が時々スッと走る。★意匠板になったので、板の中の面だけを走らせる
-   （枠は透過で外形が凸凹なので、全面を走らせると背景の上に白い帯が出てしまう）。
-   面の実測 縦39.5〜73.5% / 横25.7〜74.5% を clip-path で切り取る。 */
-.title-cta::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  clip-path: inset(39.5% 25.5% 26.5% 25.7%);
-  background: linear-gradient(100deg, transparent 42%, rgba(255,255,255,0.55) 50%, transparent 58%);
-  background-size: 260% 100%; background-repeat: no-repeat;
-  animation: title-cta-shine 4s ease-in-out infinite;
+/* 文字の両脇に部品シートの菱形。板ほど主張せず、意匠の語彙だけ残す。 */
+.title-cta::before, .title-cta::after {
+  content: ""; width: 15px; height: 16px; flex: none;
+  background: url("images/ui_diamond.webp?v=1") center/100% 100% no-repeat;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.7));
 }
-@keyframes title-cta-shine { 0% { background-position: -130% 0; } 24%, 100% { background-position: 230% 0; } }
-.title-cta:active { transform: translateY(3px) scale(.985); filter: drop-shadow(0 5px 10px rgba(0,0,0,.5)); }
-@keyframes title-cta-pulse { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes title-cta-blink { 0%, 100% { opacity: .62; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .title-cta { animation: none; opacity: 1; } }
+/* 板をやめたので、板用の光沢と浮き沈みは撤去（::after は上の菱形が使う）。 */
+.title-cta:active { transform: translateY(1px); }
 
 /* §40 — 一枚絵「全景」モード（テキストを任意に隠す）※開始ボタン下の控えめなピル */
 .title-artbtn { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 8px 15px; min-height: 36px;
@@ -9774,8 +9770,11 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
 @keyframes cbFlash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .cb-layer { display: none; } }
 
-/* ③ 主役のボタン＝呼吸する光（既存のシャインとは別物の微光・重ねても喧嘩しない） */
-.title-cta, .navpop-go, .hl-race, .lt-buy { animation: s4Glow 8.5s ease-in-out infinite; }
+/* ③ 主役のボタン＝呼吸する光（既存のシャインとは別物の微光・重ねても喧嘩しない）
+   ★.title-cta はここから外した（2026-08-04）。タイトルの開始は「板のボタン」をやめて
+     テキストの合図にしたので、主役のボタンではない。この行が後にあるため、
+     §タイトル側で書いた明滅を animation ごと上書きしてしまっていた（実測で発覚）。 */
+.navpop-go, .hl-race, .lt-buy { animation: s4Glow 8.5s ease-in-out infinite; }
 @keyframes s4Glow {
   0%,100% { filter: none; }
   50%     { filter: drop-shadow(0 0 10px rgba(255,216,119,.34)); }

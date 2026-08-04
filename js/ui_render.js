@@ -198,9 +198,10 @@ function renderTitle() {
   // 3つが並んでいて、せっかくの板が浮いていた。部品シートの罫線とバーで語彙を揃える。
   const acts = wrap.querySelector(".title-actions");
   // ★意匠板（ui_plaque.webp）を敷くので、文字は板の中の面へ寄せるため span で包む
-  const start = el("button", "title-cta", "");
-  start.innerHTML = '<span>はじめる</span>';
-  start.onclick = () => renderHome();
+  // ★合図はテキスト、当たりは画面ぜんぶ（タイトル画面の慣例・リサーチ結果）。
+  //   文言は世界観に寄せる（本作は「紀行」なので"旅"）。
+  const start = el("button", "title-cta", "タップして旅をはじめる");
+  start.onclick = (e) => { e.stopPropagation(); renderHome(); };
   acts.appendChild(start);
 
   acts.appendChild(el("div", "title-rule"));
@@ -219,7 +220,13 @@ function renderTitle() {
   menu.appendChild(volBtn);
   acts.appendChild(menu);
   wrap.appendChild(el("div", "title-artback", "タップでテキストを表示"));
-  wrap.addEventListener("click", () => { if (wrap.classList.contains("art-only")) wrap.classList.remove("art-only"); });
+  // ★画面ぜんぶが開始の当たり。ただしイラスト鑑賞中は「戻る」が先＝ここで始めない
+  //   （鑑賞に入った直後の指がそのままゲームを始めてしまうのを防ぐ）。
+  //   イラスト／音量のバーは自分で stopPropagation するのでここへは来ない。
+  wrap.addEventListener("click", () => {
+    if (wrap.classList.contains("art-only")) { wrap.classList.remove("art-only"); return; }
+    renderHome();
+  });
 
   // animated pixel-dragon mascot (reuses the race sprite); self-stops on screen change
   const cv = document.getElementById("title-dragon");
