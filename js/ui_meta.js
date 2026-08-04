@@ -61,11 +61,7 @@ function renderMeals() {
   state.ui.screen = "meals";
   const app = beginScreen();
   app.appendChild(el("h2", null, `🍽️ 食事 ― みみの食べ歩き <img class="news-men news-men--h2" src="images/kurashi/men_gurume.webp" alt="グルメ面" onerror="this.remove()">`));
-  // ★食べ歩き帳の顔（2026-08-02・ユーザー依頼「ご飯食べてるミミの専用絵」）。
-  //   Higgsfieldで既存立ち絵を参照に生成した一枚絵（夜の屋台でラーメンをすするミミ）。
-  //   欠けても画面は壊さない（onerror で枠ごと消える）。
-  const _mealHero = el("div", "meal-hero");
-  _mealHero.innerHTML = `<img src="images/cast/mimi/mimi_eating_art.png" alt="" decoding="async" onerror="this.closest('.meal-hero').remove()">`;
+  const _mealHero = el("div", "meal-hero");   // 中身は段が確定してから入れる（下）
   app.appendChild(_mealHero);
   const all = (typeof mealStatsAll === "function") ? mealStatsAll() : { got: 0, total: 0 };
   const ob = el("div", "goals-bar");
@@ -81,6 +77,17 @@ function renderMeals() {
     const firstInc = tiers.find(t => _tUnlocked(t.id) && (function () { const s = mealTierStats(t.id); return s.got < s.total; })());
     _mealTab = (firstInc || tiers.find(t => _tUnlocked(t.id)) || tiers[0] || {}).id;
   }
+  // ★段ごとの一枚絵（2026-08-04・ユーザー依頼「今は屋台めししかないから生成しましょう／
+  //   衣装はそれぞれのクラスに応じたそれっぽいミミに」）。1枚目の屋台めしを参照にして
+  //   衣装と場所を描き分けた4枚。段を切り替えると絵も変わる。
+  //     track   屋台をはしご    … つぎはぎの旅着・夜の屋台
+  //     home    わが家の味      … 部屋着のカーディガン・裸電球の小部屋
+  //     gourman 皿の主役を見抜く … よそ行きの襟付きワンピース・港のレストラン
+  //     shinbo  隠し味を当てる  … 藍の作務衣＋白い前掛け・割烹のカウンター
+  //   欠けても画面は壊さない（onerror で枠ごと消える）。
+  const MEAL_HERO = { track: "hero_track", home: "hero_home", gourman: "hero_gourman", shinbo: "hero_shinbo" };
+  const _heroFile = MEAL_HERO[_mealTab] || MEAL_HERO.track;
+  _mealHero.innerHTML = `<img src="images/meals/${_heroFile}.webp?v=1" alt="" decoding="async" onerror="this.closest('.meal-hero').remove()">`;
   // 段タブ（アイコン＋進捗・完成は✓・未開放は🔒終章）
   const tabs = el("div", "meal-tabs");
   tiers.forEach(t => {
