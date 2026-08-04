@@ -1298,8 +1298,13 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
   margin-right: calc(var(--pad-x, 20px) * -1);
   border-radius: 0;
 }
-/* 絵が端まで来るので、その上のHUDの角丸だけ残して下の角は繋げる */
-.rc-hud { border-radius: 10px 10px 0 0; }
+/* ★HUDも走る絵と同じく端まで（2026-08-04・ユーザー指摘）。絵だけ端まで届いていて
+   その上の帯が内側にあると、帯が浮いて見える。角丸と左右の枠線は外して1本の帯にする。 */
+.rc-hud {
+  margin-left: calc(var(--pad-x, 20px) * -1);
+  margin-right: calc(var(--pad-x, 20px) * -1);
+  border-radius: var(--r-0); border-left: none; border-right: none;
+}
 /* ★レース中は上を切り詰めて、走る絵にその分を回す（2026-08-04・ユーザー要望
    「もっとレース画面の高さを出したい／上の方は詰められそう」）。実測の内訳は
    ヘッダ40＋#appの上余白10＋rc-wrapの上2＋HUD57＝109px が絵の上にあった。
@@ -4216,8 +4221,12 @@ body.title-mode #vol-fab { display: none !important; }
 .hw-foot-btn:active { transform: translateY(1px); }
 
 /* === reusable photo header banner (spec #36) — drop images/<x>_header.jpg === */
-.screen-header { position: relative; height: 104px; border-radius: var(--radius); overflow: hidden; margin: 2px 0 14px;
-  background: var(--plate); border: 1px solid var(--plate-border); box-shadow: var(--shadow-1); }
+/* ★画面見出しの写真は左右ぶち抜き（2026-08-04・ユーザー指摘）。
+   絵は「画面いっぱい」で見せたいものなので、左右に余白があると窓に見えて小さくなる。
+   既存の full-bleed 作法（--pad-x を負マージンで打ち消す）に合わせた。枠線と角丸は外す。 */
+.screen-header { position: relative; height: 104px; border-radius: var(--r-0); overflow: hidden;
+  margin: 0 calc(var(--pad-x, 20px) * -1) 14px;
+  background: var(--plate); border: none; box-shadow: var(--shadow-1); }
 .screen-header .photo-fill { filter: saturate(1.05) brightness(0.97); }
 .screen-header-scrim { position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(8,12,16,0.12), rgba(8,12,16,0.42) 64%, rgba(8,12,16,0.8)); }
@@ -8653,9 +8662,20 @@ body.title-mode #vol-fab { display: none !important; }
   box-shadow: 0 10px 26px rgba(0,0,0,.42);
   background: rgba(255,255,255,.03);
 }
+/* ★幅は必ず埋める（2026-08-04・実機で「ぶち抜きに見えない」を実測して判明）。
+   絵は 1024x1536＝比0.67 の縦長。枠が 幅376／高さ上限62vh(503px) だと contain では
+   高さが先に頭打ちになり、左右に約20pxずつ余白が出ていた＝端まで届いていなかった。
+   高さは「画面の70%」と「幅いっぱいに置いたときの高さ(幅×1.5)」の小さいほうにする。
+   縦の長い端末では 幅×1.5 が勝つので**切らずにぴったり**収まり、縦の短い端末では
+   70vh が勝って上下だけ少し切る。cover なので、どちらでも幅は必ず埋まる。 */
 .rcload-art img {
-  display: block; width: 100%; height: auto; max-height: 62vh;
-  object-fit: contain;   /* 縦横比を歪めない */
+  display: block; width: 100%;
+  height: min(70vh, calc(100vw * 1.5));
+  object-fit: cover; object-position: 50% 32%;   /* 切るときは下を多めに（顔は上寄り） */
+}
+@media (min-width: 540px) {
+  /* PC枠は 100vw ではなく枠幅が基準。枠幅は概ね470pxなので、その1.5倍を上限に。 */
+  .rcload-art img { height: min(70vh, 705px); }
 }
 /* PCは470×836の枠が正本。100vwだと枠からはみ出すので、枠幅いっぱいまでに留める。 */
 @media (min-width: 540px) {
@@ -9568,8 +9588,9 @@ body.title-mode #vol-fab { display: none !important; }
 .rs-seg--dist .rs-seg-b { padding: 6px 0; flex: 1 1 0; text-align: center; font-size: 12px; }
 
 /* ★食べ歩き帳のヒーロー（2026-08-02・ご飯を食べるミミの専用一枚絵） */
-.meal-hero { margin: 2px 0 10px; border-radius: var(--rd-14); overflow: hidden;
-  border: 1px solid rgba(255,205,140,.35); box-shadow: 0 10px 26px rgba(0,0,0,.4); }
+/* ★左右ぶち抜き（2026-08-04）。ここも「画面いっぱいの一枚絵」なので見出し写真と揃える。 */
+.meal-hero { margin: 0 calc(var(--pad-x, 20px) * -1) 10px; border-radius: var(--r-0); overflow: hidden;
+  border: none; box-shadow: 0 10px 26px rgba(0,0,0,.4); }
 .meal-hero img { display: block; width: 100%; height: auto; }
 
 /* ★B改・食べ物との出会い（2026-08-02）：屋台の「？？？＋気配」と発見バナー */
