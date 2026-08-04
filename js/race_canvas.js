@@ -61,6 +61,20 @@ function rcRidgeY(px,W,baseY,amp,seed){var u=px/W;return baseY-amp*(0.5*Math.sin
 // 読込完了時 onReady → buildSkyBase 再焼き。表示のみ・レース数値不変。=====
 var RC_BG_SLUG = { "カルデラ地域": "fire" };
 var _rcBgCache = {};
+
+// ★的中/ハズレの板の下地＝部品シートの飾りバー（2026-08-04・ユーザー提案
+//   「今ある装飾用UIのどれかで装飾できませんか？」）。
+//   意匠板(ui_plaque)も試したが、中の面が横25.7〜74.5%・縦39.5〜73.5%と狭く、
+//   2行（判定＋金額）が入らない。飾りバーは 558x118＝比4.73 で、いま描いている
+//   角丸(252x70＝比3.6)に近く、そのまま下地に置き換えられる。
+//   読めなければ従来の角丸のまま描く（fail-safe・レースの数値には一切触らない）。
+var _rcPlate = (function () {
+  var im = new Image(); var st = { img: im, ok: false };
+  im.onload = function () { st.ok = true; };
+  im.onerror = function () { st.ok = false; };
+  im.src = "images/ui_bar.webp?v=1";
+  return st;
+})();
 function rcBgForSlug(slug, fbSlug, onReady) {
   var e = _rcBgCache[slug];
   if (!e) {
@@ -1619,13 +1633,14 @@ function startRaceCanvas(container, ctx) {
       paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 1.0], haze: conf.haze };
     } catch (_) { paraBaked = null; }
   }
-  function resize() {
-    const parent = canvas.parentElement;
-    if (!parent) return;          // canvas が DOM から外れている — リサイズをスキップ
-    const rect = parent.getBoundingClientRect();
-    cw = Math.max(280, rect.width);
-    ch = Math.max(280, Math.min(480, Math.round(cw * 0.55)));
-    dpr = window.devicePixelRatio || 1;
+  // ★走る絵の高さは幅だけで決める（下限280px）。
+  //   2026-08-04、携帯でスクロールが出る件をここで縮めて解決しようとしたが、
+  //   ユーザー指摘「一番必要なレース画面を削らないで」で撤回した。
+  //   足りない高さは**囲いの余白**（HUD・実況・着順ボード・操作列のpadding/margin）から出す。
+  //   逆に余白を詰めて余った縦は、下の growToFit で走る絵に足す（伸ばすだけ・縮めない）。
+  let baseH = 280;                 // 幅から決まる本来の高さ＝これより小さくはしない
+  function applyStageH(h) {
+    ch = h;
     canvas.style.width = cw + "px";
     canvas.style.height = ch + "px";
     canvas.width = Math.round(cw * dpr);
@@ -1634,9 +1649,53 @@ function startRaceCanvas(container, ctx) {
     buildSkyBase();
     bakePara();
   }
-  const onResize = () => { resize(); draw(); };
+  function resize() {
+    const parent = canvas.parentElement;
+    if (!parent) return;          // canvas が DOM から外れている — リサイズをスキップ
+    const rect = parent.getBoundingClientRect();
+    cw = Math.max(280, rect.width);
+    dpr = window.devicePixelRatio || 1;
+    baseH = Math.max(280, Math.min(480, Math.round(cw * 0.55)));
+    applyStageH(baseH);
+  }
+  // ★空いている縦を走る絵に足す（2026-08-04）。**伸ばす方向にしか動かさない**。
+  //   走る絵以外（HUD・実況・着順ボード・操作列）の高さと、上下の余白を測って残りを出す。
+  //   測り値はどれも「走る絵の高さ」に依存しないので、何度呼んでも同じ答えに落ち着く。
+  //   最後に実際に溢れていないか確かめ、溢れたら元に戻す＝安全側で必ず収まる。
+  function growToFit() {
+    try {
+      const stage = canvas.parentElement;
+      if (!stage) return;
+      const wrap = stage.closest(".rc-wrap");
+      if (!wrap) return;
+      const wr = wrap.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+      const above = wr.top + (window.scrollY || 0);          // 画面上端〜レース欄の上
+      const restInWrap = wr.height - sr.height;              // レース欄のうち走る絵以外
+      let below = 0;                                         // レース欄より下の余白
+      for (let n = wrap; n && n !== document.body; n = n.parentElement) {
+        below += parseFloat(getComputedStyle(n).marginBottom) || 0;
+        if (n.parentElement) below += parseFloat(getComputedStyle(n.parentElement).paddingBottom) || 0;
+      }
+      const room = window.innerHeight - above - restInWrap - below - 4;
+      // 下限は「幅から決まる本来の高さ」(baseH)。ここより小さくは絶対にしない
+      //   ＝レース画面を削らない、という決めごとを守る。
+      const target = Math.round(Math.max(baseH, Math.min(480, room)));
+      if (Math.abs(target - ch) > 2) { applyStageH(target); draw(); }
+      // 後から組み上がる部分があるので、実際に溢れていたら baseH まで段階的に戻す。
+      let guard = 0;
+      while (document.documentElement.scrollHeight > window.innerHeight + 1 && ch > baseH && guard++ < 12) {
+        applyStageH(Math.max(baseH, ch - Math.max(4, document.documentElement.scrollHeight - window.innerHeight)));
+        draw();
+      }
+    } catch (e) { /* 測れなくても従来の高さで動く */ }
+  }
+  const onResize = () => { resize(); draw(); growToFit(); };
   window.addEventListener("resize", onResize);
   resize();
+  // 着順ボードや操作列が組み上がってから測らないと「余り」が正しく出ない。
+  requestAnimationFrame(growToFit);
+  setTimeout(growToFit, 280);
+  setTimeout(growToFit, 900);     // 実況の吹き出しなど、遅れて高さが決まるものへの念押し
 
   // ---- playback state ----
   const S = {
@@ -3857,18 +3916,57 @@ function startRaceCanvas(container, ctx) {
         cctx.translate(cw / 2, hasCut ? ch * 0.82 : ch * 0.35);
         cctx.scale(sc, sc);
         cctx.globalAlpha = Math.min(1, rp * 1.4);
-        const pw = 252, ph = 70;
-        cctx.beginPath();
-        if (cctx.roundRect) cctx.roundRect(-pw / 2, -ph / 2, pw, ph, 15);
-        else cctx.rect(-pw / 2, -ph / 2, pw, ph);
-        cctx.fillStyle = "rgba(8,12,18,0.84)"; cctx.fill();
-        cctx.lineWidth = 2.5; cctx.strokeStyle = col;
-        if (hit && tier >= 3) { cctx.shadowColor = col; cctx.shadowBlur = 18; }
-        cctx.stroke(); cctx.shadowBlur = 0;
-        cctx.fillStyle = col; cctx.font = "bold 22px system-ui, sans-serif";
-        cctx.fillText(word, 0, -12);
-        cctx.fillStyle = "#fff"; cctx.font = "bold 21px system-ui, sans-serif";
-        cctx.fillText(amount, 0, 15);
+        // ★下地は飾りバー。読めていないときだけ従来の角丸に落ちる。
+        const useArt = _rcPlate.ok;
+        const pw = useArt ? Math.min(360, Math.max(300, cw - 24)) : 252;
+        const ph = useArt ? Math.round(pw * 118 / 558) : 70;
+        if (useArt) {
+          if (hit && tier >= 3) { cctx.shadowColor = col; cctx.shadowBlur = 20; }
+          cctx.drawImage(_rcPlate.img, -pw / 2, -ph / 2, pw, ph);
+          cctx.shadowBlur = 0;
+        } else {
+          cctx.beginPath();
+          if (cctx.roundRect) cctx.roundRect(-pw / 2, -ph / 2, pw, ph, 15);
+          else cctx.rect(-pw / 2, -ph / 2, pw, ph);
+          cctx.fillStyle = "rgba(8,12,18,0.84)"; cctx.fill();
+          cctx.lineWidth = 2.5; cctx.strokeStyle = col;
+          if (hit && tier >= 3) { cctx.shadowColor = col; cctx.shadowBlur = 18; }
+          cctx.stroke(); cctx.shadowBlur = 0;
+        }
+        // ★文字は幅を測って収める（2026-08-04・実機指摘「収まってなくない？」「桁が大きくなったら困る」）。
+        //   金額は 100 のことも 1,234,567 のこともあるので、決め打ちの字の大きさだと必ず破綻する。
+        //   バーの平らな面は絵の横 125〜433px／558＝約56%。そこに入る大きさを毎回計算する。
+        const inner = useArt ? pw * 0.56 : pw - 26;
+        const fit = (txt, base, min) => {
+          let f = base;
+          while (f > min) {
+            cctx.font = "bold " + f + "px system-ui, sans-serif";
+            if (cctx.measureText(txt).width <= inner) break;
+            f -= 1;
+          }
+          return f;
+        };
+        const oneLine = word + "　" + amount;
+        const f1 = fit(oneLine, useArt ? 20 : 22, 15);
+        // 1行にすると字が小さくなりすぎる組み合わせ（例：伝説の的中！＋123,456,789）は
+        // 2行のほうが大きく出せる。17px を境にする。
+        if (f1 >= 17) {
+          // 1行で収まる＝そのほうが読みやすい
+          cctx.font = "bold " + f1 + "px system-ui, sans-serif";
+          const wW = cctx.measureText(word + "　").width, allW = cctx.measureText(oneLine).width;
+          cctx.textAlign = "left";
+          cctx.fillStyle = col; cctx.fillText(word, -allW / 2, 7);
+          cctx.fillStyle = "#fff"; cctx.fillText(amount, -allW / 2 + wW, 7);
+          cctx.textAlign = "center";
+        } else {
+          // 入らなければ2行。各行それぞれ縮めて必ず面の中に収める。
+          const fw = fit(word, useArt ? 20 : 22, 13);
+          cctx.fillStyle = col; cctx.font = "bold " + fw + "px system-ui, sans-serif";
+          cctx.fillText(word, 0, useArt ? -9 : -12);
+          const fa = fit(amount, useArt ? 19 : 21, 12);
+          cctx.fillStyle = "#fff"; cctx.font = "bold " + fa + "px system-ui, sans-serif";
+          cctx.fillText(amount, 0, useArt ? 14 : 15);
+        }
         cctx.restore();
       }
       cctx.restore();

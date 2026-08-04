@@ -987,7 +987,8 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
    ⚠️着順は timeline で確定済み＝ここは完全に表示層。 */
 .rc-board {
   --rcb-h: 27px;                    /* JS の BOARD_ROW_H と一致させること */
-  position: relative; margin: 6px 0 4px; overflow: hidden;
+  /* ★携帯で数px溢れる件（2026-08-04）：上下のすき間だけ詰める。行の高さ(--rcb-h)は触らない。 */
+  position: relative; margin: 3px 0 2px; overflow: hidden;
   border-radius: var(--rd-10); background: rgba(6,10,16,.5);
   border: 1px solid rgba(255,255,255,.08);
   transition: border-color .25s, box-shadow .25s;
@@ -1285,12 +1286,36 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
    旧来のえんじ枠(#604040)・紫箱(#1a1430)・青チップ等のバラつきを一掃し、
    「HUD＋ステージ＝1枚の中継カード」→「生着順ボード」→「声（チャット＋実況）」→「操作ピル」の
    4ブロックが同じ角丸(10px)・同じ余白(6px)のリズムで縦に並ぶ。 */
-.rc-wrap { margin-top: 6px; }
+/* ★携帯で数px溢れる件（2026-08-04）：レース画面は「走る絵」が主役なので絵は縮めない。
+   足りない高さは囲いの余白から出す。ここで詰めるのは上下のすき間だけで、文字の大きさや
+   着順ボードの行の高さには触らない。 */
+.rc-wrap { margin-top: 2px; }
+/* ★走る絵を左右ぶち抜きに（2026-08-04・ユーザー提案）。#app の左右パディングを
+   負マージンで打ち消す＝既存の full-bleed 作法（--pad-x）に合わせた。
+   HUDと着順ボードは今までどおり内側に置き、絵だけ端まで届かせる＝配信画面の見え方。 */
+.rc-stage {
+  margin-left: calc(var(--pad-x, 20px) * -1);
+  margin-right: calc(var(--pad-x, 20px) * -1);
+  border-radius: 0;
+}
+/* 絵が端まで来るので、その上のHUDの角丸だけ残して下の角は繋げる */
+.rc-hud { border-radius: 10px 10px 0 0; }
+/* ★レース中は上を切り詰めて、走る絵にその分を回す（2026-08-04・ユーザー要望
+   「もっとレース画面の高さを出したい／上の方は詰められそう」）。実測の内訳は
+   ヘッダ40＋#appの上余白10＋rc-wrapの上2＋HUD57＝109px が絵の上にあった。
+   ・ヘッダ（作品名・コイン・ランク）はレース中に使う情報が無く、レースはコインが
+     動かない区間なので、この間だけ隠す。＝40px を絵に回せる。
+   ・#appの上下余白もこの画面だけ詰める。
+   タイトルで前例のある「画面ごとに body/#app へ状態を出して切り替える」やり方に合わせ、
+   :has() で #app のクラスを見て効かせる（レース画面は #app.nav-racestart）。 */
+body:has(#app.nav-racestart) #header { display: none; }
+#app.nav-racestart { padding-top: 2px; padding-bottom: 4px; --pad-t: 2px; --pad-b: 4px; }
+#app.nav-racestart .rc-wrap { margin-top: 0; }
 .rc-hud {
   display: flex; justify-content: space-between; align-items: center;
   background: rgba(10,13,19,.92); border: 1px solid rgba(255,255,255,.08); border-bottom: none;
   border-radius: 10px 10px 0 0;
-  padding: var(--pd-7-10); font-size: 12px; color: #c8ccd4; gap: 8px;
+  padding: var(--pd-4-10); font-size: 12px; color: #c8ccd4; gap: 8px;
 }
 .rc-hud-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .rc-phase {
@@ -1354,7 +1379,7 @@ button:focus-visible, .bet-pick-card:focus-visible, .race-card:focus-visible {
 }
 
 /* 操作＝ダークピルで統一（オレンジ/紫のバラつきを廃止・選択中だけ金） */
-.rc-controls { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+.rc-controls { display: flex; gap: 8px; margin-top: 3px; flex-wrap: wrap; align-items: center; }
 .rc-controls button {
   padding: 8px 14px; font-size: 12.5px; font-weight: 800;
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
@@ -8511,7 +8536,7 @@ body.title-mode #vol-fab { display: none !important; }
    様式は「顔は小さく、テキストが主役」。饅頭立ち絵を大きくすると縦を食うので、
    吹き出しを上、饅頭を下に置いて横幅を使い切る。 */
 .rc-yt {
-  display: flex; gap: 8px; padding: 7px 8px 5px;
+  display: flex; gap: 8px; padding: 4px 8px 3px;   /* ★上下のすき間だけ詰めた（吹き出しは不変） */
   background: rgba(8,11,17,.62);
   border-top: 1px solid rgba(255,255,255,.06);
   border-bottom: 1px solid rgba(255,255,255,.06);
@@ -8612,15 +8637,25 @@ body.title-mode #vol-fab { display: none !important; }
 /* ロード画面の一枚絵＝ミミのロード用イラスト。
    ★これはロード画面のために描かれた絵なので、主役として大きく見せる。
    （帯に切って暗く沈めるのは素材の扱いとして間違い） */
+/* ★左右ぶち抜き（2026-08-04・ユーザー要望「ロード画面の画像も大きく見たい」）。
+   .rcload-in の max-width と #app の左右パディングの両方を負マージンで打ち消す。
+   枠線と角丸は外す＝端まで届く絵に縁があると「窓」に見えて小さく感じるため。 */
 .rcload-art {
-  margin-top: 16px; border-radius: var(--r-2); overflow: hidden;
-  border: 1px solid rgba(255,255,255,.10);
+  margin-top: 16px; overflow: hidden;
+  width: 100vw; max-width: 100vw;
+  margin-left: 50%; transform: translateX(-50%);
+  border: none; border-radius: var(--r-0);
   box-shadow: 0 10px 26px rgba(0,0,0,.42);
   background: rgba(255,255,255,.03);
 }
 .rcload-art img {
-  display: block; width: 100%; height: auto; max-height: 58vh;   /* ドカンと（46vh→58vh） */
+  display: block; width: 100%; height: auto; max-height: 62vh;
   object-fit: contain;   /* 縦横比を歪めない */
+}
+/* PCは470×836の枠が正本。100vwだと枠からはみ出すので、枠幅いっぱいまでに留める。 */
+@media (min-width: 540px) {
+  .rcload-art { width: auto; max-width: none; margin-left: calc(var(--pad-x, 20px) * -1);
+    margin-right: calc(var(--pad-x, 20px) * -1); transform: none; }
 }
 
 /* モールへ入るときの読み込み画面（レースの .rcload と同じ考え方）。
@@ -9677,6 +9712,7 @@ body.title-mode #vol-fab { display: none !important; }
      ここを窓口に一括で動かす（それは見た目が変わる別工事＝要決裁）。 */
   --pd-8: 8px;  --pd-10: 10px;  --pd-11: 11px;  --pd-12: 12px;  --pd-14: 14px;  --pd-16: 16px;
   --pd-1-6: 1px 6px;  --pd-2-8: 2px 8px;  --pd-3-9: 3px 9px;  --pd-6-10: 6px 10px;
+  --pd-4-10: 4px 10px;
   --pd-7-10: 7px 10px;  --pd-8-10: 8px 10px;  --pd-8-12: 8px 12px;  --pd-10-12: 10px 12px;
   --pd-11-12: 11px 12px;  --pd-11-13: 11px 13px;  --pd-12-14: 12px 14px;
   /* 高さ＝3段だけ（面 < 浮き < 窓）。影の種類を増やさないための物差し。 */
