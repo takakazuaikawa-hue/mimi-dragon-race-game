@@ -3411,15 +3411,21 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .title-photo:has(.photo-fill)::after {
   content: ""; position: absolute; inset: 0;
   background:
-    linear-gradient(180deg, rgba(8,9,14,0.52) 0%, rgba(8,9,14,0.16) 32%, rgba(8,9,14,0.10) 52%, rgba(8,9,14,0.52) 74%, rgba(8,9,14,0.93) 100%),
-    radial-gradient(130% 55% at 50% 2%, rgba(8,9,14,0.40), transparent 62%);
+    /* ★2026-08-04：夕景の明るいキービジュアルに差し替えたので、上半分の暗幕を薄くした
+       （旧＝夜の絵に合わせた 0.52/0.40）。濃くする変更ではないので従来の決裁と矛盾しない。
+       下端だけは開始ボタンの下地として残す。 */
+    linear-gradient(180deg, rgba(8,9,14,0.30) 0%, rgba(8,9,14,0.06) 30%, rgba(8,9,14,0.06) 54%, rgba(8,9,14,0.44) 76%, rgba(8,9,14,0.90) 100%),
+    radial-gradient(130% 48% at 50% 0%, rgba(8,9,14,0.26), transparent 60%);
 }
 /* the painted key-visual already shows Mimi + dragons → hide the pixel mascot when it's present */
 .title-screen:has(.title-photo .photo-fill) .title-dragon { display: none; }
 .title-inner { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 0 22px;
   display: flex; flex-direction: column; align-items: center; text-align: center; }
 /* 透過ロゴは9:16枠の上半分へ。320px幅でも左右を切らず、ミミの顔とCTAを塞がない。 */
-.title-head { position: relative; margin-top: clamp(48px, 8dvh, 72px); width: 100%; }
+/* ★上段は詰める（2026-08-04・新キービジュアル）。新しい絵はミミの顔が画面の 35〜45% に
+   あるので、以前の余白（48〜72px）＋大きいロゴだと顔をまるごと隠してしまう。
+   ロゴ＋副題を 33% までに収めて、顔から下を絵に明け渡す。 */
+.title-head { position: relative; margin-top: clamp(12px, 2.2dvh, 26px); width: 100%; }
 /* タイトル背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない）
    ★2026-08-02 ユーザー決裁＝強い暗幕（backdrop-filter＋縦長楕円）は撤回。背景の一枚絵が
      沈んで見えなくなったため、元のソフトな暗幕に戻した。サブタイトルの可読性
@@ -3436,36 +3442,22 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
   position: relative; z-index: 1;                 /* 帯の上に載せる */
   filter: drop-shadow(0 12px 22px rgba(0,0,0,.44)) drop-shadow(0 2px 3px rgba(0,0,0,.62));
 }
-/* ── サブタイトルの帯（2026-08-04・タイトル案から採り入れ）────────────────────
-   ロゴ画像はサブタイトルまで焼き込まれており、その文字は芯 rgb(176,139,115)＝淡い茶。
-   キーアートの明るい門の上に重なると沈んで読めなかった（実測1.28:1・「レベルアップ」が消える）。
-   画面全体の暗幕はこれ以上濃くしない決裁なので、**サブタイトルの下にだけ帯を敷く**。
-   位置は画像を走査して実測した文字の位置に合わせてある。サブタイトルは2行で、
-     1行目「転生したら〜私の」   縦77.3〜82.2% / 横27.3〜78.6%
-     2行目「汎用スキル〜な件」   縦84.2〜89.9% / 横14.3〜91.1%
-   その少し上（76.3%）に飾りとの切れ目があるので、そこから2行ぶんを1本の帯で覆う。
-   淡い茶の文字が濃い臙脂に乗って約4:1になる。 */
-.title-logo-wrap { position: relative; display: block; width: min(88vw, 400px); max-width: 100%; margin: 0 auto; }
-.title-ribbon {
-  position: absolute; z-index: 0; pointer-events: none;
-  left: 9%; right: 4%; top: 76.3%; height: 15.3%;
-  background: linear-gradient(180deg, var(--hx-8a1c36) 0%, var(--hx-6a1128) 52%, var(--hx-4a0b1c) 100%);
-  box-shadow: inset 0 1px 0 rgba(255,216,119,.55), inset 0 -1px 0 rgba(255,216,119,.32),
-              0 6px 16px -8px rgba(0,0,0,.7);
-  /* 両端を内側にえぐってリボンらしくする */
-  clip-path: polygon(0 0, 100% 0, calc(100% - 3.2%) 50%, 100% 100%, 0 100%, 3.2% 50%);
+.title-logo-wrap { position: relative; display: block; width: min(74vw, 312px); max-width: 100%; margin: 0 auto; }
+/* ── サブタイトル（2026-08-04・新ロゴへの差し替えに伴い「文字」にした）──────────
+   新しいロゴの帯にはローマ字の副題が入っているので、ラノベ調の日本語副題は
+   ロゴの下に**HTMLの文字**として置く。旧ロゴは副題まで焼き込みで、
+   ・文字の芯が rgb(176,139,115)＝淡い茶で明るい背景に沈む
+   ・しかも「レベルアップ」だけ芯が rgb(47,32,7)＝ほぼ黒で、どこに置いても読めない
+   という画像側の不具合を抱えていた。文字にすれば背景がどう変わっても必ず読める。 */
+.title-sub {
+  margin: 10px auto 0; max-width: 330px; padding: var(--pd-8) var(--pd-14);
+  font-size: 11.5px; line-height: 1.72; letter-spacing: .02em; color: var(--hx-fff4e0);
+  background: linear-gradient(180deg, rgba(24,10,16,.62), rgba(16,6,12,.72));
+  border-radius: var(--r-full);
+  box-shadow: inset 0 1px 0 rgba(255,216,119,.22), 0 6px 18px -10px rgba(0,0,0,.8);
+  backdrop-filter: blur(1.5px);
 }
-/* ★「レベルアップ」だけ金のプレートを敷く。
-   この語はロゴ画像の中で芯が rgb(47,32,7)＝ほぼ黒で描かれており（他の字は rgb(150,137,124)）、
-   明るい背景でも暗い帯の上でも沈む＝どこに置いても読めない画像側の不具合だった。
-   打ち消すのではなく、ラノベのタイトルらしく**一語だけ色を変える**意匠にして解決する。
-   位置は列ごとに走査して実測（横65.5〜84.7%・2行目の縦84.2〜89.9%）。 */
-.title-ribbon-hl {
-  position: absolute; z-index: 0; pointer-events: none;
-  left: 64.6%; right: 14.6%; top: 83.4%; height: 7.2%;
-  background: linear-gradient(180deg, var(--hx-ffe6a8) 0%, var(--gold-bright) 52%, var(--gold) 100%);
-  box-shadow: 0 0 0 1px rgba(120,66,10,.5), 0 3px 8px -4px rgba(0,0,0,.6);
-}
+.title-sub b { color: var(--gold-bright); font-weight: 900; }
 /* タイトルロゴ＝3段積み（ミミの＝ピンク小／ドラゴンレース＋紀行＝金2行）。
    ★クラス名にタイトルの略称を入れない。改題のたびに古びるため中立な名前にしてある。 */
 .title-logo--main { white-space: normal; display: flex; flex-direction: column; align-items: center;
@@ -3490,25 +3482,39 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 /* 下段：開始ボタンを最下部にマージンを取って配置 */
 .title-actions { margin-top: auto; margin-bottom: clamp(30px, 7dvh, 72px); width: 100%;
   display: flex; flex-direction: column; align-items: center; gap: 14px; }
+/* ★開始ボタン＝生成した意匠板（images/ui_plaque.webp・2026-08-04）。
+   部品シート title_ui.png から切り出し、焼き込まれていた英字 "Tap to Start" を
+   「文字の帯を上下の綺麗な板から縦に補間して埋める」方式で消してある
+   （行ごとの平均で塗ると板の陰影に合わず字が浮く。縦の補間なら陰影が続く）。
+   板の中の面は 縦39.5〜73.5% / 横25.7〜74.5%（実測）。文字はそこへ置く。
+   絵は 891x385＝比2.31。文字を面の中央に置くため padding で位置を作る。 */
 .title-cta {
-  position: relative; overflow: hidden; display: inline-block; min-width: 264px; padding: 18px 40px;
-  font-size: 20px; font-weight: 900; letter-spacing: 0.05em; color: #3a2200;
-  background: linear-gradient(180deg, #fff1b4 0%, #ffd24a 46%, #eea514 100%);
-  border: none; border-radius: var(--r-3); cursor: pointer;
-  box-shadow: 0 7px 0 #aa7414, 0 16px 32px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.65);
+  position: relative; overflow: visible;
+  width: min(84vw, 348px); aspect-ratio: 891 / 385; min-width: 0; padding: 0;
+  font-size: clamp(19px, 5.6vw, 24px); font-weight: 900; letter-spacing: 0.06em; color: #4a2d08;
+  background: url("images/ui_plaque.webp?v=1") center/100% 100% no-repeat;
+  border: none; border-radius: var(--r-0); cursor: pointer; box-shadow: none;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,.55));
   animation: title-cta-pulse 2.2s ease-in-out infinite;
+  /* 面（縦39.5〜73.5%）の中心＝56.5% に文字を置く */
+  display: flex; align-items: center; justify-content: center;
+  text-shadow: 0 1px 0 rgba(255,248,220,.75);
 }
-.title-cta::before {   /* 内側の金リングで“ボタンらしい”立体感 */
-  content: ""; position: absolute; inset: 3px; border-radius: 13px;
-  border: 1px solid rgba(255,255,255,0.55); pointer-events: none;
+/* 面の中心（39.5%と73.5%の中点＝56.5%）へ正確に置く。flexの中央だとボタン全体の
+   中央になり、上に飾りが張り出している板では文字が上寄りに見える（実測で5%ずれた）。 */
+.title-cta > span { position: absolute; left: 0; right: 0; top: 56.5%; transform: translateY(-50%); }
+/* シャイン（光沢）が時々スッと走る。★意匠板になったので、板の中の面だけを走らせる
+   （枠は透過で外形が凸凹なので、全面を走らせると背景の上に白い帯が出てしまう）。
+   面の実測 縦39.5〜73.5% / 横25.7〜74.5% を clip-path で切り取る。 */
+.title-cta::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  clip-path: inset(39.5% 25.5% 26.5% 25.7%);
+  background: linear-gradient(100deg, transparent 42%, rgba(255,255,255,0.55) 50%, transparent 58%);
+  background-size: 260% 100%; background-repeat: no-repeat;
+  animation: title-cta-shine 4s ease-in-out infinite;
 }
-.title-cta::after {    /* シャイン（光沢）が時々スッと走る */
-  content: ""; position: absolute; top: 0; left: -65%; width: 42%; height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.7), transparent);
-  transform: skewX(-18deg); animation: title-cta-shine 4s ease-in-out infinite;
-}
-@keyframes title-cta-shine { 0% { left: -65%; } 24%, 100% { left: 135%; } }
-.title-cta:active { transform: translateY(4px); box-shadow: 0 2px 0 #aa7414, 0 8px 18px rgba(0,0,0,0.45); }
+@keyframes title-cta-shine { 0% { background-position: -130% 0; } 24%, 100% { background-position: 230% 0; } }
+.title-cta:active { transform: translateY(3px) scale(.985); filter: drop-shadow(0 5px 10px rgba(0,0,0,.5)); }
 @keyframes title-cta-pulse { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 
 /* §40 — 一枚絵「全景」モード（テキストを任意に隠す）※開始ボタン下の控えめなピル */

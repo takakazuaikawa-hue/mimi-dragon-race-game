@@ -175,16 +175,18 @@ function renderTitle() {
     <div class="title-bg"></div>
     <div class="title-stars"></div>
     <div class="title-moon"></div>
-    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg.webp?v=orig1", "") : ""}</div>
+    <div class="title-photo">${typeof photoOr === "function" ? photoOr("images/title_bg2.webp?v=1", "") : ""}</div>
     <div class="title-inner">
       <div class="title-head">
         <h1 class="title-logo title-logo--image">
           <span class="title-logo-wrap">
-            <span class="title-ribbon" aria-hidden="true"></span>
-            <span class="title-ribbon-hl" aria-hidden="true"></span>
-            <img class="title-logo-art" src="images/title_logo.webp?v=20260801s" width="1598" height="984" alt="ミミのドラゴンレース紀行　転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件" decoding="async">
+            <img class="title-logo-art" src="images/title_logo2.webp?v=1" width="990" height="643" alt="ミミのドラゴンレース紀行" decoding="async">
           </span>
         </h1>
+        <!-- ★サブタイトルは画像に焼かずHTMLの文字にする。旧ロゴは焼き込みだったため
+             明るい背景で沈み、しかも「レベルアップ」だけ芯がほぼ黒で描かれていて
+             どこに置いても読めなかった。文字にすれば背景がどう変わっても必ず読める。 -->
+        <p class="title-sub">転生したらバニーガールだった私の<br>汎用スキル《ぱほぱほ》だけが<b>レベルアップ</b>な件</p>
         <canvas id="title-dragon" class="title-dragon" width="184" height="120"></canvas>
       </div>
       <div class="title-actions"></div>
@@ -192,7 +194,9 @@ function renderTitle() {
   app.appendChild(wrap);
 
   const acts = wrap.querySelector(".title-actions");
-  const start = el("button", "title-cta", "▶ はじめる");
+  // ★意匠板（ui_plaque.webp）を敷くので、文字は板の中の面へ寄せるため span で包む
+  const start = el("button", "title-cta", "");
+  start.innerHTML = '<span>はじめる</span>';
   start.onclick = () => renderHome();
   acts.appendChild(start);
 
