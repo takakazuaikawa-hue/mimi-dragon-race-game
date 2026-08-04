@@ -3431,24 +3431,23 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
    あるので、以前の余白（48〜72px）＋大きいロゴだと顔をまるごと隠してしまう。
    ロゴ＋副題を 33% までに収めて、顔から下を絵に明け渡す。 */
 .title-head { position: relative; margin-top: clamp(12px, 2.2dvh, 26px); width: 100%; }
-/* タイトル背後だけソフトに暗くして、賑やかなキーアート上でも読めるように（画面全体は暗くしない）
-   ★2026-08-02 ユーザー決裁＝強い暗幕（backdrop-filter＋縦長楕円）は撤回。このスクリムを
-     これ以上濃くしないこと。
-   ★2026-08-04 実機指摘「タイトル暗くない？」→ 計算したらここが主犯だった。
-     ロゴの中心で 0.56 も乗り、空が元の絵の 28% の明るさになっていた。しかも副題(0.43)や
-     ミミの顔(0.20)にまで届いていた。これは**副題が焼き込みで読めなかった旧ロゴ**のための
-     暗幕で、新ロゴは自前の縁取りと発光を持ち、副題もHTMLの文字＋自前の札になったので
-     もう要らない。0.64→0.22 まで落とす（薄くする変更なので上の決裁と矛盾しない）。 */
-.title-screen:has(.title-photo .photo-fill) .title-head::before {
-  content: ""; position: absolute; inset: -18% -10%; z-index: -1; border-radius: 28px;
-  background: radial-gradient(76% 82% at 50% 50%, rgba(8,9,14,0.22), rgba(8,9,14,0.10) 56%, transparent 80%);
-}
+/* ── ロゴ背後の暗幕は撤去した（履歴を残す）──────────────────────────────
+   もとは「タイトル背後だけソフトに暗くして、賑やかなキーアート上でも読めるように」
+   という対処で、2026-08-02 に強い暗幕（backdrop-filter＋縦長楕円）が一度撤回されている。
+   2026-08-04「タイトル暗くない？」で計算したところ、残っていた 0.64 が主犯だった
+   （ロゴ中心で 0.56 が乗り、空が元の絵の 28% の明るさ。副題 0.43・ミミの顔 0.20 にも波及）。
+   いったん 0.22 まで落としたが、続く「ロゴ周りに影があれば消して」で全廃した。
+   そもそも**新しいロゴは絵の中に金の発光を持っている**ので、外から暗い楕円を敷く必要が
+   無い。これは副題が焼き込みで沈む旧ロゴ専用の対処が残っていたもの。 */
 .title-logo { margin: 0; line-height: 1.0; font-weight: 900; font-size: clamp(30px, 11vw, 54px); letter-spacing: 0.02em; white-space: nowrap; }
 .title-logo--image { font-size: 0; line-height: 0; white-space: normal; }
 .title-logo-art {
   display: block; width: 100%; max-width: 100%; height: auto; margin: 0 auto;
   position: relative; z-index: 1;                 /* 帯の上に載せる */
-  filter: drop-shadow(0 12px 22px rgba(0,0,0,.44)) drop-shadow(0 2px 3px rgba(0,0,0,.62));
+  /* ★大きい落ち影は撤去（2026-08-04・実機指摘「ロゴ周りの影を消して」）。
+     旧ロゴは平坦な絵だったので外から影を足していたが、新ロゴは絵の中に金の発光と
+     縁取りを持っているので要らない。輪郭がぼやけない程度の極薄い1本だけ残す。 */
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
 }
 /* ★ロゴのキラリ（2026-08-04）。最初は呼吸（ゆっくり拡縮）にしたがユーザー判断で撤回、
    副題と同じ「時々光が走る」に統一した。
