@@ -62,6 +62,28 @@ function rcRidgeY(px,W,baseY,amp,seed){var u=px/W;return baseY-amp*(0.5*Math.sin
 var RC_BG_SLUG = { "カルデラ地域": "fire" };
 var _rcBgCache = {};
 
+// ★解説席の中立文を、その人の口調へ寄せる（2026-08-04・ユーザー指摘「特徴が出てない」）。
+//   data_commentators.js の tail（[正規表現, 置換]の配列）を順に当てるだけ。
+//   ・当てるのは**解説席の行だけ**。実況（ミミ）の行は事実の担当なので触らない。
+//   ・着順・数字・オッズを含む行は素通し＝表示の事実は言い換えない
+//     （[[race-math-immutable]]：着順/オッズ/配当まわりは見た目でも歪めない）。
+//   ・最初に当たった1つだけ適用して打ち切る＝重ねがけで文が壊れるのを防ぐ。
+function rcSpeak(line, commentator) {
+  try {
+    const t = commentator && commentator.tail;
+    if (!t || !t.length) return line;
+    const s = String(line || "");
+    if (!s) return line;
+    if (/^\s*[0-9０-９]+着/.test(s)) return line;      // 「1着、◯◯。」＝着順の事実行
+    if (/[0-9０-９]/.test(s)) return line;             // 数字を含む行（人気・オッズ・残り距離など）
+    for (let i = 0; i < t.length; i++) {
+      const re = t[i][0], to = t[i][1];
+      if (re.test(s)) return s.replace(re, to);
+    }
+    return line;
+  } catch (e) { return line; }
+}
+
 // ★的中/ハズレの板の下地＝部品シートの飾りバー（2026-08-04・ユーザー提案
 //   「今ある装飾用UIのどれかで装飾できませんか？」）。
 //   意匠板(ui_plaque)も試したが、中の面が横25.7〜74.5%・縦39.5〜73.5%と狭く、
@@ -1814,17 +1836,32 @@ function startRaceCanvas(container, ctx) {
       lines.forEach((line, i) => {
         const at = prevT + span * ((i + 0.5) / Math.max(1, lines.length));
         // side は engine が付けた担当（color=解説/右・call=実況/左）。未指定なら実況側へ。
-        telopSchedule.push({ tau: Math.min(0.999, at), line, side: sides[i] || "call", fired: false });
+        const side = sides[i] || "call";
+        // ★解説席にまわる中立文は、その人の口調へ寄せる（rcSpeak）。
+        //   実測：解説席19行のうち“その人らしい行”は5行＝26%しかなく、残りは誰が座っても
+        //   同じ文だった（ユーザー指摘「特徴が出てない」）。合いの手を増やすだけでは足りない。
+        telopSchedule.push({ tau: Math.min(0.999, at),
+          line: (side === "color") ? rcSpeak(line, _commentator) : line,
+          side, fired: false });
       });
-      // ★解説者の合いの手：そのフェーズの真ん中あたりで1本だけ差し込む。
-      //   engine の行に混ぜず独立させることで、抽選で解説者が変わっても
+      // ★解説者の合いの手：engine の行に混ぜず独立させることで、抽選で解説者が変わっても
       //   「その人が言いそうなこと」だけが確実にその人の口から出る。
+      //   1フェーズ1本だと埋もれるので、前半と後半で2本入れる（持ち台詞が1本しかない
+      //   フェーズは1本のまま＝同じ台詞を二度言わせない）。
       if (_commentator) {
-        const pool = (_commentator.phrases && _commentator.phrases[commentary[p].phaseId]) || [];
+        const phaseId = commentary[p].phaseId;
+        const pool = (_commentator.phrases && _commentator.phrases[phaseId]) || [];
         if (pool.length) {
-          const ph = pool[(p + (race.id || "").length) % pool.length];   // レースごとに決定的に選ぶ
-          telopSchedule.push({ tau: Math.min(0.999, prevT + span * 0.35), line: ph, side: "color", fired: false });
+          const seed = p + (race.id || "").length;
+          const put = (idx, at) => telopSchedule.push({
+            tau: Math.min(0.999, at), line: pool[idx % pool.length], side: "color", fired: false });
+          put(seed, prevT + span * 0.28);                       // レースごとに決定的に選ぶ
+          if (pool.length > 1) put(seed + 1, prevT + span * 0.72);
         }
+        // ★口癖は抽選に混ぜず、決められたフェーズで必ず1回言わせる。
+        //   混ぜていた頃は選ばれない回があり「あまり言わない」状態になっていた。
+        const cp = _commentator.catchphrase && _commentator.catchphrase[phaseId];
+        if (cp) telopSchedule.push({ tau: Math.min(0.999, prevT + span * 0.06), line: cp, side: "color", fired: false });
       }
       prevT = endT;
     }
