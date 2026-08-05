@@ -8997,33 +8997,9 @@ body.title-mode #vol-fab { display: none !important; }
   background: linear-gradient(180deg,#f0d27a,var(--gold-line)); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
 .sc-act:active { transform: scale(.94); }
 
-/* ✨《ぱほぱほ》のカットイン（2026-08-05）。1回だけ使える技なので、絵も1回だけ。
-   絵の地色が濃紺なので、暗幕の上でもふちが立たない。周囲だけ軽くぼかして馴染ませる。
-   ★この絵は無心の暗転に薄く重ねる案で作ったが、あの場面は暗転そのものが演出だったため
-     撤回し、きちんと大きく見せられるここへ移した。 */
-.sc-paho-cut {
-  position: fixed; inset: 0; z-index: 9400; display: flex;
-  flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  background: rgba(6,8,14,.72); cursor: pointer;
-  animation: scPahoIn .22s ease both;
-}
-.sc-paho-cut img {
-  width: min(62vw, 250px); height: auto; display: block;
-  filter: drop-shadow(0 10px 26px rgba(0,0,0,.6));
-  -webkit-mask-image: radial-gradient(72% 62% at 50% 46%, #000 52%, transparent 100%);
-  mask-image: radial-gradient(72% 62% at 50% 46%, #000 52%, transparent 100%);
-  animation: scPahoRise .9s ease-out both;
-}
-.sc-paho-word {
-  font-size: 20px; font-weight: 900; letter-spacing: .18em; color: var(--hx-fff4e0);
-  text-shadow: 0 2px 10px rgba(0,0,0,.9), 0 0 22px rgba(255,214,120,.5);
-  animation: scPahoRise .9s .12s ease-out both;
-}
-@keyframes scPahoIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes scPahoRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) {
-  .sc-paho-cut, .sc-paho-cut img, .sc-paho-word { animation: none; }
-}
+/* ★《ぱほぱほ》のカットインをここに置いたが撤去した（2026-08-05）。
+   旧交渉フロー（ui_scout.js の _scoutAct）は、しのびあしの全ロケ展開で到達不能。
+   演出を足しても永久に出ないので、行き先を決め直すまで素材だけ残す。 */
 
 .kw-page { display: flex; flex-direction: column; gap: 8px; }
 .kw-hud { position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
