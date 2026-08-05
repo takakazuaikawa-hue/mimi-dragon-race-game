@@ -4558,6 +4558,9 @@ body.title-mode #vol-fab { display: none !important; }
 .mushin-go { margin-top: 18px; min-height: 50px; padding: 0 26px; border: none; border-radius: 13px; cursor: pointer;
   background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--hx-2a1d06); font-weight: 900; font-size: 17px; }
 .mushin-go:hover { filter: brightness(1.08); }
+/* ★無心に立ち絵を薄く重ねる案（2026-08-05）は試作したが撤回した。
+   生成した絵の質がこの場面の静けさに見合わず、暗転＋文字だけのほうが強い。
+   ここを触るときは「暗転そのものが演出」という前提を崩さないこと。 */
 .mushin-paho { text-align: center; }
 .paho-line { font-size: 24px; font-weight: 800; color: rgba(240,235,225,.92); letter-spacing: .12em;
   margin: 12px 0; opacity: 0; animation: pahoPop .5s ease forwards; text-shadow: 0 0 18px rgba(130,130,150,.4); }
@@ -8993,6 +8996,34 @@ body.title-mode #vol-fab { display: none !important; }
   pointer-events: auto; cursor: pointer; font-size: 24px; color: #2a1d05; border: 0;
   background: linear-gradient(180deg,#f0d27a,var(--gold-line)); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
 .sc-act:active { transform: scale(.94); }
+
+/* ✨《ぱほぱほ》のカットイン（2026-08-05）。1回だけ使える技なので、絵も1回だけ。
+   絵の地色が濃紺なので、暗幕の上でもふちが立たない。周囲だけ軽くぼかして馴染ませる。
+   ★この絵は無心の暗転に薄く重ねる案で作ったが、あの場面は暗転そのものが演出だったため
+     撤回し、きちんと大きく見せられるここへ移した。 */
+.sc-paho-cut {
+  position: fixed; inset: 0; z-index: 9400; display: flex;
+  flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(6,8,14,.72); cursor: pointer;
+  animation: scPahoIn .22s ease both;
+}
+.sc-paho-cut img {
+  width: min(62vw, 250px); height: auto; display: block;
+  filter: drop-shadow(0 10px 26px rgba(0,0,0,.6));
+  -webkit-mask-image: radial-gradient(72% 62% at 50% 46%, #000 52%, transparent 100%);
+  mask-image: radial-gradient(72% 62% at 50% 46%, #000 52%, transparent 100%);
+  animation: scPahoRise .9s ease-out both;
+}
+.sc-paho-word {
+  font-size: 20px; font-weight: 900; letter-spacing: .18em; color: var(--hx-fff4e0);
+  text-shadow: 0 2px 10px rgba(0,0,0,.9), 0 0 22px rgba(255,214,120,.5);
+  animation: scPahoRise .9s .12s ease-out both;
+}
+@keyframes scPahoIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scPahoRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sc-paho-cut, .sc-paho-cut img, .sc-paho-word { animation: none; }
+}
 
 .kw-page { display: flex; flex-direction: column; gap: 8px; }
 .kw-hud { position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

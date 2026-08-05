@@ -399,12 +399,34 @@ function _scoutRenderEncounter(first, lastReaction, fx) {
   app.appendChild(actions);
 }
 
+// ✨《ぱほぱほ》のカットイン。1.6秒で自分から消える／タップで即スキップ。
+//   表示専用＝信頼・警戒・成立判定には一切さわらない。絵が無ければ何も出さない。
+function _scoutPahoCutin() {
+  try {
+    document.getElementById("sc-paho-cut")?.remove();
+    const ov = document.createElement("div");
+    ov.className = "sc-paho-cut"; ov.id = "sc-paho-cut";
+    ov.innerHTML =
+      `<img src="images/cast/mimi/mimi_pahopaho.webp?v=1" alt=""` +
+      ` onerror="this.closest('.sc-paho-cut')?.remove()">` +
+      `<div class="sc-paho-word">✨ ぱほぱほ</div>`;
+    const kill = () => { try { ov.remove(); } catch (e) {} };
+    ov.addEventListener("click", kill);
+    document.body.appendChild(ov);
+    setTimeout(kill, 1600);
+  } catch (e) { /* 演出が出なくても交渉は続く */ }
+}
+
 // ── 1手の実行 ────────────────────────────────────────────────────────────
 function _scoutAct(approachId) {
   const sess = _scoutSess; if (!sess) return;
   const t0 = sess.trust, w0 = sess.wary;   // デルタ演出用（表示のみ・数式は scoutResolve のまま）
   const res = scoutResolve(sess, approachId);
   if (res.outcome === "spent") { return; }   // ぱほぱほ使用済み
+  // ✨《ぱほぱほ》のカットイン（2026-08-05）。1回だけ使える技なので、絵も1回だけ出る。
+  //   ※この絵は無心の暗転に薄く重ねる案で作ったが、あの場面は暗転そのものが演出なので撤回し、
+  //     絵をきちんと大きく見せられるここへ移した。表示専用＝交渉の数値には一切干渉しない。
+  if (res.outcome === "soothe") _scoutPahoCutin();
   // 効果音（存在するものだけ・表示専用）
   if (window.Sfx && Sfx.play) {
     if (res.outcome === "great") Sfx.play("legendary");

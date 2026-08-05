@@ -611,6 +611,8 @@ function showMushinOverlay() {
 // 黒背景に「ぱほぱほ。。。」を少しずつ出してから、受け取り画面へ。
 function runMushin(ov, amt) {
   ov.classList.add("dark");
+  // ★ここに立ち絵を出す案（2026-08-05）は試作して撤回した。生成した絵の質が
+  //   この場面の静けさに見合わず、暗転＋文字だけのほうが強い。素の暗転を正とする。
   ov.innerHTML = `<div class="mushin-paho" id="mushin-paho"></div>`;
   const box = ov.querySelector("#mushin-paho");
   const lines = ["ぱほ。。。", "ぱほぱほ。。。", "ぱほぱほ。。。ぱほぱほ。。。"];
