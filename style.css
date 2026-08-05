@@ -9018,17 +9018,13 @@ body.title-mode #vol-fab { display: none !important; }
   animation: pahoSteps 1.25s steps(8) 1 both;
 }
 .paho-cut.loop .paho-cut-fig { animation: pahoSteps 1.25s steps(8) infinite both; }
-.paho-cut-word {
-  font-size: 20px; font-weight: 900; letter-spacing: .18em; color: var(--hx-fff4e0);
-  text-shadow: 0 2px 10px rgba(0,0,0,.9), 0 0 22px rgba(255,214,120,.5);
-  animation: pahoWordIn .5s .1s ease-out both;
-}
+/* ★文字は入れない（2026-08-05・ユーザー指定）。呼び出し側の技名バナーや
+   「なかよし成立！」と同じ言葉が重なるため。絵だけで持たせる。 */
 @keyframes pahoCutIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pahoSteps { from { background-position: 0 0; } to { background-position: 100% 0; } }
-@keyframes pahoWordIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* 動きを減らす設定では、最後のコマ（目を開いた止め絵）で固定する。 */
 @media (prefers-reduced-motion: reduce) {
-  .paho-cut, .paho-cut-word { animation: none; }
+  .paho-cut { animation: none; }
   .paho-cut-fig { animation: none; background-position: 100% 0; }
 }
 
