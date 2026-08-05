@@ -1192,6 +1192,9 @@ function rpgUltimate() {
   if (!b || b.phase !== "cmd" || RPG.busy || (b.gauge || 0) < 100) return;
   b.gauge = 0; b.sub = null;
   rpgBLog("✨ スーパーぱほぱほ！！", "win"); rpgFx.banner("✨ぱほぱほ✨", "victory"); rpgSfx("win");
+  // ✨ミミのカットイン（js/paho_cutin.js）。ゲージMAXでしか出ない見せ場なので、ここで一度だけ。
+  //   完全に表示専用＝ダメージ・耐性・報酬には一切さわらない。タップで即スキップできる。
+  if (typeof pahoCutin === "function") pahoCutin({ word: "✨ スーパーぱほぱほ！", ms: 1400 });
   b.enemies.forEach((e, i) => {
     if (!e.alive) return;
     const mult = Math.max(1, rpgMult(e.ref, "force"));   // 耐性無視（最低等倍）

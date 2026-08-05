@@ -8997,9 +8997,40 @@ body.title-mode #vol-fab { display: none !important; }
   background: linear-gradient(180deg,#f0d27a,var(--gold-line)); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
 .sc-act:active { transform: scale(.94); }
 
-/* ★《ぱほぱほ》のカットインをここに置いたが撤去した（2026-08-05）。
-   旧交渉フロー（ui_scout.js の _scoutAct）は、しのびあしの全ロケ展開で到達不能。
-   演出を足しても永久に出ないので、行き先を決め直すまで素材だけ残す。 */
+/* ✨《ぱほぱほ》のカットイン（2026-08-05・js/paho_cutin.js）。
+   1コマ 260x466 を横に8枚並べたシートを steps(8) でコマ送りする
+   （もとは5秒の動画。3.2MB→108KB。観客アニメと同じ方式）。
+   ★以前この演出を旧スカウト交渉に置いたが、しのびあしの全ロケ展開で到達不能だったため
+     撤去した。いまの置き場所は モールRPGの必殺技 と しのびあしの成立の2つ。 */
+.paho-cut {
+  position: fixed; inset: 0; z-index: 9400; display: flex;
+  flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: rgba(6,8,14,.74); cursor: pointer; animation: pahoCutIn .2s ease both;
+}
+.paho-cut-fig {
+  width: min(56vw, 230px); aspect-ratio: 260 / 466;
+  background-image: url("images/cast/mimi/mimi_paho_sprite.webp?v=1");
+  background-size: 800% 100%; background-repeat: no-repeat; background-position: 0 0;
+  /* 絵の地色は濃紺。周囲だけ落として暗幕に馴染ませる（四角い縁を立てない）。 */
+  -webkit-mask-image: radial-gradient(72% 62% at 50% 46%, #000 52%, transparent 100%);
+  mask-image: radial-gradient(72% 62% at 50% 46%, #000 52%, transparent 100%);
+  filter: drop-shadow(0 10px 26px rgba(0,0,0,.6));
+  animation: pahoSteps 1.25s steps(8) 1 both;
+}
+.paho-cut.loop .paho-cut-fig { animation: pahoSteps 1.25s steps(8) infinite both; }
+.paho-cut-word {
+  font-size: 20px; font-weight: 900; letter-spacing: .18em; color: var(--hx-fff4e0);
+  text-shadow: 0 2px 10px rgba(0,0,0,.9), 0 0 22px rgba(255,214,120,.5);
+  animation: pahoWordIn .5s .1s ease-out both;
+}
+@keyframes pahoCutIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pahoSteps { from { background-position: 0 0; } to { background-position: 100% 0; } }
+@keyframes pahoWordIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* 動きを減らす設定では、最後のコマ（目を開いた止め絵）で固定する。 */
+@media (prefers-reduced-motion: reduce) {
+  .paho-cut, .paho-cut-word { animation: none; }
+  .paho-cut-fig { animation: none; background-position: 100% 0; }
+}
 
 .kw-page { display: flex; flex-direction: column; gap: 8px; }
 .kw-hud { position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

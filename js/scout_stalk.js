@@ -477,6 +477,10 @@ function _stalkWin() {
       `<div class="swf-t">🤝 なかよし成立！${STALK_TIER[tier].nm ? `<b class="swf-tier">✨${STALK_TIER[tier].nm}クラス</b>` : ""}</div>`;
     document.body.appendChild(fx);
     try { if (window.Sfx) Sfx.play(tier >= 2 ? "legendary" : "coin"); } catch (e) {}
+    // ✨ミミのカットイン（js/paho_cutin.js）。既にある成立演出の**中に**入れる＝拍を増やさない。
+    //   最後のコマが「目を開いてこちらを見る」なので、仲よくなれた瞬間の顔として収まる。
+    //   完全に表示専用＝成立判定・レア度・報酬には一切さわらない。
+    if (typeof pahoCutin === "function") pahoCutin({ word: "✨ ぱほぱほ", ms: 1400 });
     setTimeout(() => { fx.remove(); _stalk = null; _scoutWin(); }, 1550);
   }, 700);
 }
