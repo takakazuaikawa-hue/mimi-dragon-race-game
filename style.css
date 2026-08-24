@@ -9994,3 +9994,23 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
   font-size: 11.5px; color: var(--mist-soft); font-variant-numeric: tabular-nums; }
 .set-dbgnow-ok { margin-top: 8px; font-size: 11.5px; color: #7fd6a0; }
 .set-dbgnow-p { margin-top: 8px; font-size: 11.5px; line-height: 1.65; color: #ffc4ae; }
+
+/* ===== 👗 衣装ミッション＋ご褒美CG（js/costume_missions.js・きせかえ画面に差し込む） =====
+   きせかえは .scm＝明るいモールのトーン。暗色用の淡色を置くと沈むので、クリーム地×濃茶で組む。 */
+.cm-wrap { margin-top: 10px; }
+.cm-box { background: #fdf8ee; border: 1px solid #e6d3a8; border-radius: 12px; padding: 10px 12px; }
+.cm-box.got { border-color: #d9a441; background: #fdf2d9; }
+.cm-h { font-size: 12px; font-weight: 900; color: #a8741a; margin-bottom: 6px; }
+.cm-step { font-size: 12px; color: #7a6a4c; line-height: 1.7; }
+.cm-step span { display: inline-block; width: 16px; color: #c0b090; font-weight: 900; }
+.cm-step.ok { color: #4a4234; font-weight: 700; }
+.cm-step.ok span { color: #2f9e5e; }
+.cm-open { display: block; width: 100%; margin-top: 8px; min-height: 40px; border: none; border-radius: 10px; cursor: pointer;
+  background: linear-gradient(135deg, #e8b64f, #ffd76a); color: #3a2a06; font-size: 13px; font-weight: 900; }
+/* ご褒美CGのビューア（全画面・タップで閉じる） */
+.cm-view { position: fixed; inset: 0; z-index: 240; display: flex; align-items: center; justify-content: center;
+  background: rgba(8,6,12,.88); backdrop-filter: blur(4px); cursor: pointer; }
+.cm-view img { max-width: 94vw; max-height: 82vh; border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,.6); }
+.cm-view-cap { position: absolute; left: 0; right: 0; bottom: 4vh; text-align: center; padding: 0 16px; }
+.cm-view-cap b { display: block; font-size: 15px; color: #ffd76a; }
+.cm-view-cap span { display: block; margin-top: 4px; font-size: 12.5px; color: #e8dcc4; }

@@ -231,6 +231,15 @@ function _scmFitting() {
   else if (sel.acquire.epilogue) acq = owned ? "決戦の装束（授かった）" : "⚔️ 終章、島のみんなから<b>贈られる</b>一着";   // 竜帝の戴冠衣＝買えない
   else acq = "";
   info.innerHTML = `<div class="scm-fit-nm">${sel.name}</div><div class="scm-fit-fl">${sel.flavor}</div><div class="scm-fit-acq">${acq}</div>`;
+  // ★衣装ミッション＋ご褒美CG：達成していれば開けてから、ミッション列を差し込む（持っている衣装だけ）
+  try {
+    if (typeof costumeMissionCheck === "function") costumeMissionCheck(sel.id);
+    var _cmH = (typeof costumeMissionHtml === "function") ? costumeMissionHtml(sel.id) : "";
+    if (_cmH) { var _cmB = el("div", "cm-wrap"); _cmB.innerHTML = _cmH;
+      var _cmO = _cmB.querySelector(".cm-open");
+      if (_cmO) _cmO.onclick = function () { costumeCgOpen(_cmO.getAttribute("data-cg")); };
+      info.appendChild(_cmB); }
+  } catch (e) {}
   const cta = el("div", "scm-fit-cta");
   if (isWorn) {
     cta.appendChild(el("div", "scm-worn", "✓ いま着ています"));
