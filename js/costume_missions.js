@@ -25,16 +25,96 @@ function _cmWins() { try { return (state.player || {}).wins || 0; } catch (e) { 
 // outfit＝OUTFITS の id／cg＝ご褒美一枚絵／steps＝3手（行く・食べる・勝つ の型）
 // line＝獲得時にミミが言うひとこと（声表準拠・短く）
 var COSTUME_MISSIONS = [
+  // ★第1弾8着（2026-09-19）。型＝「行く」「食べる」「勝つ／集める」の3手。
+  //   ステップは**実在する id しか書かない**（spotsSeen＝ui_konron_map のスポットid／
+  //   MEALS の id／scoutedRoster()／player.wins）。存在しないキーを書くと永久に未達成になる。
+  {
+    outfit: "sukanpin", icon: "🥖", name: "素寒貧ミミ",
+    cg: "images/cg/cg_sukanpin.webp",
+    kicker: "はじまりの記録",
+    steps: [
+      { t: "霧港に降り立つ", done: function () { return _cmSeen("kirimina"); } },
+      { t: "塩むすびを食べる", done: function () { return _cmAte("h_onigiri"); } },
+      { t: "はじめての1着を取る", done: function () { return _cmWins() >= 1; } }
+    ],
+    line: "なんにも無かった日のこと、忘れないでおきますね。"
+  },
   {
     outfit: "leonmall", icon: "👗", name: "モールでお買い物",
     cg: "images/cg/cg_leonmall.webp",
     kicker: "おでかけの記録",
     steps: [
       { t: "モールで大冒険を制覇する", done: function () { return !!_cmRpg().cleared; } },
-      { t: "崑崙モールに立ち寄る",     done: function () { return _cmSeen("mall"); } },
-      { t: "モールの品を20そろえる",   done: function () { try { return rpgShopTotalOwned().o >= 20; } catch (e) { return false; } } }
+      { t: "崑崙モールに立ち寄る", done: function () { return _cmSeen("mall"); } },
+      { t: "モールの品を20そろえる", done: function () { try { return rpgShopTotalOwned().o >= 20; } catch (e) { return false; } } }
     ],
     line: "買いすぎた。……でも、後悔はしてないですっ。"
+  },
+  {
+    outfit: "swimsuitCHEAP", icon: "🏖", name: "お手頃水着",
+    cg: "images/cg/cg_swimsuitCHEAP.webp",
+    kicker: "夏の記録",
+    steps: [
+      { t: "サナ湾／セナ浜へ行く", done: function () { return _cmSeen("sena"); } },
+      { t: "バンガラ溶岩海岸まで歩く", done: function () { return _cmSeen("bangara"); } },
+      { t: "炎天下のかき氷を食べる", done: function () { return _cmAte("t_kakigori"); } }
+    ],
+    line: "海、しょっぱい。……でも、すきっ。"
+  },
+  {
+    outfit: "tarzan", icon: "🌿", name: "野生児ターザン",
+    cg: "images/cg/cg_tarzan.webp",
+    kicker: "奥地の記録",
+    steps: [
+      { t: "スス深回廊へ踏み込む", done: function () { return _cmSeen("susufuka"); } },
+      { t: "竜舎林に立ち寄る", done: function () { return _cmSeen("ryusha"); } },
+      { t: "竜を3頭スカウトする", done: function () { try { return scoutedRoster().length >= 3; } catch (e) { return false; } } }
+    ],
+    line: "奥は、こわい。こわいけど……見たいんです。"
+  },
+  {
+    outfit: "newspaper", icon: "📰", name: "予想新聞ドレス",
+    cg: "images/cg/cg_newspaper.webp",
+    kicker: "予想家の記録",
+    steps: [
+      { t: "中央聖龍レース場に立つ", done: function () { return _cmSeen("racecourse"); } },
+      { t: "勝負めし焼き鳥を食べる", done: function () { return _cmAte("t_yakitori"); } },
+      { t: "通算10勝する", done: function () { return _cmWins() >= 10; } }
+    ],
+    line: "読めた日の新聞は、捨てられないんですよ。"
+  },
+  {
+    outfit: "taipei", icon: "🏮", name: "台北チャイナドレス",
+    cg: "images/cg/cg_taipei.webp",
+    kicker: "夜市の記録",
+    steps: [
+      { t: "霧待ち市場を歩く", done: function () { return _cmSeen("market"); } },
+      { t: "夜市の古布屋をのぞく", done: function () { return _cmSeen("furununo"); } },
+      { t: "縁日のたこ焼きを食べる", done: function () { return _cmAte("t_takoyaki"); } }
+    ],
+    line: "夜のお店は、灯りがごちそうですね。"
+  },
+  {
+    outfit: "darapike", icon: "🛋", name: "もこもこルームウェア",
+    cg: "images/cg/cg_darapike.webp",
+    kicker: "おうちの記録",
+    steps: [
+      { t: "夜更けののり茶漬けを食べる", done: function () { return _cmAte("h_ochazuke"); } },
+      { t: "夜食の卵かけごはんを食べる", done: function () { return _cmAte("h_tkg"); } },
+      { t: "棚の奥のカップ麺を食べる", done: function () { return _cmAte("h_cupmen"); } }
+    ],
+    line: "今日はもう、どこにも行きません。"
+  },
+  {
+    outfit: "dragonrobe", icon: "🐉", name: "竜帝の戴冠衣",
+    cg: "images/cg/cg_dragonrobe.webp",
+    kicker: "たどりついた記録",
+    steps: [
+      { t: "ロンド元宮にたどり着く", done: function () { return _cmSeen("rondo"); } },
+      { t: "星見の展望台から島を見る", done: function () { return _cmSeen("hoshimi"); } },
+      { t: "通算50勝する", done: function () { return _cmWins() >= 50; } }
+    ],
+    line: "重い。……でも、ちゃんと立てます。"
   }
 ];
 

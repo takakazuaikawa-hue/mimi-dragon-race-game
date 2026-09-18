@@ -62,7 +62,7 @@
 ## 📮 予定（ユーザー発案・Opus 5 に任せる・未着手）
 | 発案 | 正本 |
 |---|---|
-| 👗 **衣装ごとのミッションイベント＋ご褒美CG** 🚧 **試作1着まで実装（2026-08-24・live 8cbd2b8）** | `js/costume_missions.js`＋`images/cg/cg_leonmall.webp`。台帳に1行足せば衣装が増える形。判定は既存stateのみ・新フラグ0。**次は画風の決裁→残り衣装へ量産**。正本 `docs/COSTUME_MISSION_CG_DIRECTIVE.md` |
+| 👗 **衣装ごとのミッションイベント＋ご褒美CG** ✅ **第1弾8着 実装済み（2026-09-19）** | 台帳 js/costume_missions.js に8着（素寒貧／モール／水着／ターザン／新聞ドレス／チャイナ／ルームウェア／竜帝衣）。CGは seedream_v5_pro で生成し、旧v4_5製のleonmallも撮り直して画風統一（1000x1333 WebP・計1.3MB）。判定は既存stateのみ・新フラグ0・未所持は非表示。**参照先の監査 tools/audit_costume_missions.js（検出力も検証済み）**。残り34着は「既存stateで3手書けるか」を基準に次弾へ。正本 docs/COSTUME_MISSION_CG_DIRECTIVE.md |
 
 ★カットインの様式は決裁済み（2026-08-03）＝取得系は**元の showLifeCutin**（閃光＋集中線＋斜め帯）に一本化。
 自作の別様式を増やさない。滞留2.4秒＋タップ即閉じ・複数は順番に（実装済み・live）。
