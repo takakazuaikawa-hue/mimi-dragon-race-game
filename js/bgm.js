@@ -110,11 +110,24 @@ var RaceBgm = (function () {
   var duckMul = 1;    // ダッキングの係数（効果音の瞬間だけ 0.35 へ）
   var duckT = null, duckIv = null;
 
+  // ★歌ものは、RMSを揃えても「うるさい」と感じる（2026-09-19 実測で判明）。
+  //   モールの実効音量は他画面と完全一致（どちらも 0.1196・目標0.1195）だったのに、
+  //   モールだけ耳につく。原因は音量ではなく**歌の有無**：通常ローテ4曲のうち3曲が歌もので、
+  //   他の画面は全曲インスト。歌声は同じRMSでも注意を引くので、一段下げて“部屋の音”に戻す。
+  //   ここを 1 にすれば元どおり（VOCAL_DUCK＝効き具合のつまみ）。
+  var VOCAL_DUCK = 0.80;                       // 約 -1.9dB
+  var VOCAL_TRACKS = {
+    "mallでお買い物.mp3": 1,
+    "ドラゴンモールで爆買いバニー.mp3": 1,
+    "バニーガールメンタルで買い物モールは最高.mp3": 1
+  };
   function _gainOf(relPath) {
     try {
       var base = decodeURIComponent(String(relPath).split("/").pop());
       var g = TRACK_GAIN[base];
-      return (g > 0 && g <= 1) ? g : 1;
+      g = (g > 0 && g <= 1) ? g : 1;
+      if (VOCAL_TRACKS[base]) g *= VOCAL_DUCK;   // 歌ものだけさらに一段下げる
+      return g;
     } catch (e) { return 1; }
   }
   // いま鳴っているaudioへ音量を反映（掛け算はここ1箇所だけ＝フェード/ダッキング/スライダが喧嘩しない）。
