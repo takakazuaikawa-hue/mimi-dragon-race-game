@@ -320,9 +320,11 @@ bgm/racebgm/sacred-race.mp3         T14
 
 ## 6. 進行表（発注のたびにここへ ✅ を入れる）
 
-> **現況（2026-09-19 実測）＝14曲中2曲のみ在庫。** ディスク全体を探索し、ID3タグで同定した結果：
+> **現況（2026-09-19 実測）＝14曲中3曲のみ在庫。** ディスク全体を探索し、ID3タグで同定した結果：
 > `title-konron.mp3`＝"Toward Mount Konron"、`home-morning.mp3`＝"Island Morning"（ともに 2026-07-30 Suno生成）を
-> リポジトリへ設置し、実ブラウザで 90 秒再生を確認した。**残り12曲は生成された形跡が無い**（Downloads にも無い）。
+> リポジトリへ設置し、実ブラウザで 90 秒再生を確認した。さらに `Island Breeze Adventure.mp3`（2026-06-30生成・120秒）を
+> T7 `konron-stroll.mp3` として採用（ID3 の作風記述が "tropical adventure / breezy / 浜辺の夕暮れ" で観光ゾーンに合致）。
+> **残り11曲はPC内のどこにも存在しない**（プロファイル全体の mp3 451件を走査して確認）。
 > コード側の「Suno納品13曲」という記述は誤りだったので訂正済み。
 >
 > **結線は既に全曲ぶん終わっている。** `bgm_zones.js` の probeZone が実在チェックして未納品ゾーンは無音にするので、
@@ -339,7 +341,7 @@ bgm/racebgm/sacred-race.mp3         T14
 | T4 | bet-lobby | P0 | ⬜ | ⬜ | ⬜ | ⬜ |
 | T5 | documentary | P0 | ⬜ | ⬜ | ⬜ | ⬜ |
 | T6 | island-life | P0 | ⬜ | ⬜ | ⬜ | ⬜ |
-| T7 | konron-stroll | P1 | ⬜ | ⬜ | ⬜ | ⬜ |
+| T7 | konron-stroll | P1 | ✅ | ✅ | ✅ | ✅ 120秒・2026-09-19設置 |
 | T8 | scout-stalk | P1 | ⬜ | ⬜ | ⬜ | ⬜ |
 | T9 | poro-nap | P1 | ⬜ | ⬜ | ⬜ | ⬜ |
 | T10 | after-race | P1 | ⬜ | ⬜ | ⬜ | ⬜ |
