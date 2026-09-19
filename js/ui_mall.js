@@ -29,6 +29,16 @@ function _scmIcon(name) {
 }
 function _scmScrollTo(sel) { var e = document.querySelector(sel); if (e) e.scrollIntoView({ behavior: "smooth", block: "start" }); }
 
+// ★解放条件つきの服は、手に入れるまで名前と説明を伏せる（2026-09-19 決裁）。
+//   買える服は「名前と値段」が見えないと選びようがないので従来どおり見せる。
+//   条件つき（総資産／旅ノート／終章）は、何が待っているか分からない方が解放したくなる。
+//   ただし**条件文だけは必ず見せる**＝目標にならないと意味がないため。
+function _scmGated(o) {
+  return !!(o && o.acquire && (o.acquire.assets != null || o.acquire.travel || o.acquire.epilogue));
+}
+function _scmHide(o)   { try { return _scmGated(o) && !outfitOwned(o); } catch (e) { return false; } }
+function _scmName(o)   { return _scmHide(o) ? "？？？" : o.name; }
+function _scmFlavor(o) { return _scmHide(o) ? "どんな一着かは、手に入れてからのお楽しみ。" : o.flavor; }
 var _mallFilter = "all";        // all / new / locked / owned
 var _scmHeroTimer = null;       // ヒーロー自動送りのタイマー
 
@@ -209,7 +219,7 @@ function _scmFitting() {
   const img = el("div", "scm-fit-img" + (owned ? "" : " silhouette"));
   const _src = outfitImg(sel.id, state.ui.mallExpr), _fb = outfitImg(sel.id, "smile");
   img.innerHTML =
-    `<img alt="${sel.name}" src="${_src}" onerror="this.onerror=null;this.src='${_fb}'">` +
+    `<img alt="${_scmName(sel)}" src="${_src}" onerror="this.onerror=null;this.src='${_fb}'">` +
     (isWorn ? `<span class="scm-badge worn">着用中</span>` : (owned ? `<span class="scm-badge owned">所持</span>` : `<span class="scm-badge lock">🔒</span>`)) +
     (owned ? "" : `<span class="scm-silq">？</span>`);
   stage.appendChild(img);
@@ -230,7 +240,7 @@ function _scmFitting() {
   else if (sel.acquire.travel) acq = owned ? "旅の証（獲得済み）" : "📔 旅ノートで<b>全エリア制覇</b>すると手に入る";   // ★T3
   else if (sel.acquire.epilogue) acq = owned ? "決戦の装束（授かった）" : "⚔️ 終章、島のみんなから<b>贈られる</b>一着";   // 竜帝の戴冠衣＝買えない
   else acq = "";
-  info.innerHTML = `<div class="scm-fit-nm">${sel.name}</div><div class="scm-fit-fl">${sel.flavor}</div><div class="scm-fit-acq">${acq}</div>`;
+  info.innerHTML = `<div class="scm-fit-nm">${_scmName(sel)}</div><div class="scm-fit-fl">${_scmFlavor(sel)}</div><div class="scm-fit-acq">${acq}</div>`;
   // ★衣装ミッション＋ご褒美CG：達成していれば開けてから、ミッション列を差し込む（持っている衣装だけ）
   try {
     if (typeof costumeMissionCheck === "function") costumeMissionCheck(sel.id);
@@ -299,8 +309,8 @@ function _scmShops() {
     else if (o.acquire.travel) chip = `<span class="scm-cardchip lock">📔</span>`;   // ★T3 旅の証
     else if (o.acquire.epilogue) chip = `<span class="scm-cardchip lock">⚔️</span>`;  // 竜帝の戴冠衣＝終章のイベント
     card.innerHTML =
-      `<div class="scm-card-img${oOwned ? "" : " silhouette"}"><img alt="${o.name}" src="${outfitImg(o.id, "default")}" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">${chip}</div>` +
-      `<div class="scm-card-nm">${o.name}</div>`;
+      `<div class="scm-card-img${oOwned ? "" : " silhouette"}"><img alt="${_scmName(o)}" src="${outfitImg(o.id, "default")}" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">${chip}</div>` +
+      `<div class="scm-card-nm">${_scmName(o)}</div>`;
     card.onclick = () => { state.ui.mallSel = o.id; if (window.Sfx) Sfx.play("click"); renderMall(); setTimeout(() => _scmScrollTo(".scm-fit"), 30); };
     grid.appendChild(card);
   });
@@ -381,7 +391,7 @@ function _scmSearch() {
 }
 function _scmNews() {
   const newest = OUTFITS.slice(-4).reverse();
-  const rows = newest.map(o => `<div class="mm-row"><span class="mm-ic">🆕</span><div><b>${o.name}</b><small>${o.flavor}</small></div></div>`).join("");
+  const rows = newest.map(o => `<div class="mm-row"><span class="mm-ic">🆕</span><div><b>${_scmName(o)}</b><small>${_scmFlavor(o)}</small></div></div>`).join("");
   _scmInfo("📰 ショップニュース", rows + `<div class="mm-row"><span class="mm-ic">🛍️</span><div><b>新作、続々入荷中！</b><small>「新着」フィルタからどうぞ。</small></div></div>`);
 }
 function _scmInfo(title, html) { if (typeof showInfoPopup === "function") showInfoPopup(title, html); }
