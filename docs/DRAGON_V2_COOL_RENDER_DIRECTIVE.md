@@ -74,8 +74,9 @@ i2i の元＝既存HD-2D（kogane / rubel）。job_id は次工程で **その�
 
 パイロット4枚も `docs/dragon_v2_kit/refs/PILOT{1..4}_*.webp` に保存済み（**PILOT4_rubel_seedream_STYLE.webp が画風の正**）。
 
-**判定してほしいこと（G1）**：A と B のどちらを STYLE_BASE にするか（差は陰影の深さだけ）。以降の全頭は
-`[本人HD-2D, STYLE_BASE]` の2参照で生成する。
+**G1 確定（2026-09-23）＝ A**。`images/dragons_v2_staging/_STYLE_BASE_kogane.webp` に保存（実WebP q90・グラデ背景のまま＝画風参照用）。
+以降の全頭は `[本人HD-2D, STYLE_BASE]` の2参照で生成する。**2枚目は job_id `b10a2c49-72b8-44db-941a-9fc31804be96` を
+そのまま medias の value に渡せる**（本セッションで rubel の job_id を参照に使えたことを実証済み・upload 不要）。
 
 > ✅ 解決済み（2026-09-23 ユーザーが環境設定で2ホストを許可）。旧記録：生成結果のCDN `d8j0ntlcm91z4.cloudfront.net`（結果）と `d2ol7oe51mr4n9.cloudfront.net`（入力）が
 > ネットワークポリシーで遮断されているため、**この環境では画像をリポジトリへ取り込めない**。量産セッションは
@@ -88,7 +89,7 @@ i2i の元＝既存HD-2D（kogane / rubel）。job_id は次工程で **その�
 
 ### Phase 1：画風ロック（Opus 5.5 担当・判断が要る）
 1. ✅ 実施済み：seedream_v5_pro で **kogane** を `[kogane HD-2D, PILOT4 rubel]` の2参照＋fierce 文言で生成（§2b の A/B）。
-2. ユーザーが A/B から1枚選ぶ → **`images/dragons_v2_staging/_STYLE_BASE_kogane.png`** として保存（**G1**）。
+2. ✅ **G1 確定＝A** → `images/dragons_v2_staging/_STYLE_BASE_kogane.webp` に保存済み。
 3. 以降の全生成は **画像参照を2枚**渡す：`[その竜のHD-2D（意匠）, STYLE_BASE（画風）]`。プロンプトで「1枚目の竜を、2枚目の画風で」と明示。
 4. 眼の大きさ／リムの強さ／忠実度の3つを G1 で数値的に固定し、雛形（§4）の該当語を確定。
 
@@ -191,8 +192,9 @@ NOT chibi, NOT plush toy, NOT pixel art.
 
 ```
 docs/DRAGON_V2_COOL_RENDER_DIRECTIVE.md を最初に全文読んでから着手。レース数値・race_canvas.js・images/dragons/ は触らない。
-前提：ユーザーは G1 で STYLE_BASE を {A または B} に決めた。docs/dragon_v2_kit/refs/STYLEBASE_{A|B}_kogane_seedream.webp を
-PNG に変換して Higgsfield に media_upload し、以降の全生成で画像参照2枚目に使う（1枚目は本人の images/dragons/<id>.png を PNG 変換して upload）。
+前提：G1 で STYLE_BASE は A に確定済み。画像参照2枚目は Higgsfield の job_id b10a2c49-72b8-44db-941a-9fc31804be96 を medias の value に
+そのまま渡す（role image_references）。それが使えない場合だけ images/dragons_v2_staging/_STYLE_BASE_kogane.webp を PNG 変換して media_upload。
+1枚目は本人の images/dragons/<id>.png（中身WebP）を PNG に変換して media_upload → media_confirm。
 
 やること（Phase 2）：固有12頭（rubel seram poro gando miruka baran rosso momu phenix raika stella glaze）を
 §4 の雛形＋ master JSON（docs/codex_dragon_kit/race_dragons_52_master_list_v1_0.json）＋ confirmed_dragons.md の意匠で、
