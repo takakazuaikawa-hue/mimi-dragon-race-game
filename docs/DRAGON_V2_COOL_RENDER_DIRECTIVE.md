@@ -57,10 +57,27 @@ i2i の元＝既存HD-2D（kogane / rubel）。job_id は次工程で **その�
 
 元画像 media_id：kogane `3d0706b5-9803-4920-bbf0-dd5ae070070d`／rubel `c84ec158-b1d9-4860-97e9-5709549aa90c`
 
-**判定してほしいこと**：①どのモデルが「かっこいい」か ②大きな丸い眼を残したままで良いか（もっと鋭くするか）
-③翼膜の透け・リム光の強さ ④ドットのシルエットをどこまで忠実に保つか（忠実＝安全、崩す＝より格好良いが再審査が増える）。
+**ユーザー判定（2026-09-23）＝「4 → 2 の順にかっこいい」**（4＝rubel seedream、2＝kogane nano_banana）。
+目視所見：4は赤×ティール・リム光×険しい表情で最も「かっこいい」。1（kogane seedream）は体周りにグローが出て指示違反。
+3（gpt_image_2）は質感は最もリアルだが光が平板で魅力薄。→ **量産モデル＝ seedream_v5_pro に確定。gpt_image_2 は落選**。
+⚠ nano_banana 系は指定IDが勝手に落ちる（pro→2→flash と実行モデルが変わった）ため、**本線には使わない**。
 
-> ⚠ クラウド環境の制約：生成結果のCDN `d8j0ntlcm91z4.cloudfront.net`（結果）と `d2ol7oe51mr4n9.cloudfront.net`（入力）が
+### 2b. 画風ロック（Phase 1）の結果＝G1候補（ユーザー選択待ち）
+画像参照を **[kogane HD-2D（意匠）, パイロット4 rubel（画風）]** の2枚にし、「画風だけ取れ・赤や意匠は取るな」＋
+「fierce, determined expression」で kogane を生成 → **2枚とも rubel と同じ"家族"に見える仕上がり**（2参照方式が機能する実証）。
+
+| 候補 | モデル | job_id | 保存先 |
+|---|---|---|---|
+| A | seedream_v5_pro | `b10a2c49-72b8-44db-941a-9fc31804be96` | `docs/dragon_v2_kit/refs/STYLEBASE_A_kogane_seedream.webp` |
+| B（陰影強め） | seedream_v5_pro | `83d751cb-fd1d-400b-a82b-589d28ae4ce3` | `docs/dragon_v2_kit/refs/STYLEBASE_B_kogane_seedream.webp` |
+| X（不採用） | nano_banana → flash に降格・ぬいぐるみ寄り | `65ddf6ad-224b-476e-81a7-036895e671cd` | `..._REJECT.webp` |
+
+パイロット4枚も `docs/dragon_v2_kit/refs/PILOT{1..4}_*.webp` に保存済み（**PILOT4_rubel_seedream_STYLE.webp が画風の正**）。
+
+**判定してほしいこと（G1）**：A と B のどちらを STYLE_BASE にするか（差は陰影の深さだけ）。以降の全頭は
+`[本人HD-2D, STYLE_BASE]` の2参照で生成する。
+
+> ✅ 解決済み（2026-09-23 ユーザーが環境設定で2ホストを許可）。旧記録：生成結果のCDN `d8j0ntlcm91z4.cloudfront.net`（結果）と `d2ol7oe51mr4n9.cloudfront.net`（入力）が
 > ネットワークポリシーで遮断されているため、**この環境では画像をリポジトリへ取り込めない**。量産セッションは
 > 「環境設定→ネットワークで上記2ホストを許可」した環境か、PC側（衣装CGを作った経路）で実行すること。
 > Higgsfield の `sandbox_exec` はDLと加工（背景除去・WebP化・コンタクトシート）ができるが、リポジトリへは書けない。
@@ -70,8 +87,8 @@ i2i の元＝既存HD-2D（kogane / rubel）。job_id は次工程で **その�
 ## 3. 工程（ゲート付き・ユーザー承認は G1〜G4 の4回だけ）
 
 ### Phase 1：画風ロック（Opus 5.5 担当・判断が要る）
-1. パイロットの勝者モデルで **kogane（allrounder＝全頭の基準形）** をプロンプト微調整しながら 3〜4案。
-2. ユーザーが1枚選ぶ → **`images/dragons_v2_staging/_STYLE_BASE_kogane.png`** として保存（**G1**）。
+1. ✅ 実施済み：seedream_v5_pro で **kogane** を `[kogane HD-2D, PILOT4 rubel]` の2参照＋fierce 文言で生成（§2b の A/B）。
+2. ユーザーが A/B から1枚選ぶ → **`images/dragons_v2_staging/_STYLE_BASE_kogane.png`** として保存（**G1**）。
 3. 以降の全生成は **画像参照を2枚**渡す：`[その竜のHD-2D（意匠）, STYLE_BASE（画風）]`。プロンプトで「1枚目の竜を、2枚目の画風で」と明示。
 4. 眼の大きさ／リムの強さ／忠実度の3つを G1 で数値的に固定し、雛形（§4）の該当語を確定。
 
@@ -108,28 +125,27 @@ stella＝金星チップの羽毛翼・彗星尾・宇宙鱗／raika＝稲妻角
 
 ---
 
-## 4. プロンプト雛形（英語・全頭共通＋差分スロット）
+## 4. プロンプト雛形（英語・**実証済み**＝§2b の A/B を生んだ文面。スロットだけ JSON から埋める）
 
 ```
-[IMAGE 1 = this dragon's locked design]  [IMAGE 2 = STYLE_BASE, the rendering style to match exactly]
-Re-render the dragon from image 1 in exactly the rendering style of image 2: a premium, cool, high-end
-stylized 3D game creature render (AAA monster-collecting RPG quality). NOT chibi, NOT plush toy, NOT pixel art.
-KEEP from image 1: species design, scale color {HEX}, {HORN}, {WING_TYPE} wings mounted on top of the back
-sweeping backward, {TAIL}, {ACCENT}, the large round eye, right-facing {POSTURE}.
-Forelegs tucked to the chest, hind legs trailing back, wings never below the body, full body with margin, pure side view.
-RENDERING: smooth sculpted forms, crisp individual scales, glossy horn and claw material, translucent backlit wing
-membrane with visible veins, cinematic three-point lighting (cool teal key, warm ember rim from lower right), sharp focus.
-Powerful, sleek, athletic: tighter muscle definition, sharper silhouette, determined expression (keep the big eye).
-{SPECIAL}
-Plain flat neutral gray background, no ground shadow, no text, no visual effects, no speed lines, no particles, no extra creatures.
+Image 1 is the locked design of this dragon ({NAME_EN}, {ONE_LINE_ROLE}). Image 2 is the STYLE REFERENCE: match its
+rendering style exactly (premium stylized 3D creature render, dramatic cinematic lighting with a cool teal key light and a
+warm ember rim light from the lower right, glossy horns and claws, crisp individual scale detail, translucent backlit wing
+membrane with visible veins), but take ONLY the rendering style from image 2, never its color and never its design.
+KEEP from image 1: {COLOR_DESC} scale color {HEX}, {HORN}, {WING_TYPE} wings mounted on top of the back sweeping backward,
+{TAIL}, {ACCENT}, the large round eye, and the right-facing {POSTURE} (forelegs tucked to the chest, hind legs trailing back).
+Make it powerful, sleek and athletic with tighter muscle definition, a sharper silhouette and a fierce, determined
+expression (keep the big round eye, no slit pupils). {SPECIAL}
+Plain flat neutral mid-gray #808080 background with no vignette, no ground shadow, no glow around the body, no text,
+no effects, no speed lines, no particles, no extra creatures. Full body in frame with margin, pure side view.
+NOT chibi, NOT plush toy, NOT pixel art.
 ```
-スロットは JSON から機械的に埋める：
-- `{POSTURE}`：escape/front → `forward-leaning flying pose, head lower than the tail`／late/chase → `horizontal gliding pose, head level or slightly above the tail`
-- `{HORN}` `{TAIL}` `{WING_TYPE}` `{ACCENT}`：JSON の horn/tail/wing/accent（membrane／feather／cloud／ice など）
-- `{SPECIAL}`：§3 Phase 2 の特殊条件、tier7 は `a subtle rainbow shimmer confined to the {part}`、雲系は `large sleepy half-closed eye`
-- **見本竜クローン化の禁止**（過去の却下事例）：同アーキタイプの先行完成竜を参照に足さない。参照は常に「本人HD-2D＋STYLE_BASE」の2枚だけ。
-
----
+- 画像参照は常に **[本人HD-2D（images/dragons/<id>.png を PNG に変換して upload）, STYLE_BASE（G1で選んだ kogane）]** の2枚・この順。
+- `{POSTURE}`：escape/front → `forward-leaning flying pose with the head slightly lower than the tail`／late/chase → `horizontal gliding pose with the head level or slightly above the tail`
+- `{HORN}` `{TAIL}` `{WING_TYPE}` `{ACCENT}` `{HEX}`：master JSON の該当値を英語で（例 swept-back horns / spade-tipped tail / membrane / ember tail tip）
+- `{SPECIAL}`：§3 Phase 2 の特殊条件（poro/momu/phenix/stella/raika/glaze）、tier7 は `a subtle rainbow shimmer confined to the {part}`、雲系は `large sleepy half-closed eye`
+- **seedream は「no vignette」と書いても暗いグラデ背景を作る** → 四隅flood-fill のキー抜きが効かない（bboxが画面全体になる）。**全頭 `remove_background` を必ず通す**（1cr/枚）。
+- 同アーキタイプの先行完成竜を参照に足さない（クローン化の再発防止）。参照は本人＋STYLE_BASE の2枚だけ。
 
 ## 5. 1枚ごとの合格チェック（全項目・落としやすい順）
 
@@ -152,15 +168,15 @@ Plain flat neutral gray background, no ground shadow, no text, no visual effects
 | 背景除去 | Higgsfield `remove_background` | 透過納品 |
 | 加工・シート | `sandbox_exec`（ffmpeg/Pillow）または本リポジトリ `tools/dragon_v2_sheet.py` | 契約外のDLはここで |
 
-## 7. 費用見積（残高 606cr・パイロットで 13.5cr 消費済み）
+## 7. 費用見積（2026-09-23 16:12 時点の残高 482cr。本件の消費＝パイロット13.5＋画風ロック7＋背景除去1＝21.5cr。※同日15:51の Kling v3.0 動画×11本≒95cr は本件外）
 | 工程 | 枚数 | cr |
 |---|---|---|
 | Phase 1 画風ロック | 8〜10 | 25〜40 |
 | Phase 2 固有12×2案 | 24 | 60 |
 | Phase 3 図鑑40＋再生成30% | 52 | 130 |
-| 背景除去 52＋予備 | 60 | 〜60 |
-| gpt_image_2 難物 | 6 | 40 |
-| **合計** | | **約 320〜350cr**（残高内） |
+| 背景除去 52＋予備（実測 1cr/枚） | 60 | 60 |
+| gpt_image_2 難物（落選のため原則不使用） | 0〜6 | 0〜40 |
+| **合計** | | **約 280〜330cr**（残高 482cr 内。動画生成と併用する場合は先に確保） |
 
 ## 8. 委任の分担
 - **Opus 5.5**：Phase 1（画風ロック）・Phase 2（固有12）・特殊4頭・Phase 5（結線・羽ばたき調整・デプロイ）。
@@ -170,3 +186,21 @@ Plain flat neutral gray background, no ground shadow, no text, no visual effects
 ## 9. やらないこと
 - race_engine / odds_engine / betting_engine の変更。`RC_DSP_H`・`RC_SIZE_MUL` の変更（サイズ感は現行踏襲）。
 - 全頭が揃う前の部分差し替え。旧3Dぬいぐるみ調への回帰。スプライトの回転（姿勢は頭と尾の高さで表現）。
+
+## 10. 次セッションへの委任プロンプト（そのまま貼る・Opus 5.5 想定）
+
+```
+docs/DRAGON_V2_COOL_RENDER_DIRECTIVE.md を最初に全文読んでから着手。レース数値・race_canvas.js・images/dragons/ は触らない。
+前提：ユーザーは G1 で STYLE_BASE を {A または B} に決めた。docs/dragon_v2_kit/refs/STYLEBASE_{A|B}_kogane_seedream.webp を
+PNG に変換して Higgsfield に media_upload し、以降の全生成で画像参照2枚目に使う（1枚目は本人の images/dragons/<id>.png を PNG 変換して upload）。
+
+やること（Phase 2）：固有12頭（rubel seram poro gando miruka baran rosso momu phenix raika stella glaze）を
+§4 の雛形＋ master JSON（docs/codex_dragon_kit/race_dragons_52_master_list_v1_0.json）＋ confirmed_dragons.md の意匠で、
+seedream_v5_pro（2k・4:3）各2案、generate_image_batch（12件/回）→ jobs_wait → show_generation_by_ids 1回。
+各案を remove_background（1cr）→ 透過PNG を DL → tools/dragon_v2_sheet.py で bbox/翼根ギャップ/46px可読性を確認 →
+lossy WebP q85（幅1200・≤100KB）にして images/dragons_v2_staging/<id>_a.png / <id>_b.png に保存（拡張子は .png のまま・中身WebP）。
+§5 の合格チェックに落ちたものは同じ雛形で再生成（1頭3回まで）。12頭×2案のコンタクトシート（tools/dragon_v2_sheet.py 出力）を
+tmp/dragon_v2_sheets/ に出し、ユーザーに「各頭どちらを採るか」を聞く（G2）。ブランチにコミット・push・ドラフトPR。
+費用上限：Phase 2 で 90cr。超えそうなら止めて報告。
+```
+Phase 3（図鑑40頭）は上と同じ手順を archetype 別に 1案ずつ（下位モデルで可）。Phase 5（結線）は本書 §3 Phase 5 のとおり。
