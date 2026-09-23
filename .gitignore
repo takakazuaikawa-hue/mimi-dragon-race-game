@@ -14,3 +14,6 @@ desktop.ini
 
 # Claude Code state
 .claude/
+
+# Python bytecode (tools/dragon_v2_sheet.py を import すると生成される)
+__pycache__/
