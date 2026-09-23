@@ -74,13 +74,41 @@ WING_EN = {"membrane": "membrane", "feather": "large feathered", "small": "small
 SPECIAL = {
     "poro":   "This is the crybaby child dragon: keep it small and chubby with tiny wings, big teary eyes with a tear, and its red bow tie.",
     "momu":   "Sleepy cloud dragon: cloud-material wings and tail, no horns, and a large sleepy half-closed eye.",
-    "phenix": "Phoenix dragon: large feathered phoenix wings and a feathered tail, forelegs folded.",
-    "stella": "Starlight dragon: feathered wings with gold star tips, a comet star-trail tail with one big star and small stars, a cosmic scale texture with white star points, and a star crown with a forehead star.",
+    "phenix": "Phoenix dragon: large feathered phoenix wings, a peacock crest and a peacock-feather tail, forelegs folded.",
+    "stella": "Starlight dragon: feathered wings with gold star tips and a cosmic scale texture with white star points.",
     "raika":  "Thunder dragon: lightning-bolt horns and a bolt tail, cyan electric veins over the body and a thunder crest on the back.",
     "glaze":  "Ice dragon: crystal ice-armor scales, crystal horns and tail, ice wings, and a subtle rainbow refraction on the wing membrane, horns and tail edges.",
     "fugaku": "Black-iron rock armor plates with a faint labradorite/opal iridescence on a few plates only.",
     "chiri":  "Small rookie cloud dragon with small dusty cloud wings and tail and a large sleepy half-closed eye.",
     "yumeji": "Dreamy cloud dragon with big soft cloud wings containing dream-bubble orbs and a large dreamy half-closed eye.",
+}
+# 固有12頭は master JSON の造形語が HD-2D 確定スプライトとズレている（poro の体色＝紫・gando＝灰岩・phenix＝孔雀冠 等）。
+# 「画像1が正」なので、スプライトを目視して書いた語で上書きする（color, horn, wing, tail, build, posture）。
+UNIQ_VISUAL = {
+    "rubel":  ("crimson red scale color #ed5a52 with a cream belly", "swept-back horns with a small spiked crest", "large bat-like membrane",
+               "a long whip tail ending in a spade tip with a few ember flecks", "a sleek, long-bodied build", "slightly forward-leaning flying direction with the head a little lower than the tail"),
+    "seram":  ("sky-blue scale color #4f9be8 with a paler belly", "two short swept-back horn fins", "large pale-blue feathered",
+               "a long tail ending in a fish-like fin", "a sleek build with a long slender neck", "horizontal gliding direction with the head level or slightly raised"),
+    "poro":   ("purple scale color (as in image 1, around #9a6ad0) with a lavender belly", "curled brown ram horns", "small purple membrane",
+               "a short pointed tail", "a small chubby child build", "gentle diving posture with the head level and the body tilted slightly forward"),
+    "gando":  ("stone-tan gray-brown rock color #b58a5c", "jagged rock horns", "small rocky membrane",
+               "a rock club tail ending in a round boulder", "a heavy, low, rock-plated armored build", "forward-leaning flying direction with the head lower than the tail"),
+    "miruka": ("pale lavender scale color #b6a8e6 with a whiter belly", "two tall curved pale horns", "lavender membrane",
+               "a long tail ending in a forked fin", "a slender smooth build", "horizontal gliding direction with the head level or slightly raised"),
+    "baran":  ("orange scale color #f2893f with a paler belly", "swept-back horns", "orange membrane",
+               "a tail held high with a burning flame at the tip", "a heavy bruiser build with rugged ridged scales and back spikes", "nearly horizontal direction with a slight forward lean"),
+    "rosso":  ("green scale color #5cc25c with a paler belly", "spiky swept-back horns and cheek frills", "large green membrane",
+               "a long thin tail with a fin tip", "a lean raptor build with long legs and big hooked claws", "horizontal gliding direction with the head level"),
+    "momu":   ("lavender-violet scale color #9d83d4 with a paler belly", "no horns (a fluffy cloud frill on the head and neck instead)", "big white cloud-material",
+               "a white cloud-puff tail", "a soft rounded build", "horizontal gliding direction with the head level"),
+    "phenix": ("golden yellow scale color #f6b81f", "a peacock-feather crest of teal and gold eyespot feathers on the head", "large golden feathered",
+               "a long peacock-feather tail with an eyespot", "a sleek build with the forelegs folded", "slightly forward-leaning flying direction with the head a little lower than the tail"),
+    "raika":  ("indigo scale color #6d63ec with a paler belly", "pale yellow-cyan lightning-bolt horns and back crest", "dark indigo membrane",
+               "a lightning-bolt tail", "a sleek build covered in glowing cyan electric vein lines", "nearly horizontal direction with the head very slightly lower than the tail"),
+    "stella": ("pink scale color #ec7fb9 with a paler belly", "small horns with a star crown and a forehead star", "large pink feathered",
+               "a tail ending in one big gold star with small stars", "a sleek build with a fine cosmic crackle-line scale texture", "horizontal gliding direction with the head level"),
+    "glaze":  ("icy cyan scale color #73d3ea", "crystal horns", "icy translucent membrane",
+               "a long tail with crystal spikes", "a heavy build armored in crystalline ice plates", "forward-leaning flying direction with the head lower than the tail"),
 }
 POSTURE = {"escape": "forward-leaning flying direction with the head lower than the tail",
            "front":  "forward-leaning flying direction with the head lower than the tail",
@@ -104,10 +132,13 @@ def color_desc(hexs):
     if hue < 290: return "violet"
     return "pink"
 
-BODY_TMPL = ("Image 1 is the locked design of this dragon ({name_en}, {role}). Image 2 is only a STYLE REFERENCE (a different dragon): "
- "copy from it the rendering style, lighting and surface treatment only. Output exactly one dragon, the one from image 1, and do not "
- "include any part, color or feature of the dragon in image 2.\n"
- "IDENTITY LOCK from image 1 (must survive): {color_desc} scale color {hex} with a paler belly, {horn}, the {wing} wings mounted on top of "
+# 参照は本人HD-2Dの1枚だけ（2026-09-23 Phase 2 実測：STYLE_BASE を2枚目に渡すと 24案中15案が kogane の骨格・翼・角に収束した。
+# 1枚参照＋画風のテキスト指定は 14/14 で本人のシルエットを保ち、画風・光も揃った）。
+BODY_TMPL = ("Image 1 is the locked design of this dragon ({name_en}, {role}). Redraw exactly this dragon, keeping its exact silhouette, "
+ "pose, body proportions, head shape and size, horn shape, wing shape and placement, leg positions and tail shape from image 1 so the "
+ "outline nearly overlaps image 1. Change only the rendering: turn the pixel art into a premium stylized 3D creature render, like the key "
+ "art of a AAA monster-collecting RPG (soft subsurface shading, sculpted overlapping scale plates, smooth satin surfaces, clean studio render).\n"
+ "IDENTITY LOCK from image 1 (must survive): {color_phrase}, {horn}, the {wing} wings mounted on top of "
  "the back sweeping backward, {tail}, {build}, the large round eye, and its {posture}. {special}"
  "Design notes (Japanese, authoritative): {design}\n"
  "Within that identity you may upgrade it STRONGLY: dramatic cinematic lighting (cool teal key light from the upper left on the wings and "
@@ -146,9 +177,13 @@ def build_entries():
         if en["id"] in TIER7: sp = (sp + " " if sp else "") + "A subtle rainbow shimmer confined to %s only." % TIER7[en["id"]]
         en["special"] = (sp + " ") if sp else ""
         en["design"] = DESIGN.get(en["id"], "(none)")
+        color_phrase = "%s scale color %s with a paler belly" % (color_desc(en["color"]), en["color"])
+        posture = POSTURE[en["style"]]
+        if en["id"] in UNIQ_VISUAL:
+            color_phrase, en["horn"], en["wing"], en["tail"], en["build"], posture = UNIQ_VISUAL[en["id"]]
         en["prompt"] = BODY_TMPL.format(name_en=en["id"].capitalize(), role="%s / %s racer" % (en["arch"], en["style"]),
-                                        color_desc=color_desc(en["color"]), hex=en["color"], horn=en["horn"], wing=en["wing"], tail=en["tail"],
-                                        build=en["build"], posture=POSTURE[en["style"]], special=en["special"], design=en["design"],
+                                        color_phrase=color_phrase, horn=en["horn"], wing=en["wing"], tail=en["tail"],
+                                        build=en["build"], posture=posture, special=en["special"], design=en["design"],
                                         expr=EXPR.get(en["id"], EXPR_DEFAULT))
         en["prompt_nowing"] = NOWING_TMPL
     # 画像ファイルが実在する id だけ（52頭）
@@ -167,9 +202,9 @@ def write_md(entries):
     L.append("> 手で編集しない（出典 = js の竜データ・master JSON・confirmed_dragons.md・CODEX_DRAGON_IMAGES_BRIEF.md）。文面を変えるときは "
              "tools/dragon_v2_prompts.py の雛形か docs/DRAGON_V2_COOL_RENDER_DIRECTIVE.md §4/§11.1 を直して再生成する。\n")
     L.append("## 使い方\n")
-    L.append("**Higgsfield（本線）**：モデル `nano_banana_pro`（2k・4:3）。medias＝[本人 `images/dragons/<id>.png` を PNG 変換して upload, STYLE_BASE job_id `cfef9354-670c-43f7-ae9b-963a73edef98`]。prompt＝下の「本体」。合格案の job_id 1枚を参照に「翼なし版」。\n")
+    L.append("**Higgsfield（本線）**：モデル `nano_banana_pro`（2k・4:3）。medias＝[本人 `images/dragons/<id>.png` を PNG 変換して upload] の**1枚だけ**（STYLE_BASE を2枚目に渡すと kogane に収束する＝§2e）。prompt＝下の「本体」。合格案の job_id 1枚を参照に「翼なし版」。\n")
     L.append("**ChatGPT（クレジット枯渇時のフォールバック・手貼り）**：\n")
-    L.append("1. ChatGPT の画像生成で、**添付①＝`images/dragons/<id>.png`**（本人・中身はWebPなので開けない場合は拡張子を .webp に変えて添付）、**添付②＝`images/dragons_v2_staging/_STYLE_BASE_kogane.webp`**。\n")
+    L.append("1. ChatGPT の画像生成で、**添付＝`images/dragons/<id>.png` の1枚だけ**（本人・中身はWebPなので開けない場合は拡張子を .webp に変えて添付）。画風参照の竜は添付しない（別の竜に収束する）。\n")
     L.append("2. 下の「本体」プロンプトを貼り、末尾に **`Output a 2048x1536 PNG with a fully transparent background instead of gray.`** を足す（透過で出れば背景除去が不要）。\n")
     L.append("3. 出来た画像を `images/dragons_v2_staging/<id>_a.png` として保存（透過PNGのまま）。2案目は `<id>_b.png`。\n")
     L.append("4. 採用案を添付して「翼なし版」プロンプトを貼り、`images/dragons_v2_staging/<id>_nowing.png` として保存。\n")
@@ -180,7 +215,7 @@ def write_md(entries):
         tier = ("tier%d" % e["tier"]) if e["tier"] else "unique"
         L.append("\n### %d. `%s` — %s（%s / %s / %s / %s）\n" % (i, e["id"], e["name"], e["arch"], e["style"], tier, e["color"]))
         L.append("- 意匠（台帳）：%s\n" % e["design"])
-        L.append("- 参照①：`images/dragons/%s.png`　参照②：STYLE_BASE（kogane N1）\n" % e["id"])
+        L.append("- 参照：`images/dragons/%s.png` の1枚だけ\n" % e["id"])
         if e["id"] == "kogane": L.append("- **済**：G1 で N1（job `cfef9354-670c-43f7-ae9b-963a73edef98`）を採用。本体は再生成不要・翼なし版のみ必要。\n")
         L.append("\n```\n" + e["prompt"] + "\n```\n")
     open(out, "w", encoding="utf-8").write("".join(L))

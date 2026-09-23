@@ -115,6 +115,18 @@ i2i の元＝既存HD-2D（kogane / rubel）。job_id は次工程で **その�
 > 「環境設定→ネットワークで上記2ホストを許可」した環境か、PC側（衣装CGを作った経路）で実行すること。
 > Higgsfield の `sandbox_exec` はDLと加工（背景除去・WebP化・コンタクトシート）ができるが、リポジトリへは書けない。
 
+### 2e. Phase 2 実測：**2枚参照は kogane に収束する → 本人1枚参照に切り替え**（2026-09-23）
+§4 旧雛形（[本人HD-2D, STYLE_BASE(kogane N1)] の2枚）で固有12頭×2案＝24案を生成 → **15/24 が kogane の骨格・翼・角・頭に収束**（色だけ違う別の竜）。
+2案とも不合格＝rubel・poro・baran・rosso・momu。1案だけ不合格＝seram・miruka・gando・phenix・raika（raika は稲妻尾が消えた）。
+本人らしさを保てたのは seram b・gando a・miruka b・raika b・stella a/b・glaze a/b（＋phenix b は体が kogane 寄りの境界例）。
+→ §2d で予告した対策「**本人HD-2D 1枚だけ＋画風はテキスト指定**」を 18枚で試験 → **18/18 がシルエット・角・尾・体格を保持**し、
+teal キー／ember リムの光と「プレミアム3Dクリーチャー」の画風も揃った。**以降の全頭はこの1枚参照が本線**（§4 の雛形を差し替え済み）。
+STYLE_BASE（kogane N1）は**目視の基準**としてのみ残す（生成には渡さない）。
+
+台帳の誤記も同時に修正（`tools/dragon_v2_prompts.py` の `UNIQ_VISUAL`＝確定スプライトを目視して書いた造形語で上書き）：
+poro＝**紫**（`js/poro.js` の仕様色 #9a6ad0。`js/data_dragons.js` の #46cbbd は旧値）・巻き角／gando＝灰岩（旧「orange-red」）／miruka＝淡ラベンダー／
+phenix＝孔雀冠・孔雀尾・羽毛翼（旧 star crown・membrane・spade）ほか。
+
 ---
 
 ## 3. 工程（ゲート付き・ユーザー承認は G1〜G4 の4回だけ）
@@ -122,7 +134,7 @@ i2i の元＝既存HD-2D（kogane / rubel）。job_id は次工程で **その�
 ### Phase 1：画風ロック（Opus 5.5 担当・判断が要る）
 1. ✅ 実施済み：seedream_v5_pro で **kogane** を `[kogane HD-2D, PILOT4 rubel]` の2参照＋fierce 文言で生成（§2b の A/B）。
 2. ✅ **G1 確定＝N1**（job `cfef9354-670c-43f7-ae9b-963a73edef98`）→ `images/dragons_v2_staging/_STYLE_BASE_kogane.webp` に保存済み。
-3. 以降の全生成は **画像参照を2枚**渡す：`[その竜のHD-2D（意匠）, STYLE_BASE（画風）]`。プロンプトで「1枚目の竜を、2枚目の画風で」と明示。
+3. ~~以降の全生成は画像参照を2枚~~ → **§2e で撤回**。画像参照は**本人HD-2Dの1枚だけ**、画風は §4 の文面で指定（2枚参照は kogane に収束する）。
 4. 眼の大きさ／リムの強さ／忠実度の3つを G1 で数値的に固定し、雛形（§4）の該当語を確定。
 
 ### Phase 2：固有12頭（Opus 5.5・各2案→ユーザー選択＝**G2**）＋**採用案の「翼なし版」を同時生成**（Phase 6 の素材・§11）
@@ -178,15 +190,15 @@ round eye. It must still read instantly as the same dragon as image 1, not as a 
 Plain flat neutral mid-gray #808080 background, no vignette, no ground shadow, no glow around the body, no text, no effects,
 no speed lines, no particles. Full body in frame with margin, pure side view facing right. NOT chibi, NOT plush toy, NOT pixel art.
 ```
-- モデル：**`nano_banana_pro`**（2k・4:3・2cr）。画像参照は常に **[本人HD-2D（images/dragons/<id>.png を PNG 変換して upload）, STYLE_BASE]** の2枚・この順。
-  STYLE_BASE は G1 で選んだ job_id を medias の value にそのまま渡せる（job_id 参照は実証済み）。
+- モデル：**`nano_banana_pro`**（2k・4:3・2cr）。画像参照は **本人HD-2D（images/dragons/<id>.png を PNG 変換して upload）の1枚だけ**（§2e）。
+  ※上の雛形は旧2枚参照版の記録。**実際に使う文面は `docs/dragon_v2_kit/PROMPTS_52.md`（1枚参照版・機械生成）**。
 - `{POSTURE}`：escape/front → `forward-leaning flying direction with the head lower than the tail`／late/chase → `horizontal gliding direction with the head level or slightly above the tail`
 - `{HORN}` `{TAIL}` `{WING_TYPE}` `{BUILD}` `{BELLY}` `{HEX}`：master JSON の該当値を英語で（例 swept-back horns / spade tail with an ember tip / membrane / sleek build / a cream belly）
 - `{SPECIAL}`：§3 Phase 2 の特殊条件（poro/momu/phenix/stella/raika/glaze）、tier7 は `a subtle rainbow shimmer confined to the {part}`、雲系は `large sleepy half-closed eye`
 - nano_banana_pro は指示どおり**無地グレー背景**を出す（四隅が均一）が、**翼と背の間の灰色ポケットは残る**（現行と同じ粗）
   → **全頭 `remove_background`（1cr）を通す**（透過納品＝ポケット解消＋羽ばたき検出の改善）。
 - seedream_v5_pro は参照竜の骨格・顔に寄せる（収束リスク）ため本線外。難物で単発・ユーザー了承時のみ。
-- 同アーキタイプの先行完成竜を参照に足さない。参照は本人＋STYLE_BASE(kogane) の2枚だけ。
+- 同アーキタイプの先行完成竜も STYLE_BASE も参照に足さない。参照は本人の1枚だけ。
 
 ## 5. 1枚ごとの合格チェック（全項目・落としやすい順）
 
@@ -234,8 +246,8 @@ no speed lines, no particles. Full body in frame with margin, pure side view fac
 
 ```
 docs/DRAGON_V2_COOL_RENDER_DIRECTIVE.md を最初に全文読んでから着手。レース数値（race_engine/odds_engine/betting_engine）は触らない。
-images/dragons/ は G4（52頭完成）まで触らない。確定事項：本線モデル nano_banana_pro／STYLE_BASE＝kogane N1（job_id cfef9354-670c-43f7-ae9b-963a73edef98、
-画像参照2枚目に job_id をそのまま渡す）／原則「別の竜にならない・全頭が同じ顔に収束しない」／リグ化（Phase 6）必須。
+images/dragons/ は G4（52頭完成）まで触らない。確定事項：本線モデル nano_banana_pro／画像参照は本人HD-2Dの1枚だけ（§2e：STYLE_BASE を渡すと kogane に収束する。
+STYLE_BASE＝kogane N1 は目視基準のみ）／原則「別の竜にならない・全頭が同じ顔に収束しない」／リグ化（Phase 6）必須。
 
 今回やること＝Phase 2（固有12頭）：rubel seram poro gando miruka baran rosso momu phenix raika stella glaze。
 1) 各頭、本人の images/dragons/<id>.png（中身WebP）を PNG 変換→media_upload→media_confirm。
@@ -302,6 +314,32 @@ Phase 3（図鑑40頭）は同じ手順を archetype 別に（1案先行・不�
 ### 11.5 費用・工数
 - 生成：翼なし版 52×2cr＋背景除去 52×1cr ＝ **+156cr**。
 - 工数：`tools/dragon_v2_rig.py`（新規）、`race_canvas.js` 改修（上記1〜6）、52頭のリグ目視。Opus 5.5 担当（ランタイムと目視）／下位モデル（生成・切り出し・validate）。
+
+## 13. Phase 2 の進捗（2026-09-23）＝**G2 待ち**
+
+各頭の候補 a/b（2k・無地グレー背景）。比較シート＝`docs/dragon_v2_kit/g2/G2_sheet_{1,2,3}.webp`（現行HD-2D｜案a｜案b｜96px／46px）。
+画像は job_id から再取得できる（`jobs_wait` の result_url）ので、**不採用案はリポジトリに入れない・背景除去もしない**。
+
+| 竜 | 案a job_id | 方式 | 案b job_id | 方式 |
+|---|---|---|---|---|
+| rubel ルベル | `d16a1b04-d3a1-48f5-a53c-556998d4948c` | 1ref | `c5f60566-80bd-4e9a-aa75-9d47c1876717` | 1ref |
+| seram セラム | `46a6b252-9b69-4824-80bb-375692178d99` | 1ref | `4a582a3a-469f-45ba-9dae-161e54f70c22` | 2ref |
+| poro ポロ | `7f0210d7-28e4-46b4-9855-fe1664af79d9` | 1ref | `012dac97-7f34-4663-85be-1b10b48ca95a` | 1ref |
+| gando ガンド | `88192ee9-7cd2-4563-8dec-2b5967da7465` | 1ref | `e6f059e2-693b-4f23-b72b-12a85c97fe61` | 2ref |
+| miruka ミルカ | `ea1e74f6-e140-41cd-ba14-4e8cbb0799ea` | 1ref | `7db792bd-e35c-4e31-8928-70ab7b66bc89` | 2ref |
+| baran バラン | `57e8b168-b2ac-41ef-97e6-1a9228f85975` | 1ref | `67a9c6d2-f8ad-4070-81f8-bd9f12d3903b` | 1ref |
+| rosso ロッソ | `a86fde8d-83b2-48fd-8865-fe30b27f4cfc` | 1ref | `eae70292-1d49-475c-badb-afe3e45edb3b` | 1ref |
+| momu モム | `15886273-9fec-4ca1-a397-8542c2f19dbb` | 1ref | `03e92f05-7256-4fd1-9b6a-a7465da171fa` | 1ref |
+| phenix フェニックス | `615fa39d-ff5d-4756-a1e0-88fff45eb72c` | 1ref | `c7af5b25-9f34-41ee-8942-e15c2615c0a0` | 1ref |
+| raika ライカ | `5e273d5c-ab67-4c4b-b1b3-a9ae76e18fc8` | 1ref | `e449553b-0224-4926-96ea-bc5350e7a7ce` | 2ref |
+| stella ステラ | `96a0a13d-8cf4-4334-a8df-62e3599a5d24` | 1ref | `78d743c0-12ea-49c7-9900-0e954020634f` | 2ref |
+| glaze グレイズ | `2cd7af4e-e1c2-44ef-8c13-2c9997e2f744` | 1ref | `8019c1ad-0b8a-4a72-aff6-e33232680a00` | 2ref |
+
+- 方式：1ref＝本人1枚参照（§2e・本線）／2ref＝旧2枚参照の合格案。
+- 背景除去の試験：momu（雲）・gando（灰岩）は背景色に近く、`tools/dragon_v2_sheet.py` の四隅flood-fillでは雲・岩に穴が開く → **Higgsfield `remove_background` 必須**。
+- 費用：2枚参照24案 48cr＋1枚参照18案 36cr＋背景除去試験 2cr＝**86cr**（上限 110cr）。
+- **G2 の後にやること**：採用12枚を `remove_background`（12cr）→ 透過WebP（幅1000・q82）で `images/dragons_v2_staging/<id>.png` → 翼なし版（2cr×12）＋その背景除去（1cr×12）→ `tools/dragon_v2_rig.py`。
+  G2後の見込みは +48cr ＝**合計 約134cr で上限 110cr を超える**ため、続行には上限の引き上げ（または翼なし版を Phase 3 と一括にする判断）が必要。
 
 ## 12. Higgsfield のクレジットが尽きたときのフォールバック（ユーザー指示：ChatGPT で生成して最後までやる）
 
