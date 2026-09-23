@@ -156,7 +156,9 @@ stella＝金星チップの羽毛翼・彗星尾・宇宙鱗／raika＝稲妻角
 2. `js/race_canvas.js` の `'images/dragons/' + id + '.png?v=1'` を `?v=2` へ（スプライトのキャッシュ破り）。
 3. 羽ばたき：**リグがある竜はリグ描画（§11）が最優先**。リグ未生成/未ロードの竜だけ従来のスライス羽ばたき（隙間が無い竜は振幅30%・不自然なら `RC_FLAP_CUT[id]` を個別指定）。
 4. `RC_SIZE_MUL` は据え置き（poro小さく／tier7大きく）。
-5. `node tools/check.mjs` → `index.html` の `?v=` を「今ライブの次」へ → 1コミット → main。
+5. `node tools/check.mjs` → `index.html` の `?v=` を「今ライブの次」へ（`git show origin/main:index.html | grep -oE '\?v=20[0-9]{6}[a-z]'` で確認）→ 1コミット。
+6. **公開（ユーザー指示：終わったら GitHub に上げて GitHub Pages で遊べる状態にする）**：`origin/main` を取り込んで競合ゼロを確認 → PR をマージ（または main へ push）→ Actions の Pages デプロイ完了（約1分）→
+   本番 https://takakazuaikawa-hue.github.io/mimi-dragon-race-game/ をスマホ実機で開き、レース1本・馬券カード「▾見る」・ウィニングカットで新竜が出ること、コンソールエラー0を確認して完了報告。
 
 ---
 
@@ -247,6 +249,8 @@ images/dragons/ は G4（52頭完成）まで触らない。確定事項：本�
    images/dragons_v2_staging/<id>_nowing.png に保存。tools/dragon_v2_rig.py（§11.2 の仕様で新規作成）で
    images/dragons_v2_rigs/<id>/ を生成し node live2d/cli.js validate を通す。
 費用上限：Phase 2 全体で 110cr。超えそうなら止めて報告。ブランチにコミット・push・ドラフトPR。
+残高が次バッチ分（36cr）を切ったら §12 のとおり ChatGPT 手貼り運用に切り替える（台帳 docs/dragon_v2_kit/PROMPTS_52.md をユーザーに案内し、届いた画像から続行）。
+全52頭＋リグ＋結線が終わったら §3 Phase 5 の 5〜6 のとおり main へ反映し、GitHub Pages の本番URLで遊べることを確認してから完了報告。
 ```
 Phase 3（図鑑40頭）は同じ手順を archetype 別に（1案先行・不合格のみ再生成）。Phase 5/6 のランタイム改修は §3 Phase 5 と §11.3 のとおり（Opus 5.5）。
 
@@ -298,3 +302,15 @@ Phase 3（図鑑40頭）は同じ手順を archetype 別に（1案先行・不�
 ### 11.5 費用・工数
 - 生成：翼なし版 52×2cr＋背景除去 52×1cr ＝ **+156cr**。
 - 工数：`tools/dragon_v2_rig.py`（新規）、`race_canvas.js` 改修（上記1〜6）、52頭のリグ目視。Opus 5.5 担当（ランタイムと目視）／下位モデル（生成・切り出し・validate）。
+
+## 12. Higgsfield のクレジットが尽きたときのフォールバック（ユーザー指示：ChatGPT で生成して最後までやる）
+
+- **プロンプトは同じ**：`docs/dragon_v2_kit/PROMPTS_52.md`（`python3 tools/dragon_v2_prompts.py` で機械生成・52頭ぶん埋め済み）を使う。Higgsfield でも ChatGPT でも文面は共通。
+- **ChatGPT 側の手順**（クラウド環境から ChatGPT は叩けないので、ユーザーの手貼り＝Suno の BGM シートと同じ運用）：
+  1. 添付①＝本人 `images/dragons/<id>.png`（中身WebP・開けなければ拡張子を .webp に）、添付②＝`images/dragons_v2_staging/_STYLE_BASE_kogane.webp`。
+  2. 台帳の「本体」プロンプトを貼り、末尾に `Output a 2048x1536 PNG with a fully transparent background instead of gray.` を足す（**透過で出れば背景除去が不要**）。
+  3. `images/dragons_v2_staging/<id>_a.png`（2案目は `_b`）として保存。採用案を添付して「翼なし版」プロンプト → `<id>_nowing.png`。
+  4. Claude に「<id> 届いた」と伝える → 検収（`tools/dragon_v2_sheet.py`）・WebP化・リグ生成（`tools/dragon_v2_rig.py`）・結線・デプロイはこちらで実施。
+- **透過で出なかった場合**：無地グレーなら `tools/dragon_v2_sheet.py` の四隅flood-fill で抜ける（翼下のポケットは `tools/dragon_v2_rig.py` の翼差分で消える）。グラデ背景の場合だけ再依頼。
+- **切り替えの判断**：Higgsfield 残高が「次のバッチ（12件×3cr=36cr）」を下回ったら、その archetype から ChatGPT 運用に切り替え、混在させない（1 archetype の中で画風を揃えるため）。
+- **ChatGPT 生成分の検収は同じ §5**。参照竜の混入・別竜化は ChatGPT でも起きるので2案→選択は変えない。
