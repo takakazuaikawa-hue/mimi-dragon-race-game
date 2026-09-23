@@ -1,6 +1,6 @@
 # 指示書：レース竜52頭「かっこよさ最優先」刷新（V2）——計画・工程・委任仕様
 
-目的＝**レースの竜52頭を「もっとかっこよく・最高の出来」に作り直す**。
+目的＝**レースの竜52頭を「もっとかっこよく・最高の出来」に作り直し、竜ごとのリグで綺麗に動かす**（ユーザー決定 2026-09-23：リグ化は必須）。
 Higgsfield（MCP・自動化）と ChatGPT（gpt-image／判定役）を使い分けて量産し、
 **レース数値には一切触れない**（表示素材の差し替えのみ＝CLAUDE.md 絶対ルール1）。
 
@@ -106,7 +106,7 @@ i2i の元＝既存HD-2D（kogane / rubel）。job_id は次工程で **その�
 （表示名が1段ずれるだけで、要求IDごとに品質は一定）。**量産は必ず `nano_banana_pro` を要求する**（2cr/枚・2k・image_references 複数可）。
 パイロット2（ユーザー2位）も `nano_banana_pro` 要求で作ったもの＝同じ系統。
 
-**推奨＝ N1 を STYLE_BASE にする**（N3 は混入で不可）。以降の全頭は `[本人HD-2D, STYLE_BASE(N1 kogane)]` の2参照＋§4 の同一性ロック雛形で生成。
+**G1 確定（ユーザー判定 2026-09-23）＝ N1**。`images/dragons_v2_staging/_STYLE_BASE_kogane.webp` を N1 に差し替え済み（N3 は混入で不可）。以降の全頭は `[本人HD-2D, STYLE_BASE(N1 kogane)]` の2参照＋§4 の同一性ロック雛形で生成。
 画風参照を **rubel ではなく無彩色に近い kogane にする**のは、赤や rubel の顔が他の竜へ漏れるのを防ぐため。
 （rubel 本人の生成時だけは参照2枚目が kogane になるが、それで問題ない＝画風だけ取る）
 
@@ -121,11 +121,11 @@ i2i の元＝既存HD-2D（kogane / rubel）。job_id は次工程で **その�
 
 ### Phase 1：画風ロック（Opus 5.5 担当・判断が要る）
 1. ✅ 実施済み：seedream_v5_pro で **kogane** を `[kogane HD-2D, PILOT4 rubel]` の2参照＋fierce 文言で生成（§2b の A/B）。
-2. **G1 再判定中**：N1/N3（§2c）からユーザーが選ぶ → `images/dragons_v2_staging/_STYLE_BASE_kogane.webp` を差し替える（現在入っているのは旧A・要差し替え）。
+2. ✅ **G1 確定＝N1**（job `cfef9354-670c-43f7-ae9b-963a73edef98`）→ `images/dragons_v2_staging/_STYLE_BASE_kogane.webp` に保存済み。
 3. 以降の全生成は **画像参照を2枚**渡す：`[その竜のHD-2D（意匠）, STYLE_BASE（画風）]`。プロンプトで「1枚目の竜を、2枚目の画風で」と明示。
 4. 眼の大きさ／リムの強さ／忠実度の3つを G1 で数値的に固定し、雛形（§4）の該当語を確定。
 
-### Phase 2：固有12頭（Opus 5.5・各2案→ユーザー選択＝**G2**）
+### Phase 2：固有12頭（Opus 5.5・各2案→ユーザー選択＝**G2**）＋**採用案の「翼なし版」を同時生成**（Phase 6 の素材・§11）
 rubel / seram / poro / gando / miruka / baran / rosso / momu / phenix / raika / stella / glaze。
 特殊条件：poro＝小さい・涙目・赤蝶ネクタイ／momu＝雲の翼と雲尾・眠たい大きめ半目／phenix＝羽毛翼・前足畳み／
 stella＝金星チップの羽毛翼・彗星尾・宇宙鱗／raika＝稲妻角・電気ヴェイン／glaze＝結晶装甲・控えめ虹屈折。
@@ -140,10 +140,12 @@ stella＝金星チップの羽毛翼・彗星尾・宇宙鱗／raika＝稲妻角
 | ⑤ | turn_tech | 5 | 差し→水平 | tsumuji sazare kirari senpu reppu |
 | ⑥ | fog_mystic | 6 | 差し/追込→水平 | yoi murasame shirahae gekka yugiri yomi |
 | ⑦ | cloud_chaser | 2 | 追込→水平・半目可 | chiri yumeji |
-（kogane は Phase 1 で完成済み）。**バッチ＝ generate_image_batch 12件まで → jobs_wait → show_generation_by_ids 1回**。
+（kogane は Phase 1 で完成済み・翼なし版は未生成）。**バッチ＝ generate_image_batch 12件まで → jobs_wait → show_generation_by_ids 1回**。
+各頭：本体2案 → 合格案を選ぶ → その案の**翼なし版1枚**（§11 の編集プロンプト）→ 両方を remove_background。
 各アーキタイプ完了ごとにコンタクトシート（原寸／96px／46px の3段）を出してユーザー確認（**G3**・7回だがまとめて可）。
 
 ### Phase 4：後処理（機械的・下位モデル）
+0. 翼なし版と本体版の差分から翼レイヤーを切り出し、`tools/dragon_v2_rig.py`（§11・Phase 6 で作る）で `images/dragons_v2_rigs/<id>/rig.json`＋`parts/*.webp` を生成。
 1. `remove_background`（Higgsfield）→ 透過PNG。※既存のflood-fillキー抜きは「四隅が不透明な時だけ」動くので、透過納品ならそのまま素通りする（コード変更不要）。
 2. `tools/dragon_v2_sheet.py`（本書と同時に追加）で **bbox・翼根ギャップ・46px縮小の可読性**を機械チェック＋シートを出力。
 3. WebP化（**透過ありlossy・幅1000px・q82**＝候補Aで実測 約100KB。1200px/q85 だと134KB）。**1頭 ≤110KB 目標**、52頭で ≤6MB。ファイル名は現行どおり `<id>.png`（中身WebPで動く実績あり・コード無変更）。
@@ -152,7 +154,7 @@ stella＝金星チップの羽毛翼・彗星尾・宇宙鱗／raika＝稲妻角
 ### Phase 5：結線＋デプロイ（Opus 5.5・**G4**＝52頭シートで最終承認後）
 1. `images/dragons/` を一括置換（旧版は `images/dragons_hd2d_work/archive_v1/` へ退避）。
 2. `js/race_canvas.js` の `'images/dragons/' + id + '.png?v=1'` を `?v=2` へ（スプライトのキャッシュ破り）。
-3. 羽ばたき：翼と背に隙間が無い竜は自動で振幅30%に落ちる。目視で不自然なら `RC_FLAP_CUT[id]`（翼根ライン比率）を個別指定。
+3. 羽ばたき：**リグがある竜はリグ描画（§11）が最優先**。リグ未生成/未ロードの竜だけ従来のスライス羽ばたき（隙間が無い竜は振幅30%・不自然なら `RC_FLAP_CUT[id]` を個別指定）。
 4. `RC_SIZE_MUL` は据え置き（poro小さく／tier7大きく）。
 5. `node tools/check.mjs` → `index.html` の `?v=` を「今ライブの次」へ → 1コミット → main。
 
@@ -213,8 +215,9 @@ no speed lines, no particles. Full body in frame with margin, pure side view fac
 | Phase 2 固有12×2案（nano_banana_pro 2cr） | 24 | 48 |
 | Phase 3 図鑑40×2案＋再生成 | 100 | 200 |
 | 背景除去 52＋予備（実測 1cr/枚） | 60 | 60 |
+| Phase 6 翼なし版 52＋背景除去 52 | 104 | 156 |
 | gpt_image_2 難物（落選のため原則不使用） | 0〜6 | 0〜40 |
-| **合計** | | **約 300〜330cr**（残高内。Phase 6 リグ化を足すと +約160cr で残高ぎりぎり） |
+| **合計** | | **約 450〜490cr**（残高 約471cr に対し**ぎりぎり〜不足**。対策：Phase 3 は1案先行・不合格のみ再生成（−40cr）、Phase 2 の不採用案は背景除去しない（−12cr）。それでも足りなければ Phase 3 途中で報告してクレジット追加を判断） |
 
 ## 8. 委任の分担
 - **Opus 5.5**：Phase 1（画風ロック）・Phase 2（固有12）・特殊4頭・Phase 5（結線・羽ばたき調整・デプロイ）。
@@ -225,44 +228,73 @@ no speed lines, no particles. Full body in frame with margin, pure side view fac
 - race_engine / odds_engine / betting_engine の変更。`RC_DSP_H`・`RC_SIZE_MUL` の変更（サイズ感は現行踏襲）。
 - 全頭が揃う前の部分差し替え。旧3Dぬいぐるみ調への回帰。スプライトの回転（姿勢は頭と尾の高さで表現）。
 
-## 10. 次セッションへの委任プロンプト（そのまま貼る・Opus 5.5 想定）
+## 10. 次セッションへの委任プロンプト（最終版・そのまま貼る・Opus 5.5 想定）
 
 ```
-docs/DRAGON_V2_COOL_RENDER_DIRECTIVE.md を最初に全文読んでから着手。レース数値・race_canvas.js・images/dragons/ は触らない。
-前提：G1 で STYLE_BASE は nano_banana_pro 版（§2c の N1 か N3、ユーザーが選んだ方）に確定済み。画像参照2枚目はその job_id を medias の value に
-そのまま渡す（role image_references）。それが使えない場合だけ images/dragons_v2_staging/_STYLE_BASE_kogane.webp を PNG 変換して media_upload。
-1枚目は本人の images/dragons/<id>.png（中身WebP）を PNG に変換して media_upload → media_confirm。
+docs/DRAGON_V2_COOL_RENDER_DIRECTIVE.md を最初に全文読んでから着手。レース数値（race_engine/odds_engine/betting_engine）は触らない。
+images/dragons/ は G4（52頭完成）まで触らない。確定事項：本線モデル nano_banana_pro／STYLE_BASE＝kogane N1（job_id cfef9354-670c-43f7-ae9b-963a73edef98、
+画像参照2枚目に job_id をそのまま渡す）／原則「別の竜にならない・全頭が同じ顔に収束しない」／リグ化（Phase 6）必須。
 
-やること（Phase 2）：固有12頭（rubel seram poro gando miruka baran rosso momu phenix raika stella glaze）を
-§4 の雛形＋ master JSON（docs/codex_dragon_kit/race_dragons_52_master_list_v1_0.json）＋ confirmed_dragons.md の意匠で、
-nano_banana_pro（2k・4:3・§4 の同一性ロック雛形）各2案、generate_image_batch（12件/回）→ jobs_wait → show_generation_by_ids 1回。
-各案を remove_background（1cr）→ 透過PNG を DL → tools/dragon_v2_sheet.py で bbox/翼根ギャップ/46px可読性を確認 →
-lossy WebP q85（幅1200・≤100KB）にして images/dragons_v2_staging/<id>_a.png / <id>_b.png に保存（拡張子は .png のまま・中身WebP）。
-§5 の合格チェックに落ちたものは同じ雛形で再生成（1頭3回まで）。12頭×2案のコンタクトシート（tools/dragon_v2_sheet.py 出力）を
-tmp/dragon_v2_sheets/ に出し、ユーザーに「各頭どちらを採るか」を聞く（G2）。ブランチにコミット・push・ドラフトPR。
-費用上限：Phase 2 で 90cr。超えそうなら止めて報告。
+今回やること＝Phase 2（固有12頭）：rubel seram poro gando miruka baran rosso momu phenix raika stella glaze。
+1) 各頭、本人の images/dragons/<id>.png（中身WebP）を PNG 変換→media_upload→media_confirm。
+2) §4 の同一性ロック雛形に master JSON（docs/codex_dragon_kit/race_dragons_52_master_list_v1_0.json）と confirmed_dragons.md の意匠を埋め、
+   nano_banana_pro（2k・4:3）で各2案。generate_image_batch（12件/回）→ jobs_wait → show_generation_by_ids 1回。
+3) §5 で自己審査（竜は1頭だけ／別の竜になっていない／姿勢・翼・眼）。不合格は再生成（1頭3回まで）。両案とも合格なら2案を残す。
+4) 合格案を remove_background → DL → tools/dragon_v2_sheet.py で bbox/46px 可読性を確認 → 透過WebP（幅1000・q82）を
+   images/dragons_v2_staging/<id>_a.png / <id>_b.png に保存（拡張子 .png・中身WebP）。
+5) 12頭のコンタクトシートを tmp/dragon_v2_sheets/ に出し、ユーザーに各頭 a/b の選択を聞く（G2）。ここで一旦止めて報告。
+6) G2 の回答後：採用案の翼なし版（§11.1 のプロンプト・参照は採用案の job_id 1枚）を生成→remove_background→
+   images/dragons_v2_staging/<id>_nowing.png に保存。tools/dragon_v2_rig.py（§11.2 の仕様で新規作成）で
+   images/dragons_v2_rigs/<id>/ を生成し node live2d/cli.js validate を通す。
+費用上限：Phase 2 全体で 110cr。超えそうなら止めて報告。ブランチにコミット・push・ドラフトPR。
 ```
-Phase 3（図鑑40頭）は上と同じ手順を archetype 別に 1案ずつ（下位モデルで可）。Phase 5（結線）は本書 §3 Phase 5 のとおり。
+Phase 3（図鑑40頭）は同じ手順を archetype 別に（1案先行・不合格のみ再生成）。Phase 5/6 のランタイム改修は §3 Phase 5 と §11.3 のとおり（Opus 5.5）。
 
-## 11. 「生成後にリグで綺麗に動かす」について（現状の正直な整理・**要判断**）
+## 11. Phase 6：竜ごとのリグで動かす（**必須・ユーザー決定**）
 
-**現計画（Phase 5）は既存の"スライス羽ばたき"で動かす前提で、Live2D風リグでの駆動は含んでいない。**
+**現状**：レースの竜は `rcDrawDragonSprite` の"スライス羽ばたき"（翼根ラインで上下に切り、上帯だけヒンジ回転）で動いている。
+`live2d/`（自作Live2D風ツール：パーツ分解→呼吸/まばたき/翼flutter/尾bend/視線）はレースでは**未使用**で、`rcDrawDragonRig` は
+基準画像1枚用の固定 rig.json（グローバル `RC_RIG`）を色相シフトして使うマスコット専用経路。→ **竜IDごとの rig を読む経路を新設する。**
 
-| 仕組み | 実体 | 52頭への適用 |
-|---|---|---|
-| スライス羽ばたき（現行・スプライト用） | `rcDrawDragonSprite`：翼根ラインで上下に切り、上帯（翼）だけヒンジ回転。体・顔は静止 | 全頭そのまま動く。透過納品で振幅が戻る（§4）。**部位は動かない**（翼帯の回転のみ） |
-| Live2D風リグ（`live2d/`・自作） | 1枚絵→ブラウザのエディタでパーツ分解（head/body/eye/wing/tail…）→ 呼吸/まばたき/翼flutter/尾bend/視線 | **レースでは未使用**（`rcDrawDragonRig` は基準画像1枚用の固定 rig.json＝マスコット専用、コード内コメントどおり52頭の体型に合わない） |
+### 11.1 素材（生成側・Phase 2/3 に組み込み済み）
+- 本体版（合格案）＝ `<id>.png`。
+- **翼なし版**＝本体版の i2i 編集（nano_banana_pro・2cr・画像参照は本体版の job_id 1枚だけ）：
+  ```
+  Edit image 1 with minimal changes: remove BOTH wings completely and fill the exposed back and flank with the dragon's own
+  scales, matching the existing lighting; keep everything else pixel-identical (pose, head, legs, tail, colors, background).
+  Output exactly one dragon, no wings, same framing, same flat gray background.
+  ```
+  両方を `remove_background`（1cr×2）。→ 追加 **+3cr/頭**。
+- 検収：翼なし版を本体版に重ねて**翼以外がズレていない**こと（`tools/dragon_v2_rig.py` が差分率を出す。翼領域外の差分 >3% は再生成）。
 
-### リグ化を計画に足す場合（Phase 6・追加見積）
-1. **パーツ分解の自動化**（手作業で52頭を分解するのは非現実的）：
-   - 生成時に **同じ竜を「翼なし版」でもう1枚**（nano_banana_pro の i2i 編集：`remove the wings and fill the back naturally`）→ 本体レイヤー。
-   - 元画像 − 翼なし版 の差分マスクで **翼レイヤー**を切り出し。尾は本体の左側を bbox 比率で分離（`live2d/cli.js` でリグJSONを機械生成）。
-   - 目パーツはまばたき用に本体から小矩形で切り出し（顔位置は bbox 右上の比率で推定・ズレは個別調整）。
-   - 追加コスト：翼なし版 2cr＋背景除去 1cr ＝ **+3cr/頭（52頭で約160cr）**。残高 482cr 内だが、本線（約280〜330cr）と合わせるとほぼ全額。
-2. **ランタイム改修（表示専用）**：`race_canvas.js` に**竜IDごとの rig.json を読む経路**を追加（現状はグローバル `RC_RIG` 1個）。
-   `images/dragons_v2_rigs/<id>.rig.json`（分離形式・parts/*.webp）を非同期ロードし、未ロード中はスプライト描画へフォールバック。
-   羽ばたき＝翼パーツの `flutter`、尾の `bend`、体の `breathing`、目の `blinkable` を gait 同期で駆動。ウィニングカットも同経路で"生きた"演出に。
-3. **検収**：翼の付け根の継ぎ目（翼なし版の塗り足しの品質）が唯一の難所。継ぎ目が目立つ竜は翼パーツを少し大きめに切って重ねる。
+### 11.2 パーツ分解（`tools/dragon_v2_rig.py`＝Phase 6 で新規・Pillow・依存はそれだけ）
+1. 本体版（透過）と翼なし版（透過）を bbox 合わせで重ね、**差分マスク＝翼**（アルファ差＋色差、膨張2px・穴埋め・最大連結成分のみ）。
+2. `wing` パーツ＝本体版から差分マスクで切り出し（縁は本体版の画素）。ピボット＝翼根（マスクの下端中央寄り＝背との接線の中点）。
+3. `body` パーツ＝翼なし版そのもの（頭・脚・尾を含む）。ピボット＝胸の中心。
+4. `tail` パーツ＝翼なし版の左側を **垂直線 x = bbox.x + 0.34·bbox.w** で切った左部分（尾）。ピボット＝切断線の中点（右端）。
+   `body` からは同じ領域を抜く（切断線で1pxオーバーラップ）。`bend.rootEdge = "right"` で根元固定・先端ほど揺れる（既存 `_rcBendStrips` がそのまま効く）。
+5. `eye` パーツ（任意・まばたき用）＝本体版の顔領域（bbox 右端から 0〜22%・上から 15〜55%）内で**最も暗い円形塊**（黒目）を中心に半径1.6倍の矩形を切り出し。
+   見つからなければ eye なし（まばたきは既存の顔オーバーレイに任せる）。
+6. 出力＝`images/dragons_v2_rigs/<id>/rig.json`（分離形式・`part.file = "parts/<part>.webp"`）＋ `parts/{wing,body,tail,eye}.webp`（透過・幅は本体版と同じ座標系）。
+   `node live2d/cli.js validate images/dragons_v2_rigs/<id>/rig.json` を通す。canvas は本体版の画像サイズ。
+7. モーション既定：wing `bend{amp:.18,freq:1.35,rootEdge:"right"}`＋`flutter`、tail `bend{amp:.11,rootEdge:"right"}`、body `breathing:.15`、eye `blinkable:true`。
 
-**判断してほしいこと**：Phase 6 を入れるか（費用 +約160cr、工数＝生成52×2枚＋ランタイム改修＋検収）。
-入れる場合、Phase 2 の固有12頭から「翼なし版」も同時生成しておく（後から足すと2度手間）。
+### 11.3 ランタイム改修（`js/race_canvas.js`・**表示専用**・数値非干渉）
+1. `RC_DRIG = Object.create(null)`：`_rcDragonRigV2(id)` が `images/dragons_v2_rigs/<id>/rig.json` を fetch → `L2_RIG.deserialize` → `L2_RIG.hydrate(rig, 'images/dragons_v2_rigs/<id>')`
+   → `_rcPrepRig`（既存・_bbox/_eyeC を作る）。404/失敗は `bad=true` で**スプライト描画へフォールバック**（今と同じ見え方）。
+2. `rcDrawDragonRigV2(ctx, o)`：変換は **`rcDrawDragonSprite` と同一**（`RC_DSP_H`×`RC_SIZE_MUL`で高さ正規化・鼻先＝右端が o.x・bob/lean/bank/squash/spin/オーラ）。
+   その座標系で `rig._zsorted` を `_rcDrawRigPart` で描く。**色相シフトは使わない**（`_rcRigPartImg` を通さず `p._img` を直描き＝`rig._noTint=true` 分岐を追加）。
+   wing の `o.design.wingSize` スケールも適用しない（絵に既に反映済み）。
+3. `rcDrawDragon` の優先順：**V2リグ（ロード済み）→ スプライト → 旧リグ → グリッド**。`race_broadcast.js` の出走竜プリロードに rig.json も加える（初手フレームで別の竜が出ないように）。
+4. 顔オーバーレイ（mood/漫符）：V2リグに eye パーツがあれば `rig._eyeC` を使い、無ければスプライト用の推定位置（現行）。
+5. ウィニングカット `rcDrawWinnerCut`：V2リグがあれば同じパーツ描画で**翼を大きくゆっくり羽ばたかせる**（`gait` を遅く）。無ければ現行の縦ストリップ波。
+6. `rcDragonSpriteHalfW`（ラベル/バッジ位置）は rig の `_bbox` から同式で算出。`RC_SIZE_MUL`／`RC_DSP_H` は不変。
+7. index.html：`live2d/js/rig.js` が既に読み込まれていることを確認（`L2_RIG` 参照）。CSS/JS 変更なので `?v=` を「今ライブの次」へ一括更新。
+
+### 11.4 検収（Phase 6）
+□ 翼が背から離れて羽ばたく（継ぎ目なし＝翼なし版の塗り足しが背に馴染む） □ 尾の根元が静止し先端がしなる □ 体の呼吸が僅か
+□ 46px で羽ばたきが読める（過剰に速くない） □ リグ未ロード時にスプライトへ落ちて別の竜が出ない □ 着順・オッズ・配当は不変（`node tools/check.mjs`＋レース1本目視）
+
+### 11.5 費用・工数
+- 生成：翼なし版 52×2cr＋背景除去 52×1cr ＝ **+156cr**。
+- 工数：`tools/dragon_v2_rig.py`（新規）、`race_canvas.js` 改修（上記1〜6）、52頭のリグ目視。Opus 5.5 担当（ランタイムと目視）／下位モデル（生成・切り出し・validate）。
