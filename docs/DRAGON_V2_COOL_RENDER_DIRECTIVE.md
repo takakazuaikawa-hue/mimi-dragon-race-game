@@ -114,7 +114,7 @@ stella＝金星チップの羽毛翼・彗星尾・宇宙鱗／raika＝稲妻角
 ### Phase 4：後処理（機械的・下位モデル）
 1. `remove_background`（Higgsfield）→ 透過PNG。※既存のflood-fillキー抜きは「四隅が不透明な時だけ」動くので、透過納品ならそのまま素通りする（コード変更不要）。
 2. `tools/dragon_v2_sheet.py`（本書と同時に追加）で **bbox・翼根ギャップ・46px縮小の可読性**を機械チェック＋シートを出力。
-3. WebP化（lossy q85・幅1200px程度・**1頭 ≤100KB 目標**、52頭で ≤5MB）。ファイル名は現行どおり `<id>.png`（中身WebPで動く実績あり・コード無変更）。
+3. WebP化（**透過ありlossy・幅1000px・q82**＝候補Aで実測 約100KB。1200px/q85 だと134KB）。**1頭 ≤110KB 目標**、52頭で ≤6MB。ファイル名は現行どおり `<id>.png`（中身WebPで動く実績あり・コード無変更）。
 4. `images/dragons_v2_staging/` に全52頭を揃える（旧 `images/dragons/` はこの時点では触らない）。
 
 ### Phase 5：結線＋デプロイ（Opus 5.5・**G4**＝52頭シートで最終承認後）
@@ -146,6 +146,10 @@ NOT chibi, NOT plush toy, NOT pixel art.
 - `{HORN}` `{TAIL}` `{WING_TYPE}` `{ACCENT}` `{HEX}`：master JSON の該当値を英語で（例 swept-back horns / spade-tipped tail / membrane / ember tail tip）
 - `{SPECIAL}`：§3 Phase 2 の特殊条件（poro/momu/phenix/stella/raika/glaze）、tier7 は `a subtle rainbow shimmer confined to the {part}`、雲系は `large sleepy half-closed eye`
 - **seedream は「no vignette」と書いても暗いグラデ背景を作る** → 四隅flood-fill のキー抜きが効かない（bboxが画面全体になる）。**全頭 `remove_background` を必ず通す**（1cr/枚）。
+  ✅ 候補Aで実証済み（job `b57c5632-d555-48a3-9e9c-426876a99067`）：体はアルファ254で実質不透明・半透明エッジは全体の1%未満・切り抜き良好。
+  ただし**キュー待ちが約15分**あった（generate と違い即時ではない）→ 12件まとめて投げて jobs_wait を回すこと。
+  ⚠ 3Dレンダーは翼の付け根が背に接するため翼根ギャップ検出は **flapClean=false** になる（候補Aも false）＝羽ばたきは自動で振幅30%。
+  Phase 5 で目視し、物足りなければ `RC_FLAP_CUT[id]` に翼根ライン比率（Aなら約0.47）を入れてフル振幅にする（表示のみ）。
 - 同アーキタイプの先行完成竜を参照に足さない（クローン化の再発防止）。参照は本人＋STYLE_BASE の2枚だけ。
 
 ## 5. 1枚ごとの合格チェック（全項目・落としやすい順）
