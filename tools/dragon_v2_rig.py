@@ -4,7 +4,7 @@
   pip install pillow
   python3 tools/dragon_v2_rig.py stage <src_rgba.png> <id> [--nowing]
       → 透過WebP（幅1000・q82）を images/dragons_v2_staging/<id>.png（翼なし版は <id>_nowing.png）に書く
-  python3 tools/dragon_v2_rig.py rig <id> [--tail-cut 0.34]
+  python3 tools/dragon_v2_rig.py rig <id> [--tail-cut 0.34] [--eye X,Y,R]   （目の自動検出が外れた時だけ --eye で手指定）
       → images/dragons_v2_staging/<id>.png と <id>_nowing.png から
         images/dragons_v2_rigs/<id>/rig.json ＋ parts/{wing,body,tail}.webp ＋ meta.json（目の座標など）を作る
         （その後 node live2d/cli.js validate images/dragons_v2_rigs/<id>/rig.json）
@@ -212,7 +212,7 @@ def bbox_rect(im):
     bb = im.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()
     return (bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]) if bb else None
 
-def rig(id_, tail_cut):
+def rig(id_, tail_cut, eye_override=None):
     body = Image.open(os.path.join(STAGE, id_ + ".png")).convert("RGBA")
     nowing = Image.open(os.path.join(STAGE, id_ + "_nowing.png")).convert("RGBA")
     if nowing.size != body.size:
@@ -255,7 +255,7 @@ def rig(id_, tail_cut):
     save_webp(crop_part(rest, br), os.path.join(out, "parts", "body.webp"))
     parts.append(part("tail", "tail", 1, tr, tail_pivot))
     parts.append(part("body", "body", 2, br, (br[0] + br[2] // 2, br[1] + br[3] // 2)))
-    e = find_eye(body)
+    e = eye_override or find_eye(body)
     old_eye = os.path.join(out, "parts", "eye.webp")
     if os.path.exists(old_eye):
         os.remove(old_eye)
@@ -279,6 +279,7 @@ if __name__ == "__main__":
         stage(a[1], a[2], "--nowing" in a)
     elif len(a) >= 2 and a[0] == "rig":
         tc = float(a[a.index("--tail-cut") + 1]) if "--tail-cut" in a else 0.34
-        rig(a[1], tc)
+        eo = tuple(int(v) for v in a[a.index("--eye") + 1].split(",")) if "--eye" in a else None
+        rig(a[1], tc, eo)
     else:
         print(__doc__)

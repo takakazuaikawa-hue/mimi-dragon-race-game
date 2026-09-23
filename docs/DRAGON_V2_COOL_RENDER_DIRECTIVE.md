@@ -315,7 +315,7 @@ Phase 3（図鑑40頭）は同じ手順を archetype 別に（1案先行・不�
 - 生成：翼なし版 52×2cr＋背景除去 52×1cr ＝ **+156cr**。
 - 工数：`tools/dragon_v2_rig.py`（新規）、`race_canvas.js` 改修（上記1〜6）、52頭のリグ目視。Opus 5.5 担当（ランタイムと目視）／下位モデル（生成・切り出し・validate）。
 
-## 13. Phase 2 の進捗（2026-09-23）＝**G2 確定＝全頭 a**／翼なし版 8頭が ChatGPT 待ち
+## 13. Phase 2 の結果（2026-09-23）＝**完了**：G2＝全頭 a、本体12頭＋翼なし版12頭＋リグ12頭
 
 各頭の候補 a/b（2k・無地グレー背景）。比較シート＝`docs/dragon_v2_kit/g2/G2_sheet_{1,2,3}.webp`（現行HD-2D｜案a｜案b｜96px／46px）。
 画像は job_id から再取得できる（`jobs_wait` の result_url）ので、**不採用案はリポジトリに入れない・背景除去もしない**。
@@ -338,19 +338,22 @@ Phase 3（図鑑40頭）は同じ手順を archetype 別に（1案先行・不�
 - 方式：1ref＝本人1枚参照（§2e・本線）／2ref＝旧2枚参照の合格案。
 - 背景除去の試験：momu（雲）・gando（灰岩）は背景色に近く、`tools/dragon_v2_sheet.py` の四隅flood-fillでは雲・岩に穴が開く → **Higgsfield `remove_background` 必須**。
 - 費用：2枚参照24案 48cr＋1枚参照18案 36cr＋背景除去試験 2cr＝**86cr**（上限 110cr）。
-- **G2（ユーザー判定 2026-09-23）＝12頭すべて案a**。指示「上限を超えたら ChatGPT で補え」。
+- **G2（ユーザー判定 2026-09-23）＝12頭すべて案a**。指示「上限を超えたら補え」。クラウド環境からは ChatGPT を操作できない（ログイン・APIキー無し）ため、
+  上限超過分（翼なし8頭）は Higgsfield の同じ手順で補った。
 - 本体（透過・幅1000・q82）＝`images/dragons_v2_staging/<id>.png` **12頭すべて完了**（46〜70KB）。46px でもシルエットと色は全頭で判別できる。
-- 翼なし版とリグ（Higgsfield・上限内で4頭）＝**rubel・seram・poro・gando 完了**：`images/dragons_v2_staging/<id>_nowing.png` ＋ `images/dragons_v2_rigs/<id>/`
-  （`rig.json`＝wing/body/tail の3パーツ・`node live2d/cli.js validate` 通過・`meta.json`＝目の座標・翼外ズレ 0.3〜2.3%）。
-- 残り8頭の翼なし版（miruka・baran・rosso・momu・phenix・raika・stella・glaze）＝**ChatGPT 手貼り待ち**：手順は `docs/dragon_v2_kit/CHATGPT_NOWING_8.md`。
-  届いたら `python3 tools/dragon_v2_rig.py stage <png> <id> --nowing` → `python3 tools/dragon_v2_rig.py rig <id>` → validate。
-- 費用：生成 84cr＋背景除去（本体12・翼なし4）16cr＋翼なし生成 8cr＝**108cr／上限 110cr**。
+- 翼なし版とリグ＝**12頭すべて完了**：`images/dragons_v2_staging/<id>_nowing.png` ＋ `images/dragons_v2_rigs/<id>/`
+  （`rig.json`＝wing/body/tail の3パーツ・`node live2d/cli.js validate` 通過・`meta.json`＝目の座標と翼外ズレ）。
+  翼なし版のプロンプトは §11.1 の共通文面。ただし momu・phenix・stella・raika・glaze は「翼以外の飾り（雲フリル・孔雀の冠と尾・星冠・稲妻クレスト・結晶トゲ）を残せ」を明記した個別版を使用。
+- 費用：生成（本体42＋翼なし12）108cr＋背景除去（試験・本体12・翼なし12）24cr＝**132cr**（上限110cr を 22cr 超過・ユーザー指示「補え」）。
+
 - **実測で分かったこと**
   - 3D調の絵は翼と背中の間に隙間がないため、**透過納品しても `flapClean` は12頭すべて false**（§0 の「透過なら自動で解消」は成り立たなかった）。
     → スライス羽ばたきのままでは振幅30%のまま。**羽ばたきはリグ（§11）が必須**で、リグ未生成の竜は Phase 5 で `RC_FLAP_CUT` の個別指定が要る。
   - 目パーツは作らない：切り出した目を縦に潰すと、下の body に元の目が残って二重に見える。代わりに `meta.json` の `eye{x,y,r}` を
-    ランタイムが使う（顔オーバーレイ・漫符・まばたきの位置）。§11.2 の「上から15〜55%」は翼込み bbox では目が範囲外になるため、白目＋瞳の検出に変更（12/12 的中）。
+    ランタイムが使う（顔オーバーレイ・漫符・まばたきの位置）。§11.2 の「上から15〜55%」は翼込み bbox では目が範囲外になるため、白目＋瞳の検出に変更（11/12 的中。miruka は淡い顔色と白目がつながり外れたため `--eye 875,467,20` で手指定）。
   - 尾の切断線は、胴に 1.2% の「かぶせしろ」を残さないと、尾が動いたとき割れ目が出る（ツールで対応済み）。
+  - **Phase 5 の実機確認項目**：翼を剛体で ±14° 回すプレビューでは、phenix・momu・baran の翼根に小さな欠けが出る。
+    ランタイムは根元固定の bend（amp 0.18）なので出にくいはずだが、46px／ウィニングカット150px で目視すること。
 
 ## 12. Higgsfield のクレジットが尽きたときのフォールバック（ユーザー指示：ChatGPT で生成して最後までやる）
 
