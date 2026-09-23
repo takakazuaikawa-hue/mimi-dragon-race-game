@@ -96,7 +96,7 @@ def color_desc(hexs):
     if sat < 0.35: return "muted gray-" + ("blue" if 190 <= hue <= 270 else "violet" if hue > 270 else "green")
     if hue < 12 or hue >= 345: return "red"
     if hue < 32: return "orange-red"
-    if hue < 48: return "orange"
+    if hue < 40: return "orange"
     if hue < 70: return "golden yellow"
     if hue < 160: return "green"
     if hue < 200: return "teal"
