@@ -1,0 +1,18 @@
+{
+  "id": "benio",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 830,
+    "y": 376,
+    "r": 11
+  },
+  "wingOutsideDrift": 0.0048,
+  "tailCut": 0.34
+}

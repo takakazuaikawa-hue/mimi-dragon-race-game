@@ -4,7 +4,9 @@
   pip install pillow
   python3 tools/dragon_v2_rig.py stage <src_rgba.png> <id> [--nowing]
       → 透過WebP（幅1000・q82）を images/dragons_v2_staging/<id>.png（翼なし版は <id>_nowing.png）に書く
-  python3 tools/dragon_v2_rig.py rig <id> [--tail-cut 0.34] [--eye X,Y,R]   （目の自動検出が外れた時だけ --eye で手指定）
+  python3 tools/dragon_v2_rig.py rig <id> [--tail-cut 0.34] [--eye X,Y,R] [--wingless]   （目の自動検出が外れた時だけ --eye で手指定）
+      --wingless＝元から翼の無い竜（stamina_tank の goro/taiga/konron/banju/gozan/fugaku）。翼なし版は作らず、
+        本体を tail/body の2パーツに分けるだけ（meta.json に "wingless": true）
       → images/dragons_v2_staging/<id>.png と <id>_nowing.png から
         images/dragons_v2_rigs/<id>/rig.json ＋ parts/{wing,body,tail}.webp ＋ meta.json（目の座標など）を作る
         （その後 node live2d/cli.js validate images/dragons_v2_rigs/<id>/rig.json）
@@ -212,35 +214,42 @@ def bbox_rect(im):
     bb = im.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()
     return (bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]) if bb else None
 
-def rig(id_, tail_cut, eye_override=None):
+def rig(id_, tail_cut, eye_override=None, wingless=False):
     body = Image.open(os.path.join(STAGE, id_ + ".png")).convert("RGBA")
-    nowing = Image.open(os.path.join(STAGE, id_ + "_nowing.png")).convert("RGBA")
-    if nowing.size != body.size:
-        nowing = nowing.resize(body.size, Image.LANCZOS)
-    dx, dy = best_shift(body, nowing)
-    if dx or dy:
-        nowing = ImageChops.offset(nowing, dx, dy)
     W, H = body.size
-    m = wing_mask(body, nowing)
-    if m is None or not m.getbbox():
-        sys.exit("翼の差分が取れない（翼なし版が本体と同じ？）")
-    # 検収：翼の外側のズレ
-    near = m.resize((W // 4, H // 4)).filter(ImageFilter.MaxFilter(15)).resize((W, H))     # 翼の周囲 ≈30px（縮小して膨張＝速い）
-    outside = ImageChops.subtract(alpha_mask(body).filter(ImageFilter.MinFilter(3)), near)
-    diff = ImageChops.difference(body.convert("RGB"), nowing.convert("RGB")).convert("L").point(lambda v: 255 if v > 48 else 0)
-    bad = ImageChops.multiply(outside, diff)
-    n_out = max(1, sum(outside.histogram()[128:]))
-    drift = sum(bad.histogram()[128:]) / n_out
-
     out = os.path.join(RIGS, id_)
     os.makedirs(os.path.join(out, "parts"), exist_ok=True)
     parts = []
-    # wing
-    wing = Image.new("RGBA", body.size, (0, 0, 0, 0))
-    wing.paste(body, (0, 0), m)
-    wr = bbox_rect(wing)
-    save_webp(crop_part(wing, wr), os.path.join(out, "parts", "wing.webp"))
-    parts.append(part("wing", "wing", 3, wr, wing_root(m, nowing)))
+    dx = dy = 0
+    drift, wr = 0.0, None
+    if wingless:
+        nowing = body   # 元から翼が無い：本体をそのまま tail/body に切る
+        old_wing = os.path.join(out, "parts", "wing.webp")
+        if os.path.exists(old_wing):
+            os.remove(old_wing)
+    else:
+        nowing = Image.open(os.path.join(STAGE, id_ + "_nowing.png")).convert("RGBA")
+        if nowing.size != body.size:
+            nowing = nowing.resize(body.size, Image.LANCZOS)
+        dx, dy = best_shift(body, nowing)
+        if dx or dy:
+            nowing = ImageChops.offset(nowing, dx, dy)
+        m = wing_mask(body, nowing)
+        if m is None or not m.getbbox():
+            sys.exit("翼の差分が取れない（翼なし版が本体と同じ？ 元から翼が無い竜なら --wingless）")
+        # 検収：翼の外側のズレ
+        near = m.resize((W // 4, H // 4)).filter(ImageFilter.MaxFilter(15)).resize((W, H))     # 翼の周囲 ≈30px（縮小して膨張＝速い）
+        outside = ImageChops.subtract(alpha_mask(body).filter(ImageFilter.MinFilter(3)), near)
+        diff = ImageChops.difference(body.convert("RGB"), nowing.convert("RGB")).convert("L").point(lambda v: 255 if v > 48 else 0)
+        bad = ImageChops.multiply(outside, diff)
+        n_out = max(1, sum(outside.histogram()[128:]))
+        drift = sum(bad.histogram()[128:]) / n_out
+        # wing
+        wing = Image.new("RGBA", body.size, (0, 0, 0, 0))
+        wing.paste(body, (0, 0), m)
+        wr = bbox_rect(wing)
+        save_webp(crop_part(wing, wr), os.path.join(out, "parts", "wing.webp"))
+        parts.append(part("wing", "wing", 3, wr, wing_root(m, nowing)))
     # tail / body（翼なし版を縦線で切る）
     nb = bbox_rect(nowing)
     cut = round(nb[0] + tail_cut * nb[2])
@@ -266,6 +275,8 @@ def rig(id_, tail_cut, eye_override=None):
     meta = {"id": id_, "canvas": {"w": W, "h": H}, "nowingShift": {"x": dx, "y": dy},
             "eye": ({"x": e[0], "y": e[1], "r": e[2]} if e else None),
             "wingOutsideDrift": round(drift, 4), "tailCut": tail_cut}
+    if wingless:
+        meta["wingless"] = True
     with open(os.path.join(out, "meta.json"), "w") as fh:
         fh.write(json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
     print("%s  shift=(%d,%d)  wing=%s  eye=%s  翼外ズレ=%.1f%%" % (os.path.relpath(out, ROOT), dx, dy, wr, e, drift * 100))
@@ -280,6 +291,6 @@ if __name__ == "__main__":
     elif len(a) >= 2 and a[0] == "rig":
         tc = float(a[a.index("--tail-cut") + 1]) if "--tail-cut" in a else 0.34
         eo = tuple(int(v) for v in a[a.index("--eye") + 1].split(",")) if "--eye" in a else None
-        rig(a[1], tc, eo)
+        rig(a[1], tc, eo, "--wingless" in a)
     else:
         print(__doc__)

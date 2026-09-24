@@ -157,6 +157,27 @@ EXPR = {"poro": "a worried, teary expression with big round eyes (no fierce brow
         "yumeji": "the large dreamy half-closed eye kept as is (no fierce brow)"}
 TIER7 = {"goka": "the flames", "raiou": "the lightning", "souten": "the golden feathers", "fugaku": "the armor plates", "yomi": "the trailing mist"}
 
+# 図鑑39頭：アーキタイプ共通の造形語はスプライトとズレる（stamina_tank 6頭は元から翼なし・chiri は角あり・murasame は雨粒角 等）。
+# Phase 3（2026-09-24）で実際に使って合格した文面を docs/dragon_v2_kit/dex_overrides.json に置き、ここで上書きする。
+DEX = json.load(open(P("docs", "dragon_v2_kit", "dex_overrides.json"), encoding="utf-8"))
+IDENT_RE = re.compile(r"(IDENTITY LOCK from image 1 \(must survive\): ).*?(Design notes)", re.S)
+
+def apply_dex(en):
+    i = en["id"]
+    if i in DEX["identity"]:   # 固有の飾り（tier7 の虹など）は identity 側に書き込み済み
+        en["prompt"] = IDENT_RE.sub(lambda m: m.group(1) + DEX["identity"][i] + " " + m.group(2), en["prompt"], count=1)
+    wingless = i in DEX["wingless"]
+    reps = (DEX["l2"]["_wingless"] if wingless else []) + DEX["l2"].get(i, [])
+    if wingless:
+        reps = [["wing shape and placement, ", ""]] + reps
+    for old, new in reps:
+        en["prompt"] = en["prompt"].replace(old, new)
+    en["wingless"] = wingless
+    if wingless:
+        en["prompt_nowing"] = None
+    elif i in DEX["keep"]:
+        en["prompt_nowing"] = NOWING_TMPL.replace("Output exactly one dragon", DEX["keep"][i] + " Output exactly one dragon")
+
 def build_entries():
     entries = []
     uniq = parse_unique(); ext = parse_ext()
@@ -186,6 +207,7 @@ def build_entries():
                                         build=en["build"], posture=posture, special=en["special"], design=en["design"],
                                         expr=EXPR.get(en["id"], EXPR_DEFAULT))
         en["prompt_nowing"] = NOWING_TMPL
+        apply_dex(en)
     # 画像ファイルが実在する id だけ（52頭）
     have = {f[:-4] for f in os.listdir(P("images", "dragons")) if f.endswith(".png")}
     entries = [e for e in entries if e["id"] in have]
@@ -209,7 +231,8 @@ def write_md(entries):
     L.append("3. 出来た画像を `images/dragons_v2_staging/<id>_a.png` として保存（透過PNGのまま）。2案目は `<id>_b.png`。\n")
     L.append("4. 採用案を添付して「翼なし版」プロンプトを貼り、`images/dragons_v2_staging/<id>_nowing.png` として保存。\n")
     L.append("5. Claude に「<id> 届いた」と言う → 以降（検収・WebP化・リグ生成・結線）はこちらで実施。\n")
-    L.append("\n## 翼なし版（全頭共通・採用案を添付して貼る）\n\n```\n" + NOWING_TMPL + "\n```\n")
+    L.append("\n## 翼なし版（採用案を添付して貼る）\n\n共通文面は下。翼以外の飾り（冠・尾・トゲ・霧など）がある竜は、各頭の欄の「翼なし版」を使う（飾りを残せと明記した版）。"
+             "元から翼の無い竜（stamina_tank の6頭）は翼なし版を作らない（`tools/dragon_v2_rig.py rig <id> --wingless`）。\n\n```\n" + NOWING_TMPL + "\n```\n")
     L.append("\n## 52頭\n")
     for i, e in enumerate(entries, 1):
         tier = ("tier%d" % e["tier"]) if e["tier"] else "unique"
@@ -218,6 +241,10 @@ def write_md(entries):
         L.append("- 参照：`images/dragons/%s.png` の1枚だけ\n" % e["id"])
         if e["id"] == "kogane": L.append("- **済**：G1 で N1（job `cfef9354-670c-43f7-ae9b-963a73edef98`）を採用。本体は再生成不要・翼なし版のみ必要。\n")
         L.append("\n```\n" + e["prompt"] + "\n```\n")
+        if e.get("wingless"):
+            L.append("- 翼なし版：不要（元から翼が無い）\n")
+        elif e.get("prompt_nowing") and e["prompt_nowing"] != NOWING_TMPL:
+            L.append("- 翼なし版（この竜専用）：\n\n```\n" + e["prompt_nowing"] + "\n```\n")
     open(out, "w", encoding="utf-8").write("".join(L))
     return out
 

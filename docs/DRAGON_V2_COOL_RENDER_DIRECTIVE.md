@@ -143,6 +143,7 @@ rubel / seram / poro / gando / miruka / baran / rosso / momu / phenix / raika / 
 stella＝金星チップの羽毛翼・彗星尾・宇宙鱗／raika＝稲妻角・電気ヴェイン／glaze＝結晶装甲・控えめ虹屈折。
 
 ### Phase 3：図鑑40頭＝アーキタイプ別バッチ（下位モデルで可・1案→不合格のみ再生成）
+**→ 2026-09-24 実施済み（§14）。G3 待ち。**
 | 順 | archetype | 頭数 | 脚質→姿勢 | id |
 |---|---|---|---|---|
 | ① | fire_bruiser | 7 | 逃げ→前傾 | susu hibana benio shakunetsu guren enma goka |
@@ -354,6 +355,74 @@ Phase 3（図鑑40頭）は同じ手順を archetype 別に（1案先行・不�
   - 尾の切断線は、胴に 1.2% の「かぶせしろ」を残さないと、尾が動いたとき割れ目が出る（ツールで対応済み）。
   - **Phase 5 の実機確認項目**：翼を剛体で ±14° 回すプレビューでは、phenix・momu・baran の翼根に小さな欠けが出る。
     ランタイムは根元固定の bend（amp 0.18）なので出にくいはずだが、46px／ウィニングカット150px で目視すること。
+
+## 14. Phase 3 の結果（2026-09-24）＝**完了（G3 待ち）**：図鑑39頭の本体＋翼なし版33頭＋kogane 翼なし版＋リグ40頭
+
+作業環境：PC（Windows・Claude Code デスクトップ）。Python 3.12＋Pillow を winget で入れて `tools/dragon_v2_*.py` を実行。
+生成は本線どおり `nano_banana_pro`（2k・4:3）・**画像参照は本人 `images/dragons/<id>.png` の1枚だけ**・各頭1案先行→不合格のみ再生成。
+比較シート（G3）＝`docs/dragon_v2_kit/g3/G3_{1..7}.webp`（アーキタイプ別：現行HD-2D｜V2｜96px・46px）。
+
+- **台帳（PROMPTS_52.md）の造形語は、図鑑39頭では誤記が多かった**（アーキタイプ共通語を機械で埋めていたため）。スプライトを目視して直した：
+  - **stamina_tank の goro／taiga／konron／banju／gozan／fugaku は元から翼が無い**（kabe だけ小翼あり）。台帳の "small membrane wings" で生成すると翼が生えて別の竜になった（6/6）→「翼を描くな」と明記して再生成。
+  - chiri は角あり（台帳は「角なし」）、murasame は雨粒型の青い角（台帳は「白い長角」）、tsumuji の尾は渦巻き（台帳は fin tail）、紫系の竜が "gray-blue" と書かれていた 等。
+  - 直した文面は `docs/dragon_v2_kit/dex_overrides.json` に置き、`tools/dragon_v2_prompts.py` が上書きして PROMPTS_52.md を再生成する（ChatGPT フォールバックも同じ文面になる）。
+- **元から翼の無い竜のリグ**：`tools/dragon_v2_rig.py rig <id> --wingless` を追加（翼なし版を作らず tail/body の2パーツ・meta.json に `"wingless": true`）。
+  → Phase 5 のランタイムは「wing パーツが無い rig」を許容すること（羽ばたきなし・尾と呼吸だけ）。スライス羽ばたきにも落とさない。
+- 翼なし版は全頭「翼以外の飾りを残せ」を個別に明記（炎の鬣・槍角・忍者マフラー・稲妻角・王冠・渦巻き尾・霧・夕霧の被膜・雲の鬣 等）。
+  kirari だけ1回目が無変更で返った（翼が消えない）→「NO WINGS in the output」を先頭に置いた強い文面で成功。
+- 検収：翼外ズレは全頭 3% 未満（最大 shio 2.5%＝波ヒレの塗り直し、kabe 1.2%、他は 0.3〜1.1%）。`node live2d/cli.js validate` は40頭すべて通過。
+- 目の自動検出は 33/40 的中。外れた7頭（hibana＝検出なし、hayao・nagi・yoi＝白い角/鬣に反応、konron・yomi・yumeji＝ずれ）は目盛り付き拡大図で読み取り `--eye` で手指定済み。
+- 費用：本体 52枚（39＋再生成13）104cr＋翼なし版 35枚（34＋kirari 再生成1）70cr＋背景除去 74枚 74cr ≒ **246cr**（残高 340→94cr）。
+- 不合格（再生成）と理由：hibana（頭の炎が消えた）／goro・taiga・konron・banju・gozan・fugaku（翼が生えた・banju は苔緑が灰色化）／nagi（ミントが灰色化）／
+  shio（波形の翼とヒレが消えた）／arashi（嵐雲色のボロ翼が澄んだ翼に）／sazare（暗いオリーブ化）／chiri（薄紫が灰青化）＝本体13件、kirari 翼なし版1件。いずれも2回目で合格（3回目は無し）。
+
+採用 job_id（不採用案はリポジトリに入れない。job_id から再取得できる）：
+
+| 竜 | 本体 job_id | 翼なし版 job_id | 備考 |
+|---|---|---|---|
+| kogane | `cfef9354-670c-43f7-ae9b-963a73edef98（G1）` | `141106f8-4e20-413e-a152-97b8e28fa470` |  |
+| susu | `1c8f6c30-444e-49e0-9b52-295c36f26570` | `02990ecd-6d12-46e2-800f-1a911051da8b` |  |
+| hibana | `9e85af6f-2a10-4bcc-8599-fa3c0b917e04` | `7962a84b-da40-46c9-a42f-e0dc30185ab5` | 1回目は頭の炎が消えた→再生成 |
+| benio | `365a5c73-6eed-4486-a38f-b0bc66331b65` | `f6f3cf5f-6fba-4149-836b-7909416c2356` |  |
+| shakunetsu | `a94e20f1-ebe2-441d-abfc-7563d9d80d74` | `1535eb06-6bc8-4359-bbc4-cac5ea820d5a` |  |
+| guren | `8030c3d8-909a-4226-a60b-45ced0504369` | `5b0b05a7-b9b0-4830-84f4-d6a165d4d24d` |  |
+| enma | `b1455fc4-0030-4ffa-87a1-c3b2ef3f0f33` | `92cf03b4-5e57-47dc-b276-fd44456b9bef` |  |
+| goka | `f7bbd767-6113-491c-82f9-267adc26f9fe` | `abd747b1-f8f0-49be-83d3-6ff2df524fd4` |  |
+| akane | `50cd633d-3d25-4280-8865-2549c5f0af77` | `2808bf26-17a9-44ca-8a33-7d5026ca3c05` |  |
+| kazemaru | `16f8c9ce-0edf-479a-81f2-b0ad97ea49e3` | `dea60b93-7c68-49bd-84d5-f1c83cf13171` |  |
+| hayate | `bc14adab-3692-4614-8c8e-09ce3bbc0e36` | `bbe6a5c8-4751-490e-b912-0f979b1d5e9c` |  |
+| raijin | `86796131-826f-493b-977c-1b6f2577c504` | `ae14c699-878c-456e-b279-6adeea65f75c` |  |
+| hayao | `bc4a0a10-b2e2-4cf9-ba80-84fc7006b9be` | `cf2f8a13-93a8-4f87-b864-631f042b4323` |  |
+| raiou | `91453c8b-9a16-49ca-8bbd-d492103a9ae6` | `345ebdba-da3e-419e-94ed-c29df08c916d` |  |
+| goro | `ec3e403d-0be3-4bb4-a554-0fb256b5a803` | —（元から翼なし） | 翼なし竜（1回目は台帳の誤記で翼が生えた→再生成） |
+| kabe | `c12556e3-d6df-416c-adff-1d72b0a0cd41` | `3ea62813-0273-4f3f-9226-c93181b69833` |  |
+| taiga | `ec89190b-758d-4a60-927e-567cbad980ba` | —（元から翼なし） | 翼なし竜・同上 |
+| konron | `0228f70c-78c5-4aff-9c71-a1f6405d4a69` | —（元から翼なし） | 翼なし竜・同上 |
+| banju | `41bac27b-c627-4ce9-8af3-c1572e1b09e0` | —（元から翼なし） | 翼なし竜・同上＋苔緑が灰色化 |
+| gozan | `b40d0d51-003c-49d4-8956-67c989659674` | —（元から翼なし） | 翼なし竜・同上 |
+| fugaku | `4d56c39d-2f9c-4fc4-bdae-a93001e42897` | —（元から翼なし） | 翼なし竜・同上 |
+| nagi | `38d06285-d75b-42a4-9d7b-d7c0f04906f5` | `9e2a6a06-74d6-452c-aa91-78c805cc839b` | 1回目はミントが灰色化→再生成 |
+| shio | `330a596f-1578-4fc0-8786-daa9993fa632` | `a35dffa0-826b-4d79-8376-8e6911cdf463` | 1回目は波形の翼とヒレが消えた→再生成 |
+| arashi | `b9e20352-b4fb-48f4-a976-21a4343f3316` | `916bc1d5-46c2-4da1-a041-18633e802eed` | 1回目は嵐雲色のボロ翼が澄んだ翼に→再生成 |
+| sora | `eef1d9b9-27f4-4cab-aee6-f8eaa89c17f2` | `f78a3243-7115-4ce5-8cd3-cc676f60e73b` |  |
+| tenku | `1f556dd2-045c-4e43-8eba-98ae57e68aa3` | `84e48ab7-a371-4d5a-99e8-dfa9102774eb` |  |
+| souten | `dd460849-dd3c-4016-8b46-0954d752ad71` | `a206e0f5-1654-45cf-b4cb-c96f1837e81c` |  |
+| tsumuji | `a8d7e64d-3d42-47b6-9737-43b38dc8c763` | `6d8fc837-81e4-47a1-9350-90427baf5b08` |  |
+| sazare | `e4515c71-97ca-4a89-b3bf-0c6cc7494a53` | `c76b8d2f-3ab0-4802-85ae-55694d11ea28` | 1回目は暗いオリーブ化・細波模様が弱い→再生成 |
+| kirari | `50b999c2-b734-4ed9-9eb3-4d7a469c34e3` | `509aefa7-2aa3-4176-a28a-7aad5e5a337b` | 翼なし版1回目は翼が消えず→再生成 |
+| senpu | `3a78e904-3620-4653-838d-265ce26e3d1a` | `cc0cc80f-b2f1-4266-ac41-63b0d0ecd449` |  |
+| reppu | `e53d07c0-3dae-4ab4-bf13-0f76fead2948` | `039a2412-48f3-4f66-8cc2-4899c31bf930` |  |
+| yoi | `1d3823f7-8e0f-40ed-a549-e112dfc06a55` | `8cb2ea66-c0b7-4ea9-94d5-e19bb98b2fb7` |  |
+| murasame | `19f01d80-7386-429c-b20b-7f1bcb30ed00` | `f63009fd-68ff-4dac-8704-aedd36ad985d` |  |
+| shirahae | `8d72f80f-1cfb-4311-8a5c-7a5d16246f51` | `2a9f06f8-87ed-4603-9a88-e0d6e2c07c7f` |  |
+| gekka | `64fc4995-f2be-4986-ad75-28f4ee881fb1` | `df2656f4-0790-44c5-b180-ed23e542a2b0` |  |
+| yugiri | `5590ffa7-d840-4521-9af9-83bba927d55b` | `21fcc436-69a2-4c92-8cd8-79c997a722e3` |  |
+| yomi | `67af992b-c7fc-4f9b-ab34-d22b5bc29804` | `bbb5a08f-e3af-42c3-ac45-70cce6254a18` |  |
+| chiri | `63b56a13-8c78-4681-9b6e-9a8a7a99ea2f` | `f60daefc-99a2-4105-b14f-67d8eb1a3770` | 1回目は薄紫が灰青化→再生成 |
+| yumeji | `eae6077a-9c4e-4b79-88d8-62bf1eaaa178` | `2ab30dba-39e1-4b9f-b9e7-f05834aae31f` |  |
+
+**次（G3＝ユーザー確認）**：`docs/dragon_v2_kit/g3/` の7枚で、アーキタイプごとに「別の竜になっていない／全頭が同じ顔に収束していない」を確認してもらう。
+差し戻しがあればその竜だけ再生成（残高 94cr＝約15頭分）。G3 通過後は Phase 5（結線・`race_canvas.js` の竜別リグ描画・G4・デプロイ）。
 
 ## 12. Higgsfield のクレジットが尽きたときのフォールバック（ユーザー指示：ChatGPT で生成して最後までやる）
 

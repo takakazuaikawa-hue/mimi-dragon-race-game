@@ -1,0 +1,19 @@
+{
+  "id": "goro",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 831,
+    "y": 375,
+    "r": 10
+  },
+  "wingOutsideDrift": 0.0,
+  "tailCut": 0.34,
+  "wingless": true
+}
