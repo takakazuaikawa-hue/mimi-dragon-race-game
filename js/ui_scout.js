@@ -503,7 +503,7 @@ function _scoutWinPop(d, isNew, loreNew) {
   const box = el("div", "navpop infopop scw-pop " + T.cls);
   box.innerHTML =
     `<div class="navpop-t">🤝 ${d.name}と ともだちに！</div>` +
-    `<div class="scw-art"><div class="scw-ring"></div><img class="scw-img" alt=""></div>` +
+    `<div class="scw-art"><div class="scw-ring"></div><img class="scw-img" alt=""></div>` +   // カードが作れない時の従来表示（下で差し替え）
     `<div class="scw-sub">${T.nm ? `✨${T.nm}クラス・` : ""}気性 ${temper}</div>` +
     (loreNew ? `<div class="scw-lore">📜 断章IIIが図鑑に増えた</div>` : "");
   const btns = el("div", "navpop-btns");
@@ -518,6 +518,10 @@ function _scoutWinPop(d, isNew, loreNew) {
   ov.appendChild(box);
   ov.onclick = (ev) => { if (ev.target === ov) close(); };
   document.body.appendChild(ov);
+  // 🃏 竜V2：仲間になった竜のカードが裏→表にめくれる（レア度で光る）。紙吹雪（1.1秒）が終わってからめくる。
+  if (typeof tcgFlipReveal === "function") {
+    try { box.querySelector(".scw-art").replaceWith(tcgFlipReveal(d, 1.05)); return; } catch (e) {}
+  }
   if (typeof _scSpriteInto === "function") _scSpriteInto(box.querySelector(".scw-img"), d.id);
 }
 

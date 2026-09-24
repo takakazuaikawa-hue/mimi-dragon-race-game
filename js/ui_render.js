@@ -1600,14 +1600,77 @@ function dexRarity(d) {
   if (t >= 3) return { key: "r", label: "中堅", stars: 2 };
   return { key: "c", label: "若竜", stars: 1 };
 }
+// 図鑑の章＝系統ごと（図鑑番号はこの順に 001〜）。固有（物語の12頭）を先頭に。
+const DEX_SECTIONS = [
+  { ic: "👑", title: "固有竜", ids: ["rubel", "seram", "poro", "gando", "miruka", "baran", "rosso", "momu", "phenix", "raika", "stella", "glaze"] },
+  { ic: "🔥", title: "炎の系統", ids: ["susu", "hibana", "benio", "shakunetsu", "guren", "enma", "goka"] },
+  { ic: "⚡", title: "疾風の系統", ids: ["akane", "kazemaru", "hayate", "raijin", "hayao", "raiou"] },
+  { ic: "⛰", title: "岩の系統", ids: ["goro", "kabe", "taiga", "konron", "banju", "gozan", "fugaku"] },
+  { ic: "🕊", title: "翼の系統", ids: ["nagi", "shio", "arashi", "sora", "tenku", "souten"] },
+  { ic: "🌀", title: "旋風の系統", ids: ["tsumuji", "sazare", "kirari", "senpu", "reppu"] },
+  { ic: "🌫", title: "霧の系統", ids: ["yoi", "murasame", "shirahae", "gekka", "yugiri", "yomi"] },
+  { ic: "☁", title: "雲と金鱗", ids: ["chiri", "yumeji", "kogane"] }
+];
+function dexSections() {   // 章に無い竜（将来の追加分）は「その他」に拾う＝図鑑から漏れない
+  const all = DEX_SECTIONS.reduce((a, s) => a.concat(s.ids), []);
+  const rest = DRAGONS.filter(d => all.indexOf(d.id) < 0).map(d => d.id);
+  const out = DEX_SECTIONS.map(s => ({ ic: s.ic, title: s.title, ids: s.ids.filter(id => DRAGONS.some(d => d.id === id)) }));
+  if (rest.length) out.push({ ic: "🐉", title: "その他", ids: rest });
+  return out;
+}
+function dexNo(id) {
+  let n = 0, hit = 0;
+  dexSections().forEach(s => s.ids.forEach(x => { n++; if (x === id) hit = n; }));
+  return hit || (DRAGONS.findIndex(d => d.id === id) + 1);
+}
+function dexSectionOf(id) { const s = dexSections().find(x => x.ids.indexOf(id) >= 0); return s ? s.title : ""; }
+// 未発見カードのシルエット（竜の絵を黒一色に）。絵が読めるまで false。
+function _dexPaintSilhouette(cv, d) {
+  const e = (typeof _rcDragonSprite === "function") ? _rcDragonSprite(d.id) : null;
+  if (!e || !e.ok || !e.box) return false;
+  const W = +cv.dataset.w || 126, H = +cv.dataset.h || 88, k = _dexHiDPI(cv, W, H), ctx = cv.getContext("2d");
+  const src = e.cv || e.img, b = e.box, padX = W * 0.07, padT = H * 0.1, padB = H * 0.14;
+  let h = H - padT - padB, w = h * b.w / b.h;
+  if (w > W - padX * 2) { w = W - padX * 2; h = w * b.h / b.w; }
+  ctx.setTransform(k, 0, 0, k, 0, 0); ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(src, b.x, b.y, b.w, b.h, (W - w) / 2, H - padB - h, w, h);
+  ctx.globalCompositeOperation = "source-in"; ctx.fillStyle = "rgba(6,5,14,0.94)"; ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "source-over";
+  return true;
+}
+// カードを「手に入れた」瞬間（スカウト成立）：裏→表にめくれて、レア度で光る。表示のみ・数値非干渉。
+// delay＝めくり始めるまでの秒（成立の紙吹雪と重ならないように呼び出し側が渡す）。
+function tcgFlipReveal(d, delay) {
+  const entry = (state.player.collection || {})[d.id] || { records: {} };
+  const rar = dexRarity(d), no = dexNo(d.id);
+  const box = el("div", "tcg-reveal rar-" + rar.key);
+  box.style.setProperty("--d", (delay == null ? 0.45 : delay) + "s");
+  const scale = el("div", "tcg-flip"), flip = el("div", "tcg-flip-in");
+  const front = _tcgCardEl(d, no, Object.assign({}, entry, { seen: true }), false);
+  front.classList.add("tcg-side-front");
+  const back = el("div", "tcg-card back tcg-side-back");
+  back.innerHTML = `<div class="tcg-back"><div class="tcg-back-emb">竜</div><div class="tcg-back-q">？？？</div><div class="tcg-back-no">No.${String(no).padStart(3, "0")}</div></div>`;
+  flip.appendChild(front); flip.appendChild(back); scale.appendChild(flip);
+  box.appendChild(el("div", "tcg-rays")); box.appendChild(scale);
+  box.appendChild(el("div", "tcg-burst"));
+  box.appendChild(el("div", "tcg-pop", rar.label + "　" + "★".repeat(rar.stars)));
+  const cv = front.querySelector("canvas");
+  if (cv) { cv.dataset.did = d.id; let n = 0; const t = () => { if (!_dexPaintCard(cv, d) && ++n < 25 && document.body.contains(cv)) setTimeout(t, 120); }; setTimeout(t, 0); }
+  setTimeout(() => { try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} }, (delay == null ? 0.45 : delay) * 1000);
+  return box;
+}
 // big＝詳細ポップの大きいカード（アートを大きく・フレーバー文つき・傾けるとホロが光る）
 function _tcgCardEl(d, no, entry, big, lore) {
   const seen = !!(entry && entry.seen), fav = !!(entry && entry.favorite);
-  const rar = dexRarity(d), num = "No." + String(no).padStart(2, "0");
-  const card = el("div", "tcg-card " + (seen ? "rar-" + rar.key : "back") + (big ? " big" : "") + (fav ? " fav" : ""));
+  const rar = dexRarity(d), num = "No." + String(no).padStart(3, "0");
+  const card = el("div", "tcg-card rar-" + rar.key + (!seen ? " unseen" : "") + (big ? " big" : "") + (fav ? " fav" : ""));
   card.style.setProperty("--dc", (typeof dragonColor === "function") ? dragonColor(d) : (d.color || "#888"));
-  if (!seen) {
-    card.innerHTML = `<div class="tcg-back"><div class="tcg-back-emb">竜</div><div class="tcg-back-q">？？？</div><div class="tcg-back-no">${num}</div></div>`;
+  if (!seen) {    // 未発見＝竜のシルエット（誰かはわからない。枠でレア度だけ見える）
+    card.innerHTML = `<div class="tcg-face">` +
+      `<div class="tcg-top"><span class="tcg-name">？？？</span></div>` +
+      `<div class="tcg-art"><canvas width="126" height="88" data-w="126" data-h="88" data-sil="1"></canvas><span class="tcg-q">？</span></div>` +
+      `<div class="tcg-band"><span class="tcg-class">${rar.label}</span><span class="tcg-no">${num}</span></div>` +
+      `<div class="tcg-foot"><span>未発見</span></div></div>`;
     return card;
   }
   const rc = (entry && entry.records) || {};
@@ -1616,7 +1679,8 @@ function _tcgCardEl(d, no, entry, big, lore) {
   card.innerHTML =
     `<div class="tcg-face">` +
       `<div class="tcg-top"><span class="tcg-name">${d.name}</span></div>` +
-      `<div class="tcg-art"><span class="tcg-rar">${"★".repeat(rar.stars)}</span><canvas width="${aw}" height="${ah}" data-w="${aw}" data-h="${ah}"></canvas>${fav ? `<span class="tcg-fav">★</span>` : ""}</div>` +
+      (big ? `<div class="tcg-kind">分類：${(d.name.match(/^(.+?竜)/) || [, d.name])[1]}　／　${dexSectionOf(d.id)}</div>` : "") +
+      `<div class="tcg-art"><span class="tcg-rar">${"★".repeat(rar.stars)}</span>${entry && entry.scouted ? `<span class="tcg-ally">仲間</span>` : ""}<canvas width="${aw}" height="${ah}" data-w="${aw}" data-h="${ah}"></canvas>${fav ? `<span class="tcg-fav">★</span>` : ""}</div>` +
       `<div class="tcg-band"><span class="tcg-style">${STYLE_LABEL[d.style] || ""}</span><span class="tcg-class">${rar.label}</span><span class="tcg-no">${num}</span></div>` +
       `<div class="tcg-traits">${traits}</div>` +
       (big && d.portraitTone ? `<div class="tcg-flavor">— ${d.portraitTone} —</div>` : "") +
@@ -1660,7 +1724,7 @@ function showCollectionDragonDetail(d) {   // ※poro.js の showDragonDetail(id
   const card = el("div", "card dex-detail");
   card.innerHTML = `<button class="dex-detail-x" aria-label="閉じる">×</button>`;
   // 大きいカード（トレーディングカード）＝竜が羽ばたき、指で傾けるとホロが光る
-  const big = _tcgCardEl(d, DRAGONS.indexOf(d) + 1, entry, true, notes[0]);
+  const big = _tcgCardEl(d, dexNo(d.id), entry, true, notes[0]);
   card.appendChild(big);
   const rest = el("div", "dd-rest");
   rest.innerHTML =
@@ -1740,7 +1804,7 @@ function _dexRepaintUntilReady(grid) {
       const d = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === cv.dataset.did) : null;
       if (!d) return;
       try { if (typeof _rcDragonSprite === "function") _rcDragonSprite(d.id); } catch (e) {}   // 読み込みを促す
-      if (!_dexPaintCard(cv, d)) pending++;
+      if (!(cv.dataset.sil ? _dexPaintSilhouette(cv, d) : _dexPaintCard(cv, d))) pending++;
     });
     if (pending && tries < 12 && document.body.contains(grid)) setTimeout(tick, 140);
   };
@@ -1756,7 +1820,15 @@ function renderCollection() {
   }
   state.ui.screen = "collection";
   const app = beginScreen();
-  app.appendChild(el("h2", null, "竜図鑑"));
+  const _h = el("h2", "dex-h", "竜図鑑");
+  const _help = el("button", "dex-help", "？");
+  _help.setAttribute("aria-label", "竜図鑑の見かた");
+  _help.onclick = () => showInfoPopup("🃏 竜図鑑の見かた",
+    `<div class="mm-row"><span class="mm-ic">🤝</span><div><b>スカウトでカードを手に入れる</b><small>竜スカウトで心を開いてくれた竜は、カードがめくれて「仲間」の印がつきます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">★</span><div><b>レア度＝竜の格</b><small>若竜（銀）→中堅（青）→竜王級（金）→祝祭級（薔薇金）→神格（虹）。物語の12頭は固有（黒金）。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">？</span><div><b>シルエット＝まだ会っていない竜</b><small>その竜が走るレースを観戦すると図鑑に載ります。枠の色でレア度だけ先にわかります。</small></div></div>`);
+  _h.appendChild(_help);
+  app.appendChild(_h);
   const seenCount = Object.values(state.player.collection || {}).filter(e => e.seen).length;
   const _ls = (typeof dragonLoreStats === "function") ? dragonLoreStats() : null;
   app.appendChild(el("div", "card", `見た竜: <b>${seenCount}</b> / ${DRAGONS.length} 種` +
@@ -1789,24 +1861,37 @@ function renderCollection() {
   });
   app.appendChild(fbar);
 
-  // 竜カード・グリッド＝トレーディングカード風（レア度の枠・ホロ・未発見はカード裏）。表示のみ。
-  const grid = el("div", "dex-grid tcg");
+  // 竜カード＝トレーディングカード風。系統ごとの章（収集数つき）・未発見はシルエット・スカウトした竜は「仲間」の印。表示のみ。
+  const grid = el("div", "dex-book");
   let shown = 0;
-  DRAGONS.forEach((d, idx) => {
-    const entry = (state.player.collection || {})[d.id];
-    const seen = !!(entry && entry.seen);
-    const fav = !!(entry && entry.favorite);
-    if (_dexFilter === "seen" && !seen) return;
-    if (_dexFilter === "fav" && !fav) return;
-    const card = _tcgCardEl(d, idx + 1, entry, false);
-    card.style.setProperty("--i", shown);
-    shown++;
-    if (seen) {
+  dexSections().forEach(sec => {
+    const ds = sec.ids.map(id => DRAGONS.find(d => d.id === id)).filter(Boolean);
+    const got = ds.filter(d => { const en = (state.player.collection || {})[d.id]; return en && en.seen; }).length;
+    const cards = [];
+    ds.forEach(d => {
+      const entry = (state.player.collection || {})[d.id];
+      const seen = !!(entry && entry.seen), fav = !!(entry && entry.favorite);
+      if (_dexFilter === "seen" && !seen) return;
+      if (_dexFilter === "fav" && !fav) return;
+      const card = _tcgCardEl(d, dexNo(d.id), entry, false);
+      card.dataset.did = d.id;
+      card.style.setProperty("--i", shown);
+      shown++;
       const cv = card.querySelector("canvas");
-      if (cv && cv.getContext) { cv.dataset.did = d.id; _dexPaintCard(cv, d); }
-      card.onclick = () => showCollectionDragonDetail(d);
-    }
-    grid.appendChild(card);
+      if (cv && cv.getContext) { cv.dataset.did = d.id; if (cv.dataset.sil) _dexPaintSilhouette(cv, d); else _dexPaintCard(cv, d); }
+      if (seen) card.onclick = () => showCollectionDragonDetail(d);
+      cards.push(card);
+    });
+    if (!cards.length) return;
+    const pct = Math.round(got / (ds.length || 1) * 100);
+    const head = el("div", "dex-sec" + (got === ds.length ? " done" : ""));
+    head.innerHTML = `<span class="dex-sec-ic">${sec.ic}</span><b>${sec.title}</b>` +
+      `<span class="dex-sec-cnt">${got === ds.length ? "コンプ！" : `あと${ds.length - got}頭`}　${got}/${ds.length}</span>` +
+      `<i class="dex-sec-bar"><em style="width:${pct}%"></em></i>`;
+    grid.appendChild(head);
+    const g = el("div", "dex-grid tcg");
+    cards.forEach(c => g.appendChild(c));
+    grid.appendChild(g);
   });
   app.appendChild(grid);
   _dexRepaintUntilReady(grid);   // ★スプライトは非同期ロード＝初回描画では間に合わない（下の注記）
@@ -3935,6 +4020,7 @@ function drawRecapScreen() {
         goRow.onclick = goStory;
         goRow.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); goStory(); } };
       }
+
       app.appendChild(box);
     } else {
       if (c.featuredBonus) app.appendChild(el("div", "rs-bonus", `★ 注目レース達成ボーナス　<b>＋${fmtCoins(c.featuredBonus)}</b>`));
