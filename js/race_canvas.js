@@ -966,17 +966,112 @@ function _rcDragonSprite(id) {
       e.ok = true;
     };
     e.img.onerror = function () { e.bad = true; };          // 無ければ従来描画へ（数値・表示とも安全）
-    e.img.src = 'images/dragons/' + id + '.png?v=1';
+    e.img.src = 'images/dragons/' + id + '.png?v=' + RC_DRAGON_ART_V;
   }
   return e;
 }
-function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok); }
+// ── 竜V2：竜ごとのリグ（images/dragons_v2_rigs/<id>/rig.json＝wing/body/tail）─────────────
+// docs/DRAGON_V2_COOL_RENDER_DIRECTIVE.md §11.3。置き方はスプライトと同一（体の高さで正規化・鼻先アンカー）。
+// 翼＝根元固定の“しなり”羽ばたき／尾＝根元固定のしなり／胴＝呼吸。色相シフトはしない（絵が本人の色）。
+// wing パーツが無い rig＝元から翼の無い竜（goro 等 stamina_tank 6頭）＝羽ばたかない。
+// 未ロード・404 はスプライト描画へ落ちる（同じ絵なので別の竜は出ない）。表示専用＝数値非干渉。
+const RC_DRAGON_ART_V = 2;           // 竜の絵とリグのキャッシュ破り（V2 刷新で 1→2）
+const RC_DRIG = Object.create(null);
+function _rcDragonRigV2(id) {
+  if (!id || typeof L2_RIG === 'undefined' || typeof fetch !== 'function') return null;
+  let e = RC_DRIG[id];
+  if (!e) {
+    e = RC_DRIG[id] = { ok: false, bad: false, rig: null };
+    const base = 'images/dragons_v2_rigs/' + id;
+    fetch(base + '/rig.json?v=' + RC_DRAGON_ART_V)
+      .then(function (r) { if (!r.ok) throw new Error('rig ' + r.status); return r.text(); })
+      .then(function (t) {
+        const rig = L2_RIG.deserialize(t);
+        rig.parts.forEach(function (p) { p.src = base + '/' + p.file + '?v=' + RC_DRAGON_ART_V; });
+        return L2_RIG.hydrate(rig);
+      })
+      .then(function (rig) {
+        rig._zsorted = L2_RIG.sortedByZ(rig);
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        rig.parts.forEach(function (p) { x0 = Math.min(x0, p.rect.x); y0 = Math.min(y0, p.rect.y); x1 = Math.max(x1, p.rect.x + p.rect.w); y1 = Math.max(y1, p.rect.y + p.rect.h); });
+        rig._bbox = { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+        e.rig = rig; e.ok = true;
+      })
+      .catch(function () { e.bad = true; });
+  }
+  return e;
+}
+function _rcRigV2Ok(id) {
+  if (typeof window !== 'undefined' && window.RC_USE_V2RIG === false) return false;   // 比較用：false でスプライトの羽ばたきに戻す
+  const e = RC_DRIG[id]; return !!(e && e.ok);
+}
+// 描画倍率に合う縮小版パーツ（1/2 刻み）を一度だけ作る。幅1000pxの絵を毎フレーム46pxへ縮めると
+// スプライトの約15倍重い（8頭で 2.1ms/フレーム・PC実測）ため。eff＝画面ピクセル/リグピクセル（DPR込み）。
+function _rcRigV2At(rig, eff) {
+  let lv = 1; while (lv > 0.125 && lv / 2 >= eff * 1.25) lv /= 2;
+  const cache = rig._lv || (rig._lv = {});
+  let r = cache[lv];
+  if (!r) {
+    r = cache[lv] = { lv: lv, parts: rig._zsorted.map(function (p) {
+      let img = p._img;
+      if (img && lv < 1) {
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * lv)); c.height = Math.max(1, Math.round(img.height * lv));
+        const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, c.width, c.height); img = c;
+      }
+      return { role: p.role, _img: img, rect: { x: p.rect.x * lv, y: p.rect.y * lv }, pivot: { x: p.pivot.x * lv, y: p.pivot.y * lv } };
+    }) };
+  }
+  return r;
+}
+function _rcCtxScale(ctx) {
+  try { const m = ctx.getTransform(); return Math.hypot(m.a, m.b) || 1; } catch (e) { return (window.devicePixelRatio || 1); }
+}
+function _rcDrawRigV2Parts(ctx, parts, wingPh, wingAmp, tailPh, breathe) {
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i]; if (!p._img) continue;
+    const bx = p.rect.x - p.pivot.x, by = p.rect.y - p.pivot.y;
+    ctx.save();
+    ctx.translate(p.pivot.x, p.pivot.y);
+    if (p.role === 'wing') _rcBendStrips(ctx, p._img, bx, by, wingPh, wingAmp, 'right');        // 翼根固定・翼端ほど大きく
+    else if (p.role === 'tail') _rcBendStrips(ctx, p._img, bx, by, tailPh, 0.11, 'right');      // 尾の付け根固定
+    else { if (p.role === 'body') ctx.scale(1, 1 + breathe); ctx.drawImage(p._img, bx, by); }
+    ctx.restore();
+  }
+}
+function rcDrawDragonRigV2(ctx, o) {
+  const rig = RC_DRIG[o.id].rig, b = rig._bbox;
+  const px = (o.scale || 1) * RC_DRG.px, g = o.gait || 0;
+  const targetH = RC_DSP_H * (o.scale || 1) * (RC_SIZE_MUL[o.id] || 1);   // スプライトと同じ正規化＝大きさは今と同じ
+  const sc = targetH / b.h, w = b.w * sc, h = b.h * sc;
+  const bob = o.grounded ? Math.abs(Math.sin(g)) * 0.6 : Math.sin(g * 0.7) * (o.down ? 0.4 : 1);
+  ctx.save();
+  ctx.translate(o.x, o.y);
+  if (o.spin) ctx.rotate(o.spin);
+  if (o.tumble) ctx.rotate(o.tumble);
+  ctx.rotate(-(o.lean || 0) * 0.05 + (o.bank || 0) * 0.10);
+  if (o.squash && o.squash !== 1) { const sq = Math.max(0.7, Math.min(1.3, o.squash)); ctx.scale(2 - sq, sq); }
+  ctx.translate(0, -bob * px * 0.9);
+  { const _au = o.design && o.design.aura; ctx.save(); ctx.globalAlpha = _au ? 0.34 : 0.20; const gc = _au || rcShade(o.color || '#888', 46), rr = (_au ? 0.62 : 0.5) * Math.max(w, h);
+    const ng = ctx.createRadialGradient(0, -h * 0.45, 2, 0, -h * 0.45, rr); ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.6)); ng.addColorStop(0.6, rcRgba(gc, 0.14)); ng.addColorStop(1, rcRgba(gc, 0));
+    ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -h * 0.45, rr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+  ctx.imageSmoothingEnabled = true;
+  ctx.translate(-w + 4, -h + 2);            // 鼻先アンカー（スプライトと同じ位置）
+  const r = _rcRigV2At(rig, sc * _rcCtxScale(ctx));
+  ctx.scale(sc / r.lv, sc / r.lv);
+  ctx.translate(-b.x * r.lv, -b.y * r.lv);
+  const amp = o.grounded ? 0.05 : (o.down ? 0.10 : 0.18);
+  _rcDrawRigV2Parts(ctx, r.parts, g * 1.35, amp, g * 0.7 + 0.8, Math.sin(g * 0.5) * 0.012);
+  ctx.restore();
+}
+function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok) || _rcRigV2Ok(id); }
 // 描画時の半身幅(px)＝鼻先アンカー(右端=タイムライン位置)から体の中心までの距離。
 // ラベル/バッジ/レティクル/ポップを「体の中心」に置くために使う（表示のみ）。
 function rcDragonSpriteHalfW(id, scale) {
+  const targetH = RC_DSP_H * (scale || 1) * (RC_SIZE_MUL[id] || 1);
+  if (_rcRigV2Ok(id)) { const bb = RC_DRIG[id].rig._bbox; return (bb.w * (targetH / bb.h)) / 2; }
   const e = RC_DSPRITE[id];
   if (!e || !e.ok || !e.box || !e.box.h) return 0;
-  const targetH = RC_DSP_H * (scale || 1) * (RC_SIZE_MUL[id] || 1);
   return (e.box.w * (targetH / e.box.h)) / 2;
 }
 // 個体サイズ（表示のみ・設定＝小さい竜ポロは小さく／竜王級〜神格はわずかに大きく＝格の表現。
@@ -1038,9 +1133,10 @@ function rcDrawDragonSprite(ctx, o) {
 // 頭（右）を支点に尾へ向かって進行波でうねらせる＝全頭対応・フィッティング不要。
 // =========================================================================
 function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
+  const v2 = _rcRigV2Ok(id) ? RC_DRIG[id].rig : null;   // 竜V2リグ＝翼を大きくゆっくり羽ばたかせる（§11.3-5）
   const e = RC_DSPRITE[id];
-  if (!e || !e.ok || !e.box) return false;
-  const img = e.cv || e.img, b = e.box;
+  if (!v2 && (!e || !e.ok || !e.box)) return false;
+  const img = v2 ? null : (e.cv || e.img), b = v2 ? v2._bbox : e.box;
   const H = Math.min(150, cw * 0.34), sc = H / b.h, W = b.w * sc;
   const inK = Math.min(1, rt / 0.22);
   const a = inK;   // ★出しっぱなし＝結果を見るまで勝者が生き続ける（フェードアウト廃止・ユーザー指定）
@@ -1085,7 +1181,15 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   const pop = 0.86 + 0.14 * inK;
   const breathe = Math.sin(now * 2.2) * 2;
   ctx.translate(cx, baseY + breathe); ctx.scale(pop, pop);
-  const N = 16, sw = b.w / N, dw = W / N;
+  if (v2) {
+    ctx.save();
+    ctx.translate(-W / 2, -H);
+    const r = _rcRigV2At(v2, sc * _rcCtxScale(ctx));   // ctx には pop の拡大が既に掛かっている
+    ctx.scale(sc / r.lv, sc / r.lv); ctx.translate(-b.x * r.lv, -b.y * r.lv);
+    _rcDrawRigV2Parts(ctx, r.parts, now * 3.0, 0.26, now * 2.2, Math.sin(now * 2.2) * 0.012);
+    ctx.restore();
+  }
+  const N = v2 ? 0 : 16, sw = b.w / 16, dw = W / 16;
   for (let i = 0; i < N; i++) {
     // ★頭側38%は完全静止（顔がぐにゃぐにゃしない・ユーザー指摘）。波は尾側だけを走る。
     const tailK = Math.max(0, (1 - i / (N - 1)) - 0.38) / 0.62;      // 1=尾端 … 0=頭側38%全域
@@ -1112,7 +1216,9 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
 }
 function rcDrawDragon(ctx, o) {
   if (typeof window !== 'undefined' && window.RC_USE_RIG === false) return rcDrawDragonPixel(ctx, o);
-  if (o.id && rcHasDragonSprite(o.id)) return rcDrawDragonSprite(ctx, o);   // 3D絵が用意済み＝最優先（表示専用）
+  if (o.id && _rcRigV2Ok(o.id)) return rcDrawDragonRigV2(ctx, o);           // 竜V2リグ（翼・尾・呼吸）＝最優先（表示専用）
+  if (o.id) _rcDragonRigV2(o.id);                                           // 先読みkick（読めるまではスプライトで同じ絵）
+  if (o.id && RC_DSPRITE[o.id] && RC_DSPRITE[o.id].ok) return rcDrawDragonSprite(ctx, o);   // 3D絵（表示専用）
   if (o.id) _rcDragonSprite(o.id);                                          // 先読みkick（次フレームから3D絵に）
   if (RC_RIG) return rcDrawDragonRig(ctx, o);
   _rcEnsureRig();

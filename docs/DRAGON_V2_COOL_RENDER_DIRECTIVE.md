@@ -165,6 +165,13 @@ stella＝金星チップの羽毛翼・彗星尾・宇宙鱗／raika＝稲妻角
 4. `images/dragons_v2_staging/` に全52頭を揃える（旧 `images/dragons/` はこの時点では触らない）。
 
 ### Phase 5：結線＋デプロイ（Opus 5.5・**G4**＝52頭シートで最終承認後）
+**→ 2026-09-24 結線まで実施（G4 待ち）**：`images/dragons/` を V2 に差し替え（旧版は `images/dragons_hd2d_work/archive_v1/`）、
+`js/race_canvas.js` に竜別リグ描画（`_rcDragonRigV2`／`rcDrawDragonRigV2`・`RC_DRAGON_ART_V=2`＝絵とリグのキャッシュ破り）、
+`race_broadcast.js` のロード画面でリグも先読み、ウィニングカットもリグで羽ばたく。優先順＝V2リグ→スプライト→旧リグ→グリッド。
+wing パーツの無い rig（翼の無い6頭）は羽ばたかず尾と呼吸だけ。`window.RC_USE_V2RIG=false` でスプライト描画に戻せる（比較用）。
+描画負荷：大きいパーツを毎フレーム縮めると 8頭で 2.1ms/フレーム（スプライトの約15倍）だったため、表示倍率に合う 1/2 刻みの縮小版を
+一度だけ作ってキャッシュ（`_rcRigV2At`）→ 0.6ms（DPR2 相当・PC）。ローカル検証：レース1本（翼なし taiga 勝利）でコンソールエラー0・リグ52頭すべて 200。
+G4 シート＝`docs/dragon_v2_kit/g4/G4_all52.webp`。
 1. `images/dragons/` を一括置換（旧版は `images/dragons_hd2d_work/archive_v1/` へ退避）。
 2. `js/race_canvas.js` の `'images/dragons/' + id + '.png?v=1'` を `?v=2` へ（スプライトのキャッシュ破り）。
 3. 羽ばたき：**リグがある竜はリグ描画（§11）が最優先**。リグ未生成/未ロードの竜だけ従来のスライス羽ばたき（隙間が無い竜は振幅30%・不自然なら `RC_FLAP_CUT[id]` を個別指定）。

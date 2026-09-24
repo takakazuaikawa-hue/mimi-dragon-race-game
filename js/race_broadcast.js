@@ -1021,12 +1021,13 @@ function showRaceLoading(host, c, onReady) {
       const ids = ((c.timeline && c.timeline.dragons) || []).map(d => d.id).filter(Boolean);
       if (!ids.length || typeof _rcDragonSprite !== "function") { cb(); return; }
       setNote("出走竜を呼んでいます……");
-      ids.forEach(id => { try { _rcDragonSprite(id); } catch (e) {} });
+      ids.forEach(id => { try { _rcDragonSprite(id); if (typeof _rcDragonRigV2 === "function") _rcDragonRigV2(id); } catch (e) {} });
       const t0 = Date.now();
       const tick = () => {
         const ready = ids.every(id => {
           const e = (typeof RC_DSPRITE !== "undefined") ? RC_DSPRITE[id] : null;
-          return e && (e.ok || e.bad);          // 読めた／無い のどちらかで決着
+          const r = (typeof RC_DRIG !== "undefined") ? RC_DRIG[id] : null;   // 竜V2リグ（無い竜は待たない）
+          return e && (e.ok || e.bad) && (!r || r.ok || r.bad);          // 読めた／無い のどちらかで決着
         });
         if (ready || Date.now() - t0 > RC_LOAD_DRAGON_MS) { cb(); return; }
         setTimeout(tick, 40);
