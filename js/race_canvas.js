@@ -1027,14 +1027,25 @@ function _rcRigV2At(rig, eff) {
 function _rcCtxScale(ctx) {
   try { const m = ctx.getTransform(); return Math.hypot(m.a, m.b) || 1; } catch (e) { return (window.devicePixelRatio || 1); }
 }
+// 根元(右)固定のしなり。_rcBendStrips と同じ波だが「位相0＝元の絵そのまま」になるよう基準位置からの差分で動かす
+// （図鑑・馬券カード・スカウト等の静止画は gait:0 で描くので、翼が歪まず絵のとおりに見える）。
+function _rcBendStripsV2(ctx, img, bx, by, phase, amp) {
+  const W = img.width, H = img.height, n = 10, step = W / n;
+  for (let i = 0; i < n; i++) {
+    const u = 1 - (i + 0.5) / n, k = u * u;                           // 0=付け根(右) .. 1=先端(左)
+    const off = (Math.sin(phase + u * 1.6) - Math.sin(u * 1.6) + 0.25 * (Math.sin(2 * phase + u * 1.6) - Math.sin(u * 1.6))) * amp * k * H;
+    const sx0 = i * step, sw = Math.min(step + 1, W - sx0);
+    ctx.drawImage(img, sx0, 0, sw, H, bx + sx0, by + off, sw, H);
+  }
+}
 function _rcDrawRigV2Parts(ctx, parts, wingPh, wingAmp, tailPh, breathe) {
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i]; if (!p._img) continue;
     const bx = p.rect.x - p.pivot.x, by = p.rect.y - p.pivot.y;
     ctx.save();
     ctx.translate(p.pivot.x, p.pivot.y);
-    if (p.role === 'wing') _rcBendStrips(ctx, p._img, bx, by, wingPh, wingAmp, 'right');        // 翼根固定・翼端ほど大きく
-    else if (p.role === 'tail') _rcBendStrips(ctx, p._img, bx, by, tailPh, 0.11, 'right');      // 尾の付け根固定
+    if (p.role === 'wing') _rcBendStripsV2(ctx, p._img, bx, by, wingPh, wingAmp);        // 翼根固定・翼端ほど大きく
+    else if (p.role === 'tail') _rcBendStripsV2(ctx, p._img, bx, by, tailPh, 0.11);      // 尾の付け根固定
     else { if (p.role === 'body') ctx.scale(1, 1 + breathe); ctx.drawImage(p._img, bx, by); }
     ctx.restore();
   }
@@ -1061,7 +1072,7 @@ function rcDrawDragonRigV2(ctx, o) {
   ctx.scale(sc / r.lv, sc / r.lv);
   ctx.translate(-b.x * r.lv, -b.y * r.lv);
   const amp = o.grounded ? 0.05 : (o.down ? 0.10 : 0.18);
-  _rcDrawRigV2Parts(ctx, r.parts, g * 1.35, amp, g * 0.7 + 0.8, Math.sin(g * 0.5) * 0.012);
+  _rcDrawRigV2Parts(ctx, r.parts, g * 1.35, amp, g * 0.7, Math.sin(g * 0.5) * 0.012);
   ctx.restore();
 }
 function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok) || _rcRigV2Ok(id); }
@@ -1186,7 +1197,7 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
     ctx.translate(-W / 2, -H);
     const r = _rcRigV2At(v2, sc * _rcCtxScale(ctx));   // ctx には pop の拡大が既に掛かっている
     ctx.scale(sc / r.lv, sc / r.lv); ctx.translate(-b.x * r.lv, -b.y * r.lv);
-    _rcDrawRigV2Parts(ctx, r.parts, now * 3.0, 0.26, now * 2.2, Math.sin(now * 2.2) * 0.012);
+    _rcDrawRigV2Parts(ctx, r.parts, now * 3.0, 0.20, now * 2.2, Math.sin(now * 2.2) * 0.012);
     ctx.restore();
   }
   const N = v2 ? 0 : 16, sw = b.w / 16, dw = W / 16;
