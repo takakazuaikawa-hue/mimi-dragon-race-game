@@ -1,0 +1,172 @@
+{
+  "format": "mimi-live2d-rig",
+  "version": 1,
+  "name": "glaze",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "embed": false,
+  "rootPivot": {
+    "x": 497,
+    "y": 404
+  },
+  "parts": [
+    {
+      "id": "tail",
+      "role": "tail",
+      "z": 1,
+      "parent": null,
+      "rect": {
+        "x": 65,
+        "y": 164,
+        "w": 295,
+        "h": 389
+      },
+      "pivot": {
+        "x": 359,
+        "y": 446
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.15,
+        "blinkable": false,
+        "sway": {
+          "amp": 0,
+          "freq": 0.25,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": {
+          "amp": 0.11,
+          "freq": 0.55,
+          "axis": "x",
+          "strips": 12,
+          "rootEdge": "right"
+        },
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0,
+        "jiggle": null
+      },
+      "file": "parts/tail.webp"
+    },
+    {
+      "id": "body",
+      "role": "body",
+      "z": 2,
+      "parent": null,
+      "rect": {
+        "x": 349,
+        "y": 283,
+        "w": 581,
+        "h": 281
+      },
+      "pivot": {
+        "x": 639,
+        "y": 423
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.15,
+        "blinkable": false,
+        "sway": {
+          "amp": 0,
+          "freq": 0.25,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": null,
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0,
+        "jiggle": null
+      },
+      "file": "parts/body.webp"
+    },
+    {
+      "id": "wing",
+      "role": "wing",
+      "z": 3,
+      "parent": null,
+      "rect": {
+        "x": 209,
+        "y": 145,
+        "w": 523,
+        "h": 212
+      },
+      "pivot": {
+        "x": 555,
+        "y": 325
+      },
+      "opacity": 1,
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "rot": 0,
+      "flip": {
+        "h": false,
+        "v": false
+      },
+      "motion": {
+        "breathing": 0.3,
+        "blinkable": false,
+        "sway": {
+          "amp": 0,
+          "freq": 0.25,
+          "phase": 0,
+          "axis": "rot"
+        },
+        "bend": {
+          "amp": 0.18,
+          "freq": 1.35,
+          "axis": "x",
+          "strips": 12,
+          "rootEdge": "right"
+        },
+        "gaze": {
+          "tx": 0,
+          "ty": 0
+        },
+        "flutter": 0.6,
+        "jiggle": null
+      },
+      "file": "parts/wing.webp"
+    }
+  ]
+}

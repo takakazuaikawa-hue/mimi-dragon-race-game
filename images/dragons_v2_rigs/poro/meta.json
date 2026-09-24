@@ -1,0 +1,18 @@
+{
+  "id": "poro",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 724,
+    "y": 359,
+    "r": 21
+  },
+  "wingOutsideDrift": 0.01,
+  "tailCut": 0.34
+}

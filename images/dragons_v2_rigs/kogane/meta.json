@@ -1,0 +1,18 @@
+{
+  "id": "kogane",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 830,
+    "y": 379,
+    "r": 14
+  },
+  "wingOutsideDrift": 0.0059,
+  "tailCut": 0.34
+}

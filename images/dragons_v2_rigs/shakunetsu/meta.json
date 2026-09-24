@@ -1,0 +1,18 @@
+{
+  "id": "shakunetsu",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 837,
+    "y": 372,
+    "r": 9
+  },
+  "wingOutsideDrift": 0.0037,
+  "tailCut": 0.34
+}

@@ -1,0 +1,18 @@
+{
+  "id": "gekka",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 862,
+    "y": 410,
+    "r": 15
+  },
+  "wingOutsideDrift": 0.005,
+  "tailCut": 0.34
+}

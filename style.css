@@ -3706,7 +3706,7 @@ body.title-mode #vol-fab { display: none !important; }
 .dex-card.unseen::before { background: var(--vstone-2); }
 .dex-card.fav { border-color: var(--gold-line); }
 .dex-card-art { height: 46px; display: flex; align-items: center; justify-content: center; margin-bottom: 3px; }
-.dex-card-art canvas { image-rendering: pixelated; width: 66px; height: auto; }
+.dex-card-art canvas { image-rendering: auto; width: 66px; height: auto; }
 .dex-q { font-size: 26px; font-weight: 900; color: var(--vstone-2); }
 .dex-card-name { font-size: 10.5px; font-weight: 800; color: var(--mist); line-height: 1.2; min-height: 22px;
   display: flex; align-items: center; justify-content: center; }
@@ -3728,7 +3728,7 @@ body.title-mode #vol-fab { display: none !important; }
 .dd-art { flex: none; width: 100%; height: 150px; border-radius: var(--rd-10); background: radial-gradient(120% 90% at 50% 30%, rgba(255,255,255,0.05), rgba(0,0,0,0.34));
   border: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: center;
   box-shadow: inset 0 0 30px -6px var(--dc); }
-.dd-art canvas { image-rendering: pixelated; }
+.dd-art canvas { image-rendering: auto; }
 .dd-id { min-width: 0; }
 .dd-name { font-size: 16px; font-weight: 900; color: var(--mist); line-height: 1.25; }
 .dd-style { display: inline-block; margin-top: 5px; padding: 2px 9px; border-radius: 7px; font-size: 11px; font-weight: 700;
@@ -3746,6 +3746,168 @@ body.title-mode #vol-fab { display: none !important; }
 .dd-fav { width: 100%; min-height: 44px; border-radius: var(--rd-10); border: 1px solid var(--glass-border); cursor: pointer;
   background: var(--glass-2); color: var(--mist-soft); font-size: 13px; font-weight: 700; }
 .dd-fav.on { background: var(--gold); color: var(--hx-2a1d06); border-color: var(--gold-bright); }
+
+/* ===== 竜図鑑 v2：トレーディングカード（表示のみ）=====
+   枠＝レア度（若竜=銀／中堅=青／竜王級=金／祝祭級=薔薇金／神格=虹／固有=黒金）。竜王級以上は光の帯が流れる。
+   未発見＝カード裏。詳細ポップは大きいカード＋指で傾けると光沢が動く。 */
+.dex-grid.tcg { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.tcg-card { --dc: #888; --f1: #dfe4ea; --f2: #8d97a4; --f3: #f5f7f9; --i: 0;
+  position: relative; aspect-ratio: 63 / 88; border-radius: 9px; padding: 4px; cursor: pointer; isolation: isolate; overflow: hidden;
+  background: linear-gradient(135deg, var(--f1), var(--f2) 45%, var(--f3) 70%, var(--f2));
+  box-shadow: 0 7px 16px -9px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.4);
+  transition: transform .15s ease, box-shadow .15s ease; animation: tcgIn .35s ease both; animation-delay: calc(min(var(--i), 18) * 28ms); }
+@keyframes tcgIn { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+.tcg-card:not(.back):not(.big):hover { transform: translateY(-3px); box-shadow: 0 12px 22px -10px rgba(0,0,0,.95), 0 0 0 1px var(--f1), inset 0 0 0 1px rgba(255,255,255,.5); }
+.tcg-card:not(.back):not(.big):active { transform: scale(.97); }
+.tcg-face { position: relative; z-index: 1; height: 100%; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--dc) 34%, #10141d) 0%, #0d1119 58%, #0a0d14 100%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.55); }
+.tcg-top { display: flex; align-items: center; justify-content: space-between; gap: 3px; padding: 4px 5px 3px; }
+.tcg-name { min-width: 0; font-size: 10px; font-weight: 900; color: #fff; letter-spacing: -.03em; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+.tcg-rar { position: absolute; z-index: 2; left: 3px; top: 2px; font-size: 7.5px; line-height: 1; color: #ffd766; letter-spacing: -1px;
+  text-shadow: 0 0 3px rgba(0,0,0,.9), 0 0 5px rgba(255,190,60,.7); }
+.tcg-art { position: relative; margin: 0 4px; border-radius: 4px; overflow: hidden; aspect-ratio: 126 / 88;
+  background: radial-gradient(90% 85% at 55% 42%, color-mix(in srgb, var(--dc) 72%, #fff 20%) 0%, color-mix(in srgb, var(--dc) 46%, #0b0f18) 56%, #070a10 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), inset 0 -12px 18px -12px rgba(0,0,0,.85); }
+.tcg-art::before { content: ""; position: absolute; inset: -40%; z-index: 0;
+  background: repeating-conic-gradient(from 0deg at 55% 50%, rgba(255,255,255,.075) 0 5deg, transparent 5deg 16deg); }
+.tcg-art::after { content: ""; position: absolute; z-index: 0; left: 16%; right: 12%; bottom: 8%; height: 13%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0,0,0,.5), transparent); }
+.tcg-art canvas { position: relative; z-index: 1; display: block; width: 100%; height: auto; }
+.tcg-fav { position: absolute; z-index: 2; top: 3px; right: 4px; font-size: 11px; color: #ffd766; text-shadow: 0 0 5px rgba(0,0,0,.8); }
+.tcg-band { display: flex; align-items: center; gap: 3px; padding: 4px 5px 2px; font-size: 8.5px; line-height: 1.2; }
+.tcg-style { padding: 1px 5px; border-radius: 4px; font-weight: 800; color: #fff; background: color-mix(in srgb, var(--dc) 55%, #000); }
+.tcg-class { font-weight: 800; color: var(--f1); white-space: nowrap; }
+.tcg-no { margin-left: auto; color: rgba(255,255,255,.42); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tcg-traits { display: flex; flex-wrap: wrap; gap: 2px; padding: 1px 5px 0; }
+.tcg-traits i { font-style: normal; font-size: 7.5px; line-height: 1.3; padding: 0 4px; border-radius: 3px; color: rgba(255,255,255,.82);
+  background: rgba(0,0,0,.38); border: 1px solid rgba(255,255,255,.12); }
+.tcg-flavor { padding: 6px 10px 0; font-size: 11px; color: rgba(255,240,215,.78); text-align: center; letter-spacing: .06em; }
+.tcg-foot { margin-top: auto; display: flex; justify-content: space-between; padding: 3px 5px 4px; font-size: 7.5px;
+  color: rgba(255,255,255,.55); border-top: 1px solid rgba(255,255,255,.08); }
+.tcg-foot b { color: #fff; font-variant-numeric: tabular-nums; }
+/* レア度の枠 */
+.tcg-card.rar-r   { --f1: #bcd6ff; --f2: #4a6da8; --f3: #e3eeff; }
+.tcg-card.rar-sr  { --f1: #ffe39a; --f2: #b8841f; --f3: #fff4cf; }
+.tcg-card.rar-ssr { --f1: #ffc9ec; --f2: #9a58c8; --f3: #ffe8a8; }
+.tcg-card.rar-ur  { --f1: #fff1b8; background: conic-gradient(from 210deg, #ff8a8a, #ffd36e, #a6ff9e, #7ad7ff, #b69bff, #ff8ad8, #ff8a8a); }
+.tcg-card.rar-legend { --f1: #ffe39a; background: linear-gradient(135deg, #3a2a10, #f7d47a 28%, #5a3d10 52%, #ffe9a8 74%, #3a2a10); }
+.tcg-card.rar-ur .tcg-face::after, .tcg-card.rar-legend .tcg-face::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(125deg, rgba(255,0,128,.09), rgba(255,200,0,.09), rgba(0,255,160,.09), rgba(0,160,255,.09), rgba(180,0,255,.09)); }
+/* 光の帯（竜王級以上）＝transform だけで動かす（再描画しない・52枚でも軽い） */
+.tcg-holo { position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit; overflow: hidden; }
+.tcg-card.rar-sr .tcg-holo::before, .tcg-card.rar-ssr .tcg-holo::before, .tcg-card.rar-ur .tcg-holo::before, .tcg-card.rar-legend .tcg-holo::before {
+  content: ""; position: absolute; top: -10%; bottom: -10%; left: -90%; width: 70%;
+  background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.34) 46%, rgba(255,225,160,.22) 52%, transparent 74%);
+  animation: tcgSweep 5.2s ease-in-out infinite; animation-delay: calc(var(--i) * -0.41s); }
+.tcg-card.rar-ur .tcg-holo::before, .tcg-card.rar-legend .tcg-holo::before {
+  background: linear-gradient(105deg, transparent 18%, rgba(255,140,220,.30) 38%, rgba(255,255,255,.42) 48%, rgba(120,220,255,.30) 58%, transparent 78%); }
+@keyframes tcgSweep { 0%, 58% { transform: translateX(0) skewX(-8deg); } 100% { transform: translateX(330%) skewX(-8deg); } }
+.tcg-glare { display: none; }
+/* 未発見＝カード裏 */
+.tcg-card.back { cursor: default; --f1: #6b5430; --f2: #1c1510; --f3: #8a6c3a; }
+.tcg-back { position: relative; height: 100%; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 5px; background: radial-gradient(circle at 50% 42%, #3a2a55 0%, #161022 58%, #0b0812 100%); }
+.tcg-back::before { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(255,215,120,.32); border-radius: 4px; }
+.tcg-back::after { content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(45deg, rgba(255,215,120,.035) 0 6px, transparent 6px 12px); }
+.tcg-back-emb { width: 44%; aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 900; color: #ffd76e; border: 2px solid rgba(255,215,110,.55);
+  background: radial-gradient(circle, rgba(255,215,110,.18), transparent 70%); box-shadow: 0 0 14px rgba(255,200,80,.25);
+  text-shadow: 0 0 8px rgba(255,190,60,.7); }
+.tcg-back-q { font-size: 10px; font-weight: 800; letter-spacing: .2em; color: rgba(255,255,255,.55); }
+.tcg-back-no { font-size: 8px; color: rgba(255,215,120,.6); font-variant-numeric: tabular-nums; }
+/* 詳細ポップの大きいカード */
+.dex-detail { max-height: calc(100vh - 44px); max-height: calc(100dvh - 44px); overflow-y: auto; }
+.tcg-card.big { width: min(292px, 100%); margin: 4px auto 14px; padding: 7px; border-radius: 14px; cursor: default;
+  animation: tcgBig .38s cubic-bezier(.2,1.3,.4,1) both;
+  transform: perspective(760px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .12s ease-out; touch-action: pan-y; }
+@keyframes tcgBig { from { opacity: 0; transform: perspective(760px) rotateY(-24deg) scale(.86); } to { opacity: 1; } }
+.tcg-card.big .tcg-face { border-radius: 9px; }
+.tcg-card.big .tcg-top { padding: 7px 9px 5px; }
+.tcg-card.big .tcg-name { font-size: 17px; }
+.tcg-card.big .tcg-rar { font-size: 13px; left: 6px; top: 5px; }
+.tcg-card.big .tcg-art { margin: 0 7px; border-radius: 6px; }
+.tcg-card.big .tcg-band { padding: 7px 9px 3px; font-size: 12px; }
+.tcg-card.big .tcg-style { padding: 2px 8px; border-radius: 5px; }
+.tcg-card.big .tcg-traits { gap: 4px; padding: 2px 9px 0; }
+.tcg-card.big .tcg-traits i { font-size: 10.5px; padding: 1px 7px; border-radius: 4px; }
+.tcg-card.big .tcg-foot { padding: 6px 9px 7px; font-size: 11px; }
+.tcg-box { margin: 8px 9px 0; padding: 7px 8px; border-radius: 6px; background: rgba(0,0,0,.34); border: 1px solid rgba(255,255,255,.1); }
+.tcg-recs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; text-align: center; }
+.tcg-recs span { display: block; font-size: 9.5px; color: rgba(255,255,255,.5); }
+.tcg-recs b { font-size: 15px; color: #fff; font-variant-numeric: tabular-nums; }
+.tcg-lore { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.1); font-size: 11px; line-height: 1.55; color: rgba(255,255,255,.78); }
+.tcg-card.big .tcg-fav { font-size: 16px; top: 5px; right: 7px; }
+.tcg-card.big .tcg-glare { display: block; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 35%), rgba(255,255,255,.30), rgba(255,255,255,0) 48%); mix-blend-mode: soft-light; }
+.tcg-card.big.rar-ur .tcg-glare, .tcg-card.big.rar-legend .tcg-glare {
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 35%), rgba(255,255,255,.34), rgba(255,255,255,0) 46%),
+    linear-gradient(115deg, rgba(255,0,160,.18), rgba(255,210,0,.16), rgba(0,255,170,.16), rgba(0,170,255,.18), rgba(190,0,255,.18));
+  background-size: 100% 100%, 220% 220%; background-position: 0 0, var(--mx, 50%) var(--my, 35%);
+  mix-blend-mode: color-dodge; opacity: .7; }
+@media (prefers-reduced-motion: reduce) {
+  .tcg-card, .tcg-card.big { animation: none; }
+  .tcg-holo::before { animation: none !important; display: none; }
+}
+/* 図鑑の章（系統ごと・収集数と進捗） */
+.dex-h { display: flex; align-items: center; gap: 8px; }
+.dex-help { width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 14px; font-weight: 900; cursor: pointer;
+  color: var(--gold-bright); background: rgba(255,215,110,.1); border: 1px solid var(--gold-line); }
+.dex-book { display: flex; flex-direction: column; gap: 6px; }
+.dex-sec { position: relative; display: flex; align-items: center; gap: 7px; margin: 12px 0 4px; padding: 0 2px 7px; font-size: 13px; color: var(--mist); }
+.dex-sec:first-child { margin-top: 2px; }
+.dex-sec-ic { font-size: 16px; }
+.dex-sec-cnt { margin-left: auto; font-size: 11px; color: var(--astone-2); font-variant-numeric: tabular-nums; }
+.dex-sec.done .dex-sec-cnt { color: var(--gold-bright); font-weight: 800; }
+.dex-sec-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+.dex-sec-bar em { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #c9922e, #ffe39a); }
+/* 未発見＝シルエット（枠でレア度だけ見える・光の帯は出さない） */
+.tcg-card.unseen { cursor: default; filter: saturate(.55) brightness(.78); }
+.tcg-card.unseen .tcg-holo { display: none; }
+.tcg-card.unseen .tcg-art { background: radial-gradient(90% 85% at 55% 42%, #3b3f52 0%, #1b1e2b 60%, #0c0e16 100%); }
+.tcg-card.unseen .tcg-name { color: rgba(255,255,255,.55); }
+.tcg-q { position: absolute; z-index: 2; left: 50%; top: 44%; transform: translate(-50%, -50%); font-size: 24px; font-weight: 900;
+  color: rgba(255,255,255,.28); text-shadow: 0 0 10px rgba(0,0,0,.8); }
+/* スカウトで仲間にした竜＝「仲間」の印 */
+.tcg-ally { position: absolute; z-index: 2; right: 3px; bottom: 3px; padding: 1px 5px; border-radius: 3px; font-size: 8px; font-weight: 900;
+  color: #2a1d05; background: linear-gradient(#ffe39a, #e2a22e); box-shadow: 0 1px 3px rgba(0,0,0,.6); transform: rotate(-6deg); }
+.tcg-card.big .tcg-ally { font-size: 12px; padding: 2px 9px; right: 7px; bottom: 7px; }
+.tcg-kind { padding: 0 9px 5px; font-size: 11px; color: rgba(255,255,255,.62); }
+/* カードを手に入れた瞬間（スカウト成立）：裏→表にめくれてレア度で光る */
+.tcg-reveal { --d: .45s; --bc: rgba(230,236,245,.75); position: relative; width: 172px; height: 240px; margin: 8px auto 14px; }
+.tcg-reveal.rar-r { --bc: rgba(140,190,255,.8); }
+.tcg-reveal.rar-sr { --bc: rgba(255,214,110,.85); }
+.tcg-reveal.rar-ssr { --bc: rgba(255,160,225,.85); }
+.tcg-reveal.rar-ur, .tcg-reveal.rar-legend { --bc: rgba(255,236,160,.9); }
+.tcg-flip { position: absolute; left: 0; top: 0; width: 106px; height: 148px; transform-origin: 0 0; transform: scale(1.62); z-index: 2; }
+.tcg-flip-in { position: absolute; inset: 0; transform-style: preserve-3d; animation: tcgFlipIn 1s cubic-bezier(.3,1.3,.5,1) var(--d) both; }
+.tcg-flip-in > .tcg-card { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; animation: none; cursor: default;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.tcg-flip-in > .tcg-side-back { transform: rotateY(180deg); }
+@keyframes tcgFlipIn { 0% { transform: perspective(700px) rotateY(180deg) scale(.92); } 100% { transform: perspective(700px) rotateY(360deg) scale(1); } }
+.tcg-rays { position: absolute; left: 50%; top: 50%; width: 330px; height: 330px; margin: -165px 0 0 -165px; z-index: 1; pointer-events: none; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, var(--bc) 0 7deg, transparent 7deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 66%); mask: radial-gradient(circle, #000 18%, transparent 66%);
+  opacity: 0; animation: tcgRaysIn .6s ease calc(var(--d) + .8s) forwards, tcgSpin 14s linear calc(var(--d) + .8s) infinite; }
+.tcg-reveal.rar-c .tcg-rays, .tcg-reveal.rar-r .tcg-rays { display: none; }
+.tcg-reveal.rar-ur .tcg-rays, .tcg-reveal.rar-legend .tcg-rays {
+  background: repeating-conic-gradient(from 0deg, rgba(255,140,200,.7) 0 6deg, transparent 6deg 15deg, rgba(140,220,255,.7) 15deg 21deg, transparent 21deg 30deg, rgba(255,230,140,.75) 30deg 36deg, transparent 36deg 45deg); }
+@keyframes tcgRaysIn { to { opacity: .75; } }
+@keyframes tcgSpin { to { transform: rotate(360deg); } }
+.tcg-burst { position: absolute; left: 50%; top: 50%; width: 280px; height: 280px; margin: -140px 0 0 -140px; z-index: 3; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.95) 0%, var(--bc) 24%, transparent 62%);
+  opacity: 0; animation: tcgBurst .95s ease-out calc(var(--d) + .75s) both; }
+@keyframes tcgBurst { 0% { opacity: 0; transform: scale(.3); } 22% { opacity: 1; } 100% { opacity: 0; transform: scale(1.55); } }
+.tcg-pop { position: absolute; left: 50%; bottom: -10px; z-index: 4; white-space: nowrap; padding: 3px 13px; border-radius: 999px;
+  font-size: 13px; font-weight: 900; color: #2a1d05; background: linear-gradient(#ffe39a, #e2a22e); box-shadow: 0 4px 12px rgba(0,0,0,.55);
+  opacity: 0; transform: translateX(-50%); animation: tcgPop .5s cubic-bezier(.2,1.6,.4,1) calc(var(--d) + 1s) both; }
+.tcg-reveal.rar-ur .tcg-pop, .tcg-reveal.rar-legend .tcg-pop { background: linear-gradient(90deg, #ffb0d8, #ffe39a, #aef0ff); }
+@keyframes tcgPop { from { opacity: 0; transform: translateX(-50%) scale(.4); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .tcg-flip-in, .tcg-rays, .tcg-burst, .tcg-pop { animation-duration: .01s !important; animation-delay: 0s !important; }
+}
 
 /* ===== §41 レース選択：ランク別グループ＋見やすいカード ===== */
 .rs-rank-head { display: flex; align-items: center; gap: 8px; margin: 18px 2px 9px; font-size: 13px;
@@ -6379,7 +6541,7 @@ body.title-mode #vol-fab { display: none !important; }
 .sc-meet-tag b { display: block; font-size: 14px; color: var(--hx-fff4e0); }
 .sc-meet-tag small { font-size: 10px; color: #cdd8dd; }
 .sc-drg-wrap { position: relative; z-index: 2; margin: auto auto 6px; animation: scBreathe 2.8s ease-in-out infinite; }
-.sc-drg { height: 132px; image-rendering: pixelated; opacity: 0; transition: opacity .3s;
+.sc-drg { height: 132px; image-rendering: auto; opacity: 0; transition: opacity .3s;
   filter: drop-shadow(0 0 12px var(--dc, var(--gold-line))) drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
 .sc-drg.on { opacity: 1; }
 .sc-reveal .sc-drg.on { animation: scReveal .7s ease both; }
@@ -6584,7 +6746,7 @@ body.title-mode #vol-fab { display: none !important; }
   display: flex; align-items: center; justify-content: center; }
 .scw-burst { position: absolute; width: 60vmin; height: 60vmin; border-radius: var(--r-round);
   background: radial-gradient(circle, rgba(255,220,130,.55), transparent 65%); animation: scwBurst .9s ease-out both; }
-.scw-drg { height: 150px; image-rendering: pixelated; opacity: 0;
+.scw-drg { height: 150px; image-rendering: auto; opacity: 0;
   filter: drop-shadow(0 0 18px rgba(255,210,120,.7)); animation: scwDash .95s cubic-bezier(.2,1.4,.4,1) both; }
 @keyframes scwBurst { 0% { transform: scale(.2); opacity: 0; } 35% { opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
 @keyframes scwDash { 0% { opacity: 0; transform: translateY(40px) scale(.55); }
@@ -7261,7 +7423,7 @@ body.title-mode #vol-fab { display: none !important; }
 .ec-d { width: 88px; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
   opacity: 0; animation: ecPop .5s cubic-bezier(.2,1.5,.4,1) both;
   animation-delay: calc(.55s + var(--i) * .22s); }
-.ec-d img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated;
+.ec-d img { width: 72px; height: 72px; object-fit: contain; image-rendering: auto;
   filter: drop-shadow(0 0 10px var(--c)) drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
 .ec-d figcaption { font-size: 10px; color: var(--white); background: rgba(0,0,0,.42);
   border: 1px solid var(--c); border-radius: 99px; padding: 1px 8px; white-space: nowrap;
@@ -9296,7 +9458,7 @@ body.title-mode #vol-fab { display: none !important; }
   animation: stalkPop .38s cubic-bezier(.2,1.6,.4,1) both; }
 .stalk-rv-card b { font-size: 17px; color: #fff4dd; }
 .stalk-rv-card small { font-size: 11.5px; color: var(--mist-soft); }
-.stalk-rv-img { height: 120px; image-rendering: pixelated; opacity: 0; transition: opacity .3s; }
+.stalk-rv-img { height: 120px; image-rendering: auto; opacity: 0; transition: opacity .3s; }
 .stalk-rv-img.on { opacity: 1; }
 .stalk-rv-card.t1 { border-color: #cfd9e6; box-shadow: 0 0 30px rgba(200,220,240,.35); }
 .stalk-rv-card.t2 { border-color: #ffd873; box-shadow: 0 0 42px rgba(255,205,90,.45); }
@@ -9334,7 +9496,7 @@ body.title-mode #vol-fab { display: none !important; }
 .stalk-bush, .stalk-rock { font-size: 26px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); pointer-events: none; }
 .stalk-drg { position: absolute; transform: translate(-50%, -100%); z-index: 3; pointer-events: none;
   transition: left .22s ease, top .22s ease; }
-.stalk-drg-img { height: 74px; image-rendering: pixelated; opacity: 0; transition: opacity .3s; filter: drop-shadow(0 5px 7px rgba(0,0,0,.5)); }
+.stalk-drg-img { height: 74px; image-rendering: auto; opacity: 0; transition: opacity .3s; filter: drop-shadow(0 5px 7px rgba(0,0,0,.5)); }
 .stalk-drg-img.on { opacity: 1; }
 .stalk-drg-img.flip { transform: scaleX(-1); }
 .stalk-zzz, .stalk-ex { position: absolute; top: -14px; right: -12px; font-size: 20px; }
@@ -9499,7 +9661,7 @@ body.title-mode #vol-fab { display: none !important; }
    枠を突き抜けて切れる（実測 408px ＞ 枠 339px）。width/height は auto のまま
    max-width と max-height の**両方**で抑える＝縮んでも比率は崩れない。 */
 .stk-drg { position: relative; z-index: 2; width: auto; height: auto; max-width: 82%; max-height: 100%;
-  image-rendering: pixelated; opacity: 0; transition: opacity .3s; filter: drop-shadow(0 8px 12px rgba(0,0,0,.6)); }
+  image-rendering: auto; opacity: 0; transition: opacity .3s; filter: drop-shadow(0 8px 12px rgba(0,0,0,.6)); }
 .stk-drg.on { opacity: 1; }
 .stk-say { position: relative; z-index: 3; padding: 8px 14px; border-radius: var(--r-2); text-align: center;
   font-size: 14px; font-weight: 800; color: #fff4dd; background: rgba(14,19,28,.9);
@@ -9555,7 +9717,7 @@ body.title-mode #vol-fab { display: none !important; }
   animation: stalkHue 1.4s linear infinite; }
 /* 成立ポップの竜も横長。max-width/max-height の両方で抑えて比率を保つ（.stk-drg と同じ理由） */
 .scw-img { position: relative; z-index: 2; width: auto; height: auto; max-width: 100%; max-height: 100%;
-  image-rendering: pixelated; opacity: 0; transition: opacity .3s; filter: drop-shadow(0 6px 10px rgba(0,0,0,.6)); }
+  image-rendering: auto; opacity: 0; transition: opacity .3s; filter: drop-shadow(0 6px 10px rgba(0,0,0,.6)); }
 .scw-img.on { opacity: 1; }
 .scw-sub { font-size: 12px; color: var(--mist-soft); }
 .scw-lore { margin-top: 9px; font-size: 12px; font-weight: 800; color: #ffd873; }

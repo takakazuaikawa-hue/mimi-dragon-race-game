@@ -53,12 +53,12 @@ function dexUnlocked() {
       name: "ポロ", color: "#9a6ad0", symbol: "🥹", side: "left",
       // 紫ポロ立ち絵（ユーザー提供・512×768透過）。表情差分：default/cry/surprise。未配置時はsymbolへ。
       img: {
-        default: "images/cast/stand/poro.webp",
-        cry: "images/cast/stand/poro_cry.webp",
-        surprise: "images/cast/stand/poro_surprise.webp",
-        happy: "images/cast/stand/poro_happy.webp",     // Codex納品（CAST_ART_BRIEF §4・欠損はdefaultへFB）
-        eat: "images/cast/stand/poro_eat.webp",
-        sleepy: "images/cast/stand/poro_sleepy.webp"
+        default: "images/cast/stand/poro.webp?v=2",
+        cry: "images/cast/stand/poro_cry.webp?v=2",
+        surprise: "images/cast/stand/poro_surprise.webp?v=2",
+        happy: "images/cast/stand/poro_happy.webp?v=2",     // Codex納品（CAST_ART_BRIEF §4・欠損はdefaultへFB）
+        eat: "images/cast/stand/poro_eat.webp?v=2",
+        sleepy: "images/cast/stand/poro_sleepy.webp?v=2"
       }
     });
   }
@@ -515,7 +515,7 @@ function renderStable() {
 
 // ポロ立ち絵（webpがあれば画像、無ければ絵文字）。size=px。
 function poroStandeeHTML(size) {
-  return `<img class="poro-img" src="images/cast/stand/poro.webp" alt="ポロ" ` +
+  return `<img class="poro-img" src="images/cast/stand/poro.webp?v=2" alt="ポロ" ` +
     `style="height:${size}px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` +
     `<span class="poro-emoji" style="display:none;font-size:${Math.round(size * 0.7)}px">🥹</span>`;
 }

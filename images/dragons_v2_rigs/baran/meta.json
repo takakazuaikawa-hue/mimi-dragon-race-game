@@ -1,0 +1,18 @@
+{
+  "id": "baran",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 864,
+    "y": 408,
+    "r": 14
+  },
+  "wingOutsideDrift": 0.0045,
+  "tailCut": 0.34
+}

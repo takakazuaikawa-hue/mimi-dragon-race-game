@@ -1,0 +1,18 @@
+{
+  "id": "gando",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 860,
+    "y": 456,
+    "r": 9
+  },
+  "wingOutsideDrift": 0.0027,
+  "tailCut": 0.34
+}

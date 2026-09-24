@@ -685,7 +685,7 @@ function renderKonronWalk(areaId, at) {
     const s = KW_SIGN[d.hidden ? "❓" : d.ic];
     if (s) imgs["sg_" + s] = "images/scene/konron/props/" + s + ".webp?v=" + KW_V;
   });
-  if (typeof poroFound === "function" && poroFound()) imgs.poro = "images/scene/konron/poro_walk.webp?v=" + KW_V;
+  if (typeof poroFound === "function" && poroFound()) imgs.poro = "images/scene/konron/poro_walk.webp?v=poro2";   // ポロ刷新（2026-09-24）＝ポロだけ読み直す
 
   const scene = Scene.create({
     mount: stage,

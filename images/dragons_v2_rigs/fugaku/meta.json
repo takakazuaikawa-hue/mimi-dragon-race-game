@@ -1,0 +1,19 @@
+{
+  "id": "fugaku",
+  "canvas": {
+    "w": 1000,
+    "h": 747
+  },
+  "nowingShift": {
+    "x": 0,
+    "y": 0
+  },
+  "eye": {
+    "x": 840,
+    "y": 376,
+    "r": 12
+  },
+  "wingOutsideDrift": 0.0,
+  "tailCut": 0.34,
+  "wingless": true
+}
