@@ -586,7 +586,7 @@ function _kmSnsCompose(spotId, kind) {
   cm.innerHTML =
     `<div class="km-compose-bd"></div>` +
     `<div class="km-compose-card">` +
-      `<div class="km-compose-h">📣 ぴょこったーに投稿</div>` +
+      `<div class="km-compose-h">📣 Pyogramに投稿</div>` +
       `<img class="km-compose-thumb" src="${src}" alt="">` +
       `<textarea class="km-compose-ta" maxlength="140" rows="3">${def}</textarea>` +
       `<div class="km-compose-bar"><button class="km-vbtn" data-act="cancel">やめる</button>` +
@@ -599,7 +599,7 @@ function _kmSnsCompose(spotId, kind) {
     const txt = (cm.querySelector(".km-compose-ta").value || "").trim() || def;
     addMyPost(txt, src);
     close();
-    _kmToast("ぴょこったーに投稿しました！📣");
+    _kmToast("Pyogramに投稿しました！📣");
   };
 }
 function _kmToast(msg) {
@@ -1089,7 +1089,8 @@ function _kmRenderPanel() {
           renderScout: () => (typeof poroScoutUnlocked !== "function") || poroScoutUnlocked()
         };
         const _pOpen = !_portalGate[s.portal] || (function () { try { return _portalGate[s.portal](); } catch (e) { return false; } })();
-        const _pLockHint = { renderMall: "第2話を読むと開く", renderSns: "配信を始めると開く", renderScout: "相棒と出会うと開く" };
+        // ★renderMall の文はモール側の解放条件（mallUnlocked）と同じにする
+        const _pLockHint = { renderMall: "服が一着買えるだけ稼ぐと開く", renderSns: "配信を始めると開く", renderScout: "相棒と出会うと開く" };
         body += _pOpen
           ? `<button class="km-go" data-portal="${s.portal}">${labelMap[s.portal] || "▶ ひらく"}</button>`
           : `<div class="km-card-lock">🔒 ${labelMap[s.portal] || "この施設"}は、${_pLockHint[s.portal] || "まだ開いていない"}。</div>`;
@@ -1108,7 +1109,7 @@ function _kmRenderPanel() {
     if (gm) gm.onclick = () => _kmOpenPhoto(gm.getAttribute("data-gourmet"), "gourmet");
     const sh = panel.querySelector(".km-shoot-btn");
     if (sh) sh.onclick = () => _kmStartShoot(sh.getAttribute("data-shoot"));
-    // ★T3 竜の気配→スカウトへ（ロケ事前選択は state 経由＝renderScout側の将来拡張に開けておく）
+    // ★T3 竜の気配→スカウトへ（場所は state.ui.scoutFrom 経由で渡し、renderScout がそのカードを印つきで目立たせる）
     const sc = panel.querySelector(".km-scout-hint");
     if (sc) sc.onclick = () => { try { state.ui.scoutFrom = sc.getAttribute("data-scout"); } catch (e) {} if (typeof renderScout === "function") renderScout(); };
     // ★N5: ここで食べる＝その場実食（初実食はミミの実食コメントVN）。クイズ品はごはん画面へ。

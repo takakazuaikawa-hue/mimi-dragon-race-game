@@ -18,8 +18,9 @@ let _scoutMeetLoc = null;  // 交渉中のロケ
 //   旧版は7項目・約400字あり、しかも廃止した「交渉術」を説明したままの嘘になっていた。
 function showScoutHelp() {
   showInfoPopup("🔍 竜と仲よくなる",
-    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>向いた方を押す</b><small>ふと向いた先が、いま気になっているもの。同じ向きを押すと、ミミがその話をする。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">💃</span><div><b>満ちたら踊る</b><small>竜が揺れはじめたら、流れてくるステップに合わせて押す。踊りきれば仲間に。</small></div></div>` +
+    // ★2026-09-24：旧「向いた方を押す／満ちたら踊る」（廃止したダンス方式）の説明が残っていた＝今の「しのびあし」に合わせた
+    `<div class="mm-row"><span class="mm-ic">🌾</span><div><b>しのびあしで近づく</b><small>竜に見られないよう、草やぶや岩のかげを伝って近づく。黄色いマスは見られている。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">♡</span><div><b>竜のよこで話しかける</b><small>♡のマスに立ったら、話題を3つから選ぶ。好きな話題は竜ごとに決まっている。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🍃</span><div><b>断られても平気</b><small>竜は消えない。何度でも会いにいける。</small></div></div>` +
     `<div class="mm-note">この遊びはレースの着順・オッズ・配当に影響しません。</div>`);
 }
@@ -44,11 +45,15 @@ function renderScout() {
     setTimeout(() => { try { if (state.ui.screen === "scout") showScoutHelp(); } catch (e) {} }, 450);
   }
 
-  const owned = (typeof poroMetDragonIds === "function" ? poroMetDragonIds().filter(id => id !== "poro").length : 0);
+  const owned = Object.keys(state.player.collection || {}).filter(id => id !== "poro" && state.player.collection[id] && state.player.collection[id].scouted).length;   // スカウトで仲間にした竜だけ（見ただけの竜は数えない）
   app.appendChild(el("div", "scout-bar", `🏠 龍舎の竜：<b>${owned}</b>頭　｜　🪙 <b>${(state.player.coins || 0).toLocaleString("ja-JP")}</b>`));
 
   app.appendChild(el("div", "stable-sec", "📍 旅に出る場所をえらぶ"));
   const grid = el("div", "sc-loc-grid");
+  // 崑崙の地図「竜の気配」から来たときは、その場所のカードを印つきで目立たせて画面内に寄せる（一度きり）。
+  const fromHint = state.ui.scoutFrom || null;
+  state.ui.scoutFrom = null;
+  let hintCard = null;
   SCOUT_LOCATIONS.forEach(loc => {
     const open = scoutLocationUnlocked(loc.id);
     if (open) {
@@ -65,6 +70,11 @@ function renderScout() {
         `<span class="sc-loc-mood">${loc.mood}</span>` +
         `<span class="sc-loc-cnt">${allDone ? "✓ この場の竜とは みんな仲良し" : `棲む竜 <b>${all.length}</b>頭・出会い <b>${done}</b>`}</span>`);
       card.onclick = () => scoutEnterLocation(loc.id);
+      if (fromHint === loc.id) {
+        card.classList.add("sc-loc--hint");
+        card.insertAdjacentHTML("afterbegin", `<span class="sc-loc-hintb">🐾 気配のした場所</span>`);
+        hintCard = card;
+      }
       grid.appendChild(card);
     } else {
       const card = el("div", "sc-loc sc-loc--locked",
@@ -76,8 +86,13 @@ function renderScout() {
     }
   });
   app.appendChild(grid);
+  if (hintCard) setTimeout(() => { try { hintCard.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }, 60);
 
   const actions = el("div", "actions");
+  if (fromHint && typeof renderKonronMap === "function") {
+    const mapBtn = el("button", "secondary", "🗺️ 地図へ戻る"); mapBtn.onclick = () => renderKonronMap();
+    actions.appendChild(mapBtn);
+  }
   const stBtn = el("button", "secondary", "🏠 龍舎へ"); stBtn.onclick = () => { if (typeof renderStable === "function") renderStable(); };
   const back = el("button", null, "ホームへ戻る"); back.onclick = () => renderHome();
   actions.appendChild(stBtn); actions.appendChild(back);

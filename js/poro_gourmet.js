@@ -24,13 +24,25 @@ const PG_RANKS = [
 function pgRank(score) { for (const x of PG_RANKS) if (score >= x.min) return x.r; return "C"; }
 
 // ごほうび（仕様 §報酬・表示専用フラグ）。ランク到達で解放。
+// ★idはセーブ済みの獲得フラグと一致させたまま、中身を「実際に見られるもの」へ（旧＝名前だけで中身が無かった）。
+//   img＝images/cast/stand/<名>.webp をタップで鑑賞。title＝extraTitles()（ui_render.js）で称号として付けられる。
 const PG_REWARDS = [
-  { id: "ribbon", rank: "B", ic: "🎀", name: "ポロの赤リボン差分" },
-  { id: "expr", rank: "A", ic: "😻", name: "ポロの表情差分" },
-  { id: "deco", rank: "S", ic: "🏮", name: "龍舎の飾り" },
+  { id: "ribbon", rank: "B", ic: "😊", name: "ポロのごきげん顔", img: ["poro_happy"] },
+  { id: "expr", rank: "A", ic: "😋", name: "ポロのもぐもぐ顔", img: ["poro_eat"] },
+  { id: "deco", rank: "S", ic: "💤", name: "ポロのおひるね顔", img: ["poro_sleepy"] },
   { id: "title", rank: "SS", ic: "🏅", name: "称号「グルメの友」" },
-  { id: "gallery", rank: "Poro", ic: "🖼️", name: "ギャラリー画像" }
+  { id: "gallery", rank: "Poro", ic: "🖼️", name: "ポロの表情アルバム（全6枚）", img: ["poro", "poro_happy", "poro_eat", "poro_sleepy", "poro_surprise", "poro_cry"] }
 ];
+function pgShowReward(r) {
+  if (r.id === "title") {
+    if (typeof showTitleSwitcher === "function") showTitleSwitcher();
+    return;
+  }
+  if (!r.img || typeof showInfoPopup !== "function") return;
+  showInfoPopup(r.ic + " " + r.name,
+    `<div class="pg-rew-view${r.img.length > 1 ? " multi" : ""}">` +
+    r.img.map(n => `<img src="images/cast/stand/${n}.webp" alt="" decoding="async">`).join("") + `</div>`);
+}
 function pgRankIndex(r) { return ["C", "B", "A", "S", "SS", "Poro"].indexOf(r); }
 
 // =========================================================================
@@ -145,8 +157,10 @@ function renderPoroGourmet() {
   rew.innerHTML = `<div class="stable-sec">🎁 ごほうび</div>`;
   PG_REWARDS.forEach(r => {
     const got = d.rewards[r.id];
-    rew.appendChild(el("div", "pg-rew" + (got ? " got" : ""),
-      `<span class="pg-rew-ic">${got ? r.ic : "🔒"}</span><span class="pg-rew-nm">${r.name}</span><span class="pg-rew-rk">${r.rank}</span>`));
+    const row = el(got ? "button" : "div", "pg-rew" + (got ? " got" : ""),
+      `<span class="pg-rew-ic">${got ? r.ic : "🔒"}</span><span class="pg-rew-nm">${r.name}</span><span class="pg-rew-rk">${got ? (r.id === "title" ? "付ける ▶" : "見る ▶") : r.rank + "で解放"}</span>`);
+    if (got) row.onclick = () => pgShowReward(r);
+    rew.appendChild(row);
   });
   app.appendChild(rew);
 

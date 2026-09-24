@@ -109,17 +109,25 @@ function goto(name) {
 // 現在画面を再描画（イベント反映用。main.js のローカル版を置換）。
 function rerenderCurrent() { return goto((typeof state !== "undefined" && state.ui && state.ui.screen) || "home"); }
 
+// 開発者モード（隠し扉）＝ヘッダーの「デバッグ」と設定のデバッグ欄を出すかどうか。端末ごとに localStorage へ保存。
+// 普段のプレイヤーには出さない（コイン付与などが触れてしまうため）。?debug=1 で開く／設定の見出しを7回タップで切替。
+function devModeOn() { try { return localStorage.getItem("mimi_dev") === "1"; } catch (e) { return false; } }
+function setDevMode(on) {
+  try { if (on) localStorage.setItem("mimi_dev", "1"); else localStorage.removeItem("mimi_dev"); } catch (e) {}
+  try { document.body.classList.toggle("dev-on", !!on); } catch (e) {}
+}
 // URLで起動時に直接ジャンプ：?go=<screen>（&debug=1 でデバッグON）。開発・プレビュー高速化用。
 // 例: index.html?go=meals / ?go=settings&debug=1
 function applyStartupRoute() {
   try {
     var p = new URLSearchParams(location.search);
-    if (p.get("debug") === "1" && state.ui) state.ui.debug = true;
+    if (p.get("debug") === "1" && state.ui) { state.ui.debug = true; setDevMode(true); }
+    try { document.body.classList.toggle("dev-on", devModeOn()); } catch (e) {}
     var go = p.get("go");
     // ★&dev=1 … その画面の解放条件を開発用に満たしてから飛ぶ。終章のように「実機で
     //   到達するのが現実的でない画面」を直接確認するため。触るのは解放メタのみ。
     //   例: ?go=shingan&dev=1（第5話既読＋到達資産10億＋8頭スカウトを付与）
-    if (go && p.get("dev") === "1") {
+    if (go && p.get("dev") === "1" && devModeOn()) {   // 開発者モードの端末だけ（?debug=1 併用で開く）。本番セーブを書き換えるので一般には効かせない
       try {
         if (go === "shingan" && typeof shinganDevUnlock === "function") {
           shinganDevUnlock({ replay: p.get("replay") !== "0" });

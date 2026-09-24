@@ -201,6 +201,30 @@ const RACES = [
   }
 ];
 
+// ── 画面・実況に出すレースの一文 ────────────────────────────────────────────────
+// purpose は企画メモ由来の注記（「大地域：強風×翼性能、市場の見た目人気が強まる」等）で、そのまま出すと
+// 設計書の言葉が見えてしまう（2026-09-24 仮組み点検）。表示は必ず raceBlurb() を通す。
+// 初期12本は手書き、追加分は見出し（「新人②：」等）を外した残りがそのまま読める文になっている。
+const RACE_BLURB = {
+  race_grandclock_1: "はじめの一歩。人気の竜と、前に行く竜を知る一戦",
+  race_lumina_wind: "風を読む、翼自慢の勝負",
+  race_ringrosso_1: "小回りと位置取りがものを言う",
+  race_caldera_1: "火力自慢に人気が集まる。最後まで脚が持つか",
+  race_mistlake_1: "スタミナと気性が試される霧の湖",
+  race_vento_1: "強風の大舞台。翼自慢に人気が集まる",
+  race_caldera_2: "雷と炎の荒れ舞台。気性とスタミナの試練",
+  race_notte_1: "夜霧の直線。名のある竜と前走の勝者に人気が集まる",
+  race_ringrosso_2: "雨の小回り。人気の竜の弱点が出やすい",
+  race_lapan_festival: "熱狂の祝祭。看板竜に人気が偏り、穴が生まれる",
+  race_caldera_grand: "祝祭のカルデラ。火力自慢に人気が集中する",
+  race_lapan_shinto_grand: "最高峰の神兎大レース。熱狂と巨額配当の世界"
+};
+function raceBlurb(r) {
+  if (!r) return "";
+  if (RACE_BLURB[r.id]) return RACE_BLURB[r.id];
+  return String(r.purpose || "").replace(/^[^：:]{1,8}[：:]/, "").replace(/馬/g, "竜");
+}
+
 function raceFullName(r) {
   return `${r.region} ${r.cup} 第${r.number}レース`;
 }

@@ -1092,18 +1092,18 @@ function showRaceLoading(host, c, onReady) {
 // EXTENSION POINT: 絵を足したらファイル名をこの配列に1行足すだけ。
 var RC_LOAD_DIR = "images/cast/mimi/";
 var RC_LOAD_ARTS = [
-  "loading1.png", "loading2.png", "loading3.png", "loading4.png",
-  "loading5.png", "loading6.png", "loading7.png", "loading8.png",
-  "loading9.webp", "loading10.png", "loading11.png", "loading12.png",
-  "loading13.png", "loading14.png", "loading15.png", "loading16.png",
-  "loading17.png", "loading18.png", "loading19.png", "loading20.png",
-  "loading21.png", "loading22.png", "loading23.png", "loading24.png",
-  "loading25.png", "loading26.png", "loading27.png", "loading28.png",
-  "loading29.png", "loading30.png", "loading31.png", "loading32.webp",
-  "loading33.png", "loading34.png", "loading35.png", "loading36.png",
-  "loading37.png", "loading38.png", "loading39.png", "loading40.png",
-  "loading41.png", "loading42.png", "loading43.png", "loading44.png",
-  "loading45.png", "loading46.png"
+  "loading1.webp", "loading2.webp", "loading3.webp", "loading4.webp",
+  "loading5.webp", "loading6.webp", "loading7.webp", "loading8.webp",
+  "loading9.webp", "loading10.webp", "loading11.webp", "loading12.webp",
+  "loading13.webp", "loading14.webp", "loading15.webp", "loading16.webp",
+  "loading17.webp", "loading18.webp", "loading19.webp", "loading20.webp",
+  "loading21.webp", "loading22.webp", "loading23.webp", "loading24.webp",
+  "loading25.webp", "loading26.webp", "loading27.webp", "loading28.webp",
+  "loading29.webp", "loading30.webp", "loading31.webp", "loading32.webp",
+  "loading33.webp", "loading34.webp", "loading35.webp", "loading36.webp",
+  "loading37.webp", "loading38.webp", "loading39.webp", "loading40.webp",
+  "loading41.webp", "loading42.webp", "loading43.webp", "loading44.webp",
+  "loading45.webp", "loading46.webp"
 ];
 var _rcLoadLast = -1;
 function rcLoadArtFor(race) {

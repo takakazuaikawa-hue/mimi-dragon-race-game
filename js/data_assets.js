@@ -214,6 +214,24 @@ const DEFAULT_OUTFIT = "sukanpin";   // ゲーム開始当初は素寒貧（無�
 function outfitById(id) { return OUTFITS.find(o => o.id === id) || OUTFITS.find(o => o.id === DEFAULT_OUTFIT); }
 function currentOutfitId() { return (state.player && state.player.outfit) || DEFAULT_OUTFIT; }
 function outfitImg(id, expr) { return "images/cast/mimi/mimi_" + id + "_" + (expr || "default") + ".webp"; }   // 軽量WebP（PNG原本も保持）
+// ミミの顔アイコン（いま着ている衣装の立ち絵から顔だけ切り出す）。インラインstyleで返す＝どのアイコン枠にもそのまま付く。
+// 立ち絵は全衣装512×768だが、ポーズで顔の位置が違う → 衣装ごとの顔の中心（smile絵で目視合わせ）。
+// ★衣装を足したら1行足す（無ければ標準位置 [254,140]）。切り出しは中心から130px四方。
+const MIMI_FACE_POS = {
+  buniqro: [256, 148], newspaper: [258, 148], dara: [250, 158], jungle: [254, 152], tarzan: [252, 144], gymhigh: [250, 128],
+  drago: [256, 136], dragonrobe: [254, 146], maumau: [250, 146], gymlow: [254, 156], gymmiddle: [252, 152], leonmall: [250, 136],
+  darugi: [248, 122], mannel: [256, 122], merine: [252, 132], draspo: [254, 132], doraqi: [252, 134], drajela: [254, 138],
+  mermes: [240, 128], sukanpin: [258, 193], fashioncenter: [256, 150], amekaji: [252, 142], departgirl: [256, 148], denim: [254, 142],
+  street: [250, 140], suit: [254, 148], darapike: [256, 144], bangya: [224, 141], taipei: [252, 146], kigurumi: [250, 146],
+  jirai: [235, 140], secret_sukanpin: [258, 132], konron_photographer: [256, 134]
+};
+function mimiAvatarStyle(expr) {
+  try {
+    const id = currentOutfitId(), c = MIMI_FACE_POS[id] || [254, 140], S = 130;
+    const px = (c[0] - S / 2) / (512 - S) * 100, py = (c[1] - S / 2) / (768 - S) * 100;
+    return "background:#f6e3d3 url('" + outfitImg(id, expr || "smile") + "') " + px.toFixed(1) + "% " + py.toFixed(1) + "%/" + (512 / S * 100).toFixed(0) + "% auto no-repeat";
+  } catch (e) { return ""; }
+}
 // 相棒ドラゴンの画像ソース（拡張ポイント）。将来 state.player.buddyDragon に画像パス／IDを持たせて
 // ホームの相棒を切り替え可能にする。今は既定の ref.webp を返すだけ＝表示専用・レース数値には無関係。
 function buddyDragonSrc() { return (state.player && state.player.buddyDragon) || "images/dragon_ref/ref.webp"; }

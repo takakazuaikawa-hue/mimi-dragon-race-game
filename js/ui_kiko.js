@@ -82,7 +82,7 @@ function _kikoTodaysPost() {
   // 食べたもの（MEALS.react＝実食コメントがそのままブログ向きのテンション）
   try {
     MEALS.forEach(m => { if (mealUnlocked(m)) posts.push({
-      tag: "たべある記", title: `${m.ic || "🍜"} ${m.name}、たべた！`,
+      tag: "たべある記", title: `${m.icon || m.ic || "🍜"} ${m.name}、たべた！`,
       body: (m.react || "") + (m.note ? `　${m.note}` : "")
     }); });
   } catch (e) {}
@@ -180,6 +180,13 @@ function renderKiko() {
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   const app = beginScreen();
   app.classList.add("kiko-page");   // ★明るいWEBメディア面（画面スコープ・前例=kt-page/lr-page）
+  // 今日の売上（印税）が未受取なら、ここでも受け取れる。
+  //   ★以前はホーム初到着のポップだけが受け取り口で、見送った日・日付をまたいだ日は紀行タブのドットが
+  //     点きっぱなしなのに開いても何も起きなかった（ドットの行き先が無い）。
+  try {
+    const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
+    if (_lb && typeof showLoginBonus === "function") setTimeout(() => { if (state.ui.screen === "kiko") showLoginBonus(_lb); }, 380);
+  } catch (e) {}
 
   const fol = (typeof goalFollowers === "function") ? goalFollowers() : 0;
   const earned = p.kikoEarned || 0;
@@ -244,10 +251,11 @@ function renderKiko() {
   //   無ければ goalTitleSafe（門番つき＝未登場キャラの名は出ない）。📌固定ツイート＝充実度（売上の理由）。
   app.appendChild(el("div", "kiko-sec", "紀行のあゆみ"));
   const tl = el("div", "kiko-tl");
+  const _kav = (typeof mimiAvatarStyle === "function") ? mimiAvatarStyle() : "";
   let tlHtml =
-    `<div class="ktw-prof"><span class="ktw-av big">🐰</span><div><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span></div>` +
+    `<div class="ktw-prof"><span class="ktw-av big" style="${_kav}"></span><div><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span></div>` +
     `<div class="ktw-fol"><b>${fol.toLocaleString("ja-JP")}</b><span>フォロワー</span></div></div>` +
-    `<div class="ktw pinned"><span class="ktw-av">🐰</span><div class="ktw-b">` +
+    `<div class="ktw pinned"><span class="ktw-av" style="${_kav}"></span><div class="ktw-b">` +
       `<div class="ktw-pin">📌 固定されたツイート</div>` +
       `<div class="ktw-h"><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span></div>` +
       `<div class="ktw-t">記事の充実度、いま <b>${cs.pct}%</b>！ 島で食べて・出会って・撮って・集めるほど記事が増えて、毎日の売上が上がるよ📈 がんばる！</div>` +
@@ -263,12 +271,12 @@ function renderKiko() {
       const rt = 2 + ((i * 7 + (done.length * 3)) % 29);
       const fav = 5 + ((i * 13 + fol) % 97);
       tlHtml +=
-        `<div class="ktw"><span class="ktw-av">🐰</span><div class="ktw-b">` +
+        `<div class="ktw"><span class="ktw-av" style="${_kav}"></span><div class="ktw-b">` +
         `<div class="ktw-h"><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span><i>・${when}のころ</i></div>` +
         `<div class="ktw-t">${text}</div>` +
         `<div class="ktw-a"><span>返信</span><span>リツイート ${rt}</span><span class="fav">★ ${fav}</span></div></div></div>`;
     });
-    if (!recent.length) tlHtml += `<div class="ktw"><span class="ktw-av">🐰</span><div class="ktw-b">` +
+    if (!recent.length) tlHtml += `<div class="ktw"><span class="ktw-av" style="${_kav}"></span><div class="ktw-b">` +
       `<div class="ktw-h"><b>ミミ・パホパホ</b><span>@mimi_pahopaho</span></div>` +
       `<div class="ktw-t">アカウント作った！ これから島でのこと、ぜんぶ書いていくよ🐣</div>` +
       `<div class="ktw-a"><span>返信</span><span>リツイート</span><span class="fav">★</span></div></div></div>`;

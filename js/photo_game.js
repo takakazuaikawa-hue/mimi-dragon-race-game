@@ -286,7 +286,7 @@ function pgOpen(spotId, onDone) {
           (seasonBumped ? ' ・見頃で昇格🌟' : '') + '</div>' +
         // ★T2 幻の一枚：撮れた時だけ現れる（撮れなかった時は何も言わない＝存在を明かさない）
         (_pgRun.rareGot ? '<div class="pg-rare">' + _pgRun.rareGot.ic + ' 幻の一枚「' + _pgRun.rareGot.name + '」！<small>' + _pgRun.rareGot.cap + '</small></div>' : '') +
-        (masterpiece ? '<div class="pg-mp-note">📣 ぴょこったーが沸いてる。載せてみる？</div>' : '') +
+        (masterpiece ? '<div class="pg-mp-note">📣 Pyogramが沸いてる。載せてみる？</div>' : '') +
         '<div class="pg-result-bar">' +
           (masterpiece ? '<button class="pg-btn pg-btn--sns" data-act="sns">📣 SNSに載せる</button>' : '') +
           '<button class="pg-btn" data-act="retry">📷 撮り直す</button>' +

@@ -57,8 +57,9 @@
      ===================================================================== */
   var EXTRA_CAST = {
     mimi:      { name: "ミミ",        color: "#e6b24a", symbol: "🐰", side: "right", mimi: true },
-    announcer: { name: "実況",        color: "#57b1dd", symbol: "📣", side: "left" },
-    villager:  { name: "村の竜使い",  color: "#6ac06a", symbol: "🧑‍🌾", side: "left" },
+    // ★立ち絵は納品済み（images/cast/stand/）なのに指定が無く、存在しない既定パスを読んで絵文字が出ていた（2026-09-24）
+    announcer: { name: "実況",        color: "#57b1dd", symbol: "📣", side: "left", img: "images/cast/stand/announcer.webp" },
+    villager:  { name: "村の竜使い",  color: "#6ac06a", symbol: "🧑‍🌾", side: "left", img: "images/cast/stand/villager.webp" },
     system:    { name: "システム",    color: "#a9a394", symbol: "⚙️", side: "left" },
     narrator:  { name: "",            color: "#a9a394", symbol: "📖", side: "left", narrator: true }
   };
@@ -294,11 +295,17 @@
     if (m) fastMs = m[1] ? parseInt(m[1], 10) : 250;
   } catch (e) {}
 
+  // ★スキップ＝「いま出ている会話」だけでなく、押した時点で順番待ちしていた会話もまとめて飛ばす。
+  //   （以前は1本ずつしか閉じず、初回チュートリアルなどで押しても次の会話が即始まり「スキップが効かない」に見えた）
+  //   飛ばした会話も Promise は解決する＝呼び出し側の後処理（フラグ付け等）は通常どおり走る。表示だけ出さない。
+  var ticketSeq = 0, skipUpTo = 0;
   function play(script, options) {
     var lines = normalize(script);
     if (fastMs > 0) options = assign(assign({}, options || {}), { instant: true, autoAdvance: true, autoMs: fastMs });
+    var ticket = ++ticketSeq;
     chain = chain.then(function () {
       if (!lines.length) return Promise.resolve();
+      if (ticket <= skipUpTo) return Promise.resolve();
       return run(lines, options || {});
     });
     return chain;
@@ -524,6 +531,7 @@
 
   function skipAll() {
     typing = false; clearTimeout(typeTimer);
+    skipUpTo = ticketSeq;   // 押した時点で予約済みの会話も飛ばす（この後に始まる会話は通常どおり）
     finish();
   }
 

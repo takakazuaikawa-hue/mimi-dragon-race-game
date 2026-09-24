@@ -27,10 +27,22 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
+      # 実行時に参照されない作業用フォルダ（生成途中・原本・旧版）は配信物から外す。
+      # リポジトリには残る。ゲームが読む場所を増やしたら、ここに入っていないか確認。
+      - name: Build site (exclude work folders)
+        run: |
+          rsync -a ./ _site/ \
+            --exclude '.git' --exclude '.github' --exclude '_site' \
+            --exclude 'tmp/' --exclude 'animation_rework/' \
+            --exclude 'images/mini/' --exclude 'images/mock/' \
+            --exclude 'images/cast/ポロ/' --exclude 'images/cast/archive_poro_v1/' \
+            --exclude 'images/dragons_hd2d_staging/' --exclude 'images/dragons_hd2d_work/' \
+            --exclude 'images/dragons_v2_staging/'
+          du -sh _site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
