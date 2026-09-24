@@ -56,14 +56,14 @@ var SNS_IMGS = {
   "@mizu_market":    ["images/cast/stand/mizu.webp"],
   "@sumika_village": ["images/homebg/market_day.webp"],
   "@makura_live":    ["images/12_stage_seiryu-street-sunset_v2.png", "images/racebg/fire.webp"],
-  "@poro_naki":      ["images/cast/stand/poro.webp"],
+  "@poro_naki":      ["images/cast/stand/poro.webp?v=2"],
   "@shima_weather":  ["images/home_vista_day.jpg", "images/homebg/beach_day.webp"],
   "@shima_gohan":    ["images/homebg/market_day.webp"],
   "@dragon_news":    ["images/10_stage_seiryu-street-night.png"],
   "@rival_yosou":    ["images/14_stage_seiryu-street-day_v1.png"],
   "@aya_no_hibi":    ["images/homebg/balcony_night.webp"],
   "@celestia_sky":   ["images/cast/stand/celestia.webp"],
-  "@ryusha_news":    ["images/cast/stand/poro.webp", "images/home_vista_day.jpg"]
+  "@ryusha_news":    ["images/cast/stand/poro.webp?v=2", "images/home_vista_day.jpg"]
 };
 var SNS_IMG_FALLBACK = ["images/home_vista_day.jpg", "images/12_stage_seiryu-street-sunset_v2.png", "images/homebg/beach_day.webp"];
 function _snsHash(s) { var h = 0, t = String(s || ""); for (var i = 0; i < t.length; i++) { h = (h * 31 + t.charCodeAt(i)) >>> 0; } return h; }
@@ -99,7 +99,7 @@ var SNS_CAMERA_ALL = [
   { img: "images/home_vista_day.jpg", cap: "いい天気！ 竜たちもごきげん☀️" },
   { img: "images/12_stage_seiryu-street-sunset_v2.png", cap: "聖龍街の夕暮れ、すきだなぁ🌇" },
   // ★BUGFIX（出会う前のキャラが出る）：発見前のカメラロールに「ポロ」の名前も立ち絵も出さない。
-  { img: "images/cast/stand/poro.webp", cap: "相棒のポロと📷 泣き虫だけど最高の子", gate: "@poroFound" },
+  { img: "images/cast/stand/poro.webp?v=2", cap: "相棒のポロと📷 泣き虫だけど最高の子", gate: "@poroFound" },
   { img: "images/homebg/market_day.webp", cap: "食べ歩き中〜🍢 なに食べよ" }
 ];
 // ui_sns.js は SNS_CAMERA を配列として直接読むので、中身を“その場で”入れ替えて同期する（snsCheckin から毎描画）。

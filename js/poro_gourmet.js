@@ -54,7 +54,7 @@ const PG_ART_DIR = "images/poro_race/";
 const PG_ART = { poro: {}, food: {}, bg: [], ready: false };
 function pgLoadArt() {
   if (PG_ART._started) return; PG_ART._started = true;
-  const img = (f) => { const i = new Image(); i.src = PG_ART_DIR + f; return i; };
+  const img = (f) => { const i = new Image(); i.src = PG_ART_DIR + f + "?v=2"; return i; };   // ?v=2＝ポロ刷新（2026-09-24・動物の子竜）
   PG_ART.poro.run = img("poro_run.webp");
   PG_ART.poro.jump = img("poro_jump.webp");
   PG_ART.poro.stumble = img("poro_stumble.webp");
