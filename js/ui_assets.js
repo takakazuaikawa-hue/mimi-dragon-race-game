@@ -285,9 +285,8 @@ function renderAssets() {
   //   受け皿。暮らしレベルのカードから自然に降りられる位置に置く。
   if (typeof renderVillage === "function") {
     const _v = state.player.village || {};
-    const _dn = (typeof DRAGONS !== "undefined") ? DRAGONS.length : 0;
     ent.appendChild(entry("🏘️", _v.name || "竜の村",
-      `施設と解放竜　🐉 ${((_v.unlockedDragonIds || []).length)}/${_dn}`, "", () => renderVillage()));
+      `暮らしの育ち・救済コイン・賭金倍率`, "", () => renderVillage()));
   }
   // 「できること」＝実際に今できることだけ。未開放は locked に分けて別見出しへ（ここに混ぜると「できる」が嘘になる＝ユーザー指摘）。
   // ★2026-07-30 IA再編（docs/KIKO_READER_IA_REDESIGN.md §4）：暮らし＝「する」専用に痩せた。
@@ -644,9 +643,9 @@ function renderLifeTree() {
 
   const respec = el("button", "lt-respec", "↺ いつでも無料で振り直す");
   respec.onclick = () => {
-    if (confirm("解放をすべて解除して、選び直しますか？\n（資産・コインはそのまま。ノードはいつでも取り直せます）")) {
-      respecLifeTree(); renderLifeTree();
-    }
+    showNavConfirm("↺", "振り直す",
+      "解放をすべて解除して、選び直しますか？<br><small>資産・コインはそのまま。ノードはいつでも取り直せます。</small>",
+      () => { respecLifeTree(); renderLifeTree(); }, "振り直す");
   };
   app.appendChild(respec);
   app.appendChild(el("div", "lt-respec-note", "💡 振り直しは無料。総資産もコインも減りません — 気軽に色々な暮らしを試せます。"));
@@ -677,7 +676,7 @@ function renderLifeCollection() {
     if (item.unlockType !== "auto" && !own) {
       cell.classList.add("buyable");
       cell.title = `購入 ${fmtCoins(item.price)}`;
-      cell.onclick = () => { const res = buyLifeItem(item.id); if (res.ok) renderLifeCollection(); else if (res.reason === "poor") alert("コインが足りません。"); };
+      cell.onclick = () => { const res = buyLifeItem(item.id); if (res.ok) renderLifeCollection(); else if (res.reason === "poor") flashShareToast("🪙 コインが足りません"); };
     }
     itemsWrap.appendChild(cell);
   });

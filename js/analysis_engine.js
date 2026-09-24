@@ -103,7 +103,7 @@ function buildAnalysis(race, raceResult, oddsResult, betResult, broadcastData) {
   // Spec #27 §12: broadcast tag callouts — keep analysis prose consistent
   // with what the broadcaster said happened.
   const broadcastNotes = [];
-  if (broadcastTags.has("favorite_fade"))    broadcastNotes.push("中継でも人気馬の苦戦が見えました。");
+  if (broadcastTags.has("favorite_fade"))    broadcastNotes.push("中継でも人気竜の苦戦が見えました。");
   if (broadcastTags.has("underdog_rising"))  broadcastNotes.push("中盤以降、穴竜の浮上が際立ちました。");
   if (broadcastTags.has("late_surge"))       broadcastNotes.push("終盤の差し脚が決め手になりました。");
   if (broadcastTags.has("close_finish"))     broadcastNotes.push("ゴール前は接戦、紙一重の決着でした。");

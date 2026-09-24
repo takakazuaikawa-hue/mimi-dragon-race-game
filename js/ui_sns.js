@@ -175,7 +175,6 @@ function _igPost(po) {
     `<div class="ig-post-head">` +
       `<span class="ig-post-av">${po.ic}</span>` +
       `<span class="ig-post-who"><b>${(po.handle || "").replace(/^@/, "")}</b>${po.ago ? `<small>${po.ago}</small>` : ""}</span>` +
-      `<span class="ig-post-more">⋯</span>` +
     `</div>` +
     `<div class="ig-post-imgwrap"><img class="ig-post-img" src="${img}" alt="" loading="lazy" decoding="async"><span class="ig-heart-burst">🤍</span></div>` +
     `<div class="ig-post-actions"><span class="ig-act-left"><button class="ig-like${liked ? " on" : ""}">${liked ? "❤️" : "🤍"}</button><button class="ig-comment">💬</button><button class="ig-share">✈️</button></span><button class="ig-save">🔖</button></div>` +
@@ -224,6 +223,13 @@ function _igPost(po) {
   };
   paintComments();
   card.querySelector(".ig-comment").onclick = () => _igComments(po, card);
+  // ✈️＝ゲームを紹介（プロフィールのシェアと同じ）／🔖＝この場だけの保存マーク（セーブには載せない飾り）
+  card.querySelector(".ig-share").onclick = () => { if (typeof shareGameInfo === "function") shareGameInfo(); };
+  const saveBtn = card.querySelector(".ig-save");
+  const _igSaved = state.ui._igSaved || (state.ui._igSaved = {});
+  const paintSave = () => { saveBtn.classList.toggle("on", !!_igSaved[po.id]); saveBtn.style.opacity = _igSaved[po.id] ? "1" : ""; saveBtn.textContent = _igSaved[po.id] ? "📌" : "🔖"; };
+  paintSave();
+  saveBtn.onclick = () => { _igSaved[po.id] = !_igSaved[po.id]; paintSave(); _snsToast(_igSaved[po.id] ? "保存しました" : "保存を取り消しました"); };
   return card;
 }
 
@@ -394,13 +400,19 @@ function _igProfile(body, ci) {
 
   // ハイライト（連続ログイン＋固定）
   const hi = el("div", "ig-highlights");
-  const mkHi = (e, lb) => `<span class="ig-hi"><span class="ig-hi-c">${e}</span><span class="ig-hi-lb">${lb}</span></span>`;
-  hi.innerHTML = mkHi(badge.e, `${streak}日連続`) + mkHi("🏆", "名場面") + mkHi("🐉", "推し竜") + mkHi("🍢", "グルメ");
+  // タップで中身へ：連続＝記録／名場面＝最高記録／推し竜＝竜図鑑／グルメ＝ごはん
+  const mkHi = (e, lb, go) => { const b = el("button", "ig-hi", `<span class="ig-hi-c">${e}</span><span class="ig-hi-lb">${lb}</span>`); b.onclick = go; return b; };
+  const _p = state.player || {};
+  hi.appendChild(mkHi(badge.e, `${streak}日連続`, () => _snsToast(`${badge.e} ${streak}日連続でログイン中！`)));
+  hi.appendChild(mkHi("🏆", "名場面", () => _snsToast(`🏆 最高 ${_p.bestStreak || 0}連勝／最高所持 ${fmtCoins(_p.maxCoinsReached || 0)}`)));
+  hi.appendChild(mkHi("🐉", "推し竜", () => { if (typeof renderCollection === "function") renderCollection(); }));
+  hi.appendChild(mkHi("🍢", "グルメ", () => { if (typeof renderMeals === "function") renderMeals(); }));
   body.appendChild(hi);
 
-  // タブ（グリッド）
+  // タブ（グリッド）：🏷＝タグ付け（まだ無い）
   const gtab = el("div", "ig-gridtab");
-  gtab.innerHTML = `<span class="on">▦</span><span>🏷</span>`;
+  gtab.innerHTML = `<span class="on">▦</span><span class="ig-tagtab">🏷</span>`;
+  gtab.querySelector(".ig-tagtab").onclick = () => _snsToast("🏷 タグ付けされた投稿はまだありません");
   body.appendChild(gtab);
 
   // 3カラムグリッド

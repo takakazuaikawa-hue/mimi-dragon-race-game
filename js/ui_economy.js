@@ -229,7 +229,7 @@ function _ecoExtinctionPanel() {
     `<div class="ep-dial-scale"><span class="ep-tk ep-tk-doom">1.0<small>淘汰</small></span>` +
     `<span class="ep-tk ep-tk-mid">1.05</span>` +
     `<span class="ep-tk ep-tk-safe">1.1<small>安全</small></span></div></div>` +
-    `<div class="ep-hud-note">🌴スカウト・🏠暮らし・🛍️買い物・🏅的中で押し戻す（0で最終決戦）</div>`;
+    `<div class="ep-hud-note">🌴スカウト・🏠暮らし・🛍️買い物・🏅的中で押し戻す（1.1倍まで押し切ると最終決戦）</div>`;
   const _q = hud.querySelector(".info-q");
   if (_q) _q.onclick = (ev) => { ev.stopPropagation(); if (typeof showEpilogueMeterHelp === "function") showEpilogueMeterHelp(); };
   wrap.appendChild(hud);

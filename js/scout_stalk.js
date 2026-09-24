@@ -103,7 +103,7 @@ function stalkDepart(locId) {
 
   const cost = loc.cost || 0;
   const canPay = (state.player.coins || 0) >= cost;
-  app.appendChild(el("div", "sc-sec", "🐾 しのびあし（試作）"));
+  app.appendChild(el("div", "sc-sec", "🐾 しのびあし"));
   app.appendChild(el("div", "stalk-hint",
     `<span>👣 1歩うごくと、竜も1手</span><span>🟡のマスは「見えている」</span>` +
     `<span>🌾 に入るとかくれられる</span><span>竜のよこの♡に立てたら 🗣️話しかけ</span>`));

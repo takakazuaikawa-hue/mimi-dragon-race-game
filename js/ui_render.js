@@ -104,7 +104,7 @@ function beginScreen() {
   // quick back button pinned at the very top of sub-pages (sticky), so you don't have to
   // scroll to the bottom. Menu pages → ホーム / drill-downs → their parent. (Bottom stays too.)
   const TOP_BACK = {
-    race_select: "home", assets: "home", village: "home", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
+    race_select: "home", assets: "home", village: "assets", collection: "home", help: "home", story: "home", consult: "home", settings: "home", mall: "home", stable: "home", scout: "home", goals: "home", meals: "home",
     poro_gourmet: "home",   // クリア後ミニゲームも迷子にしない（mall_rpgはラン中断防止のため意図的に無し＝race_runと同じ例外）
     sns: "home", konron_map: "home",   // SNSは戻る導線が無かった／観光は自前バックが画面下＝上部stickyを補う
     life_tree: "assets", life_collection: "assets", active_skills: "assets", economy: "assets", collection_score: "assets", story_read: "story",
@@ -251,17 +251,26 @@ function renderTitle() {
 
 // 称号スイッチャー（ホーム左上のプロフィールから）：取得済み（習い事を極めた）称号を
 // ホーム表示用に切り替える。表示専用＝着順/オッズ/配当・経済には一切干渉しない。
+// 習い事以外で手に入る称号（グルメレースSS／崑崙の旅の記録を全部埋める）。表示専用。
+function extraTitles() {
+  const p = state.player || {}, out = [];
+  try {
+    if (p.poroGourmet && p.poroGourmet.rewards && p.poroGourmet.rewards.title) out.push({ id: "t_gourmet", icon: "🍢", title: "グルメの友" });
+    if (p.kurashi && p.kurashi.travelOutfit) out.push({ id: "t_konron", icon: "📷", title: "崑崙路の写真家" });
+  } catch (e) {}
+  return out;
+}
 function showTitleSwitcher() {
   const p = state.player;
   const as = p.activeSkills || {};
-  const earned = (typeof ACTIVE_SKILLS !== "undefined" ? ACTIVE_SKILLS : []).filter(s => (as[s.id] || 0) >= s.levels.length);
+  const earned = (typeof ACTIVE_SKILLS !== "undefined" ? ACTIVE_SKILLS : []).filter(s => (as[s.id] || 0) >= s.levels.length).concat(extraTitles());
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop titlepop");
   const close = () => ov.remove();
   if (!earned.length) {
     box.innerHTML =
       `<div class="navpop-ic">🏅</div><div class="navpop-t">称号をえらぶ</div>` +
-      `<div class="navpop-d">まだ称号がありません。<br>「習い事」を極めると獲得できます。</div>`;
+      `<div class="navpop-d">まだ称号がありません。<br>「習い事」を極めるなどで獲得できます。</div>`;
     const btns = el("div", "navpop-btns");
     const cancel = el("button", "navpop-cancel", "閉じる"); cancel.onclick = close;
     const go = el("button", "navpop-go", "習い事へ ▶"); go.onclick = () => { close(); renderActiveSkills(); };
@@ -551,31 +560,40 @@ function showMoneyMap() {
   const parts = (typeof assetPartsLabel === "function") ? assetPartsLabel() : "コイン＋村＋施設＋暮らし＋名声＋竜";
   // ★救済額も定数から。RESCUE_COINS を触ったら説明文が自動で追従する。
   const r1 = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[1]) ? RESCUE_COINS[1] : 300;
+  // まだ出会っていない仕組み（モール・配信）の行は、解放されるまで見せない（ネタバレ・情報過多を避ける）。
+  const _mallOpen = (typeof mallUnlocked === "function") && mallUnlocked();
+  const _bcOn = (typeof broadcastOn === "function") && broadcastOn();
   showInfoPopup("💰 お金のしくみ", `
     <div class="mm-flow">🪙 勝つ → 🏦 育つ → 🔓 解放される</div>
-    <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・紀行の売上・救済で増え、賭け・お買い物で減る。<u>お財布はこれ一つ</u>です。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・${(state.player.completedRaces || 0) >= 1 ? "紀行の売上・" : ""}救済で増え、賭け・お買い物で減る。<u>お財布はこれ一つ</u>です。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🏦</span><div><b>資産</b><small>いま持っているものの合計＝${parts}。<u>使えば減り、島に投資すればコインが施設に変わるだけで合計は保たれる</u>。内訳はいつでも開けます。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🔓</span><div><b>解放は「これまでの最高額」で判定</b><small>お話やお店が開く条件だけは、<u>これまでに届いた一番高い資産</u>で見ます。だから資産を使っても、読めた話が読めなくなることはありません。</small></div></div>
     <div class="mm-row"><span class="mm-ic">🏅</span><div><b>ランク</b><small>出走と勝利で昇格。新しいレースが解放される。</small></div></div>
     <div class="mm-row"><span class="mm-ic">💛</span><div><b>救済</b><small>コインが0でも大丈夫。暮らしレベル1で <b>${fmtCoins(r1)}</b> から始まり、暮らしと名声が育つほど増えます。借金ではありません。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">🗼</span><div><b>モールの持ちもの</b><small>お買い物ダンジョンの中だけで使う <b>🪙G</b>・<b>🎟️チケット</b>・<b>✨評判</b>。<u>衣装の購入はコイン</u>で、Gでは買えません。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">💗</span><div><b>視聴者・いいね</b><small>配信のにぎわい（飾り）。勝負には影響しない。</small></div></div>`);
+    ${_mallOpen ? `<div class="mm-row"><span class="mm-ic">🗼</span><div><b>モールの持ちもの</b><small>お買い物ダンジョンの中だけで使う <b>🪙G</b>・<b>🎟️チケット</b>・<b>✨評判</b>。<u>衣装の購入はコイン</u>で、Gでは買えません。</small></div></div>` : ""}
+    ${_bcOn ? `<div class="mm-row"><span class="mm-ic">💗</span><div><b>視聴者・いいね</b><small>配信のにぎわい（飾り）。勝負には影響しない。</small></div></div>` : ""}`);
 }
 
 // Minimal-text nav: tapping a menu button opens a small description popup with
 // 進む（proceed）/ キャンセル, so the home stays uncluttered but every button explains itself.
-function showNavConfirm(icon, title, desc, onGo) {
+function showNavConfirm(icon, title, desc, onGo, goLabel) {
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop");
   box.innerHTML =
     `<div class="navpop-ic">${icon}</div><div class="navpop-t">${title}</div><div class="navpop-d">${desc}</div>` +
-    `<div class="navpop-btns"><button class="navpop-cancel">キャンセル</button><button class="navpop-go">進む ▶</button></div>`;
+    `<div class="navpop-btns"><button class="navpop-cancel">キャンセル</button><button class="navpop-go">${goLabel || "進む ▶"}</button></div>`;
   ov.appendChild(box);
   document.body.appendChild(ov);
   const close = () => ov.remove();
   box.querySelector(".navpop-cancel").onclick = close;
   ov.onclick = (e) => { if (e.target === ov) close(); };
   box.querySelector(".navpop-go").onclick = () => { close(); onGo(); };
+}
+// データのリセット（取り返しがつかない操作＝ブラウザ標準の confirm ではなくゲーム内の確認で、失うものを明記）
+function confirmResetGame() {
+  showNavConfirm("⚠️", "データをリセット",
+    "すべての進行・コイン・衣装・図鑑の記録が消えて、最初からになります。<br><b>元には戻せません。</b>",
+    () => { resetGame(); updateHeader(); renderHome(); }, "リセットする");
 }
 
 
@@ -605,6 +623,11 @@ function showMushinOverlay() {
   const go = el("button", "mushin-go", "🙏 無心する");
   go.onclick = () => runMushin(ov, amt);
   card.appendChild(go);
+  // ★やめる道も残す（誤タップで開いたとき、無心する以外に出口が無かった）
+  const no = el("button", "mushin-no", "やめておく");
+  no.onclick = () => ov.remove();
+  card.appendChild(no);
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
   document.body.appendChild(ov);
 }
 
@@ -917,7 +940,7 @@ function renderVillage() {
     `<div class="vil-stat-v">${val}</div><div class="vil-stat-s">${sub}</div></div>`;
   stats.innerHTML =
     stat("💛", "救済コイン", fmtCoins(rescue), "破産時に支給") +
-    stat("🎰", "賭金倍率", "×" + villMult, "上限が広がる") +
+    stat("🎰", "賭金倍率", "×" + villMult.toFixed(1), "上限が広がる") +   // 下の「道のり」と同じ小数1桁表記
     stat("🐉", "解放した竜", `${(v.unlockedDragonIds || []).length}/${DRAGONS.length}`, "図鑑と連動");
   app.appendChild(stats);
 
@@ -966,7 +989,19 @@ function renderVillage() {
 function renderSettings() {
   state.ui.screen = "settings";
   const app = beginScreen();   // 上部に「← ホーム」
-  app.appendChild(el("h2", null, "⚙️ 設定"));
+  const _setH = el("h2", null, "⚙️ 設定");
+  // 見出しを7回タップ＝開発者モードの切り替え（隠し扉。1.5秒あくと数え直し）
+  let _taps = 0, _tapAt = 0;
+  _setH.onclick = () => {
+    const now = Date.now(); if (now - _tapAt > 1500) _taps = 0; _tapAt = now;
+    if (++_taps < 7) return;
+    _taps = 0;
+    const on = !devModeOn(); setDevMode(on);
+    if (!on) { state.ui.debug = false; const cb = document.getElementById("debug-toggle"); if (cb) cb.checked = false; }
+    if (typeof flashShareToast === "function") flashShareToast(on ? "🛠 開発者モード ON" : "開発者モード OFF");
+    renderSettings();
+  };
+  app.appendChild(_setH);
 
   // サウンド ON/OFF（効果音・歓声・BGM をまとめて切替）
   const muted = !!(window.Sfx && Sfx.isMuted && Sfx.isMuted());
@@ -1002,6 +1037,14 @@ function renderSettings() {
     seg.appendChild(b);
   });
   app.appendChild(seg);
+  // いま選んでいる段階で何が増えるか（buildDragonPanel のタブ／答え合わせの分析節と一致させる）
+  const INFO_DESC = {
+    simple: "出走表と、勝因・ペースだけ。数字は最小限。",
+    standard: "＋試走タブ。答え合わせに人気竜の分析・妙味・賭けの評価。",
+    advanced: "＋妙味タブ。答え合わせにスタミナ・天候の読み。",
+    expert: "＋上位3頭の「強さの内訳」（基礎力〜運まで全部）。"
+  };
+  app.appendChild(el("div", "as-hint2", INFO_DESC[state.ui.infoLevel] || ""));
 
   // ★撤去（2026-07-31・IA整理）：ここにあった「竜の村のようす」カード（救済・賭金倍率・解放竜）は
   //   暮らし画面の「🏅 暮らしレベル」カードと同じ内容の重複表示だった。もともと村画面が
@@ -1022,12 +1065,21 @@ function renderSettings() {
   const data = el("div", "set-data");
   const bTitle = el("button", "secondary", "🏠 タイトルへ"); bTitle.onclick = () => renderTitle();
   const bReset = el("button", "set-danger", "🔄 リセット");
-  bReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
+  bReset.onclick = () => confirmResetGame();
   data.appendChild(bTitle); data.appendChild(bReset);
   app.appendChild(data);
+  // 版数＝index.html の ?v=（不具合報告のとき「どの版か」がわかるように。スマホのキャッシュ確認にも）
+  try {
+    const _sv = document.querySelector('script[src*="?v="]');
+    const _v = _sv ? (_sv.getAttribute("src").split("?v=")[1] || "") : "";
+    if (_v) app.appendChild(el("div", "set-ver", `版 ${_v}`));
+  } catch (e) {}
 
   // 🛠 デバッグ（実機=スマホでも使えるよう設定内に常設。ヘッダのチェックと同期）
   // ここでの操作は所持コイン/所持品/ランク等のメタ操作のみ＝レースの着順・オッズ・配当計算には一切触れない。
+  // ★開発者だけの隠し扉（2026-09-24）：普段はこの欄ごと出さない＝プレイヤーがコイン付与などを触れない。
+  //   出し方＝URL に ?debug=1 を付けて開く／この画面の見出し「⚙️ 設定」を7回タップ（nav.js devModeOn）。
+  if (devModeOn() || state.ui.debug) {
   app.appendChild(el("div", "as-sec", "デバッグ"));
   const dbgRow = el("div", "set-row",
     `<span class="set-ic">🛠</span><span class="set-tx"><span class="set-nm">デバッグモード</span><span class="set-sub">開発用ツール（コイン付与など）を表示</span></span>`);
@@ -1215,6 +1267,7 @@ function renderSettings() {
       app.appendChild(el("div", "as-hint2", "URLでも直接起動できます：<code>?go=meals</code> のように画面IDを指定（<code>&debug=1</code> でデバッグもON）。"));
     }
   }
+  }   // ← 開発者モードのときだけ（上の if）
 
   // おまけ：エンディング＆スタッフロール。★クリア後だけ（未クリアで再生すると顧問5人の立ち絵・全5話の
   // 一枚絵・結末まで丸ごとネタバレし、gameCleared まで立ってしまう＝新規セーブで実際に再生できていた）。
@@ -1542,7 +1595,7 @@ function renderHelp() {
 
   app.appendChild(section("infolv", "情報量レベル", [
     "ヘッダの「情報量」セレクタで表示量を調整できます。",
-    "<b>簡易</b>=入門。<b>標準</b>=デフォルト。<b>詳細</b>=妙味手がかり＋分析項目追加。<b>エキスパート</b>=コンポーネント内訳まで。"
+    "<b>簡易</b>=入門。<b>標準</b>=デフォルト。<b>詳細</b>=妙味手がかり＋分析項目追加。<b>エキスパート</b>=上位3頭の強さの内訳まで。"
   ]));
 
   // ★数字は定数から埋める（直書きしない）。RESCUE_COINS を触れば説明が自動で追従する。
@@ -2001,8 +2054,8 @@ function renderRaceSelect() {
       fc.innerHTML =
         `<div class="feat-tag">★ 本日の注目レース ★</div>` +
         `<div class="feat-name">${gradeBadgeHTML(feat.rank)}${raceFullName(feat)}</div>` +
-        `<div class="feat-meta">Rank ${feat.rank}　${RANKS[feat.rank].label}　｜　${DISTANCE[feat.distance].label}　｜　${WEATHERS[feat.weather].label}</div>` +
-        `<div class="feat-purpose">${feat.purpose}</div>` +
+        `<div class="feat-meta">ランク${feat.rank}　${RANKS[feat.rank].label}　｜　${DISTANCE[feat.distance].label}　｜　${WEATHERS[feat.weather].label}</div>` +
+        `<div class="feat-purpose">${raceBlurb(feat)}</div>` +
         `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の達成ボーナス 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
         `<button class="feat-go">注目レースへ ▶</button>`;
       fc.querySelector(".feat-go").onclick = () => renderRaceDetail(feat);
@@ -2033,7 +2086,7 @@ function renderRaceSelect() {
           `<span class="rs-chip">${WEATHERS[r.weather].label}</span>` +
           `<span class="rs-chip wager">上限 ${wager}</span></div>` +
         `<div class="rs-course"><span>${getSection("early", r.early).label}</span><i>→</i><span>${getSection("mid", r.mid).label}</span><i>→</i><span>${getSection("late", r.late).label}</span></div>` +
-        (locked ? `<div class="rs-lock">🔒 ランク${r.rank} で解放</div>` : `<div class="rs-purpose">${r.purpose}</div>`) +
+        (locked ? `<div class="rs-lock">🔒 ランク${r.rank} で解放</div>` : `<div class="rs-purpose">${raceBlurb(r)}</div>`) +
       `</div>` +
       `<div class="rs-arrow" aria-hidden="true">${locked ? "🔒" : "▶"}</div>`;
     if (!locked) card.onclick = () => { _heroRect = card.getBoundingClientRect(); renderRaceDetail(r); };
@@ -2280,7 +2333,7 @@ function renderRaceDetail(race) {
   head.innerHTML = `
     <div class="bd-head-top">
       <button class="bd-back" id="back-race-select" type="button" aria-label="レース選択へ戻る">←</button>
-      <div class="bd-title"><b>${raceFullName(race)}</b><span class="bd-sub">${race.purpose || ""}</span></div>
+      <div class="bd-title"><b>${raceFullName(race)}</b><span class="bd-sub">${raceBlurb(race)}</span></div>
     </div>
     <div class="bd-chips">
       <button type="button" class="bd-chip" data-term="rank">🏅 R${race.rank} ${RANKS[race.rank].label}</button>
@@ -2510,7 +2563,7 @@ function renderRaceDetail(race) {
       <button class="wager-step" id="wager-plus" type="button" aria-label="増やす">＋</button>
       <span class="wager-quick" id="wager-chips"></span>
     </div>
-    <div class="payout-box empty" id="expected-payout"><div class="po-hint">本命と賭金を選ぶと払戻が出ます</div></div>
+    <div class="payout-box empty" id="expected-payout"><div class="po-hint">竜と賭金を選ぶと払戻が表示されます</div></div>
     <!-- ★根拠(どうしてこの子?)はここから撤去。スキップできる位置だと「選ばない」が大多数になり
          C-3の答え合わせが育たないため、出走確定の投票券ダイアログで必ず選ばせる方式に変更。 -->
     <div class="slip-actions"><button id="bet-confirm" type="button" disabled>🔔 出走直前！この予想で観る ▶</button></div>
@@ -2571,7 +2624,7 @@ function renderRaceDetail(race) {
       <span class="bp-order" style="display:none"></span>
       <span class="bp-pop p${rk <= 3 ? rk : ""}">${rk}<small>人気</small></span>
       <span class="bp-main">
-        <span class="bp-name"><span class="dragon-icon" style="background:${dragonColor(d)}">${d.name.charAt(0)}</span>${d.name}</span>
+        <span class="bp-name">${dragonIcon(d)}${d.name}</span>
         <span class="bp-sub"><span class="style-${d.style}">${STYLE_LABEL[d.style]}</span>${d.newspaperMark ? `<span class="bp-mark">${d.newspaperMark}</span>` : ""}<span class="bp-form">${recentResultLabel(d.recentResult)}</span>${typeof rivalTagHtml === "function" ? rivalTagHtml(d.id) : ""}</span>
         <span class="bp-traits">${d.traits.join("・")}</span>
       </span>
@@ -2732,7 +2785,7 @@ function renderRaceDetail(race) {
         .map(v => `<i class="rank-${statRank(v)}">${statRank(v)}</i>`).join("");
       tr.innerHTML = `
         <td><span class="popularity-rank p${rk<=3?rk:""}">${rk}</span></td>
-        <td class="et-name"><span class="dragon-icon-row">${dragonIconPlaceholder(d)}<b>${d.name}</b></span>
+        <td class="et-name"><span class="dragon-icon-row">${dragonIcon(d)}<b>${d.name}</b></span>
           <span class="dragon-traits">${d.traits.join("・")}</span></td>
         <td class="style-${d.style}">${STYLE_LABEL[d.style]}</td>
         <td class="et-stats">${stats}</td>
@@ -2806,11 +2859,43 @@ function renderRaceDetail(race) {
 
 }
 
-// §11 §19 placeholder dragon icon — colored disc + name initial.
-function dragonIconPlaceholder(d) {
-  const color = dragonColor(d);
-  const initial = d.name.charAt(0);
-  return `<span class="dragon-icon" style="background:${color}">${initial}</span>`;
+// 竜の丸アイコン＝竜V2の絵から「顔」を切り出したもの（2026-09-24・旧＝色の丸＋頭文字の仮アイコン）。
+// 絵は非同期で読むので、まず色の丸＋頭文字で出し、読めしだい顔に差し替える（表示のみ）。
+const _dragonFaceCache = Object.create(null);
+function dragonFaceURL(id) {
+  if (_dragonFaceCache[id]) return _dragonFaceCache[id];
+  if (typeof _rcDragonSprite !== "function") return null;
+  const e = _rcDragonSprite(id);
+  if (!e || !e.ok || !e.box) return null;
+  try {
+    const src = e.cv || e.img, b = e.box;
+    // 鼻先（右端15%）の不透明な画素の平均の高さ＝頭の高さ。翼の無い竜・首の低い竜でも顔に合う
+    const probe = document.createElement("canvas"); probe.width = b.w; probe.height = b.h;
+    const px = probe.getContext("2d"); px.drawImage(src, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+    const x0 = Math.floor(b.w * 0.85), d = px.getImageData(x0, 0, b.w - x0, b.h).data;
+    let sy = 0, n = 0;
+    for (let i = 3, k = 0; i < d.length; i += 4 * 3, k += 3) { if (d[i] > 60) { sy += Math.floor((k) / (b.w - x0)); n++; } }
+    const headY = n ? sy / n : b.h * 0.4;
+    const s = Math.round(Math.min(b.h * 0.62, b.w * 0.40));
+    const cx = b.w - s * 0.5 - b.w * 0.02, cy = Math.max(s / 2, Math.min(b.h - s / 2, headY - s * 0.05));
+    const out = document.createElement("canvas"); out.width = out.height = 64;
+    out.getContext("2d").drawImage(probe, cx - s / 2, cy - s / 2, s, s, 0, 0, 64, 64);
+    return (_dragonFaceCache[id] = out.toDataURL());
+  } catch (err) { return null; }
+}
+let _dragonFaceTimer = 0, _dragonFaceTries = 0;
+function _paintDragonFaces() {
+  _dragonFaceTimer = 0;
+  let pending = 0;
+  document.querySelectorAll(".dragon-icon[data-did]:not(.has-face)").forEach(sp => {
+    const u = dragonFaceURL(sp.dataset.did);
+    if (u) { sp.style.backgroundImage = `url(${u})`; sp.classList.add("has-face"); } else pending++;
+  });
+  if (pending && ++_dragonFaceTries < 25) _dragonFaceTimer = setTimeout(_paintDragonFaces, 160);
+}
+function dragonIcon(d) {
+  if (!_dragonFaceTimer) { _dragonFaceTries = 0; _dragonFaceTimer = setTimeout(_paintDragonFaces, 0); }
+  return `<span class="dragon-icon" data-did="${d.id}" style="background-color:${dragonColor(d)}">${d.name.charAt(0)}</span>`;
 }
 
 function trialNote(d, f) {
@@ -2844,8 +2929,9 @@ function paddockTell(d, f) {
   if (f.trialFinish >= 80) t.push("尻尾がゆっくり大きく振れている。余力を隠している。");
   else if (f.trialFinish < 48) t.push("時々、息を大きく吐いている。");
   if (f.riderSync >= 80) t.push("騎手が首を撫でると、耳がぴくりと応えた。");
-  if (!t.length) t.push(d.style === "nige" ? "落ち着いている。逃げる子にしては、静かすぎるくらい。"
-    : d.style === "oikomi" ? "列の後ろで、じっと順番を待っている。"
+  if (!t.length) t.push(d.style === "escape" ?   // ★脚質キーは escape/chase（旧 nige/oikomi のままで、この2文が一度も出ていなかった）
+     "落ち着いている。逃げる子にしては、静かすぎるくらい。"
+    : d.style === "chase" ? "列の後ろで、じっと順番を待っている。"
       : "特に変わった様子はない。いつもどおり。");
   // 決定的に1つ選ぶ（竜ID×体調でインデックス固定）
   let h = 0; for (let i = 0; i < d.id.length; i++) h = (h * 31 + d.id.charCodeAt(i)) >>> 0;
@@ -3028,7 +3114,8 @@ function onConfirmBet(skipDialog) {
   const err = validateBet(c.bet, c.race);
   if (err) {
     const ep = document.getElementById("expected-payout");
-    if (ep) { ep.textContent = "エラー: " + err; ep.style.color = "#ff8080"; }
+    // ほかの注意書き（setHint の invalid）と同じ見た目で（旧＝「エラー:」＋直書きの赤字）
+    if (ep) { ep.classList.add("invalid"); ep.innerHTML = '<div class="po-hint"></div>'; ep.firstChild.textContent = err; }
     return;
   }
   // §07 §13 confirmation dialog to prevent accidental bets.
@@ -3173,7 +3260,7 @@ function settleRace() {
   // 📦 獲得台帳（このレースで増えたもの一覧＝結果画面の「今回の獲得」。表示専用・数値はここまでで確定済み）
   try {
     let _mission = false;
-    if (state.player.dailyM && (state.player.completedRaces - state.player.dailyM.races0) === 1) _mission = true;   // この1走でデイリー「出走」を達成
+    // ★デイリーミッションは画面から外れている（_dailyMissionText は未使用）＝古いセーブの記録だけに反応して「達成！」が出ないよう判定しない
     c.gainLedger = {
       hit: !!betResult.hit, payout: betResult.payout, wager: betResult.wager,
       streakBonus, featuredBonus: c.featuredBonus || 0,
@@ -3223,7 +3310,7 @@ function showBetConfirm() {
   const payout = Math.floor(c.bet.wager * odds);
   const overlay = document.getElementById("event-overlay");
   // ★投票券モチーフ（C演出）：半券つきチケット→「千切って出走」。表示のみ＝数値は betOdds のまま。
-  const serial = `No.${String(c.race.id || "R").replace(/[^a-z0-9]/gi, "").slice(-6).toUpperCase()}-${String((state.player.completedRaces || 0) + 1).padStart(4, "0")}`;
+  const serial = `No.${String((state.player.completedRaces || 0) + 1).padStart(4, "0")}`;   // 通算何戦目か（旧＝レースIDの断片「LDERA4」が見えていた）
   document.getElementById("event-speaker").textContent = "🎫 聖龍レース投票券";
   document.getElementById("event-text").innerHTML =
     `<div class="tix" id="tix-card">` +
@@ -3294,7 +3381,7 @@ function showBetConfirm() {
         sakeLine +
         `<div class="mm-row"><span class="mm-ic">🍽</span><div><b>ごはんを食べよう</b><small>` +
           (_freeMeal ? "きょうは1品「店のおごり」が出ます。" : "食べればまた走れます。") +
-          `ヘッダーの🍖おなかピル、🏝おでかけの屋台からも行けます。</small></div></div>`,
+          `ホーム上部の🍖、🏝おでかけの屋台からも行けます。</small></div></div>`,
         null,
         { label: "🍽 ごはんへ ▸", fn: function () { if (typeof renderMeals === "function") renderMeals(); } });
       return;
@@ -4438,7 +4525,9 @@ function recapTabResult(body, recap, c) {
   if (ps) {
     body.appendChild(recapSection("払い戻し", [
       `${ps.typeLabel}／${ps.resultText}`,
-      `賭金 ${fmtCoins(ps.wager)} × ${ps.odds.toFixed(1)} → 払戻 ${fmtCoins(ps.payout)}（収支 ${ps.profit >= 0 ? '+' : ''}${fmtCoins(ps.profit)}）`,
+      ps.payout > 0   // 外れのときに「× オッズ → 払戻 0」と出て計算が合わないように読めた
+        ? `賭金 ${fmtCoins(ps.wager)} × ${ps.odds.toFixed(1)}倍 → 払戻 ${fmtCoins(ps.payout)}（収支 +${fmtCoins(ps.profit)}）`
+        : `賭金 ${fmtCoins(ps.wager)} → 払戻なし（収支 −${fmtCoins(ps.wager)}）`,
       `所持コイン: ${fmtCoins(state.player.coins)}`
     ]));
   }
@@ -4465,7 +4554,7 @@ function recapTabPayout(body, recap, c) {
     `所持コイン: ${fmtCoins(state.player.coins)}`
   ]));
   if (recap.betReview && recap.betReview.length) {
-    body.appendChild(recapSection("馬券レビュー", recap.betReview));
+    body.appendChild(recapSection("予想レビュー", recap.betReview));
   }
 }
 
@@ -4476,7 +4565,7 @@ function recapTabHighlights(body, recap, c) {
 function recapTabAnalysis(body, recap, c) {
   body.appendChild(recapSection("勝因", recap.winnerReason));
   if (recap.loserReason && recap.loserReason.length) {
-    body.appendChild(recapSection("敗因・人気馬", recap.loserReason));
+    body.appendChild(recapSection("敗因・人気竜", recap.loserReason));
   }
   body.appendChild(recapSection("人気と実力のズレ", recap.marketGap));
   body.appendChild(recapSection("ペース", recap.paceAnalysis));
@@ -4604,7 +4693,7 @@ function renderAnalysis() {
   app.appendChild(sec("勝因", analysis.winnerReasons));
   app.appendChild(sec("ペース総括", [analysis.paceSummary]));
   if (lvl !== "simple") {
-    app.appendChild(sec("人気馬(竜)分析", analysis.favoriteFailureReasons));
+    app.appendChild(sec("人気竜の分析", analysis.favoriteFailureReasons));
     app.appendChild(sec("妙味・人気とのズレ", analysis.valueNotes));
     if (analysis.broadcastNotes && analysis.broadcastNotes.length) {
       app.appendChild(sec("中継ハイライト", analysis.broadcastNotes));
@@ -4618,9 +4707,10 @@ function renderAnalysis() {
   if (lvl === "expert") {
     const top3 = c.raceResult.entries.slice(0,3);
     const lines = top3.map(e =>
-      `${e.rank}着 ${e.dragon.name}: BP=${e.basePower.toFixed(1)} CP=${e.coursePower.total.toFixed(1)} WP=${e.weatherPower.toFixed(1)} FP=${e.formPower.toFixed(1)} PaceP=${e.pacePower.toFixed(1)} PosP=${e.positionPower.toFixed(1)} Rnd=${e.randomPower.toFixed(1)} StAdj=${e.staminaAdjustment.toFixed(1)} → Final=${e.finalPower.toFixed(1)}`
+      // ★表示だけ日本語に（旧＝BP=/CP=/Rnd= などエンジンの変数名がそのまま出ていた）。値はレース後に確定したもの
+      `<b>${e.rank}着 ${e.dragon.name}</b>　基礎力 ${e.basePower.toFixed(1)}・コース適性 ${e.coursePower.total.toFixed(1)}・天候 ${e.weatherPower.toFixed(1)}・調子 ${e.formPower.toFixed(1)}・展開 ${e.pacePower.toFixed(1)}・位置取り ${e.positionPower.toFixed(1)}・運 ${e.randomPower.toFixed(1)}・スタミナ補正 ${e.staminaAdjustment.toFixed(1)} → <b>総合 ${e.finalPower.toFixed(1)}</b>`
     );
-    app.appendChild(sec("コンポーネント内訳（エキスパート）", lines));
+    app.appendChild(sec("強さの内訳（エキスパート）", lines));
   }
   app.appendChild(sec("次戦へのヒント", analysis.nextHints));
 

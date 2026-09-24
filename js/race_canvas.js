@@ -1485,7 +1485,7 @@ function startRaceCanvas(container, ctx) {
     lines.push(midLabel
       ? `舞台は${distL}・${wxL}。中盤の「${midLabel}」、${midStat}が問われる難所だ。`
       : `舞台は${distL}・${wxL}。${N}頭の真価が問われる。`);
-    if (race.purpose) lines.push(`この一戦の意義——${race.purpose}。`);
+    if (race.purpose) lines.push(`この一戦の意義——${raceBlurb(race)}。`);
     lines.push(r >= 6 ? "頂点を懸けた、運命の決戦。歴史が動く！"
       : r >= 4 ? "格を懸けた、譲れぬ大一番。"
         : r >= 2 ? "未来へ繋ぐ、大切な一戦。"
@@ -3250,7 +3250,7 @@ function startRaceCanvas(container, ctx) {
       cctx.fillStyle = sb2; cctx.fillRect(spanL, gt - archH, spanW, bannerH);
       if (rh > 0.33) { cctx.fillStyle = "#ffe9a8"; cctx.fillRect(spanL, gt - archH, spanW, 2); cctx.fillRect(spanL, gt - archH + bannerH - 2, spanW, 2); }
       cctx.fillStyle = "#fff"; cctx.font = "bold " + (9 + rh * 3).toFixed(0) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "middle"; cctx.fillText("START", startGX, gt - archH + bannerH / 2);
+      cctx.textAlign = "center"; cctx.textBaseline = "middle"; cctx.fillText("スタート", startGX, gt - archH + bannerH / 2);   // ゴールは「ゴール」＝日本語にそろえる
       const flags = Math.round(2 + rh * 6), fy = gt - archH - 1, fdiv = (flags - 1) || 1;   // pennant bunting
       for (let i = 0; i < flags; i++) {
         const fx = spanL - 4 + ((spanW + 8) / fdiv) * i;
@@ -4844,7 +4844,8 @@ function startRaceCanvas(container, ctx) {
   function renderFinishStrip() {
     finishStripEl.style.display = "";
     const cr0 = timeline.crossings[0];                       // 勝者を大きく掲示（DOMのみ・数値は不変）
-    const winHit = cr0 && betSet.has(cr0.id);
+    // ★「🎯的中」は賭けが当たったときだけ（ワイドで1頭が1着・もう1頭が外れた場合に、下の配当プレート「ハズレ」と矛盾していた）
+    const winHit = cr0 && betSet.has(cr0.id) && !!(betResult ? betResult.hit : (bet && bet.type === "win"));
     let html = cr0
       ? `<div class="rc-fs-winner ${winHit ? "t" : ""}"><span class="rc-fs-tro">🏆</span><span class="rc-fs-wlbl">1着</span><b>${commentaryName(cr0.id)}</b>${winHit ? '<span class="rc-fs-hit">🎯的中</span>' : ""}</div>`
       : "";

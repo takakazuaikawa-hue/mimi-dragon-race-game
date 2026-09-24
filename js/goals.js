@@ -146,9 +146,9 @@ function goalIconSafe(g) {
 // 段メタ（物語進行）。
 var GOAL_PHASES = [
   { id: 1, label: "序章 ― 生き延びる" },
-  { id: 2, label: "第二話 ― オッズと市場" },
-  { id: 3, label: "第三話 ― 暮らしを立てる" },
-  { id: 4, label: "第四話 ― 配信者になる" },
+  { id: 2, label: "第2話 ― オッズと市場" },
+  { id: 3, label: "第3話 ― 暮らしを立てる" },
+  { id: 4, label: "第4話 ― 配信者になる" },
   { id: 5, label: "終章 ― 島を守る" }
 ];
 
@@ -157,9 +157,9 @@ var GOAL_PHASES = [
 var GOALS = [
   // ── 序章：生き延びる（静かホーム） ──
   { id: "firstRace",  phase: 1, icon: "🏁", title: "はじめてのレースに出走する", hint: "まずは1戦、走ってみよう。",                 done: function (s) { return (s.player.completedRaces || 0) >= 1; } },
-  { id: "firstHit",   phase: 1, icon: "🎯", title: "はじめて的中する",           hint: "1点でも当てると 🐉竜の図鑑 が開く。",     done: function () { return _gFlag("everHit"); } },
+  { id: "firstHit",   phase: 1, icon: "🎯", title: "はじめて的中する",           hint: "1点でも当てると 🐲竜の図鑑 が開く。",     done: function () { return _gFlag("everHit"); } },
   { id: "firstWin",   phase: 1, icon: "🏆", title: "はじめての勝利をあげる",     hint: "単勝で1着を当てる。",                       done: function (s) { return (s.player.wins || 0) >= 1; } },
-  { id: "firstMeal",  phase: 1, icon: "🍙", title: "屋台のごはんにありつく",     hint: "🍽️ごはんで1品たべると達成。おなかが減ったら屋台へ。", goLabel: "▶ ごはんへ", go: function () { if (typeof renderMeals === "function") renderMeals(); },
+  { id: "firstMeal",  phase: 1, icon: "🍙", title: "屋台のごはんにありつく",     hint: "屋台で1品たべると達成。おなかが減ったら、おでかけ先の屋台へ。", goLabel: "▶ ごはんへ", go: function () { if (typeof renderMeals === "function") renderMeals(); },
     done: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 1; } },   // ★実際に食べたかで判定（旧=総資産1万の代理指標）
   // ★序章に「初めて自分の服を買う」の段を新設（ユーザー指摘：第2話の一番の関門なのに階段に段が無く、
   //   何をすれば進むのか分からなかった）。判定は第2話ゲート（data_assets.js chapterAvailable "2"）と同一。
@@ -198,7 +198,7 @@ var GOALS = [
   // セレスティアは伏線段階（celestiaStrangerSeen）でも本名・☄️・「神眼」を出さない（解禁は第5話＝advisorMet）。
   { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: _gCh5Hint, cast: "celestia", maskTitle: "？？？（第5話）", maskHint: _gCh5Hint, goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
     done: function () { return _gFlag("_chapter_intro_5") || _gFlag("celestiaStrangerSeen"); } },
-  { id: "scout3",     phase: 5, icon: "🌋", title: "新たな地で竜を3頭スカウトする", hint: "終章で全ロケーション（火山・水中・空中…）が開放。", done: function () { return _gScouted() >= 3; } },
+  { id: "scout3",     phase: 5, icon: "🌋", title: "新たな地で竜を3頭スカウトする", hint: "終章で、竜に会える新しい行き先がいくつも開く。", done: function () { return _gScouted() >= 3; } },
   { id: "fol100k",    phase: 5, icon: "💗", title: "フォロワーを10万人にする",   hint: "島いちばんの予想家へ。",                   done: function () { return goalFollowers() >= 100000; } },
   // ☄️はセレスティアの記号（data_assets.js の STORY_CAST.celestia.symbol）＝未登場のあいだは出さない（R3）。文面に固有名は無いので伏せるのはアイコンだけ。
   { id: "protect",    phase: 5, icon: "☄️", title: "賭場を壊さず、島を守りきる", hint: "終章をクリアしてエンディングへ。",         cast: "celestia", maskIcon: "🏝️", done: function () { try { return !!(state.player.epilogue && state.player.epilogue.edFlag); } catch (e) { return false; } } }

@@ -265,7 +265,7 @@ function _scmFitting() {
     bb.onclick = () => {
       const r = buyOutfit(sel.id);
       if (r.ok) { wearOutfit(sel.id); if (window.Sfx) Sfx.play("coin"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); }
-      else if (r.reason === "poor") alert("コインが足りません。");
+      else if (r.reason === "poor") flashShareToast(`🪙 コインが足りません（あと ${fmtCoins(sel.acquire.price - (state.player.coins || 0))}）`);
     };
     cta.appendChild(bb);
   } else if (sel.acquire.assets != null) {
@@ -291,7 +291,9 @@ function _scmShops() {
 
   const worn = currentOutfitId();
   let list = OUTFITS.slice();
-  if (_mallFilter === "new") list = list.slice().reverse();
+  // 「新着」＝まだ持っていない・コインで買える服を、新しく入った順（OUTFITSの後ろほど新しい）に。
+  //   旧＝全件を逆順に並べるだけで、持っている服も混ざり「新着」になっていなかった。
+  if (_mallFilter === "new") list = list.filter(o => !outfitOwned(o) && !_scmGated(o) && o.acquire && o.acquire.price != null).reverse();
   else if (_mallFilter === "owned") list = list.filter(o => outfitOwned(o));
   // 「特別」＝買えない服（総資産で解放／旅の証／終章の装束）。★travel は登録時に入れ忘れていた。
   else if (_mallFilter === "locked") list = list.filter(o => o.acquire && (o.acquire.assets != null || o.acquire.travel || o.acquire.epilogue));
@@ -314,7 +316,7 @@ function _scmShops() {
     card.onclick = () => { state.ui.mallSel = o.id; if (window.Sfx) Sfx.play("click"); renderMall(); setTimeout(() => _scmScrollTo(".scm-fit"), 30); };
     grid.appendChild(card);
   });
-  if (!list.length) grid.appendChild(el("div", "scm-empty", "該当する服がありません。"));
+  if (!list.length) grid.appendChild(el("div", "scm-empty", _mallFilter === "new" ? "お店の服は、ぜんぶ持っています！" : "該当する服がありません。"));
   sec.appendChild(grid);
   return sec;
 }
@@ -380,14 +382,24 @@ function _scmSnsTab() {
 function _scmSecTitle(jp, en) { const t = el("div", "scm-sectitle"); t.innerHTML = `<b>${jp}</b><small>${en}</small>`; return t; }
 
 // さがす（衣装名でしぼり込み）。
+// ブラウザ標準の prompt はスマホで浮くので、ゲーム内の確認ポップに入力欄を載せる。
 function _scmSearch() {
-  const q = (typeof prompt === "function") ? prompt("衣装名で検索（一部でOK）") : "";
-  if (q == null) return;
+  let inp = null;
+  showNavConfirm("🔍", "衣装名で検索",
+    `<input class="scm-search-in" type="search" enterkeyhint="search" placeholder="一部でOK（例：デニム）">`,
+    () => _scmSearchRun(inp ? inp.value : ""), "さがす");
+  inp = document.querySelector(".navpop .scm-search-in");
+  if (inp) {
+    inp.focus();
+    inp.onkeydown = (e) => { if (e.key === "Enter") { const go = document.querySelector(".navpop .navpop-go"); if (go) go.click(); } };
+  }
+}
+function _scmSearchRun(q) {
   const key = String(q).trim();
   if (!key) { _mallFilter = "all"; renderMall(); return; }
   const hit = OUTFITS.find(o => o.name.indexOf(key) >= 0);
   if (hit) { state.ui.mallSel = hit.id; _mallFilter = "all"; renderMall(); setTimeout(() => _scmScrollTo(".scm-fit"), 30); }
-  else _scmInfo("🔍 検索", `<div class="mm-row"><span class="mm-ic">😅</span><div><b>「${key}」は見つかりませんでした</b><small>別のキーワードでどうぞ。</small></div></div>`);
+  else _scmInfo("🔍 検索", `<div class="mm-row"><span class="mm-ic">😅</span><div><b>「${key.replace(/[&<>"']/g, "")}」は見つかりませんでした</b><small>別のキーワードでどうぞ。</small></div></div>`);
 }
 function _scmNews() {
   const newest = OUTFITS.slice(-4).reverse();

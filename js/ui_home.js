@@ -153,6 +153,7 @@ function renderHome() {
       const _sk = ACTIVE_SKILLS.find(s => s.id === _eq);
       if (_sk && p.activeSkills && (p.activeSkills[_sk.id] || 0) >= _sk.levels.length) eqTitle = _sk.title;
     }
+    if (_eq && !eqTitle && typeof extraTitles === "function") { const _x = extraTitles().find(t => t.id === _eq); if (_x) eqTitle = _x.title; }
   } catch (e) {}
 
   // ── ホーム背景：複数ロケーションの日替わりローテーション＋昼夜切替＋接地キャリブレーション ──
@@ -288,9 +289,9 @@ function renderHome() {
   //  ①名前は単独行で必ず全表示 ②ランクはアバター角のバッジへ（テキスト行から外す）
   //  ③2行目は称号のみ（タップ＝称号切替と一致＝一貫性）。杯名/連勝は暮らしで見る。
   prof.innerHTML =
-    `<span class="hl-prof-av">🐰<i class="hl-prof-lv" title="プレイヤーランク">${p.rank}</i></span>` +
+    `<span class="hl-prof-av" style="${mimiAvatarStyle()}"><i class="hl-prof-lv" title="プレイヤーランク">${p.rank}</i></span>` +
     `<span class="hl-prof-tx"><b>予想家ミミ</b>` +
-    `<small><i class="hl-prof-title">🏅${eqTitle || "称号"}<span class="hl-prof-caret">▾</span></i>${p.streak >= 2 ? ` <span class="hl-prof-streak">🔥${p.streak}</span>` : ""}</small></span>`;
+    `<small><i class="hl-prof-title${eqTitle ? "" : " none"}">${eqTitle ? "🏅" + eqTitle : "称号なし"}<span class="hl-prof-caret">▾</span></i>${p.streak >= 2 ? ` <span class="hl-prof-streak">🔥${p.streak}</span>` : ""}</small></span>`;
   prof.title = "取得済みの称号を切り替える／ランク" + p.rank + (rankLabel ? "・" + rankLabel : "");
   prof.onclick = () => showTitleSwitcher();
   top.appendChild(prof);
@@ -348,10 +349,17 @@ function renderHome() {
   const ddShare = el("button", null, "📣 友達にシェア");
   ddShare.onclick = () => { sysDd.classList.add("hidden"); shareGameInfo(); };
   sysDd.appendChild(ddSet); sysDd.appendChild(ddShare);
-  const ddReset = el("button", null, "🔄 データをリセット");
-  ddReset.onclick = () => { if (confirm("プレイヤー状態をリセットしますか？")) { resetGame(); updateHeader(); renderHome(); } };
-  sysDd.appendChild(ddTitle); sysDd.appendChild(ddReset);
-  sysBtn.onclick = (e) => { e.stopPropagation(); sysDd.classList.toggle("hidden"); };
+  // ★データのリセットは設定画面だけに置く（⋯メニューからの誤タップで全消去しない）
+  sysDd.appendChild(ddTitle);
+  sysBtn.onclick = (e) => {
+    e.stopPropagation();
+    const opening = sysDd.classList.contains("hidden");
+    sysDd.classList.toggle("hidden");
+    if (opening) {   // 開いたら、メニューの外をタップしたときに閉じる
+      const off = (ev) => { if (!sysDd.contains(ev.target)) sysDd.classList.add("hidden"); document.removeEventListener("click", off, true); };
+      setTimeout(() => document.addEventListener("click", off, true), 0);
+    }
+  };
   sysWrap.appendChild(sysBtn); sysWrap.appendChild(sysDd);
   top.appendChild(sysWrap);
   wrap.appendChild(top);
@@ -450,7 +458,7 @@ function renderHome() {
       // ★門番：目標タイトルは未登場キャラの名前・章題を含む（例「スミカと総資産（第3話）」）ので、
       //   g.title を直読みせず goalTitleSafe() でマスク版を得る（未登場なら「？？？」）。typeofは読込順の保険。
       const _gt = _ng ? ((typeof goalTitleSafe === "function") ? goalTitleSafe(_ng) : _ng.title) : "";
-      _title = _ng ? `${_ng.icon} ${_gt}` : "✨ すべて達成しました！";
+      _title = _ng ? `${(typeof goalIconSafe === "function") ? goalIconSafe(_ng) : _ng.icon} ${_gt}` : "✨ すべて達成しました！";   // アイコンもネタバレ除けを通す（目標画面と同じ）
       _onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
     }
     if (_title) {
@@ -501,10 +509,15 @@ function renderHome() {
   if (_doGreet && window.DLG && DLG.login) {
     try { setTimeout(() => mimiSay((DLG.login(state.player)[0] || {}).t || "ようこそ！", 5200), 500); } catch (e) {}
   }
-  const _BANTER = ["今日はどの竜を推す〜？", "コメントありがとっ！", "いっしょに当てようね！", "耳、さわっていいよ？ うそうそ。", "オッズ、よーく見てね。", "ぱほぱほ〜♪", "推し竜、見つかった？", "差し入れ、うれしいな♪"];
+  // ★配信前（静かモード）は「コメント」「差し入れ」「見てくれてる」など配信前提の台詞を出さない（視聴者はまだいない）
+  const _BANTER = broadcast
+    ? ["今日はどの竜を推す〜？", "コメントありがとっ！", "いっしょに当てようね！", "耳、さわっていいよ？ うそうそ。", "オッズ、よーく見てね。", "ぱほぱほ〜♪", "推し竜、見つかった？", "差し入れ、うれしいな♪"]
+    : ["今日はどの竜にしようかな〜？", "いっしょに当てようね！", "耳、さわっていいよ？ うそうそ。", "ぱほぱほ〜♪", "推し竜、見つかった？", "竜って、みんな顔がちがうんだね……！", "レース場の歓声、ここまで聞こえる……！"];
   const _banter = () => mimiSay(_BANTER[Math.floor(Math.random() * _BANTER.length)]);
   // ミミ本体タップ＝状況に合わせて一言（来訪者ミミの口調・表情リアクション付き）。表示専用＝レース数値不変。
-  const _MIMI_SAY = ["わっ、見てくれてるの…？ えへへ。", "今日もいっしょにドキドキしよ？", "コメント、ぜんぶ読んでるよ！", "ぱほぱほ〜♪", "耳、さわっちゃだめ……ちょっとだけならいいかも？", "この世界、まだ慣れないけど…がんばるっ！", "次はどの子に賭けようかな…", "応援、すっごく力になるんだ！", "わたし、予想家ミミです。よろしくねっ", "ふぁ…ちょっとねむい、かも？"];
+  const _MIMI_SAY = broadcast
+    ? ["わっ、見てくれてるの…？ えへへ。", "今日もいっしょにドキドキしよ？", "コメント、ぜんぶ読んでるよ！", "ぱほぱほ〜♪", "耳、さわっちゃだめ……ちょっとだけならいいかも？", "この世界、まだ慣れないけど…がんばるっ！", "次はどの子に賭けようかな…", "応援、すっごく力になるんだ！", "わたし、予想家ミミです。よろしくねっ", "ふぁ…ちょっとねむい、かも？"]
+    : ["ひゃっ、なになに？", "今日もいっしょにドキドキしよ？", "ぱほぱほ〜♪", "耳、さわっちゃだめ……ちょっとだけならいいかも？", "この世界、まだ慣れないけど…がんばるっ！", "次はどの子に賭けようかな…", "わたし、予想家ミミです。よろしくねっ", "ふぁ…ちょっとねむい、かも？"];
   function _mimiTalk() {
     if (state.ui.screen !== "home") return;
     let line, mood = "smile";
@@ -953,10 +966,10 @@ function renderHome() {
     try { return !!checkDailyLogin(); } catch (e) { return false; }
   })();
   if ((p.completedRaces || 0) >= 1) {
-    bar.appendChild(tikTab("📖", "紀行", () => renderKiko(), { dot: _kikoDue }));
+    bar.appendChild(tikTab("📖", "紀行", () => renderKiko(), { dot: _kikoDue, img: "kiko" }));
   } else {
     bar.appendChild(tikTab("📖", "紀行", () => showInfoPopup("📖 ？？？",
-      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ始まっていません</b><small>まずは1戦、走ってみよう。島の姉御が、なにか勧めてくるらしい。</small></div></div>`), { locked: true }));
+      `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ始まっていません</b><small>まずは1戦、走ってみよう。島の姉御が、なにか勧めてくるらしい。</small></div></div>`), { locked: true, img: "kiko" }));
   }
   // 📱メディア＝物語（ドキュメンタリー）＋SNS＋手紙。未読はドット。
   const _storyNew = (typeof storyHasUnread === "function") && storyHasUnread();

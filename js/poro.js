@@ -482,8 +482,9 @@ function renderStable() {
     const careToday = canCare ? stableCare(id) : null;
     const todo = canCare && (careToday.p < 3 || !careToday.f);
     const card = el("button", "stable-card" + (e.favorite ? " fav" : "") + (canCare ? "" : " ghostly"),
-      `<span class="stable-card-dot" style="background:${d.color || "#caa24a"}"></span>` +
-      `<span class="stable-card-nm">${d.name}${todo ? ' <i class="st-todo">●</i>' : ""}</span>` +
+      // 竜の顔（スプライトから頭を切り出すアイコン）。関数が無い環境では色の点に戻す。
+      `<span class="stable-card-top">${typeof dragonIcon === "function" ? dragonIcon(d) : `<span class="stable-card-dot" style="background:${d.color || "#caa24a"}"></span>`}` +
+      `<span class="stable-card-nm">${d.name}${todo ? ' <i class="st-todo">●</i>' : ""}</span></span>` +
       (canCare
         ? `<span class="stable-card-sub">${r[2]} ${r[1]}${e.favFound ? "・🍽" : ""}</span>`
         : `<span class="stable-card-sub">${poroStyleLabel(d)}・${poroTemperLabel(d)}</span>`) +
@@ -526,7 +527,7 @@ const PORO_STABLE_EVENTS = [
   "大きな竜のくしゃみに驚いて、ポロがぴょんと浮いた。",
   "ポロが果物の数を、こっそり誤魔化そうとしている。"
 ];
-function poroStableEvent() { const a = PORO_STABLE_EVENTS; return a[Math.floor((state.player.completedRaces || 0 + dragonAffection("poro")) % a.length)]; }
+function poroStableEvent() { const a = PORO_STABLE_EVENTS; return a[Math.floor(((state.player.completedRaces || 0) + dragonAffection("poro")) % a.length)]; }
 function pickPoroPet(v) {
   if (v >= 90) return "ポロが、ぐりぐり頭をすりつけてくる。だいすき、って顔。";
   if (v >= 50) return "ポロが、きゅるんと目を細めて甘えてきた。";
