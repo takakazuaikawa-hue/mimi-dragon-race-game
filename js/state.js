@@ -67,7 +67,7 @@ const state = {
     // §09 §4 VillageState (V1 minimal — §26 forward compatibility)
     village: {
       level: 1,
-      name: "泣き虫ドラゴン村",
+      name: "竜の村",
       rescueCoinBase: 300,
       facilities: {
         paddock: 0, newspaper: 0, grandstand: 0,
@@ -134,6 +134,9 @@ function loadGame() {
       // §30 migration: pre-1.1 saves lack maxCoinsReached — seed it from coins
       // so an existing player's progression isn't reset to zero.
       if (state.player.maxCoinsReached == null) state.player.maxCoinsReached = state.player.coins || 0;
+      // ★村名の改名（2026-09-26・ユーザー決裁）：旧「泣き虫ドラゴン村」は、ポロ発見前に
+      //   「泣き虫」を出してしまい命名オチが割れるうえ、名前としても据わりが悪かった → 「竜の村」。
+      if (state.player.village && state.player.village.name === "泣き虫ドラゴン村") state.player.village.name = "竜の村";
       // ★資産の二値化 移行：旧セーブの totalAssets は「到達最高」の意味だったので、
       //   そのまま assetsPeak（解放判定の正本）へ引き継ぐ。totalAssets は直後の
       //   recomputeAssets() で現在の純資産として計算し直されるため、ここでは触らない。
@@ -243,7 +246,7 @@ function resetGame() {
       metMakura:false, gameCleared:false, poroGourmetRaceUnlocked:false
     },
     village: {
-      level: 1, name: "泣き虫ドラゴン村", rescueCoinBase: 300,
+      level: 1, name: "竜の村", rescueCoinBase: 300,
       // ★施設は初期構想の名残で、値を0から上げる機能は結局作られていない
       //   （ゲームはスカウト・モール・暮らしへ育った）。竜の村の画面に6枠を
       //   「未解放」で並べて「順次アップデート」と告知していたのを撤去済み。

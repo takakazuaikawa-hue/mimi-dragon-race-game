@@ -443,7 +443,7 @@ const LIFE_STAGES = [
     fame: "常連に名前を覚えられる", village: "にぎわう竜の村",
     summary: "総資産という足場を覚え、生活が整ってきた。" },
   { // §6.4 後半成長
-    housing: "ドラゴン村の家", food: "祝祭料理", outfit: "華やかな実況ドレス",
+    housing: "竜の村の家", food: "祝祭料理", outfit: "華やかな実況ドレス",
     decor: "受賞プレートの並ぶ棚", tool: "中継用の実況ブース", supporter: "スポンサー・支援者がつく",
     fame: "人気実況予想屋", village: "祝祭でにぎわう村",
     summary: "推し竜文化に沼り、支援者と熱狂に囲まれてきた。" },
@@ -773,8 +773,8 @@ const LIFE_ASSETS = [
   { id: "pred_board",   category: "decor",   name: "予想ボードと本棚",   value: 1500, unlockType: "auto", unlockAssetLevel: 2, rescueBonus: 20,
     description: "予想を書き込むボードと、資料の並ぶ本棚。" },
   // level 3
-  { id: "village_house",category: "housing", name: "ドラゴン村の家",     value: 20000,  unlockType: "auto", unlockAssetLevel: 3, rescueBonus: 150,
-    description: "ドラゴン村に、自分の家を構えられるようになった。" },
+  { id: "village_house",category: "housing", name: "竜の村の家",       value: 20000,  unlockType: "auto", unlockAssetLevel: 3, rescueBonus: 150,
+    description: "竜の村に、自分の家を構えられるようになった。" },
   { id: "feast",        category: "food",    name: "祝祭料理",           value: 12000,  unlockType: "auto", unlockAssetLevel: 3, rescueBonus: 200,
     description: "祝祭の日には、ごちそうを囲めるようになった。" },
   { id: "gorgeous_dress",category:"outfit",  name: "華やかな実況ドレス", value: 15000,  unlockType: "auto", unlockAssetLevel: 3, rescueBonus: 120,
