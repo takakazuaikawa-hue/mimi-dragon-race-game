@@ -123,9 +123,9 @@ function renderHome() {
       // ★初回だけ：サケの勧めで『ドラゴンレース紀行』を書き始めるVN（柱A・タイトル回収）。
       //   本体は ui_kiko.js の playKikoIntro（紀行画面から先に入った場合も同じ入口・1回きり）。
       if (_lb && typeof getStoryFlag === "function" && !getStoryFlag("kikoStarted") && typeof playKikoIntro === "function") {
-        setTimeout(() => playKikoIntro(() => { try { showLoginBonus(_lb); } catch (e) {} }), 420);
+        setTimeout(() => playKikoIntro(() => { try { whenUiIdle(() => showLoginBonus(_lb)); } catch (e) {} }), 420);
       }
-      else if (_lb) setTimeout(() => showLoginBonus(_lb), 420);
+      else if (_lb) setTimeout(() => whenUiIdle(() => showLoginBonus(_lb)), 420);   // 他のお知らせと重ねない
       else _doGreet = true;
     } catch (e) {}
   } else if (!window._mimiLoginChecked) {
@@ -907,7 +907,7 @@ function renderHome() {
   const bar = el("div", "tik-bar");
   // ★箱方式：専用アイコン images/nav/<key>.svg があれば絵文字を差し替える（無ければwebp→絵文字＝安全）。
   //   差し替え時は NAV_ICON_V を bump してキャッシュ撃破。5枚：island/kurashi/meal/sns/stable（dexは早期用）。
-  const NAV_ICON_V = "20260715j";
+  const NAV_ICON_V = "20260926a";   // アイコンSVGを差し替えたら上げる（紀行=ノートとペンに変更）
   const tikTab = (icon, label, go, opts) => {
     opts = opts || {};
     const b = el("button", "tik-tab" + (opts.center ? " center" : "") + (opts.locked ? " locked" : ""));

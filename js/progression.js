@@ -233,7 +233,7 @@ function progressionCheckOnHome() {
     // 既に何かのモーダル/VN/演出が出ていたら譲る（1到着1件ルール）。
     // ★監査で穴：旧ガードは .navpop-ov だけ＝ホーム到着時にVN（dlg-overlay・スマホ購入等）や
     //   情報ポップ（mm-ov/info-ov）が出ているとcut-inが上に重なった。全部に譲る。
-    if (document.querySelector(".navpop-ov, .dlg-overlay, .mm-ov, .info-ov, .mv-ov")) return;
+    if (document.querySelector(".navpop-ov, .dlg-overlay:not(.hidden), .mm-ov, .info-ov, .mv-ov, .login-ov, #lt-cutin")) return;   // ログボ・くらしツリーの授与にも譲る
     let cutinDone = false;
     // ★物語の新章＝レース直後にモーダルを出さず、ここ（次のホーム到着）で静かに1件だけ案内する（ユーザー指摘）。
     //   優先度は高め（新しい話は大きな出来事）＝他の解放より先に見せる。1到着1モーダルの枠を消費する。
@@ -274,7 +274,7 @@ function _showUnlockCutin(u) {
   box.innerHTML =
     `<div class="navpop-t">🔓 あたらしい遊びが解放！</div>` +
     `<div class="infopop-body"><div class="mm-row"><span class="mm-ic">${u.icon}</span>` +
-    `<div><b>${u.notifyTitle}</b><small>${u.notifyBody}</small></div></div></div>`;
+    `<div><b>${String(u.notifyTitle || "").replace(u.icon, "").trim()}</b><small>${u.notifyBody}</small></div></div></div>`;   // 左のアイコンと見出しの絵文字が二重にならないように
   const btns = el("div", "navpop-btns");
   const later = el("button", "navpop-x", "あとで"); later.onclick = function () { ov.remove(); };
   const go = el("button", "navpop-go", "今すぐ見る ▸");

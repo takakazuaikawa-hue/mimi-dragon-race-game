@@ -467,6 +467,19 @@
       if (mU && mU[0].length > 1) { units.push({ s: mU[0], at: ui }); ui += mU[0].length; }
       else { units.push({ s: full[ui], at: ui }); ui++; }
     }
+    // ★禁則：1文字ずつ inline-block だと改行規則が効かず「。」「、」「！」が行頭に落ちる（実機で確認）。
+    //   行頭に来てはいけない文字は前の unit に、行末に残ってはいけない開き括弧は次の unit にくっつける。
+    //   unit は連続した範囲のまま（at と s.length の整合＝タイプ位置・溜めの計算はそのまま使える）。
+    var NO_HEAD = "、。，．,.！？!?」』）)］】〉》ー…‥〜～っゃゅょぁぃぅぇぉッャュョァィゥェォ♪";
+    var NO_TAIL = "「『（(［【〈《";
+    for (var mi = units.length - 1; mi > 0; mi--) {
+      var cur = units[mi], prev = units[mi - 1];
+      if (cur.s.charAt(0) !== "\n" && NO_HEAD.indexOf(cur.s.charAt(0)) >= 0 && prev.s.slice(-1) !== "\n") {
+        prev.s += cur.s; units.splice(mi, 1);
+      } else if (NO_TAIL.indexOf(prev.s.slice(-1)) >= 0 && prev.s.length === 1 && cur.s.charAt(0) !== "\n") {
+        prev.s += cur.s; units.splice(mi, 1);
+      }
+    }
     d.text.className = "dlg-text";           // 前行の「一気に表示」を解除
     d.text.textContent = "";
     var cells = units.map(function (u) {

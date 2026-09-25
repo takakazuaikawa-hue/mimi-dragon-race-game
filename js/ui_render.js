@@ -443,6 +443,14 @@ function buyPhoneAndGoLive() {
 //   （空腹ポップが、IA再編で廃止済みの「ホームの🍽ごはん」を案内し続けていた）。
 //   文字で行き先を書くくらいなら、その場から行けるようにする。
 function showInfoPopup(title, html, onClose, action) {
+  // ★会話（VN）の最中に出すと、立ち絵とセリフの上に説明が重なる（実機で確認：初回チュートリアル等）。
+  //   会話が閉じるのを待ってから出す（最大20秒で打ち切り＝出し損ねない）。
+  if (window.Dialogue && Dialogue.isOpen && Dialogue.isOpen() && !(showInfoPopup._t0 && Date.now() - showInfoPopup._t0 > 20000)) {
+    if (!showInfoPopup._t0) showInfoPopup._t0 = Date.now();
+    setTimeout(() => showInfoPopup(title, html, onClose, action), 400);
+    return;
+  }
+  showInfoPopup._t0 = 0;
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop infopop");
   box.innerHTML = `<div class="navpop-t">${title}</div><div class="infopop-body">${html}</div>`;
@@ -549,8 +557,11 @@ function syncVolumeFab() {
   const fab = mountVolumeFab();
   const screen = state.ui && state.ui.screen;
   // ホーム＝ナビに音量があり下部が密／モール＝没入ミニゲームで戦闘デッキやD-padと重なるため隠す
-  fab.style.display = (screen === "home" || screen === "mall") ? "none" : "flex";
+  // レース中＝操作バーに専用のミュート(.rc-mute)がある＝右下の丸が「全ログ」ボタンに重なるだけなので隠す
+  fab.style.display = (screen === "home" || screen === "mall" || screen === "race_run") ? "none" : "flex";
   fab.style.bottom = "";
+  // 賭け画面は下端に全幅の出走ボタンが固定＝右下の丸と重なる。ボタン側に丸の分の余白を空ける（CSS: body.fab-pad）
+  document.body.classList.toggle("fab-pad", screen === "race_detail");
 }
 
 // 💰 お金のしくみ（通貨マップ）：どの数字が何のためにあり、何につながるかを1枚で明示。
@@ -563,11 +574,13 @@ function showMoneyMap() {
   // まだ出会っていない仕組み（モール・配信）の行は、解放されるまで見せない（ネタバレ・情報過多を避ける）。
   const _mallOpen = (typeof mallUnlocked === "function") && mallUnlocked();
   const _bcOn = (typeof broadcastOn === "function") && broadcastOn();
+  // 資産は「借金を返し終えて開示される概念」。開示前は資産・解放判定の行を出さない（物語の順番を守る）。
+  const _assetsOpen = (typeof assetsConceptOpen !== "function") || assetsConceptOpen();
   showInfoPopup("💰 お金のしくみ", `
-    <div class="mm-flow">🪙 勝つ → 🏦 育つ → 🔓 解放される</div>
+    ${_assetsOpen ? `<div class="mm-flow">🪙 勝つ → 🏦 育つ → 🔓 解放される</div>` : ""}
     <div class="mm-row"><span class="mm-ic">🪙</span><div><b>コイン</b><small>賭けるお金。配当・${(state.player.completedRaces || 0) >= 1 ? "紀行の売上・" : ""}救済で増え、賭け・お買い物で減る。<u>お財布はこれ一つ</u>です。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">🏦</span><div><b>資産</b><small>いま持っているものの合計＝${parts}。<u>使えば減り、島に投資すればコインが施設に変わるだけで合計は保たれる</u>。内訳はいつでも開けます。</small></div></div>
-    <div class="mm-row"><span class="mm-ic">🔓</span><div><b>解放は「これまでの最高額」で判定</b><small>お話やお店が開く条件だけは、<u>これまでに届いた一番高い資産</u>で見ます。だから資産を使っても、読めた話が読めなくなることはありません。</small></div></div>
+    ${_assetsOpen ? `<div class="mm-row"><span class="mm-ic">🏦</span><div><b>資産</b><small>いま持っているものの合計＝${parts}。<u>使えば減り、島に投資すればコインが施設に変わるだけで合計は保たれる</u>。内訳はいつでも開けます。</small></div></div>
+    <div class="mm-row"><span class="mm-ic">🔓</span><div><b>解放は「これまでの最高額」で判定</b><small>お話やお店が開く条件だけは、<u>これまでに届いた一番高い資産</u>で見ます。だから資産を使っても、読めた話が読めなくなることはありません。</small></div></div>` : ""}
     <div class="mm-row"><span class="mm-ic">🏅</span><div><b>ランク</b><small>出走と勝利で昇格。新しいレースが解放される。</small></div></div>
     <div class="mm-row"><span class="mm-ic">💛</span><div><b>救済</b><small>コインが0でも大丈夫。暮らしレベル1で <b>${fmtCoins(r1)}</b> から始まり、暮らしと名声が育つほど増えます。借金ではありません。</small></div></div>
     ${_mallOpen ? `<div class="mm-row"><span class="mm-ic">🗼</span><div><b>モールの持ちもの</b><small>お買い物ダンジョンの中だけで使う <b>🪙G</b>・<b>🎟️チケット</b>・<b>✨評判</b>。<u>衣装の購入はコイン</u>で、Gでは買えません。</small></div></div>` : ""}
@@ -699,7 +712,7 @@ function showLifeCutin(node) {
       `<div class="lt-cutin-band"><div class="lt-cutin-inner">` +
         `<div class="lt-cutin-ic">${node.icon}</div>` +
         `<div class="lt-cutin-tx">` +
-          `<div class="lt-cutin-kicker">${branch ? branch.icon + " " + branch.name + "・解放！" : "解放！"}</div>` +
+          `<div class="lt-cutin-kicker">${branch ? branch.icon + " くらしツリー（" + branch.name + "）解放！" : "🌱 くらしツリー解放！"}</div>` +
           `<div class="lt-cutin-title">${node.title}</div>` +
           `<div class="lt-cutin-sub">${sub}</div>` +
         `</div>` +
@@ -923,12 +936,12 @@ function renderVillage() {
   const v = state.player.village || { level: 1, name: "竜の村", facilities: {}, unlockedDragonIds: [] };
   const rescue = RESCUE_COINS[v.level] || 300;
   const villMult = VILLAGE_MULT[v.level] || 1.0;
-  app.appendChild(el("h2", null, "竜の村"));
+  app.appendChild(el("h2", null, "🏘️ 暮らしの拠点"));   // 村名は下のヒーローに出す（見出しと二重にしない）
 
   // 村ヒーロー：名前＋レベル＋一言
   const hero = el("div", "card vil-hero");
   hero.innerHTML =
-    `<div class="vil-hero-top"><div class="vil-hero-id"><div class="vil-name">🏘️ ${v.name}</div>` +
+    `<div class="vil-hero-top"><div class="vil-hero-id"><div class="vil-name">${v.name}</div>` +
       `<div class="vil-sub">ミミと竜たちが暮らす、再起の拠点。</div></div>` +
       `<div class="vil-lv"><span>暮らしLv</span><b>${v.level}</b></div></div>`;
   app.appendChild(hero);
@@ -2333,7 +2346,7 @@ function renderRaceDetail(race) {
   head.innerHTML = `
     <div class="bd-head-top">
       <button class="bd-back" id="back-race-select" type="button" aria-label="レース選択へ戻る">←</button>
-      <div class="bd-title"><b>${raceFullName(race)}</b><span class="bd-sub">${raceBlurb(race)}</span></div>
+      <div class="bd-title"><b>${raceFullName(race).split(" ").map(t => `<span class="nw">${t}</span>`).join(" ")}</b><span class="bd-sub">${raceBlurb(race)}</span></div>
     </div>
     <div class="bd-chips">
       <button type="button" class="bd-chip" data-term="rank">🏅 R${race.rank} ${RANKS[race.rank].label}</button>
@@ -4085,8 +4098,11 @@ function drawRecapScreen() {
       if (g.streakBonus > 0) R("🔥", "連勝ボーナス", "＋" + fmtCoins(g.streakBonus), "gain");
       if (g.featuredBonus > 0) R("★", "注目レース達成", "＋" + fmtCoins(g.featuredBonus), "gain");
       g.collectionLabels.forEach((lb, i) => R("📖", lb, "＋" + fmtCoins(c.collectionAwards[i].reward), "gain"));
-      if (g.assetsDelta > 0) R("🏦", "資産", "＋" + fmtCoins(g.assetsDelta), "asset");
-      else if (g.assetsDelta < 0) R("🏦", "資産", "−" + fmtCoins(-g.assetsDelta), "loss");
+      // ★資産は「借金を返し終えて開示される概念」（assetsConceptOpen）。開示前に「資産 ＋2万」が出ると、
+      //   負けたのに増えた理由も分からず、開示の物語も先に割れる → 開示後だけ出す。
+      const _assetsOpen = (typeof assetsConceptOpen !== "function") || assetsConceptOpen();
+      if (_assetsOpen && g.assetsDelta > 0) R("🏦", "資産", "＋" + fmtCoins(g.assetsDelta), "asset");
+      else if (_assetsOpen && g.assetsDelta < 0) R("🏦", "資産", "−" + fmtCoins(-g.assetsDelta), "loss");
       if (g.rankUp) R("🏅", "ランク昇格！", "ランク" + g.rankUp, "rankup");
       // ★解放は結果画面では静かに1行だけ（章題は出さず「新しい話が届いた」）。詳しい案内は物語ナビ/ホーム側で。
       //   ★この行だけタップで物語へ飛ばす（rs-lg-go）。「次のレースへ」を連打してホームに戻らない人には

@@ -127,6 +127,8 @@ function lifeGrantCutIn(list, done) {
   var i = 0;
   function next() {
     if (i >= list.length) { if (done) done(); return; }
+    // 会話（VN）や他のポップの最中は出さない＝帯が立ち絵とセリフに重なる（実機で確認）。閉じるのを待ってから。
+    if (typeof uiBusy === "function" ? uiBusy() : (window.Dialogue && Dialogue.isOpen && Dialogue.isOpen())) { setTimeout(next, 400); return; }
     var g = list[i++];
     var node = _lgNode(g.node);
     if (node && typeof showLifeCutin === "function") {

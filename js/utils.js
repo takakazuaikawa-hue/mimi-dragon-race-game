@@ -69,3 +69,22 @@ function el(tag, cls, html) {
   if (html != null) e.innerHTML = html;
   return e;
 }
+
+// ── 画面の上に何か（会話・ポップ・ログボ・カットイン）が出ているか ─────────
+// ホーム到着時はログボ・解放のお知らせ・くらしツリーの授与が同時に来ることがあり、
+// 3枚重なって出ていた（実機で確認）。後から来た方は whenUiIdle で「前のが閉じるまで」待つ。
+const UI_OVERLAY_SEL = ".navpop-ov, .login-ov, #lt-cutin, .dlg-overlay:not(.hidden), .mm-ov, .info-ov, .mv-ov";
+function uiBusy() {
+  try {
+    if (window.Dialogue && Dialogue.isOpen && Dialogue.isOpen()) return true;
+    return !!document.querySelector(UI_OVERLAY_SEL);
+  } catch (e) { return false; }
+}
+// 空くまで待ってから fn。★永久に待たない（上限を過ぎたら出す＝報酬を取りこぼさない）。
+function whenUiIdle(fn, maxMs) {
+  const t0 = Date.now(), lim = maxMs || 30000;
+  (function wait() {
+    if (!uiBusy() || Date.now() - t0 > lim) { try { fn(); } catch (e) {} return; }
+    setTimeout(wait, 350);
+  })();
+}

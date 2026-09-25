@@ -4226,7 +4226,7 @@ body.title-mode #vol-fab { display: none !important; }
   padding: 1px 2px; line-height: 1.1; font-variant-numeric: tabular-nums;
 }
 .wager-big:focus { outline: none; border-bottom-color: #ffd278; }
-.wager-unit { font-size: 13px; color: #cbb88a; }
+.wager-unit { font-size: 13px; color: #cbb88a; white-space: nowrap; }
 .wager-slider-row { display: flex; align-items: center; gap: 11px; margin: 6px 0 11px; }
 .wager-step {
   width: 42px; height: 42px; flex: 0 0 42px; border-radius: var(--r-round);
@@ -5264,7 +5264,7 @@ body.title-mode #vol-fab { display: none !important; }
 .navpop-t { font-size: 18px; font-weight: 900; color: var(--mist); margin-top: 8px; }
 .navpop-d { font-size: 13px; color: var(--mist-soft); line-height: 1.65; margin-top: 9px; }
 .navpop-btns { display: flex; gap: 10px; margin-top: 20px; }
-.navpop-btns button { flex: 1; padding: var(--pd-11); border-radius: var(--rd-10); cursor: pointer; font-weight: 800; font-size: 14px; }
+.navpop-btns button { flex: 1; padding: var(--pd-11); border-radius: var(--rd-10); cursor: pointer; font-weight: 800; font-size: 14px; white-space: nowrap; }
 .navpop-go { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; border: none; }
 .navpop-cancel { background: rgba(255,255,255,0.06); color: var(--mist-soft); border: 1px solid var(--glass-border); }
 .scm-search-in { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px 12px; border-radius: var(--rd-10); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.08); color: var(--mist); font-size: 16px; }
@@ -10195,3 +10195,5 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
 .cm-view-cap b { display: block; font-size: 15px; color: #ffd76a; }
 .cm-view-cap span { display: block; margin-top: 4px; font-size: 12.5px; color: #e8dcc4; }
 .set-ver { margin: 14px 0 4px; text-align: center; font-size: 11px; color: var(--mist-soft); opacity: .7; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.nw { display: inline-block; white-space: nowrap; }   /* 単語の途中で改行させない（レース名「第1レ／ース」対策） */
+body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタンと出走ボタンを重ねない */
