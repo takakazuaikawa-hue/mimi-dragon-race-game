@@ -137,7 +137,8 @@ function rcParaFor(race, onReady, timeDir) {
       var im = new Image();
       im.onload = function () { if (++e.n === 3 && !e.fail) { e.ok = true; e.cbs.splice(0).forEach(function (f) { try { f(); } catch (_) {} }); } };
       im.onerror = function () { e.fail = true; e.cbs.length = 0; };
-      im.src = "images/racebg_v2_time/" + key + "_" + k + ".webp";
+      // L3 は継ぎ目なしループに焼き直した（tools/racebg_loop_l3.py・幅が変わった）→ 古い端末キャッシュを使わせない
+      im.src = "images/racebg_v2_time/" + key + "_" + k + ".webp" + (k === "L3" ? "?l3=2" : "");
       e.imgs[i] = im;
     });
   }
@@ -1093,6 +1094,159 @@ function rcDrawDragonRigV2(ctx, o) {
   _rcDrawRigV2Parts(ctx, r.parts, wph, amp, wph - 1.3, Math.sin(g * 0.5) * 0.012);   // 尾は翼より遅れてしなる
   ctx.restore();
 }
+// レース中の「順位＋名前」の札を、竜を全員描いた後にまとめて重ならないよう配置して描く（表示のみ）。
+// 配置は画面座標で行う（カメラのズーム中も文字の大きさは一定・画面端で切れない）。
+// 候補＝竜の下→上→さらに下→さらに上（各々 左右に半歩ずらす案も）。札どうしは絶対に重ねず、
+// 竜の体にもなるべく乗せない（どうしても空きが無い時だけ体の上を許す）。賭け竜→順位の良い竜の順に
+// 場所を取り、入らない竜は順位の丸だけに縮め、それでも入らなければその瞬間は出さない（賭け竜は必ず出す）。
+const _RC_LBL_FONT = "'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+// ---- スタート/ゴールの門（表示専用・2026-09-25 画風合わせ）----
+// 以前は細い単色ポール＋素のチェッカー＋文字がはみ出す小札で、絵画調の背景から「ドット絵のUI」に浮いていた。
+// 柱＝台座＋円柱の陰影＋柱頭／帯＝布の丸みと接地の暗がりを乗せたチェッカー（ゴール）・光の幕（スタート）／
+// 看板＝文字幅に合わせた金縁の札。時間帯の明るさ lt（1=昼…0.6=夜）で全体を沈め、夜景で白く浮かない。
+function _rcGateCol(hex, sh, lt, a) {
+  const c = rcHexToRgb(hex), k = 1 - lt;
+  let r = c.r, g = c.g, b = c.b;
+  if (sh) { const f = sh < 0 ? 0 : 255, p = Math.abs(sh) / 100; r += (f - r) * p; g += (f - g) * p; b += (f - b) * p; }
+  r += (22 - r) * k; g += (27 - g) * k; b += (46 - b) * k;           // 夜ほど紺の闇へ寄せる
+  return "rgba(" + (r | 0) + "," + (g | 0) + "," + (b | 0) + "," + (a == null ? 1 : a) + ")";
+}
+// o: { x=線の中心, top=帯の上端, bot=接地, half=帯の半幅, pw=柱の太さ, archH=帯より上の柱の長さ,
+//      lt, kind:"goal"|"start", label, fs=文字px, bh=看板の高さ, post=柱の色, banner=看板の色, trim=金縁の有無 }
+// 戻り値：看板と柱頭の位置（旗・電飾・オーブを呼び出し側で足すため）
+function rcDrawGate(ctx, o) {
+  const x = o.x, top = o.top, bot = o.bot, half = o.half, pw = o.pw, lt = o.lt;
+  const capY = top - o.archH, Lx = x - half - pw, Rx = x + half, h = bot - top;
+  const C = (hex, sh, a) => _rcGateCol(hex, sh, lt, a);
+  // 接地影
+  ctx.fillStyle = "rgba(0,0,0,0.34)";
+  ctx.beginPath(); ctx.ellipse(x, bot + 1.5, half + pw + 9, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+  // 帯
+  if (o.kind === "goal") {
+    const cs = half, rows = Math.max(4, Math.round(h / cs)), rh = h / rows;
+    const lite = C("#e8dfcb", 0), dark = C("#30354a", 0);   // 純白×純黒にしない（絵の中で浮かない）
+    for (let r = 0; r < rows; r++) for (let c = 0; c < 2; c++) {
+      ctx.fillStyle = ((r + c) % 2) ? dark : lite;
+      ctx.fillRect(x - half + c * half, top + r * rh, half, rh + 0.5);
+    }
+    const sg = ctx.createLinearGradient(x - half, 0, x + half, 0);     // 布の丸み（端ほど暗い）
+    sg.addColorStop(0, "rgba(0,0,0,0.30)"); sg.addColorStop(0.38, "rgba(255,255,255,0.10)");
+    sg.addColorStop(0.62, "rgba(0,0,0,0)"); sg.addColorStop(1, "rgba(0,0,0,0.32)");
+    ctx.fillStyle = sg; ctx.fillRect(x - half, top, half * 2, h);
+    const vg = ctx.createLinearGradient(0, top, 0, bot);                // 上は光・下は接地の暗がり
+    vg.addColorStop(0, "rgba(255,244,220,0.10)"); vg.addColorStop(0.55, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.30)");
+    ctx.fillStyle = vg; ctx.fillRect(x - half, top, half * 2, h);
+    ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1; ctx.strokeRect(x - half + 0.5, top, half * 2 - 1, h);
+  } else {
+    const vg = ctx.createLinearGradient(0, top, 0, bot);                // 光の幕（スタート線）
+    vg.addColorStop(0, C("#fff6e0", 0, 0.30)); vg.addColorStop(1, C("#fff6e0", 0, 0.08));
+    ctx.fillStyle = vg; ctx.fillRect(x - half, top, half * 2, h);
+    ctx.fillStyle = C("#ffffff", 0, 0.38); ctx.fillRect(x - half, top, 1, h); ctx.fillRect(x + half - 1, top, 1, h);
+  }
+  // 柱×2（本体の円柱陰影＋接地の暗がり＋台座＋柱頭）
+  [Lx, Rx].forEach(function (px) {
+    const g = ctx.createLinearGradient(px, 0, px + pw, 0);
+    g.addColorStop(0, C(o.post, -42)); g.addColorStop(0.3, C(o.post, 36));
+    g.addColorStop(0.55, C(o.post, 2)); g.addColorStop(1, C(o.post, -58));
+    ctx.fillStyle = g; ctx.fillRect(px, capY, pw, bot - capY);
+    const ao = ctx.createLinearGradient(0, bot - 34, 0, bot);
+    ao.addColorStop(0, "rgba(0,0,0,0)"); ao.addColorStop(1, "rgba(0,0,0,0.38)");
+    ctx.fillStyle = ao; ctx.fillRect(px, bot - 34, pw, 34);
+    const bg = ctx.createLinearGradient(px - 3, 0, px + pw + 3, 0);     // 台座
+    bg.addColorStop(0, C(o.post, -50)); bg.addColorStop(0.35, C(o.post, 20)); bg.addColorStop(1, C(o.post, -62));
+    ctx.fillStyle = bg; ctx.fillRect(px - 3, bot - 8, pw + 6, 8);
+    ctx.fillStyle = C(o.post, 45, 0.9); ctx.fillRect(px - 3, bot - 8, pw + 6, 1);
+    ctx.fillStyle = bg; ctx.fillRect(px - 2, capY - 3, pw + 4, 4);    // 柱頭
+    ctx.fillStyle = C(o.post, 55, 0.9); ctx.fillRect(px - 2, capY - 3, pw + 4, 1);
+  });
+  // 看板（文字幅に合わせる＝はみ出さない）
+  ctx.font = "bold " + o.fs + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+  const tw = ctx.measureText(o.label).width;
+  const bw = Math.max(Rx + pw - Lx + 6, tw + o.fs * 1.3), bh = o.bh, bx = x - bw / 2, by = capY + 1;
+  const rr = function () { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 3); else ctx.rect(bx, by, bw, bh); };
+  ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.fillRect(bx + 1, by + 2, bw, bh);   // 落ち影
+  const bgd = ctx.createLinearGradient(0, by, 0, by + bh);
+  bgd.addColorStop(0, C(o.banner, 24)); bgd.addColorStop(0.5, C(o.banner, 0)); bgd.addColorStop(1, C(o.banner, -34));
+  rr(); ctx.fillStyle = bgd; ctx.fill();
+  if (o.trim) { ctx.strokeStyle = C("#e9c877", 0, 0.95); ctx.lineWidth = 1.2; rr(); ctx.stroke(); }
+  ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(bx + 2, by + 1.5, bw - 4, 1);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
+  ctx.fillStyle = C("#fff8e8", 0); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(o.label, x, by + bh / 2 + 0.5);
+  ctx.restore();
+  return { bx: bx, by: by, bw: bw, bh: bh, capY: capY - 3, orbL: Lx + pw / 2, orbR: Rx + pw / 2 };
+}
+
+function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
+  if (!lbls.length) return;
+  const m = ctx.getTransform(), k = dpr || 1;
+  const tp = function (x, y) { return { x: (m.a * x + m.c * y + m.e) / k, y: (m.b * x + m.d * y + m.f) / k }; };
+  const zs = Math.hypot(m.a, m.b) / k;                      // 世界→画面の倍率（ズーム）
+  const bs = bodies.map(function (b) { const p = tp(b.x, b.y); return { x: p.x, y: p.y, w: b.w * zs, h: b.h * zs }; });
+  const placed = [];
+  const over = function (r, list, pad) {
+    for (let i = 0; i < list.length; i++) {
+      const q = list[i];
+      if (r.x < q.x + q.w + pad && r.x + r.w + pad > q.x && r.y < q.y + q.h + 1 && r.y + r.h + 1 > q.y) return true;
+    }
+    return false;
+  };
+  const BOT = ch - 16;   // 画面下端の飾り枠に隠れない
+  const off = function (r) { return r.x < 1 || r.x + r.w > cw - 1 || r.y < 1 || r.y + r.h > BOT; };
+  const order = lbls.slice().sort(function (a, b) { return (b.isBet - a.isBet) || (a.rk - b.rk); });
+  ctx.save();
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.font = "9.5px " + _RC_LBL_FONT;
+  order.forEach(function (l) {
+    const c = tp(l.cx, 0).x, yb = tp(l.cx, l.bot).y, yt = tp(l.cx, l.top).y;
+    const h = Math.round(15 * l.dep), dia = h - 3;
+    const fullW = Math.round(dia + 8 + ctx.measureText(l.nm).width + 4);
+    const ys = [yb + 1, yt - h - 1, yb + h + 3, yt - 2 * h - 3];   // 体のすぐ下→すぐ上→一段下→一段上
+    const tryW = l.isBet ? [fullW] : [fullW, dia + 4];
+    let pick = null;
+    for (let pass = 0; pass < 2 && !pick; pass++) {           // pass0＝体も避ける／pass1＝体の上は許す
+      for (let wi = 0; wi < tryW.length && !pick; wi++) {
+        const w = tryW[wi];
+        for (let yi = 0; yi < ys.length && !pick; yi++) {
+          for (const dx of [0, -0.5, 0.5]) {
+            const r = { x: Math.max(2, Math.min(cw - w - 2, c - w / 2 + dx * w)), y: ys[yi], w: w, h: h, full: w === fullW };
+            if (off(r) || over(r, placed, 2) || (pass === 0 && over(r, bs, 0))) continue;
+            pick = r; break;
+          }
+        }
+      }
+    }
+    if (!pick && l.isBet) pick = { x: Math.max(2, Math.min(cw - fullW - 2, c - fullW / 2)), y: Math.max(2, Math.min(BOT - h, ys[0])), w: fullW, h: h, full: true };
+    if (!pick) return;
+    pick.l = l;
+    placed.push(pick);
+  });
+  placed.forEach(function (r) {
+    const l = r.l, rad = r.h / 2;
+    ctx.globalAlpha = l.a;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(r.x, r.y, r.w, r.h, rad); else ctx.rect(r.x, r.y, r.w, r.h);
+    ctx.fillStyle = l.isBet ? "rgba(40,28,6,0.66)" : "rgba(8,10,20,0.50)"; ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = l.isBet ? "rgba(255,211,77,0.75)" : (l.lead ? "rgba(127,209,255,0.45)" : "rgba(255,255,255,0.18)");
+    ctx.stroke();
+    const cx = r.x + rad, cy = r.y + rad, cr = rad - 1.5;   // 順位の丸
+    ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+    ctx.fillStyle = l.isBet ? "rgba(255,211,77,0.92)" : "rgba(255,255,255,0.16)"; ctx.fill();
+    ctx.font = "bold " + Math.round(9.5 * l.dep) + "px " + _RC_LBL_FONT;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = l.isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.9)";
+    ctx.fillText(String(l.rk), cx, cy + 0.5);
+    if (r.full) {
+      ctx.font = "9.5px " + _RC_LBL_FONT;
+      ctx.textAlign = "left";
+      ctx.fillStyle = l.isBet ? "rgba(255,233,176,0.95)" : "rgba(255,255,255,0.80)";
+      ctx.fillText(l.nm, r.x + r.h + 1, cy + 0.5);
+    }
+  });
+  ctx.restore();
+}
 function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok) || _rcRigV2Ok(id); }
 // 描画時の半身幅(px)＝鼻先アンカー(右端=タイムライン位置)から体の中心までの距離。
 // ラベル/バッジ/レティクル/ポップを「体の中心」に置くために使う（表示のみ）。
@@ -1490,6 +1644,8 @@ function startRaceCanvas(container, ctx) {
 
   // pre-race spectacle scales with rank: R1 modest, R7 grand (flashes / beams / glitter / wording).
   const rankHype = clamp(((race.rank || 1) - 1) / 6, 0, 1);
+  // スタート/ゴール門の明るさ（時間帯）：夜景で門だけ白く浮かないよう沈める（rcDrawGate）
+  const gateLt = ({ morning: 0.95, day: 1, sunset: 0.86, dusk: 0.74, night: 0.62 })[rcRaceTime(race)] || 0.85;
   // 煽り (実況) lines — weave in the COURSE (distance / weather / key terrain & its demand)
   // and the RACE'S 意義 (grade + purpose), grander wording at higher ranks.
   const _hypeLines = (function () {
@@ -1753,17 +1909,28 @@ function startRaceCanvas(container, ctx) {
       //   L3=画面下端の最近景帯（×1.0＝竜と同じ路面速度＝これが事実上の地面）。
       const spec = [
         { dh: ch,        anchor: null,      tone: 0.55 },   // L1 全画面
-        { dh: ch * 0.62, anchor: ch * 0.80, tone: 0.35 },   // L2 中景（下端=画面80%）
+        // ★L2 の下端を 80%→97% へ（2026-09-25）。L2 は自前の路面と縁石を下部に持つため、80% だと
+        //   L3（最近景）の路面の上にもう1本の道と縁石が並んで見えていた（9地域×5時間帯すべて）。
+        //   97% まで下げると L2 の路面は L3 の地面の下に隠れ、道と縁石は L3 の1本だけになる。
+        { dh: ch * 0.62, anchor: ch * 0.97, tone: 0.35 },   // L2 中景（下端=画面97%）
         { dh: ch * 0.34, anchor: ch + 2,    tone: 0.20 },   // L3 最近景（下端=画面下端）
       ];
       const L = [], dw = [], dh = [], dy = [];
       const px = Math.min(2, dpr || 1);                                // 焼き解像度（dpr>2は2で十分）
       for (let i = 0; i < 3; i++) {
         const img = e.imgs[i], s = spec[i];
-        const w = Math.max(64, img.naturalWidth * (s.dh / img.naturalHeight));
+        const w1 = Math.max(64, img.naturalWidth * (s.dh / img.naturalHeight));
+        // ★L3（最近景の路面）は素材そのものを継ぎ目なしのループに焼き直してある（2026-09-25・
+        //   tools/racebg_loop_l3.py＝両端を重ねる区間で縁石の高さを合わせてから重ねる）。ここで更に
+        //   クロスフェードを掛けると縁石が二重に透けるので、L3 はそのまま並べる。
+        const seamless = (i === 2);
+        const w = w1;
         const oc = document.createElement("canvas");
         oc.width = Math.max(1, Math.round(w * px)); oc.height = Math.max(1, Math.round(s.dh * px));
         const c2 = oc.getContext("2d");
+        if (seamless) {
+          c2.drawImage(img, 0, 0, oc.width, oc.height);
+        } else {
         c2.drawImage(img, 0, 0, oc.width, oc.height);
         // ループ化クロスフェード：原画右端のB相当を左端へ αランプ(左1→右0) で重ねる
         const B = Math.max(24, Math.round(oc.width * 0.09));
@@ -1777,6 +1944,7 @@ function startRaceCanvas(container, ctx) {
         gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)");
         sc2.fillStyle = gr; sc2.fillRect(0, 0, B, oc.height);
         c2.drawImage(strip, 0, 0);
+        }
         // 時間帯トーン（soft-light・遠景ほど濃く）＋夕/黄昏は僅かな明度リフト
         c2.save();
         c2.globalCompositeOperation = "soft-light"; c2.globalAlpha = s.tone;
@@ -1789,7 +1957,16 @@ function startRaceCanvas(container, ctx) {
         L.push(oc); dw.push(w); dh.push(s.dh);
         dy.push(s.anchor == null ? 0 : s.anchor - s.dh);
       }
-      paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 1.0], haze: conf.haze };
+      // 低速機用：L1 の上に L2 を焼き込んだ1枚（L2 を省くと L1 の路面と縁石が見えて道が2本になるため）。
+      //   L2 は L1 の幅にちょうど整数枚収まるよう横だけ伸縮＝タイルの継ぎ目が出ない。
+      let L12 = null;
+      try {
+        L12 = document.createElement("canvas"); L12.width = L[0].width; L12.height = L[0].height;
+        const x12 = L12.getContext("2d"); x12.drawImage(L[0], 0, 0);
+        const n2 = Math.max(1, Math.round(L[0].width / L[1].width)), w2 = L[0].width / n2;
+        for (let q = 0; q < n2; q++) x12.drawImage(L[1], q * w2, dy[1] * px, w2, L[1].height);
+      } catch (_) { L12 = null; }
+      paraBaked = { slug: e.slug, L: L, L12: L12, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 1.0], haze: conf.haze };
     } catch (_) { paraBaked = null; }
   }
   // ★走る絵の高さは幅だけで決める（下限280px）。
@@ -2331,6 +2508,13 @@ function startRaceCanvas(container, ctx) {
 
   // ---- floating shout / placement text ----
   function addFloat(x, y, text, color, big) {
+    // 近くに浮いている文字と重なるなら、その上に積む（「速さが得意！」と応援が同じ竜の上で重なっていた）
+    const hh = big ? 24 : 18;
+    for (let k = 0; k < 6; k++) {
+      const o = S.floats.find(f => Math.abs(f.x - x) < 90 && Math.abs(f.y - y) < ((f.big ? 24 : 18) + hh) / 2);
+      if (!o) break;
+      y = o.y - ((o.big ? 24 : 18) + hh) / 2 - 2;
+    }
     S.floats.push({ x, y, text, color: color || "#fff", life: 1, vy: -18, big: !!big });
   }
   function spawnDust(x, y, n, intensity) {
@@ -2919,9 +3103,10 @@ function startRaceCanvas(container, ctx) {
       // L1 遠景×0.15 → L2 中景×0.45 → L3 近景帯×0.9（レール旗0.9と同平面＝柵が近景の地面に立つ）。
       // タイルは焼き込みで完全ループ＝境界の継ぎ目なし。カメラが進むほど層の速度差で奥行きが出る。
       for (let li = 0; li < 3; li++) {
-        if (S.lowSpec && li === 1) continue;                    // R8-W5: 低速機はL2を省き2層に縮退
+        if (S.lowSpec && li === 1) continue;                    // R8-W5: 低速機はL2を省き2層に縮退（L2はL1へ焼き込み済みの1枚で出す）
         const ox = S.camL * SREF * para.rate[li];
-        const dwl = para.dw[li], dhl = para.dh[li], dyl = para.dy[li], tile = para.L[li];
+        const dwl = para.dw[li], dhl = para.dh[li], dyl = para.dy[li];
+        const tile = (S.lowSpec && li === 0 && para.L12) ? para.L12 : para.L[li];
         for (let k = Math.floor(ox / dwl); k * dwl - ox < cw; k++) {
           cctx.drawImage(tile, k * dwl - ox, dyl, dwl, dhl);
         }
@@ -3175,14 +3360,14 @@ function startRaceCanvas(container, ctx) {
     }
 
     // --- finish gate (when in view) ---
-    // パララックス野外では「地面から立つ塔門」（浮かせない）。柱は円柱シェーディング＋
+    // パララックス野外では「地面から立つ塔門」（浮かせない）。柱・帯・看板は rcDrawGate（画風合わせ・時間帯で沈む）。
     // 頂きに発光オーブ＝HD-2Dのチープさ対策（ユーザー指摘「ポールが安っぽい」）。
-    const drawPost3D = function (px, py0, py1, w2, base) {
+    const drawPost3D = function (px, py0, py1, w2, base) {                  // 発走テープの支柱（円柱シェーディング）
       const pg2 = cctx.createLinearGradient(px, 0, px + w2, 0);
-      pg2.addColorStop(0, rcShade(base, -34)); pg2.addColorStop(0.32, rcShade(base, 42));
-      pg2.addColorStop(0.55, rcShade(base, 6)); pg2.addColorStop(1, rcShade(base, -48));
+      pg2.addColorStop(0, _rcGateCol(base, -34, gateLt)); pg2.addColorStop(0.32, _rcGateCol(base, 42, gateLt));
+      pg2.addColorStop(0.55, _rcGateCol(base, 6, gateLt)); pg2.addColorStop(1, _rcGateCol(base, -48, gateLt));
       cctx.fillStyle = pg2; cctx.fillRect(px, py0, w2, py1 - py0);
-      cctx.fillStyle = rcRgba(rcShade(base, 60), 0.9);                      // 金の柱頭リング
+      cctx.fillStyle = _rcGateCol(base, 60, gateLt, 0.9);                    // 金の柱頭リング
       cctx.fillRect(px - 1, py0, w2 + 2, 2.5);
     };
     const drawOrb = function (px, py, r, col) {                             // 発光オーブ（ブルーム）
@@ -3194,35 +3379,15 @@ function startRaceCanvas(container, ctx) {
       cctx.restore();
       cctx.fillStyle = "#fff8e4"; cctx.beginPath(); cctx.arc(px, py, r, 0, Math.PI * 2); cctx.fill();
     };
+    const _gateBoxes = [];   // 門の看板の矩形（名前札がこれも避ける）
     const goalX = screenX(1, WINW);
     const gateBot = para ? ch * 0.95 : g.bottom;
     if (goalX < cw + 40 && goalX > -40) {
-      // 接地影（地面に立っている感）
-      if (para) { cctx.fillStyle = "rgba(0,0,0,0.35)"; cctx.beginPath(); cctx.ellipse(goalX, gateBot + 2, 21.6, 3.4, 0, 0, Math.PI * 2); cctx.fill(); }
-      // checkered band
-      const bw = 9, rows = para ? 14 : 10, rh = (gateBot - g.top) / rows;
-      for (let r = 0; r < rows; r++) {
-        cctx.fillStyle = (r % 2 === 0) ? "#f4f4f4" : "#1c2030";
-        cctx.fillRect(goalX - bw, g.top + r * rh, bw, rh);
-        cctx.fillStyle = (r % 2 === 0) ? "#1c2030" : "#f4f4f4";
-        cctx.fillRect(goalX, g.top + r * rh, bw, rh);
-      }
-      // posts（円柱シェーディング）＋ 発光オーブ ＋ グラデ幕＋金トリム
-      drawPost3D(goalX - bw - 5, g.top - 22, gateBot, 5, "#c9b27a");
-      drawPost3D(goalX + bw, g.top - 22, gateBot, 5, "#c9b27a");
-      drawOrb(goalX - bw - 2.5, g.top - 25, 2.4, "#ffd34d");
-      drawOrb(goalX + bw + 2.5, g.top - 25, 2.4, "#ffd34d");
-      const bg2 = cctx.createLinearGradient(0, g.top - 22, 0, g.top - 6);
-      bg2.addColorStop(0, "#d4544e"); bg2.addColorStop(1, "#8e2a28");
-      cctx.fillStyle = bg2;
-      cctx.fillRect(goalX - bw - 5, g.top - 22, bw * 2 + 10, 16);
-      cctx.fillStyle = "#ffe9a8";
-      cctx.fillRect(goalX - bw - 5, g.top - 22, bw * 2 + 10, 1.5);
-      cctx.fillRect(goalX - bw - 5, g.top - 7.5, bw * 2 + 10, 1.5);
-      cctx.fillStyle = "#fff";
-      cctx.font = "bold 11px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillText("ゴール", goalX, g.top - 14);
+      const gm = rcDrawGate(cctx, { x: goalX, top: g.top, bot: gateBot, half: 9, pw: 6, archH: 24, lt: gateLt,
+        kind: "goal", label: "ゴール", fs: 11, bh: 17, post: "#b59a62", banner: "#b8322e", trim: true });
+      _gateBoxes.push({ x: gm.bx, y: gm.capY - 6, w: gm.bw, h: gm.by + gm.bh - gm.capY + 6 });
+      drawOrb(gm.orbL, gm.capY - 2.5, 2.4, "#ffd34d");
+      drawOrb(gm.orbR, gm.capY - 2.5, 2.4, "#ffd34d");
       // finish tape (a bright line spanning the gate) until the leader breaks it
       if (!S.tapeBroken) {
         cctx.strokeStyle = "rgba(255,255,255,0.85)";
@@ -3247,41 +3412,32 @@ function startRaceCanvas(container, ctx) {
     const startGX = screenX(0, WINW);
     if (startGX > -90 && startGX < cw + 40 && (S.entryT > 0 || S.preT > 0 || S.tau < 0.06)) {
       const rh = rankHype, gt = g.top, gb = para ? ch * 0.95 : g.bottom;   // 野外は地面まで＝接地した門
-      const archH = 22 + rh * 30, postW = 4 + rh * 2, bw = 7;
-      const postCol = rh > 0.66 ? "#e8c860" : rh > 0.33 ? "#c9b27a" : "#8a8f9e";
-      const bannerCol = rh > 0.66 ? "#cf9a1e" : rh > 0.33 ? "#a85f33" : "#3a4a6a";
-      const bannerH = 15 + rh * 6, spanL = startGX - bw - postW, spanW = (bw + postW) * 2;
+      const archH = 22 + rh * 30, postW = 6 + rh * 2, bw = 7;
+      const postCol = rh > 0.66 ? "#d9b85a" : rh > 0.33 ? "#b59a62" : "#8a6a4c";   // 木→石→金（格が上がるほど豪華）
+      const bannerCol = rh > 0.66 ? "#b8841a" : rh > 0.33 ? "#9a5530" : "#34466a";
       if (rh > 0.5) {                                                   // soft golden glow at the top grades
         cctx.save(); cctx.globalAlpha = 0.16 + 0.14 * rh;
         const gg = cctx.createRadialGradient(startGX, gt - archH + 6, 4, startGX, gt - archH + 6, 70 + rh * 40);
         gg.addColorStop(0, "rgba(255,224,120,0.7)"); gg.addColorStop(1, "rgba(255,224,120,0)");
         cctx.fillStyle = gg; cctx.fillRect(startGX - 130, gt - archH - 36, 260, 140); cctx.restore();
       }
-      const rows = 12, rhh = (gb - gt) / rows;                          // start band
-      for (let r = 0; r < rows; r++) { cctx.fillStyle = (r % 2 === 0) ? "rgba(235,240,255,0.45)" : "rgba(40,46,70,0.45)"; cctx.fillRect(startGX - bw, gt + r * rhh, bw * 2, rhh); }
-      // 接地影＋円柱シェーディング柱＋頂きの発光オーブ（HD-2D・チープさ対策）
-      if (para) { cctx.fillStyle = "rgba(0,0,0,0.32)"; cctx.beginPath(); cctx.ellipse(startGX, gb + 2, spanW * 0.72, 3.2, 0, 0, Math.PI * 2); cctx.fill(); }
-      drawPost3D(spanL, gt - archH, gb, postW, postCol);
-      drawPost3D(startGX + bw, gt - archH, gb, postW, postCol);
-      drawOrb(spanL + postW / 2, gt - archH - 3, 2.2, rh > 0.5 ? "#ffd34d" : "#9fc4ff");
-      drawOrb(startGX + bw + postW / 2, gt - archH - 3, 2.2, rh > 0.5 ? "#ffd34d" : "#9fc4ff");
-      const sb2 = cctx.createLinearGradient(0, gt - archH, 0, gt - archH + bannerH);
-      sb2.addColorStop(0, rcShade(bannerCol, 26)); sb2.addColorStop(1, rcShade(bannerCol, -26));
-      cctx.fillStyle = sb2; cctx.fillRect(spanL, gt - archH, spanW, bannerH);
-      if (rh > 0.33) { cctx.fillStyle = "#ffe9a8"; cctx.fillRect(spanL, gt - archH, spanW, 2); cctx.fillRect(spanL, gt - archH + bannerH - 2, spanW, 2); }
-      cctx.fillStyle = "#fff"; cctx.font = "bold " + (9 + rh * 3).toFixed(0) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "middle"; cctx.fillText("スタート", startGX, gt - archH + bannerH / 2);   // ゴールは「ゴール」＝日本語にそろえる
-      const flags = Math.round(2 + rh * 6), fy = gt - archH - 1, fdiv = (flags - 1) || 1;   // pennant bunting
+      const sm = rcDrawGate(cctx, { x: startGX, top: gt, bot: gb, half: bw, pw: postW, archH: archH, lt: gateLt,
+        kind: "start", label: "スタート", fs: Math.round(10 + rh * 3), bh: Math.round(16 + rh * 5),
+        post: postCol, banner: bannerCol, trim: rh > 0.33 });
+      _gateBoxes.push({ x: sm.bx, y: sm.capY - 6, w: sm.bw, h: sm.by + sm.bh - sm.capY + 12 });
+      drawOrb(sm.orbL, sm.capY - 2.5, 2.2, rh > 0.5 ? "#ffd34d" : "#9fc4ff");
+      drawOrb(sm.orbR, sm.capY - 2.5, 2.2, rh > 0.5 ? "#ffd34d" : "#9fc4ff");
+      const flags = Math.round(3 + rh * 5), fy = sm.by + sm.bh, fdiv = (flags - 1) || 1;   // 看板の下に吊るす小旗
       for (let i = 0; i < flags; i++) {
-        const fx = spanL - 4 + ((spanW + 8) / fdiv) * i;
-        cctx.fillStyle = (typeof CONFETTI_COLORS !== "undefined") ? CONFETTI_COLORS[i % CONFETTI_COLORS.length] : "#ffcf6a";
-        cctx.beginPath(); cctx.moveTo(fx - 3, fy); cctx.lineTo(fx + 3, fy); cctx.lineTo(fx, fy + 6); cctx.closePath(); cctx.fill();
+        const fx = sm.bx + 3 + ((sm.bw - 6) / fdiv) * i;
+        cctx.fillStyle = _rcGateCol((typeof CONFETTI_COLORS !== "undefined") ? CONFETTI_COLORS[i % CONFETTI_COLORS.length] : "#ffcf6a", 0, gateLt, 0.95);
+        cctx.beginPath(); cctx.moveTo(fx - 2.5, fy); cctx.lineTo(fx + 2.5, fy); cctx.lineTo(fx, fy + 5); cctx.closePath(); cctx.fill();
       }
-      if (rh > 0.6) {                                                   // marquee lights along the banner
+      if (rh > 0.6) {                                                   // marquee lights along the banner top
         for (let i = 0; i < 6; i++) {
-          const lx = spanL + (spanW / 5) * i, lb = 0.5 + 0.5 * Math.sin(performance.now() / 200 + i);
+          const lx = sm.bx + 3 + ((sm.bw - 6) / 5) * i, lb = 0.5 + 0.5 * Math.sin(performance.now() / 200 + i);
           cctx.fillStyle = `rgba(255,236,150,${(0.45 + 0.45 * lb).toFixed(3)})`;
-          cctx.beginPath(); cctx.arc(lx, gt - archH + bannerH + 3, 2.2, 0, Math.PI * 2); cctx.fill();
+          cctx.beginPath(); cctx.arc(lx, sm.by - 1, 1.8, 0, Math.PI * 2); cctx.fill();
         }
       }
     }
@@ -3390,6 +3546,7 @@ function startRaceCanvas(container, ctx) {
     }
 
     const drawList = [...dragons].sort((a, b) => laneOf[b.id] - laneOf[a.id]);
+    const _lbls = [], _bodies = _gateBoxes.slice();   // 番号＋名前の札（竜を全員描いた後に、重ならないよう配置して描く）／竜の体の矩形
     for (const dr of drawList) {
       const P = timeline.progressAt(dr.id, S.tau);
       const Pvis = visProgress(dr.id);          // extends past 1 during the run-out
@@ -3638,33 +3795,18 @@ function startRaceCanvas(container, ctx) {
       // 地上整列中はラベルを出さない（スタートのごちゃごちゃ解消・ユーザー指摘）。
       // 賭け竜だけは常時＝自分の竜は見失わない。離陸(6割上昇)で全員分が戻る。
       const _lEb = para ? ((S._launchEb && S._launchEb[dr.id] != null) ? S._launchEb[dr.id] : 1) : 1;
+      // ★ラベルは竜を全員描いた後にまとめて配置する（2026-09-25）。竜ごとに描くと、後から描く
+      //   手前の竜の体が奥の竜の番号・名前を隠し、名前札どうしも重なって読めなかった（実機録画で確認）。
+      let _body = null;
+      if (_hw2 > 0) {   // 竜の体（札がなるべく乗らないよう避ける対象・札の上下の基準）
+        const _bh = RC_DSP_H * sprScale * (RC_SIZE_MUL[dr.id] || 1);
+        _body = { x: dcx - 2 * _hw2, y: spriteY - _bh, w: 2 * _hw2, h: _bh };
+        _bodies.push(_body);
+      }
       if (_lEb > 0.6 || isBet) {
-      const tagY = y - 34 * dep;
-      const rr2 = (isBet ? 9 : 8) * dep;
-      cctx.beginPath(); cctx.arc(bodyCx, tagY, rr2, 0, Math.PI * 2);
-      cctx.fillStyle = isBet ? "rgba(255,211,77,0.80)" : "rgba(8,10,20,0.42)"; cctx.fill();
-      cctx.lineWidth = 1.3;
-      cctx.strokeStyle = isBet ? "rgba(255,243,196,0.7)" : (popRank[dr.id] === 1 ? "rgba(127,209,255,0.5)" : "rgba(255,255,255,0.28)");
-      cctx.stroke();
-      cctx.font = "bold " + Math.round((isBet ? 11 : 10) * dep) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillStyle = isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.82)";
-      cctx.fillText(rk, bodyCx, tagY + 0.5);
-      cctx.textBaseline = "alphabetic";
-      // name plate — 控えめなピル（半透明・小さめ）。賭け竜はほんのり金味。
-      const nm = commentaryName(dr.id);
-      cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-      const nw = cctx.measureText(nm).width;
-      const plw = nw + 10, plh = 13, plx = bodyCx - plw / 2, ply = baseY + 12;
-      cctx.beginPath();
-      if (cctx.roundRect) cctx.roundRect(plx, ply, plw, plh, 6.5); else cctx.rect(plx, ply, plw, plh);
-      cctx.fillStyle = "rgba(8,10,20,0.36)"; cctx.fill();
-      if (isBet) { cctx.lineWidth = 1; cctx.strokeStyle = "rgba(255,211,77,0.4)"; cctx.stroke(); }
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillStyle = isBet ? "rgba(255,233,176,0.85)" : "rgba(255,255,255,0.68)";
-      cctx.fillText(nm, bodyCx, ply + plh / 2 + 0.5);
-      cctx.textBaseline = "alphabetic";
-      }   // ← ラベル表示ゲート（_lEb）
+        _lbls.push({ cx: bodyCx, top: _body ? _body.y : y - 34 * dep, bot: _body ? _body.y + _body.h : baseY + 12, dep: dep, rk: rk, isBet: isBet,
+          lead: popRank[dr.id] === 1, nm: commentaryName(dr.id), a: cctx.globalAlpha });
+      }
 
       // ★A-2 ロールコール：紹介中の1頭だけ、頭上に大きな名札プレートを出す。
       //   「⑦｜旋爪竜ロッソ｜差し・単2.9」＋枠色バー。斜め整列でも個体が読める見せ場。
@@ -3680,7 +3822,7 @@ function startRaceCanvas(container, ctx) {
         cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         const w2 = cctx.measureText(sub).width;
         const pw = Math.max(w1, w2) + 34, phh = 30;
-        const px3 = bodyCx - pw / 2, py3 = y - 74 * dep;
+        const px3 = clamp(bodyCx - pw / 2, 4, cw - pw - 4), py3 = y - 74 * dep;   // 画面端で切れない
         // 台座
         cctx.beginPath();
         if (cctx.roundRect) cctx.roundRect(px3, py3, pw, phh, 8); else cctx.rect(px3, py3, pw, phh);
@@ -3716,17 +3858,35 @@ function startRaceCanvas(container, ctx) {
       cctx.globalAlpha = _prevAlpha;             // end per-dragon edge fade
     }
     if (_popsOn) S.prevStand = standMap;         // 次フレームの順位変動検知用スナップショット
+    rcDrawRaceLabels(cctx, _lbls, _bodies, cw, ch, dpr);
 
     // イベントポップ描画（0.95s＝ポップイン→浮き上がり→フェード。世界座標＝竜と一緒に流れる）
     if (S.lowSpec && S.pops.length > 2) S.pops.splice(0, S.pops.length - 2);   // R8-W5: 同時2件まで
     if (S.pops.length) {
+      // 出た瞬間に一度だけ、先に出ている吹き出しと重ならない高さへ積む（以後は固定＝ガタつかない）。
+      // 「かわした！」「仕掛けた！」が隣の竜のものと重なって読めなかった（実機録画で確認）。
+      for (let i = 0; i < S.pops.length; i++) {
+        const p = S.pops[i];
+        if (p.dy != null) continue;
+        p.dy = 0;
+        // ✨💦🔥 などの小さな添え物は直前の吹き出しとセット＝同じだけずらす
+        if (p.sz && p.sz < 14 && i > 0 && S.pops[i - 1].dy != null) { p.dy = S.pops[i - 1].dy; continue; }
+        const sz = p.sz || 15, w = String(p.tx).length * sz * 0.9;
+        for (let k = 0; k < 5; k++) {
+          const o = S.pops.find(q => q !== p && q.dy != null && q !== p &&
+            Math.abs(q.x - p.x) < (w + String(q.tx).length * (q.sz || 15) * 0.9) / 2 &&
+            Math.abs((q.y + q.dy) - (p.y + p.dy)) < (sz + (q.sz || 15)) / 2 + 2);
+          if (!o) break;
+          p.dy = (o.y + o.dy) - p.y - ((q => (q.sz || 15))(o) + sz) / 2 - 3;
+        }
+      }
       for (let i = S.pops.length - 1; i >= 0; i--) {
         const p = S.pops[i], a = (_popNow - p.t0) / 0.95;
         if (a >= 1) { S.pops.splice(i, 1); continue; }
         const inK = Math.min(1, a / 0.14), rise = 26 * a;
         const al = a < 0.75 ? 1 : 1 - (a - 0.75) / 0.25;
         cctx.save();
-        cctx.translate(p.x, p.y - rise);
+        cctx.translate(p.x, p.y + (p.dy || 0) - rise);
         cctx.scale(0.6 + 0.4 * inK, 0.6 + 0.4 * inK);
         cctx.font = "bold " + (p.sz || 15) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
