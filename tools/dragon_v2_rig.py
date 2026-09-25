@@ -4,6 +4,7 @@
   pip install pillow
   python3 tools/dragon_v2_rig.py stage <src_rgba.png> <id> [--nowing]
       → 透過WebP（幅1000・q82）を images/dragons_v2_staging/<id>.png（翼なし版は <id>_nowing.png）に書く
+  python3 tools/dragon_v2_rig.py rebuild   → 全リグを各 meta.json の設定のまま作り直す（ツール修正の一括反映）
   python3 tools/dragon_v2_rig.py rig <id> [--tail-cut 0.34] [--eye X,Y,R] [--wingless]   （目の自動検出が外れた時だけ --eye で手指定）
       --wingless＝元から翼の無い竜（stamina_tank の goro/taiga/konron/banju/gozan/fugaku）。翼なし版は作らず、
         本体を tail/body の2パーツに分けるだけ（meta.json に "wingless": true）
@@ -121,8 +122,29 @@ def wing_mask(body, nowing):
             break
         for x, y in c:
             kp[x, y] = 255
-    keep = fill_holes(keep).resize(m.size, Image.NEAREST)
-    return ImageChops.multiply(keep, ab)
+    # 縮小して選んだ「どの塊を翼とするか」は領域の選別だけに使い、輪郭は原寸の差分から取る
+    # （縮小マスクを NEAREST で戻すと翼と胴の境が 4px の階段になっていた・2026-09-25）。
+    keep = fill_holes(keep).resize(m.size, Image.NEAREST).filter(ImageFilter.MaxFilter(2 * s + 1))
+    fine = ImageChops.multiply(keep, m)
+    # 翼なし版と同じ色で残っている画素＝胴そのもの。膨張で拾った胴の輪郭線を翼から外す
+    # （これが翼と一緒に動くと付け根に暗い「割れ目」が見えていた）。
+    same = ImageChops.difference(body.convert("RGB"), nowing.convert("RGB")).convert("L").point(lambda v: 255 if v <= 20 else 0)
+    body_same = ImageChops.multiply(same, an)
+    fine = ImageChops.subtract(fine, body_same)
+    # 外した後に残る小さな破片を捨てる（翼の塊の 2% 未満）
+    small = fine.resize((m.width // s, m.height // s)).point(lambda v: 255 if v > 64 else 0)
+    comps = components(small)
+    if not comps:
+        return None
+    drop = Image.new("L", small.size, 0)
+    dp = drop.load()
+    for c in comps:
+        if len(c) < len(comps[0]) * 0.02:
+            for x, y in c:
+                dp[x, y] = 255
+    fine = ImageChops.subtract(fine, drop.resize(m.size, Image.NEAREST).filter(ImageFilter.MaxFilter(2 * s + 1)))
+    # 輪郭を 1px ぼかして柔らかい縁に（アルファとして使う＝色は黒に寄らない）
+    return fine.filter(ImageFilter.GaussianBlur(0.8))
 
 def wing_root(mask, nowing):
     """翼マスクのうち、翼なし版の胴に接する画素の重心＝翼根。"""
@@ -245,8 +267,9 @@ def rig(id_, tail_cut, eye_override=None, wingless=False):
         n_out = max(1, sum(outside.histogram()[128:]))
         drift = sum(bad.histogram()[128:]) / n_out
         # wing
-        wing = Image.new("RGBA", body.size, (0, 0, 0, 0))
-        wing.paste(body, (0, 0), m)
+        # マスクはアルファにだけ掛ける（paste のマスクだと半透明の縁が黒に寄って暗い縁取りになる）
+        wing = body.copy()
+        wing.putalpha(ImageChops.multiply(body.getchannel("A"), m))
         wr = bbox_rect(wing)
         save_webp(crop_part(wing, wr), os.path.join(out, "parts", "wing.webp"))
         parts.append(part("wing", "wing", 3, wr, wing_root(m, nowing)))
@@ -292,5 +315,15 @@ if __name__ == "__main__":
         tc = float(a[a.index("--tail-cut") + 1]) if "--tail-cut" in a else 0.34
         eo = tuple(int(v) for v in a[a.index("--eye") + 1].split(",")) if "--eye" in a else None
         rig(a[1], tc, eo, "--wingless" in a)
+    elif a[:1] == ["rebuild"]:
+        # 既存の全リグを、各 meta.json の設定（尾の切断位置・目の座標・翼の有無）のまま作り直す
+        # （ツールの切り抜き方を直したときに 52頭へ一括反映する用）
+        for id_ in sorted(os.listdir(RIGS)):
+            mp = os.path.join(RIGS, id_, "meta.json")
+            if not os.path.exists(mp):
+                continue
+            mt = json.load(open(mp, encoding="utf-8"))
+            ey = mt.get("eye")
+            rig(id_, mt.get("tailCut", 0.34), (ey["x"], ey["y"], ey["r"]) if ey else None, bool(mt.get("wingless")))
     else:
         print(__doc__)

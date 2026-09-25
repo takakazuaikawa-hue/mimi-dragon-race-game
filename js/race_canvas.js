@@ -975,7 +975,7 @@ function _rcDragonSprite(id) {
 // 翼＝根元固定の“しなり”羽ばたき／尾＝根元固定のしなり／胴＝呼吸。色相シフトはしない（絵が本人の色）。
 // wing パーツが無い rig＝元から翼の無い竜（goro 等 stamina_tank 6頭）＝羽ばたかない。
 // 未ロード・404 はスプライト描画へ落ちる（同じ絵なので別の竜は出ない）。表示専用＝数値非干渉。
-const RC_DRAGON_ART_V = 2;           // 竜の絵とリグのキャッシュ破り（V2 刷新で 1→2）
+const RC_DRAGON_ART_V = 3;           // 竜の絵とリグのキャッシュ破り（V2 刷新で 1→2・リグの翼切り抜き修正で 2→3）
 const RC_DRIG = Object.create(null);
 function _rcDragonRigV2(id) {
   if (!id || typeof L2_RIG === 'undefined' || typeof fetch !== 'function') return null;
@@ -1030,7 +1030,9 @@ function _rcCtxScale(ctx) {
 // 根元(右)固定のしなり。_rcBendStrips と同じ波だが「位相0＝元の絵そのまま」になるよう基準位置からの差分で動かす
 // （図鑑・馬券カード・スカウト等の静止画は gait:0 で描くので、翼が歪まず絵のとおりに見える）。
 function _rcBendStripsV2(ctx, img, bx, by, phase, amp) {
-  const W = img.width, H = img.height, n = 10, step = W / n;
+  // 帯の数は画面上の幅に合わせる（約3px/帯）。固定10本だとウィニングカット（150px）で
+  // 帯のずれが階段状のギザギザに見えていた（2026-09-25 実機録画で確認）。
+  const W = img.width, H = img.height, n = Math.max(8, Math.min(64, Math.round(W * _rcCtxScale(ctx) / 3))), step = W / n;
   for (let i = 0; i < n; i++) {
     const u = 1 - (i + 0.5) / n, k = u * u;                           // 0=付け根(右) .. 1=先端(左)
     const off = (Math.sin(phase + u * 1.6) - Math.sin(u * 1.6) + 0.25 * (Math.sin(2 * phase + u * 1.6) - Math.sin(u * 1.6))) * amp * k * H;
@@ -1038,31 +1040,48 @@ function _rcBendStripsV2(ctx, img, bx, by, phase, amp) {
     ctx.drawImage(img, sx0, 0, sw, H, bx + sx0, by + off, sw, H);
   }
 }
+// 羽ばたきの1周期（φ=0 で元の絵の姿勢＝静止画は絵のまま）。s>0＝振り上げ／s<0＝打ち下ろし。
+// 打ち下ろしを速く・振り上げをゆっくりにする非対称波（鳥や竜の羽ばたきの緩急）。
+function _rcWingStroke(ph) { return Math.sin(ph + 0.45 * Math.sin(ph)); }
+// 翼＝翼根ピボットで回転＋打ち下ろしで縦に縮める（手前へ振り下ろす遠近）＋先端の遅れ（しなり）。
+// k＝強さ（レース中 1.0・減速中は小さく）。回転と縮みは翼根まわりなので、翼根は背から離れない。
+function _rcWingFlapV2(ctx, img, bx, by, ph, k) {
+  const s = _rcWingStroke(ph);
+  const rot = (s > 0 ? 0.14 : 0.30) * s * k;                          // ＋で翼端が上がる（振り上げは浅く・打ち下ろしは深く）
+  const sy = s > 0 ? 1 + 0.04 * s * k : 1 + 0.50 * s * k;             // 打ち下ろしで最大50%縮む
+  ctx.rotate(-rot);
+  ctx.scale(1, sy);
+  _rcBendStripsV2(ctx, img, bx, by, ph - 0.9, 0.07 * k);               // 翼端は少し遅れてついてくる
+}
 function _rcDrawRigV2Parts(ctx, parts, wingPh, wingAmp, tailPh, breathe) {
+  const k = wingAmp / 0.18;                                            // 既存の強さ指定（0.18＝全力の羽ばたき）を倍率に
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i]; if (!p._img) continue;
     const bx = p.rect.x - p.pivot.x, by = p.rect.y - p.pivot.y;
     ctx.save();
     ctx.translate(p.pivot.x, p.pivot.y);
-    if (p.role === 'wing') _rcBendStripsV2(ctx, p._img, bx, by, wingPh, wingAmp);        // 翼根固定・翼端ほど大きく
-    else if (p.role === 'tail') _rcBendStripsV2(ctx, p._img, bx, by, tailPh, 0.11);      // 尾の付け根固定
+    if (p.role === 'wing') _rcWingFlapV2(ctx, p._img, bx, by, wingPh, k);                 // 翼根固定の回転＋遠近＋しなり
+    else if (p.role === 'tail') _rcBendStripsV2(ctx, p._img, bx, by, tailPh, 0.16);      // 尾の付け根固定（翼より遅れてしなる）
     else { if (p.role === 'body') ctx.scale(1, 1 + breathe); ctx.drawImage(p._img, bx, by); }
     ctx.restore();
   }
 }
+// 打ち下ろしで体が浮く（揚力）。φ=0 で 0。単位＝体の高さに対する比。
+function _rcWingLift(ph) { return Math.sin(ph - 0.7) - Math.sin(-0.7); }
 function rcDrawDragonRigV2(ctx, o) {
   const rig = RC_DRIG[o.id].rig, b = rig._bbox;
   const px = (o.scale || 1) * RC_DRG.px, g = o.gait || 0;
   const targetH = RC_DSP_H * (o.scale || 1) * (RC_SIZE_MUL[o.id] || 1);   // スプライトと同じ正規化＝大きさは今と同じ
   const sc = targetH / b.h, w = b.w * sc, h = b.h * sc;
-  const bob = o.grounded ? Math.abs(Math.sin(g)) * 0.6 : Math.sin(g * 0.7) * (o.down ? 0.4 : 1);
+  const bob = o.grounded ? Math.abs(Math.sin(g)) * 0.6 : Math.sin(g * 0.7) * (o.down ? 0.4 : 0.5);
+  const amp = o.grounded ? 0.05 : (o.down ? 0.10 : 0.18), wk = amp / 0.18, wph = g * 1.35;
   ctx.save();
   ctx.translate(o.x, o.y);
   if (o.spin) ctx.rotate(o.spin);
   if (o.tumble) ctx.rotate(o.tumble);
-  ctx.rotate(-(o.lean || 0) * 0.05 + (o.bank || 0) * 0.10);
+  ctx.rotate(-(o.lean || 0) * 0.05 + (o.bank || 0) * 0.10 + 0.02 * wk * _rcWingStroke(wph));   // 打ち下ろしで機首が少し上がる
   if (o.squash && o.squash !== 1) { const sq = Math.max(0.7, Math.min(1.3, o.squash)); ctx.scale(2 - sq, sq); }
-  ctx.translate(0, -bob * px * 0.9);
+  ctx.translate(0, -bob * px * 0.9 + h * 0.035 * wk * _rcWingLift(wph));                        // 打ち下ろしで体が浮く（揚力）
   { const _au = o.design && o.design.aura; ctx.save(); ctx.globalAlpha = _au ? 0.34 : 0.20; const gc = _au || rcShade(o.color || '#888', 46), rr = (_au ? 0.62 : 0.5) * Math.max(w, h);
     const ng = ctx.createRadialGradient(0, -h * 0.45, 2, 0, -h * 0.45, rr); ng.addColorStop(0, rcRgba(gc, _au ? 0.8 : 0.6)); ng.addColorStop(0.6, rcRgba(gc, 0.14)); ng.addColorStop(1, rcRgba(gc, 0));
     ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0, -h * 0.45, rr, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
@@ -1071,8 +1090,7 @@ function rcDrawDragonRigV2(ctx, o) {
   const r = _rcRigV2At(rig, sc * _rcCtxScale(ctx));
   ctx.scale(sc / r.lv, sc / r.lv);
   ctx.translate(-b.x * r.lv, -b.y * r.lv);
-  const amp = o.grounded ? 0.05 : (o.down ? 0.10 : 0.18);
-  _rcDrawRigV2Parts(ctx, r.parts, g * 1.35, amp, g * 0.7, Math.sin(g * 0.5) * 0.012);
+  _rcDrawRigV2Parts(ctx, r.parts, wph, amp, wph - 1.3, Math.sin(g * 0.5) * 0.012);   // 尾は翼より遅れてしなる
   ctx.restore();
 }
 function rcHasDragonSprite(id) { const e = RC_DSPRITE[id]; return !!(e && e.ok) || _rcRigV2Ok(id); }
@@ -1194,10 +1212,12 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   ctx.translate(cx, baseY + breathe); ctx.scale(pop, pop);
   if (v2) {
     ctx.save();
+    const wph = now * 3.0;
+    ctx.translate(0, H * 0.03 * _rcWingLift(wph));      // 打ち下ろしで体が浮く（レース中と同じ連動）
     ctx.translate(-W / 2, -H);
     const r = _rcRigV2At(v2, sc * _rcCtxScale(ctx));   // ctx には pop の拡大が既に掛かっている
     ctx.scale(sc / r.lv, sc / r.lv); ctx.translate(-b.x * r.lv, -b.y * r.lv);
-    _rcDrawRigV2Parts(ctx, r.parts, now * 3.0, 0.20, now * 2.2, Math.sin(now * 2.2) * 0.012);
+    _rcDrawRigV2Parts(ctx, r.parts, wph, 0.20, wph - 1.3, Math.sin(now * 2.2) * 0.012);
     ctx.restore();
   }
   const N = v2 ? 0 : 16, sw = b.w / 16, dw = W / 16;
