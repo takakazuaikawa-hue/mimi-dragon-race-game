@@ -920,7 +920,7 @@ function renderVillage() {
   state.ui.screen = "village";
   runEventHooks("onVillageUpdate", { villageLevel: state.player.villageLevel });
   const app = beginScreen();
-  const v = state.player.village || { level: 1, name: "泣き虫ドラゴン村", facilities: {}, unlockedDragonIds: [] };
+  const v = state.player.village || { level: 1, name: "竜の村", facilities: {}, unlockedDragonIds: [] };
   const rescue = RESCUE_COINS[v.level] || 300;
   const villMult = VILLAGE_MULT[v.level] || 1.0;
   app.appendChild(el("h2", null, "竜の村"));
