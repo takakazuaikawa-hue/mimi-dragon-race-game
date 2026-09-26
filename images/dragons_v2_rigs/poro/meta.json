@@ -13,6 +13,6 @@
     "y": 359,
     "r": 21
   },
-  "wingOutsideDrift": 0.01,
+  "wingOutsideDrift": 0.0104,
   "tailCut": 0.34
 }
