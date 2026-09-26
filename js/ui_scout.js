@@ -25,6 +25,8 @@ function showScoutHelp() {
     `<div class="mm-note">この遊びはレースの着順・オッズ・配当に影響しません。</div>`);
 }
 
+// スカウトの場所→崑崙の景色写真（ui_konron_map.js の KM_SCOUT_HINT と同じ対応＝地図で「竜の気配」が出る場所）
+const SCOUT_LOC_PHOTO = { grass: "ryusha", jungle: "lumina", cliff: "kibishis", volcano: "bangara", sea: "sena", sky: "dakon" };
 function renderScout() {
   if (typeof poroScoutUnlocked === "function" && !poroScoutUnlocked()) {   // Ⓒ 無反応→🔒案内でフィードバック。
     if (typeof renderHome === "function") renderHome();
@@ -70,6 +72,8 @@ function renderScout() {
         `<span class="sc-loc-mood">${loc.mood}</span>` +
         `<span class="sc-loc-cnt">${allDone ? "✓ この場の竜とは みんな仲良し" : `棲む竜 <b>${all.length}</b>頭・出会い <b>${done}</b>`}</span>`);
       card.onclick = () => scoutEnterLocation(loc.id);
+      // 場所の景色＝崑崙の地図と同じ写真（旧＝絵文字＋文字だけで、地図の写真カードと比べて仮組みに見えた）
+      if (SCOUT_LOC_PHOTO[loc.id]) { card.classList.add("has-photo"); card.style.setProperty("--ph", `url('images/konron/spots/${SCOUT_LOC_PHOTO[loc.id]}.webp')`); }
       if (fromHint === loc.id) {
         card.classList.add("sc-loc--hint");
         card.insertAdjacentHTML("afterbegin", `<span class="sc-loc-hintb">🐾 気配のした場所</span>`);

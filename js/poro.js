@@ -470,7 +470,7 @@ function renderStable() {
   poroCard.innerHTML =
     `<div class="stable-poro-fig">${poroStandeeHTML(96)}</div>` +
     `<div class="stable-poro-info">` +
-      `<div class="stable-poro-nm">🥹 泣き虫竜ポロ <span class="stable-tag">相棒</span><span class="st-rank">${pr[2]} ${pr[1]}</span></div>` +
+      `<div class="stable-poro-nm"><span class="nw">🥹 泣き虫竜ポロ</span><span class="stable-tag">相棒</span><span class="st-rank">${pr[2]} ${pr[1]}</span></div>` +
       `<div class="stable-poro-sub">ムラサキマルチビ竜・幼体／気性：臆病でやさしい</div>` +
       `<div class="stable-aff"><span>絆</span><div class="stable-aff-bar"><i style="width:${af}%"></i></div><b>${af}</b></div>` +
       `<div class="stable-poro-ev" id="stable-poro-ev">${poroStableEvent()}</div>` +
@@ -499,7 +499,7 @@ function renderStable() {
     subnav.appendChild(scoutRow);
   }
   if (typeof renderCollection === "function" && dexUnlocked()) {   // 図鑑は第4話マクラに会ってから
-    const dexRow = el("button", "stable-scout-cta stable-dex-cta", "📖 図鑑（記録・ごほうび）");
+    const dexRow = el("button", "stable-scout-cta stable-dex-cta", "📖 竜図鑑");
     dexRow.onclick = () => renderCollection();
     subnav.appendChild(dexRow);
   }

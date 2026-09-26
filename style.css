@@ -6442,8 +6442,8 @@ body.title-mode #vol-fab { display: none !important; }
   background: linear-gradient(135deg, rgba(154,106,208,.18), rgba(20,30,38,.6)); border: 1px solid rgba(154,106,208,.5); }
 .stable-poro-fig { flex: 0 0 auto; width: 96px; display: flex; align-items: flex-end; justify-content: center; }
 .stable-poro-info { flex: 1 1 auto; min-width: 0; }
-.stable-poro-nm { font-size: 16px; font-weight: 800; color: var(--hx-fff4e0); display: flex; align-items: center; gap: 8px; }
-.stable-tag { font-size: 10px; font-weight: 800; color: #2a1d05; background: linear-gradient(180deg,#e8b94e,var(--gold-line)); padding: var(--pd-2-8); border-radius: var(--r-full); }
+.stable-poro-nm { font-size: 16px; font-weight: 800; color: var(--hx-fff4e0); display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.stable-tag { font-size: 10px; font-weight: 800; color: #2a1d05; background: linear-gradient(180deg,#e8b94e,var(--gold-line)); padding: var(--pd-2-8); border-radius: var(--r-full); white-space: nowrap; }
 .stable-poro-sub { font-size: 12px; color: #c4d2d8; margin-top: 2px; }
 .stable-aff { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: #d3c4ee; }
 .stable-aff-bar { flex: 1; height: 8px; border-radius: var(--r-full); background: rgba(255,255,255,.12); overflow: hidden; }
@@ -10201,3 +10201,8 @@ body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタ�
 /* 実況の吹き出し：最初の一言までは空の枠が2つ並んで「未完成」に見えた → 待機の一言を薄く */
 .rc-yt-l .rc-yt-bub:empty::before { content: "まもなく発走……！"; opacity: .45; }
 .rc-yt-r .rc-yt-bub:empty::before { content: "……"; opacity: .35; }
+/* スカウトの場所カード：景色の写真を敷く（文字は下の暗がりに） */
+.sc-loc.has-photo { min-height: 148px; justify-content: flex-end; border-color: rgba(255,255,255,.14);
+  background: linear-gradient(180deg, rgba(8,12,16,.05) 0%, rgba(8,12,16,.55) 45%, rgba(8,12,16,.92) 100%), var(--ph) center / cover no-repeat, #1a2328; }
+.sc-loc.has-photo .sc-loc-ic { font-size: 18px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+.sc-loc.has-photo .sc-loc-mood { color: #d6e0e4; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
