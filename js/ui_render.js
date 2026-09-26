@@ -4525,13 +4525,15 @@ function recapSection(label, lines) {
 function recapTabResult(body, recap, c) {
   const tbl = el("table", "ranking-table");
   tbl.innerHTML =
-    `<tr><th>着</th><th>竜</th><th>人気</th><th>オッズ</th><th>脚質</th><th>短評</th></tr>` +
+    // ★スマホ幅で6列は右が切れて横スクロールになっていた → 4列に。脚質・短評は竜名の下に小さく。
+    `<tr><th>着</th><th>竜</th><th>人気</th><th>オッズ</th></tr>` +
     recap.resultSummary.map(e => {
       const cls = e.rank <= 3 ? ` class="top${e.rank}"` : "";
       const star = e.isBetTarget ? " ★" : "";
       const od = (e.odds != null) ? e.odds.toFixed(1) : "—";
       const pop = (e.popularityRank != null) ? `${e.popularityRank}番` : "—";
-      return `<tr${cls}><td>${e.rank}</td><td>${e.name}${star}</td><td>${pop}</td><td>${od}</td><td>${e.style}</td><td>${e.blurb}</td></tr>`;
+      const sub = [e.style, e.blurb].filter(Boolean).join("・");
+      return `<tr${cls}><td>${e.rank}</td><td>${e.name}${star}${sub ? `<small class="rt-sub">${sub}</small>` : ""}</td><td>${pop}</td><td>${od}</td></tr>`;
     }).join("");
   body.appendChild(tbl);
   body.appendChild(el("div", "recap-note", "★ … あなたの予想竜"));

@@ -10197,3 +10197,7 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
 .set-ver { margin: 14px 0 4px; text-align: center; font-size: 11px; color: var(--mist-soft); opacity: .7; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 .nw { display: inline-block; white-space: nowrap; }   /* 単語の途中で改行させない（レース名「第1レ／ース」対策） */
 body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタンと出走ボタンを重ねない */
+.ranking-table .rt-sub { display: block; font-size: 11px; font-weight: normal; opacity: .72; margin-top: 2px; line-height: 1.35; }   /* 脚質・短評を竜名の下に（4列化） */
+/* 実況の吹き出し：最初の一言までは空の枠が2つ並んで「未完成」に見えた → 待機の一言を薄く */
+.rc-yt-l .rc-yt-bub:empty::before { content: "まもなく発走……！"; opacity: .45; }
+.rc-yt-r .rc-yt-bub:empty::before { content: "……"; opacity: .35; }

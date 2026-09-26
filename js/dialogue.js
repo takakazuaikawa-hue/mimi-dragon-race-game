@@ -298,7 +298,7 @@
   // ★スキップ＝「いま出ている会話」だけでなく、押した時点で順番待ちしていた会話もまとめて飛ばす。
   //   （以前は1本ずつしか閉じず、初回チュートリアルなどで押しても次の会話が即始まり「スキップが効かない」に見えた）
   //   飛ばした会話も Promise は解決する＝呼び出し側の後処理（フラグ付け等）は通常どおり走る。表示だけ出さない。
-  var ticketSeq = 0, skipUpTo = 0;
+  var ticketSeq = 0, skipUpTo = 0, skipGraceUntil = 0;
   function play(script, options) {
     var lines = normalize(script);
     if (fastMs > 0) options = assign(assign({}, options || {}), { instant: true, autoAdvance: true, autoMs: fastMs });
@@ -306,6 +306,9 @@
     chain = chain.then(function () {
       if (!lines.length) return Promise.resolve();
       if (ticket <= skipUpTo) return Promise.resolve();
+      // スキップ直後（1.5秒以内）に始まる会話も飛ばす＝結果画面の「借金の話→衣装の贈り物」のように
+      //   前の会話が閉じてから次が始まる連続場面で、何度も押させない（実機で確認）。
+      if (Date.now() < skipGraceUntil) return Promise.resolve();
       return run(lines, options || {});
     });
     return chain;
@@ -544,7 +547,8 @@
 
   function skipAll() {
     typing = false; clearTimeout(typeTimer);
-    skipUpTo = ticketSeq;   // 押した時点で予約済みの会話も飛ばす（この後に始まる会話は通常どおり）
+    skipUpTo = ticketSeq;   // 押した時点で予約済みの会話も飛ばす
+    skipGraceUntil = Date.now() + 1500;   // 直後に続けて始まる会話も
     finish();
   }
 

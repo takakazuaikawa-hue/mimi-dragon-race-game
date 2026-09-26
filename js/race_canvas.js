@@ -1736,7 +1736,7 @@ function startRaceCanvas(container, ctx) {
         { dh: ch * 0.62, anchor: ch * 0.80, tone: 0.35 },   // L2 中景（下端=画面80%）
         { dh: ch * 0.34, anchor: ch + 2,    tone: 0.20 },   // L3 最近景（下端=画面下端）
       ];
-      const L = [], dw = [], dh = [], dy = [];
+      const L = [], LM = [], dw = [], dh = [], dy = [];
       const px = Math.min(2, dpr || 1);                                // 焼き解像度（dpr>2は2で十分）
       for (let i = 0; i < 3; i++) {
         const img = e.imgs[i], s = spec[i];
@@ -1745,18 +1745,9 @@ function startRaceCanvas(container, ctx) {
         oc.width = Math.max(1, Math.round(w * px)); oc.height = Math.max(1, Math.round(s.dh * px));
         const c2 = oc.getContext("2d");
         c2.drawImage(img, 0, 0, oc.width, oc.height);
-        // ループ化クロスフェード：原画右端のB相当を左端へ αランプ(左1→右0) で重ねる
-        const B = Math.max(24, Math.round(oc.width * 0.09));
-        const strip = document.createElement("canvas");
-        strip.width = B; strip.height = oc.height;
-        const sc2 = strip.getContext("2d");
-        const swSrc = img.naturalWidth * (B / oc.width);
-        sc2.drawImage(img, img.naturalWidth - swSrc, 0, swSrc, img.naturalHeight, 0, 0, B, oc.height);
-        sc2.globalCompositeOperation = "destination-in";
-        const gr = sc2.createLinearGradient(0, 0, B, 0);
-        gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)");
-        sc2.fillStyle = gr; sc2.fillRect(0, 0, B, oc.height);
-        c2.drawImage(strip, 0, 0);
+        // ★継ぎ目対策（2026-09-26）：原画は横につながる前提で描かれておらず、左右端で縁石の高さが食い違う。
+        //   旧＝右端9%を左端にクロスフェード→ずれた縁石が二重に透け、暗い縦帯に見えた（スマホで確認）。
+        //   新＝1枚おきに左右反転して並べる（鏡像タイル）＝どの継ぎ目も同じ絵柄同士が接するので必ずつながる。
         // 時間帯トーン（soft-light・遠景ほど濃く）＋夕/黄昏は僅かな明度リフト
         c2.save();
         c2.globalCompositeOperation = "soft-light"; c2.globalAlpha = s.tone;
@@ -1766,10 +1757,20 @@ function startRaceCanvas(container, ctx) {
         const lift = t === "sunset" ? 0.10 : t === "dusk" ? 0.05 : 0;
         if (lift > 0 && i === 0) { c2.globalCompositeOperation = "screen"; c2.globalAlpha = 1; c2.fillStyle = rcRgba(conf.haze, lift); c2.fillRect(0, 0, oc.width, oc.height); }
         c2.restore();
+        // ★トーンは絵のある所だけ：透明部（中景・近景の空）に塗ると半透明の板になり、層の上端が横線に見えた
+        if (i > 0) {
+          c2.save(); c2.globalCompositeOperation = "destination-in";
+          c2.drawImage(img, 0, 0, oc.width, oc.height);
+          c2.restore();
+        }
+        const om = document.createElement("canvas");            // 鏡像版（奇数番目のタイル用）
+        om.width = oc.width; om.height = oc.height;
+        const cm = om.getContext("2d"); cm.translate(om.width, 0); cm.scale(-1, 1); cm.drawImage(oc, 0, 0);
+        LM.push(om);
         L.push(oc); dw.push(w); dh.push(s.dh);
         dy.push(s.anchor == null ? 0 : s.anchor - s.dh);
       }
-      paraBaked = { slug: e.slug, L: L, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 1.0], haze: conf.haze };
+      paraBaked = { slug: e.slug, L: L, LM: LM, dw: dw, dh: dh, dy: dy, rate: [0.15, 0.45, 1.0], haze: conf.haze };
     } catch (_) { paraBaked = null; }
   }
   // ★走る絵の高さは幅だけで決める（下限280px）。
@@ -2897,13 +2898,13 @@ function startRaceCanvas(container, ctx) {
     const para = paraBaked;
     if (para) {
       // L1 遠景×0.15 → L2 中景×0.45 → L3 近景帯×0.9（レール旗0.9と同平面＝柵が近景の地面に立つ）。
-      // タイルは焼き込みで完全ループ＝境界の継ぎ目なし。カメラが進むほど層の速度差で奥行きが出る。
+      // タイルは鏡像で交互に並べる＝境界の継ぎ目なし。カメラが進むほど層の速度差で奥行きが出る。
       for (let li = 0; li < 3; li++) {
         if (S.lowSpec && li === 1) continue;                    // R8-W5: 低速機はL2を省き2層に縮退
         const ox = S.camL * SREF * para.rate[li];
         const dwl = para.dw[li], dhl = para.dh[li], dyl = para.dy[li], tile = para.L[li];
         for (let k = Math.floor(ox / dwl); k * dwl - ox < cw; k++) {
-          cctx.drawImage(tile, k * dwl - ox, dyl, dwl, dhl);
+          cctx.drawImage((k & 1) ? para.LM[li] : tile, k * dwl - ox, dyl, dwl, dhl);   // 奇数番目＝鏡像（継ぎ目を必ずつなぐ）
         }
       }
       // 地平の靄：絵の地平線（L1の約58%）に薄く敷いて層同士を馴染ませる
@@ -3370,6 +3371,7 @@ function startRaceCanvas(container, ctx) {
     }
 
     const drawList = [...dragons].sort((a, b) => laneOf[b.id] - laneOf[a.id]);
+    const _labels = [];   // 札（順位バッジ＋名前）は竜の後にまとめて描く
     for (const dr of drawList) {
       const P = timeline.progressAt(dr.id, S.tau);
       const Pvis = visProgress(dr.id);          // extends past 1 during the run-out
@@ -3619,72 +3621,93 @@ function startRaceCanvas(container, ctx) {
       // 賭け竜だけは常時＝自分の竜は見失わない。離陸(6割上昇)で全員分が戻る。
       const _lEb = para ? ((S._launchEb && S._launchEb[dr.id] != null) ? S._launchEb[dr.id] : 1) : 1;
       if (_lEb > 0.6 || isBet) {
-      const tagY = y - 34 * dep;
-      const rr2 = (isBet ? 9 : 8) * dep;
-      cctx.beginPath(); cctx.arc(bodyCx, tagY, rr2, 0, Math.PI * 2);
-      cctx.fillStyle = isBet ? "rgba(255,211,77,0.80)" : "rgba(8,10,20,0.42)"; cctx.fill();
-      cctx.lineWidth = 1.3;
-      cctx.strokeStyle = isBet ? "rgba(255,243,196,0.7)" : (popRank[dr.id] === 1 ? "rgba(127,209,255,0.5)" : "rgba(255,255,255,0.28)");
-      cctx.stroke();
-      cctx.font = "bold " + Math.round((isBet ? 11 : 10) * dep) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillStyle = isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.82)";
-      cctx.fillText(rk, bodyCx, tagY + 0.5);
-      cctx.textBaseline = "alphabetic";
-      // name plate — 控えめなピル（半透明・小さめ）。賭け竜はほんのり金味。
-      const nm = commentaryName(dr.id);
-      cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-      const nw = cctx.measureText(nm).width;
-      const plw = nw + 10, plh = 13, plx = bodyCx - plw / 2, ply = baseY + 12;
-      cctx.beginPath();
-      if (cctx.roundRect) cctx.roundRect(plx, ply, plw, plh, 6.5); else cctx.rect(plx, ply, plw, plh);
-      cctx.fillStyle = "rgba(8,10,20,0.36)"; cctx.fill();
-      if (isBet) { cctx.lineWidth = 1; cctx.strokeStyle = "rgba(255,211,77,0.4)"; cctx.stroke(); }
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.fillStyle = isBet ? "rgba(255,233,176,0.85)" : "rgba(255,255,255,0.68)";
-      cctx.fillText(nm, bodyCx, ply + plh / 2 + 0.5);
-      cctx.textBaseline = "alphabetic";
+      // ★札は全頭を描き終えてから重ねる（_labels）。竜ごとに描くと、後から描く竜の体の下に
+      //   前の竜の札が隠れて「ル…」「ミ…」しか読めなかった（スマホで確認）。値はここで確定させて閉じ込める。
+      const _lb = (function (bodyCx, y, baseY, dep, rk, isBet, dr, alpha) {
+        const _nm0 = commentaryName(dr.id);
+        cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+        const _nw0 = cctx.measureText(_nm0).width;
+        const _r0 = (isBet ? 9 : 8) * dep;
+        return {
+          pri: isBet ? 0 : rk,
+          box: { x0: Math.min(bodyCx - _r0, bodyCx - (_nw0 + 10) / 2), x1: Math.max(bodyCx + _r0, bodyCx + (_nw0 + 10) / 2),
+                 y0: y - 34 * dep - _r0, y1: baseY + 12 + 13 },
+          draw: function () {
+            const _pa = cctx.globalAlpha; cctx.globalAlpha = alpha;
+              const tagY = y - 34 * dep;
+              const rr2 = (isBet ? 9 : 8) * dep;
+              cctx.beginPath(); cctx.arc(bodyCx, tagY, rr2, 0, Math.PI * 2);
+              cctx.fillStyle = isBet ? "rgba(255,211,77,0.80)" : "rgba(8,10,20,0.42)"; cctx.fill();
+              cctx.lineWidth = 1.3;
+              cctx.strokeStyle = isBet ? "rgba(255,243,196,0.7)" : (popRank[dr.id] === 1 ? "rgba(127,209,255,0.5)" : "rgba(255,255,255,0.28)");
+              cctx.stroke();
+              cctx.font = "bold " + Math.round((isBet ? 11 : 10) * dep) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+              cctx.textAlign = "center"; cctx.textBaseline = "middle";
+              cctx.fillStyle = isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.82)";
+              cctx.fillText(rk, bodyCx, tagY + 0.5);
+              cctx.textBaseline = "alphabetic";
+              // name plate — 控えめなピル（半透明・小さめ）。賭け竜はほんのり金味。
+              const nm = commentaryName(dr.id);
+              cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+              const nw = cctx.measureText(nm).width;
+              const plw = nw + 10, plh = 13, plx = bodyCx - plw / 2, ply = baseY + 12;
+              cctx.beginPath();
+              if (cctx.roundRect) cctx.roundRect(plx, ply, plw, plh, 6.5); else cctx.rect(plx, ply, plw, plh);
+              cctx.fillStyle = "rgba(8,10,20,0.36)"; cctx.fill();
+              if (isBet) { cctx.lineWidth = 1; cctx.strokeStyle = "rgba(255,211,77,0.4)"; cctx.stroke(); }
+              cctx.textAlign = "center"; cctx.textBaseline = "middle";
+              cctx.fillStyle = isBet ? "rgba(255,233,176,0.85)" : "rgba(255,255,255,0.68)";
+              cctx.fillText(nm, bodyCx, ply + plh / 2 + 0.5);
+              cctx.textBaseline = "alphabetic";
+            cctx.globalAlpha = _pa;
+          }
+        };
+      })(bodyCx, y, baseY, dep, rk, isBet, dr, cctx.globalAlpha);
+      _labels.push(_lb);
       }   // ← ラベル表示ゲート（_lEb）
 
       // ★A-2 ロールコール：紹介中の1頭だけ、頭上に大きな名札プレートを出す。
       //   「⑦｜旋爪竜ロッソ｜差し・単2.9」＋枠色バー。斜め整列でも個体が読める見せ場。
+      // ロールコールの大札も、ほかの竜の体に隠れないよう最後に描く（優先度最高・重なり判定なし）
       if (S.roll >= 0 && _rollOrder[S.roll] && _rollOrder[S.roll].id === dr.id) {
-        const od2 = (oddsResult.oddsData || []).find(o => o.dragonId === dr.id) || {};
-        const d2 = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === dr.id) : null;
-        const styleLb = (d2 && typeof STYLE_LABEL !== "undefined") ? (STYLE_LABEL[d2.style] || "") : "";
-        const nm2 = commentaryName(dr.id);
-        const sub = styleLb + (od2.winOdds != null ? "・単" + od2.winOdds.toFixed(1) : "");
-        cctx.save();
-        cctx.font = "bold 12px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-        const w1 = cctx.measureText(nm2).width;
-        cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-        const w2 = cctx.measureText(sub).width;
-        const pw = Math.max(w1, w2) + 34, phh = 30;
-        const px3 = bodyCx - pw / 2, py3 = y - 74 * dep;
-        // 台座
-        cctx.beginPath();
-        if (cctx.roundRect) cctx.roundRect(px3, py3, pw, phh, 8); else cctx.rect(px3, py3, pw, phh);
-        cctx.fillStyle = "rgba(8,11,17,0.88)"; cctx.fill();
-        cctx.lineWidth = 1.4;
-        cctx.strokeStyle = isBet ? "rgba(255,214,106,0.95)" : "rgba(255,255,255,0.28)";
-        cctx.stroke();
-        // 枠色バー（竜のアイデンティティ）
-        cctx.fillStyle = dr.color || "#888";
-        cctx.beginPath();
-        if (cctx.roundRect) cctx.roundRect(px3 + 6, py3 + 6, 3.5, phh - 12, 2); else cctx.rect(px3 + 6, py3 + 6, 3.5, phh - 12);
-        cctx.fill();
-        // 人気番号
-        cctx.textAlign = "left"; cctx.textBaseline = "middle";
-        cctx.font = "bold 12px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-        cctx.fillStyle = "#ffd76a";
-        cctx.fillText(String(od2.popularityRank || ""), px3 + 14, py3 + phh / 2);
-        cctx.fillStyle = "#fff";
-        cctx.fillText(nm2, px3 + 26, py3 + 10);
-        cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-        cctx.fillStyle = "#aab4c2";
-        cctx.fillText(sub, px3 + 26, py3 + 22);
-        cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
-        cctx.restore();
+        _labels.push({ pri: -1, always: true, draw: (function (bodyCx, y, dep, isBet, dr) { return function () {
+            const od2 = (oddsResult.oddsData || []).find(o => o.dragonId === dr.id) || {};
+            const d2 = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === dr.id) : null;
+            const styleLb = (d2 && typeof STYLE_LABEL !== "undefined") ? (STYLE_LABEL[d2.style] || "") : "";
+            const nm2 = commentaryName(dr.id);
+            const sub = styleLb + (od2.winOdds != null ? "・単" + od2.winOdds.toFixed(1) : "");
+            cctx.save();
+            cctx.font = "bold 12px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+            const w1 = cctx.measureText(nm2).width;
+            cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+            const w2 = cctx.measureText(sub).width;
+            const pw = Math.max(w1, w2) + 34, phh = 30;
+            const px3 = bodyCx - pw / 2, py3 = y - 74 * dep;
+            // 台座
+            cctx.beginPath();
+            if (cctx.roundRect) cctx.roundRect(px3, py3, pw, phh, 8); else cctx.rect(px3, py3, pw, phh);
+            cctx.fillStyle = "rgba(8,11,17,0.88)"; cctx.fill();
+            cctx.lineWidth = 1.4;
+            cctx.strokeStyle = isBet ? "rgba(255,214,106,0.95)" : "rgba(255,255,255,0.28)";
+            cctx.stroke();
+            // 枠色バー（竜のアイデンティティ）
+            cctx.fillStyle = dr.color || "#888";
+            cctx.beginPath();
+            if (cctx.roundRect) cctx.roundRect(px3 + 6, py3 + 6, 3.5, phh - 12, 2); else cctx.rect(px3 + 6, py3 + 6, 3.5, phh - 12);
+            cctx.fill();
+            // 人気番号
+            cctx.textAlign = "left"; cctx.textBaseline = "middle";
+            cctx.font = "bold 12px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+            cctx.fillStyle = "#ffd76a";
+            cctx.fillText(String(od2.popularityRank || ""), px3 + 14, py3 + phh / 2);
+            cctx.fillStyle = "#fff";
+            cctx.fillText(nm2, px3 + 26, py3 + 10);
+            cctx.font = "9.5px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+            cctx.fillStyle = "#aab4c2";
+            cctx.fillText(sub, px3 + 26, py3 + 22);
+            cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
+            cctx.restore();
+        }; })(bodyCx, y, dep, isBet, dr) });
       }
 
       // off-screen-behind indicator
@@ -3695,18 +3718,44 @@ function startRaceCanvas(container, ctx) {
       }
       cctx.globalAlpha = _prevAlpha;             // end per-dragon edge fade
     }
+    // 札の後描き：自分の竜→上位の順に置き、既に置いた札とぶつかる札は省く（団子の時に札が折り重ならない）。
+    if (_labels.length) {
+      _labels.sort((p, q) => p.pri - q.pri);
+      const _placed = [];
+      for (const lb of _labels) {
+        if (!lb.always && lb.pri > 0 && lb.box && _placed.some(o => lb.box.x0 < o.x1 && lb.box.x1 > o.x0 && lb.box.y0 < o.y1 && lb.box.y1 > o.y0)) continue;
+        try { lb.draw(); } catch (e) {}
+        if (lb.box) _placed.push(lb.box);
+      }
+    }
     if (_popsOn) S.prevStand = standMap;         // 次フレームの順位変動検知用スナップショット
 
     // イベントポップ描画（0.95s＝ポップイン→浮き上がり→フェード。世界座標＝竜と一緒に流れる）
     if (S.lowSpec && S.pops.length > 2) S.pops.splice(0, S.pops.length - 2);   // R8-W5: 同時2件まで
     if (S.pops.length) {
+      // ★文字ポップ同士の重なり回避：古い順に置き、先に置いた文字と重なる新しい文字は上へずらす。
+      //   ずらし量は一度決めたら固定（p.off）＝毎フレーム揺れない。団子の時に「仕掛けた！」「逃げ切れ！」が重なっていた。
+      {
+        const _pl = [];
+        for (let i = 0; i < S.pops.length; i++) {
+          const p = S.pops[i]; if ((p.sz || 15) < 14) continue;   // 絵文字の小粒は対象外
+          const a = (_popNow - p.t0) / 0.95; if (a < 0 || a >= 1) continue;
+          const w = (String(p.tx).length * (p.sz || 15)) * 0.5 + 4, h = (p.sz || 15) * 0.6 + 3;
+          for (let k = 0; k < 4; k++) {
+            const y = p.y - 26 * a + (p.off || 0);
+            if (!_pl.some(o => Math.abs(o.x - p.x) < w + o.w && Math.abs(o.y - y) < h + o.h)) break;
+            p.off = (p.off || 0) - 17;
+          }
+          _pl.push({ x: p.x, y: p.y - 26 * a + (p.off || 0), w: w, h: h });
+        }
+      }
       for (let i = S.pops.length - 1; i >= 0; i--) {
         const p = S.pops[i], a = (_popNow - p.t0) / 0.95;
         if (a >= 1) { S.pops.splice(i, 1); continue; }
         const inK = Math.min(1, a / 0.14), rise = 26 * a;
         const al = a < 0.75 ? 1 : 1 - (a - 0.75) / 0.25;
         cctx.save();
-        cctx.translate(p.x, p.y - rise);
+        cctx.translate(p.x, p.y - rise + (p.off || 0));
         cctx.scale(0.6 + 0.4 * inK, 0.6 + 0.4 * inK);
         cctx.font = "bold " + (p.sz || 15) + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.textAlign = "center"; cctx.textBaseline = "alphabetic";
