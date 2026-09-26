@@ -1030,7 +1030,7 @@ function _rcCtxScale(ctx) {
 }
 // 根元(右)固定のしなり。_rcBendStrips と同じ波だが「位相0＝元の絵そのまま」になるよう基準位置からの差分で動かす
 // （図鑑・馬券カード・スカウト等の静止画は gait:0 で描くので、翼が歪まず絵のとおりに見える）。
-function _rcBendStripsV2(ctx, img, bx, by, phase, amp) {
+function _rcBendStripsV2(ctx, img, bx, by, phase, amp, sqy) {
   // 帯の数は画面上の幅に合わせる（約3px/帯）。固定10本だとウィニングカット（150px）で
   // 帯のずれが階段状のギザギザに見えていた（2026-09-25 実機録画で確認）。
   const W = img.width, H = img.height, n = Math.max(8, Math.min(64, Math.round(W * _rcCtxScale(ctx) / 3))), step = W / n;
@@ -1038,7 +1038,9 @@ function _rcBendStripsV2(ctx, img, bx, by, phase, amp) {
     const u = 1 - (i + 0.5) / n, k = u * u;                           // 0=付け根(右) .. 1=先端(左)
     const off = (Math.sin(phase + u * 1.6) - Math.sin(u * 1.6) + 0.25 * (Math.sin(2 * phase + u * 1.6) - Math.sin(u * 1.6))) * amp * k * H;
     const sx0 = i * step, sw = Math.min(step + 1, W - sx0);
-    ctx.drawImage(img, sx0, 0, sw, H, bx + sx0, by + off, sw, H);
+    // sqy＝先端での縦の縮み（翼の打ち下ろし）。付け根は3割だけ・先端ほど強く縮める＝付け根が背から浮かない
+    const sq = sqy ? 1 + (sqy - 1) * (0.3 + 0.7 * u) : 1;
+    ctx.drawImage(img, sx0, 0, sw, H, bx + sx0, (by + off) * sq, sw, H * sq);
   }
 }
 // 羽ばたきの1周期（φ=0 で元の絵の姿勢＝静止画は絵のまま）。s>0＝振り上げ／s<0＝打ち下ろし。
@@ -1049,10 +1051,11 @@ function _rcWingStroke(ph) { return Math.sin(ph + 0.45 * Math.sin(ph)); }
 function _rcWingFlapV2(ctx, img, bx, by, ph, k) {
   const s = _rcWingStroke(ph);
   const rot = (s > 0 ? 0.14 : 0.30) * s * k;                          // ＋で翼端が上がる（振り上げは浅く・打ち下ろしは深く）
-  const sy = s > 0 ? 1 + 0.04 * s * k : 1 + 0.50 * s * k;             // 打ち下ろしで最大50%縮む
+  // 打ち下ろしで先端が最大30%縮む（付け根は少し）。★以前は翼全体を一律に最大50%縮めていたため、
+  //   ウィニングカットの大写しで翼が潰れた板のように付け根から浮いて見えた（2026-09-26 実機指摘「ゴール後の羽が破綻」）。
+  const sy = s > 0 ? 1 + 0.04 * s * k : 1 + 0.30 * s * k;
   ctx.rotate(-rot);
-  ctx.scale(1, sy);
-  _rcBendStripsV2(ctx, img, bx, by, ph - 0.9, 0.07 * k);               // 翼端は少し遅れてついてくる
+  _rcBendStripsV2(ctx, img, bx, by, ph - 0.9, 0.07 * k, sy);           // 翼端は少し遅れてついてくる
 }
 function _rcDrawRigV2Parts(ctx, parts, wingPh, wingAmp, tailPh, breathe) {
   const k = wingAmp / 0.18;                                            // 既存の強さ指定（0.18＝全力の羽ばたき）を倍率に
@@ -1371,7 +1374,7 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
     ctx.translate(-W / 2, -H);
     const r = _rcRigV2At(v2, sc * _rcCtxScale(ctx));   // ctx には pop の拡大が既に掛かっている
     ctx.scale(sc / r.lv, sc / r.lv); ctx.translate(-b.x * r.lv, -b.y * r.lv);
-    _rcDrawRigV2Parts(ctx, r.parts, wph, 0.20, wph - 1.3, Math.sin(now * 2.2) * 0.012);
+    _rcDrawRigV2Parts(ctx, r.parts, wph, 0.15, wph - 1.3, Math.sin(now * 2.2) * 0.012);   // 大写しは滞空の羽ばたき（深く振ると絵の限界が見える）
     ctx.restore();
   }
   const N = v2 ? 0 : 16, sw = b.w / 16, dw = W / 16;
