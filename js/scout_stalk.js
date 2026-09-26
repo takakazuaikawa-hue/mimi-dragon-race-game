@@ -16,6 +16,13 @@
 //   竜の絵は既存HD-2Dスプライト（_scSpriteInto）を使い回し。表示専用。
 // =========================================================================
 
+// 盤面の草やぶ・岩の絵（ロケごと）。旧＝絵文字🌾🪨で、描き込まれた背景の上で浮いていた。
+//   images/scout/props/<ロケ>_{bush,rock}.webp。未知のロケは草むらの絵。
+const STALK_PROP_LOCS = ["grass", "jungle", "cliff", "volcano", "sea", "sky"];
+function _stalkProp(locId, kind) {
+  const L = STALK_PROP_LOCS.indexOf(locId) >= 0 ? locId : "grass";
+  return "images/scout/props/" + L + "_" + kind + ".webp";
+}
 const STALK_COLS = 7, STALK_ROWS = 8;
 const STALK_R = 3;                      // 視界の届くマス数
 const STALK_TURNS = 24;                 // 👣この手数で竜は飽きて飛び去る
@@ -140,7 +147,7 @@ function _stalkRoll(locId) {
 }
 function _stalkReveal(locId, d, tier) {
   const ov = el("div", "stalk-reveal");
-  ov.innerHTML = `<div class="stalk-rv-bush">🌾</div><div class="stalk-rv-ring"></div>`;
+  ov.innerHTML = `<div class="stalk-rv-bush"><img src="${_stalkProp(locId, "bush")}" alt=""></div><div class="stalk-rv-ring"></div>`;
   document.body.appendChild(ov);
   try { if (window.Sfx) Sfx.play("click"); } catch (e) {}
   let stage = 0;
@@ -542,7 +549,7 @@ function _stalkRender() {
     const goal = t !== "R" && Math.abs(c - s.drg.c) === 1 && r === s.drg.r;
     cells += `<div class="stalk-cell${vis ? " vis" : ""}${shade ? " shade" : ""}${nvis ? " nvis" : ""}${canGo ? " go" : ""}${t === "B" ? " bushcell" : ""}${goal ? (vis ? " goal-off" : " goal") : ""}" data-c="${c}" data-r="${r}"` +
       ` style="left:${c * cw}%;top:${r * chh}%;width:${cw}%;height:${chh}%">` +
-      (t === "B" ? `<span class="stalk-bush">🌾</span>` : t === "R" ? `<span class="stalk-rock">🪨</span>` : "") +
+      (t === "B" ? `<img class="stalk-prop stalk-bush" src="${_stalkProp(s.locId, "bush")}" alt="">` : t === "R" ? `<img class="stalk-prop stalk-rock" src="${_stalkProp(s.locId, "rock")}" alt="">` : "") +
       (goal ? `<span class="stalk-goal-heart">♡</span>` : "") +
       `</div>`;
   }
@@ -576,13 +583,13 @@ function _stalkRender() {
         (s.flash === "alarm" ? `<span class="stalk-ex">！</span>` : "") +
       `</div>` +
       `<div class="stalk-mimi${hidden ? " hid" : ""}" style="left:${(s.mimi.c + 0.5) * cw}%;top:${(s.mimi.r + 0.72) * chh}%">` +
-        (hidden ? `<i class="stalk-hidegrass">🌾</i>` : "") +
+        (hidden ? `<img class="stalk-hidegrass" src="${_stalkProp(s.locId, "bush")}" alt="">` : "") +
       `</div>` +
     `</div>` +
     `<div class="stalk-foot"><span class="stalk-turn${STALK_TURNS - s.turn <= 5 ? " low" : ""}">👣 ${STALK_TURNS - s.turn}</span>` +
       `<button class="stalk-wait">🐾 じっとする</button></div>` +
     `<div class="stalk-legend"><span><i class="lg lg-vis"></i>みつかる</span><span><i class="lg lg-nvis"></i>つぎ見られる</span>` +
-      `<span><i class="lg lg-shade"></i>かげ＝安全</span><span>🌾 かくれる</span><span>♡ ゴール</span><span>⚠ つぎ見回し</span></div>`;
+      `<span><i class="lg lg-shade"></i>かげ＝安全</span><span><img class="lg-prop" src="${_stalkProp(s.locId, "bush")}" alt="">かくれる</span><span>♡ ゴール</span><span>⚠ つぎ見回し</span></div>`;
   _scSpriteInto(wrap.querySelector(".stalk-drg-img"), s.d.id);
   wrap.querySelector(".stalk-help").onclick = () => stalkShowHelp();
   wrap.querySelector(".stalk-quit").onclick = () => { _stalk = null; renderScout(); };
