@@ -10215,3 +10215,9 @@ body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタ�
 .stalk-rv-bush img { width: 150px; height: auto; display: block; }
 .stalk-cell.go::after { position: relative; z-index: 2; }   /* 絵の上に移動先の丸を出す（♡は元から前面） */
 .stalk-legend .lg-prop { width: 16px; height: 16px; object-fit: contain; vertical-align: -3px; margin-right: 3px; }
+/* ゴール帯：描き込みの金縁リボン（images/race_ui/goal_banner.webp）。旧＝赤→橙の平たいグラデ帯＋🎉で安っぽかった */
+.rc-goalband { left: 3%; right: 3%; top: 6px; padding: 0; aspect-ratio: 2148 / 349; display: flex; align-items: center; justify-content: center;
+  background: url("images/race_ui/goal_banner.webp") center / 100% 100% no-repeat;
+  font-size: 19px; font-weight: 900; letter-spacing: .22em; color: #ffe7a3;
+  text-shadow: 0 1px 0 #6b3a06, 0 2px 3px rgba(0,0,0,.85), 0 0 14px rgba(255,200,90,.45); filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+.rc-goalband[hidden] { display: none; }

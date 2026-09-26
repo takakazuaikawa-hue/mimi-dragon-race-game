@@ -854,9 +854,9 @@ function _kmArrivalScript(id, s, cat) {
       closer
     ],
     celestia: [
-      { s: "celestia", t: "……ここ、上から見るといちばん綺麗なのよ。", bg: bg },
+      { s: "celestia", t: "……ここ、上から見るといちばんきれいなんだよ。", bg: bg },
       { s: "mimi", t: "上からの感想!?　わたしたち今、下にいるんですけど!?" },
-      { s: "celestia", t: "だから来たの。下から見る" + nm + "は、初めて。……いいものね。" },
+      { s: "celestia", t: "だから来たの。下から見る" + nm + "は、初めて。……いいもんだね。" },
       closer
     ],
     poro: [

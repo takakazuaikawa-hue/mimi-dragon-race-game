@@ -1021,9 +1021,9 @@ registerEvent({
   condition: { once: true, requiredFlag: "_chapter_intro_5", test: () => _met("celestia") },
   actions: [
     { type: "dialogue", speaker: "celestia", expr: "smile",
-      text: "こんな小さなレースにも、ちゃんと来るのね。……ふふ、感心してるのよ。" },
+      text: "こんな小さなレースにも、ちゃんと来るんだね。……ふふ、感心してるんだよ。" },
     { type: "dialogue", speaker: "celestia", expr: "serious",
-      text: "先が視えるということはね、驚けなくなるということ。あなたはまだ驚ける。それは強さよ。" }
+      text: "先が視えるってことはね、驚けなくなるってことなの。あなたはまだ驚ける。それって強さだよ。" }
   ]
 });
 registerEvent({
@@ -1031,7 +1031,7 @@ registerEvent({
   condition: { once: true, requiredFlag: "_chapter_intro_5", test: () => _met("celestia") },
   actions: [
     { type: "dialogue", speaker: "celestia",
-      text: "わたしが視ているのは結果。あなたが視ているのは、走っている竜。……同じものを見ていないの。" }
+      text: "わたしが視てるのは結果。あなたが見てるのは、走ってる竜。……同じものを見てないんだよね。" }
   ]
 });
 registerEvent({
@@ -1039,7 +1039,7 @@ registerEvent({
   condition: { once: true, requiredFlag: "_chapter_intro_5", test: () => _met("celestia") },
   actions: [
     { type: "dialogue", speaker: "celestia", expr: "smile",
-      text: "この歓声、嫌いじゃないわ。……誰も答えを知らないから、こんなに大きくなるのね。" }
+      text: "この歓声、嫌いじゃないな。……誰も答えを知らないから、こんなに大きくなるんだよね。" }
   ]
 });
 registerEvent({
@@ -1047,10 +1047,10 @@ registerEvent({
   condition: { once: true, requiredFlag: "_chapter_intro_5", test: () => _met("celestia") },
   actions: [
     { type: "dialogue", speaker: "celestia", expr: "serious",
-      text: "あなたの目、だんだん濁らなくなってきた。……最初に会った頃は、もっと数字を見ていたのに。" },
+      text: "あなたの目、だんだん澄んできたね。……最初に会った頃は、もっと数字ばっかり見てたのに。" },
     { type: "dialogue", speaker: "mimi",
       text: "……えっと、それ、褒められてます……？" },
-    { type: "dialogue", speaker: "celestia", expr: "smile", text: "さあ。どちらでも。" }
+    { type: "dialogue", speaker: "celestia", expr: "smile", text: "さあ。どっちでも。" }
   ]
 });
 registerEvent({
@@ -1059,9 +1059,9 @@ registerEvent({
     test: () => _met("celestia") && (((state.player || {}).completedRaces || 0) >= 60) },
   actions: [
     { type: "dialogue", speaker: "celestia", expr: "serious",
-      text: "……島の空気が、少し軽くなってきたわ。悪い意味でね。" },
+      text: "……島の空気が、ちょっと軽くなってきたね。悪い意味で。" },
     { type: "dialogue", speaker: "celestia",
-      text: "急がなくていい。でも、忘れないで。あなたが走らせているのは、竜だけじゃない。" }
+      text: "急がなくていいよ。でも、忘れないで。あなたが走らせてるのは、竜だけじゃないんだよ。" }
   ]
 });
 

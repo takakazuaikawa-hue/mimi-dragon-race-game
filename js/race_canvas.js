@@ -97,6 +97,20 @@ var _rcPlate = (function () {
   im.src = "images/ui_bar.webp?v=1";
   return st;
 })();
+// ★ゴール演出の札（2026-09-26・描き込み素材／ChatGPT画像生成）。旧＝飾りバー1枚を色違いで使い回し＋
+//   「🏆1着」の平たい金の角丸で安っぽかった（ユーザー指摘）。1着札／的中／ハズレ／伝説の4枚。
+//   face＝文字を置ける平らな面（w＝横幅に対する割合・y＝縦の中心の位置）。読めなければ従来の描き方。
+var RC_GOAL_ART = { winner_plate: { w: .6, y: .6 }, hit_plate: { w: .56, y: .51 }, miss_plate: { w: .72, y: .5 }, legend_plate: { w: .4, y: .5 } };
+var _rcGoalArt = (function () {
+  var L = {};
+  Object.keys(RC_GOAL_ART).forEach(function (k) {
+    var im = new Image(); var st = { img: im, ok: false, face: RC_GOAL_ART[k] };
+    im.onload = function () { st.ok = true; };
+    im.src = "images/race_ui/" + k + ".webp?v=1";
+    L[k] = st;
+  });
+  return L;
+})();
 function rcBgForSlug(slug, fbSlug, onReady) {
   var e = _rcBgCache[slug];
   if (!e) {
@@ -1385,21 +1399,36 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
     ctx.drawImage(img, b.x + i * sw, b.y, sw, b.h, -W / 2 + i * dw - 0.5, -H + dy, dw + 1, H);
   }
   ctx.restore();
-  // 金リボン「🏆 1着」
+  // 1着の名札（描き込み素材）。読めていなければ従来の金の角丸。
   ctx.save();
   ctx.globalAlpha = a;
   const nm = (typeof commentaryName === "function") ? commentaryName(id) : id;
-  const label = "🏆 1着　" + nm;
-  ctx.font = "bold 16px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+  const wp = _rcGoalArt.winner_plate;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const tw = ctx.measureText(label).width, rw = tw + 34, rh = 26, ry = baseY + 14;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(cx - rw / 2, ry, rw, rh, 13); else ctx.rect(cx - rw / 2, ry, rw, rh);
-  const rg = ctx.createLinearGradient(0, ry, 0, ry + rh);
-  rg.addColorStop(0, "#ffd465"); rg.addColorStop(1, "#e2a22e");
-  ctx.fillStyle = rg; ctx.fill();
-  ctx.fillStyle = "#2a1d05"; ctx.fillText(label, cx, ry + rh / 2 + 0.5);
+  if (wp && wp.ok) {
+    const pw = Math.min(W * 1.25, 300), ph = pw * wp.img.naturalHeight / wp.img.naturalWidth, py = baseY + 4;
+    ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+    ctx.drawImage(wp.img, cx - pw / 2, py, pw, ph);
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    const label = "1着　" + nm, inner = pw * wp.face.w;
+    let f = 18;
+    for (; f > 11; f--) { ctx.font = "bold " + f + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif"; if (ctx.measureText(label).width <= inner) break; }
+    const ty = py + ph * wp.face.y;
+    ctx.lineWidth = 3; ctx.strokeStyle = "rgba(40,6,10,.85)"; ctx.strokeText(label, cx, ty);
+    ctx.fillStyle = "#ffe9ae"; ctx.fillText(label, cx, ty);
+  } else {
+    const label = "1着　" + nm;
+    ctx.font = "bold 16px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+    const tw = ctx.measureText(label).width, rw = tw + 34, rh = 26, ry = baseY + 14;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(cx - rw / 2, ry, rw, rh, 13); else ctx.rect(cx - rw / 2, ry, rw, rh);
+    const rg = ctx.createLinearGradient(0, ry, 0, ry + rh);
+    rg.addColorStop(0, "#ffd465"); rg.addColorStop(1, "#e2a22e");
+    ctx.fillStyle = rg; ctx.fill();
+    ctx.fillStyle = "#2a1d05"; ctx.fillText(label, cx, ry + rh / 2 + 0.5);
+  }
   ctx.restore();
+
   return true;
 }
 function rcDrawDragon(ctx, o) {
@@ -1816,7 +1845,7 @@ function startRaceCanvas(container, ctx) {
       <!-- ★D3：生中継の徽章。ホーム＝配信・物語＝密着ドキュメンタリーと同じ世界であることを一目で示す -->
       <span class="rc-live" id="rc-live"><i></i>LIVE</span>
       <!-- ゴールの合図＝このデザインされた帯に一本化（canvas側の素の「ゴールイン！」は撤去した）。 -->
-      <div class="rc-goalband" id="rc-goalband" hidden>🎉 ゴール！</div>
+      <div class="rc-goalband" id="rc-goalband" hidden>ゴール！</div>
       <!-- ★CODEX納品：ゴール後に座席から立ち上がる観客の背中（12フレーム・1回再生） -->
       <div class="rc-crowdglow" aria-hidden="true">
         <img src="images/race_live/crowd_glow_sprite.webp" alt="" decoding="async" onerror="this.parentNode.remove()">
@@ -3814,7 +3843,8 @@ function startRaceCanvas(container, ctx) {
         _body = { x: dcx - 2 * _hw2, y: spriteY - _bh, w: 2 * _hw2, h: _bh };
         _bodies.push(_body);
       }
-      if (_lEb > 0.6 || isBet) {
+      // ゴール後（勝者の大写し中）は小札を出さない＝大写しの後ろに「5 バラン」等が残って安っぽく見えた（ユーザー指摘）
+      if ((_lEb > 0.6 || isBet) && !S.finished) {
         _lbls.push({ cx: bodyCx, top: _body ? _body.y : y - 34 * dep, bot: _body ? _body.y + _body.h : baseY + 12, dep: dep, rk: rk, isBet: isBet,
           lead: popRank[dr.id] === 1, nm: commentaryName(dr.id), a: cctx.globalAlpha });
       }
@@ -3973,7 +4003,7 @@ function startRaceCanvas(container, ctx) {
     }
 
     // --- live position minimap (all dragons at a glance) ---
-    drawMinimap();
+    if (!S.finished) drawMinimap();   // ゴール後は出さない＝帯の右端に竜の点が固まって見えた
 
     // --- finish dim (so confetti & banner pop) ---
     if (S.finished) { cctx.fillStyle = "rgba(8,10,20,0.32)"; cctx.fillRect(0, 0, cw, ch); }
@@ -4262,12 +4292,16 @@ function startRaceCanvas(container, ctx) {
         cctx.scale(sc, sc);
         cctx.globalAlpha = Math.min(1, rp * 1.4);
         // ★下地は飾りバー。読めていないときだけ従来の角丸に落ちる。
-        const useArt = _rcPlate.ok;
-        const pw = useArt ? Math.min(360, Math.max(300, cw - 24)) : 252;
-        const ph = useArt ? Math.round(pw * 118 / 558) : 70;
+        // 札の絵：ハズレ／的中／伝説（超的中以上）で描き分け。無ければ従来の飾りバー。
+        const _ga = _rcGoalArt[!hit ? "miss_plate" : tier >= 3 ? "legend_plate" : "hit_plate"];
+        const _art = (_ga && _ga.ok) ? _ga : null;
+        const useArt = !!_art || _rcPlate.ok;
+        // 札は横いっぱい（最大360）。ただし縦長の絵は画面の下からはみ出さないよう高さ26%までに収める
+        const pw = _art ? Math.min(360, cw - 24, ch * 0.26 * _art.img.naturalWidth / _art.img.naturalHeight) : useArt ? Math.min(360, Math.max(300, cw - 24)) : 252;
+        const ph = _art ? Math.round(pw * _art.img.naturalHeight / _art.img.naturalWidth) : useArt ? Math.round(pw * 118 / 558) : 70;
         if (useArt) {
           if (hit && tier >= 3) { cctx.shadowColor = col; cctx.shadowBlur = 20; }
-          cctx.drawImage(_rcPlate.img, -pw / 2, -ph / 2, pw, ph);
+          cctx.drawImage(_art ? _art.img : _rcPlate.img, -pw / 2, -ph / 2, pw, ph);
           cctx.shadowBlur = 0;
         } else {
           cctx.beginPath();
@@ -4281,7 +4315,7 @@ function startRaceCanvas(container, ctx) {
         // ★文字は幅を測って収める（2026-08-04・実機指摘「収まってなくない？」「桁が大きくなったら困る」）。
         //   金額は 100 のことも 1,234,567 のこともあるので、決め打ちの字の大きさだと必ず破綻する。
         //   バーの平らな面は絵の横 125〜433px／558＝約56%。そこに入る大きさを毎回計算する。
-        const inner = useArt ? pw * 0.56 : pw - 26;
+        const inner = _art ? pw * _art.face.w : useArt ? pw * 0.56 : pw - 26;
         const fit = (txt, base, min) => {
           let f = base;
           while (f > min) {
@@ -4296,7 +4330,7 @@ function startRaceCanvas(container, ctx) {
         //   ②バーの平らな面は絵の縦 27〜99px／118＝中心が53.4%で、バーの真ん中(50%)ではない。
         //   基準線を middle に固定し、面の中心に合わせる。
         cctx.textBaseline = "middle";
-        const midY = useArt ? (0.534 - 0.5) * ph : 0;
+        const midY = _art ? (_art.face.y - 0.5) * ph : useArt ? (0.534 - 0.5) * ph : 0;
         const oneLine = word + "　" + amount;
         const f1 = fit(oneLine, useArt ? 20 : 22, 15);
         // 1行にすると字が小さくなりすぎる組み合わせ（例：伝説の的中！＋123,456,789）は

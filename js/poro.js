@@ -192,9 +192,9 @@ function poroMakuraFollowupScript() {
 function poroCelestiaFollowupScript() {
   return [
     ["narrator", "終章の気配が近づく頃、あの旅人がふらりとポロを覗き込んだ。"],
-    ["celestia", "……ただの仔竜。けれど時々思うの。“ただの”が、一番強く続くのかもしれないと。"],
+    ["celestia", "……ただの仔竜だね。でも、ときどき思うんだ。“ただの”が、いちばん強く続くのかもって。"],
     ["mimi", "……セレスティアさん？", "default"],
-    ["celestia", "なんでもないわ。大事にね、その子。"],
+    ["celestia", "なんでもないよ。大事にしてあげてね、その子。"],
     ["poro", "……ぽろっ！"]
   ];
 }

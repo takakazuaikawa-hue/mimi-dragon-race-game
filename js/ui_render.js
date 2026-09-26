@@ -846,7 +846,7 @@ function celestiaSectionEl() {
     const win = DRAGONS.find(d => d.id === c._celestiaRevealed);
     const nm = win ? win.name : "？";
     box.classList.add("revealed");
-    const warn = `……ほら、もう知れ渡った。<b>${nm}</b> の札に人が群がって、単勝も複勝も最低の <b>1.1倍</b>。それでも、教わった1頭の1.1倍は確実。──1着を知ることと、大きく勝つことは、違うでしょう？`;
+    const warn = `……ほらね、もう知れ渡っちゃった。<b>${nm}</b> の札に人が群がって、単勝も複勝も最低の <b>1.1倍</b>。それでも、教わった1頭の1.1倍は確実だよ。──1着を知ることと、大きく勝つことは、違うでしょ？`;
     box.innerHTML =
       `<div class="cel-head">${sym} ${revealed ? "セレスティアの神眼" : "あのお姉さんの“予想”"}</div>` +
       `<div class="cel-reveal">この一戦、生き残る一頭は <b>${nm}</b>。</div>` +
@@ -863,7 +863,7 @@ function celestiaSectionEl() {
     const renderOpen = () => {
       box.classList.add("cel-open");
       // ★D6：神眼1.1倍の“説明”はこの台詞1本＋絶滅メーターヘルプの2箇所だけに集約（声表準拠）。
-      const catchTx = "答えは、教えられる。つまらなくなるのは、あなたの側よ。……教えた竜には札が殺到して、単勝も複勝も最低の1.1倍。──それでも、聞く？";
+      const catchTx = "答えは、教えてあげられるよ。つまらなくなるのは、あなたのほうだけどね。……教えた竜には札が殺到して、単勝も複勝も最低の1.1倍。──それでも、聞く？";
       box.innerHTML =
         `<div class="cel-head">${sym} ${who}に1着を聞く</div>` +
         `<div class="cel-warn">${catchTx}</div>`;
