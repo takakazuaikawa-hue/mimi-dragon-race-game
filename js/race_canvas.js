@@ -1406,7 +1406,7 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   const wp = _rcGoalArt.winner_plate;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   if (wp && wp.ok) {
-    const pw = Math.min(W * 1.25, 300), ph = pw * wp.img.naturalHeight / wp.img.naturalWidth, py = baseY + 4;
+    const pw = Math.min(W * 1.15, cw * 0.7, 270), ph = pw * wp.img.naturalHeight / wp.img.naturalWidth, py = baseY - ph * 0.2;   // 足もとに少し重ねる＝お立ち台
     ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
     ctx.drawImage(wp.img, cx - pw / 2, py, pw, ph);
     ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
@@ -4256,7 +4256,7 @@ function startRaceCanvas(container, ctx) {
       // ★R8-W4：勝者ウィニングカット（HD-2D絵があれば rt 0〜1.55s に大写し・
       //   見出し/払戻プレートはカットの終盤 rt-1.35s から＝順に語る）。表示のみ。
       const hasCut = rcHasDragonSprite(winner.id);
-      if (hasCut) rcDrawWinnerCut(cctx, winner.id, cw / 2, ch * 0.54, rt, cw);
+      if (hasCut) rcDrawWinnerCut(cctx, winner.id, cw / 2, ch * 0.5, rt, cw);
       const rtd = hasCut ? Math.max(0, rt - 1.35) : rt;
       const _fc = (n) => (typeof fmtCoins === "function" ? fmtCoins(n) : String(n));
       cctx.save();
@@ -4286,11 +4286,6 @@ function startRaceCanvas(container, ctx) {
           : tier >= 4 ? "伝説の的中！" : tier >= 3 ? "超的中！" : tier >= 2 ? "大的中！" : "的中！";
         const amount = hit ? ("＋" + _fc(betResult.payout) + " コイン")
           : ("−" + _fc(Math.abs(betResult.profit)) + " コイン");
-        cctx.save();
-        // ★プレートは下段へ＝ウィニングカット（中央）の主役を邪魔しない（ユーザー指定）
-        cctx.translate(cw / 2, hasCut ? ch * 0.82 : ch * 0.35);
-        cctx.scale(sc, sc);
-        cctx.globalAlpha = Math.min(1, rp * 1.4);
         // ★下地は飾りバー。読めていないときだけ従来の角丸に落ちる。
         // 札の絵：ハズレ／的中／伝説（超的中以上）で描き分け。無ければ従来の飾りバー。
         const _ga = _rcGoalArt[!hit ? "miss_plate" : tier >= 3 ? "legend_plate" : "hit_plate"];
@@ -4299,6 +4294,11 @@ function startRaceCanvas(container, ctx) {
         // 札は横いっぱい（最大360）。ただし縦長の絵は画面の下からはみ出さないよう高さ26%までに収める
         const pw = _art ? Math.min(360, cw - 24, ch * 0.26 * _art.img.naturalWidth / _art.img.naturalHeight) : useArt ? Math.min(360, Math.max(300, cw - 24)) : 252;
         const ph = _art ? Math.round(pw * _art.img.naturalHeight / _art.img.naturalWidth) : useArt ? Math.round(pw * 118 / 558) : 70;
+        cctx.save();
+        // ★プレートは下段へ＝ウィニングカット（中央）の主役を邪魔しない（ユーザー指定）
+        cctx.translate(cw / 2, hasCut ? ch - ph / 2 - 6 : ch * 0.35);   // 画面の下端に据える＝1着の札と重ならない
+        cctx.scale(sc, sc);
+        cctx.globalAlpha = Math.min(1, rp * 1.4);
         if (useArt) {
           if (hit && tier >= 3) { cctx.shadowColor = col; cctx.shadowBlur = 20; }
           cctx.drawImage(_art ? _art.img : _rcPlate.img, -pw / 2, -ph / 2, pw, ph);
@@ -4361,7 +4361,7 @@ function startRaceCanvas(container, ctx) {
 
     // HUD updates
     const _pi = timeline.phaseIndexAt(S.tau);
-    phaseEl.textContent = ["序盤", "中盤", "展開", "終盤", "ゴール前"][_pi] || "";
+    phaseEl.textContent = S.finished ? "決着" : (["序盤", "中盤", "展開", "終盤", "ゴール前"][_pi] || "");   // 走り終えても「ゴール前」のままは変
     // ★CORE_LOOP_UX B-3「山を3つ」：序盤は静かに→終盤/ゴール前で盤面を締める。
     //   フェーズを盤面に出してCSSで段階的に強める（従来は全区間ほぼ均質だった）。
     if (wrap.dataset.phaseIdx !== String(_pi)) {
@@ -4373,7 +4373,7 @@ function startRaceCanvas(container, ctx) {
     const _hudKey = themeKeyAtP(leaderP);
     sectionEl.textContent = rcTerrainInfo(_hudKey).icon + " " + sectionLabelAtP(leaderP);
     sectionEl.style.borderLeftColor = (RC_THEME[_hudKey] || RC_THEME.straight).accent;
-    remainEl.textContent = "残り " + timeline.distanceRemainingAt(S.tau) + "m";
+    remainEl.textContent = S.finished ? "ゴール" : "残り " + timeline.distanceRemainingAt(S.tau) + "m";
     const _tNow = (typeof performance !== "undefined" ? performance.now() : Date.now());
     updateBoard(standings, standMap, _tNow);
   }
