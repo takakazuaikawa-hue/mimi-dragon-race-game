@@ -100,7 +100,7 @@ var _rcPlate = (function () {
 // ★ゴール演出の札（2026-09-26・描き込み素材／ChatGPT画像生成）。旧＝飾りバー1枚を色違いで使い回し＋
 //   「🏆1着」の平たい金の角丸で安っぽかった（ユーザー指摘）。1着札／的中／ハズレ／伝説の4枚。
 //   face＝文字を置ける平らな面（w＝横幅に対する割合・y＝縦の中心の位置）。読めなければ従来の描き方。
-var RC_GOAL_ART = { winner_plate: { w: .6, y: .6 }, hit_plate: { w: .56, y: .51 }, miss_plate: { w: .72, y: .5 }, legend_plate: { w: .4, y: .5 } };
+var RC_GOAL_ART = { winner_plate: { w: .6, y: .6 }, hit_plate: { w: .56, y: .51, h: .56 }, miss_plate: { w: .72, y: .5 }, legend_plate: { w: .42, y: .54, h: .56 } };   // h＝文字を置ける面の高さ（2行のとき字をこれに収める）
 var _rcGoalArt = (function () {
   var L = {};
   Object.keys(RC_GOAL_ART).forEach(function (k) {
@@ -4345,8 +4345,10 @@ function startRaceCanvas(container, ctx) {
           cctx.textAlign = "center";
         } else {
           // 入らなければ2行。各行それぞれ縮めて必ず面の中に収め、2行の塊を面の中心に置く。
-          const fw = fit(word, useArt ? 20 : 22, 13);
-          const fa = fit(amount, useArt ? 19 : 21, 12);
+          // 面の高さが決まっている札（伝説）は、2行ぶんが面からはみ出ないよう字の大きさに上限を置く
+          const cap = (_art && _art.face.h) ? Math.floor(_art.face.h * ph / 2.35) : 99;
+          const fw = Math.min(cap, fit(word, useArt ? 20 : 22, 13));
+          const fa = Math.min(cap, fit(amount, useArt ? 19 : 21, 12));
           const gap = (fw + fa) * 0.58;                 // 行間＝2行の中心どうしの距離
           cctx.fillStyle = col; cctx.font = "bold " + fw + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
           cctx.fillText(word, 0, midY - gap / 2);
