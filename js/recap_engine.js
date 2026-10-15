@@ -105,7 +105,7 @@ function shortBlurb(e, race, od) {
 // §29 §4.2 payout block (display only — uses betResult verbatim).
 function buildPayoutSummary(bet, betResult, raceResult) {
   if (!bet || !betResult) return null;
-  const typeLabel = { win: "単竜", place: "複竜", wide: "ワイド竜" }[bet.type];
+  const typeLabel = { win: "単勝", place: "複勝", wide: "ワイド" }[bet.type];
   const rankOf = id => {
     const e = raceResult.entries.find(x => x.dragon.id === id);
     return e ? e.rank : null;
@@ -135,10 +135,10 @@ function buildBetReview(bet, betResult, raceResult, popMap) {
 
   if (bet.type === "win") {
     const id = bet.selections[0], r = rankOf(id);
-    if (r === 1) lines.push(`${nameOf(id)}が1着。単竜的中。読み切りの一戦になった。`);
+    if (r === 1) lines.push(`${nameOf(id)}が1着。単勝的中。読み切りの一戦になった。`);
     else if (r === 2) lines.push(`${nameOf(id)}は2着。先頭${winnerName}を捕まえるところまでは届かなかった。複竜なら十分に取れた内容。`);
-    else if (r <= 3) lines.push(`${nameOf(id)}は${r}着。複勝圏には入ったが、単竜では一歩足りなかった。`);
-    else lines.push(`${nameOf(id)}は${r}着。今回は展開が向かず、単竜では苦しい結果だった。`);
+    else if (r <= 3) lines.push(`${nameOf(id)}は${r}着。複勝圏には入ったが、単勝では一歩足りなかった。`);
+    else lines.push(`${nameOf(id)}は${r}着。今回は展開が向かず、単勝では苦しい結果だった。`);
     return lines;
   }
   if (bet.type === "place") {

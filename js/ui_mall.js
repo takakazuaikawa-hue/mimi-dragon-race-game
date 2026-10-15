@@ -363,11 +363,11 @@ function _scmBottomNav() {
     b.onclick = go;
     return b;
   };
-  nav.appendChild(mk("dine", "ショップ&グルメ", () => _scmScrollTo(".scm-shops")));
+  nav.appendChild(mk("shop", "ショップ", () => _scmScrollTo(".scm-shops")));
   nav.appendChild(mk("floor", "フロアガイド", () => { if (typeof renderMallRpg === "function") renderMallRpg(); }));
   nav.appendChild(mk(null, "MENU", () => _scmScrollTo(".scm-head") || window.scrollTo({ top: 0, behavior: "smooth" }), true));
   nav.appendChild(mk("flag", "イベント", () => _scmScrollTo(".scm-hero")));
-  nav.appendChild(mk("news", "ショップニュース", () => _scmNews()));
+  nav.appendChild(mk("news", "ニュース", () => _scmNews()));
   var old = document.getElementById("scm-bnav-host"); if (old) old.remove();
   nav.id = "scm-bnav-host";
   document.body.appendChild(nav);   // body直下＝.scmのtransformの影響を受けず viewport基準でfloat

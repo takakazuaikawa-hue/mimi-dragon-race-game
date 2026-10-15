@@ -39,6 +39,41 @@ function poroFound() { return typeof getStoryFlag === "function" && getStoryFlag
 function poroScoutUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("dragonScoutUnlocked"); }
 function poroStableUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("dragonStableUnlocked"); }
 function poroGourmetUnlocked() { return typeof getStoryFlag === "function" && getStoryFlag("poroGourmetRaceUnlocked"); }
+
+// ★名付けの前は「ポロ」の名を出さない（2026-09-26・ユーザー決裁）。
+//   ポロは出走竜として1戦目から走っているのに、物語では拾った仔に「まだ名前が無い」→ミミが「ポロ」と名付ける。
+//   旧＝1戦目の出走表・結果・実況に「泣き虫竜ポロ」が出て、命名の場面が矛盾していた。
+//   名付け（poroFound）までは「ちび紫竜」と表示し、名付けた瞬間から全画面で「泣き虫竜ポロ」になる。
+//   ★表示名だけの差し替え＝id・能力・オッズ・着順・配当には一切触れない（name は表示にしか使われない）。
+const PORO_UNNAMED = "ちび紫竜";
+(function poroNameGate() {
+  try {
+    const d = (typeof DRAGONS !== "undefined") && DRAGONS.find(x => x.id === "poro");
+    if (!d) return;
+    const real = d.name;
+    Object.defineProperty(d, "name", { configurable: true, enumerable: true,
+      get: function () { return poroFound() ? real : PORO_UNNAMED; } });
+    // 実況の決まり文句（commentary_data.js）も同じ名前に。「泣き虫」も名付けの場面まで伏せる。
+    const pz = (typeof DRAGON_PERSONA !== "undefined") && DRAGON_PERSONA.poro;
+    if (pz) {
+      const base = Object.assign({}, pz);
+      ["rising", "holding", "fading"].forEach(k => Object.defineProperty(pz, k, { configurable: true, enumerable: true,
+        get: function () { return poroFound() ? base[k] : String(base[k]).replace(/ポロ/g, PORO_UNNAMED); } }));
+      Object.defineProperty(pz, "trait", { configurable: true, enumerable: true,
+        get: function () { return poroFound() ? base.trait : "小さいが、走りは崩れない。"; } });
+    }
+    // 解説の雑談で名指しする1本（BC_CHATTER）は、名付けまで流さない。
+    if (typeof BC_CHATTER !== "undefined" && Array.isArray(BC_CHATTER)) {
+      BC_CHATTER.forEach(c => {
+        if (c && /ポロ/.test(c.line || "")) {
+          const line = c.line;
+          Object.defineProperty(c, "line", { configurable: true, enumerable: true,
+            get: function () { return poroFound() ? line : (c.id === "unme_dragon_06" ? "小さな竜ほど、よく泣くんですって。ウンメちゃんも昔そうでしたぁ。" : line.replace(/ポロ/g, PORO_UNNAMED)); } });
+        }
+      });
+    }
+  } catch (e) {}
+})();
 // ★図鑑(竜を見る)は「序章＝はじめて的中」で開放（progression再設計・docs/PROGRESSION_DESIGN.md）。
 // 深い情報は出会い回数で段階的に解放（第4話頃に自然と深まる）。everHit は的中で立つフラグ。
 function dexUnlocked() {
@@ -157,9 +192,9 @@ function poroMakuraFollowupScript() {
 function poroCelestiaFollowupScript() {
   return [
     ["narrator", "終章の気配が近づく頃、あの旅人がふらりとポロを覗き込んだ。"],
-    ["celestia", "……ただの仔竜。けれど時々思うの。“ただの”が、一番強く続くのかもしれないと。"],
+    ["celestia", "……ただの仔竜だね。でも、ときどき思うんだ。“ただの”が、いちばん強く続くのかもって。"],
     ["mimi", "……セレスティアさん？", "default"],
-    ["celestia", "なんでもないわ。大事にね、その子。"],
+    ["celestia", "なんでもないよ。大事にしてあげてね、その子。"],
     ["poro", "……ぽろっ！"]
   ];
 }
@@ -435,7 +470,7 @@ function renderStable() {
   poroCard.innerHTML =
     `<div class="stable-poro-fig">${poroStandeeHTML(96)}</div>` +
     `<div class="stable-poro-info">` +
-      `<div class="stable-poro-nm">🥹 泣き虫竜ポロ <span class="stable-tag">相棒</span><span class="st-rank">${pr[2]} ${pr[1]}</span></div>` +
+      `<div class="stable-poro-nm"><span class="nw">🥹 泣き虫竜ポロ</span><span class="stable-tag">相棒</span><span class="st-rank">${pr[2]} ${pr[1]}</span></div>` +
       `<div class="stable-poro-sub">ムラサキマルチビ竜・幼体／気性：臆病でやさしい</div>` +
       `<div class="stable-aff"><span>絆</span><div class="stable-aff-bar"><i style="width:${af}%"></i></div><b>${af}</b></div>` +
       `<div class="stable-poro-ev" id="stable-poro-ev">${poroStableEvent()}</div>` +
@@ -464,7 +499,7 @@ function renderStable() {
     subnav.appendChild(scoutRow);
   }
   if (typeof renderCollection === "function" && dexUnlocked()) {   // 図鑑は第4話マクラに会ってから
-    const dexRow = el("button", "stable-scout-cta stable-dex-cta", "📖 図鑑（記録・ごほうび）");
+    const dexRow = el("button", "stable-scout-cta stable-dex-cta", "📖 竜図鑑");
     dexRow.onclick = () => renderCollection();
     subnav.appendChild(dexRow);
   }

@@ -436,7 +436,7 @@ function _sgIntroVN(done) {
   Dialogue.play([
     ["narrator", "夜明け前の聖龍レース場。最高クラスの八頭のための、最後のゲートが組まれていく。"],
     ["mimi", "セレスティアさん。今度の大レースで、わたしと勝負をしてください。", "default"],
-    ["celestia", "いいけれど。……どんな勝負？", "default"],
+    ["celestia", "いいけど。……どんな勝負？", "default"],
     ["mimi", "この島が本当に強くて、あなたが勝てないことを証明する勝負です。", "default"],
     ["celestia", "いいよ。でも、私が勝てないなんてことは、たぶんないと思うよ。", "default"],
     ["celestia", "この賭場も、いいところだけど。……きっと、壊れちゃう。", "default"],
@@ -517,7 +517,7 @@ function _sgChallenge(kind) {
     // ★仕組みは絶対に説明させない（「ワイドなら決まる」「三着までの顔ぶれ」等は
     //   次の一手を言葉で教えてしまう＝この画面の設計を殺す）。割れたことを認めて、
     //   それでも視えると言うだけ。あと一段という推測はプレイヤーに残す。
-    vn.push(["celestia", "……あら。", "default"]);
+    vn.push(["celestia", "……あれ。", "default"]);
     vn.push(["celestia", "ふふ。おもしろい子。——でも、まだ視えるよ。", "default"]);
     vn.push(["mimi", "……まだ。まだ、足りない。", "panic"]);   // sad は全衣装に無い＝404でsmileに落ちる
   } else {
@@ -559,7 +559,7 @@ function _sgClear(kind, mine, betNm) {
     ["celestia", "同着ってことは、払い戻しだね。", "default"],
     ["celestia", "私、勝てなかったよ。", "default"],
     ["mimi", "……っ、はぁ。……はぁ。", "happy"],
-    ["celestia", "この賭場も、貴方の魂も。……見せてもらえたね。", "default"],
+    ["celestia", "この賭場も、あなたの魂も。……見せてもらえたね。", "default"],
     ["narrator", "絶滅の神眼は、決着なき決着の前に——静かに、閉じた。"]
   ];
   const toEnd = () => {

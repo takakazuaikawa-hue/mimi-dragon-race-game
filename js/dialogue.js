@@ -298,7 +298,7 @@
   // ★スキップ＝「いま出ている会話」だけでなく、押した時点で順番待ちしていた会話もまとめて飛ばす。
   //   （以前は1本ずつしか閉じず、初回チュートリアルなどで押しても次の会話が即始まり「スキップが効かない」に見えた）
   //   飛ばした会話も Promise は解決する＝呼び出し側の後処理（フラグ付け等）は通常どおり走る。表示だけ出さない。
-  var ticketSeq = 0, skipUpTo = 0;
+  var ticketSeq = 0, skipUpTo = 0, skipGraceUntil = 0;
   function play(script, options) {
     var lines = normalize(script);
     if (fastMs > 0) options = assign(assign({}, options || {}), { instant: true, autoAdvance: true, autoMs: fastMs });
@@ -306,6 +306,9 @@
     chain = chain.then(function () {
       if (!lines.length) return Promise.resolve();
       if (ticket <= skipUpTo) return Promise.resolve();
+      // スキップ直後（1.5秒以内）に始まる会話も飛ばす＝結果画面の「借金の話→衣装の贈り物」のように
+      //   前の会話が閉じてから次が始まる連続場面で、何度も押させない（実機で確認）。
+      if (Date.now() < skipGraceUntil) return Promise.resolve();
       return run(lines, options || {});
     });
     return chain;
@@ -467,6 +470,19 @@
       if (mU && mU[0].length > 1) { units.push({ s: mU[0], at: ui }); ui += mU[0].length; }
       else { units.push({ s: full[ui], at: ui }); ui++; }
     }
+    // ★禁則：1文字ずつ inline-block だと改行規則が効かず「。」「、」「！」が行頭に落ちる（実機で確認）。
+    //   行頭に来てはいけない文字は前の unit に、行末に残ってはいけない開き括弧は次の unit にくっつける。
+    //   unit は連続した範囲のまま（at と s.length の整合＝タイプ位置・溜めの計算はそのまま使える）。
+    var NO_HEAD = "、。，．,.！？!?」』）)］】〉》ー…‥〜～っゃゅょぁぃぅぇぉッャュョァィゥェォ♪";
+    var NO_TAIL = "「『（(［【〈《";
+    for (var mi = units.length - 1; mi > 0; mi--) {
+      var cur = units[mi], prev = units[mi - 1];
+      if (cur.s.charAt(0) !== "\n" && NO_HEAD.indexOf(cur.s.charAt(0)) >= 0 && prev.s.slice(-1) !== "\n") {
+        prev.s += cur.s; units.splice(mi, 1);
+      } else if (NO_TAIL.indexOf(prev.s.slice(-1)) >= 0 && prev.s.length === 1 && cur.s.charAt(0) !== "\n") {
+        prev.s += cur.s; units.splice(mi, 1);
+      }
+    }
     d.text.className = "dlg-text";           // 前行の「一気に表示」を解除
     d.text.textContent = "";
     var cells = units.map(function (u) {
@@ -531,7 +547,8 @@
 
   function skipAll() {
     typing = false; clearTimeout(typeTimer);
-    skipUpTo = ticketSeq;   // 押した時点で予約済みの会話も飛ばす（この後に始まる会話は通常どおり）
+    skipUpTo = ticketSeq;   // 押した時点で予約済みの会話も飛ばす
+    skipGraceUntil = Date.now() + 1500;   // 直後に続けて始まる会話も
     finish();
   }
 

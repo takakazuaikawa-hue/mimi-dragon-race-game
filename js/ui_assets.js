@@ -78,7 +78,7 @@ function renderAssets() {
   const hero = el("div", "card lr-room");
   hero.style.backgroundImage = `url('images/homebg/myroom_t${_roomT}_${_dn}.webp')`;
   hero.innerHTML =
-    `<span class="lr-room-seal">${(typeof roomName === "function") ? roomName(_roomT) : "いまのお部屋"}<b>Lv.${_roomT}</b></span>` +
+    `<span class="lr-room-seal">${(typeof roomName === "function") ? roomName(_roomT) : "いまのお部屋"}<b>住まい ${_roomT}</b></span>` +
     // ★お部屋のミミは、いま着ている衣装のミニ絵にする。
     //   ここは mimi_loading1_mini.png を直書きしていたため、モールで
     //   着替えても暮らし画面だけ昔の服のままだった（ユーザー指摘）。
@@ -115,7 +115,7 @@ function renderAssets() {
     const mv = el("button", "lr-move" + (canMoveRoom() ? (_mvOK ? "" : " short") : " maxed"));
     mv.innerHTML = canMoveRoom()
       ? `<span class="lr-move-ic">🚚</span><span class="lr-move-tx">` +
-          `<b>「${roomName(_mvNext)}」へ引っ越す（Lv.${_mvNext}）</b>` +
+          `<b>「${roomName(_mvNext)}」へ引っ越す（住まい ${_mvNext}）</b>` +
           `<small>${_mvOK
             ? `費用 ${fmtCoins(_mvPrice)} ／ 引っ越すと残り ${fmtCoins((p.coins || 0) - _mvPrice)}`
             : `費用 ${fmtCoins(_mvPrice)} ／ 所持 ${fmtCoins(p.coins || 0)}（足りない）`}</small>` +
@@ -127,7 +127,7 @@ function renderAssets() {
       if (r.ok) {
         try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
         if (typeof showInfoPopup === "function") showInfoPopup("🚚 引っ越し完了！",
-          `<div class="mm-row"><span class="mm-ic">🏠</span><div><b>「${roomName(r.level)}」（Lv.${r.level}）に移りました</b>` +
+          `<div class="mm-row"><span class="mm-ic">🏠</span><div><b>「${roomName(r.level)}」（住まい ${r.level}）に移りました</b>` +
           `<small>−${fmtCoins(r.price)}　ホームの背景も、新しいお部屋になります。</small></div></div>`);
         renderAssets();
       } else if (r.broke && typeof showInfoPopup === "function") {

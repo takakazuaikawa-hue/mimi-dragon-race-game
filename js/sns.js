@@ -150,7 +150,7 @@ var SNS_DAILY = [
   { id: "d_aya", ic: "💬", name: "常連のアヤ", handle: "@aya_no_hibi", base: 95,
     text: "ミミちゃんの「ぱほぱほ〜」聞くと、なんか今日もがんばれる気がするんだよね。ふしぎ。" },
   { id: "d_celes", ic: "🌌", name: "セレスティア", handle: "@celestia_sky", base: 333,
-    text: "……今日も、ちっぽけな灯りがよく燃えている。さて、どこまで視えるかしらね。" }
+    text: "……今日も、ちっちゃな灯りがよく燃えてるね。さて、どこまで視えるかな。" }
 ];
 // ★BUGFIX（出会う前のキャラが投稿する）：顧問/ポロの投稿・手紙は「出会った後」だけ出す。
 //   門番の正本＝顧問は advisorMet(castKey)（総資産＋その章の既読）／"@フラグ"はストーリーフラグ（例：ポロ＝poroFound）。
@@ -193,7 +193,7 @@ var SNS_POSTS = [
   // ★BUGFIX（正体バレ）：伏線段階（celestiaStrangerSeen＝破産で見た“知らないお姉さん”）では出さない。
   //   本名・@celestia_sky・立ち絵は第5話（advisorMet("celestia")）まで封印＝SNS_POST_GATE が唯一の門番。
   { id: "p_celestia", ic: "🌌", name: "セレスティア", handle: "@celestia_sky", base: 666,
-    text: "……面白い灯りね。消えそうで、消えない。あなたの“視る目”、わたしが見定めてあげる。",
+    text: "……面白い灯りだね。消えそうで、消えない。あなたの“視る目”、わたしがちゃんと見ててあげる。",
     // ★D15: 第5話VN→(+1走)手紙→(+3走)この投稿、の時差解禁。門番SNS_POST_GATEは従来どおり併用。
     unlock: function () { var c = (typeof advisorMet === "function") && advisorMet("celestia"); return (typeof unlockDelayRace === "function") ? unlockDelayRace("p_celestia", c, 3) : c; } },
   { id: "p_thanks", ic: "🐰", name: "ミミ", handle: "@mimi_yosou", base: 888,
@@ -319,7 +319,7 @@ var FAN_LETTERS = [
     unlock: function () { return Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 20; } },
   // ★BUGFIX（正体バレ）：伏線段階では届かない。第5話で出会ってから届く手紙にする（門番＝SNS_LETTER_GATE）。
   { id: "l_celestia", ic: "🌌", from: "セレスティア", subject: "天井の、その先へ",
-    body: "ちっぽけな予想家へ。\nこの世界には“天井”がある。価値の届かぬものは、淘汰される。\n——だけど、あなたは。その理に、まっすぐ抗ってみせた。\n面白い。あなたの物語の結末、最後まで見届けてあげる。",
+    body: "小さな予想家さんへ。\nこの世界にはね、“天井”があるの。価値が届かないものは、淘汰されちゃう。\n——でも、あなたは。そのルールに、まっすぐ抗ってみせたよね。\n面白いなって思った。あなたの物語の結末、最後まで見届けさせてね。",
     // ★D15: 第5話VNの翌レース後に届く（門番SNS_LETTER_GATEは従来どおり併用）。
     unlock: function () { var c = (typeof advisorMet === "function") && advisorMet("celestia"); return (typeof unlockDelayRace === "function") ? unlockDelayRace("l_celestia", c, 1) : c; } }
 ];

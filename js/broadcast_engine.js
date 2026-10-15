@@ -101,7 +101,7 @@ function buildBettingStatus(bet, rankMap, phaseId) {
     if (t.rank === 1) { tags.push("hit_in_sight"); }
     if (t.rank > 3) { tags.push("bet_target_danger"); }
     if (phaseId === "finish") tags.push(t.rank === 1 ? "hit" : "miss");
-    return { summary: `単竜 ${dragonName}：現在${t.rank}番手`, targets, tags };
+    return { summary: `単勝 ${dragonName}：現在${t.rank}番手`, targets, tags };
   }
   if (bet.type === "place") {
     const t = targets[0];
