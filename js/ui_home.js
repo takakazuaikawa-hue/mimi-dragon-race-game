@@ -406,7 +406,7 @@ function renderHome() {
   let viewersEl = null;
   if (broadcast) {
     const floatBox = el("div", "hl-float");
-    const _folV = 800 + Math.floor(((state.assets && state.assets.fameValue) || 0) * 2) + p.completedRaces * 15 + p.wins * 40;
+    const _folV = (typeof goalFollowers === "function") ? goalFollowers() : 800;   // ★式は goals.js の1か所だけ（ここに写しを持たない）
     const _fmtF = v => v >= 10000 ? (v / 10000).toFixed(1) + "万" : v.toLocaleString("ja-JP");
     // ★TikTok Live 右上クラスタ：赤LIVEバッジ＋ガラスの視聴者ピル（重なった視聴者アバター＋👁人数＋💗フォロワー）。
     //   横一列・コンパクト＝TikTokの「配信を見ている観客」感（縦積みのスタッツ盤面から戻す・ユーザー指摘）。

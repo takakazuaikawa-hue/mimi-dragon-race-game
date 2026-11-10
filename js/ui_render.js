@@ -670,6 +670,8 @@ function runMushin(ov, amt) {
 function finishMushin(ov, amt) {
   state.player.coins += amt;                          // 額・計算は不変（基準の救済額）
   state.player.brokeCount = (state.player.brokeCount || 0) + 1;   // 終章伏線：破産回数（救済額には非干渉・演出のみ）
+  // ✍️ 紀行の素材：すっからかんで頭を下げた日も、記事になる（額は読むだけ・書き戻さない）
+  try { if (typeof kikoMatPush === "function") kikoMatPush("broke", { amt: amt, n: state.player.brokeCount }); } catch (e) {}
   if (typeof bumpMaxCoins === "function") bumpMaxCoins();
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   if (typeof saveGame === "function") saveGame();
@@ -3312,9 +3314,13 @@ function settleRace() {
                         type: ({ win: "単勝", place: "複勝", wide: "ワイド" }[c.bet.type] || "") };
         if (_mult >= 10) kikoMatPush("bigwin", Object.assign({ mult: _mult.toFixed(1) }, _base));
         else if (c.bet.type === "win") kikoMatPush("win", _base);
-      } else if ((state.player.missRun || 0) >= 3) {
+      } else if ([3, 5, 8, 12, 17, 23, 30].indexOf(state.player.missRun || 0) >= 0) {
+        // ★連敗の記事は節目だけ（3・5・8・12…）。以前は3連敗以降ずっと毎レース素材が入り、
+        //   「8連敗→9つづき→10連敗」と同じ文面の記事が1戦ごとに並んでいた（通しプレイで確認）。
         kikoMatPush("lose3", { run: state.player.missRun, race: _rn });
       }
+      // クラスが上がった日（勝っていなくても上がる＝そのまま記事のネタになる）
+      if (state.player.rank > _rank0) kikoMatPush("rankup", { rank: state.player.rank, wins: state.player.wins || 0 });
     }
   } catch (e) {}
   // ✍️ コースの記録（地域ごとの出走・的中・さいごに見た一着）＝連載「島ぐらし」のコースの回が読む。

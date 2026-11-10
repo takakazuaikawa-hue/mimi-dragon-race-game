@@ -118,7 +118,7 @@ function _kikoArtCard(art, opts) {
     `<div class="kiko-art-t">${art.headline}</div>`;
   if (art.photo) html += `<div class="kiko-art-ph"><img src="${art.photo}" alt="" decoding="async" onerror="this.closest('.kiko-art-ph').remove()"></div>`;
   html += `<div class="kiko-art-b">` + art.paras.map(p => `<p>${p}</p>`).join("") + `</div>`;
-  html += `<div class="kiko-post-tags">#${art.tag} #崑崙島 #ドラゴンレース</div>`;
+  html += `<div class="kiko-post-tags">#${art.tag} #崑崙島 #ドラゴンレース` + (art.fans ? `<span class="kiko-art-fans">この記事で 読者 +${art.fans}人</span>` : "") + `</div>`;
   if (opts.comments) {
     const cs = (typeof kikoComments === "function") ? kikoComments(art) : [];
     if (cs.length) {
@@ -206,7 +206,7 @@ function _kikoSerialHelp() {
     `<div class="mm-row"><span class="mm-ic">🏝️</span><div><b>回ごとに「取材先」がある</b><small>条件がそろったら、<u>おでかけ</u>でその場所へ。スポットの画面に「ここで書く」が出ます。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🏟️</span><div><b>コースの回は、そこで走ると書ける</b><small>8つの開催地域それぞれに1回。その地域のレースを走る（回によっては当てる）のが条件です。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🏁</span><div><b>1回書いたら、次は1戦走ってから</b><small>書くことは、暮らしのなかでたまっていきます。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">📖</span><div><b>コインや勝ち負けには影響しません</b><small>ごほうびは、読める回と、次の行き先です。</small></div></div>`);
+    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>書くと、読者が増える</b><small>読者が増えるほど、毎日の印税が増えます。レースの勝ち負けには影響しません。</small></div></div>`);
 }
 
 // 取材へ出かける（地図のそのスポットを開く）。島へ出られない間は紀行に留まる。
@@ -351,7 +351,9 @@ function renderKikoEpisode(id, opts) {
       `<h1 class="ke-title">${ep.title}</h1>` +
       `<div class="ke-meta">${sp.area !== sp.name ? `<span>${sp.area}</span>` : ""}<span>${sp.name}</span><span>島に来て${wroteAt}戦め</span></div>` +
     `</div></header>`;
-  if (opts.fresh) html += `<div class="ke-fresh"><b>書き上げた</b><span>第${no}回の原稿を、編集部へ送りました。</span></div>`;
+  const _fans = (d.fans && d.fans[id]) || 0;
+  if (opts.fresh) html += `<div class="ke-fresh"><b>書き上げた</b><span>第${no}回の原稿を、編集部へ送りました。</span>` +
+    (_fans ? `<i class="ke-fresh-fans">読者 +${_fans.toLocaleString("ja-JP")}人</i>` : "") + `</div>`;
   html += `<div class="ke-body">` +
     `<p class="ke-lead">${ep.lead}</p>` +
     `<div class="ke-by"><span class="kk-av" style="${_av}"></span><span>文・写真　ミミ・パホパホ</span></div>`;

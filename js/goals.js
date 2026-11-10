@@ -12,7 +12,8 @@ function goalFollowers() {
   try {
     var p = state.player;
     var fame = (state.assets && state.assets.fameValue) || 0;
-    return 800 + Math.floor(fame * 2) + (p.completedRaces || 0) * 15 + (p.wins || 0) * 40;
+    // ＋紀行を書いて増えた読者（kiko_articles.js kikoFansAdd）＝やったことが記録されるほど増える。
+    return 800 + Math.floor(fame * 2) + (p.completedRaces || 0) * 15 + (p.wins || 0) * 40 + (p.kikoFans || 0);
   } catch (e) { return 0; }
 }
 function _gFlag(name) {

@@ -135,7 +135,7 @@ function renderEconomy() {
     `<div class="as-break-legend">${parts.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} ${fmtCoins(x[1])}</span>`).join("")}</div>`));
 
   // ── 島の指標（フォロワー・名声・村・レース経済）──
-  const folV = 800 + Math.floor((a.fameValue || 0) * 2) + (p.completedRaces || 0) * 15 + (p.wins || 0) * 40;
+  const folV = (typeof goalFollowers === "function") ? goalFollowers() : 800;   // ★式は goals.js の1か所だけ（ここに写しを持たない）
   const winRate = (p.completedRaces || 0) > 0 ? Math.round((p.wins || 0) / p.completedRaces * 100) : 0;
   const vlv = p.villageLevel || (p.village && p.village.level) || 1;
   const tile = (ic, val, label, sub) =>
