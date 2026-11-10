@@ -39,12 +39,12 @@ const sandbox = {
 sandbox.window = sandbox; sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-const FILES = ["js/utils.js", "js/meals.js", "js/ui_konron_map.js", "js/kiko_serial.js"];
+const FILES = ["js/utils.js", "js/data_races.js", "js/meals.js", "js/ui_konron_map.js", "js/kiko_serial.js"];
 const parts = ["var state = { player: {}, ui: {}, lifeTree: {} };"];
 FILES.forEach(f => parts.push("\n//# " + f + "\n" + fs.readFileSync(path.join(ROOT, f), "utf8")));
-parts.push("\n;globalThis.__out = { SPOTS: KONRON_SPOTS, AREAS: KONRON_AREAS, SERIAL: KIKO_SERIAL, VOICES: KS_VOICES };");
+parts.push("\n;globalThis.__out = { SPOTS: KONRON_SPOTS, AREAS: KONRON_AREAS, SERIAL: KIKO_SERIAL, VOICES: KS_VOICES, RACES: RACES };");
 vm.runInContext(parts.join("\n"), sandbox, { filename: "audit_kiko_serial.bundle.js" });
-const { SPOTS, AREAS, SERIAL, VOICES } = sandbox.__out;
+const { SPOTS, AREAS, SERIAL, VOICES, RACES } = sandbox.__out;
 
 let ng = 0;
 const bad = (m) => { ng++; console.log("  ✗ " + m); };
@@ -69,7 +69,12 @@ SERIAL.forEach((ep, i) => {
     if (!ds) bad(tag + " 寄り道 " + d + " が KONRON_SPOTS に無い");
     else if (ds.photo && !exists(ds.photo)) bad(tag + " 寄り道の写真が実在しない: " + ds.photo);
   });
-  if (!Array.isArray(ep.at) || ep.at.length !== 2 || ep.at.some(v => !(v >= 0 && v <= 100))) bad(tag + " あしあとの位置 at が不正");
+  if (ep.region) {
+    // コースの回：あしあと地図には載せない（at 無し）。地域名はレース側・スポット側の表記と一致していること
+    if (ep.at) bad(tag + " コースの回なのに at を持っている（あしあと地図に二重に出る）");
+    if (!RACES.some(r => r.region === ep.region)) bad(tag + " 地域 " + ep.region + " のレースが RACES に無い");
+    if (s.region !== ep.region) bad(tag + " 取材先 " + ep.spot + " の region（" + s.region + "）が回の region と違う");
+  } else if (!Array.isArray(ep.at) || ep.at.length !== 2 || ep.at.some(v => !(v >= 0 && v <= 100))) bad(tag + " あしあとの位置 at が不正");
   if (!ep.title) bad(tag + " 題が無い");
   if (!ep.memo) bad(tag + " 予告（memo）が無い");
   if (!ep.lead) bad(tag + " リードが無い");
@@ -88,6 +93,11 @@ console.log(SERIAL.map((ep, i) => "  " + String(i + 1).padStart(2) + " " + (SPOT
 const per = {};
 SERIAL.forEach(ep => { const a = areaOf(ep.spot); if (a) per[a.name] = (per[a.name] || 0) + 1; });
 console.log("エリア別: " + Object.keys(per).map(k => k + " " + per[k]).join(" ／ "));
+// 8つの開催地域が、ぜんぶ連載に入っているか（レースの紀行なのに走らない地域が出ないように）
+const allRegions = Array.from(new Set(RACES.map(r => r.region)));
+const covered = SERIAL.filter(ep => ep.region).map(ep => ep.region);
+allRegions.forEach(rg => { if (covered.indexOf(rg) < 0) bad("開催地域 " + rg + " の回が無い"); });
+console.log("コースの回: " + covered.length + " / 開催地域 " + allRegions.length);
 const unvisited = AREAS.filter(a => !per[a.name]).map(a => a.name);
 if (unvisited.length) console.log("連載がまだ訪ねていないエリア: " + unvisited.join("・"));
 

@@ -204,6 +204,7 @@ function _kikoSerialHelp() {
   showInfoPopup("連載「島ぐらし」",
     `<div class="mm-row"><span class="mm-ic">✍️</span><div><b>島で暮らす話を、順番に書いていく連載</b><small>全${KIKO_SERIAL.length}回。書いた回は、いつでも読みかえせます。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🏝️</span><div><b>回ごとに「取材先」がある</b><small>条件がそろったら、<u>おでかけ</u>でその場所へ。スポットの画面に「ここで書く」が出ます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🏟️</span><div><b>コースの回は、そこで走ると書ける</b><small>8つの開催地域それぞれに1回。その地域のレースを走る（回によっては当てる）のが条件です。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🏁</span><div><b>1回書いたら、次は1戦走ってから</b><small>書くことは、暮らしのなかでたまっていきます。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">📖</span><div><b>コインや勝ち負けには影響しません</b><small>ごほうびは、読める回と、次の行き先です。</small></div></div>`);
 }
@@ -264,22 +265,48 @@ function _kikoSerialSection(app) {
   if (done > 0) {
     const map = el("div", "ks-map");
     let pts = "", dots = "";
+    let lastAt = null, nAt = 0;
     KIKO_SERIAL.forEach((ep, i) => {
-      if (!kikoSerialDone(ep.id)) return;
+      if (!kikoSerialDone(ep.id) || !ep.at) return;   // コースの回（at 無し）は下の「走ったコース」に並ぶ
+      lastAt = ep.at; nAt++;
       pts += (pts ? " " : "") + ep.at[0] + "," + ep.at[1];
       dots += `<button class="ks-dot${d.fresh === ep.id ? " fresh" : ""}" style="left:${ep.at[0]}%;top:${ep.at[1]}%" data-ep="${ep.id}" aria-label="第${i + 1}回">${i + 1}</button>`;
     });
-    if (nx) dots += `<span class="ks-dot next${nx.ready ? " ready" : ""}" style="left:${nx.ep.at[0]}%;top:${nx.ep.at[1]}%">${nx.no}</span>`;
+    if (nx && nx.ep.at) dots += `<span class="ks-dot next${nx.ready ? " ready" : ""}" style="left:${nx.ep.at[0]}%;top:${nx.ep.at[1]}%">${nx.no}</span>`;
     map.innerHTML =
       `<img class="ks-map-img" src="images/konron/island_map.webp?v=20260727a" alt="崑崙島の地図" decoding="async">` +
       `<svg class="ks-map-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">` +
-        (done > 1 ? `<polyline points="${pts}" />` : "") +
-        (nx && done ? `<line class="to" x1="${KIKO_SERIAL[nx.idx - 1] ? KIKO_SERIAL[nx.idx - 1].at[0] : nx.ep.at[0]}" y1="${KIKO_SERIAL[nx.idx - 1] ? KIKO_SERIAL[nx.idx - 1].at[1] : nx.ep.at[1]}" x2="${nx.ep.at[0]}" y2="${nx.ep.at[1]}" />` : "") +
+        (nAt > 1 ? `<polyline points="${pts}" />` : "") +
+        (nx && nx.ep.at && lastAt ? `<line class="to" x1="${lastAt[0]}" y1="${lastAt[1]}" x2="${nx.ep.at[0]}" y2="${nx.ep.at[1]}" />` : "") +
       `</svg>` + dots +
       `<span class="ks-map-cap">あしあと — 書いた回の取材先</span>`;
     map.querySelectorAll("button.ks-dot").forEach(b => { b.onclick = () => renderKikoEpisode(b.getAttribute("data-ep")); });
     app.appendChild(map);
   }
+
+  // ── 走ったコース（8つの開催地域の印。書いた回は写真が入り、まだの回は名前だけ）──
+  //   連載の題は『ドラゴンレース紀行』＝島のあしあとと、走ったコースの二本立てで進む。
+  try {
+    const courses = KIKO_SERIAL.filter(ep => ep.region);
+    if (courses.length && (done > 0 || (nx && nx.ep.region))) {
+      const strip = el("div", "ks-courses");
+      let h = `<div class="ks-courses-k">走ったコース<b>${courses.filter(ep => kikoSerialDone(ep.id)).length} / ${courses.length}</b></div><div class="ks-courses-row">`;
+      courses.forEach(ep => {
+        const dn = kikoSerialDone(ep.id), sp = kikoSerialSpot(ep), nm = ep.region.replace(/地域$/, "");
+        const isNext = nx && nx.ep.id === ep.id;
+        // まだ走れない地域（ランク不足）の名前は伏せる＝先のコースを先に見せない
+        let known = dn || isNext; try { known = known || ((state.player.rank || 1) >= _ksRegionRank(ep.region)); } catch (e) {}
+        // 書いた回だけが押せる（まだの回は札＝ボタンにしない。押せないボタンの枠を並べない）
+        const tag = dn ? "button" : "span";
+        h += `<${tag} class="ks-course${dn ? " done" : ""}${isNext ? " next" : ""}"${dn ? ` data-ep="${ep.id}"` : ""}>` +
+          `<span class="ks-course-ph">${dn ? `<img src="${sp.photo}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}</span>` +
+          `<span class="ks-course-n">${known ? nm : "？？？"}</span></${tag}>`;
+      });
+      strip.innerHTML = h + `</div>`;
+      strip.querySelectorAll("button[data-ep]").forEach(b => { b.onclick = () => renderKikoEpisode(b.getAttribute("data-ep")); });
+      app.appendChild(strip);
+    }
+  } catch (e) {}
 
   // ── 書いた回（順番に並ぶ表紙の列。いちばん新しい回が右端）──
   if (done > 0) {
@@ -328,6 +355,15 @@ function renderKikoEpisode(id, opts) {
   html += `<div class="ke-body">` +
     `<p class="ke-lead">${ep.lead}</p>` +
     `<div class="ke-by"><span class="kk-av" style="${_av}"></span><span>文・写真　ミミ・パホパホ</span></div>`;
+  // コースの回＝そのコースでの自分の戦績を、取材ノートとして添える（読むたびに今の数字＝通うほど育つ）
+  if (ep.region) {
+    try {
+      const cr = kikoCourseOf(ep.region);
+      html += `<div class="ke-course"><div class="ke-course-k">取材ノート — ${ep.region.replace(/地域$/, "")}でのわたし</div>` +
+        `<div class="ke-course-r"><span><b>${cr.n}</b>戦</span><span><b>${cr.hit}</b>的中</span>` +
+        (cr.last ? `<span class="w">さいごに見た一着<b>${cr.last}</b></span>` : "") + `</div></div>`;
+    } catch (e) {}
+  }
   ep.paras.forEach((t, i) => {
     html += `<p>${t}</p>`;
     if (i === 1 && ep.sub) html += `<figure class="ke-fig"><img src="${ep.sub.src}" alt="" loading="lazy" decoding="async" onerror="this.closest('.ke-fig').remove()"><figcaption>${ep.sub.cap}</figcaption></figure>`;

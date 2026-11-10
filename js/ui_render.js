@@ -2148,6 +2148,13 @@ function renderRaceSelect() {
   ctrl.appendChild(distRow);
   app.appendChild(ctrl);
 
+  // ✍️ 連載「島ぐらし」の次の回がコースの回なら、どの地域で走ると書けるかを1行だけ知らせる（表示のみ）。
+  //   レースの並びや中身には触れない＝「どれを走るか」を決める材料がひとつ増えるだけ。
+  try {
+    const _ct = (typeof kikoSerialCourseTarget === "function") && kikoSerialCourseTarget();
+    if (_ct) app.appendChild(el("div", "rs-kiko",
+      `<span class="rs-kiko-k">連載 第${_ct.no}回</span><span class="rs-kiko-t">${_ct.text}</span>`));
+  } catch (e) {}
   const listWrap = el("div", "rs-list");
   app.appendChild(listWrap);
 
@@ -3308,6 +3315,14 @@ function settleRace() {
       } else if ((state.player.missRun || 0) >= 3) {
         kikoMatPush("lose3", { run: state.player.missRun, race: _rn });
       }
+    }
+  } catch (e) {}
+  // ✍️ コースの記録（地域ごとの出走・的中・さいごに見た一着）＝連載「島ぐらし」のコースの回が読む。
+  //   ★ここまでで着順も払戻も確定済み。結果を写し取るだけで、数値には一切書き戻さない。
+  try {
+    if (typeof kikoCourseNote === "function") {
+      const _w = raceResult && raceResult.entries && raceResult.entries[0] && raceResult.entries[0].dragon;
+      kikoCourseNote(c.race, !!betResult.hit, (_w && _w.name) || "");
     }
   } catch (e) {}
   saveGame();
