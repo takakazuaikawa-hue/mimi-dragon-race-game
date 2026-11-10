@@ -37,7 +37,8 @@ const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2, stable: 2, scout: 2,
   story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, economy: 3, collection_score: 3, poro_gourmet: 3,
-  story_read: 4, race_run: 4, result: 5, analysis: 6
+  story_read: 4, race_run: 4, result: 5, analysis: 6,
+  kiko: 2, kiko_read: 3
 };
 let _prevScreen = null;
 let _heroRect = null;   // rect of a tapped card, to expand from on the next screen
@@ -62,7 +63,7 @@ function beginScreen() {
   const app = $("app");
   const screen = state.ui.screen;
   const prev = _prevScreen;
-  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip", "kiko-page", "yt-page", "kw-page");   // 観光(.kt-page)/暮らし(.lr-page)/紀行(.kiko-page)/メディア(.yt-page)のテーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
+  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip", "kiko-page", "ke-page", "yt-page", "kw-page");   // 観光(.kt-page)/暮らし(.lr-page)/紀行(.kiko-page)/メディア(.yt-page)のテーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
   // ★kw-page（島歩き）を足した理由（2026-08-01・ユーザー報告「島の一枚絵が消えた」）：
   //   scene_konron.js が #app に付けたきり、誰も外していなかった。.kw-page は #app を
   //   display:flex／column にするので、島の観光ページ(.kt-page)へ戻ると **ヒーローの一枚絵が潰れる**。
@@ -111,7 +112,8 @@ function beginScreen() {
     konron_guide: "kiko",   // ★ガイドブックは紀行の連載「#島さんぽ」へ引っ越した（2026-07-31 IA統合）
     konron_gallery: "konron_map",
     konron_travelnote: "konron_map",   // 旅ノートは“次どこ行く？”の道具＝おでかけの持ち物として島に残す
-    kiko: "home", media: "home"   // 📖紀行・📱メディア（2026-07-30 IA再編）
+    kiko: "home", media: "home",   // 📖紀行・📱メディア（2026-07-30 IA再編）
+    kiko_read: "kiko"              // 📄 連載の1回 → 紀行へ
   };
   const BACK_TGT = {
     home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory },

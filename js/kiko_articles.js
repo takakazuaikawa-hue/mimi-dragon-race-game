@@ -335,7 +335,13 @@ function kikoMaybeWrite() {
   } catch (e) { return null; }
 }
 
-function kikoHasUnread() { try { return !!(state.player && state.player.kikoUnread); } catch (e) { return false; } }
+// 紀行タブのドット＝未読の新記事、または連載の取材に行ける（どちらも「開けば何かある」状態）。
+function kikoHasUnread() {
+  try { if (state.player && state.player.kikoUnread) return true; } catch (e) {}
+  try { if (typeof kikoSerialReady === "function" && kikoSerialReady()) return true; } catch (e) {}
+  try { if (state.player && state.player.kikoSerial && state.player.kikoSerial.fresh) return true; } catch (e) {}
+  return false;
+}
 
 // =========================================================================
 // 読者コメント（既存SNSのファン名資産を流用）。

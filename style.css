@@ -2007,6 +2007,217 @@ table.entry-table {
 .kiko-page .actions .secondary { background: var(--white); color: #55483f; border: 1px solid #e3d5ca; }
 .kiko-page .topback-btn { background: var(--white); color: #d84e77; border: 1px solid #f0d4dc; }
 
+/* =====================================================================
+   📖 紀行・連載「島ぐらし」（2026-11）＝表紙／次の取材先／あしあと／回の記事面
+   紙の色は紀行（kiko-page）の系をそのまま継ぐ。色は下の --kk-* に集めてある
+   ＝紀行の面を塗り替えるときは、ここだけ動かせばよい（直書きを増やさない）。
+   ===================================================================== */
+#app {
+  --kk-ink: #2f2925;        /* 本文のいちばん濃い字 */
+  --kk-sub: #5a4e47;        /* 本文 */
+  --kk-mut: #8f8279;        /* 補足・キャプション */
+  --kk-line: #eadfd6;       /* 罫線 */
+  --kk-paper: #fffdfb;      /* カードの紙 */
+  --kk-wash: #f8efe8;       /* 写真が来る前の地・薄い面 */
+  --kk-rose: #d84e77;       /* 紀行の差し色（題字・リンク） */
+  --kk-rose-soft: #fdeef2;
+  --kk-rose-deep: #c63f6c;  /* ボタンの下端 */
+  --kk-teal: #1f8f84;       /* 小見出し・読者の声 */
+  --kk-gold: #b7862f;       /* 回数・印 */
+  --kk-gold-soft: #fbf3e2;
+  --kk-night: #1b2029;      /* 写真の上の幕 */
+}
+
+/* ── 小見出し（紀行ぜんたいで共通）── */
+.kk-sec { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 30px 14px 12px; }
+.kk-sec-t { margin: 0; padding-bottom: 0; border-bottom: none; font-size: 19px; font-weight: 900; letter-spacing: .04em; color: var(--kk-ink); }
+.kk-sec-s { flex: 1; white-space: nowrap; font-size: 11.5px; font-weight: 700; color: var(--kk-mut); }
+.kk-q { flex: none; width: 24px; height: 24px; border-radius: var(--r-round); border: 1px solid var(--kk-line);
+  background: var(--kk-paper); color: var(--kk-mut); font-size: 12px; font-weight: 900; line-height: 1; cursor: pointer;
+  padding-block: 0; padding-inline: 0; text-shadow: none; box-shadow: none; }
+.kk-av { flex: none; display: inline-block; width: 22px; height: 22px; border-radius: var(--r-round);
+  border: 1.5px solid var(--white); box-shadow: 0 1px 3px rgba(40,24,16,.25); }
+
+/* ── 表紙（マストヘッド）── */
+.kk-mast, .ke-hero { margin: calc(-1 * var(--pad-t)) calc(-1 * var(--pad-x)) 0; }   /* 写真は端から端まで（#app の余白ぶん外へ） */
+.kk-mast { position: relative; height: 262px; overflow: hidden; background: var(--kk-night); color: var(--white); }
+.kk-mast--sub { height: 214px; }
+.kk-mast-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.kk-mast-shade { position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(27,32,41,.34) 0%, rgba(27,32,41,.06) 34%, rgba(27,32,41,.80) 100%); }
+.kk-mast-in { position: absolute; left: 20px; right: 20px; bottom: 18px; }
+.kk-mast-k { font-size: 10px; font-weight: 800; letter-spacing: .28em; color: rgba(255,255,255,.86); }
+.kk-mast-t { margin: 5px 0 0; font-size: 31px; line-height: 1.12; font-weight: 900; letter-spacing: .03em;
+  text-shadow: 0 2px 16px rgba(0,0,0,.55); }
+.kk-mast-by { margin-top: 10px; display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
+.kk-live { margin-left: 2px; padding: var(--pd-2-8); border-radius: var(--r-full); background: var(--kk-rose);
+  font-size: 10px; font-weight: 900; letter-spacing: .06em; }
+.kk-mast-st { margin-top: 9px; display: flex; align-items: center; gap: 12px; font-size: 12px; color: rgba(255,255,255,.90);
+  font-variant-numeric: tabular-nums; }
+.kk-mast-st i { width: 1px; height: 11px; background: rgba(255,255,255,.4); }
+.kk-mast-st b { font-size: 14px; font-weight: 900; color: var(--white); }
+.kk-mast-delta { margin-top: 6px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.88); }
+.kk-mast-delta b { color: var(--hx-ffe6a8); }
+.kk-mast-cap { position: absolute; top: 12px; right: 14px; font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
+  color: rgba(255,255,255,.78); text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+/* 表紙が写真になったので、上部の戻るボタンは写真に重ねる */
+#app.kiko-page:has(.kk-mast) .topback, #app.ke-page .topback { position: relative; height: 0; padding-block: 0; overflow: visible; align-items: flex-start; }
+#app.kiko-page:has(.kk-mast) .topback-btn, #app.ke-page .topback-btn { margin-top: 2px; box-shadow: 0 2px 10px rgba(27,32,41,.28); }
+
+/* ── 次の取材先 ── */
+.ks-next { margin: 0 14px; border-radius: var(--r-3); overflow: hidden; background: var(--kk-paper);
+  border: 1px solid var(--kk-line); box-shadow: var(--e-1); }
+.ks-next-ph { position: relative; height: 150px; background: var(--kk-wash); overflow: hidden; }
+.ks-next-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ks-next.veil .ks-next-ph img { filter: blur(9px) saturate(.6) brightness(.82); transform: scale(1.12); }
+.ks-next-ph::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(27,32,41,0) 46%, rgba(27,32,41,.5) 100%); }
+.ks-next-no { position: absolute; left: 12px; bottom: 10px; z-index: 1; color: var(--white); font-size: 13px; font-weight: 900;
+  letter-spacing: .08em; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.ks-next-flag { position: absolute; right: 12px; top: 12px; z-index: 1; padding: var(--pd-4-10); border-radius: var(--r-full);
+  background: var(--kk-rose); color: var(--white); font-size: 11px; font-weight: 900; letter-spacing: .04em;
+  box-shadow: 0 2px 10px rgba(216,78,119,.45); animation: ksPulse 2.4s ease-in-out infinite; }
+@keyframes ksPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.ks-next-b { padding-block: 14px 16px; padding-inline: 16px; }
+.ks-next-k { font-size: 10.5px; font-weight: 900; letter-spacing: .14em; color: var(--kk-teal); }
+.ks-next-pl { margin-top: 4px; font-size: 18px; font-weight: 900; line-height: 1.35; color: var(--kk-ink); }
+.ks-next-pl small { margin-left: 8px; font-size: 11px; font-weight: 700; color: var(--kk-mut); }
+.ks-next-memo { position: relative; margin: 10px 0 0; padding-inline: 13px 0; font-size: 13px; line-height: 1.8; color: var(--kk-sub); }
+.ks-next-memo::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; border-radius: var(--r-full); background: var(--kk-rose-soft); }
+.ks-need { list-style: none; margin: 12px 0 0; padding-block: 10px; padding-inline: 12px; border-radius: var(--r-2);
+  background: var(--kk-gold-soft); }
+.ks-need li { font-size: 12.5px; font-weight: 800; line-height: 1.6; color: var(--lt-gold); }
+.ks-need li + li { margin-top: 3px; }
+.ks-cta { display: block; width: 100%; margin-top: 14px; padding-block: 13px; padding-inline: 14px; border: none; border-radius: var(--r-2);
+  background: var(--kk-rose); color: var(--white); font-size: 15px; font-weight: 900; letter-spacing: .06em; cursor: pointer;
+  text-shadow: none; box-shadow: 0 2px 0 rgba(150,40,75,.55), 0 8px 18px -8px rgba(216,78,119,.6); }
+.ks-cta:active { transform: translateY(2px); box-shadow: 0 0 0 rgba(150,40,75,.55); }
+.ks-cta.ghost { background: var(--kk-paper); color: var(--kk-rose); border: 1px solid var(--kk-rose-soft); box-shadow: none; font-size: 13.5px; }
+.ks-fin { margin: 0 14px; padding-block: 16px; padding-inline: 16px; border-radius: var(--r-3); background: var(--kk-gold-soft);
+  border: 1px solid var(--kk-line); }
+.ks-fin b { display: block; font-size: 15px; font-weight: 900; color: var(--kk-ink); }
+.ks-fin span { display: block; margin-top: 5px; font-size: 12.5px; line-height: 1.75; color: var(--kk-sub); }
+
+/* ── あしあと（地図に、書いた回を順に結ぶ）── */
+.ks-map { position: relative; margin: 14px 14px 0; border-radius: var(--r-3); overflow: hidden; background: var(--kk-night);
+  box-shadow: var(--e-1); }
+.ks-map-img { display: block; width: 100%; height: auto; filter: saturate(.82) brightness(.9); }
+.ks-map-line { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ks-map-line polyline, .ks-map-line line { fill: none; stroke: var(--white); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round;
+  vector-effect: non-scaling-stroke; opacity: .92; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+.ks-map-line line.to { stroke-dasharray: 3 5; opacity: .75; }
+.ks-dot { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: var(--r-round);
+  border: 2px solid var(--white); background: var(--kk-rose); color: var(--white); font-size: 9.5px; font-weight: 900; line-height: 16px;
+  text-align: center; padding-block: 0; padding-inline: 0; cursor: pointer; text-shadow: none; letter-spacing: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5); font-variant-numeric: tabular-nums; }
+.ks-dot.fresh { background: var(--hx-ffd76a); color: var(--kk-ink); }
+.ks-dot.next { background: rgba(27,32,41,.72); border-style: dashed; cursor: default; }
+.ks-dot.next.ready { background: var(--white); color: var(--kk-rose); border-style: solid; animation: ksPulse 2.4s ease-in-out infinite; }
+.ks-map-cap { position: absolute; left: 12px; bottom: 9px; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: rgba(255,255,255,.9);
+  text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+
+/* ── 書いた回の列 ── */
+.ks-rail { display: flex; gap: 10px; overflow-x: auto; padding-block: 14px 6px; padding-inline: 14px; scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.ks-rail::-webkit-scrollbar { display: none; }
+.ks-card { position: relative; flex: none; width: 138px; height: 184px; border: none; border-radius: var(--r-2); overflow: hidden;
+  background: var(--kk-night); color: var(--white); text-align: left; cursor: pointer; scroll-snap-align: start;
+  padding-block: 0; padding-inline: 0; text-shadow: none; box-shadow: var(--e-1); }
+.ks-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ks-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(27,32,41,.12) 0%, rgba(27,32,41,0) 30%, rgba(27,32,41,.86) 100%); }
+.ks-card:active { transform: scale(.98); }
+.ks-card-no { position: absolute; z-index: 1; left: 10px; top: 9px; font-size: 10.5px; font-weight: 900; letter-spacing: .1em;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.ks-card-new { position: absolute; z-index: 1; right: 8px; top: 8px; padding: var(--pd-1-6); border-radius: var(--r-full);
+  background: var(--hx-ffd76a); color: var(--kk-ink); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+.ks-card-t { position: absolute; z-index: 1; left: 10px; right: 10px; bottom: 26px; font-size: 13px; font-weight: 900; line-height: 1.4;
+  text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+.ks-card-pl { position: absolute; z-index: 1; left: 10px; right: 10px; bottom: 9px; font-size: 9.5px; font-weight: 700; color: rgba(255,255,255,.82);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-card.more { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 104px;
+  background: var(--kk-wash); border: 1px dashed var(--kk-line); box-shadow: none; cursor: default; }
+.ks-card.more::after { display: none; }
+.ks-card-more { font-size: 14px; font-weight: 900; letter-spacing: .2em; color: var(--kk-mut); }
+.ks-card-rest { font-size: 10.5px; font-weight: 800; color: var(--kk-gold); }
+
+/* ── 回の記事面（kiko_read）── */
+#app.ke-page { padding-top: 0; }
+.ke-hero { position: relative; height: 332px; overflow: hidden; background: var(--kk-night); color: var(--white); }
+.ke-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ke-hero-shade { position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(27,32,41,.30) 0%, rgba(27,32,41,0) 30%, rgba(27,32,41,.88) 100%); }
+.ke-hero-in { position: absolute; left: 20px; right: 20px; bottom: 20px; }
+.ke-no { display: flex; align-items: center; gap: 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .2em; color: rgba(255,255,255,.86); }
+.ke-no b { padding: var(--pd-2-8); border-radius: var(--r-full); background: var(--kk-rose); color: var(--white); font-size: 10.5px; letter-spacing: .08em; }
+.ke-title { margin: 9px 0 0; font-size: 26px; line-height: 1.34; font-weight: 900; letter-spacing: .02em; text-shadow: 0 2px 14px rgba(0,0,0,.6);
+  text-wrap: balance; }
+.ke-meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 0; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.84); }
+.ke-meta span + span::before { content: "／"; margin: 0 7px; opacity: .55; }
+.ke-fresh { margin: 14px 14px 0; padding-block: 11px; padding-inline: 14px; border-radius: var(--r-2); background: var(--kk-gold-soft);
+  border: 1px solid var(--kk-line); display: flex; align-items: baseline; gap: 10px; animation: keFresh .5s cubic-bezier(.2,.8,.2,1) both; }
+.ke-fresh b { flex: none; font-size: 14px; font-weight: 900; color: var(--kk-rose); letter-spacing: .06em; }
+.ke-fresh span { font-size: 12px; color: var(--kk-sub); }
+@keyframes keFresh { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ke-body { padding-block: 22px 6px; padding-inline: 14px; }
+.ke-lead { margin: 0; font-size: 16px; line-height: 1.95; font-weight: 800; color: var(--kk-ink); }
+.ke-by { margin: 16px 0 20px; padding-bottom: 16px; border-bottom: 1px solid var(--kk-line); display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; font-weight: 700; color: var(--kk-mut); }
+.ke-body p { margin: 0 0 20px; font-size: 14.5px; line-height: 2.05; color: var(--kk-sub); letter-spacing: .02em; }
+.ke-body p.ke-lead { margin: 0; }
+.ke-fig { margin: 4px -6px 22px; }
+.ke-fig img { display: block; width: 100%; height: auto; border-radius: var(--r-2); background: var(--kk-wash); }
+.ke-fig figcaption { margin-top: 7px; padding-inline: 8px; font-size: 11px; line-height: 1.6; color: var(--kk-mut); }
+.ke-quote { position: relative; margin: 6px 0 26px; padding-block: 4px; padding-inline: 18px 0; font-size: 17.5px; line-height: 1.8; font-weight: 900;
+  color: var(--kk-rose); letter-spacing: .02em; }
+.ke-quote::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 4px; border-radius: var(--r-full); background: var(--kk-rose); }
+.ke-end { margin: 6px 0 0; padding-top: 18px; border-top: 1px solid var(--kk-line); text-align: center; font-size: 11px; font-weight: 800;
+  letter-spacing: .3em; color: var(--kk-mut); }
+.ke-next { margin: 20px 14px 0; padding-block: 15px 16px; padding-inline: 16px; border-radius: var(--r-3); background: var(--kk-paper);
+  border: 1px solid var(--kk-line); box-shadow: var(--e-1); }
+.ke-next.ready { border-color: var(--kk-rose-soft); }
+.ke-next-k { font-size: 10.5px; font-weight: 900; letter-spacing: .14em; color: var(--kk-teal); }
+.ke-next-memo { margin: 8px 0 0; font-size: 14px; line-height: 1.85; font-weight: 700; color: var(--kk-ink); }
+.ke-next-pl { margin-top: 10px; font-size: 12px; color: var(--kk-mut); }
+.ke-next-pl b { font-size: 14px; color: var(--kk-ink); }
+.ke-next-pl small { margin-left: 7px; font-size: 10.5px; }
+.ke-detour { display: flex; gap: 10px; overflow-x: auto; padding-block: 0 6px; padding-inline: 14px; scrollbar-width: none; }
+.ke-detour::-webkit-scrollbar { display: none; }
+.ke-spot { position: relative; flex: none; width: 150px; border: 1px solid var(--kk-line); border-radius: var(--r-2); overflow: hidden;
+  background: var(--kk-paper); text-align: left; cursor: pointer; padding-block: 0 10px; padding-inline: 0; text-shadow: none; box-shadow: var(--e-1); }
+.ke-spot img, .ke-spot-q { display: block; width: 100%; height: 92px; object-fit: cover; background: var(--kk-wash); }
+.ke-spot-q { display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; color: var(--kk-line); }
+.ke-spot-n { display: block; margin: 9px 10px 0; font-size: 12.5px; font-weight: 900; line-height: 1.4; color: var(--kk-ink); }
+.ke-spot-s { display: block; margin: 3px 10px 0; font-size: 10.5px; font-weight: 800; color: var(--kk-rose); }
+.ke-spot.lock { cursor: default; box-shadow: none; background: var(--kk-wash); }
+.ke-spot.lock .ke-spot-n { color: var(--kk-mut); }
+.ke-spot.lock .ke-spot-s { color: var(--kk-mut); font-weight: 700; }
+.ke-cmts { margin: 22px 14px 0; padding-block: 4px 14px; padding-inline: 16px; border-radius: var(--r-3); background: var(--kk-paper);
+  border: 1px solid var(--kk-line); }
+.ke-cmts .kiko-cmt-h { border-top: none; }
+.ke-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 14px 0; }
+.ke-nav-b { min-height: 62px; border: 1px solid var(--kk-line); border-radius: var(--r-2); background: var(--kk-paper); cursor: pointer;
+  text-align: left; padding-block: 10px; padding-inline: 12px; text-shadow: none; box-shadow: none; }
+.ke-nav-b.next { text-align: right; }
+.ke-nav-b.off { visibility: hidden; }
+.ke-nav-b small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; color: var(--kk-rose); }
+.ke-nav-b b { display: block; margin-top: 3px; font-size: 12px; font-weight: 800; line-height: 1.45; color: var(--kk-ink); }
+
+/* ── 地図のスポット画面に出る「ここで連載を書く」（暗い地図モジュールの上）── */
+.km-serial { display: block; width: 100%; margin: 4px 0 10px; padding-block: 12px 13px; padding-inline: 14px; border-radius: var(--r-2);
+  border: 1px solid rgba(255,255,255,.34); background: linear-gradient(135deg, var(--kk-rose) 0%, var(--kk-rose-deep) 100%); color: var(--white);
+  text-align: left; cursor: pointer; text-shadow: none; box-shadow: 0 2px 0 rgba(120,30,60,.6), 0 10px 22px -10px rgba(224,82,125,.8); }
+.km-serial:active { transform: translateY(2px); }
+.km-serial-k { display: block; font-size: 10px; font-weight: 800; letter-spacing: .2em; opacity: .88; }
+.km-serial b { display: block; margin-top: 3px; font-size: 16px; font-weight: 900; letter-spacing: .03em; }
+.km-serial small { display: block; margin-top: 5px; font-size: 11.5px; line-height: 1.6; opacity: .92; }
+.km-serial.wait { background: rgba(255,255,255,.07); border-style: dashed; cursor: default; box-shadow: none; }
+.km-serial.wait b { font-size: 13.5px; }
+.km-chip-pen { margin-left: 6px; padding: var(--pd-1-6); border-radius: var(--r-full); background: var(--kk-rose); color: var(--white);
+  font-size: 9px; font-weight: 900; letter-spacing: .04em; }
+#app.kt-page .km-pm .km-pm-tx b { color: var(--lt-ink); }
+#app.kt-page .km-pm .km-pm-tx small { color: var(--lt-mut); }
+#app.kt-page .km-pm .km-pm-go { color: var(--lt-gold); }
+.km-pm--serial { background: linear-gradient(120deg, rgba(224,82,125,.20), rgba(255,206,110,.14)); border-color: rgba(224,82,125,.5); }
+
 /* ===== 📱 メディア＝YouTube登録チャンネル風（ダークな動画アプリ面・2026-07-30） ===== */
 #app.yt-page { background-color: #0f0f0f !important; background-image: none !important; color: #f1f1f1;
   font-family: "Roboto","Hiragino Sans","Yu Gothic",sans-serif; }

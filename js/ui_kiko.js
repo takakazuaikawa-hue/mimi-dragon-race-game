@@ -165,6 +165,252 @@ var _KIKO_TWEETS = {
   protect:    "この島は、渡さない。ぜったいに。🏝️"
 };
 
+// =========================================================================
+// 📖 連載「島ぐらし」の紙面（データと進行は kiko_serial.js）
+// =========================================================================
+function _kikoSecHead(title, sub, extra) {
+  const h = el("div", "kk-sec");
+  h.innerHTML = `<h2 class="kk-sec-t">${title}</h2>` + (sub ? `<span class="kk-sec-s">${sub}</span>` : "") + (extra || "");
+  return h;
+}
+
+// 表紙（マストヘッド）。写真の上に題字・著者・読者数を重ねる。
+function _kikoMasthead(fol, earned, rd) {
+  let cover = "images/konron/island_aerial.webp", coverCap = "崑崙島";
+  try {
+    for (let i = KIKO_SERIAL.length - 1; i >= 0; i--) {
+      if (kikoSerialDone(KIKO_SERIAL[i].id)) { const sp = kikoSerialSpot(KIKO_SERIAL[i]); cover = sp.photo; coverCap = sp.name; break; }
+    }
+  } catch (e) {}
+  const _av = (typeof mimiAvatarStyle === "function") ? mimiAvatarStyle() : "";
+  const head = el("div", "kk-mast");
+  head.innerHTML =
+    `<img class="kk-mast-img" src="${cover}" alt="" decoding="async" onerror="this.remove()">` +
+    `<div class="kk-mast-shade"></div>` +
+    `<div class="kk-mast-in">` +
+      `<div class="kk-mast-k">KONRON ISLAND JOURNAL</div>` +
+      `<h1 class="kk-mast-t">ドラゴンレース紀行</h1>` +
+      `<div class="kk-mast-by"><span class="kk-av" style="${_av}"></span><span>文・写真　ミミ・パホパホ</span><span class="kk-live">連載中</span></div>` +
+      `<div class="kk-mast-st"><span>読者 <b>${fol.toLocaleString("ja-JP")}</b> 人</span><i></i><span>累計売上 <b>${fmtCoins(earned)}</b></span></div>` +
+      (rd ? `<div class="kk-mast-delta">前回から <b>+${rd.diff.toLocaleString("ja-JP")}</b> 人${rd.why ? `（${rd.why}）` : ""}</div>` : "") +
+    `</div>` +
+    `<span class="kk-mast-cap">表紙：${coverCap}</span>`;
+  return head;
+}
+
+// 連載のしくみ（？ボタン）。常設の説明は置かず、ここに畳む。
+function _kikoSerialHelp() {
+  if (typeof showInfoPopup !== "function") return;
+  showInfoPopup("連載「島ぐらし」",
+    `<div class="mm-row"><span class="mm-ic">✍️</span><div><b>島で暮らす話を、順番に書いていく連載</b><small>全${KIKO_SERIAL.length}回。書いた回は、いつでも読みかえせます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🏝️</span><div><b>回ごとに「取材先」がある</b><small>条件がそろったら、<u>おでかけ</u>でその場所へ。スポットの画面に「ここで書く」が出ます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🏁</span><div><b>1回書いたら、次は1戦走ってから</b><small>書くことは、暮らしのなかでたまっていきます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">📖</span><div><b>コインや勝ち負けには影響しません</b><small>ごほうびは、読める回と、次の行き先です。</small></div></div>`);
+}
+
+// 取材へ出かける（地図のそのスポットを開く）。島へ出られない間は紀行に留まる。
+function _kikoGoSpot(spotId) {
+  try {
+    if (typeof kmGotoSpot === "function" && kmGotoSpot(spotId)) return;
+    if (typeof renderKonronMap === "function") renderKonronMap();
+  } catch (e) {}
+}
+
+// 回を書く → その回を開く（書き上げた直後の演出つき）。
+function _kikoWriteAndOpen(id) {
+  const ep = (typeof kikoSerialWrite === "function") ? kikoSerialWrite(id) : null;
+  if (!ep) return false;
+  try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
+  renderKikoEpisode(ep.id, { fresh: true });
+  return true;
+}
+
+function _kikoSerialSection(app) {
+  if (typeof KIKO_SERIAL === "undefined" || typeof kikoSerialNext !== "function") return;
+  const total = KIKO_SERIAL.length, done = kikoSerialDoneCount(), nx = kikoSerialNext();
+  const d = kikoSerialData();
+
+  const head = _kikoSecHead("連載　島ぐらし", done ? `第${done}回まで ／ 全${total}回` : `全${total}回`,
+    `<button class="kk-q" aria-label="連載のしくみ">？</button>`);
+  head.querySelector(".kk-q").onclick = _kikoSerialHelp;
+  app.appendChild(head);
+
+  // ── 次の取材先 ──
+  if (nx) {
+    const sp = kikoSerialSpot(nx.ep);
+    let spotOpen = !!nx.ep.direct;
+    try { if (!spotOpen) spotOpen = konronMapUnlocked() && _kmSpotOpen(KONRON_SPOTS[nx.ep.spot]); } catch (e) { spotOpen = false; }
+    const card = el("div", "ks-next" + (nx.ready ? " ready" : "") + (spotOpen ? "" : " veil"));
+    card.innerHTML =
+      `<div class="ks-next-ph"><img src="${sp.photo}" alt="" decoding="async" onerror="this.remove()">` +
+        `<span class="ks-next-no">第${nx.no}回</span>` +
+        (nx.ready ? `<span class="ks-next-flag">${nx.ep.direct ? "書ける" : "取材に行ける"}</span>` : "") + `</div>` +
+      `<div class="ks-next-b">` +
+        `<div class="ks-next-k">${nx.ready ? "次の取材先" : "次の取材先（準備中）"}</div>` +
+        `<div class="ks-next-pl">${sp.name}${sp.area !== sp.name ? `<small>${sp.area}</small>` : ""}</div>` +
+        `<p class="ks-next-memo">${nx.ep.memo}</p>` +
+        (nx.needs.length ? `<ul class="ks-need">` + nx.needs.map(t => `<li>${t}</li>`).join("") + `</ul>` : "") +
+        (nx.ready ? `<button class="ks-cta">${nx.ep.direct ? `第${nx.no}回を書く` : "取材へ出かける"}</button>`
+                  : (spotOpen && !nx.ep.direct ? `<button class="ks-cta ghost">下見に行く</button>` : "")) +
+      `</div>`;
+    const cta = card.querySelector(".ks-cta");
+    if (cta) cta.onclick = (nx.ready && nx.ep.direct) ? () => _kikoWriteAndOpen(nx.ep.id) : () => _kikoGoSpot(nx.ep.spot);
+    app.appendChild(card);
+  } else {
+    app.appendChild(el("div", "ks-fin", `<b>連載「島ぐらし」完結</b><span>全${total}回、書き上げました。島の毎日は、このあとも「日々の記事」につづきます。</span>`));
+  }
+
+  // ── あしあと（島の地図に、書いた回の取材先を順に結ぶ）──
+  if (done > 0) {
+    const map = el("div", "ks-map");
+    let pts = "", dots = "";
+    KIKO_SERIAL.forEach((ep, i) => {
+      if (!kikoSerialDone(ep.id)) return;
+      pts += (pts ? " " : "") + ep.at[0] + "," + ep.at[1];
+      dots += `<button class="ks-dot${d.fresh === ep.id ? " fresh" : ""}" style="left:${ep.at[0]}%;top:${ep.at[1]}%" data-ep="${ep.id}" aria-label="第${i + 1}回">${i + 1}</button>`;
+    });
+    if (nx) dots += `<span class="ks-dot next${nx.ready ? " ready" : ""}" style="left:${nx.ep.at[0]}%;top:${nx.ep.at[1]}%">${nx.no}</span>`;
+    map.innerHTML =
+      `<img class="ks-map-img" src="images/konron/island_map.webp?v=20260727a" alt="崑崙島の地図" decoding="async">` +
+      `<svg class="ks-map-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">` +
+        (done > 1 ? `<polyline points="${pts}" />` : "") +
+        (nx && done ? `<line class="to" x1="${KIKO_SERIAL[nx.idx - 1] ? KIKO_SERIAL[nx.idx - 1].at[0] : nx.ep.at[0]}" y1="${KIKO_SERIAL[nx.idx - 1] ? KIKO_SERIAL[nx.idx - 1].at[1] : nx.ep.at[1]}" x2="${nx.ep.at[0]}" y2="${nx.ep.at[1]}" />` : "") +
+      `</svg>` + dots +
+      `<span class="ks-map-cap">あしあと — 書いた回の取材先</span>`;
+    map.querySelectorAll("button.ks-dot").forEach(b => { b.onclick = () => renderKikoEpisode(b.getAttribute("data-ep")); });
+    app.appendChild(map);
+  }
+
+  // ── 書いた回（順番に並ぶ表紙の列。いちばん新しい回が右端）──
+  if (done > 0) {
+    const rail = el("div", "ks-rail");
+    KIKO_SERIAL.forEach((ep, i) => {
+      if (!kikoSerialDone(ep.id)) return;
+      const sp = kikoSerialSpot(ep);
+      const c = el("button", "ks-card" + (d.fresh === ep.id ? " fresh" : ""));
+      c.innerHTML = `<img src="${sp.photo}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` +
+        `<span class="ks-card-no">第${i + 1}回</span>` + (d.fresh === ep.id ? `<span class="ks-card-new">NEW</span>` : "") +
+        `<span class="ks-card-t">${ep.title}</span><span class="ks-card-pl">${sp.name}</span>`;
+      c.onclick = () => renderKikoEpisode(ep.id);
+      rail.appendChild(c);
+    });
+    if (nx) rail.appendChild(el("div", "ks-card more", `<span class="ks-card-more">つづく</span><span class="ks-card-rest">あと ${total - done} 回</span>`));
+    app.appendChild(rail);
+    // いちばん新しい回が見えるところまで送る（順に読みたい人は左へ戻れる）
+    setTimeout(() => { try { rail.scrollLeft = rail.scrollWidth; } catch (e) {} }, 0);
+  }
+}
+
+// ── 📄 連載の1回を読む（WEBマガジンの記事面）──────────────────────────
+function renderKikoEpisode(id, opts) {
+  opts = opts || {};
+  const ep = (typeof kikoSerialById === "function") ? kikoSerialById(id) : null;
+  if (!ep || !kikoSerialDone(id)) { renderKiko(); return; }
+  state.ui.screen = "kiko_read";
+  state.ui._kikoEp = id;
+  const app = beginScreen();
+  app.classList.add("kiko-page", "ke-page");
+  if (!opts.keepScroll) window.scrollTo(0, 0);
+
+  const no = kikoSerialNo(id), sp = kikoSerialSpot(ep), d = kikoSerialData();
+  const wroteAt = d.done[id] || 0;
+  const _av = (typeof mimiAvatarStyle === "function") ? mimiAvatarStyle() : "";
+  const art = el("article", "ke");
+
+  let html =
+    `<header class="ke-hero"><img class="ke-hero-img" src="${sp.photo}" alt="${sp.name}" decoding="async" onerror="this.remove()">` +
+    `<div class="ke-hero-shade"></div><div class="ke-hero-in">` +
+      `<div class="ke-no">連載　島ぐらし<b>第${no}回</b></div>` +
+      `<h1 class="ke-title">${ep.title}</h1>` +
+      `<div class="ke-meta">${sp.area !== sp.name ? `<span>${sp.area}</span>` : ""}<span>${sp.name}</span><span>島に来て${wroteAt}戦め</span></div>` +
+    `</div></header>`;
+  if (opts.fresh) html += `<div class="ke-fresh"><b>書き上げた</b><span>第${no}回の原稿を、編集部へ送りました。</span></div>`;
+  html += `<div class="ke-body">` +
+    `<p class="ke-lead">${ep.lead}</p>` +
+    `<div class="ke-by"><span class="kk-av" style="${_av}"></span><span>文・写真　ミミ・パホパホ</span></div>`;
+  ep.paras.forEach((t, i) => {
+    html += `<p>${t}</p>`;
+    if (i === 1 && ep.sub) html += `<figure class="ke-fig"><img src="${ep.sub.src}" alt="" loading="lazy" decoding="async" onerror="this.closest('.ke-fig').remove()"><figcaption>${ep.sub.cap}</figcaption></figure>`;
+    if (i === 2 && ep.quote) html += `<blockquote class="ke-quote">${ep.quote}</blockquote>`;
+  });
+  html += `<div class="ke-end">第${no}回　おわり</div></div>`;
+  art.innerHTML = html;
+  app.appendChild(art);
+  if (opts.fresh) { try { const f = art.querySelector(".ke-fresh"); if (typeof celebrateFrom === "function") setTimeout(() => celebrateFrom(f, "grant"), 260); else if (typeof celebrate === "function") celebrate("grant"); } catch (e) {} }
+
+  // 次回の取材メモ（いちばん新しい回を読み終えたところにだけ出す＝次の行き先が決まる）
+  try {
+    const nx = kikoSerialNext();
+    if (nx && nx.idx === no) {
+      const nsp = kikoSerialSpot(nx.ep);
+      const box = el("div", "ke-next" + (nx.ready ? " ready" : ""));
+      box.innerHTML = `<div class="ke-next-k">次回の取材メモ</div>` +
+        `<p class="ke-next-memo">${nx.ep.memo}</p>` +
+        `<div class="ke-next-pl">取材先　<b>${nsp.name}</b>${nsp.area !== nsp.name ? `<small>${nsp.area}</small>` : ""}</div>` +
+        (nx.needs.length ? `<ul class="ks-need">` + nx.needs.map(t => `<li>${t}</li>`).join("") + `</ul>` : "");
+      app.appendChild(box);
+    }
+  } catch (e) {}
+
+  // この回で歩いたあたり（寄り道）＝読んだ場所へ、そのまま出かけられる
+  try {
+    const ids = [ep.spot].concat(ep.detour || []).filter(x => typeof KONRON_SPOTS !== "undefined" && KONRON_SPOTS[x]);
+    // ★島へ出られるようになる前は出さない（「？」の札が並ぶだけで、押せるものが何もないため）。
+    const mapOpen = (typeof konronMapUnlocked === "function") && konronMapUnlocked();
+    if (ids.length && mapOpen) {
+      app.appendChild(_kikoSecHead("この回で歩いたあたり", "読んだ場所へ。"));
+      const row = el("div", "ke-detour");
+      ids.forEach(sid => {
+        const s = KONRON_SPOTS[sid];
+        let open = false; try { open = mapOpen && _kmSpotOpen(s) && (typeof _kmHiddenQuiet !== "function" || _kmHiddenQuiet(sid)); } catch (e) { open = false; }
+        const b = el("button", "ke-spot" + (open ? "" : " lock"));
+        b.innerHTML = (open && s.photo ? `<img src="${s.photo}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : `<span class="ke-spot-q">？</span>`) +
+          `<span class="ke-spot-n">${open ? s.name : (mapOpen ? s.name : "島のどこか")}</span>` +
+          `<span class="ke-spot-s">${open ? "行ってみる" : (mapOpen ? "まだ行けない" : "島へ出られるようになってから")}</span>`;
+        if (open) b.onclick = () => _kikoGoSpot(sid);
+        row.appendChild(b);
+      });
+      app.appendChild(row);
+    }
+  } catch (e) {}
+
+  // 読者から
+  try {
+    const cs = kikoSerialComments(ep);
+    if (cs.length) {
+      const box = el("div", "ke-cmts");
+      let h = `<div class="kiko-cmt-h">読者から</div>`;
+      cs.forEach(c => {
+        h += `<div class="kiko-cmt"><span class="kcm-av">${c.ic}</span><div class="kcm-b">` +
+          `<div class="kcm-h"><b>${c.n}</b><span>${c.h}</span></div><div class="kcm-t">${c.t}</div><div class="kcm-f">★ ${c.fav}</div></div></div>`;
+      });
+      box.innerHTML = h;
+      app.appendChild(box);
+    }
+  } catch (e) {}
+
+  // 前の回／次の回
+  const nav = el("div", "ke-nav");
+  const prev = KIKO_SERIAL[no - 2], next = KIKO_SERIAL[no];
+  const mk = (e2, label, cls) => {
+    if (!e2 || !kikoSerialDone(e2.id)) return el("span", "ke-nav-b off " + cls, "");
+    const b = el("button", "ke-nav-b " + cls, `<small>${label}</small><b>${e2.title}</b>`);
+    b.onclick = () => renderKikoEpisode(e2.id);
+    return b;
+  };
+  nav.appendChild(mk(prev, `← 第${no - 1}回`, "prev"));
+  nav.appendChild(mk(next, `第${no + 1}回 →`, "next"));
+  app.appendChild(nav);
+
+  const actions = el("div", "actions");
+  const back = el("button", "secondary", "紀行へ戻る"); back.onclick = () => renderKiko();
+  actions.appendChild(back);
+  app.appendChild(actions);
+
+  // 書き上げた直後は🆕を残す（紀行へ戻ったとき、どの回が増えたか分かる）。読みかえしたら消える。
+  if (!opts.fresh && typeof kikoSerialMarkRead === "function") kikoSerialMarkRead(id);
+}
+
 // ── 📖 紀行ブログ本体 ─────────────────────────────────────────────────
 function renderKiko() {
   const p = state.player;
@@ -192,25 +438,23 @@ function renderKiko() {
   const earned = p.kikoEarned || 0;
   const cs = (typeof collectionScoreParts === "function") ? collectionScoreParts() : { pct: 0 };
 
-  // ヘッダー＝ブログの顔（ロゴ・著者・読者数・累計売上）
-  const head = el("div", "kiko-head");
+  // ヘッダー＝ブログの顔。表紙は「いちばん最近書いた連載の取材先」の写真
+  //   ＝開くたびに、いまミミが島のどこまで歩いたかが一目でわかる（まだ1回も無ければ島の全景）。
   // ★M4 理由つき前回比＝前回ここを開いてから増えた読者を「なぜ増えたか」つきで1行だけ。
   //   グラフも目標カウンタも置かない（計器禁止）。増えていない時は何も出さない。
   const rd = (typeof kikoReaderDelta === "function") ? kikoReaderDelta() : null;
-  head.innerHTML =
-    `<div class="kiko-logo">📖 ドラゴンレース紀行</div>` +
-    `<div class="kiko-byline">by ミミ🐰 <span class="kiko-badge">連載中</span></div>` +
-    `<div class="kiko-stats"><span>👀 読者 <b>${fol.toLocaleString("ja-JP")}</b>人</span>` +
-    `<span>💰 累計売上 <b>${fmtCoins(earned)}</b></span></div>` +
-    (rd ? `<div class="kiko-delta">前回から <b>+${rd.diff.toLocaleString("ja-JP")}</b> 人${rd.why ? `（${rd.why}）` : ""}</div>` : "");
-  app.appendChild(head);
+  app.appendChild(_kikoMasthead(fol, earned, rd));
+
+  // 📖 連載「島ぐらし」＝紀行の背骨（kiko_serial.js）。次の取材先 → あしあと → 書いた回。
+  try { _kikoSerialSection(app); } catch (e) { try { console.warn("kiko serial:", e); } catch (_) {} }
 
   // ✍️ 記事（実プレイの出来事から書かれたもの）。まだ1本も無ければ、従来の「今日の更新」。
   const arts = (p.kikoArts && p.kikoArts.length) ? p.kikoArts : null;
+  app.appendChild(_kikoSecHead("日々の記事", "勝った日、負けた日、食べた日。"));
   if (arts) {
     app.appendChild(_kikoArtCard(arts[0], { comments: true }));
     if (arts.length > 1) {
-      app.appendChild(el("div", "kiko-sec", "これまでの記事"));
+      app.appendChild(el("div", "kiko-sec", "すこし前の記事"));
       for (let i = 1; i < arts.length; i++)
         app.appendChild(_kikoArtCard(arts[i], { fold: true, kicker: `📄 ${arts[i].race}戦めのころ` }));
     }
@@ -233,7 +477,7 @@ function renderKiko() {
   try { p.kikoUnread = false; if (typeof saveGame === "function") saveGame(); } catch (e) {}
 
   // カテゴリ（チップ→既存画面へ）
-  app.appendChild(el("div", "kiko-sec", "カテゴリ"));
+  app.appendChild(_kikoSecHead("カテゴリ", "集めた記録を、読みかえす。"));
   const chips = el("div", "kiko-chips");
   _kikoCats().forEach(c => {
     const b = el("button", "kiko-chip" + (c.locked ? " locked" : ""),
@@ -249,7 +493,7 @@ function renderKiko() {
   // 🐦 紀行のあゆみ＝昔のTwitter風タイムライン（ユーザー決裁2026-07-30）。
   //   達成済みの目標（goals.js）を「当時のつぶやき」として新しい順に流す。文面は _KIKO_TWEETS、
   //   無ければ goalTitleSafe（門番つき＝未登場キャラの名は出ない）。📌固定ツイート＝充実度（売上の理由）。
-  app.appendChild(el("div", "kiko-sec", "紀行のあゆみ"));
+  app.appendChild(_kikoSecHead("紀行のあゆみ", ""));
   const tl = el("div", "kiko-tl");
   const _kav = (typeof mimiAvatarStyle === "function") ? mimiAvatarStyle() : "";
   let tlHtml =
@@ -360,6 +604,7 @@ function renderMediaHub() {
 
 if (typeof window !== "undefined") {
   window.renderKiko = renderKiko;
+  window.renderKikoEpisode = renderKikoEpisode;
   window.renderMediaHub = renderMediaHub;
   window.playKikoIntro = playKikoIntro;
 }

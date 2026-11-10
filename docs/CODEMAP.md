@@ -39,6 +39,7 @@ utils → data_*（純データ）→ state → *_engine（純ロジック）→
 | VN | `dialogue`(399) `data_dialogue`(98) | 立ち絵セリフ（`Dialogue.play`→Promise・cast自動取込）。 |
 | 相棒ポロ | `poro`(416) `poro_gourmet`(285) | 発見/鑑定アーク・龍舎・スカウト・グルメレース（表示メタ）。 |
 | ホーム・メタ収集 | `goals`(91) `meals`(185) `sns` | 🎯目標(クエスト)／🍽️食事(みみしんぼ)／📱SNS(`sns.js`=タイムライン投稿・ファンレター データ)。`done(state)`/`unlock(state)`で判定する表示専用。 |
+| 紀行 | `kiko_articles` `kiko_serial` `ui_kiko` | 📖紀行ブログ。`kiko_articles`=実プレイから書かれる“日々の記事”／**`kiko_serial`=連載本編「島ぐらし」全18回（取材先＝島のスポット・順に書かれる）**／`ui_kiko`=紙面（表紙・次の取材先・あしあと地図・回の記事面 `renderKikoEpisode`）。検査=`tools/audit_kiko_serial.js`。 |
 | SNS UI | `ui_sns` | 📱`renderTimeline`(投稿フィード＋❤️)／✉️`renderFanletters`(受信箱＋手紙詳細)。ホームのナビから予想入門・相談を外した枠に配置。 |
 | 終章/ED | `epilogue_engine`(274) `data_ending`(140) `ending_engine`(354) | 伏線→絶滅メーター→最終決戦→スタッフロール。全て表示メタ。 |
 | 音 | `sfx`(284) `bgm`(135) | 合成SE／レースBGM。`setVolume/setMuted/playFile`。 |
@@ -85,6 +86,9 @@ utils → data_*（純データ）→ state → *_engine（純ロジック）→
 | 29 | konron_map | 観光(崑崙マップ) | renderKonronMap (ui_konron_map) |
 | 30 | konron_guide | 崑崙ガイドブック(図鑑) | renderKonronGuide (ui_konron_map) |
 | 31 | konron_gallery | フォトコレクション(図鑑) | renderKonronGallery (ui_konron_map) |
+
+| 33 | kiko | 紀行ブログ（連載＋日々の記事） | renderKiko (ui_kiko) |
+| 33.5 | kiko_read | 紀行・連載の1回 | renderKikoEpisode(id) (ui_kiko) |
 
 ※進行ゲート/解放通知の正本＝`js/progression.js`（UNLOCKSレジストリ・docs/GAME_FLOW_REDESIGN.md §1）。
 
