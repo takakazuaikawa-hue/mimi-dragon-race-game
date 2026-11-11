@@ -3244,6 +3244,11 @@ function settleRace() {
   };
   updateCollectionFromRace(raceResult, c.bet, betResult);
   // §37 — 注目レース日次ボーナス + 図鑑コンプ報酬 (meta-rewards; not part of payout).
+  // ★state.current は次のレースでも同じオブジェクトを使い回す。ここで毎回 0 に戻さないと、
+  //   もらった日の ＋300 が残りつづけ、2戦め以降の結果画面と「📦 今回の獲得」に
+  //   「注目レース達成 ＋300」が**入っていないのに**出つづける（2026-11-12 通しプレイで発覚。
+  //   実測：所持 1,695→1,595 なのに ＋300 の表示）。額・支払いの条件は変えていない＝表示を事実に合わせるだけ。
+  c.featuredBonus = 0;
   try {
     const fday = (typeof _epochDay === "function") ? _epochDay() : null;
     if (fday != null && c.race && typeof featuredRaceToday === "function" &&
