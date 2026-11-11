@@ -40,6 +40,7 @@ function actionBacklog() {
     if (typeof KONRON_SPOTS !== "undefined" && typeof _kmSpotOpen === "function" && typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
       const seen = ((state.player || {}).kurashi || {}).spotsSeen || {};
       Object.keys(KONRON_SPOTS).forEach(function (id) {
+        if (typeof _kmHiddenQuiet === "function" && !_kmHiddenQuiet(id)) return;   // 見つける前の隠しスポットは「行ける場所」に数えない
         if (_kmSpotOpen(KONRON_SPOTS[id]) && !seen[id]) out.spots++;
       });
     }

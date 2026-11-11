@@ -601,7 +601,7 @@ function renderHome() {
       const bl = (typeof actionBacklog === "function") ? actionBacklog() : {};
       if (bl.spots > 0 && typeof KONRON_SPOTS !== "undefined" && typeof _kmSpotOpen === "function") {
         const seenS = ((p || {}).kurashi || {}).spotsSeen || {};
-        const yet = Object.keys(KONRON_SPOTS).filter(id => _kmSpotOpen(KONRON_SPOTS[id]) && !seenS[id]);
+        const yet = Object.keys(KONRON_SPOTS).filter(id => _kmSpotOpen(KONRON_SPOTS[id]) && !seenS[id] && (typeof _kmHiddenQuiet !== "function" || _kmHiddenQuiet(id)));   // 隠しスポットの名前を、見つける前にコメントが口走らない
         if (yet.length) {
           const s = KONRON_SPOTS[yet[Math.floor(Math.random() * yet.length)]];
           if (s && s.name) out.push(`${s.name}、行った？`, `${s.name}の写真みたい〜`);

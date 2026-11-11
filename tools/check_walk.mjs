@@ -2,7 +2,10 @@
 // 全6エリアで start → 全 door / 全 npc の往復到達をBFSで機械検証
 import fs from "node:fs";
 import { createContext, runInContext } from "node:vm";
-const ROOT = new URL("../", import.meta.url).pathname;   // どの環境でも動くよう、このファイルの位置から辿る
+import { fileURLToPath } from "node:url";
+// どの環境でも動くよう、このファイルの位置から辿る。
+// ★ .pathname だと Windows で "/C:/..." になり "C:\C:\..." で落ちる → fileURLToPath を通す。
+const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const src = fs.readFileSync(ROOT + "js/scene_konron.js", "utf8");
 
 // KW_AREAS だけを安全に取り出して評価する（関数本体は使わない）

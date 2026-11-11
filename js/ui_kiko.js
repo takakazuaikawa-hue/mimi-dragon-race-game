@@ -58,6 +58,7 @@ function _kikoCats() {
       let t = 0, o = 0;
       Object.keys(KONRON_SPOTS).forEach(id => {
         const s = KONRON_SPOTS[id];
+        if (typeof _kmHiddenQuiet === "function" && !_kmHiddenQuiet(id)) return;   // 見つける前の隠しスポットは枚数に入れない
         if (s.photo) { t++; if (_kmSpotOpen(s)) o++; }
         if (s.gourmet) { t++; if (_kmSpotOpen(s)) o++; }
       });
