@@ -7,13 +7,16 @@
 // 段（phase）は物語の章とゆるく対応：序章→市場→暮らし→推し竜→神眼/終章。
 // =========================================================================
 
-// フォロワー数（ホーム表示と同じ式：名声・戦績連動の表示専用値）。
+// 読者数（フォロワー）＝島でやったことの記録だけで増える。ホーム・紀行・SNS・印税（state.js checkDailyLogin）が読む。
+//   式：800 ＋ 完走×15 ＋ 単勝×40 ＋ 書いて増えた読者（kikoFans＝日々の記事 +40／殿堂入り +250／連載 150+50×回）。
+//   ★2026-11-12 ユーザー決裁で「名声×2」を外した。名声には (ランク−1)×8000 と最高配当が入っていて、
+//     0勝のままランク2になった瞬間に 860人→16,875人へ跳び、毎日の印税（読者×0.5〜2.5）も一緒に跳んでいた。
+//     紀行の仕様は「やったことが記録される→読者が増える→お金になる」＝走った・当てた・書いた、だけを数える。
+//   ★ここに名声や総資産を足し戻さない（足すと、また“何もしていないのに増える”数字になる）。
 function goalFollowers() {
   try {
     var p = state.player;
-    var fame = (state.assets && state.assets.fameValue) || 0;
-    // ＋紀行を書いて増えた読者（kiko_articles.js kikoFansAdd）＝やったことが記録されるほど増える。
-    return 800 + Math.floor(fame * 2) + (p.completedRaces || 0) * 15 + (p.wins || 0) * 40 + (p.kikoFans || 0);
+    return 800 + (p.completedRaces || 0) * 15 + (p.wins || 0) * 40 + (p.kikoFans || 0);
   } catch (e) { return 0; }
 }
 function _gFlag(name) {
@@ -192,7 +195,7 @@ var GOALS = [
   { id: "meetMakura", phase: 4, icon: "📣", title: "マクラに会う（第4話）",     hint: _gCh4Hint, cast: "makura", maskTitle: "？？？に会う（第4話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
     done: function () { return _gFlag("metMakura"); } },
   { id: "buyPhone",   phase: 4, icon: "📱", title: "スマホを買って配信を始める", hint: "マクラに背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", cast: "makura", maskHint: "？？？に背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", done: function () { return _gFlag("phoneBought"); } },
-  { id: "fol10k",     phase: 4, icon: "💗", title: "フォロワーを1万人にする",   hint: "名声と戦績で配信を育てる。",               done: function () { return goalFollowers() >= 10000; } },
+  { id: "fol10k",     phase: 4, icon: "💗", title: "フォロワーを1万人にする",   hint: "紀行を書くと読者が増える。連載と日々の記事を重ねる。",               done: function () { return goalFollowers() >= 10000; } },
   { id: "dexHalf",    phase: 4, icon: "📖", title: "図鑑を半分まで埋める",       hint: "出会った竜を記録していく。",               done: function () { var seen = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0; return seen >= Math.ceil(_gDexTotal() / 2); } },
 
   // ── 終章：島を守る ── 全開放（スカウト全ロケ・買い物全品・暮らし全枝・上級グルメ） ──
@@ -200,9 +203,11 @@ var GOALS = [
   { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: _gCh5Hint, cast: "celestia", maskTitle: "？？？（第5話）", maskHint: _gCh5Hint, goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
     done: function () { return _gFlag("_chapter_intro_5") || _gFlag("celestiaStrangerSeen"); } },
   { id: "scout3",     phase: 5, icon: "🌋", title: "新たな地で竜を3頭スカウトする", hint: "終章で、竜に会える新しい行き先がいくつも開く。", done: function () { return _gScouted() >= 3; } },
-  { id: "fol100k",    phase: 5, icon: "💗", title: "フォロワーを10万人にする",   hint: "島いちばんの予想家へ。",                   done: function () { return goalFollowers() >= 100000; } },
   // ☄️はセレスティアの記号（data_assets.js の STORY_CAST.celestia.symbol）＝未登場のあいだは出さない（R3）。文面に固有名は無いので伏せるのはアイコンだけ。
-  { id: "protect",    phase: 5, icon: "☄️", title: "賭場を壊さず、島を守りきる", hint: "終章をクリアしてエンディングへ。",         cast: "celestia", maskIcon: "🏝️", done: function () { try { return !!(state.player.epilogue && state.player.epilogue.edFlag); } catch (e) { return false; } } }
+  { id: "protect",    phase: 5, icon: "☄️", title: "賭場を壊さず、島を守りきる", hint: "終章をクリアしてエンディングへ。",         cast: "celestia", maskIcon: "🏝️", done: function () { try { return !!(state.player.epilogue && state.player.epilogue.edFlag); } catch (e) { return false; } } },
+  // ★id は fol100k のまま（祝いの文や保存データが id で引くため）。中身は「3万人」＝記録ベースの読者数で届く数字（2026-11-12）。
+  //   連載を最後まで書いて届く数なので、終章の途中で案内がここで止まらないよう「島を守りきる」の後ろに置く。
+  { id: "fol100k",    phase: 5, icon: "💗", title: "フォロワーを3万人にする",    hint: "島いちばんの予想家へ。",                   done: function () { return goalFollowers() >= 30000; } }
 ];
 
 function goalDone(g) { try { return !!g.done(state); } catch (e) { return false; } }
