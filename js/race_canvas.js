@@ -3704,7 +3704,19 @@ function startRaceCanvas(container, ctx) {
       }
 
       const offLeft = x < cw * 0.04;
-      const drawX = clamp(x, cw * 0.05, cw * 0.97);
+      // ★自分の竜は、後方に置かれても「体ごと」画面の左端に残す（2026-11-13）。
+      //   竜は鼻先が基準で、体はそこから左へ伸びる。以前は鼻先を左5%に留めていたので、体は画面の外に出て
+      //   名札だけが残っていた（駒送りの一覧で確認：7〜8番手の自分の竜が、中盤以降ずっと名札だけ）。
+      //   外れるレースのほうが多いので、「自分の竜が映らないレース」が大半になっていた。
+      //   ★留める位置は、カメラの拡大（S.zoom・軸 fx）をかけたあとで体の左端が画面内に入る所。描く位置だけ＝進み・着順は読むだけ。
+      let _minX = cw * 0.05, _pinned = false;
+      if (betSet.has(dr.id) && rcHasDragonSprite(dr.id)) {
+        const _bw = 2 * rcDragonSpriteHalfW(dr.id, _RC_INRACE * laneDepth(dr));
+        const _z = Math.max(1, S.zoom || 1);
+        _minX = Math.max(_minX, _bw + fx - (fx - cw * 0.02) / _z);
+        _pinned = x < _minX - 1;
+      }
+      const drawX = clamp(x, _minX, cw * 0.97);
 
       // Backmarkers that fall behind the lead-pack focus dissolve off the left
       // edge — reinforces the "field thins to three" read. Tied to focusT so the
@@ -3892,8 +3904,15 @@ function startRaceCanvas(container, ctx) {
       }
       // ゴール後（勝者の大写し中）は小札を出さない＝大写しの後ろに「5 バラン」等が残って安っぽく見えた（ユーザー指摘）
       if ((_lEb > 0.6 || isBet) && !S.finished) {
+        // 後方に留めて描いている自分の竜は、名札に「先頭まで何m」を添える（◂90m）。10m きざみ＝数字がちらつかない。
+        //   留めた位置は本当の位置ではないので、どれだけ後ろかを一緒に言う。走っているあいだだけ。
+        let _nm = commentaryName(dr.id);
+        if (_pinned && !_preGo && P < 1 && S.entryT <= 0 && S.preT <= 0) {
+          const _dm = Math.round(Math.max(0, leaderP - P) * (timeline.distanceMeters || 0) / 10) * 10;
+          if (_dm >= 10) _nm += " ◂" + _dm + "m";
+        }
         _lbls.push({ cx: bodyCx, top: _body ? _body.y : y - 34 * dep, bot: _body ? _body.y + _body.h : baseY + 12, dep: dep, rk: rk, isBet: isBet,
-          lead: popRank[dr.id] === 1, nm: commentaryName(dr.id), a: cctx.globalAlpha, rkText: _preGo ? "" : null });
+          lead: popRank[dr.id] === 1, nm: _nm, a: cctx.globalAlpha, rkText: _preGo ? "" : null });
       }
 
       // ★A-2 ロールコール：紹介中の1頭だけ、頭上に大きな名札プレートを出す。
@@ -3937,8 +3956,8 @@ function startRaceCanvas(container, ctx) {
         cctx.restore();
       }
 
-      // off-screen-behind indicator
-      if (offLeft) {
+      // off-screen-behind indicator（自分の竜は体ごと左端に居て、名札が距離を言うので出さない）
+      if (offLeft && !betSet.has(dr.id)) {
         cctx.fillStyle = "rgba(255,255,255,0.6)";
         cctx.font = "10px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.fillText("◀", cw * 0.03, y);
