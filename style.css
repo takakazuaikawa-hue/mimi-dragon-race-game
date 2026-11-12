@@ -5572,6 +5572,13 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .hl-item.locked { opacity: .55; }
 .hl-item.locked .ic { filter: grayscale(1); }
 
+/* 🔍 鑑定待ちの仔（poro.js poroAppraisalCardHtml・図鑑の先頭）。出会いから結果が届くまでのあいだだけ出る一枚。 */
+.dex-wait { display: flex; align-items: center; gap: 12px; }
+.dex-wait-ph { flex: none; width: 64px; height: 64px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; border-radius: var(--r-2); background: rgba(255,255,255,.05); }
+.dex-wait-tx { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dex-wait-tx b { font-size: 14px; }
+.dex-wait-tx small { font-size: 12px; line-height: 1.6; opacity: .85; }
+.dex-wait-tx small b { font-size: 12px; color: var(--hx-fff4e0); }
 /* 🔓 解放toast（progression.js）＝下部にすっと出て消える帯。モーダルではない・タップで即消し。
    PC枠では body が containing block なので自動的に枠内へ収まる（§SCREEN_SIZE_RULES.md）。 */
 .unlock-toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 140;

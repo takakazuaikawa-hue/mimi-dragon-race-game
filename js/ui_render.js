@@ -1906,6 +1906,9 @@ function renderCollection() {
   app.appendChild(el("div", "card", `見た竜: <b>${seenCount}</b> / ${DRAGONS.length} 種` +
     (_ls ? `　｜　📜 伝承 <b>${_ls.got}</b> / ${_ls.total}` : "")));
 
+  // 🔍 鑑定待ちの仔（出会いの会話のあと、結果が届くまでのあいだだけ・poro.js）。
+  try { const _pw = (typeof poroAppraisalCardHtml === "function") ? poroAppraisalCardHtml() : ""; if (_pw) app.insertAdjacentHTML("beforeend", _pw); } catch (e) {}
+
   // §37 — 図鑑コンプリート報酬の進捗
   try {
     const total = DRAGONS.length || 1;
