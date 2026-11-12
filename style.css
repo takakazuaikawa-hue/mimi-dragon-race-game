@@ -1697,6 +1697,32 @@ table.entry-table {
 .bet-pick-card:hover { border-color: #5a4f86; background: #2a2150; }
 .bet-pick-card:active { transform: translateY(1px); }
 .bet-pick-card.selected { border-color: #ffd34d; background: #3a2f18; box-shadow: 0 0 0 1px #ffd34d inset; }
+/* ★出走表の行に竜の姿（2026-11-12）。枠色（--waku）の光を背に、右向きの竜を少しはみ出させて置く。
+   選ぶと竜が一歩前へ出る＝「この子にした」が絵で分かる。prefers-reduced-motion では動かさない（下の一括指定）。 */
+.bet-pick-card .bp-art {
+  flex: 0 0 auto; position: relative; width: 84px; height: 60px; margin: -5px 0 -5px -2px;
+  border-radius: 10px; overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.22));
+  background:
+    radial-gradient(110% 85% at 50% 108%, color-mix(in srgb, var(--waku, #8a7fc0) 55%, transparent), transparent 72%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.22));
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset;
+}
+.bet-pick-card .bp-art img {
+  position: absolute; left: 50%; top: 50%; width: 132%; max-width: none; pointer-events: none;
+  transform: translate(-50%, -52%);
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.6));
+  transition: transform .28s cubic-bezier(.2, 1.5, .4, 1);
+}
+.bet-pick-card.selected .bp-art { box-shadow: 0 0 0 1.5px #ffd34d inset, 0 0 16px rgba(255,211,77,.4); }
+.bet-pick-card.selected .bp-art img { transform: translate(-46%, -55%) scale(1.16); }
+@media (prefers-reduced-motion: reduce) { .bet-pick-card .bp-art img { transition: none; } }
+@media (max-width: 380px) { .bet-pick-card .bp-art { width: 72px; height: 54px; } }
+/* 竜の絵を入れたぶん横が詰まり、「▾ 見る」が次の段へ折り返して行が高くなっていた（スマホで2頭しか見えない）。
+   オッズの下（右下）に固定して1行に収める。ドロワーを開いても位置が動かないよう top で止める。 */
+.bet-pick-card { min-height: 72px; }
+.bet-pick-card .bp-odds { align-self: flex-start; margin-top: 3px; }
+.bet-pick-card .bp-more { position: absolute; right: 9px; top: 41px; margin: 0; }
 .bet-pick-card .bp-order {
   position: absolute; top: -8px; left: -8px; width: 22px; height: 22px;
   align-items: center; justify-content: center;
@@ -1768,6 +1794,38 @@ table.entry-table {
   background: linear-gradient(180deg, rgba(20,32,30,0.92), rgba(12,20,20,0.96));
   border: 1px solid var(--glass-border); }
 .rs-hero.rs-miss { background: linear-gradient(180deg, rgba(40,28,30,0.9), rgba(20,14,16,0.95)); border-color: rgba(255,120,110,0.25); }
+/* ★結果の舞台（2026-11-12）：左にミミの表情とひとこと、右に1着の竜。文字だけだった答え合わせの先頭に置く。 */
+.rs-stage { position: relative; height: 172px; margin: -20px -16px 12px; overflow: hidden;
+  background: linear-gradient(180deg, #1c2440, #10131f 85%);
+  background:
+    radial-gradient(85% 115% at 76% 104%, color-mix(in srgb, var(--waku, #8a7fc0) 50%, transparent), transparent 70%),
+    linear-gradient(180deg, #1c2440, #10131f 85%); }
+.rs-stage.hit { background: linear-gradient(180deg, #3a2a12, #171008 85%);
+  background: radial-gradient(85% 115% at 76% 104%, rgba(255,205,96,.6), transparent 70%), linear-gradient(180deg, #3a2a12, #171008 85%); }
+.rs-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34px; z-index: 3; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(14,18,20,.96)); }
+.rs-stage.miss::after { background: linear-gradient(180deg, transparent, rgba(24,16,18,.96)); }
+.rs-mimi { position: absolute; left: -24px; top: 2px; height: 268px; width: auto; max-width: none; z-index: 2; pointer-events: none;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); animation: rsMimiIn .5s cubic-bezier(.2,1.3,.4,1) both; }
+.rs-stage.miss .rs-mimi { animation: rsMimiIn .5s cubic-bezier(.2,1.3,.4,1) both, rsMimiShake .5s .45s ease 1; }
+.rs-say { position: absolute; left: 132px; top: 12px; max-width: 46%; z-index: 4; text-align: left;
+  background: rgba(255,255,255,.97); color: #2a2030; font-size: 11.5px; font-weight: 700; line-height: 1.5;
+  padding: 7px 10px; border-radius: 12px 12px 12px 3px; box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  animation: rsSayIn .35s .35s ease both; }
+.rs-winner { position: absolute; right: -8px; bottom: 6px; width: 60%; z-index: 2; text-align: right; pointer-events: none; }
+.rs-winner img { display: block; width: 100%; max-width: none; margin-bottom: -38px;
+  filter: drop-shadow(0 8px 10px rgba(0,0,0,.55)); animation: rsDragonIn .7s cubic-bezier(.2,1.2,.4,1) both; }
+.rs-win-plate { position: relative; z-index: 4; display: inline-flex; align-items: baseline; gap: 6px; margin-right: 16px;
+  padding: 4px 11px; border-radius: 99px; background: rgba(10,12,18,.8); border: 1px solid rgba(255,255,255,.2);
+  font-size: 12.5px; color: #fff; white-space: nowrap; }
+.rs-win-plate i { font-style: normal; font-weight: 900; color: var(--gold-bright); }
+.rs-win-plate small { font-size: 10px; color: #c2bcd2; }
+.rs-winner.mine .rs-win-plate { border-color: var(--gold-bright); box-shadow: 0 0 12px rgba(255,205,96,.55); }
+@keyframes rsMimiIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes rsMimiShake { 0%,100% { transform: none; } 20% { transform: translateX(-4px) rotate(-1.2deg); } 40% { transform: translateX(4px) rotate(1.2deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@keyframes rsDragonIn { from { opacity: 0; transform: translateX(46px); } to { opacity: 1; transform: none; } }
+@keyframes rsSayIn { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rs-mimi, .rs-stage.miss .rs-mimi, .rs-winner img, .rs-say { animation: none; } }
 /* ★二重枠の解消（ティア枠）：内側リングが枠線と同色で「薄いほう」だったため、
    明→暗の細い線が2本並んで見えていた。リングは枠線と**同じ色**にして1本の太い縁に融合する
    （.lt-tab.on / .mall-card.worn で既に使っている作法に合わせた）。外側の光は段位のまま残す。 */
@@ -2402,6 +2460,14 @@ table.entry-table {
   border: 1px solid var(--gold-line); box-shadow: 0 12px 30px -14px rgba(0,0,0,0.7), var(--lift); }
 .feat-race::before { content: ""; position: absolute; right: -30px; top: -30px; width: 120px; height: 120px; pointer-events: none;
   background: radial-gradient(circle, rgba(255,140,70,0.3), transparent 70%); }
+/* ★コースの写真を敷く（2026-11-12）：注目カードは右側に、地域の見出しは帯として。文字は左の暗い側に乗る。 */
+.feat-race.feat-photo { background:
+  linear-gradient(100deg, rgba(34,22,14,.97) 0%, rgba(34,22,14,.9) 44%, rgba(34,22,14,.38) 100%),
+  var(--feat-photo) right center / cover no-repeat, var(--plate); }
+.rs-grp-head.rs-grp-photo { min-height: 64px; align-items: flex-end; padding-top: 22px; padding-bottom: 9px;
+  background-size: cover; background-position: center 42%; border-radius: var(--rd-12, 12px); overflow: hidden;
+  text-shadow: 0 1px 6px rgba(0,0,0,.85); }
+.rs-grp-head.rs-grp-photo b { font-size: 16px; }
 .feat-tag { position: relative; font-size: 11px; font-weight: 800; letter-spacing: .12em; color: var(--gold-bright); }
 .feat-name { position: relative; font-size: 18px; font-weight: 900; color: var(--white); margin: 3px 0 4px; }
 .feat-meta { position: relative; font-size: 11.5px; color: var(--mist-soft); }

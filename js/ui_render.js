@@ -1987,6 +1987,14 @@ function featuredRaceToday() {
   const day = (typeof _epochDay === "function") ? _epochDay() : 0;
   return pool[((day % pool.length) + pool.length) % pool.length];
 }
+// 開催地域のコース写真（島の地図のスポットと共用・無ければ空文字）。表示のみ。
+function _regionCoursePhoto(region) {
+  try {
+    if (!region || typeof KONRON_SPOTS === "undefined") return "";
+    for (const id in KONRON_SPOTS) { const sp = KONRON_SPOTS[id]; if (sp && sp.region === region && sp.photo) return sp.photo; }
+  } catch (e) {}
+  return "";
+}
 function featuredBonusAmount() {
   return Math.max(300, Math.floor((state.player.maxCoinsReached || 0) * 0.015));
 }
@@ -2075,6 +2083,8 @@ function renderRaceSelect() {
         `<div class="feat-purpose">${raceBlurb(feat)}</div>` +
         `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の達成ボーナス 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
         `<button class="feat-go">注目レースへ ▶</button>`;
+      const _fph = _regionCoursePhoto(feat.region);   // 注目カードの背にもコースの写真（右側にうっすら）
+      if (_fph) { fc.classList.add("feat-photo"); fc.style.setProperty("--feat-photo", `url("${_fph}")`); }
       fc.querySelector(".feat-go").onclick = () => renderRaceDetail(feat);
       app.appendChild(fc);
     }
@@ -2185,6 +2195,12 @@ function renderRaceSelect() {
       shownAny += vis.length;
       const head = el("div", "rs-grp-head",
         `<b>${mode === "rank" ? gradeBadgeHTML(g.grade) : "📍 "}${g.title}</b><span>${g.sub}</span>`);
+      // ★地域の見出しに、そのコースの写真を敷く（2026-11-12）。文字だけの一覧だったレース選択に、
+      //   「どんな場所で走るのか」を絵で出す。写真は島の地図のコース写真（KONRON_SPOTS の region つき）を読むだけ。
+      if (mode !== "rank") {
+        const _ph = _regionCoursePhoto(vis[0] && vis[0].region);
+        if (_ph) { head.classList.add("rs-grp-photo"); head.style.backgroundImage = `linear-gradient(90deg, rgba(8,12,16,.86) 0%, rgba(8,12,16,.55) 46%, rgba(8,12,16,.12) 100%), url("${_ph}")`; }
+      }
       listWrap.appendChild(head);
       const body = el("div", "rs-rank-body");
       vis.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank, g.hideRegion)));
@@ -2637,6 +2653,9 @@ function renderRaceDetail(race) {
     updateExpected();
   }
 
+  // ★出走表の行に竜の姿を出す（2026-11-12・ユーザー指示「まず見た目が製品になっていること」）。
+  //   それまでは16pxの紋章と文字と数字だけで「信じる一頭」を選ばせていた（絵は「▾見る」を開いた中だけ）。
+  //   絵は images/dragons/<id>.png（透過・レース画面と同じもの）を読むだけ＝表示のみ。読めなければ枠ごと消える。
   sorted.forEach(od => {
     const d = DRAGONS.find(x => x.id === od.dragonId);
     const rk = od.popularityRank;
@@ -2647,6 +2666,7 @@ function renderRaceDetail(race) {
     card.innerHTML = `
       <span class="bp-order" style="display:none"></span>
       <span class="bp-pop p${rk <= 3 ? rk : ""}">${rk}<small>人気</small></span>
+      <span class="bp-art"><img src="images/dragons/${d.id}.png?v=${typeof RC_DRAGON_ART_V !== "undefined" ? RC_DRAGON_ART_V : 1}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.remove()"></span>
       <span class="bp-main">
         <span class="bp-name">${dragonIcon(d)}${d.name}</span>
         <span class="bp-sub"><span class="style-${d.style}">${STYLE_LABEL[d.style]}</span>${d.newspaperMark ? `<span class="bp-mark">${d.newspaperMark}</span>` : ""}<span class="bp-form">${recentResultLabel(d.recentResult)}</span>${typeof rivalTagHtml === "function" ? rivalTagHtml(d.id) : ""}</span>
@@ -3171,6 +3191,12 @@ function onConfirmBet(skipDialog) {
   // ★C-3の門番も再武装。state.current はレース間で使い回されるため、ここで戻さないと
   //   2戦目以降の「根拠の通算成績」が記録されない（実プレイで発見・1戦目だけ記録されていた）。
   c._reasonScored = false;
+  // ★同じ型の取りこぼしが、あと2つあった（2026-11-12 通しプレイで発覚）。
+  //   _poroArcTried：戻していなかったので、ポロの物語は「読み込み後の最初の1戦」でしか試されず、
+  //     同じ回のうちに2勝しても相棒と出会えなかった（実測：4勝してもポロ未登場・目標だけ達成ずみ）。
+  //   _rivalScored：前のレースのライバル対決の結果が、次のレースにもそのまま出ていた。
+  c._poroArcTried = false;
+  c._rivalScored = null;
   c.raceResult = raceResult;
   c._fixedResult = null; c._celestiaRevealed = null;   // consult is consumed by the run
   const betResult = resolveBet(c.bet, raceResult, c.oddsResult);
@@ -4361,7 +4387,30 @@ function buildResultHero(ps, tier, c) {
   const info = RESULT_TIER[tier] || RESULT_TIER[0];
   const hit = !!ps.hit;
   const hero = el("div", "rs-hero rs-" + info.cls);
+  // ★結果の主役を「絵」にする（2026-11-12・ユーザー指示「まず見た目が製品になっていること」）。
+  //   それまでの答え合わせは文字と数字だけで、勝った竜の姿も、ミミの顔も出ていなかった。
+  //   左＝いまの衣装のミミ（当たり＝happy／外れ＝panic）とひとこと、右＝1着の竜と人気・オッズ。
+  //   ★すべて確定済みの結果を読むだけ（表示のみ）。絵が読めなければ、その部品だけ消える。
+  let stage = "";
+  try {
+    const ents = (c && c.raceResult && c.raceResult.entries) || [];
+    const win = ents.find(e => e.rank === 1) || ents[0];
+    const wd = win && win.dragon;
+    const od = wd && c.oddsResult && (c.oddsResult.oddsData || []).find(o => o.dragonId === wd.id);
+    const mine = !!(wd && c.bet && (c.bet.selections || []).indexOf(wd.id) >= 0);
+    const oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "sukanpin";
+    const say = (c.recap && c.recap.mimiRecap) || "";
+    const av = (typeof RC_DRAGON_ART_V !== "undefined") ? RC_DRAGON_ART_V : 1;
+    stage =
+      `<div class="rs-stage ${hit ? "hit" : "miss"}" style="--waku:${wd ? dragonColor(wd) : "#8a7fc0"}">` +
+        `<img class="rs-mimi" src="${outfitImg(oid, hit ? "happy" : "panic")}" alt="" decoding="async" onerror="this.onerror=null;this.src='${outfitImg(oid, "default")}'">` +
+        (say ? `<div class="rs-say">${say}</div>` : "") +
+        (wd ? `<div class="rs-winner${mine ? " mine" : ""}"><img src="images/dragons/${wd.id}.png?v=${av}" alt="" decoding="async" onerror="this.remove()">` +
+              `<span class="rs-win-plate"><i>1着</i><b>${wd.name}</b>${od ? `<small>${od.popularityRank}番人気・${od.winOdds.toFixed(1)}倍</small>` : ""}</span></div>` : "") +
+      `</div>`;
+  } catch (e) { stage = ""; }
   hero.innerHTML =
+    stage +
     `<div class="rs-confetti" aria-hidden="true"></div>` +
     `<div class="rs-stamp">${info.word}</div>` +
     (hit
