@@ -77,6 +77,8 @@ const UI_OVERLAY_SEL = ".navpop-ov, .login-ov, #lt-cutin, .dlg-overlay:not(.hidd
 function uiBusy() {
   try {
     if (window.Dialogue && Dialogue.isOpen && Dialogue.isOpen()) return true;
+    // ★結果を見せ切るための「間」（Dialogue.hold）の最中も取り込み中として扱う＝解放のお知らせ等が割り込まない。
+    if (window.Dialogue && Dialogue.isHolding && Dialogue.isHolding()) return true;
     return !!document.querySelector(UI_OVERLAY_SEL);
   } catch (e) { return false; }
 }

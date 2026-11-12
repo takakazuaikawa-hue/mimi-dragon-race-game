@@ -3389,6 +3389,8 @@ function showBetConfirm() {
   const overlay = document.getElementById("event-overlay");
   // ★投票券モチーフ（C演出）：半券つきチケット→「千切って出走」。表示のみ＝数値は betOdds のまま。
   const serial = `No.${String((state.player.completedRaces || 0) + 1).padStart(4, "0")}`;   // 通算何戦目か（旧＝レースIDの断片「LDERA4」が見えていた）
+  // 前回の賭けの理由（2戦目から。初回は選ばせる）。BET_REASONS に無い古い値は無視＝選ばせる側に倒す。
+  const _prevReason = ((state.player.completedRaces || 0) >= 1 && state.player.betReason && BET_REASONS[state.player.betReason]) ? state.player.betReason : null;
   document.getElementById("event-speaker").textContent = "🎫 聖龍レース投票券";
   document.getElementById("event-text").innerHTML =
     `<div class="tix" id="tix-card">` +
@@ -3407,12 +3409,12 @@ function showBetConfirm() {
     // ★根拠の宣言をここへ移設（スリップ上ではスキップされ「選ばない」が大多数になっていた）。
     //   選ばないと出走ボタンが押せない＝必ず1つ選ぶ。結果画面C-3の答え合わせの材料になる。
     `<div class="bcf-reason" id="bcf-reason">` +
-      `<div class="bcf-q">どうしてこの子？<small>選ぶと出走できます</small></div>` +
+      `<div class="bcf-q">どうしてこの子？<small>${_prevReason ? "前回と同じ。押すと変えられます" : "選ぶと出走できます"}</small></div>` +
       `<div class="bcf-chips">` +
-        `<button type="button" class="bcf-chip" data-r="kan">💗 好み</button>` +
-        `<button type="button" class="bcf-chip" data-r="data">📊 能力データ</button>` +
-        `<button type="button" class="bcf-chip" data-r="tell">🏁 レース展開</button>` +
-        `<button type="button" class="bcf-chip" data-r="value">💰 うまみ</button>` +
+        `<button type="button" class="bcf-chip${_prevReason === "kan" ? " chosen" : ""}" data-r="kan">💗 好み</button>` +
+        `<button type="button" class="bcf-chip${_prevReason === "data" ? " chosen" : ""}" data-r="data">📊 能力データ</button>` +
+        `<button type="button" class="bcf-chip${_prevReason === "tell" ? " chosen" : ""}" data-r="tell">🏁 レース展開</button>` +
+        `<button type="button" class="bcf-chip${_prevReason === "value" ? " chosen" : ""}" data-r="value">💰 うまみ</button>` +
       `</div>` +
     `</div>`;
   // Swap close button for two buttons（出走＝主ボタン／やめる＝副）
@@ -3429,8 +3431,16 @@ function showBetConfirm() {
   //   以前は disabled で灰色表示していたが、押せないボタンが見えている状態は
   //   規制されている感じ＝心理的ストレスになる。選んだ瞬間に下からせり出させて、
   //   「選んだから次に進める」という前向きな因果として見せる。
-  actions.classList.add("pending");
-  state.current.betReason = null;
+  // ★2戦目からは、前回の理由を選んだ状態で出す（2026-11-12）。
+  //   毎回かならず選び直させると、3戦目には「もう済ませた手続きなのにまだ走らない」になる
+  //   （Codex の通し試験）。初回だけは問いとして選ばせ、以後は変えたいときだけ押す。
+  //   理由別の戦績（reasonStats）はこれまでどおり、出走した時点の理由で記録される。
+  if (_prevReason) {
+    state.current.betReason = _prevReason;
+  } else {
+    actions.classList.add("pending");
+    state.current.betReason = null;
+  }
   (function wireReasonChips() {
     const host = document.getElementById("bcf-reason"); if (!host) return;
     host.querySelectorAll(".bcf-chip").forEach(chip => {
@@ -4048,6 +4058,18 @@ const RECAP_TABS = [
 function renderResult() {
   state.ui.screen = "result";
   const c = state.current;
+  // ★結果を見せ切ってから会話を出す（2026-11-12・Codex の通し試験＋ユーザーから「その程度は自分で判断を」）。
+  //   以前は結果を描くのと同時に、借金の説明・衣装の贈呈・昇格の会話が全画面でかぶさり、
+  //   的中の文字も、数字が増えていく演出も、その下で誰にも見られずに終わっていた。
+  //   会話の列に「間」を1つ挟み、当たり＝数字が数え上がってひと呼吸／外れ＝判定とミミの一言を読む時間、
+  //   を置いてから始める。会話そのもの・順番・一度きりの印は変えない（出る時刻だけ）。
+  //   1レースに1回（タブ切替の再描画では挟まない）。
+  if (!c.resultHooksRan && window.Dialogue && Dialogue.hold) {
+    try {
+      const _t = (c.betResult && c.betResult.hit && typeof resultTierOf === "function") ? resultTierOf(c.betResult) : 0;
+      Dialogue.hold(_t > 0 ? 900 + _t * 220 + 1400 : 2000);
+    } catch (e) {}
+  }
   // Settle the wallet + progression now that the race is over — once per race
   // (c.settled guard), before the bankruptcy/reaction hooks that read coins.
   settleRace();

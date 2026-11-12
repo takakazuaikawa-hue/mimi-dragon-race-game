@@ -260,6 +260,7 @@
   // 句読点の息継ぎ（読む速さは変えず、リズムだけ台詞に寄せる）。既存の {w:ms} 指定とは加算。
   var DLG_PAUSE = { "、": 90, "，": 90, "。": 190, "！": 190, "？": 190, "…": 70, "—": 70 };
   var chain = Promise.resolve(); // 多重 play() を直列化
+  var holdUntil = 0;             // Dialogue.hold() で挟んだ「間」が明ける時刻（ms）
 
   var REDUCE = false;
   try { REDUCE = global.matchMedia && global.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
@@ -589,6 +590,19 @@
     inferExpr: inferExpr,             // 文面→表情の推定（②表情差分）
     isOpen: function () { return !!(dom && !dom.overlay.classList.contains("hidden")); },
     dismiss: function () { try { finish(); } catch (e) {} },   // 開いているセリフを閉じる（レース開始時など）
+    // ★順番待ちの列に「間」を1つ挟む（2026-11-12）。このあと play された会話は、ms 経ってから始まる。
+    //   使いどころ＝結果画面：的中の数字が出そろう前に、借金の説明・衣装の贈呈・昇格の会話が
+    //   かぶさって、当たった喜びを味わう前に案内を読む仕事になっていた（Codex の通し試験）。
+    //   会話を出す側（フック・贈呈・ポロ…）を1つずつ遅らせるのではなく、列の入口で一度だけ待たせる
+    //   ＝どの会話にも効く。早送り（検証）中は待たない。すでに列に並んでいる会話の後ろに入る。
+    hold: function (ms) {
+      ms = +ms || 0;
+      if (ms <= 0 || fastMs > 0) return;
+      holdUntil = Math.max(holdUntil, Date.now() + ms);
+      chain = chain.then(function () { return new Promise(function (res) { setTimeout(res, ms); }); });
+    },
+    // 「間」の最中か。utils.js の uiBusy が見る＝解放のお知らせなども、この間は割り込まない。
+    isHolding: function () { return Date.now() < holdUntil; },
     // 検証用：セリフは通常どおり描画したまま、クリックを待たず自動で先へ進める。
     //   ★「出さない」ではなく「早送り」にする。消す作りにするとVN自体を
     //     検証できなくなるため（一度その実装をして中身を確認する手段を失った）。

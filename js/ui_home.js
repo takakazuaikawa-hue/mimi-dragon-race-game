@@ -460,6 +460,17 @@ function renderHome() {
       const _gt = _ng ? ((typeof goalTitleSafe === "function") ? goalTitleSafe(_ng) : _ng.title) : "";
       _title = _ng ? `${(typeof goalIconSafe === "function") ? goalIconSafe(_ng) : _ng.icon} ${_gt}` : "✨ すべて達成しました！";   // アイコンもネタバレ除けを通す（目標画面と同じ）
       _onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
+      // ★行き先がいま開いている目標は、札を押したらそのまま行き先へ運ぶ（2026-11-12）。
+      //   以前は必ず目標の一覧を挟み、そこで「▶ モールへ」を押し、モールの中で服を探す、の3手だった。
+      //   直行するのは「行き先があり（go）、入れる状態で（goIf）、行けば用が足りる（directIf）」ときだけ。
+      //   物語の目標は、その話が読めるようになるまでは一覧（残っている条件が書いてある）を開く。
+      //   行き先の無い目標（レースで達成するもの）は、これまでどおり一覧を開く。
+      try {
+        if (_ng && typeof _ng.go === "function" && (!_ng.goIf || _ng.goIf()) && (!_ng.directIf || _ng.directIf())) {
+          _cls += " hl-goal--act hl-goal--go";
+          _onclick = () => { try { _ng.go(); } catch (e) { if (typeof renderGoals === "function") renderGoals(); } };
+        }
+      } catch (e) {}
     }
     if (_title) {
       const goalBtn = el("button", _cls);

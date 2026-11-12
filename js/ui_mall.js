@@ -163,6 +163,11 @@ function _renderMallBody() {
 
   app.appendChild(scm);
   _scmBottomNav();                    // ⑦ 下部オレンジナビ＝body直下にfixedで設置（.scmのtransform外でfloatさせる・beginScreenで掃除）
+  // ★ホームの目標の札から来たとき（goals.js firstOutfit.go）は、目当ての一着の試着室まで送る。1回きり。
+  if (state.ui._mallFocusFit) {
+    state.ui._mallFocusFit = false;
+    setTimeout(() => { try { if (state.ui.screen === "mall") _scmScrollTo(".scm-fit"); } catch (e) {} }, 80);
+  }
 }
 
 // ヒーロー：横スクロール・カルーセル＋ドット＋自動送り（操作後はしばらく停止）。

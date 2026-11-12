@@ -170,7 +170,12 @@ var GOALS = [
   { id: "firstOutfit", phase: 1, icon: "🛍️", title: "はじめて自分の服を買う",
     hint: "🛍️モールで『ブニクロ普段着』を買う。これが第2話のカギ。",
     goLabel: "▶ モールへ", goIf: function () { return (typeof mallUnlocked !== "function") || mallUnlocked(); },
-    go: function () { if (typeof renderMall === "function") renderMall(); },
+    // ★モールの入口ではなく、目当ての一着の試着室まで運ぶ（2026-11-12）。モールに入ってから
+    //   「新作・特別な服・ショップ・試着室…」の中を探させていた（Codex の通し試験：最初の一着への近道が無い）。
+    go: function () {
+      try { state.ui.mallSel = "buniqro"; state.ui._mallFocusFit = true; } catch (e) {}
+      if (typeof renderMall === "function") renderMall();
+    },
     done: function () { return _gBuniqro(); } },
 
   // ── 第二話：オッズと市場 ── 🛍️モール買い物が開く ──
@@ -178,6 +183,7 @@ var GOALS = [
   // ★ヒントは**実際のゲートと一致**させる（旧文は「服を買う」を書いておらず、モールを"結果"と誤読させた）。
   //   残っている条件だけを動的に出す＝いま何をすればいいかが一目で分かる。
   { id: "readCh2",    phase: 2, icon: "📊", title: "ミズの分析を学ぶ（第2話）", hint: _gCh2Hint, cast: "mizu", maskTitle: "？？？に会う（第2話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+    directIf: function () { return (typeof chapterAvailable === "function") && chapterAvailable("2"); },
     done: function () { return _gFlag("_chapter_intro_2"); } },
   { id: "changeFit",  phase: 2, icon: "👗", title: "衣装を着替えてみる",         hint: "モールで服を手に入れて着替える。",         done: function () { return _gOutfitCount() >= 2; } },
   { id: "wideHit",    phase: 2, icon: "✨", title: "ワイド／複勝を当てる",       hint: "単勝の外に“妙味”を見つける。",             done: function () { return _gFlag("firstWideHit"); } },
@@ -185,6 +191,7 @@ var GOALS = [
 
   // ── 第三話：暮らしを立てる ── 🌱くらしツリー・生活資産／2勝で🐲龍舎・竜スカウト ──
   { id: "readCh3",    phase: 3, icon: "🏠", title: "スミカと総資産（第3話）",   hint: _gCh3Hint, cast: "sumika", maskTitle: "？？？と総資産（第3話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+    directIf: function () { return (typeof chapterAvailable === "function") && chapterAvailable("3"); },
     done: function () { return _gFlag("_chapter_intro_3"); } },
   // hides:"poro" ＝ 発見前は名前「ポロ」を出さない（命名オチを潰さないため。発見条件の2勝は仕様どおり不変）。
   { id: "buddy",      phase: 3, icon: "🐲", title: "相棒を見つける（2勝）",     hint: "2勝するとポロと出会い、🐲龍舎・竜スカウトが開く。", hides: "poro", maskHint: "2勝すると相棒と出会い、🐲龍舎・竜スカウトが開く。", done: function (s) { return (s.player.wins || 0) >= 2; } },
@@ -193,6 +200,7 @@ var GOALS = [
 
   // ── 第四話：配信者になる ── 📱スマホ購入でホーム放送化・SNS解禁 ──
   { id: "meetMakura", phase: 4, icon: "📣", title: "マクラに会う（第4話）",     hint: _gCh4Hint, cast: "makura", maskTitle: "？？？に会う（第4話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+    directIf: function () { return (typeof chapterAvailable === "function") && chapterAvailable("4"); },
     done: function () { return _gFlag("metMakura"); } },
   { id: "buyPhone",   phase: 4, icon: "📱", title: "スマホを買って配信を始める", hint: "マクラに背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", cast: "makura", maskHint: "？？？に背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", done: function () { return _gFlag("phoneBought"); } },
   { id: "fol10k",     phase: 4, icon: "💗", title: "フォロワーを1万人にする",   hint: "紀行を書くと読者が増える。連載と日々の記事を重ねる。",               done: function () { return goalFollowers() >= 10000; } },
@@ -201,6 +209,7 @@ var GOALS = [
   // ── 終章：島を守る ── 全開放（スカウト全ロケ・買い物全品・暮らし全枝・上級グルメ） ──
   // セレスティアは伏線段階（celestiaStrangerSeen）でも本名・☄️・「神眼」を出さない（解禁は第5話＝advisorMet）。
   { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: _gCh5Hint, cast: "celestia", maskTitle: "？？？（第5話）", maskHint: _gCh5Hint, goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+    directIf: function () { return (typeof chapterAvailable === "function") && chapterAvailable("5"); },
     done: function () { return _gFlag("_chapter_intro_5") || _gFlag("celestiaStrangerSeen"); } },
   { id: "scout3",     phase: 5, icon: "🌋", title: "新たな地で竜を3頭スカウトする", hint: "終章で、竜に会える新しい行き先がいくつも開く。", done: function () { return _gScouted() >= 3; } },
   // ☄️はセレスティアの記号（data_assets.js の STORY_CAST.celestia.symbol）＝未登場のあいだは出さない（R3）。文面に固有名は無いので伏せるのはアイコンだけ。
