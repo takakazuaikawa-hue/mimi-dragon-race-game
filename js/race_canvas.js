@@ -1832,7 +1832,7 @@ function startRaceCanvas(container, ctx) {
       <div class="rc-hud-left">
         <span class="rc-phase" id="rc-phase">序盤</span>
         <span class="rc-section" id="rc-section"></span>
-        <span class="rc-race">${raceFullName(race)}</span>
+        <span class="rc-race" title="${raceFullName(race)}">${race.cup ? race.cup + " 第" + race.number + "R" : raceFullName(race)}</span>
       </div>
       <div class="rc-hud-right">
         <span class="rc-weather">${(WEATHERS[race.weather] || {}).label || ""}</span>
@@ -4389,6 +4389,11 @@ function startRaceCanvas(container, ctx) {
     remainEl.textContent = S.finished ? "ゴール" : "残り " + timeline.distanceRemainingAt(S.tau) + "m";
     const _tNow = (typeof performance !== "undefined" ? performance.now() : Date.now());
     updateBoard(standings, standMap, _tNow);
+    // ★同接（👁）を動かす処理を呼び戻す（2026-11-12）。「ゆっくり実況」へ刷新したとき（88ddbaf）に、
+    //   視聴者コメントの表示と一緒にこの呼び出しまで外れ、上部の視聴者数がレース中ずっと 0 のままだった。
+    //   コメントの描画先（#rc-chat）と実況ワイプ（#rc-caster）はもう無いので、そこは黙って何もしない。
+    //   生きるのは同接の数字だけ＝先頭交代・終盤・圏内・ゴールで増える“演出の数字”（結果には無関係）。
+    try { updateChat(standings, standMap, _pi, _tNow); } catch (e) {}
   }
 
   // =====================================================================
