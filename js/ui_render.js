@@ -4150,10 +4150,16 @@ function drawRecapScreen() {
         else _rv = c._rivalScored;
       }
       const box = el("div", "rs-reason" + (ps.hit ? " hit" : " miss"));
+      // ★理由への返事は「自分の竜と、見た区間」を名指す（js/bet_story.js・確定済みの事実を読むだけ）。
+      //   読めないときだけ、従来の総括文（BET_REASONS の win/lose）へ落ちる。
+      const _reply = (typeof reasonReplyLine === "function" && reasonReplyLine(c, rk)) || (ps.hit ? R.win : R.lose);
+      const _trace = (typeof betStoryTraceHtml === "function") ? betStoryTraceHtml(c, rk) : "";
+      const _miss = !ps.hit ? missReasonLine(c) : "";
       box.innerHTML =
         `<div class="rsr-top"><span class="rsr-ic">${R.ic}</span>` +
-        `<span class="rsr-msg">${ps.hit ? R.win : R.lose}</span></div>` +
-        (!ps.hit ? `<div class="rsr-miss">${missReasonLine(c)}</div>` : "") +
+        `<span class="rsr-msg">${_reply}</span></div>` +
+        _trace +
+        (_miss ? `<div class="rsr-miss">${_miss}</div>` : "") +
         (_rv.revenged ? `<div class="rsr-revenge">⚔️ ${_rv.name} に、借りを返した。</div>` : "") +
         `<div class="rsr-stat">${R.ic} ${R.name}での予想　<b>${st.w}勝${st.l}敗</b></div>`;
       // ★負けた相手を「名前のある相手」にする＝図鑑へ1タップで飛べる導線。
@@ -4312,26 +4318,9 @@ function recordReasonResult(key, hit) {
   if (hit) e.w++; else e.l++;
   return e;
 }
-// ★CORE_LOOP_UX C-2：不的中の「敗因1行」＝罰ではなく学びに変える。
-//   timeline/raceResult の“確定済みの事実”を読み替えるだけ（新しい判定は作らない）。
-function missReasonLine(c) {
-  try {
-    const myId = c.bet && c.bet.selections && c.bet.selections[0];
-    if (!myId) return "";
-    const ordered = c.raceResult.entries;               // 着順どおり
-    const myIdx = ordered.findIndex(e => e.dragon.id === myId);
-    if (myIdx < 0) return "";
-    const need = c.bet.type === "win" ? 1 : 3;          // 何着以内が必要だったか
-    const my = ordered[myIdx], border = ordered[need - 1];
-    const nm = my.dragon.name;
-    if (myIdx + 1 === need + 1 && border) {             // ちょうど1つ届かなかった
-      return `${nm} は${myIdx + 1}着。あと1頭ぶん、届かなかった。`;
-    }
-    if (my.collapse) return `${nm} は途中で失速。展開が合わなかった。`;
-    if (myIdx + 1 <= need + 2) return `${nm} は${myIdx + 1}着。惜しいところまでは来ていた。`;
-    return `${nm} は${myIdx + 1}着。今日は流れに乗れなかった。`;
-  } catch (e) { return ""; }
-}
+// ★CORE_LOOP_UX C-2：不的中の1行（missReasonLine）と、理由への返事（reasonReplyLine）・道のりの帯
+//   （betStoryTraceHtml）は js/bet_story.js へ移した（2026-11-12）。BET_REASONS の win/lose は、
+//   道のりが読めないときの控えとして残してある。
 
 // Win tier from the payout odds — the thrill scales with the 穴 you cracked.
 function resultTierOf(ps) {

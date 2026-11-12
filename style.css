@@ -958,6 +958,21 @@ body.dev-on .debug-toggle { display: inline-block; }
   font-size: 12px; line-height: 1.6; color: #bfc6d0; margin-top: 7px;
   padding-top: 7px; border-top: 1px dashed rgba(255,255,255,.14);
 }
+/* 道のりの帯（js/bet_story.js）：序盤◯番手 ▸ 中盤◯番手 ▸ ゴール◯着。返事が名指した区間だけ明るい。
+   幅が足りなければ折り返す（1マスの中では折らない）＝狭い端末でもはみ出さない。 */
+.rs-reason .rsr-trace {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px;
+  font-size: 11.5px; line-height: 1.4; color: #9aa2ae;
+}
+.rs-reason .rsr-trace i { font-style: normal; opacity: .55; }
+.rs-reason .rsr-tr {
+  white-space: nowrap; padding: 2px 8px; border-radius: var(--r-full);
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+}
+.rs-reason .rsr-tr b { color: #e2e6ec; font-variant-numeric: tabular-nums; }
+.rs-reason .rsr-tr.key { color: #f2ede0; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.34); }
+.rs-reason.hit .rsr-tr.key { color: #ffe8a8; background: rgba(255,214,120,.16); border-color: rgba(255,214,120,.55); }
+.rs-reason.hit .rsr-tr.key b { color: #fff3cf; }
 .rs-reason .rsr-stat { font-size: 11px; color: #9aa2ae; margin-top: 8px; }
 .rs-reason .rsr-stat b { color: #e2e6ec; font-variant-numeric: tabular-nums; }
 /* ★C-2 図鑑導線／C-4 リベンジ（js/rival.js・表示専用）。
