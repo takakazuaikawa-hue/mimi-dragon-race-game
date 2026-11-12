@@ -135,6 +135,27 @@ function _renderMallBody() {
   head.appendChild(hic);
   scm.appendChild(head);
 
+  // ── はじめての一着（まだ持っていないあいだだけ・いちばん上）──
+  //   ★モールに入ると、特集のカルーセル・6つの入口・試着室・ショップ・サービスが並び、最初の一着（第2話のカギ）が
+  //     その中に埋もれていた（Codex の通し試験「最初の一着を買いたい段階で、売り場全体の案内を先に見せすぎる」）。
+  //     ホームの札から来た人は試着室まで運ばれるが、解放の帯やおでかけから入った人はいちばん上に着く。
+  //   ★絵は出さない（未購入の服はシルエットのまま＝ユーザー決裁）。名前・値段・あといくらか・試着室への一押しだけ。
+  //   ★買ったら消える。ほかの入口の並びは変えていない。
+  try {
+    const _first = (typeof outfitById === "function") ? outfitById("buniqro") : null;
+    if (_first && !outfitOwned(_first) && _first.acquire && _first.acquire.price != null) {
+      const _pr = _first.acquire.price, _co = state.player.coins || 0, _poor = _co < _pr;
+      const fc = el("button", "scm-first" + (_poor ? " poor" : ""));
+      fc.innerHTML =
+        `<span class="scm-first-k">はじめての一着</span>` +
+        `<span class="scm-first-nm">${_scmName(_first)}</span>` +
+        `<span class="scm-first-p"><b>${fmtCoins(_pr)}</b><small>${_poor ? "あと " + fmtCoins(_pr - _co) : "いま買えます"}</small></span>` +
+        `<span class="scm-first-go">試着室へ ▸</span>`;
+      fc.onclick = () => { state.ui.mallSel = "buniqro"; renderMall(); setTimeout(() => _scmScrollTo(".scm-fit"), 30); };
+      scm.appendChild(fc);
+    }
+  } catch (e) {}
+
   // ── ② ヒーロー・カルーセル（自動送り） ──
   scm.appendChild(_scmHero());
 

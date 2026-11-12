@@ -58,9 +58,12 @@ const out = await page.evaluate(({ N, R, PER_DAY, PRICE }) => {
         // ごはん（走れないときだけ、いちばん安い自宅ごはん）
         if (!hungerCanRace()) { for (const m of homeMeals) { const before = hungerGet(); try { eatMeal(m.id); } catch (e) {} if (hungerGet() > before) break; } }
         if (!hungerCanRace()) { A.stuckFood++; if (p.coins > 0) { p.coins = 0; } continue; }   // 食べられず走れない＝手詰まり（次の周で無心へ）
-        // レース：はじめの3戦は第1レース、以後はいまのランク帯を順ぐり
+        // レース：ゲームが薦めるとおりに走る（ホームの「次の一戦」＝ui_render.js nextRaceSuggestion）。
+        //   ★最初の版は「はじめの3戦は第1レース固定」で測っていて、新しい竜を見る早さ（＝図鑑のごほうびの時期）が
+        //     実際より遅かった。実際の流れは、注目ボーナスを受け取ったあと別のレースへ回る。
         const pool = RACES.filter(r => r.rank === p.rank);
-        const race = (p.completedRaces < 3) ? RACES.find(r => r.id === "race_grandclock_1") : pool[(p.completedRaces) % pool.length];
+        const race = (typeof nextRaceSuggestion === "function") ? nextRaceSuggestion().race
+          : ((p.completedRaces < 3) ? RACES.find(r => r.id === "race_grandclock_1") : pool[(p.completedRaces) % pool.length]);
         const or_ = simulateMarket(race);
         const tf = {}; getRaceDragons(race).forEach(dg => { tf[dg.id] = generateForm(dg); });
         const byPop = or_.oddsData.slice().sort((a, b) => a.popularityRank - b.popularityRank);

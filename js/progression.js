@@ -31,6 +31,10 @@ const UNLOCKS = [
     cond: function () { return (typeof mallUnlocked === "function") && mallUnlocked(); },
     teaser: "服が一着買えるだけ稼ぐと解放",
     notifyTitle: "🛍️ モールが解放！", short: "まずは「ブニクロ普段着」を見に行けます。", tab: "island",
+    // ★もう最初の一着を買っているなら、この知らせは出さない（2026-11-13）。知らせは1回のホーム到着に1件なので、
+    //   物語の知らせに順番をゆずっているあいだに、目標の札から先に買い終えることがある（通しの確認で発覚：
+    //   買ったあとのホームで「まずは普段着を見に行けます」が出た）。
+    skipIf: function () { try { return typeof outfitOwned === "function" && outfitOwned(OUTFITS.find(function (o) { return o.id === "buniqro"; })); } catch (e) { return false; } },
     notifyBody: "ようやく、ちゃんとしたお店に手が届きました。まずは「ブニクロ普段着」——自分の稼ぎで買う、はじめての一着を。" },
   { id: "lifetree", icon: "🌱", label: "くらしツリー", tier: "cutin", go: "life_tree",
     cond: function () { return (typeof getStoryFlag === "function") && !!getStoryFlag("_chapter_intro_3"); },
@@ -256,6 +260,7 @@ function progressionCheckOnHome() {
       if (_unlockNotified(u.id)) continue;
       let open = false; try { open = !!u.cond(); } catch (e) {}
       if (!open) continue;
+      if (u.skipIf && u.skipIf()) { _markNotified(u.id); continue; }   // もう用が済んでいる知らせは、出さずに済みにする
       if (u.tier === "cutin" && !cutinDone) {
         _markNotified(u.id);
         if (!(u.notifyFn && u.notifyFn())) _showUnlockCutin(u);

@@ -227,6 +227,17 @@ function goalsStats() {
 }
 // 次に挑む目標（先頭の未達成）。全達成なら null。
 function nextGoal() {
+  // ★最初の服が「いま買える」あいだは、それを先に出す（2026-11-13）。
+  //   目標は 的中→単勝で勝利→屋台のごはん→服 の順に並んでいるので、5戦めごろに服の値段へ届いても、
+  //   札はまだ「はじめて的中する」などを指していた。財布は賭けと食事で減っていくので、買える時期は短い。
+  //   逃すと結局は「破産→無心」経由になる（服の値段を 1,500 にした意味が薄れる）。
+  //   ★出し分けだけ。目標の達成条件・順番・報酬には触れない。買えなくなったら元の順に戻る。
+  try {
+    var fo = null;
+    for (var k = 0; k < GOALS.length; k++) if (GOALS[k].id === "firstOutfit") { fo = GOALS[k]; break; }
+    if (fo && !goalDone(fo) && (typeof mallUnlocked !== "function" || mallUnlocked())
+        && typeof buniqroPrice === "function" && ((state.player && state.player.coins) || 0) >= buniqroPrice()) return fo;
+  } catch (e) {}
   for (var i = 0; i < GOALS.length; i++) if (!goalDone(GOALS[i])) return GOALS[i];
   return null;
 }
