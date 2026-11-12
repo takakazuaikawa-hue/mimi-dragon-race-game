@@ -2097,9 +2097,9 @@ function renderRaceSelect() {
   // ★金欠ガード（2026-08-02・実機プレイ指摘「コイン0でもレースに進めてしまう」）。
   //   賭けられないのにレースを選ばせるのは行き止まり。目立つ一枚を最上部に置き、無心へ送る。
   //   レース一覧自体は下見できるよう残す（表示専用・数値非干渉）。
-  if (((state.player && state.player.coins) || 0) <= 0) {
+  if ((typeof playerBroke === "function") ? playerBroke() : (((state.player && state.player.coins) || 0) <= 0)) {
     const bk = el("button", "broke-cta",
-      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>コインが尽きています</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
+      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
     bk.onclick = () => renderHome();
     app.appendChild(bk);
   }
@@ -2388,9 +2388,9 @@ function renderRaceDetail(race) {
   const app = beginScreen();
   // ★金欠ガード（2026-08-02）：レース選択と同じ一枚を賭け画面にも。賭けられないまま
   //   スリップまで進んで詰まるのを防ぐ（出走表の下見はできるよう画面自体は出す）。
-  if (((state.player && state.player.coins) || 0) <= 0) {
+  if ((typeof playerBroke === "function") ? playerBroke() : (((state.player && state.player.coins) || 0) <= 0)) {
     const bk = el("button", "broke-cta",
-      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>コインが尽きています</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
+      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
     bk.onclick = () => renderHome();
     app.appendChild(bk);
   }
@@ -3499,6 +3499,15 @@ function showBetConfirm() {
       //   🍽ごはんタブはIA再編で廃止済み＝存在しない場所を指していた。しかもボタンが無く、
       //   走れないと言われた側は自力で辿るしかなかった。行き先を文字で書かず、ここから飛ばす。
       const _freeMeal = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
+      // ★ごはん代も足りないなら、行き先はごはんではなく無心（詰み回避②・hunger.js hungerStuck）。
+      if (typeof hungerStuck === "function" && hungerStuck()) {
+        if (typeof showInfoPopup === "function") showInfoPopup("🍖 おなかがすいて走れない…",
+          sakeLine +
+          `<div class="mm-row"><span class="mm-ic">🙏</span><div><b>ごはん代が足りません</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます。</small></div></div>`,
+          null,
+          { label: "🙏 ホームへ ▸", fn: function () { if (typeof renderHome === "function") renderHome(); } });
+        return;
+      }
       if (typeof showInfoPopup === "function") showInfoPopup("🍖 おなかがすいて走れない…",
         sakeLine +
         `<div class="mm-row"><span class="mm-ic">🍽</span><div><b>ごはんを食べよう</b><small>` +

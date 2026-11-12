@@ -428,7 +428,7 @@ function renderHome() {
   {
     const _epOn = (typeof epilogueOn === "function") && epilogueOn();
     const _ep = _epOn ? epData() : null;
-    const _broke = p.coins <= 0;
+    const _broke = (typeof playerBroke === "function") ? playerBroke() : (p.coins <= 0);   // コイン0、または空腹で走れずごはん代も無い（hunger.js 詰み回避②）
     let _title = null, _cls = "hl-goal", _onclick = null;
     // ★単一行に簡素化（ユーザー指摘＝もっとシンプルに入りきるように）：アイコン＋やること＋常設の▸だけ。
     //   長いときは末尾を…省略し▸は常に残る（flex行で幅を譲る側＝LIVE帯を必ず優先表示）。

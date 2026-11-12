@@ -11,14 +11,14 @@ var NEXT_SUGGEST = [
   // ── ★金欠（2026-08-02・実機プレイ指摘）：コイン0のときは「無心する」**一択**。──
   //   「次のレースへ」等を並べても賭けられず行き止まりになるだけ。exclusive=true は
   //   nextSuggestRow が他の候補を全部伏せて1つだけ出す（表示専用・レース数値に非干渉）。
-  { at: "result", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
-    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+  { at: "result", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "手持ちが尽きた。村のみんなを頼ろう",
+    cond: function () { return (typeof playerBroke === "function") ? playerBroke() : ((state.player && state.player.coins) || 0) <= 0; },   // コイン0、または空腹で走れずごはん代も無い（hunger.js）
     go: function () { renderHome(); } },
-  { at: "meals", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
-    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+  { at: "meals", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "手持ちが尽きた。村のみんなを頼ろう",
+    cond: function () { return (typeof playerBroke === "function") ? playerBroke() : ((state.player && state.player.coins) || 0) <= 0; },   // コイン0、または空腹で走れずごはん代も無い（hunger.js）
     go: function () { renderHome(); } },
-  { at: "konron", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
-    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+  { at: "konron", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "手持ちが尽きた。村のみんなを頼ろう",
+    cond: function () { return (typeof playerBroke === "function") ? playerBroke() : ((state.player && state.player.coins) || 0) <= 0; },   // コイン0、または空腹で走れずごはん代も無い（hunger.js）
     go: function () { renderHome(); } },
 
   // ── レース結果（勝ち）：結果→島時間の結線（M1・最重要の断線だった）──

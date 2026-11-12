@@ -160,8 +160,27 @@ function assetsPeak(st) {
 const MIMI_DEBT_TOTAL = 3000000;   // 総額300万（物語上の重さ）
 const MIMI_DEBT0 = 30000;          // 自力返済分＝第3話関門と同額（完済＝資産開示）
 const MIMI_DEBT_COVERED = MIMI_DEBT_TOTAL - MIMI_DEBT0;   // サケ立替 297万
+// ★最後のひと口は、単勝で1勝するまで残る（2026-11-13・ユーザーから一任されて決定）。
+//   通しプレイの計測で、0勝のまま5戦めに「のこり借金」が0になっていた（ランク2の名声ぶんで到達資産が3万を超える）。
+//   完済の祝い＝資産の開示は第3話のあと＝初勝利のあとにしか出ないので、数字だけが先に消えて、祝いは何戦も後だった。
+//   最後の MIMI_DEBT_LASTWIN を初勝利に結ぶ＝「初勝利→完済→第3話」が一つの山になる（サケ「勝ち星も返済のうちだ」）。
+//   ★表示上の物語のまま：関門（chapterAvailable）・資産の計算・コインには一切触れない。
+//     資産の開示（assetsConceptOpen・assets_reveal_*）はもともと第3話既読＝1勝以上が前提なので、条件は変わらない。
+const MIMI_DEBT_LASTWIN = 3000;
+//   ★第3話を読み終えているセーブは「もう勝った」扱い（以前の版では、勝たずに第3話へ進めた時期がある。
+//     そのセーブで資産の開示だけが止まらないように）。
+function mimiDebtWon() {
+  try {
+    if (((state.player && state.player.wins) || 0) >= 1) return true;
+    return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_3"));
+  } catch (e) { return true; }
+}
 function mimiDebtLeft() {
-  try { return Math.max(0, MIMI_DEBT0 - assetsPeak(state)); } catch (e) { return 0; }
+  try { return Math.max(0, MIMI_DEBT0 - assetsPeak(state), mimiDebtWon() ? 0 : MIMI_DEBT_LASTWIN); } catch (e) { return 0; }
+}
+// のこりが「初勝利待ちのひと口」だけになっているか（暮らしの画面の一言を出し分ける）。
+function mimiDebtAwaitsWin() {
+  try { return !mimiDebtWon() && (MIMI_DEBT0 - assetsPeak(state)) <= MIMI_DEBT_LASTWIN; } catch (e) { return false; }
 }
 
 // ★資産という「概念」が開示済みか（2026-08-02・ASSET_ONBOARDING_REDESIGN §3）。
