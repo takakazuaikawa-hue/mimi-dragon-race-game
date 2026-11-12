@@ -1984,6 +1984,17 @@ function renderCollection() {
 function featuredRaceToday() {
   const unlocked = RACES.filter(r => r.rank <= state.player.rank);
   const pool = unlocked.length ? unlocked : RACES;
+  // ★はじめの3戦は「第1レース（はじめの一歩）」を注目に固定する（2026-11-12・ユーザー決裁）。
+  //   注目は日替わりなので、初日に当たるレース次第で最初の体験が大きく変わっていた。
+  //   実測（エンジンを読み取り専用で各500回）：新人競竜杯 第5レースは、1番人気（単勝2.1倍）が0勝。
+  //   初めての人が本命を選ぶかぎり必ず負ける。第1レースは同じ条件で1番人気の勝率が約27%。
+  //   ★どのレースを目立たせるかを替えるだけ。着順・オッズ・配当の計算には触れていない。
+  try {
+    if (((state.player && state.player.completedRaces) || 0) < 3) {
+      const first = pool.find(r => r.id === "race_grandclock_1");
+      if (first) return first;
+    }
+  } catch (e) {}
   const day = (typeof _epochDay === "function") ? _epochDay() : 0;
   return pool[((day % pool.length) + pool.length) % pool.length];
 }

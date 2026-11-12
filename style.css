@@ -1009,6 +1009,13 @@ body.dev-on .debug-toggle { display: inline-block; }
   font-size: 12px; font-weight: 900; color: #93a0b0; font-variant-numeric: tabular-nums;
 }
 .rc-board .rcb-row.top3 .rcb-pos { color: var(--hx-ffd76a); }
+/* ★順位表を「上位3頭＋自分の竜」に絞ったとき（race_canvas.js の同名の節）。外れた行は消すだけ、帯は絞ったときだけ。 */
+.rc-board .rcb-row.rcb-off { opacity: 0; pointer-events: none;
+  transition: transform .34s cubic-bezier(.3,1,.35,1), opacity .18s; }
+.rc-board .rcb-foot { display: none; position: absolute; left: 0; right: 0; bottom: 0; height: 15px; line-height: 15px;
+  text-align: center; font-size: 9.5px; letter-spacing: .06em; color: #8b96a5; cursor: pointer;
+  background: linear-gradient(180deg, rgba(6,10,16,0), rgba(6,10,16,.75)); }
+.rc-board.rc-board--compact .rcb-foot { display: block; }
 .rc-board .rcb-waku { flex: none; width: 3px; height: 15px; border-radius: 2px; }
 .rc-board .rcb-nm { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-board .rcb-style { flex: none; font-size: 10px; color: #8b96a5; }

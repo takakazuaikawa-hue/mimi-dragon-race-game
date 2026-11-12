@@ -2053,6 +2053,17 @@ function startRaceCanvas(container, ctx) {
         if (n.parentElement) below += parseFloat(getComputedStyle(n.parentElement).paddingBottom) || 0;
       }
       const room = window.innerHeight - above - restInWrap - below - 4;
+      // ★走る絵が大きく取れない画面だけ、順位表を絞る（下の「順位表を絞る」の節）。判定は1レースに1回。
+      //   全頭のままでも 430px 以上取れるなら何もしない。自分で全頭に開いた人にも、しない。
+      try {
+        if (!boardAutoDone && boardFootEl) {
+          boardAutoDone = true;
+          let wantFull = false;
+          try { wantFull = localStorage.getItem("rc_board_full") === "1"; } catch (e) {}
+          const gain = BOARD_ROW_H * (dragons.length - boardVisN()) - BOARD_FOOT_H;
+          if (!wantFull && gain >= 50 && room < 430) { setBoardCompact(true, false); return; }   // setBoardCompact が測り直す
+        }
+      } catch (e) {}
       // 下限は「幅から決まる本来の高さ」(baseH)。ここより小さくは絶対にしない
       //   ＝レース画面を削らない、という決めごとを守る。
       const target = Math.round(Math.max(baseH, Math.min(480, room)));
@@ -4394,12 +4405,58 @@ function startRaceCanvas(container, ctx) {
   let boardHitLineEl = null;               // 的中ラインの要素
   let boardZoneWas = null;                 // 圏内フラグの前回値（入った瞬間だけ光らせる）
 
+  // ★順位表を「上位3頭＋自分の竜」に絞る（2026-11-12・ユーザー決裁「見た目が崩れないよう慎重に」）。
+  //   スマホでは走る絵が画面の4割ほどしか取れず、8頭ぶんの表（226px）がその下を占めていた。
+  //   変えるのは「どの行を見せるか」だけ：
+  //     ・行DOM・FLIPの並び替え・的中ライン・▲▼・「いま的中なら」は、これまでの作りのまま。
+  //     ・上位3頭は必ず出す（的中ラインは1着の下か3着の下＝どちらも必ず見える）。
+  //     ・自分の竜が圏外にいるときは、4行め以降の“自分の竜でない行”と入れ替えて必ず出す。
+  //     ・表を押すと全頭に戻る／また押すと絞る。自分で開いた人には、次からも全頭で出す。
+  //     ・絞るのは「走る絵が十分に取れない画面」だけ（growToFit が測った余りで決める）。
+  //       PCや縦に長い端末では、これまでどおり全頭。
+  //   ⚠️着順は timeline で確定済み。ここは見せ方だけ。
+  const BOARD_TOP = 3;                     // 必ず見せる上位の頭数
+  const BOARD_FOOT_H = 15;                 // 絞ったときだけ出す「ほかN頭」の帯の高さ
+  let boardCompact = false;                // いま絞っているか
+  let boardAutoDone = false;               // 自動の判定は1レースに1回だけ
+  let boardFootEl = null;
+  function boardVisN() { return Math.min(dragons.length, BOARD_TOP + Math.max(1, betSet ? betSet.size : 0)); }
+  function boardApplyHeight() {
+    const rows = boardCompact ? boardVisN() : dragons.length;
+    boardEl.style.height = (BOARD_ROW_H * rows + 10 + (boardCompact ? BOARD_FOOT_H : 0)) + "px";
+    boardEl.classList.toggle("rc-board--compact", boardCompact);
+    if (boardFootEl) boardFootEl.textContent = "︙ ほか" + (dragons.length - boardVisN()) + "頭　タップで全頭";
+  }
+  // 竜id → 何行めに出すか（-1＝いまは出さない）
+  function boardSlotMap(standings) {
+    const out = {};
+    if (!boardCompact) { standings.forEach((id, i) => { out[id] = i; }); return out; }
+    const vis = boardVisN();
+    const shown = standings.slice(0, vis);
+    standings.forEach((id, i) => {
+      if (i < vis || !betSet || !betSet.has(id)) return;
+      for (let k = shown.length - 1; k >= BOARD_TOP; k--) { if (!betSet.has(shown[k])) { shown.splice(k, 1); break; } }
+      if (shown.length < vis) shown.push(id);
+    });
+    standings.forEach(id => { out[id] = shown.indexOf(id); });
+    return out;
+  }
+  function setBoardCompact(on, byUser) {
+    on = !!on;
+    if (boardCompact === on) return;
+    boardCompact = on;
+    boardApplyHeight();
+    boardLastArrange = -1;                 // 次の更新ですぐ並べ直す
+    if (byUser) { try { localStorage.setItem("rc_board_full", on ? "0" : "1"); } catch (e) {} }
+    try { growToFit(); } catch (e) {}      // 表の高さが変わったぶん、走る絵を測り直す（伸ばす／戻す）
+  }
+
   // 賭式ごとの「ここより上なら的中」の境界順位。単勝=1着まで／複勝・ワイド=3着まで。
   const HIT_LINE_RANK = !bet ? 0 : (bet.type === "win" ? 1 : 3);
 
   function buildBoard() {
     boardEl.innerHTML = "";
-    boardEl.style.height = (BOARD_ROW_H * dragons.length + 10) + "px";
+    boardApplyHeight();
     // 的中ライン（賭けているときだけ）＝射幸性の本丸。常に「あと何人抜けば的中か」が線で見える。
     if (bet && betSet.size && HIT_LINE_RANK > 0 && HIT_LINE_RANK < dragons.length) {
       boardHitLineEl = el("div", "rcb-hitline");
@@ -4428,18 +4485,29 @@ function startRaceCanvas(container, ctx) {
       boardEl.appendChild(row);
       boardRow[dr.id] = row;
     });
+    // 絞ったときだけ見える帯（何頭が隠れているか＋押せば全頭、の合図）
+    if (dragons.length > boardVisN()) {
+      boardFootEl = el("div", "rcb-foot");
+      boardEl.appendChild(boardFootEl);
+      boardEl.onclick = () => setBoardCompact(!boardCompact, true);
+      boardApplyHeight();
+    }
   }
 
   function updateBoard(standings, standMap, tNow) {
     // --- 並び替え（FLIP）: 4〜5回/秒に間引く。毎フレームやると重いだけで見た目も変わらない ---
     const doArrange = (tNow - boardLastArrange) > 220;
+    const slots = doArrange ? boardSlotMap(standings) : null;
     standings.forEach((id, i) => {
       const row = boardRow[id]; if (!row) return;
       const rank = i + 1;
       const prev = boardPrevRank[id];
 
       if (doArrange) {
-        const toY = BOARD_ROW_H * i;
+        // 絞って外れた行は、表の下端のすぐ下で待つ（戻るときは下から上がってくる）
+        const slot = slots[id], off = slot < 0;
+        if (row._off !== off) { row._off = off; row.classList.toggle("rcb-off", off); }
+        const toY = BOARD_ROW_H * (off ? boardVisN() : slot);
         const fromY = row._y != null ? row._y : toY;
         if (fromY !== toY) {
           // Invert→Play：一旦もとの位置に置いてから、次フレームで新しい位置へ流す
