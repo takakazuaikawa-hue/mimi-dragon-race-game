@@ -2186,7 +2186,7 @@ function startRaceCanvas(container, ctx) {
         { race, bet, oddsResult, raceResult, trialForms: ctx.trialForms },
         { commentator: _commentator,
           nameOf: (id) => (typeof commentaryName === "function" ? commentaryName(id) : id) });
-      telopSchedule = (bc.script || []).map(x => ({ tau: x.tau, line: x.line, side: x.side, tag: x.tag, lead: x.lead, fired: false }));
+      telopSchedule = (bc.script || []).map(x => ({ tau: x.tau, line: x.line, side: x.side, tag: x.tag, lead: x.lead, sec: x.sec, fired: false }));
       _bcAnalysis = bc.analysis || null;
     }
   } catch (e) { telopSchedule = []; }
@@ -2298,10 +2298,14 @@ function startRaceCanvas(container, ctx) {
   function _telopTopNow() {
     try { const st = timeline.standingsAt(S.tau); return (st && st.length) ? st[0] : null; } catch (e) { return null; }
   }
-  function _telopStale(lead) {
-    try { if (lead == null || S.finished || window.__telopNoStale) return false; } catch (e) { return false; }
-    const top = _telopTopNow();
-    return top != null && top !== lead;
+  function _telopStale(lead, sec) {
+    try { if ((lead == null && sec == null) || S.finished || window.__telopNoStale) return false; } catch (e) { return false; }
+    if (lead != null) { const top = _telopTopNow(); if (top != null && top !== lead) return true; }
+    // ★区間を語る行（sec＝0序盤/1中盤/2終盤・2026-11-13）も同じ扱い。画面の区間表示（左上の「大旋回」など）は
+    //   先頭がコースの1/3・2/3に達した瞬間に替わる。表示が次の区間になったあとで前の区間を語るのは、
+    //   遅い解説ではなく食い違った解説（Codexの通し試験：表示は「大旋回」、解説は「長直線スタートー！」）。
+    if (sec != null) { try { if (thirdAtP(clamp(timeline.leaderProgressAt(S.tau), 0, 1)) !== sec) return true; } catch (e) {} }
+    return false;
   }
   // ★テロップの投入口はこの1本に集約する（2026-08-01）。
   //   理由：以前は shownLines.push が7箇所に散っていて、「1フレームに何行入ったか」も
@@ -2321,11 +2325,12 @@ function startRaceCanvas(container, ctx) {
       return;
     }
     const lead = (opt && opt.lead != null) ? opt.lead : null;
+    const sec = (opt && opt.sec != null) ? opt.sec : null;
     // ★台本の詰め込みで後ろへずれたぶんだけで、もう古くなっている行はここで捨てる。
-    if (_telopStale(lead)) { _telopDrop++; _telopStaleN++; _telopLog("stale", side, line, tag, lead); return; }
+    if (_telopStale(lead, sec)) { _telopDrop++; _telopStaleN++; _telopLog("stale", side, line, tag, lead); return; }
     if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag, lead); return; }
     // ★間に合わない行は、まず積む（核も雑談も区別せず）。間が空けば雑談も1本通る。
-    _telopQ.push({ line: line, side: side, tag: tag, lead: lead });
+    _telopQ.push({ line: line, side: side, tag: tag, lead: lead, sec: sec });
     // ★あふれたら「雑談から」間引く。核は最後まで残す。
     //   積みすぎると「もう終わった話」が後から出るので、雑談を含むうちは上限2本。
     //   ★ただし全部が核のときだけ上限を4本に緩める（2026-08-01・再計測で追加）。
@@ -2348,7 +2353,7 @@ function startRaceCanvas(container, ctx) {
     //   （1本捨てて黙るのではなく、いま本当のことを言っている行まで進む）。
     while (_telopQ.length) {
       const it = _telopQ.shift();
-      if (_telopStale(it.lead)) { _telopDrop++; _telopStaleN++; _telopLog("stale", it.side, it.line, it.tag, it.lead); continue; }
+      if (_telopStale(it.lead, it.sec)) { _telopDrop++; _telopStaleN++; _telopLog("stale", it.side, it.line, it.tag, it.lead); continue; }
       _telopShow(it.line, it.side, it.tag, it.lead);
       return;
     }

@@ -28,8 +28,10 @@ function simulate(tl, script, decideTau, dropStale) {
   const dwell = () => Math.max(1500, Math.min(2900, lastLen / 500 * 60 * 1000));
   const isCore = tag => CORE[tag] || (tag === "getaway" && getaway < 1);
   const top = tau => tl.standingsAt(tau)[0];
-  const isStale = (it, tau) => dropStale && it.lead != null && top(tau) !== it.lead;
-  const show = (it, now, tau) => { if (it.tag === "getaway") getaway++; lastAt = now; lastLen = it.line.length; shown.push({ t: now / 1000, tau, it, wrong: it.lead != null && top(tau) !== it.lead }); };
+  const third = tau => { const P = tl.leaderProgressAt(Math.min(1, tau)); return P < 1 / 3 ? 0 : P < 2 / 3 ? 1 : 2; };   // 画面の区間表示と同じ区切り
+  const secWrong = (it, tau) => it.sec != null && third(tau) !== it.sec;
+  const isStale = (it, tau) => dropStale && ((it.lead != null && top(tau) !== it.lead) || secWrong(it, tau));
+  const show = (it, now, tau) => { if (it.tag === "getaway") getaway++; lastAt = now; lastLen = it.line.length; shown.push({ t: now / 1000, tau, it, wrong: it.lead != null && top(tau) !== it.lead, wrongSec: secWrong(it, tau) }); };
   const endT = decideTau * sec;
   for (let t = 0; t <= endT; t += dt) {
     const tau = t / sec, now = t * 1000;
@@ -51,7 +53,7 @@ function simulate(tl, script, decideTau, dropStale) {
   const tailGap = endT - (shown.length ? shown[shown.length - 1].t : 0);
   if (tailGap > maxGap) maxGap = tailGap;
   const last8 = shown.filter(x => x.t >= endT - 8).length;
-  return { shown, stale, drops, maxGap, gaps4, last8, wrong: shown.filter(x => x.wrong) };
+  return { shown, stale, drops, maxGap, gaps4, last8, wrong: shown.filter(x => x.wrong), wrongSec: shown.filter(x => x.wrongSec), secShown: shown.filter(x => x.it.sec != null), secStale: stale.filter(x => x.it.sec != null) };
 }
 
 const races = S.RACES.filter(r => r && r.id);
@@ -74,6 +76,9 @@ for (let n = 0; n < N; n++) {
     const r = simulate(tl, bc.script, D, mode === 1), a = agg[mode];
     a.lines += r.shown.length; a.claims += r.shown.filter(x => x.it.lead != null).length; a.wrong += r.wrong.length; if (r.wrong.length) a.racesWrong++;
     a.stale += r.stale.length; a.drops += r.drops; a.sumMaxGap += r.maxGap; if (r.maxGap > a.maxGap) a.maxGap = r.maxGap; a.gaps4 += r.gaps4; a.last8 += r.last8;
+    a.sec = a.sec || { shown: [0, 0, 0], wrong: [0, 0, 0], stale: [0, 0, 0] };
+    r.secShown.forEach(x => { a.sec.shown[x.it.sec]++; }); r.wrongSec.forEach(x => { a.sec.wrong[x.it.sec]++; }); r.secStale.forEach(x => { a.sec.stale[x.it.sec]++; });
+    if (mode === 0 && r.wrongSec.length && (a.secEx = a.secEx || []).length < 4) { const x = r.wrongSec[0]; a.secEx.push(`${race.id} [区間${x.it.sec}の話]「${x.it.line}」が出たのは τ${x.tau.toFixed(3)}（台本τ${x.it.tau.toFixed(3)}）`); }
     r.wrong.forEach(x => { a.wrongByTag[x.it.tag] = (a.wrongByTag[x.it.tag] || 0) + 1; a.lagWrong.push((x.tau - x.it.tau) * tl.durationSecHint); });
     if (mode === 0 && r.wrong.length && examples.length < 6) { const x = r.wrong[0]; examples.push(`${race.id} τ${x.tau.toFixed(3)}（台本の位置τ${x.it.tau.toFixed(3)}・${((x.tau - x.it.tau) * tl.durationSecHint).toFixed(1)}秒遅れ） [${x.it.tag}]「${x.it.line}」 ←そのとき本当の先頭=${S.commentaryName(tl.standingsAt(x.tau)[0])}`); }
   });
@@ -84,6 +89,8 @@ const pr = (name, a) => {
   console.log(`   食い違ったまま出た行=${a.wrong}本（${(a.wrong / done).toFixed(2)}本/戦・1本でも出たレース=${a.racesWrong}/${done}＝${(a.racesWrong / done * 100).toFixed(0)}%） タグ別=${JSON.stringify(a.wrongByTag)}`);
   console.log(`   古くなって出さなかった行=${(a.stale / done).toFixed(2)}本/戦  通常の間引き=${(a.drops / done).toFixed(2)}本/戦`);
   console.log(`   最長の無言：平均${(a.sumMaxGap / done).toFixed(2)}秒・最悪${a.maxGap.toFixed(2)}秒  4秒超の無言=${(a.gaps4 / done).toFixed(2)}回/戦  決着前8秒に出た行=${(a.last8 / done).toFixed(2)}本/戦`);
+  if (a.sec) console.log(`   区間を語る行（序盤/中盤/終盤）：出た=${a.sec.shown.map(v => (v / done).toFixed(2)).join("/")}本/戦  うち画面の区間表示と違う=${a.sec.wrong.map(v => (v / done).toFixed(2)).join("/")}  古くて出さなかった=${a.sec.stale.map(v => (v / done).toFixed(2)).join("/")}`);
+  (a.secEx || []).forEach(e => console.log("     例: " + e));
   if (lag.length) console.log(`   食い違った行の遅れ（台本の位置から）：中央${lag[Math.floor(lag.length / 2)].toFixed(1)}秒・最大${lag[lag.length - 1].toFixed(1)}秒`);
 };
 console.log(`レース数=${done}`);
