@@ -5403,6 +5403,10 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .meal-card { display: flex; flex-direction: column; padding: 0; border-radius: var(--rd-14); overflow: hidden; cursor: pointer;
   background: var(--glass-2); border: 1px solid var(--glass-border); text-align: left;
   transition: transform .12s ease, box-shadow .14s ease, border-color .14s ease; }
+/* 空腹のとき、ここですぐ食べられる皿（ui_meta.js renderMeals の can-eat）。出会っていない屋台の皿（？？？）と見分ける。 */
+.meal-card.can-eat { border-color: rgba(255,214,120,.75); box-shadow: 0 0 0 1px rgba(255,214,120,.45), 0 0 14px -4px rgba(255,190,90,.55); }
+.meal-eat-hint b { color: var(--hx-fff4e0); font-variant-numeric: tabular-nums; }
+.meal-eat-hint .meal-eat-key { padding: var(--pd-1-6); border-radius: var(--r-full); border: 1px solid rgba(255,214,120,.75); color: var(--hx-fff4e0); }
 .meal-card.got { border-color: rgba(255,217,102,.3); box-shadow: 0 7px 20px -12px rgba(0,0,0,.6); }
 .meal-card:active { transform: translateY(1px); }
 /* メディア領域＝写真（既食）or ミステリー地（未発見）。同じ高さでカードを揃える。 */
@@ -7311,6 +7315,8 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
   font-weight: 800; font-size: 13.5px; color: #e7eef1; background: rgba(255,255,255,.08); }
 .km-vbtn:active { transform: scale(.97); }
 .km-vbtn--sns { color: #2a1d05; border: none; background: linear-gradient(180deg,#e8b94e,var(--gold-line)); }
+/* 鑑賞ビューアの「この場所の施設へ」（ui_konron_map.js _kmOpenPhoto）。主役のボタン＝金。 */
+.km-vbtn--go { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; border-color: transparent; font-weight: 800; }
 .km-compose-card { position: relative; z-index: 1; width: min(420px, 92vw); background: var(--glass-2, #16242c); border: 1px solid var(--glass-border, rgba(255,255,255,.14));
   border-radius: var(--r-3); padding: var(--pd-16); box-shadow: 0 16px 48px rgba(0,0,0,.5); }
 .km-compose-h { font-size: 15px; font-weight: 800; color: #fff6e6; margin-bottom: 11px; }

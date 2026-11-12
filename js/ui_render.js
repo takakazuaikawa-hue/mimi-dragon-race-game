@@ -2000,6 +2000,29 @@ function featuredRaceToday() {
   const day = (typeof _epochDay === "function") ? _epochDay() : 0;
   return pool[((day % pool.length) + pool.length) % pool.length];
 }
+// 「次の一戦」として薦めるレース（2026-11-13・表示のみ）。
+//   ★以前はホームの「次の一戦」もレース選択の一番上のカードも、いつも「本日の注目レース」だった。
+//     注目の達成ボーナスは1日1回なので、受け取ったあとも同じレースを薦めつづけ、同じレースを何度も走ることになっていた
+//     （Codex の通し試験「Aの3戦目、同じレースの反復」）。
+//   ★受け取る前＝注目レース（ボーナスの案内つき）。受け取ったあと＝いまのランク帯の、注目とも直前とも違うレース。
+//     1戦走るごとに順ぐりに替わる（完走数で回す＝同じ画面を開き直しても変わらない）。
+//   ★薦める先を替えるだけ。ボーナスの判定（settleRace の featuredRaceToday）・着順・オッズ・配当には触れない。
+//   ★はじめの3戦のあいだは第5レースを薦めない（1番人気が0/500勝の計測。featuredRaceToday の注記と同じ理由）。
+function nextRaceSuggestion() {
+  const feat = featuredRaceToday();
+  try {
+    const claimed = (typeof _epochDay === "function") && state.player.featuredDoneDay === _epochDay();
+    if (!claimed || !feat) return { race: feat, featured: true };
+    const p = state.player, done = p.completedRaces || 0;
+    const lastId = (state.current && state.current.race && state.current.race.id) || "";
+    const unlocked = RACES.filter(r => r.rank <= p.rank);
+    const ok = r => r.id !== feat.id && r.id !== lastId && !(done < 3 && r.id === "race_grandclock_5");
+    let cands = unlocked.filter(r => r.rank === p.rank && ok(r));        // いまのランク帯が先（昇格の条件がここで進む）
+    if (!cands.length) cands = unlocked.filter(ok);
+    if (!cands.length) return { race: feat, featured: true };
+    return { race: cands[done % cands.length], featured: false };
+  } catch (e) { return { race: feat, featured: true }; }
+}
 // 開催地域のコース写真（島の地図のスポットと共用・無ければ空文字）。表示のみ。
 function _regionCoursePhoto(region) {
   try {
@@ -2083,19 +2106,21 @@ function renderRaceSelect() {
 
   // 本日の注目レース — a prominent, daily-rotating spotlight
   try {
-    const feat = featuredRaceToday();
+    // 受け取り前＝本日の注目レース／受け取り後＝別の「つぎの一戦」（nextRaceSuggestion）。
+    const _sug = nextRaceSuggestion();
+    const feat = _sug.race;
     if (feat) {
       const claimed = (typeof _epochDay === "function") && state.player.featuredDoneDay === _epochDay();
       const fc = el("div", "feat-race");
       const theme = REGION_THEME[feat.region];
       if (theme) fc.style.setProperty("--region-accent", theme.accent);
       fc.innerHTML =
-        `<div class="feat-tag">★ 本日の注目レース ★</div>` +
+        `<div class="feat-tag">${_sug.featured ? "★ 本日の注目レース ★" : "★ つぎの一戦 ★"}</div>` +
         `<div class="feat-name">${gradeBadgeHTML(feat.rank)}${raceFullName(feat)}</div>` +
         `<div class="feat-meta">ランク${feat.rank}　${RANKS[feat.rank].label}　｜　${DISTANCE[feat.distance].label}　｜　${WEATHERS[feat.weather].label}</div>` +
         `<div class="feat-purpose">${raceBlurb(feat)}</div>` +
-        `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の達成ボーナス 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
-        `<button class="feat-go">注目レースへ ▶</button>`;
+        `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の注目ボーナスは 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
+        `<button class="feat-go">${_sug.featured ? "注目レースへ ▶" : "このレースへ ▶"}</button>`;
       const _fph = _regionCoursePhoto(feat.region);   // 注目カードの背にもコースの写真（右側にうっすら）
       if (_fph) { fc.classList.add("feat-photo"); fc.style.setProperty("--feat-photo", `url("${_fph}")`); }
       fc.querySelector(".feat-go").onclick = () => renderRaceDetail(feat);

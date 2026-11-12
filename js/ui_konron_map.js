@@ -622,16 +622,37 @@ function _kmSnsOk() {
 // フルスクリーンの写真ビューア（タップで拡大トグル＝じっくり鑑賞／SNS投稿／閉じる）。表示専用。
 function _kmPhotoOf(s, kind) { return (kind === "gourmet") ? s.gourmet : s.photo; }
 function _kmPhotoCap(s, kind) { return (kind === "gourmet") ? ("🍽 " + s.name + "のご当地グルメ") : (s.line || s.name); }
+// スポットから入れる施設（食べ歩き・モール・レース…）の入口。label＝ボタンの文／open＝いま入れるか／hint＝まだのときの理由。
+//   ★詳細カードと写真の鑑賞ビューアの両方がここを読む（文と解放条件を1か所に＝ずれない）。入口が無いスポットは null。
+function _kmPortalInfo(s) {
+  if (!s || !s.portal || typeof window[s.portal] !== "function") return null;
+  const labelMap = { renderMeals: "🍢 食べ歩きへ", renderMall: "🛍️ ショッピングへ", renderRaceSelect: "🏁 レースへ", renderSns: "📣 SNSへ", renderScout: "🐉 竜スカウトへ" };
+  // ★遷移先が未解放なら「開いてる見た目→跳ね返される」をやめ、鍵つきの案内表示にする（NARRATIVE_DESIGN §7-H）。
+  const gate = {
+    renderMall: () => (typeof mallUnlocked !== "function") || mallUnlocked(),
+    renderSns: () => (typeof broadcastOn !== "function") || broadcastOn(),
+    renderScout: () => (typeof poroScoutUnlocked !== "function") || poroScoutUnlocked()
+  };
+  // ★renderMall の文はモール側の解放条件（mallUnlocked）と同じにする
+  const lockHint = { renderMall: "服が一着買えるだけ稼ぐと開く", renderSns: "配信を始めると開く", renderScout: "相棒と出会うと開く" };
+  let open = true;
+  if (gate[s.portal]) { try { open = !!gate[s.portal](); } catch (e) { open = false; } }
+  return { fn: s.portal, label: labelMap[s.portal] || "▶ ひらく", open: open, hint: lockHint[s.portal] || "まだ開いていない" };
+}
 function _kmOpenPhoto(spotId, kind) {
   const s = KONRON_SPOTS[spotId]; const src = s && _kmPhotoOf(s, kind); if (!src) return;
   document.querySelectorAll(".km-viewer").forEach(v => v.remove());   // 既存ビューアーを先に消す（重ね開き→閉じても前の画像が残る不具合の修正）
   const ov = el("div", "km-viewer");
+  const _pt = _kmPortalInfo(s);
   ov.innerHTML =
     `<div class="km-viewer-bd"></div>` +
     `<div class="km-viewer-stage"><img class="km-viewer-img" src="${src}" alt="${s.name}"></div>` +
     `<div class="km-viewer-cap"><b>${s.name}</b><span>${_kmPhotoCap(s, kind)}</span></div>` +
     `<div class="km-viewer-bar">` +
       (_kmSnsOk() ? `<button class="km-vbtn km-vbtn--sns" data-act="sns">📣 SNSに投稿</button>` : ``) +
+      // ★写真を見たあと、その場所の施設へ進める（2026-11-13）。おでかけの写真カード（「都会のリゾートで買う」等）は
+      //   押すとこの鑑賞だけが開き、モールへ行く口が無かった（通しプレイで発覚）。入れる施設があるスポットだけ出す。
+      (_pt && _pt.open ? `<button class="km-vbtn km-vbtn--go" data-act="go">${_pt.label}</button>` : ``) +
       `<button class="km-vbtn" data-act="x">✕ 閉じる</button></div>`;
   document.body.appendChild(ov);
   const img = ov.querySelector(".km-viewer-img");
@@ -641,6 +662,8 @@ function _kmOpenPhoto(spotId, kind) {
   ov.querySelector('[data-act="x"]').onclick = close;
   const snsB = ov.querySelector('[data-act="sns"]');
   if (snsB) snsB.onclick = () => _kmSnsCompose(spotId, kind);
+  const goB = ov.querySelector('[data-act="go"]');
+  if (goB) goB.onclick = () => { close(); const fn = window[_pt.fn]; if (typeof fn === "function") fn(); };
 }
 // SNS（ぴょこったー）へコメント付きで投稿。sns.js の addMyPost(text,img) を使う＝タイムラインに流れる。
 function _kmSnsCompose(spotId, kind) {
@@ -1162,20 +1185,11 @@ function _kmRenderPanel() {
       body += _kmContentHtml(_kmSpot);   // 見どころ／名物／豆知識（作りこみ）
       if (s.gourmet) body += `<button class="km-gourmet" data-gourmet="${_kmSpot}"><img src="${s.gourmet}" alt="" decoding="async"><span>🍽 ご当地グルメ・タップで鑑賞／投稿</span></button>`;   // s.id は常にundefined（同種バグ・上のdata-photoと同じ原因）
       body += _kmMealHtml(_kmSpot);   // ★N5: ここで食べる（スポット↔MEALS直結）
-      if (s.portal && typeof window[s.portal] === "function") {
-        const labelMap = { renderMeals: "🍢 食べ歩きへ", renderMall: "🛍️ ショッピングへ", renderRaceSelect: "🏁 レースへ", renderSns: "📣 SNSへ", renderScout: "🐉 竜スカウトへ" };
-        // ★遷移先が未解放なら「開いてる見た目→跳ね返される」をやめ、鍵つきの案内表示にする（NARRATIVE_DESIGN §7-H）。
-        const _portalGate = {
-          renderMall: () => (typeof mallUnlocked !== "function") || mallUnlocked(),
-          renderSns: () => (typeof broadcastOn !== "function") || broadcastOn(),
-          renderScout: () => (typeof poroScoutUnlocked !== "function") || poroScoutUnlocked()
-        };
-        const _pOpen = !_portalGate[s.portal] || (function () { try { return _portalGate[s.portal](); } catch (e) { return false; } })();
-        // ★renderMall の文はモール側の解放条件（mallUnlocked）と同じにする
-        const _pLockHint = { renderMall: "服が一着買えるだけ稼ぐと開く", renderSns: "配信を始めると開く", renderScout: "相棒と出会うと開く" };
-        body += _pOpen
-          ? `<button class="km-go" data-portal="${s.portal}">${labelMap[s.portal] || "▶ ひらく"}</button>`
-          : `<div class="km-card-lock">🔒 ${labelMap[s.portal] || "この施設"}は、${_pLockHint[s.portal] || "まだ開いていない"}。</div>`;
+      const _pi = _kmPortalInfo(s);
+      if (_pi) {
+        body += _pi.open
+          ? `<button class="km-go" data-portal="${_pi.fn}">${_pi.label}</button>`
+          : `<div class="km-card-lock">🔒 ${_pi.label}は、${_pi.hint}。</div>`;
       } else {
         body += `<div class="km-card-photo">🏞️ 撮影スポット（眺めて楽しむ名所）</div>`;
       }

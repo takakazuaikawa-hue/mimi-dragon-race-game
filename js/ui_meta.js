@@ -58,6 +58,7 @@ function renderGoals() {
 // UX：4段を縦に積まず“上の段タブ”で切替＝選んだ段だけ表示してスクロールを抑える（compact＋drill-down）。
 let _mealTab = null;
 function renderMeals() {
+  const _arrived = state.ui.screen !== "meals";   // ほかの画面から来た（段タブの切替や、食べたあとの描き直しではない）
   state.ui.screen = "meals";
   const app = beginScreen();
   app.appendChild(el("h2", null, `🍽️ 食事 ― みみの食べ歩き <img class="news-men news-men--h2" src="images/kurashi/men_gurume.webp" alt="グルメ面" onerror="this.remove()">`));
@@ -76,6 +77,18 @@ function renderMeals() {
   if (!_mealTab || !tiers.some(t => t.id === _mealTab) || !_tUnlocked(_mealTab)) {
     const firstInc = tiers.find(t => _tUnlocked(t.id) && (function () { const s = mealTierStats(t.id); return s.got < s.total; })());
     _mealTab = (firstInc || tiers.find(t => _tUnlocked(t.id)) || tiers[0] || {}).id;
+  }
+  // ★空腹で来たら、「ここですぐ食べられる皿」がある段を開く（2026-11-13）。
+  //   屋台の段は全品が「島で出会うまで一覧からは食べられない」品（出会いの設計・下の where）。
+  //   新しいプレイヤーが空腹で来ると、食べられない「？？？」だけが並ぶ段が開いていた（通しプレイで発覚）。
+  //   すぐ食べられる＝もう出会った皿（食べ直し）か、where の無い皿（自宅ごはん）。当てる段（quiz）は含めない。
+  //   段タブを自分で切り替えたあとは動かさない（来たときだけ）。値段・回復量・出会いの決まりは読むだけ。
+  const _eatHere = m => !m.quiz && (mealEaten(m.id) || !m.where);
+  const _hungryNow = (typeof hungerGet === "function") ? hungerGet() : 100;
+  const _hungry = _hungryNow < 100;
+  if (_arrived && _hungry) {
+    const _eatTier = tiers.find(t => _tUnlocked(t.id) && mealsByTier(t.id).some(_eatHere));
+    if (_eatTier) _mealTab = _eatTier.id;
   }
   // ★段ごとの一枚絵（2026-08-04・ユーザー依頼「今は屋台めししかないから生成しましょう／
   //   衣装はそれぞれのクラスに応じたそれっぽいミミに」→「既存の意匠から選んで欲しかった」）。
@@ -107,6 +120,10 @@ function renderMeals() {
     tabs.appendChild(tab);
   });
   app.appendChild(tabs);
+  // 空腹のあいだだけ、どの皿がいま食べられるかを一言（金の枠＝下の can-eat）。
+  if (_hungry && tiers.some(t => _tUnlocked(t.id) && mealsByTier(t.id).some(_eatHere))) {
+    app.appendChild(el("div", "as-hint2 meal-eat-hint", `🍚 おなか <b>${_hungryNow}</b>／100　<span class="meal-eat-key">金の枠</span>の皿は、ここですぐ食べられます。`));
+  }
 
   // 選択中の段だけ：見出し＋グリッド（未開放なら開放案内）
   const t = tiers.find(x => x.id === _mealTab) || tiers[0];
@@ -122,7 +139,7 @@ function renderMeals() {
     const grid = el("div", "meal-grid");
     mealsByTier(t.id).forEach(m => {
       const un = mealUnlocked(m);
-      const card = el("button", "meal-card" + (un ? " got" : ""));
+      const card = el("button", "meal-card" + (un ? " got" : "") + ((_hungry && _eatHere(m)) ? " can-eat" : ""));
       const thumb = (un && m.photo)
         ? `<span class="meal-card-thumb"><img src="${m.photo}" alt="" decoding="async"></span>`
         : `<span class="meal-card-ic">${un ? m.icon : "❔"}</span>`;

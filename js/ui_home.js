@@ -885,7 +885,9 @@ function renderHome() {
   //   1行・レース名だけ（時刻/距離/天気の詰め込みと途中改行を廃止＝「何の一戦か」だけを静かに示す台座）。
   if (!broadcast) {
     try {
-      const _nr = (typeof featuredRaceToday === "function") ? featuredRaceToday() : null;
+      // 注目の達成ボーナスを受け取ったあとは、別のレースを薦める（ui_render.js nextRaceSuggestion）。
+      const _nr = (typeof nextRaceSuggestion === "function") ? nextRaceSuggestion().race
+        : ((typeof featuredRaceToday === "function") ? featuredRaceToday() : null);
       const _nm = (_nr && typeof raceFullName === "function") ? raceFullName(_nr) : "";
       if (_nm) {
         const _grade = (typeof gradeBadgeHTML === "function") ? gradeBadgeHTML(_nr.rank) : "";
