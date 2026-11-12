@@ -1665,7 +1665,16 @@ function startRaceCanvas(container, ctx) {
   // ---- ENTRANCE timing: walk in (staggered by 思想), then a BRIEF settle → countdown.
   // ENTRY_DUR is DYNAMIC = (last dragon's arrival) + a short settle, so there's no dead
   // standing-around wait between "everyone's in position" and the count starting. ----
-  const ENTRY_WALK = 3.8, ENTRY_STAGGER = 5.0, ENTRY_SETTLE = 0.6;
+  // ★見慣れた舞台では入場を短くする（2026-11-13）。入場〜カウントダウンは毎戦およそ13秒あり、通し試験で
+  //   「3戦めで、また同じ入場を待つところでスキップしたくなった」と言われた。
+  //   短くするのは「3戦以上走っていて、このランクの舞台をもう1度は走った」とき。はじめの3戦と、新しいランクの最初の一戦は
+  //   これまでどおりの長さ＝晴れ舞台の入場は残す。歩いて入る時間・ばらけ方・紹介の間合いを詰めるだけで、
+  //   カウントダウン（3・2・1）とレースの尺・着順・オッズ・配当は変えない。目安：約8.2秒 → 約5.4秒。
+  const _quickEntry = (function () {
+    try { const p = state.player || {}; return (p.completedRaces || 0) >= 3 && (((p.completedByRank || {})[race.rank]) || 0) >= 1; }
+    catch (e) { return false; }
+  })();
+  const ENTRY_WALK = _quickEntry ? 2.8 : 3.8, ENTRY_STAGGER = _quickEntry ? 2.6 : 5.0, ENTRY_SETTLE = 0.6;
   function entranceEager(dr) {
     const pd = persoOf(dr.id), vmood = pd.visualMood || 55, style = pd.style || dr.style;
     return clamp((style === "escape" ? 0.85 : style === "front" ? 0.6 : style === "late" ? 0.4 : 0.25) + (vmood - 55) / 150, 0, 1);
@@ -1709,7 +1718,7 @@ function startRaceCanvas(container, ctx) {
   // 動きを減らす設定（B の呼吸/首かしげ/残像はここで一括OFF）
   const _reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-  const ROLL_EACH = 0.8;
+  const ROLL_EACH = _quickEntry ? 0.55 : 0.8;   // 短い入場では、1頭ずつの紹介の間合いも詰める
   const _rollOrder = laneOrder.slice();                       // 手前(ln=0)から順に
   const ROLL_SPAN = ROLL_EACH * _rollOrder.length;
   const _rollStart = Math.max(0, ENTRY_DUR - ROLL_SPAN - 0.2); // 入場の終盤に寄せる

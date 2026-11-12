@@ -5393,8 +5393,10 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .goal-row.next { border-color: #ffd966; box-shadow: 0 0 0 1px rgba(255,217,102,.5), 0 4px 14px -6px rgba(255,180,80,.5); background: rgba(255,217,102,.08); }
 .goal-ic { font-size: 20px; flex: none; width: 26px; text-align: center; }
 .goal-tx { flex: 1; min-width: 0; }
-.goal-tx b { display: block; font-size: 13.5px; color: var(--mist); }
-.goal-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; }
+/* 題と一言は、折り返すなら行の長さをそろえる（text-wrap: balance）。挑戦中の行は「挑戦中」と行き先ボタンで幅が狭くなり、
+   「屋台のごはんにありつ／く」と1文字だけ次の行に落ちていた（2026-11-13・画面の総点検）。未対応の端末では従来どおり。 */
+.goal-tx b { display: block; font-size: 13.5px; color: var(--mist); text-wrap: balance; }
+.goal-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; text-wrap: balance; }
 .goal-row.done .goal-tx b { text-decoration: line-through; text-decoration-color: rgba(255,255,255,.3); }
 .goal-st { flex: none; font-size: 11px; font-weight: 800; color: #7bdca0; }
 .goal-row.next .goal-st { color: #ffd966; }
