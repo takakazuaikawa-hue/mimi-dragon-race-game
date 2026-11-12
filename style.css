@@ -5561,6 +5561,27 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .unlock-toast.out { opacity: 0; transform: translateX(-50%) translateY(8px); transition: opacity .35s, transform .35s; }
 @keyframes unlockToastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } }
 @media (prefers-reduced-motion: reduce) { .unlock-toast { animation: none; } }
+/* 🔓 解放の帯（progression.js _showUnlockBanner）＝全画面のポップアップの代わり。画面のほかの場所は押せるまま。
+   下端は JS がドックのすぐ上に合わせる（測れないときの既定＝下から200px）。帯全体が「行き先へ」、×だけ「閉じる」。 */
+.unlock-banner { position: fixed; left: 50%; bottom: 200px; transform: translateX(-50%); z-index: 140;
+  width: min(94%, 430px); box-sizing: border-box; display: flex; align-items: center; gap: 9px;
+  padding: 9px 8px 9px 12px; border-radius: 16px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(54,38,10,.97), rgba(34,24,8,.97));
+  border: 1px solid rgba(255,214,120,.55); box-shadow: 0 10px 30px -10px rgba(0,0,0,.8), 0 0 18px -4px rgba(255,190,90,.35);
+  animation: unlockToastIn .3s cubic-bezier(.22,.61,.36,1) backwards; }
+.unlock-banner.out { opacity: 0; transform: translateX(-50%) translateY(8px); transition: opacity .35s, transform .35s; }
+.unlock-banner .ub-ic { flex: none; font-size: 24px; line-height: 1; }
+.unlock-banner .ub-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.unlock-banner .ub-tx b { font-size: 13px; line-height: 1.35; color: var(--hx-fff4e0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.unlock-banner .ub-tx small { font-size: 11px; line-height: 1.45; color: rgba(255,244,224,.78);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.unlock-banner .ub-go { flex: none; padding: 7px 11px; border-radius: var(--r-full); white-space: nowrap;
+  font-size: 12px; font-weight: 800; color: #3a2410; background: linear-gradient(180deg, #ffd966, #f0a838); }
+.unlock-banner .ub-x { flex: none; width: 30px; height: 30px; padding: 0; border: none; border-radius: var(--r-full);
+  font-size: 16px; line-height: 1; color: rgba(255,244,224,.7); background: transparent; cursor: pointer;
+  -webkit-appearance: none; appearance: none; box-shadow: none; }
+.unlock-banner .ub-x:active { background: rgba(255,255,255,.12); }
+@media (prefers-reduced-motion: reduce) { .unlock-banner { animation: none; } }
 @media (max-width: 560px) {
   /* ナビを1行8列に圧縮（ドックを薄く＝ミミの領域を確保） */
   .hl-rail { grid-template-columns: repeat(8, 1fr); gap: 4px; }

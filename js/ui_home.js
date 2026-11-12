@@ -954,23 +954,27 @@ function renderHome() {
   //     採用したのは (1) 視聴者コメントで匂わせる（_ctxCm・招待であって指示ではない）
   //     (2) 既存の🎯目標チップ（常に1件だけ・言葉で誘う）。
   //     actionBacklog() は「まだ余地があるか」の判定だけに使い、件数はUIに出さない。
+  // ★解放したばかりの場所の点（progression.js unlockTabNew）。上の「件数の宣告」とは別物：
+  //   新しく開いた場所が1つある、を帯が消えたあとも伝えるだけ。数は出さず、そのタブを開けば消える。
+  const _tabNew = k => (typeof unlockTabNew === "function") && unlockTabNew(k);
+  const _tabSeen = k => { try { if (typeof unlockTabSeen === "function") unlockTabSeen(k); } catch (e) {} };
   if (typeof konronMapUnlocked === "function" && konronMapUnlocked()) {
-    bar.appendChild(tikTab("🏝️", "おでかけ", () => renderKonronMap(), { img: "island" }));
+    bar.appendChild(tikTab("🏝️", "おでかけ", () => { _tabSeen("island"); renderKonronMap(); }, { img: "island", dot: _tabNew("island") }));
   } else {
     bar.appendChild(tikTab("🏝️", "おでかけ", () => showInfoPopup("🏝️ おでかけ",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて勝つ</u>と、島のみんなが崑崙島を案内してくれます（食べ歩き・買い物もここから）。</small></div></div>`), { locked: true, img: "island" }));
   }
   // 🐲竜＝龍舎（スカウト/図鑑/ポロ/グルメ）。龍舎が開く前(ポロ発見前)は図鑑単体、その前は🔒。
   if (typeof poroStableUnlocked === "function" && poroStableUnlocked()) {
-    bar.appendChild(tikTab("🐲", "竜", () => renderStable(), { img: "stable" }));
+    bar.appendChild(tikTab("🐲", "竜", () => { _tabSeen("dragon"); renderStable(); }, { img: "stable", dot: _tabNew("dragon") }));
   } else if (typeof dexUnlocked === "function" && dexUnlocked()) {
-    bar.appendChild(tikTab("🐲", "竜", () => renderCollection(), { img: "dex" }));
+    bar.appendChild(tikTab("🐲", "竜", () => { _tabSeen("dragon"); renderCollection(); }, { img: "dex", dot: _tabNew("dragon") }));
   } else {
     bar.appendChild(tikTab("🐲", "竜", () => showInfoPopup("🐲 竜",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースで<u>はじめて当てる</u>と、賭けた竜たちの記録が見られるようになります（のちに「龍舎」に集約）。</small></div></div>`), { locked: true, img: "dex" }));
   }
   // 🌳暮らし＝「する」専用（ツリー/習い事/経済/島づくり/相談）。
-  bar.appendChild(tikTab("🌳", "暮らし", () => renderAssets(), { img: "kurashi" }));
+  bar.appendChild(tikTab("🌳", "暮らし", () => { _tabSeen("kurashi"); renderAssets(); }, { img: "kurashi", dot: _tabNew("kurashi") }));
   // 📖紀行＝ミミのブログ（全記録のハブ）。売上が受け取れる日はドット。
   const _kikoDue = (() => {
     try { if (typeof kikoHasUnread === "function" && kikoHasUnread()) return true; } catch (e) {}   // 未読の新記事
@@ -991,7 +995,7 @@ function renderHome() {
 
   app.appendChild(wrap);
 
-  // 🔓 解放お祝いチェック（progression.js・ホーム到着1回につきモーダル1件まで）。
+  // 🔓 解放お祝いチェック（progression.js・ホーム到着1回につき1件まで。いまは操作を止めない帯）。
   //   FTUE保護＝初出走前は何も出さない（最初の5分は核ループに集中させる・リサーチ①）。
   if (typeof progressionCheckOnHome === "function" && (p.completedRaces || 0) >= 1) {
     setTimeout(() => { try { if (state.ui.screen === "home") progressionCheckOnHome(); } catch (e) {} }, 700);

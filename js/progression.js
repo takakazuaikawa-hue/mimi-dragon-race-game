@@ -7,7 +7,9 @@
 // 設計（リサーチ準拠 docs/RESEARCH_PROGRESSION_UX.md）：
 //  - ロック表現は2種だけ：「条件明示ロック」（入口を見せ解放条件を明記）／「？？？ミステリー枠」
 //  - 通知3段階：cut-in（新画面の解放のみ・CTA1個）／toast（既存画面への追加）／badge（受動）
-//  - ★ホーム到着1回につきモーダル(cut-in)は1件まで。残りは次のホーム到着へ持ち越し。
+//  - ★cut-in は全画面のモーダルではなく「操作を止めない帯」（2026-11-12・_showUnlockBanner）。
+//    台帳の tier 名 "cutin" はそのまま（＝行き先つきの大きい知らせ、の意味）。
+//  - ★ホーム到着1回につき帯(cut-in)は1件まで。残りは次のホーム到着へ持ち越し。
 //  - 通知済み＝storyフラグ `_unlocked_<id>`（setStoryFlag）で1回だけ。
 // =============================================================================
 
@@ -18,22 +20,22 @@ const UNLOCKS = [
   { id: "dex", icon: "📖", label: "図鑑", tier: "cutin", go: "collection",
     cond: function () { return (typeof dexUnlocked === "function") && dexUnlocked(); },
     teaser: "はじめて当てると解放",
-    notifyTitle: "📖 図鑑が解放！",
+    notifyTitle: "📖 図鑑が解放！", short: "賭けた竜たちの記録が見られます。", tab: "dragon",
     notifyBody: "予想が当たった！　賭けた竜たちの記録が「図鑑」で見られるようになりました。竜を知ることが、次の予想の武器になります。" },
   { id: "konron", icon: "🏝️", label: "おでかけ", tier: "cutin", go: "konron_map",
     cond: function () { return ((state.player && state.player.wins) || 0) >= 1; },
     teaser: "はじめて勝つと解放",
-    notifyTitle: "🏝️ おでかけが解放！",
+    notifyTitle: "🏝️ おでかけが解放！", short: "島のみんなが崑崙島を案内してくれます。", tab: "island",
     notifyBody: "初勝利のお祝いに、島のみんなが崑崙島をあちこち案内してくれることに。食べ歩き・買い物・絶景・推し活——島じゅうが遊び場です。" },
   { id: "mall", icon: "🛍️", label: "モール", tier: "cutin", go: "mall",
     cond: function () { return (typeof mallUnlocked === "function") && mallUnlocked(); },
     teaser: "服が一着買えるだけ稼ぐと解放",
-    notifyTitle: "🛍️ モールが解放！",
+    notifyTitle: "🛍️ モールが解放！", short: "まずは「ブニクロ普段着」を見に行けます。", tab: "island",
     notifyBody: "ようやく、ちゃんとしたお店に手が届きました。まずは「ブニクロ普段着」——自分の稼ぎで買う、はじめての一着を。" },
   { id: "lifetree", icon: "🌱", label: "くらしツリー", tier: "cutin", go: "life_tree",
     cond: function () { return (typeof getStoryFlag === "function") && !!getStoryFlag("_chapter_intro_3"); },
     teaser: "第3話を読むと解放",
-    notifyTitle: "🌱 くらしツリーが解放！",
+    notifyTitle: "🌱 くらしツリーが解放！", short: "稼いだコインで、生活を育てられます。", tab: "kurashi",
     notifyBody: "レースで稼いだコインで生活を育てる「くらしツリー」と生活資産が使えるようになりました。負けた夜にも人生が終わらない、本当の準備を。" },
 
   // ── ※章の「読める」呼び鈴は progressionCheckOnHome 冒頭の nextUnreadChapter → _showStoryCutin が
@@ -46,12 +48,12 @@ const UNLOCKS = [
   { id: "analysis", icon: "📊", label: "分析予想", tier: "cutin", go: "race_select",
     cond: function () { return analysisUnlocked(); },
     teaser: "第2話を読むと解放",
-    notifyTitle: "📊 ミズの分析予想が解放！",
+    notifyTitle: "📊 ミズの分析予想が解放！", short: "賭け画面の相談役に、ミズが増えました。",
     notifyBody: "賭け画面の相談役に「分析予想」（ミズ）が増えました。オッズの妙味と脚質の読みが手に入ります。レース後の「分析」「次のヒント」タブも解禁。まずは1レース、ミズの目で見てみて。" },
   { id: "dexdeep", icon: "📖", label: "図鑑の深い記録", tier: "cutin", go: "collection",
     cond: function () { return (typeof getStoryFlag === "function") && !!getStoryFlag("metMakura"); },
     teaser: "第4話を読むと解放",
-    notifyTitle: "📖 図鑑が深くなった！",
+    notifyTitle: "📖 図鑑が深くなった！", short: "竜たちの深い記録が載りました。", tab: "dragon",
     notifyBody: "マクラの推し竜文化に触れて、図鑑に竜たちの深い記録が載るようになりました。推しを決めるなら、まず図鑑から。" },
   { id: "doomview", icon: "🏦", label: "島の経済・新表示", tier: "toast",
     cond: function () { return (typeof getStoryFlag === "function") && !!getStoryFlag("_chapter_intro_5"); },
@@ -267,42 +269,93 @@ function progressionCheckOnHome() {
   } catch (e) { try { console.warn("progressionCheckOnHome", e); } catch (_) {} }
 }
 
-// cut-in＝既存の .navpop 系スタイルを流用した中央モーダル（新規CSSなし・枠内に自動で収まる）。
+// ─────────────────────────────────────────────────────────────────────────
+// 解放の知らせ＝操作を止めない帯（2026-11-12）
+// ─────────────────────────────────────────────────────────────────────────
+// ★以前は中央の全画面モーダル（.navpop-ov）だった。ホームに着いて0.7秒後に画面を覆うので、
+//   「服を買いに行こう」と目標の札やタブへ指を伸ばしたところを塞いでいた
+//   （Codex の通し試験 docs/PLAYTEST_REPORT_20261112.md「今の目的の前で閉じる仕事」）。
+// ★いまは、ドックのすぐ上に出る小さな帯。画面のほかの場所はそのまま押せる。
+//   帯を押す＝行き先へ／×＝閉じる／何もしなければ約8秒で消える。
+//   消えたあとも分かるように、行き先のタブに未読の点を1つ残す（そのタブを開くと消える）。
+// ★置き場所＝ドック（コメント欄があればその上）のすぐ上。ミミの顔・目標の札・吹き出し・
+//   レースへ進むボタン・タブのどれにも重ならない。
+// ★タイマーは window._hlTimers に入れない：ホームが描き直されると _hlTimers は全部止められ、
+//   帯が消えずに残ってしまうため。代わりに自分で「ホーム以外なら即消す」を見張り、消えたら自分で止まる。
+const UNLOCK_BANNER_MS = 8000;
+function _showUnlockBanner(o) {
+  try { document.querySelectorAll(".unlock-banner").forEach(function (x) { x.remove(); }); } catch (e) {}
+  const t = el("div", "unlock-banner");
+  t.setAttribute("role", "status");
+  t.innerHTML =
+    `<span class="ub-ic">${o.icon || "🔓"}</span>` +
+    `<span class="ub-tx"><b>${o.title || ""}</b><small>${o.body || ""}</small></span>` +
+    `<span class="ub-go">${o.cta || "見る ▸"}</span>` +
+    `<button type="button" class="ub-x" aria-label="閉じる">×</button>`;
+  let iv = 0, gone = false;
+  const close = function () {
+    if (gone) return; gone = true;
+    clearInterval(iv);
+    t.classList.add("out");
+    setTimeout(function () { t.remove(); }, 380);
+  };
+  t.querySelector(".ub-x").onclick = function (e) { e.stopPropagation(); close(); };
+  t.onclick = function () {
+    if (gone) return; gone = true; clearInterval(iv); t.remove();
+    try { if (o.go) o.go(); } catch (e) {}
+  };
+  // ドックのすぐ上へ。測れなければ CSS の既定（下から200px）。
+  //   ★出したあとも見張りのたびに測り直す：ホームは画像の読み込みでドックの高さが少し動く
+  //   （実測：出した瞬間の位置のままだと、ドックに4pxかぶった）。
+  const place = function () {
+    try {
+      const anchor = document.querySelector(".hl-actionbar") || document.querySelector(".hl-dock");
+      if (!anchor) return;
+      const top = anchor.getBoundingClientRect().top, base = document.body.getBoundingClientRect().bottom;
+      if (top > 0 && base - top > 40) { const v = Math.round(base - top + 8) + "px"; if (t.style.bottom !== v) t.style.bottom = v; }
+    } catch (e) {}
+  };
+  place();
+  document.body.appendChild(t);
+  const t0 = Date.now();
+  iv = setInterval(function () {
+    let home = false; try { home = state.ui.screen === "home"; } catch (e) {}
+    if (!home) { if (!gone) { gone = true; clearInterval(iv); t.remove(); } return; }   // 別の画面へ出たら連れて行かない
+    if (!document.body.contains(t)) { clearInterval(iv); return; }
+    if (Date.now() - t0 > UNLOCK_BANNER_MS) close(); else place();
+  }, 300);
+  return t;
+}
+
+// 未読の点（ホームのタブ）。帯を出したときに付け、そのタブを開いたら消す。
+//   ★数は出さない・たまらない＝「新しく開いた場所が1つある」だけを伝える（消化を迫る件数バッジではない）。
+function unlockTabNew(tab) { try { return !!(tab && typeof getStoryFlag === "function" && getStoryFlag("_newtab_" + tab)); } catch (e) { return false; } }
+function unlockTabSeen(tab) { try { if (unlockTabNew(tab)) setStoryFlag("_newtab_" + tab, false); } catch (e) {} }
+
+// 解放（図鑑・おでかけ・モール…）の知らせ。名前は以前のまま（呼び元を変えない）だが、中身は帯。
 function _showUnlockCutin(u) {
-  const ov = el("div", "navpop-ov");
-  const box = el("div", "navpop infopop");
-  box.innerHTML =
-    `<div class="navpop-t">🔓 あたらしい遊びが解放！</div>` +
-    `<div class="infopop-body"><div class="mm-row"><span class="mm-ic">${u.icon}</span>` +
-    `<div><b>${String(u.notifyTitle || "").replace(u.icon, "").trim()}</b><small>${u.notifyBody}</small></div></div></div>`;   // 左のアイコンと見出しの絵文字が二重にならないように
-  const btns = el("div", "navpop-btns");
-  const later = el("button", "navpop-x", "あとで"); later.onclick = function () { ov.remove(); };
-  const go = el("button", "navpop-go", "今すぐ見る ▸");
-  go.onclick = function () { ov.remove(); if (typeof goto === "function") goto(u.go); };
-  btns.appendChild(later); btns.appendChild(go); box.appendChild(btns);
-  ov.appendChild(box);
-  ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
-  document.body.appendChild(ov);
+  try { if (u.tab && typeof setStoryFlag === "function") setStoryFlag("_newtab_" + u.tab, true); } catch (e) {}
+  _showUnlockBanner({
+    icon: u.icon,
+    title: String(u.notifyTitle || "").replace(u.icon, "").trim(),   // 左のアイコンと見出しの絵文字が二重にならないように
+    body: u.short || u.notifyBody,
+    cta: "見る ▸",
+    go: function () { unlockTabSeen(u.tab); if (typeof goto === "function") goto(u.go); }
+  });
   try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
 }
 
-// 物語の新章カットイン＝解放の cut-in と同じ枠。章題は伏せる（未読＝顧問未登場・R7）＝固有名を出さない。
+// 物語の新章の知らせ＝同じ帯。章題は伏せる（未読＝顧問未登場・R7）＝固有名を出さない。
+//   未読の点はメディアのタブが既に持っている（storyHasUnread）ので、ここでは足さない。
 function _showStoryCutin(ch) {
   const _title = (typeof chapterTeaseTitle === "function") ? chapterTeaseTitle(ch) : ("第" + ch.id + "話");
-  const ov = el("div", "navpop-ov");
-  const box = el("div", "navpop infopop");
-  box.innerHTML =
-    `<div class="navpop-t">🎬 新しいエピソード公開</div>` +
-    `<div class="infopop-body"><div class="mm-row"><span class="mm-ic">🎬</span>` +
-    `<div><b>${_title}</b><small>密着ドキュメンタリー『ミミ、爆走中。』の続きが公開されました。〈物語〉から見られます。</small></div></div></div>`;
-  const btns = el("div", "navpop-btns");
-  const later = el("button", "navpop-x", "あとで"); later.onclick = function () { ov.remove(); };
-  const go = el("button", "navpop-go", "読む ▸");
-  go.onclick = function () { ov.remove(); if (typeof renderStory === "function") renderStory(); };
-  btns.appendChild(later); btns.appendChild(go); box.appendChild(btns);
-  ov.appendChild(box);
-  ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
-  document.body.appendChild(ov);
+  _showUnlockBanner({
+    icon: "🎬",
+    title: "新しいエピソード公開",
+    body: `『ミミ、爆走中。』${_title}`,
+    cta: "読む ▸",
+    go: function () { if (typeof renderStory === "function") renderStory(); }
+  });
   // 🎺 新章の当たり音（実ファイル・2026-07-30）。無ければ従来の合成音に落ちる。
   try { if (window.Sfx && Sfx.sting) Sfx.sting("sting-chapter.mp3"); else if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
 }

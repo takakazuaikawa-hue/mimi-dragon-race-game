@@ -77,6 +77,8 @@ function beginScreen() {
   if (screen !== "title") document.body.classList.remove("title-mode");
   if (typeof syncVolumeFab === "function") syncVolumeFab();              // 🔊 全画面常設の音量ボタンを画面に合わせて表示/非表示
   var _scmBn = document.getElementById("scm-bnav-host"); if (_scmBn) _scmBn.remove();   // モールのフロート下部ナビ(body直下fixed)を毎遷移で外す（モールで再設置）
+  // 解放の帯(body直下fixed・progression.js)はホーム専用＝ほかの画面へ連れて行かない。帯自身の見張りに加えて、ここでも確実に外す。
+  if (screen !== "home") { try { document.querySelectorAll(".unlock-banner").forEach(function (x) { x.remove(); }); } catch (e) {} }
   if (prev !== screen) window.scrollTo(0, 0);   // start every new screen at the top
 
   // Hero "expand from the tapped card" (race card → detail) takes priority.
