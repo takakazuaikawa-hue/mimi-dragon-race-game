@@ -1016,6 +1016,9 @@ body.dev-on .debug-toggle { display: inline-block; }
   text-align: center; font-size: 9.5px; letter-spacing: .06em; color: #8b96a5; cursor: pointer;
   background: linear-gradient(180deg, rgba(6,10,16,0), rgba(6,10,16,.75)); }
 .rc-board.rc-board--compact .rcb-foot { display: block; }
+/* 発走前（入場〜カウントダウン）：順位はまだ無い。的中ラインは出さず、数字のかわりに「–」を薄く出す。 */
+.rc-board.rc-board--prego .rcb-hitline { opacity: 0; }
+.rc-board.rc-board--prego .rcb-pos { color: #6f7b8c; }
 .rc-board .rcb-waku { flex: none; width: 3px; height: 15px; border-radius: 2px; }
 .rc-board .rcb-nm { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-board .rcb-style { flex: none; font-size: 10px; color: #8b96a5; }

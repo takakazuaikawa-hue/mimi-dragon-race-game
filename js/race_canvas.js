@@ -1254,7 +1254,7 @@ function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
     ctx.font = "bold " + Math.round(9.5 * l.dep) + "px " + _RC_LBL_FONT;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillStyle = l.isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.9)";
-    ctx.fillText(String(l.rk), cx, cy + 0.5);
+    ctx.fillText(l.rkText != null ? l.rkText : String(l.rk), cx, cy + 0.5);
     if (r.full) {
       ctx.font = "9.5px " + _RC_LBL_FONT;
       ctx.textAlign = "left";
@@ -3574,7 +3574,13 @@ function startRaceCanvas(container, ctx) {
     }
 
     // --- dragons (draw far lanes first for overlap) ---
-    const standings = timeline.standingsAt(S.tau);
+    // ★発走前（入場〜カウントダウン）は、まだ順位というものが無い。人気順で並べ、
+    //   順位の数字・上位3頭の強調・「いま的中なら」は出さない（2026-11-12）。
+    //   以前はここに最終着順が出ていて、走る前に答えが分かってしまっていた。
+    const _preGo = (S.entryT > 0 || S.preT > 0) && !S.finished;
+    S._preGo = _preGo;   // 順位表（updateBoard）が読む
+    let standings = timeline.standingsAt(S.tau);
+    if (_preGo) standings = standings.slice().sort((a, b) => (popRank[a] || 99) - (popRank[b] || 99));
     const standMap = {}; standings.forEach((id, i) => { standMap[id] = i + 1; });
 
     // ★世界内イベントポップ（R8-W2・表示のみ）＝順位変動/スパートをその竜の頭上で祝う
@@ -3857,7 +3863,7 @@ function startRaceCanvas(container, ctx) {
       // ゴール後（勝者の大写し中）は小札を出さない＝大写しの後ろに「5 バラン」等が残って安っぽく見えた（ユーザー指摘）
       if ((_lEb > 0.6 || isBet) && !S.finished) {
         _lbls.push({ cx: bodyCx, top: _body ? _body.y : y - 34 * dep, bot: _body ? _body.y + _body.h : baseY + 12, dep: dep, rk: rk, isBet: isBet,
-          lead: popRank[dr.id] === 1, nm: commentaryName(dr.id), a: cctx.globalAlpha });
+          lead: popRank[dr.id] === 1, nm: commentaryName(dr.id), a: cctx.globalAlpha, rkText: _preGo ? "" : null });
       }
 
       // ★A-2 ロールコール：紹介中の1頭だけ、頭上に大きな名札プレートを出す。
@@ -4501,6 +4507,7 @@ function startRaceCanvas(container, ctx) {
 
   function updateBoard(standings, standMap, tNow) {
     // --- 並び替え（FLIP）: 4〜5回/秒に間引く。毎フレームやると重いだけで見た目も変わらない ---
+    const boardPreGo = !!S._preGo;         // 発走前か（描画の先頭で決めている）
     const doArrange = (tNow - boardLastArrange) > 220;
     const slots = doArrange ? boardSlotMap(standings) : null;
     standings.forEach((id, i) => {
@@ -4528,12 +4535,14 @@ function startRaceCanvas(container, ctx) {
       }
 
       // --- 中身の差分更新（変わった時だけ触る＝無駄な再描画を避ける） ---
-      if (row._rank !== rank) {
-        row._rank = rank;
-        row.querySelector(".rcb-pos").textContent = rank;
-        row.classList.toggle("top3", rank <= 3);
+      // 発走前は順位を出さない（「–」）。発走した瞬間に数字へ切り替わる。
+      const rkey = boardPreGo ? "pre" : rank;
+      if (row._rank !== rkey) {
+        row._rank = rkey;
+        row.querySelector(".rcb-pos").textContent = boardPreGo ? "–" : rank;
+        row.classList.toggle("top3", !boardPreGo && rank <= 3);
         // 順位変動の矢印：上がった＝▲（緑）／下がった＝▼（赤）。1.2秒で自然に消す。
-        if (prev != null && prev !== rank) {
+        if (!boardPreGo && prev != null && prev !== rank) {
           const mv = row.querySelector(".rcb-mv");
           const up = rank < prev;
           mv.textContent = up ? "▲" : "▼";
@@ -4542,12 +4551,17 @@ function startRaceCanvas(container, ctx) {
           row._mvT = setTimeout(() => { mv.textContent = ""; mv.className = "rcb-mv"; }, 1200);
         }
       }
-      boardPrevRank[id] = rank;
+      boardPrevRank[id] = boardPreGo ? null : rank;   // 発走前の並び（人気順）からの「▲▼」は出さない
     });
     if (doArrange) boardLastArrange = tNow;
+    boardEl.classList.toggle("rc-board--prego", boardPreGo);
 
     // --- 自分の竜：期待メーター＋ライブ配当（圏内のときだけ）---
-    if (bet && betSet.size) {
+    //   発走前は判定しない（人気順の1行めにいるだけで「いま的中なら」が出てしまうため）。
+    if (boardPreGo && bet && betSet.size) {
+      betSet.forEach(id => { const row = boardRow[id]; if (!row) return; row.classList.remove("in-zone"); const pay = row.querySelector(".rcb-pay"); if (pay && row._payShown !== false) { row._payShown = false; pay.textContent = ""; } });
+      boardEl.classList.remove("in-zone"); boardZoneWas = false;
+    } else if (bet && betSet.size) {
       const exp = betExpect(standMap);
       betSet.forEach(id => {
         const row = boardRow[id]; if (!row) return;
