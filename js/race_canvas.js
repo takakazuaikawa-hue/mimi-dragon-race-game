@@ -2186,7 +2186,7 @@ function startRaceCanvas(container, ctx) {
         { race, bet, oddsResult, raceResult, trialForms: ctx.trialForms },
         { commentator: _commentator,
           nameOf: (id) => (typeof commentaryName === "function" ? commentaryName(id) : id) });
-      telopSchedule = (bc.script || []).map(x => ({ tau: x.tau, line: x.line, side: x.side, tag: x.tag, fired: false }));
+      telopSchedule = (bc.script || []).map(x => ({ tau: x.tau, line: x.line, side: x.side, tag: x.tag, lead: x.lead, fired: false }));
       _bcAnalysis = bc.analysis || null;
     }
   } catch (e) { telopSchedule = []; }
@@ -2259,6 +2259,7 @@ function startRaceCanvas(container, ctx) {
   const TELOP_DWELL_MIN = 1500, TELOP_DWELL_MAX = 2900;
   const TELOP_CORE_TAGS = { start: 1, countdown: 1, signature: 1, cutin: 1, lead: 1, final: 1, goal: 1, course: 1 };
   let _telopLastAt = -1e9, _telopLastLen = 20, _telopQ = [], _telopDrop = 0, _getawaySeen = 0;
+  let _telopStaleN = 0;         // 「先頭は◯◯」が出す前に古くなって捨てた本数（検証用）
   let _telopStartLine = null;   // スタートの一声（これによる割り込みは仕様＝欠けに数えない）
   function _telopDwell() {
     const need = _telopLastLen / TELOP_CPM * 60 * 1000;
@@ -2272,20 +2273,35 @@ function startRaceCanvas(container, ctx) {
     if (tag === "getaway" && _getawaySeen < 1) return true;   // 出遅れ・逃げの第一報だけは核
     return false;
   }
-  function _telopShow(line, side, tag) {
+  function _telopShow(line, side, tag, lead) {
     shownLines.push({ line: line, side: side });
     if (tag === "getaway") _getawaySeen++;
     _telopLastAt = performance.now();
     _telopLastLen = (line || "").length;        // 次の行を待たせる長さ＝いま出した行の長さで決まる
-    _telopLog("say", side, line, tag);
+    _telopLog("say", side, line, tag, lead);
     speak(side, line);
   }
-  function _telopLog(ev, side, line, tag) {
+  function _telopLog(ev, side, line, tag, lead) {
     try {
       if (window.__telopLog) window.__telopLog.push({
-        t: performance.now(), ev: ev, side: side, n: (line || "").length, tag: tag || "", line: line
+        t: performance.now(), ev: ev, side: side, n: (line || "").length, tag: tag || "", line: line,
+        tau: S.tau, lead: lead == null ? null : lead, top: _telopTopNow()
       });
     } catch (e) {}
+  }
+  // ★「いま先頭は◯◯」の行が、出す瞬間にまだ本当かを確かめる（2026-11-12）。
+  //   台本は行を読み切れるように後ろへずらして詰め、さらに画面側の滞留キューで待たせる。
+  //   そのあいだに先頭が替わると、順位表はセラム1位なのに実況は「バラン先頭！」になる
+  //   （Codex の通し試験で観測）。遅い実況ではなく**間違った実況**なので、出さずに捨てる。
+  //   ★読むだけ。timeline.standingsAt は順位表と同じ出どころ＝絵と表と声が一致する。
+  //   ★決着後は確かめない（決め台詞は flushTelop が責任を持つ）。発走前は lead つきの行が無い。
+  function _telopTopNow() {
+    try { const st = timeline.standingsAt(S.tau); return (st && st.length) ? st[0] : null; } catch (e) { return null; }
+  }
+  function _telopStale(lead) {
+    try { if (lead == null || S.finished || window.__telopNoStale) return false; } catch (e) { return false; }
+    const top = _telopTopNow();
+    return top != null && top !== lead;
   }
   // ★テロップの投入口はこの1本に集約する（2026-08-01）。
   //   理由：以前は shownLines.push が7箇所に散っていて、「1フレームに何行入ったか」も
@@ -2304,9 +2320,12 @@ function startRaceCanvas(container, ctx) {
       _telopShow(line, side, tag);
       return;
     }
-    if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag); return; }
+    const lead = (opt && opt.lead != null) ? opt.lead : null;
+    // ★台本の詰め込みで後ろへずれたぶんだけで、もう古くなっている行はここで捨てる。
+    if (_telopStale(lead)) { _telopDrop++; _telopStaleN++; _telopLog("stale", side, line, tag, lead); return; }
+    if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag, lead); return; }
     // ★間に合わない行は、まず積む（核も雑談も区別せず）。間が空けば雑談も1本通る。
-    _telopQ.push({ line: line, side: side, tag: tag });
+    _telopQ.push({ line: line, side: side, tag: tag, lead: lead });
     // ★あふれたら「雑談から」間引く。核は最後まで残す。
     //   積みすぎると「もう終わった話」が後から出るので、雑談を含むうちは上限2本。
     //   ★ただし全部が核のときだけ上限を4本に緩める（2026-08-01・再計測で追加）。
@@ -2325,10 +2344,16 @@ function startRaceCanvas(container, ctx) {
   function telopPump() {
     if (!_telopQ.length) return;
     if (performance.now() - _telopLastAt < _telopDwell()) return;
-    const it = _telopQ.shift();
-    _telopShow(it.line, it.side, it.tag);
+    // ★待っているあいだに先頭が替わった行は出さない。捨てたら、その場で次の行を見る
+    //   （1本捨てて黙るのではなく、いま本当のことを言っている行まで進む）。
+    while (_telopQ.length) {
+      const it = _telopQ.shift();
+      if (_telopStale(it.lead)) { _telopDrop++; _telopStaleN++; _telopLog("stale", it.side, it.line, it.tag, it.lead); continue; }
+      _telopShow(it.line, it.side, it.tag, it.lead);
+      return;
+    }
   }
-  try { window.__telopStats = function () { return { dropped: _telopDrop, queued: _telopQ.length }; }; } catch (e) {}
+  try { window.__telopStats = function () { return { dropped: _telopDrop, queued: _telopQ.length, stale: _telopStaleN }; }; } catch (e) {}
   // R8-W3 実況の強弱：山場ワードを含む最新行は「絶叫」スタイル（金・大きめ）＝表示のみ
   const TELOP_HOT = /先頭|差し切|抜け出|かわし|接戦|並ん|仕掛け|伸び|ゴール|突き放|猛追|一気|捕らえ/;
   // ---- ゆっくり実況の描画：左右それぞれ「最新の一言」だけを吹き出しに出す ----

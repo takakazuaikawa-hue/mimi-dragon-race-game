@@ -327,6 +327,8 @@
         sl.wrap.classList.remove("active", "dim", "has", "in");
       });
       d.overlay.classList.remove("hidden");
+      // ★会話が開いている印（2026-11-12）。ホームでは背景の大きいミミを引っ込める合図に使う（style.css `body.home-mode.dlg-open`）＝会話用の立ち絵と二重にしない。
+      try { document.body.classList.add("dlg-open"); } catch (e) {}
       document.addEventListener("keydown", onKey, true);
       step();
     });
@@ -557,6 +559,7 @@
     clearBg();   // ★背景は台本ごと＝次の無関係な会話に前の場面を持ち越さない
     clearStandees();   // ★立ち絵も同じ理由で空にする（前のキャラを次の会話へ持ち越さない）
     if (dom) dom.overlay.classList.add("hidden");
+    try { document.body.classList.remove("dlg-open"); } catch (e) {}
     document.removeEventListener("keydown", onKey, true);
     var r = resolveFn; resolveFn = null; queue = null;
     if (r) r();

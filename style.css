@@ -5239,6 +5239,12 @@ body.title-mode #vol-fab { display: none !important; }
 .hl-mimi { position: absolute; left: 50%; bottom: -120px; transform: translateX(-50%); z-index: 1;
   width: min(96vw, 92%, 540px); height: min(88vh, 800px, calc(100% + 120px));
   cursor: pointer; will-change: transform; filter: drop-shadow(0 2px 7px rgba(0,0,0,.5)); }
+/* ★ホームで立ち絵つきの会話が開いているあいだ、背景の大きいミミは引っ込める（2026-11-12）。
+   紀行の導入・解放の会話などがホームで出ると、大きいミミの前に会話用のミミが別の大きさで重なり、
+   主役が二重になっていた（Codex の通し試験。開発ガイドの「ホームでVN立ち絵を出さない」に反する実表示）。
+   会話を個別に止めるのではなく、開いているあいだだけ下のミミを消す＝どの会話でも二重にならない。 */
+.hl-mimi { transition: opacity .22s ease; }
+body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .hl-mimi-in { width: 100%; height: 100%; will-change: transform; perspective: 700px; }
 .hl-mimi-flip { width: 100%; height: 100%; transition: transform .23s cubic-bezier(.45,0,.55,1); transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
 .hl-mimi-flip.flipping { transform: perspective(820px) rotateY(90deg); }   /* perspectiveを関数側に＝親のtransform/コンテナに影響されず確実に立体回転 */
