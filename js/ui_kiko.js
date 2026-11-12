@@ -139,6 +139,26 @@ function _kikoArtCard(art, opts) {
   return card;
 }
 
+// ── 🐦 あゆみの「◯◯のころ」＝その目標を達成した時期（2026-11-13）──
+//   以前は目標が置かれている段（goals.js の phase）をそのまま名乗っていた。「相棒を見つける（2勝）」は
+//   第3話の段にあるので、1戦めの直後に達成しても「第3話のころ」と出ていた（通しプレイで発覚）。
+//   達成をはじめて見たときに、そのとき読んでいた話を控える（段より先には進めない＝既存のセーブは段か現在の早いほう）。
+//   表示のための控えだけ（state.player.kikoAyumi）。目標の判定・報酬には触れない。
+function _kikoAyumiWhen(g) {
+  let n = g.phase || 1;
+  try {
+    const p = state.player, rec = (p.kikoAyumi = p.kikoAyumi || {});
+    if (rec[g.id] == null) {
+      const ch = Math.min(5, Math.max(1, (typeof kurashiChapter === "function") ? kurashiChapter() : 1));
+      rec[g.id] = Math.min(g.phase || ch, ch);
+      if (typeof saveGame === "function") saveGame();
+    }
+    n = rec[g.id];
+  } catch (e) {}
+  const ph = (typeof GOAL_PHASES !== "undefined" && GOAL_PHASES.find(x => x.id === n)) || null;
+  return ph ? ph.label.split(" ")[0] : "島のどこか";
+}
+
 // ── 🐦 あゆみ（昔のTwitter風）のつぶやき文面。目標id→当時のミミのツイート。──
 //   声表：短文の畳みかけ・！多め・飯に着地しがち・自分に「おめでとう」と言わない。
 //   ★未登場キャラの固有名は書かない（表示側でも goalMasked で二重に防護）。
@@ -545,12 +565,12 @@ function renderKiko() {
       `<div class="ktw-a"><span>返信</span><span>リツイート</span><span class="fav">★ ふぁぼ</span></div></div></div>`;
   try {
     const done = GOALS.filter(g => goalDone(g));
+    done.forEach(g => _kikoAyumiWhen(g));       // 達成した時期を、はじめて見たときに控える（下の関数）
     const recent = done.slice(-6).reverse();   // 新しい実績が上（昔のTLと同じ・最新が先頭）
     recent.forEach((g, i) => {
       const masked = (typeof goalMasked === "function") && goalMasked(g);
       const text = (!masked && _KIKO_TWEETS[g.id]) || `${(typeof goalIconSafe === "function") ? goalIconSafe(g) : ""} ${(typeof goalTitleSafe === "function") ? goalTitleSafe(g) : g.title}、達成！`;
-      const ph = (typeof GOAL_PHASES !== "undefined" && GOAL_PHASES.find(x => x.id === g.phase)) || null;
-      const when = ph ? ph.label.split(" ")[0] : "島のどこか";
+      const when = _kikoAyumiWhen(g);
       const rt = 2 + ((i * 7 + (done.length * 3)) % 29);
       const fav = 5 + ((i * 13 + fol) % 97);
       tlHtml +=

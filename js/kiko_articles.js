@@ -224,8 +224,27 @@ var KIKO_CUTS = [
   {
     id: "win", tag: "勝った日",
     take: function (m) { return _kikoFind(m, "win"); },
-    headline: function (d) { return "🏆 " + d.dragon + "だけ、線がまっすぐだった"; },
-    paras: function (d) {
+    // ★勝った日の記事は3通り（2026-11-13）。以前は1通りだけで、勝つたびに同じ題・同じ文が並んでいた。
+    //   敗戦記と同じ作法＝記事の通し番号で決める（開き直しても変わらない）。書くのは確定済みの事実（レース名・竜・倍率・払い戻し）だけ。
+    headline: function (d, c) {
+      return _kikoPick([
+        "🏆 " + d.dragon + "だけ、線がまっすぐだった",
+        "🏆 " + d.dragon + "が勝って、わたしの声が裏返りました",
+        "🏆 " + d.dragon + "に、ごはんをおごってもらった日"
+      ], "wn" + c.seq);
+    },
+    paras: function (d, c) {
+      var v = _kikoSeed("wn" + c.seq) % 3;
+      if (v === 1) return [
+        "勝ちました。" + d.race + "、" + d.type + d.odds + "倍、" + d.dragon + "。数字を書いているだけで、手がまだ少し震えています。",
+        "ゴールの前で、声が出ました。自分でもびっくりするくらい大きな、裏返った声です。となりのおじさんが、だまってうなずいてくれました。知らない人です。でも、あの瞬間だけは親戚でした。",
+        "払い戻しは" + _kikoCoins(d.payout) + "。券を窓口に出すとき、落とさないように両手で持ちました。紙一枚が、こんなに重いとは知りませんでした。"
+      ];
+      if (v === 2) return [
+        "勝ちました。" + d.race + "、" + d.dragon + "、" + d.type + d.odds + "倍。昨日までのわたしに教えてあげたいです。たぶん、信じないと思いますけど。",
+        "あの子は、ゴールしたあとも、何ごともなかった顔をしていました。こっちは心臓が口から出そうだったのに。竜のほうが、ずっと大人です。",
+        "払い戻しは" + _kikoCoins(d.payout) + "。帰りの屋台で、いつもより一品多く頼みました。" + d.dragon + "のおごりです。本人は知りません。"
+      ];
       return [
         "勝ちました。書いておかないと明日の自分が信じてくれないので、先に書いておきます。" + d.race + "、" + d.type + d.odds + "倍、" + d.dragon + "。",
         "ゲートが開いた瞬間、あの子だけ、進む線がまっすぐでした。ほかの子はみんな、ちょっとだけ迷っていた。……理屈は後から付けます。とにかく、まっすぐだったんです。",
@@ -554,11 +573,13 @@ function kikoReaderDelta() {
     if (diff <= 0) return null;
     var parts = [];
     var dw = (cur.wins - (snap.wins || 0)), dr = (cur.races - (snap.races || 0));
+    // ★内訳は式どおり（2026-11-13）：完走は勝った戦も含めて1戦15、単勝はそれに加えて40。
+    //   以前は完走を「負けた戦だけ」で数えていたので、勝った戦の15が「島での評判」に回っていた。
     if (dw > 0) parts.push("勝利のニュース +" + (dw * 40));
-    if (dr - dw > 0) parts.push("完走の記録 +" + ((dr - dw) * 15));
+    if (dr > 0) parts.push("完走の記録 +" + (dr * 15));
     var dfan = Math.max(0, cur.fans - (snap.fans || 0));
     if (dfan > 0) parts.unshift("連載と記事 +" + dfan);
-    var rest = diff - dw * 40 - Math.max(0, dr - dw) * 15 - dfan;
+    var rest = diff - Math.max(0, dw) * 40 - Math.max(0, dr) * 15 - dfan;
     if (rest > 0) parts.push("島での評判 +" + rest);
     return { diff: diff, why: parts.join("／") };
   } catch (e) { return null; }
