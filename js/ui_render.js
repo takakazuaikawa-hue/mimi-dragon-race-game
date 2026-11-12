@@ -3248,7 +3248,14 @@ function onConfirmBet(skipDialog) {
   state.player.pendingPayout = (c.betResult && c.betResult.payout) || 0;
   saveGame();
   // レース直前の煽り（立ち絵）→ 閉じてからレース映像へ。結果は既に runRace で確定済み・不変。
-  if (window.DLG && DLG.PRE_RACE_HYPE && window.Dialogue && Dialogue.play) {
+  // ★出すのは「はじめての一戦」と「大勝負」だけ（2026-11-13）。以前は毎レース出ていて、券を千切ったあとに
+  //   もう一度会話を送らないと走り出さなかった（Codex の通し試験「この手順をもう済ませたのにまだ走らない」）。
+  //   しかも台詞は賭金とランクで決まるので、同じ賭け方だと毎回同じ一言だった。
+  //   大勝負＝賭金500以上で、しかも賭ける前の財布の半分以上（ここでは賭金は引かれたあとなので、足して比べる）。
+  //   それ以外は、千切ったらそのまま入場へ（入場の実況と、キャスターのミミがそこに居る）。
+  const _hypeFirst = ((state.player.completedRaces || 0) < 1);
+  const _hypeBig = (c.bet.wager >= 500) && (c.bet.wager >= ((state.player.coins || 0) + c.bet.wager) * 0.5);
+  if (window.DLG && DLG.PRE_RACE_HYPE && window.Dialogue && Dialogue.play && (_hypeFirst || _hypeBig)) {
     Dialogue.play(DLG.preRace(c.race, c.bet)).then(renderRaceRun);
   } else {
     renderRaceRun();

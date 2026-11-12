@@ -656,6 +656,10 @@ function kikoSerialCourseTarget() {
 }
 function kikoSerialTargetSpot() { var n = kikoSerialNext(); return n ? n.ep.spot : null; }
 
+// その回を書き上げると増える読者の数（第1回 +200 … 最終回 +1,450）。
+//   ★決まりはここ1か所。書く処理（下）と、書く前の案内（ui_kiko.js の「次の取材先」）の両方が読む＝数がずれない。
+function kikoSerialFansFor(no) { return 150 + 50 * (no || 1); }
+
 // 書く。成功で回を返す（条件が欠けていれば null＝何も変えない）。
 function kikoSerialWrite(id) {
   try {
@@ -667,7 +671,7 @@ function kikoSerialWrite(id) {
     d.fresh = id;                       // 読み終えるまで🆕（一覧で印を付ける）
     // 👀 回が進むほど、よく読まれる（第1回 +200 … 最終回 +1,450）。数は回ごとに控えて、紙面で見せる。
     d.fans = d.fans || {};
-    d.fans[id] = (typeof kikoFansAdd === "function") ? kikoFansAdd(150 + 50 * n.no) : 0;
+    d.fans[id] = (typeof kikoFansAdd === "function") ? kikoFansAdd(kikoSerialFansFor(n.no)) : 0;
     try { if (typeof saveGame === "function") saveGame(); } catch (e) {}
     return n.ep;
   } catch (e) { return null; }

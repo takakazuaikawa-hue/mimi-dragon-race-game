@@ -224,10 +224,10 @@ function _kikoSerialHelp() {
   if (typeof showInfoPopup !== "function") return;
   showInfoPopup("連載「島ぐらし」",
     `<div class="mm-row"><span class="mm-ic">✍️</span><div><b>島で暮らす話を、順番に書いていく連載</b><small>全${KIKO_SERIAL.length}回。書いた回は、いつでも読みかえせます。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🏝️</span><div><b>回ごとに「取材先」がある</b><small>条件がそろったら、<u>おでかけ</u>でその場所へ。スポットの画面に「ここで書く」が出ます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🏝️</span><div><b>回ごとに「取材先」がある</b><small>条件がそろったら、<u>おでかけ</u>でその場所へ。スポットの画面に「ここで書き上げる」が出ます。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🏟️</span><div><b>コースの回は、そこで走ると書ける</b><small>8つの開催地域それぞれに1回。その地域のレースを走る（回によっては当てる）のが条件です。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">🏁</span><div><b>1回書いたら、次は1戦走ってから</b><small>書くことは、暮らしのなかでたまっていきます。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>書くと、読者が増える</b><small>読者が増えるほど、毎日の印税が増えます。レースの勝ち負けには影響しません。</small></div></div>`);
+    `<div class="mm-row"><span class="mm-ic">👀</span><div><b>書くと、読者が増える</b><small>読者が増えるほど、毎日の売上が増えます。レースの勝ち負けには影響しません。</small></div></div>`);
 }
 
 // 取材へ出かける（地図のそのスポットを開く）。島へ出られない間は紀行に留まる。
@@ -262,6 +262,7 @@ function _kikoSerialSection(app) {
     const sp = kikoSerialSpot(nx.ep);
     let spotOpen = !!nx.ep.direct;
     try { if (!spotOpen) spotOpen = konronMapUnlocked() && _kmSpotOpen(KONRON_SPOTS[nx.ep.spot]); } catch (e) { spotOpen = false; }
+    const _gainN = (typeof kikoSerialFansFor === "function") ? kikoSerialFansFor(nx.no) : (150 + 50 * nx.no);
     const card = el("div", "ks-next" + (nx.ready ? " ready" : "") + (spotOpen ? "" : " veil"));
     card.innerHTML =
       `<div class="ks-next-ph"><img src="${sp.photo}" alt="" decoding="async" onerror="this.remove()">` +
@@ -272,7 +273,11 @@ function _kikoSerialSection(app) {
         `<div class="ks-next-pl">${sp.name}${sp.area !== sp.name ? `<small>${sp.area}</small>` : ""}</div>` +
         `<p class="ks-next-memo">${nx.ep.memo}</p>` +
         (nx.needs.length ? `<ul class="ks-need">` + nx.needs.map(t => `<li>${t}</li>`).join("") + `</ul>` : "") +
-        (nx.ready ? `<button class="ks-cta">${nx.ep.direct ? `第${nx.no}回を書く` : "取材へ出かける"}</button>`
+        // ★押す前に、書き上げると何が起きるかを言う（2026-11-13）。以前は「第1回を書く」を押した瞬間に
+        //   「書き上げた／編集部へ送りました／読者 +200人」になり、何のための操作かが後から分かる順だった
+        //   （Codex の通し試験）。増える人数は既存の決まり（kiko_serial.js kikoSerialFansFor）を読むだけ。
+        `<div class="ks-next-gain">✍️ 書き上げると <b>読者 +${_gainN.toLocaleString("ja-JP")}人</b><small>読者が増えるほど、毎日の売上が上がります。</small></div>` +
+        (nx.ready ? `<button class="ks-cta">${nx.ep.direct ? `第${nx.no}回を書き上げる` : "取材へ出かける"}</button>`
                   : (spotOpen && !nx.ep.direct ? `<button class="ks-cta ghost">下見に行く</button>` : "")) +
       `</div>`;
     const cta = card.querySelector(".ks-cta");

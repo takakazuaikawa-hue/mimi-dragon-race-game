@@ -1138,7 +1138,7 @@ function _kmRenderPanel() {
         const _sn = kikoSerialNext();
         if (_sn && _sn.ep.spot === _kmSpot && !_sn.ep.direct) {
           body += _sn.ready
-            ? `<button class="km-serial" data-serial="${_sn.ep.id}"><span class="km-serial-k">連載　島ぐらし</span><b>第${_sn.no}回を、ここで書く</b><small>${_sn.ep.memo}</small></button>`
+            ? `<button class="km-serial" data-serial="${_sn.ep.id}"><span class="km-serial-k">連載　島ぐらし</span><b>第${_sn.no}回を、ここで書き上げる</b><small>${_sn.ep.memo}</small></button>`
             : `<div class="km-serial wait"><span class="km-serial-k">連載　島ぐらし</span><b>第${_sn.no}回の取材先</b><small>${_sn.needs[0] || ""}</small></div>`;
         }
       }
