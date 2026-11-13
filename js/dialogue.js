@@ -110,7 +110,16 @@
       var oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "buniqro";
       var ex = expr || "smile";
       var oi = (typeof outfitImg === "function") ? outfitImg : function (o, x) { return "images/cast/mimi/mimi_" + o + "_" + x + ".webp"; };
-      var list = [oi(oid, ex + "_cut"), oi(oid, ex), oi(oid, "smile_cut"), oi(oid, "smile"), oi(oid, "default")];
+      // ★切り抜き（_cut）の絵は、下の衣装の smile にしか無い（images/cast/mimi/）。以前は全衣装・全表情で毎回
+      //   先に _cut を読みにいき、無い組で 404 を出してから落ちていた（Codex 3回め：14種類・55件）。在る組だけ試す。
+      //   切り抜きを足したら、ここに1つ足す。
+      var CUT = { dragonrobe: { smile: 1 }, jungle: { smile: 1 }, newspaper: { smile: 1 }, tarzan: { smile: 1 } };
+      var hasCut = function (o, x) { return !!(CUT[o] && CUT[o][x]); };
+      var list = [];
+      if (hasCut(oid, ex)) list.push(oi(oid, ex + "_cut"));
+      list.push(oi(oid, ex));
+      if (hasCut(oid, "smile")) list.push(oi(oid, "smile_cut"));
+      list.push(oi(oid, "smile"), oi(oid, "default"));
       return uniq(list);
     }
     if (c.img) {

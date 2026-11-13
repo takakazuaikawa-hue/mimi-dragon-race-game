@@ -178,7 +178,8 @@ registerEvent({
   actions: [
     { type: "dialogue", speaker: "sake_udada",
       text: "3連敗か。……いい経験しているな、ミミ。外した数だけ、竜の見方は増える。" },
-    { type: "dialogue", speaker: "mimi", expr: "sad",
+    // 表情は panic（sad の絵はどの衣装にも無く、毎回 404 を出してから smile に落ちていた）
+    { type: "dialogue", speaker: "mimi", expr: "panic",
       text: "でも師匠、お財布が……単勝、ぜんぜん当たらないです……。" },
     { type: "dialogue", speaker: "sake_udada",
       text: "単勝は一番むずかしい賭式だ。1着をぴたりと当てるんだからな。……まずは複勝でいい。3着までに入れば拾える。" },
