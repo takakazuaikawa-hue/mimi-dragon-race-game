@@ -2498,6 +2498,14 @@ table.entry-table {
 .rs-nextgoal { text-align: center; font-size: 12.5px; color: var(--mist-soft); margin: -2px 0 12px; padding: var(--pd-8-12);
   background: rgba(231,242,236,0.05); border: 1px solid rgba(231,242,236,0.1); border-radius: var(--rd-10); }
 .rs-nextgoal b { color: var(--gold-bright); }
+/* 結果画面の「いまの目標」（ui_render.js）＝ホームの札と同じ目標。押すと目標の一覧へ。2026-11-13 */
+button.rs-nextgoal { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; row-gap: 2px; width: 100%; text-align: left;
+  font-weight: 400; font-size: 12.5px; color: var(--mist-soft); cursor: pointer; }
+.rs-nextgoal .rng-k { grid-column: 1; font-size: 10px; letter-spacing: .12em; color: var(--mist-soft); }
+.rs-nextgoal .rng-t { grid-column: 1; font-size: 14.5px; font-weight: 800; color: var(--white); line-height: 1.4; text-wrap: balance; }
+.rs-nextgoal .rng-h { grid-column: 1; font-size: 11.5px; line-height: 1.55; color: var(--mist-soft); }
+.rs-nextgoal .rng-r { grid-column: 1; margin-top: 5px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,.1); font-size: 11.5px; color: var(--mist-soft); text-wrap: balance; }
+.rs-nextgoal .rng-go { grid-column: 2; grid-row: 1 / span 3; align-self: center; color: var(--hx-ffd98a); font-weight: 900; }
 
 /* === 本日の注目レース (spec #37) === */
 .feat-race { position: relative; margin-bottom: 16px; padding: 16px 16px 14px; border-radius: var(--rd-14); overflow: hidden;
@@ -10632,6 +10640,10 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
 .nw { display: inline-block; white-space: nowrap; }   /* 単語の途中で改行させない（レース名「第1レ／ース」対策） */
 body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタンと出走ボタンを重ねない */
 .ranking-table .rt-sub { display: block; font-size: 11px; font-weight: normal; opacity: .72; margin-top: 2px; line-height: 1.35; }   /* 脚質・短評を竜名の下に（4列化） */
+/* ★着順の表は4列にしたので、狭い画面用の「横スクロールの箱」扱い（display:block・折り返し禁止）から外す（2026-11-13）。
+   箱のままだと中身の幅に縮み、右に50pxほど余白が残っていた。竜の列だけ折り返し、数字の列は折り返さない。 */
+.ranking-table { display: table; white-space: normal; }
+.ranking-table th, .ranking-table td:not(:nth-child(2)) { white-space: nowrap; }
 /* 実況の吹き出し：最初の一言までは空の枠が2つ並んで「未完成」に見えた → 待機の一言を薄く */
 .rc-yt-l .rc-yt-bub:empty::before { content: "まもなく発走……！"; opacity: .45; }
 .rc-yt-r .rc-yt-bub:empty::before { content: "……"; opacity: .35; }

@@ -4345,11 +4345,29 @@ function drawRecapScreen() {
   //   読み飛ばす癖をつけてしまう。キャラの声は、立ち絵つきの物語と各相談役パネル
   //   （分析予想／出走表／財政）＝そのキャラが実際に情報を持っている場所に集約する。
   // next-goal nudge (north star) — keep a target in view after every race
+  // ★ここの「次の目標」を、ホームの札と同じ目標にそろえる（2026-11-13）。
+  //   以前は別の系統（nextGoals＝ランクの条件）を出していて、ホームの札は「はじめて的中する」、結果画面は
+  //   「ランク2 地方小杯 — R1戦で 的中あと2回（完走あと4戦／所持2,000でも解放）」と、目標が2つあった。
+  //   しかも後者は3つの条件を1行に詰めた内部の言葉で、毎戦これを読まされていた（Codex の通し試験：
+  //   「失敗のたびの…大きな次ランク条件を処理し、次の投票を作る感覚になる」）。
+  //   主役＝ホームの札と同じ目標（goals.js nextGoal・伏せ字の決まりも同じ）。ランクは「いちばん近い道」だけを1行で添える。
+  //   押すと目標の一覧へ。達成の判定・ランクの条件は読むだけ。
   try {
+    const _ng = (typeof nextGoal === "function") ? nextGoal() : null;
     const goals = (typeof nextGoals === "function") ? nextGoals(state) : [];
-    if (goals.length) {
-      const g = goals[0];
-      app.appendChild(el("div", "rs-nextgoal", `🎯 次の目標：${g.icon} ${g.label} — <b>${g.sub}</b>`));
+    const _rk = goals.find(g => g.kind === "rank");
+    let _h = "";
+    if (_ng) {
+      const _hint = (typeof goalHintSafe === "function") ? goalHintSafe(_ng) : "";
+      _h += `<span class="rng-k">いまの目標</span>` +
+        `<span class="rng-t">${(typeof goalIconSafe === "function") ? goalIconSafe(_ng) : _ng.icon} ${(typeof goalTitleSafe === "function") ? goalTitleSafe(_ng) : _ng.title}</span>` +
+        (_hint ? `<span class="rng-h">${_hint}</span>` : "");
+    }
+    if (_rk) _h += `<span class="rng-r">🏅 ${String(_rk.label).split(" ")[0]}へ　<b>${_rk.short || _rk.sub}</b></span>`;   // 1行に収めるため、ランクの呼び名（地方小杯 など）は一覧のほうに任せる
+    if (_h) {
+      const _gb = el("button", "rs-nextgoal", _h + `<span class="rng-go">▸</span>`);
+      _gb.onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
+      app.appendChild(_gb);
     }
   } catch (e) {}
 
@@ -4504,7 +4522,7 @@ function nextGoals(state) {
     const byCoins = Math.max(0, u.coins - coins);
     const rl = (RANKS[nr] && RANKS[nr].label) || "";
     if (byHits === 0 || byRaces === 0 || byCoins === 0) {
-      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub: "次のレースで解放！", pct: 100 });
+      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub: "次のレースで解放！", short: "次のレースで上がる！", pct: 100 });
     } else {
       // 進捗%＝3レールのうち最も進んでいるもの（ゴールグラデーション：常に一番近い道を見せる）
       const pcts = [
@@ -4513,7 +4531,12 @@ function nextGoals(state) {
         coins / u.coins
       ];
       const sub = `R${p.rank}戦で 的中あと${byHits}回（完走あと${byRaces}戦／所持${fmtCoins(u.coins)}でも解放）`;
-      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub, pct: clamp(Math.max(...pcts) * 100, 2, 99) });
+      // short＝結果画面の1行用。3本の道のうち、いちばん近い1本だけを暮らしの言葉で言う（残りは目標の一覧にある）。
+      const _near = pcts.indexOf(Math.max(...pcts));
+      const short = _near === 0 ? `あと${byHits}回、当てれば上がる`
+        : _near === 2 ? `所持コインが ${fmtCoins(u.coins)} に届けば上がる`
+        : `あと${byRaces}戦、走れば上がる` + (byHits !== Infinity && byHits <= byRaces ? `（当てれば、あと${byHits}回）` : "");
+      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub, short, pct: clamp(Math.max(...pcts) * 100, 2, 99) });
     }
   }
   // next life stage (総資産)
