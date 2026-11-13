@@ -148,6 +148,160 @@ function homeWalletLineDone() {
   try { const ui = state.ui || (state.ui = {}); ui._walletEvt = null; ui._walletSaidRace = (state.player.completedRaces || 0); } catch (e) {}
 }
 
+// =========================================================================
+// ★ホームに着いたときの「順番の列」（2026-11-14）
+// =========================================================================
+// ホームに着くと、出来事が別々の場所から別々の時刻に出ていた：くらしの授与（0.26秒）・紀行の導入の会話と売上の受け取り
+// （0.42秒）・挨拶（0.5秒）・解放の帯／新しい話（0.7秒）・財布の出来事へのミミの一言（1.1秒）。そのため
+//   ・大当たり・服の購入・破産の直後でも授与が先に出て、ミミの一言はそのあと（Codex の通し試験 3回め #1）。
+//   ・帯は「ほかの窓が出ていたら譲る」ので、授与のある到着では出ず、次の到着まで回っていた（同 2回め）。
+//   ・2枚めの授与が、ホームを離れたあとの食事の画面に出る（同 3回め）。授与と紀行の導入の会話が同時に開く。帯と toast が同時に出る。
+// ここ1か所で順番を決める：①ミミの一言（財布の出来事／挨拶）→ ②知らせ（くらしの授与 → 解放・新しい話 → toast → 紀行の導入と売上）
+//   → ③説明（助言）。
+//   ・一度に1つ。前のものが閉じてから（ミミの一言は、読み終わる長さが過ぎてから）次を出す。
+//   ・会話や窓が開いているあいだ（uiBusy）は待つ。ホームを離れたら止まり、次にホームへ来たときに続きから出す。
+//   ・何を出すか・出す条件は、これまでどおり各自の関数が決める（この列が決めるのは「いつ出すか」だけ）。
+//     済みの印は出せたときに付く（帯・新しい話・一言は元からそう。くらしの授与は「まだ見せていない」を保存する＝lifetree_grants.js）。
+//   ・タイマーは window._hlTimers に登録する（ホームの描き直し・離脱で止まる）。描き直したホームが、また動かす。
+// 結果画面の側は、会話の列（Dialogue の hold と直列再生）がすでに「結果を見せ切ってから会話」を担っている。
+//   破産のときの賭式の助言は、立て直してから最初のレース選択へ回す（event_hooks.js deferWhileBroke）。
+const HOME_Q = { items: [], cur: null, seq: 0, timer: 0, startAt: 0 };
+const HOME_Q_ORDER = { say: 10, grant: 20, unlock: 30, toast: 35, kiko: 40, login: 41, advice: 50 };
+const HOME_Q_GAP = 420;      // 1つ閉じてから次を出すまでの息
+const HOME_Q_FIRST = 600;    // ホームに着いて（描いて）から最初の1つまで
+
+// 列に1つ足す。it = { key, order, start()→出したら true, finished(経過ms)→閉じたら true, valid()?, gap?, maxMs? }
+//   同じ key が並んでいる（出ている）あいだは足さない＝描き直しのたびに積まない。
+function homeQueuePush(it) {
+  try {
+    if (!it || !it.key || typeof it.start !== "function") return false;
+    if ((HOME_Q.cur && HOME_Q.cur.key === it.key) || HOME_Q.items.some(function (x) { return x.key === it.key; })) return false;
+    it.seq = ++HOME_Q.seq;
+    if (it.order == null) it.order = HOME_Q_ORDER.advice;
+    HOME_Q.items.push(it);
+    return true;
+  } catch (e) { return false; }
+}
+// 何か並んでいる／出ている（気まぐれな小ネタは、そのあいだ黙る）
+function homeQueueBusy() { return !!HOME_Q.cur || HOME_Q.items.length > 0; }
+// ミミの一言を出している最中（ギフトのお礼などで吹き出しを上書きしない）
+function homeQueueSpeaking() { return !!(HOME_Q.cur && HOME_Q.cur.order === HOME_Q_ORDER.say); }
+function _hqKick(ms) {
+  try { if (HOME_Q.timer) clearTimeout(HOME_Q.timer); } catch (e) {}
+  HOME_Q.timer = setTimeout(_hqTick, Math.max(0, ms || 0));
+  try { if (window._hlTimers) window._hlTimers.push(HOME_Q.timer); } catch (e) {}
+}
+function _hqTick() {
+  HOME_Q.timer = 0;
+  try {
+    if (!state.ui || state.ui.screen !== "home") return;          // ホームを離れたら止まる（列はそのまま＝次の到着で続きから）
+    const now = Date.now();
+    const cur = HOME_Q.cur;
+    // 押さなくても消える帯が、窓（無心・会話・音量など）に覆われた＝いったん畳み、窓が閉じたあとで出し直す。
+    //   覆われたまま時間切れで消えない。窓のあいだに来たミミの一言（無心のあとなど）は、帯より先に出る（並びの順番どおり）。
+    if (cur && cur.fold && typeof uiBusy === "function" && uiBusy()) {
+      let o = null;
+      try { o = cur.fold(); } catch (e) { o = null; }
+      if (o) {
+        HOME_Q.cur = null;
+        homeQueuePush(_hqBannerAgain(o));
+        HOME_Q.startAt = now + HOME_Q_GAP;
+        _hqKick(350);
+        return;
+      }
+    }
+    if (cur) {
+      let fin = true;
+      try { fin = !cur.finished || !!cur.finished(now - cur.t0); } catch (e) { fin = true; }
+      // ★永久には待たない（maxMs）。ただし開いたままの窓は uiBusy が見ているので、次のものが上に重なることはない。
+      if (!fin && now - cur.t0 < (cur.maxMs || 30000)) { _hqKick(250); return; }
+      HOME_Q.cur = null;
+      HOME_Q.startAt = now + (cur.gap != null ? cur.gap : HOME_Q_GAP);
+    }
+    if (!HOME_Q.items.length) return;
+    if (now < HOME_Q.startAt) { _hqKick(HOME_Q.startAt - now); return; }
+    if (typeof uiBusy === "function" && uiBusy()) { _hqKick(350); return; }   // 会話・窓・結果の「間」が明けるまで待つ
+    HOME_Q.items.sort(function (a, b) { return (a.order - b.order) || (a.seq - b.seq); });
+    const it = HOME_Q.items.shift();
+    let ok = true, shown = false;
+    try { ok = !it.valid || !!it.valid(); } catch (e) { ok = false; }
+    if (ok) { try { shown = it.start() !== false; } catch (e) { shown = false; } }
+    if (shown) { it.t0 = Date.now(); HOME_Q.cur = it; _hqKick(250); }
+    else _hqKick(0);                                               // 言うこと・出すものが無かった＝次へ（印は付いていない）
+  } catch (e) { HOME_Q.cur = null; }
+}
+// ミミの吹き出しの1つ（財布の出来事への一言・挨拶）。文は出す瞬間に決める（並んでいたあいだに起きたことで言う）。
+//   読み終わる長さ（文の長さから2.6〜4.6秒）が過ぎたら、次が控えていれば吹き出しを引っ込めて次へ。控えていなければ、いつもの長さで消える。
+function _hqSayItem(key, getLine) {
+  return {
+    key: key, order: HOME_Q_ORDER.say, gap: 380, maxMs: 9000,
+    start: function () {
+      const hs = window._hlSay;
+      if (!hs || !hs.speech || !document.contains(hs.speech)) return false;
+      const w = getLine();
+      if (!w || !w.t) return false;
+      this._sp = hs.speech;
+      this._dur = Math.max(2600, Math.min(4600, 1400 + String(w.t).length * 70));
+      hs.say(w.t, 5600);
+      if (w.mood) {
+        try { hs.flip(w.mood); } catch (e) {}
+        try { window._hlTimers.push(setTimeout(function () { if (state.ui.screen === "home") { try { hs.flip("default"); } catch (e) {} } }, 3200)); } catch (e) {}
+      }
+      return true;
+    },
+    finished: function (el) {
+      const sp = this._sp;
+      if (!sp || !document.contains(sp) || sp.classList.contains("hidden") || sp.classList.contains("out")) return true;   // 押して消した／描き直された
+      if (el < this._dur) return false;
+      if (HOME_Q.items.length) { try { window._hlSay.hide(); } catch (e) {} }
+      return true;
+    }
+  };
+}
+// 畳んだ帯を出し直す1つ（中身は畳む前と同じ・音なし・新しく8秒）
+function _hqBannerAgain(o) {
+  return { key: "unlockAgain", order: HOME_Q_ORDER.unlock, maxMs: 30000,
+    fold: function () { return (typeof unlockBannerFold === "function") ? unlockBannerFold() : null; },
+    start: function () { return (typeof unlockBannerShow === "function") && unlockBannerShow(o); },
+    finished: function (el) { return el > 200 && !document.querySelector(".unlock-banner"); } };
+}
+// ホームに着くたび（renderHome の最後）。①ミミの一言 ②くらしの授与 ③解放の帯・新しい話・toast を並べて、列を動かす。
+//   紀行の導入と売上（1日1回）・メーターの説明は、renderHome の中で判定したときに並べる。
+function homeQueueArrive(o) {
+  o = o || {};
+  try {
+    const p = state.player || {};
+    if (o.greet) {
+      homeQueuePush(_hqSayItem("greet", function () {
+        return (window.DLG && DLG.login) ? { t: (DLG.login(state.player)[0] || {}).t || "ようこそ！" } : null;
+      }));
+    } else if (typeof homeWalletLine === "function" && homeWalletLine()) {
+      homeQueuePush(_hqSayItem("wallet", function () {
+        const w = homeWalletLine();
+        if (w) homeWalletLineDone();        // 「言った」印は、実際に吹き出しに出すときに付ける（言いそびれない）
+        return w;
+      }));
+    }
+    const ids = (typeof lifeGrantUnseenIds === "function") ? lifeGrantUnseenIds() : [];
+    ids.forEach(function (id) {
+      homeQueuePush({ key: "grant:" + id, order: HOME_Q_ORDER.grant, gap: 300, maxMs: 12000,
+        start: function () { return (typeof lifeGrantShowOne === "function") && lifeGrantShowOne(id); },
+        finished: function (el) { return el > 150 && !document.getElementById("lt-cutin"); } });
+    });
+    // 解放・新しい話は、初出走前は出さない（最初の5分は核ループに集中させる＝これまでどおり）。1到着につき帯1件・toast 1件。
+    if ((p.completedRaces || 0) >= 1 && typeof progressionCheckOnHome === "function") {
+      homeQueuePush({ key: "unlock", order: HOME_Q_ORDER.unlock, maxMs: 30000,
+        fold: function () { return (typeof unlockBannerFold === "function") ? unlockBannerFold() : null; },
+        start: function () { return progressionCheckOnHome("cut") === true; },
+        finished: function (el) { return el > 200 && !document.querySelector(".unlock-banner, .navpop-ov"); } });
+      homeQueuePush({ key: "toast", order: HOME_Q_ORDER.toast, maxMs: 9000,
+        start: function () { return progressionCheckOnHome("toast") === true; },
+        finished: function (el) { return el > 200 && !document.querySelector(".unlock-toast"); } });
+    }
+  } catch (e) {}
+  _hqKick(o.delay != null ? o.delay : HOME_Q_FIRST);
+}
+
 function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
@@ -164,8 +318,9 @@ function renderHome() {
   // ✍️ 紀行の記事：ホーム到着＝一日の息継ぎ。溜まった素材から1本だけ書かれる。
   //   ★モーダルは出さない（progressionのカットインと競合させない）＝紀行タブのドットだけで知らせる。
   if (typeof kikoMaybeWrite === "function") kikoMaybeWrite();
-  // 🌱 くらしツリーの授与：条件を満たしたノードを軽いカットインで授ける（同じ息継ぎで）
-  if (typeof lifeGrantTick === "function") setTimeout(function () { try { lifeGrantTick(); } catch (e) {} }, 260);
+  // 🌱 くらしツリーの授与：条件を満たしたノードを授ける（同じ息継ぎで）。授けるのはここで即時、
+  //   カットインで見せるのはホームの順番の列（homeQueueArrive）＝ミミの一言のあと・1枚ずつ・ホームの上でだけ。
+  if (typeof lifeGrantScan === "function") { try { lifeGrantScan(); } catch (e) {} }
   // daily login reward — checked once per session, shown just after home paints
   // ★D4解消（FTUE保護）：初出走前は文脈のない報酬ポップを出さない＝初回導線（→レースへ）に集中させる。
   let _doGreet = false;   // 挨拶はVNではなく“配信の吹き出し”で（大立ち絵と二重にしない）
@@ -175,10 +330,19 @@ function renderHome() {
       const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
       // ★初回だけ：サケの勧めで『ドラゴンレース紀行』を書き始めるVN（柱A・タイトル回収）。
       //   本体は ui_kiko.js の playKikoIntro（紀行画面から先に入った場合も同じ入口・1回きり）。
+      // ★どちらもホームの順番の列に並べる（2026-11-14）。以前は 0.42秒後に会話を開いていて、くらしの授与のカットインと同時に出ていた。
+      //   出す直前にもう一度確かめる（並んでいるあいだに紀行の画面で受け取った・読んだなら出さない）。
       if (_lb && typeof getStoryFlag === "function" && !getStoryFlag("kikoStarted") && typeof playKikoIntro === "function") {
-        setTimeout(() => playKikoIntro(() => { try { whenUiIdle(() => showLoginBonus(_lb)); } catch (e) {} }), 420);
+        homeQueuePush({ key: "kikoIntro", order: HOME_Q_ORDER.kiko, maxMs: 300000,
+          valid: function () { return !getStoryFlag("kikoStarted") && !!checkDailyLogin(); },
+          start: function () { const it = this; it._done = false; playKikoIntro(function () { it._done = true; }); return true; },
+          finished: function () { return !!this._done; } });
       }
-      else if (_lb) setTimeout(() => whenUiIdle(() => showLoginBonus(_lb)), 420);   // 他のお知らせと重ねない
+      if (_lb && typeof showLoginBonus === "function") {
+        homeQueuePush({ key: "login", order: HOME_Q_ORDER.login, maxMs: 600000,
+          start: function () { const info = checkDailyLogin(); if (!info) return false; showLoginBonus(info); return true; },
+          finished: function (el) { return el > 200 && !document.querySelector(".login-ov"); } });
+      }
       else _doGreet = true;
     } catch (e) {}
   } else if (!window._mimiLoginChecked) {
@@ -531,9 +695,12 @@ function renderHome() {
       if (_onclick) goalBtn.onclick = _onclick;
       topRow.appendChild(goalBtn);
       // C4解消：☄️メーターチップの“ホーム初出”時に一度だけ自動説明（従来は島の経済画面でしか出なかった）。
-      //   500ms＝progressionCheckOnHome(700ms)より先に出す→1到着1モーダルルールで解放通知側が譲る。
-      if (_cls.indexOf("hl-goal--ep") >= 0 && typeof maybeShowMeterHelpFirstTime === "function") {
-        setTimeout(() => { try { if (state.ui.screen === "home") maybeShowMeterHelpFirstTime(); } catch (e) {} }, 500);
+      //   ★ホームの順番の列の「説明」に並べる（2026-11-14）＝ミミの一言・知らせのあと、1つずつ。以前は 0.5秒後に出して、解放の知らせを次の到着へ譲らせていた。
+      if (_cls.indexOf("hl-goal--ep") >= 0 && typeof maybeShowMeterHelpFirstTime === "function" &&
+          !(typeof getStoryFlag === "function" && getStoryFlag("epMeterHelpSeen"))) {
+        homeQueuePush({ key: "meterHelp", order: HOME_Q_ORDER.advice,
+          start: function () { maybeShowMeterHelpFirstTime(); return !!document.querySelector(".navpop-ov"); },
+          finished: function (el) { return el > 200 && !document.querySelector(".navpop-ov"); } });
       }
     }
   }
@@ -570,28 +737,17 @@ function renderHome() {
     void speech.offsetWidth;
     _speechT = setTimeout(() => { speech.classList.add("out"); }, ms || 4200);
   }
-  if (_doGreet && window.DLG && DLG.login) {
-    try { setTimeout(() => mimiSay((DLG.login(state.player)[0] || {}).t || "ようこそ！", 5200), 500); } catch (e) {}
+  // 吹き出しを引っ込める（押したときと同じ消え方）。引っ込めるあいだに次の一言が出たら、そちらは消さない。
+  function _hideSpeech() {
+    clearTimeout(_speechT);
+    speech.classList.add("out");
+    const t = setTimeout(() => { if (state.ui.screen === "home" && speech.classList.contains("out")) speech.classList.add("hidden"); }, 420);
+    try { if (window._hlTimers) window._hlTimers.push(t); } catch (e) {}
   }
-  // 財布で起きた出来事への一言（上の homeWalletLine）。挨拶をする到着では言わない（出来事の印は読んで消す）。
-  //   会話や知らせの窓が開いているあいだは待つ（whenUiIdle）。表情も合わせて替え、少しして戻す。
-  let _wlStart = null;   // タイマーは下で window._hlTimers を作り直したあとに掛ける（ホームの演出タイマーの決まり）
-  let _wlPending = false; // 財布の一言が控えているあいだは、気まぐれな小ネタを先に出さない（下の13秒ごとの小ネタが読む）
-  try {
-    const _wl = homeWalletLine();
-    if (_doGreet) homeWalletLineDone();          // 挨拶をする到着では言わない（印だけ片づける）
-    if (_wl && !_doGreet) {
-      const _sayWl = () => {
-        _wlPending = false;
-        if (state.ui.screen !== "home" || !document.contains(speech)) return;   // 待つあいだに描き直された（新しいほうが言う）
-        homeWalletLineDone();
-        mimiSay(_wl.t, 5600);
-        try { _flipTo(_wl.mood); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 3200); } catch (e) {}
-      };
-      _wlPending = true;
-      _wlStart = () => { try { if (state.ui.screen !== "home") return; if (typeof whenUiIdle === "function") whenUiIdle(_sayWl); else _sayWl(); } catch (e) {} };
-    }
-  } catch (e) {}
+  // ★挨拶と、財布で起きた出来事への一言（上の homeWalletLine）は、ホームの順番の列の先頭に並ぶ（2026-11-14・homeQueueArrive）。
+  //   言う文は出す瞬間に決め、「言った」印もそのときに付ける。挨拶をする到着では財布の一言は言わない（出来事の印は片づける）。
+  //   列は、この吹き出し・表情の切り替えを下の window._hlSay から使う（描き直したら、新しいホームのものに替わる）。
+  try { if (_doGreet) homeWalletLineDone(); } catch (e) {}
   // ★配信前（静かモード）は「コメント」「差し入れ」「見てくれてる」など配信前提の台詞を出さない（視聴者はまだいない）
   const _BANTER = broadcast
     ? ["今日はどの竜を推す〜？", "コメントありがとっ！", "いっしょに当てようね！", "耳、さわっていいよ？ うそうそ。", "オッズ、よーく見てね。", "ぱほぱほ〜♪", "推し竜、見つかった？", "差し入れ、うれしいな♪"]
@@ -629,7 +785,8 @@ function renderHome() {
   // ── ライブ演出（表示専用）：視聴者数・コメント・ハート。離脱でタイマー停止。
   if (window._hlTimers) window._hlTimers.forEach(clearInterval);
   window._hlTimers = [];
-  if (_wlStart) window._hlTimers.push(setTimeout(_wlStart, 1100));   // 財布の出来事への一言（上で用意したもの）
+  // ホームの順番の列が使う吹き出しと表情（homeQueueArrive は renderHome の最後で呼ぶ）
+  window._hlSay = { say: mimiSay, hide: _hideSpeech, flip: function (ex) { _flipTo(ex); }, speech: speech };
   const _reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const _fame = (state.assets && state.assets.fameValue) || 0;
   let _viewers = 380 + p.rank * 260 + ((p.villageLevel || 1) * 180) + Math.min(4000, p.completedRaces * 6) + Math.floor(_fame / 50);
@@ -762,7 +919,7 @@ function renderHome() {
   window._hlTimers.push(setInterval(() => {
     if (state.ui.screen !== "home") return;
     if (!speech.classList.contains("hidden") && !speech.classList.contains("out")) return;  // まだ喋っている間は重ねない
-    if (_wlPending) return;                                                                  // 財布の一言が先
+    if (homeQueueBusy()) return;                                                             // 到着の一言・知らせが先（ホームの順番の列）
     if (Math.random() < 0.5) _banter();
   }, 13000));
   if (!_reduce) window._hlTimers.push(setInterval(() => {
@@ -827,7 +984,7 @@ function renderHome() {
       stage.appendChild(fx);
       fx.addEventListener("animationend", () => fx.remove());
     }
-    if (rare || Math.random() < 0.35) {
+    if ((rare || Math.random() < 0.35) && !homeQueueSpeaking()) {   // 到着の一言を読んでいる最中は、お礼で上書きしない
       mimiSay(_GIFT_THX[Math.floor(Math.random() * _GIFT_THX.length)]);
       try { _flipTo("happy"); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 2300); } catch (e) {}
     }
@@ -1079,10 +1236,8 @@ function renderHome() {
 
   app.appendChild(wrap);
 
-  // 🔓 解放お祝いチェック（progression.js・ホーム到着1回につき1件まで。いまは操作を止めない帯）。
-  //   FTUE保護＝初出走前は何も出さない（最初の5分は核ループに集中させる・リサーチ①）。
-  if (typeof progressionCheckOnHome === "function" && (p.completedRaces || 0) >= 1) {
-    setTimeout(() => { try { if (state.ui.screen === "home") progressionCheckOnHome(); } catch (e) {} }, 700);
-  }
+  // 🧭 ホームの順番の列（上の homeQueueArrive）：ミミの一言 → くらしの授与 → 解放の帯・新しい話（progression.js・
+  //   ホーム到着1回につき帯1件・toast 1件まで。初出走前は出さない＝FTUE保護）→ 紀行の導入と売上 → 説明、を1つずつ。
+  homeQueueArrive({ greet: _doGreet });
 }
 

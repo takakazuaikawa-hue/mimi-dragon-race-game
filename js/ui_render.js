@@ -2146,7 +2146,11 @@ function renderRaceSelect() {
   // ★開幕のミミの一言（first_race_intro_mimi）が終わった直後に、Lv.1「ドロミズすすりマン」を
   //   授ける（ユーザー案）。称号システムがここで一気に伝わり、しかも笑いになる。
   //   runEventHooks は喋り終わりの Promise を返すので、その後に出す＝セリフに被らない。
-  Promise.resolve(runEventHooks("beforeRaceSelect")).then(function () {
+  // ★財布が空で後回しにした助言（3連敗の賭式の話など・event_hooks.js deferWhileBroke）は、立て直してから最初のここで出す
+  //   （2026-11-14）。会話の列は直列なので、上のフックの会話のすぐあとに続く。
+  const _selTalk = runEventHooks("beforeRaceSelect");
+  const _laterTalk = (typeof flushDeferredEvents === "function") ? flushDeferredEvents() : null;
+  Promise.all([_selTalk, _laterTalk]).then(function () {
     try { if (typeof maybeCelebrateLiving === "function") maybeCelebrateLiving(); } catch (e) {}
   });
   const app = beginScreen();
@@ -2406,6 +2410,8 @@ function showRaceTermInfo(kind, race) {
 
 function renderRaceDetail(race) {
   state.ui.screen = "race_detail";
+  // 後回しにした助言が、レース選択を通らずに賭け画面へ来た場合でも、賭ける前に出る（ふつうはレース選択で出し終えている＝何もしない）
+  try { if (typeof flushDeferredEvents === "function") flushDeferredEvents(); } catch (e) {}
   runEventHooks("afterRaceSelect", { race });
 
   // §09 §12-16 Entry encouragement opportunity (may modify entries).
@@ -4210,7 +4216,12 @@ function renderResult() {
     //   runEventHooks は台詞終了の Promise を返すので、喋り終わってから移動する。
     if (state.player.coins <= 0) {
       const _p = runEventHooks("onBankruptcy", { race: c.race });
-      if (_p && _p.then) _p.then(() => { if (state.player.coins <= 0) renderHome(); });
+      // ★この一戦の会話を結果画面で出し切ってからホームへ（2026-11-14）。以前はサケの一言が終わった瞬間にホームへ移り、
+      //   あとから列に入った会話（ポロの段など）がホームの上で開いていた（ホームでは立ち絵の会話を出さない決まり）。
+      //   Dialogue.play([]) ＝ いま並んでいる会話の最後尾を待つ。自分でホームや別の画面へ移っていたら、描き直さない
+      //   （ホームの知らせの順番を最初からやり直さない・読んでいる画面から引き戻さない）。
+      if (_p && _p.then) _p.then(() => ((window.Dialogue && Dialogue.play) ? Dialogue.play([]) : null))
+        .then(() => { if (state.player.coins <= 0 && state.ui.screen === "result") renderHome(); });
     }
     // 🎉 的中時＝結果画面のファンファーレ（「ファンファーレの日々」）。1レースにつき1回だけ・単発（ループ無し）。
     //   結果は zone=other なので bgm_zones は奪わず、ホームへ戻ると自然停止。外れは従来どおり無音。

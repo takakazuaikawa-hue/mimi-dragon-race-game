@@ -73,7 +73,9 @@ function el(tag, cls, html) {
 // ── 画面の上に何か（会話・ポップ・ログボ・カットイン）が出ているか ─────────
 // ホーム到着時はログボ・解放のお知らせ・くらしツリーの授与が同時に来ることがあり、
 // 3枚重なって出ていた（実機で確認）。後から来た方は whenUiIdle で「前のが閉じるまで」待つ。
-const UI_OVERLAY_SEL = ".navpop-ov, .login-ov, #lt-cutin, .dlg-overlay:not(.hidden), .mm-ov, .info-ov, .mv-ov";
+// ★ホームの知らせの順番は、いまは ui_home.js の「順番の列」（homeQueuePush）が1か所で決める。列も、この uiBusy で待つ。
+//   無心の窓（#mushin-ov）も足した（2026-11-14）：無心の暗転・受け取りの最中に、帯や授与が窓の裏で出て消えないように。
+const UI_OVERLAY_SEL = ".navpop-ov, .login-ov, #lt-cutin, .lg-cut, #mushin-ov, .dlg-overlay:not(.hidden), .mm-ov, .info-ov, .mv-ov";
 function uiBusy() {
   try {
     if (window.Dialogue && Dialogue.isOpen && Dialogue.isOpen()) return true;

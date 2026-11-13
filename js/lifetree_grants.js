@@ -94,6 +94,9 @@ function _lgBandOk(node) {
 
 // ── 走査：条件を満たしていて、まだ持っていないノードを授ける ───────────────
 //   ホーム到着ごとに1回（紀行の記事と同じ息継ぎ）。複数たまっていたら順に見せる。
+// ★授けるのは走査の時点（ツリーに即反映・保存）。カットインで見せるのは、ホームの順番の列の番が来たとき（2026-11-14）。
+//   あいだにホームを離れたり読み込み直したりしても見せそびれないよう、「まだ見せていない授与」を
+//   state.player.lifeGrantUnseen（授与の id の並び・表示のためだけ）に保存し、見せたときに外す。
 function lifeGrantScan() {
   var got = [];
   try {
@@ -113,9 +116,47 @@ function lifeGrantScan() {
       log[g.id] = 1;
       if (!un[node.nodeId]) { un[node.nodeId] = true; got.push(g); }
     }
-    if (got.length) { try { if (typeof saveGame === "function") saveGame(); } catch (e) {} }
+    if (got.length) {
+      var unseen = Array.isArray(p.lifeGrantUnseen) ? p.lifeGrantUnseen : (p.lifeGrantUnseen = []);
+      for (var j = 0; j < got.length; j++) if (unseen.indexOf(got[j].id) < 0) unseen.push(got[j].id);
+      try { if (typeof saveGame === "function") saveGame(); } catch (e) {}
+    }
   } catch (e) {}
   return got;
+}
+
+// ── まだカットインで見せていない授与（ホームの順番の列が読む） ─────────────────
+function _lgById(id) {
+  for (var i = 0; i < LIFE_GRANTS.length; i++) if (LIFE_GRANTS[i].id === id) return LIFE_GRANTS[i];
+  return null;
+}
+function lifeGrantUnseenIds() {
+  try {
+    var a = state.player && state.player.lifeGrantUnseen;
+    if (!Array.isArray(a)) return [];
+    return a.filter(function (id) { return !!_lgById(id); });
+  } catch (e) { return []; }
+}
+function _lgMarkSeen(id) {
+  try {
+    var p = state.player;
+    if (p && Array.isArray(p.lifeGrantUnseen) && p.lifeGrantUnseen.indexOf(id) >= 0) {
+      p.lifeGrantUnseen = p.lifeGrantUnseen.filter(function (x) { return x !== id; });
+      if (typeof saveGame === "function") saveGame();
+    }
+  } catch (e) {}
+}
+// 1枚だけ見せる（見せたら「見せた」にする）。出せたら true。
+function lifeGrantShowOne(id) {
+  try {
+    var g = _lgById(id);
+    _lgMarkSeen(id);
+    if (!g) return false;
+    var node = _lgNode(g.node);
+    if (!node || typeof showLifeCutin !== "function") return false;
+    showLifeCutin(node);
+    return !!document.getElementById("lt-cutin");
+  } catch (e) { return false; }
 }
 
 // ── 授与カットイン ───────────────────────────────────────────────────────
@@ -130,6 +171,7 @@ function lifeGrantCutIn(list, done) {
     // 会話（VN）や他のポップの最中は出さない＝帯が立ち絵とセリフに重なる（実機で確認）。閉じるのを待ってから。
     if (typeof uiBusy === "function" ? uiBusy() : (window.Dialogue && Dialogue.isOpen && Dialogue.isOpen())) { setTimeout(next, 400); return; }
     var g = list[i++];
+    _lgMarkSeen(g.id);
     var node = _lgNode(g.node);
     if (node && typeof showLifeCutin === "function") {
       showLifeCutin(node);
@@ -155,11 +197,12 @@ function lifeGrantCutIn(list, done) {
   next();
 }
 
-// ホーム到着から呼ぶ入口（走査→あれば見せる）
+// 走査→まだ見せていないものを続けて見せる入口（いまのホームは使わない＝ホームは lifeGrantScan と順番の列で見せる）
 function lifeGrantTick() {
   try {
     var got = lifeGrantScan();
-    if (got.length) lifeGrantCutIn(got);
+    var list = lifeGrantUnseenIds().map(_lgById).filter(Boolean);
+    if (list.length) lifeGrantCutIn(list);
     return got.length;
   } catch (e) { return 0; }
 }
@@ -183,5 +226,7 @@ if (typeof window !== "undefined") {
   window.LIFE_GRANTS = LIFE_GRANTS;
   window.lifeGrantScan = lifeGrantScan;
   window.lifeGrantTick = lifeGrantTick;
+  window.lifeGrantUnseenIds = lifeGrantUnseenIds;
+  window.lifeGrantShowOne = lifeGrantShowOne;
   window.lifeNodeHint = lifeNodeHint;
 }

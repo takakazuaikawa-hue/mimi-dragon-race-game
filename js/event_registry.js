@@ -185,6 +185,10 @@ registerEvent({
     test: ctx => ((state.player && state.player.missRun) || 0) >= 3
                && ((state.player && state.player.wins) || 0) === 0 },
   priority: 7,
+  // ★3連敗めで財布が空になったときは、結果画面では出さず、立て直してから最初のレース選択で出す（2026-11-14・event_hooks.js）。
+  //   結果画面では「からっぽ → 無心の案内」だけにして、賭式の話は次に賭ける直前へ（ミミの一言 → 知らせ → 助言 の順）。
+  //   条件・一度きりは元のまま。文面は出すときの財布で決まる（立て直したあとなので、締めは「よし、次は複勝でいってみます！」）。
+  deferWhileBroke: true,
   actions: [
     { type: "dialogue", speaker: "sake_udada",
       text: "3連敗か。……いい経験しているな、ミミ。外した数だけ、竜の見方は増える。" },

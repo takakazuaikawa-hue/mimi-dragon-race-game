@@ -232,29 +232,34 @@ function unlockOpen(id) {
 function _unlockNotified(id) { return (typeof getStoryFlag === "function") && !!getStoryFlag("_unlocked_" + id); }
 function _markNotified(id) { if (typeof setStoryFlag === "function") setStoryFlag("_unlocked_" + id, true); if (typeof saveGame === "function") saveGame(); }
 
-// ★ホーム到着ごとに1回呼ぶ（renderHome 末尾）。cut-in は1件だけ・toast は1件だけ流す。
+// ★ホーム到着ごとに呼ぶ（ホームの順番の列＝ui_home.js homeQueueArrive）。cut-in は1件だけ・toast は1件だけ流す。
 // 立ち上がり直後のログボ等と喧嘩しないよう、呼び出し側で「初出走前は呼ばない」こと（FTUE保護）。
-function progressionCheckOnHome() {
+// part（2026-11-14）：省略＝これまでどおり帯1件と toast 1件を同時に／"cut"＝帯（新しい話・暮らしの昇格・解放）だけ／
+//   "toast"＝toast だけ。ホームの順番の列は "cut" → "toast" の順に別々に呼ぶ＝帯と toast を同時に出さない（選ぶ規則は同じ）。
+// 戻り値：何か出したら true（列が「出した → 閉じるのを待つ」に使う）。
+function progressionCheckOnHome(part) {
+  let shown = false;
   try {
     // 既に何かのモーダル/VN/演出が出ていたら譲る（1到着1件ルール）。
     // ★監査で穴：旧ガードは .navpop-ov だけ＝ホーム到着時にVN（dlg-overlay・スマホ購入等）や
     //   情報ポップ（mm-ov/info-ov）が出ているとcut-inが上に重なった。全部に譲る。
-    if (document.querySelector(".navpop-ov, .dlg-overlay:not(.hidden), .mm-ov, .info-ov, .mv-ov, .login-ov, #lt-cutin")) return;   // ログボ・くらしツリーの授与にも譲る
-    let cutinDone = false;
+    if (document.querySelector(".navpop-ov, .dlg-overlay:not(.hidden), .mm-ov, .info-ov, .mv-ov, .login-ov, #lt-cutin")) return false;   // ログボ・くらしツリーの授与にも譲る
+    const doCut = part !== "toast", doToast = part !== "cut";
+    let cutinDone = !doCut;   // toast だけのときは、帯の枠は使い終えたものとして扱う（＝帯は出さない・印も付けない）
     // ★物語の新章＝レース直後にモーダルを出さず、ここ（次のホーム到着）で静かに1件だけ案内する（ユーザー指摘）。
     //   優先度は高め（新しい話は大きな出来事）＝他の解放より先に見せる。1到着1モーダルの枠を消費する。
-    if (typeof nextUnreadChapter === "function") {
+    if (doCut && typeof nextUnreadChapter === "function") {
       const _ch = nextUnreadChapter();
       if (_ch && !_unlockNotified("story_" + _ch.id)) {
         _markNotified("story_" + _ch.id);
         _showStoryCutin(_ch);
-        cutinDone = true;
+        cutinDone = true; shown = true;
       }
     }
     // 🏅 暮らしレベルの昇格（Lv.2以降）＝ホーム到着で1件。1到着1モーダルの枠を使う。
     if (!cutinDone) {
       const _up = _livingCelebrate();
-      if (_up) { _showLivingCutin(_up.lv, _up.rk); cutinDone = true; }
+      if (_up) { _showLivingCutin(_up.lv, _up.rk); cutinDone = true; shown = true; }
     }
     for (const u of UNLOCKS.concat(KURASHI_WATCH)) {
       if (_unlockNotified(u.id)) continue;
@@ -264,14 +269,17 @@ function progressionCheckOnHome() {
       if (u.tier === "cutin" && !cutinDone) {
         _markNotified(u.id);
         if (!(u.notifyFn && u.notifyFn())) _showUnlockCutin(u);
-        cutinDone = true;   // 1到着1モーダル。残りは次回へ持ち越し
-      } else if (u.tier === "toast") {
+        cutinDone = true; shown = true;   // 1到着1モーダル。残りは次回へ持ち越し
+        if (!doToast) break;              // 帯だけのときは、ここまで（toast は列の次の番で）
+      } else if (u.tier === "toast" && doToast) {
         _markNotified(u.id);
         _showUnlockToast(u.notifyBody);
+        shown = true;
         break;   // toastも1到着1件（連発は騒がしい）
       }
     }
   } catch (e) { try { console.warn("progressionCheckOnHome", e); } catch (_) {} }
+  return shown;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -288,8 +296,12 @@ function progressionCheckOnHome() {
 // ★タイマーは window._hlTimers に入れない：ホームが描き直されると _hlTimers は全部止められ、
 //   帯が消えずに残ってしまうため。代わりに自分で「ホーム以外なら即消す」を見張り、消えたら自分で止まる。
 const UNLOCK_BANNER_MS = 8000;
+// ★いま出ている帯の中身（2026-11-14）。ホームの順番の列（ui_home.js）は、帯が窓（無心・会話・音量など）に覆われたら
+//   帯をいったん畳み、窓が閉じたあとで同じ中身を出し直す＝覆われたまま時間切れで消えない／そのあいだに来たミミの一言が先に出る。
+let _ubOpts = null;
 function _showUnlockBanner(o) {
   try { document.querySelectorAll(".unlock-banner").forEach(function (x) { x.remove(); }); } catch (e) {}
+  _ubOpts = o;
   const t = el("div", "unlock-banner");
   t.setAttribute("role", "status");
   t.innerHTML =
@@ -301,12 +313,14 @@ function _showUnlockBanner(o) {
   const close = function () {
     if (gone) return; gone = true;
     clearInterval(iv);
+    if (_ubOpts === o) _ubOpts = null;
     t.classList.add("out");
     setTimeout(function () { t.remove(); }, 380);
   };
   t.querySelector(".ub-x").onclick = function (e) { e.stopPropagation(); close(); };
   t.onclick = function () {
     if (gone) return; gone = true; clearInterval(iv); t.remove();
+    if (_ubOpts === o) _ubOpts = null;
     try { if (o.go) o.go(); } catch (e) {}
   };
   // ドックのすぐ上へ。測れなければ CSS の既定（下から200px）。
@@ -325,12 +339,25 @@ function _showUnlockBanner(o) {
   const t0 = Date.now();
   iv = setInterval(function () {
     let home = false; try { home = state.ui.screen === "home"; } catch (e) {}
-    if (!home) { if (!gone) { gone = true; clearInterval(iv); t.remove(); } return; }   // 別の画面へ出たら連れて行かない
+    if (!home) { if (!gone) { gone = true; clearInterval(iv); t.remove(); if (_ubOpts === o) _ubOpts = null; } return; }   // 別の画面へ出たら連れて行かない
     if (!document.body.contains(t)) { clearInterval(iv); return; }
     if (Date.now() - t0 > UNLOCK_BANNER_MS) close(); else place();
   }, 300);
   return t;
 }
+// いま出ている帯を畳んで、その中身を返す（出ていなければ null）。音は鳴らさない。
+function unlockBannerFold() {
+  try {
+    const b = document.querySelector(".unlock-banner:not(.out)");
+    const o = _ubOpts;
+    if (!b || !o) return null;
+    _ubOpts = null;
+    b.remove();                 // 帯の見張りは「自分が外された」を見て止まる
+    return o;
+  } catch (e) { return null; }
+}
+// 畳んだ帯を出し直す（新しく8秒・音なし）。出せたら true。
+function unlockBannerShow(o) { try { return !!(o && _showUnlockBanner(o)); } catch (e) { return false; } }
 
 // 未読の点（ホームのタブ）。帯を出したときに付け、そのタブを開いたら消す。
 //   ★数は出さない・たまらない＝「新しく開いた場所が1つある」だけを伝える（消化を迫る件数バッジではない）。

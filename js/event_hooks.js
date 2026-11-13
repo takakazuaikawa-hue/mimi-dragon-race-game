@@ -231,6 +231,54 @@ const SPEAKER_LABELS = {
 };
 function speakerLabel(id) { return SPEAKER_LABELS[id] || id || "—"; }
 
+// ★財布が空のあいだは後回しにする助言（2026-11-14・ev.deferWhileBroke）。
+//   3連敗めで財布が空になった人には、結果画面で「破産・3連敗の賭式の助言・無心の案内・新しい話」が一つの区切りに重なっていた
+//   （Codex の通し試験 2回め：「失敗を一つ味わって笑う前に、次に読む内容が積まれる」）。いま要るのは立て直し方（無心の案内）で、
+//   賭式の話は、次に賭けるときに要る。そこで deferWhileBroke の会話は、条件を満たした時点で財布が空（playerBroke）なら、
+//   その場では再生せず「あとで出す会話」（state.player.deferredEv・保存される）に回し、立て直してから最初のレース選択
+//   （または賭け画面）で出す（flushDeferredEvents）。順番＝ミミの一言 → 知らせ → 助言 の「助言」をいちばん後ろへ。
+//   ・条件の判定と一度きりの印は、元のとおりその場で付ける（＝出る条件は変えない。変わるのは出る時刻だけ）。
+//     1フック1会話の枠も、その場で使ったものとして数える（ほかの会話が代わりに割り込まない）。
+//   ・セリフだけの会話に限る（副作用のある会話は遅らせない）。文面は出すときの状態で決まる。ctx を読まない会話にだけ付けること。
+function _evBrokeNow() {
+  try { return (typeof playerBroke === "function") ? !!playerBroke() : (((state.player && state.player.coins) || 0) <= 0); } catch (e) { return false; }
+}
+function _deferEvent(ev) {
+  try {
+    if (ev.condition && ev.condition.once) setStoryFlag("_event_fired_" + ev.id, true);
+    const p = state.player;
+    const a = Array.isArray(p.deferredEv) ? p.deferredEv : (p.deferredEv = []);
+    if (a.indexOf(ev.id) < 0) a.push(ev.id);
+    saveGame();
+  } catch (e) {}
+}
+let _deferPlaying = false;
+// 後回しにした会話を出す（財布が戻っていれば）。レース選択・賭け画面から呼ぶ。ホームでは呼ばない（ホームに立ち絵の会話を出さない）。
+//   出し終わったら（飛ばしても）外す。途中で読み込み直したら、次の機会にもう一度出る。
+function flushDeferredEvents() {
+  try {
+    const p = state.player, a = p && p.deferredEv;
+    if (_deferPlaying || !Array.isArray(a) || !a.length) return Promise.resolve();
+    if (_evBrokeNow()) return Promise.resolve();   // まだ立て直していない＝もう少し待つ
+    const ids = a.slice();
+    let speech = [];
+    ids.forEach(function (id) {
+      let ev = null;
+      for (const k in eventHooks) { const f = eventHooks[k].find(x => x.id === id); if (f) { ev = f; break; } }
+      if (!ev) return;
+      const s = runEventActions(ev, {});
+      if (s && s.length) speech = speech.concat(s);
+    });
+    const clear = function () {
+      _deferPlaying = false;
+      try { p.deferredEv = (p.deferredEv || []).filter(x => ids.indexOf(x) < 0); saveGame(); } catch (e) {}
+    };
+    if (!speech.length) { clear(); return Promise.resolve(); }
+    _deferPlaying = true;
+    return emitSpeech(speech).then(clear, clear);
+  } catch (e) { _deferPlaying = false; return Promise.resolve(); }
+}
+
 // Main dispatcher — priority desc, default 0.
 // ★1ティック1VN（NARRATIVE_DESIGN W3・P8）：同じフックで“セリフだけ”のイベントが複数条件を
 //   満たしても、再生するのは優先度最上位の1本だけ。残りは発火させない＝once が未消費のまま
@@ -246,6 +294,7 @@ function runEventHooks(hookName, context) {
     if (eventConditionMet(ev, context)) {
       const speechOnly = eventSpeechOnly(ev);
       if (speechOnly && vnBudget <= 0) continue;   // 持ち越し（once未消費＝空撃ちしない）
+      if (speechOnly && ev.deferWhileBroke && _evBrokeNow()) { _deferEvent(ev); vnBudget--; continue; }   // 財布が空＝立て直してから（上の説明）
       const s = runEventActions(ev, context);
       if (s && s.length) { speech = speech.concat(s); if (speechOnly) vnBudget--; }
     }
