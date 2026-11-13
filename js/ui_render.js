@@ -674,16 +674,25 @@ function runMushin(ov, amt) {
   //   この場面の静けさに見合わず、暗転＋文字だけのほうが強い。素の暗転を正とする。
   ov.innerHTML = `<div class="mushin-paho" id="mushin-paho"></div>`;
   const box = ov.querySelector("#mushin-paho");
-  const lines = ["ぱほ。。。", "ぱほぱほ。。。", "ぱほぱほ。。。ぱほぱほ。。。"];
-  let i = 0;
+  // ★2回め以降は暗転を短く、タップで先へ（2026-11-13・Codex 3回め §3：村の人が「もう袋に分けてあるよ」と慣れていく横で、
+  //   溜めの演出は毎回はじめてと同じ約3秒だった）。初回の静けさはそのまま。
+  //   以前は暗転中に地をタップすると窓ごと消え（確認の窓の「外を押すと閉じる」が残っていた）、受け取りの画面を飛ばしていた。
+  const repeat = (state.player.brokeCount || 0) >= 1;
+  const lines = repeat ? ["ぱほぱほ。。。"] : ["ぱほ。。。", "ぱほぱほ。。。", "ぱほぱほ。。。ぱほぱほ。。。"];
+  let i = 0, fin = false;
+  const finish = () => { if (fin) return; fin = true; finishMushin(ov, amt); };
+  // 「無心する」を押した click がこの窓まで上がってくるので、すぐには付けない（押した瞬間に飛ばさない・二度押しも拾わない）
+  ov.onclick = null;
+  setTimeout(() => { if (!fin) ov.onclick = () => finish(); }, 350);
   (function step() {
+    if (fin) return;
     if (i < lines.length) {
       box.appendChild(el("div", "paho-line", lines[i]));
       try { if (window.Sfx) Sfx.play("tick"); } catch (e) {}
       i++;
       setTimeout(step, 760);
     } else {
-      setTimeout(() => finishMushin(ov, amt), 720);
+      setTimeout(finish, repeat ? 480 : 720);
     }
   })();
 }
