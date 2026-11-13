@@ -101,6 +101,8 @@ function _dailyMissionText() {
 //   残高の数字と案内の札だけで終わっていた（Codex の通し試験 2026-11-13：「貧乏のコメディになりそうな出来事を、
 //   まだ残高と案内文で処理している」）。ホームに帰ってきた最初の一言だけ、いま起きたことに反応させる。
 //   ・1つの出来事につき1回だけ（無心・買い物は ui._walletEvt、レースは走った数で見分ける）。
+//     ★この関数は読むだけ。「言った」印は、実際に吹き出しに出せたときに homeWalletLineDone() が付ける。
+//       ホームに着いた直後に会話（サケの「コインが尽きたな」など）が開いて描き直しが挟まっても、言いそびれない。
 //   ・言うことが無いときは null＝これまでどおり黙っている（気まぐれな小ネタは別の間合いで出る）。
 //   ・所持コイン・回数・直前の結果を読むだけ。ミミは反応するだけ（仕組みは説明しない）。
 function homeWalletLine() {
@@ -109,8 +111,10 @@ function homeWalletLine() {
     const coins = p.coins || 0, races = p.completedRaces || 0;
     const fmt = n => (typeof fmtCoins === "function") ? fmtCoins(n) : String(n);
     const pick = a => a[Math.floor(Math.random() * a.length)];
-    const ev = ui._walletEvt; ui._walletEvt = null;
-    const seenRace = ui._walletSaidRace === races; ui._walletSaidRace = races;
+    // 服を買った印は、その一戦のうちだけ有効（買ったあとホームを通らずに走った人に、次の結果の上から「新しい服」と言わない）。
+    const _raw = ui._walletEvt;
+    const ev = (_raw && _raw.k === "bought" && _raw.at != null && _raw.at !== races) ? null : _raw;
+    const seenRace = ui._walletSaidRace === races;
     if (ev && ev.k === "mushin") {
       if (ev.n <= 1) return { t: "分けてもらった" + fmt(ev.amt) + "コイン……。だ、大事に、使いますっ。", mood: "smile" };
       if (ev.n === 2) return { t: "また、分けてもらっちゃいました……。こんどこそ、増やしますっ。", mood: "panic" };
@@ -124,7 +128,10 @@ function homeWalletLine() {
     if (seenRace || races < 1) return null;                    // この一戦については、もう言った（別の画面から戻ってきただけ）
     const br = (state.current && state.current.betResult) || null;
     if (!br) return null;                                      // 読み込み直後など、直前の結果が無い
-    if (coins <= 0) return { t: "お財布、からっぽです……。……あ、頭を、下げてきます……っ。", mood: "panic" };
+    // （結果画面のミミが「からっぽです」と言ったあとなので、ここは次の一歩のほうを言う）
+    if (coins <= 0) return { t: "……村のみなさんに、あ、頭を、下げてきます……っ。", mood: "panic" };
+    // 最後のコインを全部賭けて、当てて帰ってきた（印は ui_render.js が賭けたときに置く）
+    if (br.hit && ui._allInRace === races) return { t: "い、生きてます……！　お財布、まだ生きてますっ……！", mood: "happy" };
     if (typeof hungerStuck === "function" && hungerStuck()) return { t: "おなかも、お財布も、からっぽです……っ。", mood: "panic" };
     const peak = p.maxCoinsReached || coins;
     if (!br.hit && coins < 300 && peak >= coins * 3)
@@ -135,6 +142,10 @@ function homeWalletLine() {
     if (br.hit && w > 0 && pay >= w * 5) return { t: "あ、当たりました……！　お財布が、あったかいです〜っ！", mood: "happy" };
     return null;
   } catch (e) { return null; }
+}
+
+function homeWalletLineDone() {
+  try { const ui = state.ui || (state.ui = {}); ui._walletEvt = null; ui._walletSaidRace = (state.player.completedRaces || 0); } catch (e) {}
 }
 
 function renderHome() {
@@ -564,15 +575,21 @@ function renderHome() {
   }
   // 財布で起きた出来事への一言（上の homeWalletLine）。挨拶をする到着では言わない（出来事の印は読んで消す）。
   //   会話や知らせの窓が開いているあいだは待つ（whenUiIdle）。表情も合わせて替え、少しして戻す。
+  let _wlStart = null;   // タイマーは下で window._hlTimers を作り直したあとに掛ける（ホームの演出タイマーの決まり）
+  let _wlPending = false; // 財布の一言が控えているあいだは、気まぐれな小ネタを先に出さない（下の13秒ごとの小ネタが読む）
   try {
     const _wl = homeWalletLine();
+    if (_doGreet) homeWalletLineDone();          // 挨拶をする到着では言わない（印だけ片づける）
     if (_wl && !_doGreet) {
       const _sayWl = () => {
-        if (state.ui.screen !== "home" || !document.contains(speech)) return;
+        _wlPending = false;
+        if (state.ui.screen !== "home" || !document.contains(speech)) return;   // 待つあいだに描き直された（新しいほうが言う）
+        homeWalletLineDone();
         mimiSay(_wl.t, 5600);
         try { _flipTo(_wl.mood); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 3200); } catch (e) {}
       };
-      setTimeout(() => { try { if (typeof whenUiIdle === "function") whenUiIdle(_sayWl); else _sayWl(); } catch (e) {} }, 1100);
+      _wlPending = true;
+      _wlStart = () => { try { if (state.ui.screen !== "home") return; if (typeof whenUiIdle === "function") whenUiIdle(_sayWl); else _sayWl(); } catch (e) {} };
     }
   } catch (e) {}
   // ★配信前（静かモード）は「コメント」「差し入れ」「見てくれてる」など配信前提の台詞を出さない（視聴者はまだいない）
@@ -612,6 +629,7 @@ function renderHome() {
   // ── ライブ演出（表示専用）：視聴者数・コメント・ハート。離脱でタイマー停止。
   if (window._hlTimers) window._hlTimers.forEach(clearInterval);
   window._hlTimers = [];
+  if (_wlStart) window._hlTimers.push(setTimeout(_wlStart, 1100));   // 財布の出来事への一言（上で用意したもの）
   const _reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const _fame = (state.assets && state.assets.fameValue) || 0;
   let _viewers = 380 + p.rank * 260 + ((p.villageLevel || 1) * 180) + Math.min(4000, p.completedRaces * 6) + Math.floor(_fame / 50);
@@ -744,6 +762,7 @@ function renderHome() {
   window._hlTimers.push(setInterval(() => {
     if (state.ui.screen !== "home") return;
     if (!speech.classList.contains("hidden") && !speech.classList.contains("out")) return;  // まだ喋っている間は重ねない
+    if (_wlPending) return;                                                                  // 財布の一言が先
     if (Math.random() < 0.5) _banter();
   }, 13000));
   if (!_reduce) window._hlTimers.push(setInterval(() => {
@@ -962,8 +981,13 @@ function renderHome() {
   // ★おなかが空っぽで走れないときは、このボタンがごはんへ送る（2026-11-13・ui_render.js hungryNeedsMeal）。
   //   以前は「レースへ進む」のまま、券を千切るところまで行ってから止めていた。すっからかんのときは上の札（無心する）が主役。
   const _eatFirst = (typeof hungryNeedsMeal === "function") && hungryNeedsMeal();
-  const raceBtn = el("button", "hl-race" + (_eatFirst ? " hl-race--eat" : ""), _eatFirst ? "🍙 ごはんを食べて、レースへ" : "🐉 レースへ進む");
-  raceBtn.onclick = () => _tikGo(() => { if (_eatFirst && typeof renderMeals === "function") renderMeals(); else renderRaceSelect(); });
+  // ★すっからかんのときは、このボタンが無心になる（2026-11-13）。左上の札（🙏 無心する）だけが入口で、いちばん大きい金のボタンは
+  //   「レースへ進む」のまま＝押すとレース選択の「コインが尽きています」に当たって、またホームへ戻ることになっていた。
+  const _brokeBtn = (typeof playerBroke === "function") && playerBroke() && typeof showMushinOverlay === "function";
+  const raceBtn = el("button", "hl-race" + (_brokeBtn ? " hl-race--broke" : _eatFirst ? " hl-race--eat" : ""),
+    _brokeBtn ? "🙏 村のみんなに、無心する" : _eatFirst ? "🍙 ごはんを食べて、レースへ" : "🐉 レースへ進む");
+  raceBtn.onclick = _brokeBtn ? (() => showMushinOverlay())
+    : (() => _tikGo(() => { if (_eatFirst && typeof renderMeals === "function") renderMeals(); else renderRaceSelect(); }));
   dock.appendChild(raceBtn);
 
   // ★ナビ＝常時10枠固定（docs/GAME_FLOW_REDESIGN.md §1・D1/D3/A4解消）。

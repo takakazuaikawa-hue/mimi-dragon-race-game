@@ -147,10 +147,47 @@
       return [L("mimi", hello + " " + pick(body, h), "smile")];
     },
 
+    /* ⑤' 最後のコインを全部賭けたとき（2026-11-13）。ランク1は賭金の上限が100なので、「のこり100を全部賭ける」は
+       大勝負（賭金500以上）に入らず、いちばん貧乏な勝負どころでミミが何も言わなかった。
+       w＝賭けた額（＝それまでの全財産）。n＝これまでに無心した回数（回数で言い方が変わる）。ミミは反応するだけ。 */
+    preRaceAllIn: function (bet, n) {
+      var w = (bet && bet.wager) || 0;
+      var c = (typeof fmtCoins === "function") ? fmtCoins(w) : String(w);
+      var sets = [
+        [{ s: "mimi", t: "こ、これが、最後の" + c + "コインです……っ。", e: "panic" }, L("mimi", "お願い……当たって……！", "default")],
+        [{ s: "mimi", t: "お財布、これで、からっぽです……！", e: "panic" }, L("mimi", "竜さん、たのみますっ……！", "default")],
+        [{ s: "mimi", t: "ぜ、全財産です。……ぜんぶ、です。", e: "panic" }, L("mimi", "い、いきますっ！", "happy")]
+      ];
+      return sets[(n || 0) % sets.length];
+    },
+
+    /* ⑤" この一戦で財布が空になったときの、結果画面のミミの一言（2026-11-13）。n＝これまでに無心した回数。
+       いつもの外れの感想（recap_engine.js buildMimiRecap）は財布を見ていないので、すっからかんになった一戦でも
+       「今日のは読めないって。」のような、ふつうの外れと同じ一言だった。ミミは反応するだけ。 */
+    bustLine: function (n) {
+      if (!n) return "……あれ。お財布、からっぽです。……からっぽ、ですね……？";
+      if (n === 1) return "ま、また、からっぽに……。が、学習しないうさぎで、すみません……っ。";
+      var more = [
+        "ぜ、ぜんぶ竜に預けました。……返ってきませんでした。",
+        "お財布をふっても、音がしません……。ちゃりん、とも……。",
+        "お財布さん……また、しばらく会えませんね……。"
+      ];
+      return more[(n - 2) % more.length];
+    },
+
     /* ⑤ レース直前の煽り（出走の瞬間・短く）-------------------------- */
     preRace: function (race, bet) {
       var w = (bet && bet.wager) || 0;
-      if (w >= 500) return [L("mimi", "大勝負……！ 心臓が口から出そう。", "panic"), L("mimi", "でも、いくっ！", "happy")];
+      // 大勝負は3通り（走った数で回す）。以前は1通りだけで、大きく張る人は毎回同じ二言を送っていた。
+      if (w >= 500) {
+        var big = [
+          [L("mimi", "大勝負……！ 心臓が口から出そう。", "panic"), L("mimi", "でも、いくっ！", "happy")],
+          [L("mimi", "こ、こんなに賭けちゃいました……！", "panic"), L("mimi", "も、もう千切っちゃったので、いきますっ！", "happy")],
+          [L("mimi", "手が、ふるえてます……っ。", "panic"), L("mimi", "お願い、走って……！", "default")]
+        ];
+        var n = 0; try { n = (state.player.completedRaces || 0); } catch (e) {}
+        return big[n % big.length];
+      }
       var sets = [
         [L("mimi", "いっけぇ〜っ！", "happy")],
         [L("announcer", "さあ、出走の刻ですっ！"), L("mimi", "たのむよ、相棒〜！", "happy")],

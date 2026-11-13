@@ -996,6 +996,8 @@ body.dev-on .debug-toggle { display: inline-block; }
   background: rgba(255,110,80,.16); border: 1px solid rgba(255,140,110,.42);
   white-space: nowrap;
 }
+/* 結果の主役の場面：この一戦で所持が0になったときの数字 */
+.rs-sub b.rs-zero { color: #ff9d9d; }
 /* ★C-4：主CTAに連勝の熱を乗せる */
 .actions .rs-next { font-weight: 900; }
 /* 結果画面のいちばん下：主役の1本を横いっぱいに（副のボタンは中身の幅）。2026-11-13 */

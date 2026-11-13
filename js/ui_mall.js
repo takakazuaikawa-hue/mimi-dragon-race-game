@@ -296,7 +296,7 @@ function _scmFitting() {
         const _firstBuy = sel.id === "buniqro" && window.DLG && typeof DLG.firstOutfit === "function";
         if (window.Dialogue && window.DLG) Dialogue.play(_firstBuy ? DLG.firstOutfit(state.player.coins || 0, sel.acquire.price) : DLG.outfit(sel));
         // ホームに戻ったときの一言（ui_home.js homeWalletLine）。買った服を着て帰ってくる＝服と財布の両方に触れる。
-        try { const _lf = state.player.coins || 0; state.ui._walletEvt = { k: "bought", left: _lf, thin: _lf < sel.acquire.price * 0.3 }; } catch (e) {}
+        try { const _lf = state.player.coins || 0; state.ui._walletEvt = { k: "bought", left: _lf, thin: _lf < sel.acquire.price * 0.3, at: (state.player.completedRaces || 0) }; } catch (e) {}
         renderMall();
       }
       else if (r.reason === "poor") flashShareToast(`🪙 コインが足りません（あと ${fmtCoins(sel.acquire.price - (state.player.coins || 0))}）`);

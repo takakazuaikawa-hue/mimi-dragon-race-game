@@ -3308,8 +3308,17 @@ function onConfirmBet(skipDialog) {
   //   それ以外は、千切ったらそのまま入場へ（入場の実況と、キャスターのミミがそこに居る）。
   const _hypeFirst = ((state.player.completedRaces || 0) < 1);
   const _hypeBig = (c.bet.wager >= 500) && (c.bet.wager >= ((state.player.coins || 0) + c.bet.wager) * 0.5);
-  if (window.DLG && DLG.PRE_RACE_HYPE && window.Dialogue && Dialogue.play && (_hypeFirst || _hypeBig)) {
-    Dialogue.play(DLG.preRace(c.race, c.bet)).then(renderRaceRun);
+  // ★最後のコインを全部賭けた（賭けたら財布が0）ときも言う（2026-11-13・data_dialogue.js preRaceAllIn）。
+  //   服を買って残り100、その100を賭ける——いちばん貧乏な勝負どころなのに、賭金が小さいので「大勝負」に入らず黙っていた。
+  //   無心1回につき1度だけ（毎戦ぜんぶ賭ける人に、毎戦は出さない）。賭金・所持は読むだけ。
+  const _bc = state.player.brokeCount || 0;
+  const _hypeAllIn = !_hypeFirst && c.bet.wager > 0 && (state.player.coins || 0) <= 0 && state.ui._allInSaidAt !== _bc;
+  if (_hypeAllIn) state.ui._allInSaidAt = _bc;
+  // 全部賭けた一戦の印（当てて帰ってきたときの、ホームの一言に使う・ui_home.js homeWalletLine）
+  if (c.bet.wager > 0 && (state.player.coins || 0) <= 0) state.ui._allInRace = (state.player.completedRaces || 0) + 1;
+  if (window.DLG && DLG.PRE_RACE_HYPE && window.Dialogue && Dialogue.play && (_hypeFirst || _hypeBig || _hypeAllIn)) {
+    const _lines = (_hypeAllIn && typeof DLG.preRaceAllIn === "function") ? DLG.preRaceAllIn(c.bet, _bc) : DLG.preRace(c.race, c.bet);
+    Dialogue.play(_lines).then(renderRaceRun);
   } else {
     renderRaceRun();
   }
@@ -4575,7 +4584,17 @@ function buildResultHero(ps, tier, c) {
     const od = wd && c.oddsResult && (c.oddsResult.oddsData || []).find(o => o.dragonId === wd.id);
     const mine = !!(wd && c.bet && (c.bet.selections || []).indexOf(wd.id) >= 0);
     const oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "sukanpin";
-    const say = (c.recap && c.recap.mimiRecap) || "";
+    let say = (c.recap && c.recap.mimiRecap) || "";
+    // ★この一戦で財布が空になったら、ミミの一言はそれに反応する（2026-11-13・data_dialogue.js bustLine）。
+    //   1戦につき1回だけ決める（タブを切り替えて描き直しても同じ文）。所持コインと無心の回数を読むだけ。
+    try {
+      const _rn = state.player.completedRaces || 0;
+      if (c._bustSayAt !== _rn) {
+        c._bustSayAt = _rn;
+        c._bustSay = (!hit && (state.player.coins || 0) <= 0 && window.DLG && typeof DLG.bustLine === "function") ? DLG.bustLine(state.player.brokeCount || 0) : "";
+      }
+      if (c._bustSay) say = c._bustSay;
+    } catch (e) {}
     const av = (typeof RC_DRAGON_ART_V !== "undefined") ? RC_DRAGON_ART_V : 1;
     stage =
       `<div class="rs-stage ${hit ? "hit" : "miss"}" style="--waku:${wd ? dragonColor(wd) : "#8a7fc0"}">` +
@@ -4596,7 +4615,7 @@ function buildResultHero(ps, tier, c) {
       (hit
         ? `${ps.typeLabel} × ${ps.odds.toFixed(1)}倍　／　収支 <b>${fmtSigned(ps.profit)}</b>`
         : `${ps.typeLabel}　／　今回は届かず`) +
-      `　・　所持 <b>${fmtCoins(state.player.coins)}</b></div>` +
+      `　・　所持 <b${(state.player.coins || 0) <= 0 ? ' class="rs-zero"' : ""}>${fmtCoins(state.player.coins)}</b></div>` +
     `<div class="rs-streak" id="rs-streak">${streakLineHtml(c && c.streakInfo)}</div>`;
 
   // （音声操作は全画面共通の🔊FABへ一本化＝rs-mute ボタンは撤去・ユーザー指摘のUX整理）

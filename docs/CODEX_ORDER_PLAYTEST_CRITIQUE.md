@@ -20,7 +20,7 @@ Claude 側は直す作業に集中したいので、**通しで遊んで問題�
 - ブランチ `claude/compassionate-mendel-4e6ubv`（ドラフト PR #54）。`origin/main` ではない。
 - 起動：`powershell -File serve.ps1` → http://localhost:8766/ （ビルド無し・静的ファイル）。
 - **音は消して遊ぶこと**（ユーザーの他の作業に響くため）。ゲーム内の 🔊 から、またはコンソールで
-  `Sfx.setMuted(true); Bgm.setMuted(true)`。
+  `Sfx.setMuted(true); RaceBgm.setMuted(true)`（BGM の実体名は `RaceBgm`。`Bgm` という名前は無い）。
 - 新規セーブから始める（コンソールで `localStorage.removeItem("mimi_dragon_race_v0_1")` → 再読み込み）。
 - 画面は**スマホ縦（375×812）を主**に、360×640 と PC 幅でも1回ずつ見る。
 - デバッグ用の「💰 +1万」などの下駄は**使わない**（実プレイの速度を測りたいので）。
