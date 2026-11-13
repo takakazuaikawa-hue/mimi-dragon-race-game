@@ -998,6 +998,23 @@ body.dev-on .debug-toggle { display: inline-block; }
 }
 /* ★C-4：主CTAに連勝の熱を乗せる */
 .actions .rs-next { font-weight: 900; }
+/* 結果画面のいちばん下：主役の1本を横いっぱいに（副のボタンは中身の幅）。2026-11-13 */
+/* 下の余白＝右下の音量ボタン（.vol-fab・全画面に常設）が、横いっぱいの主役のボタンに重ならないように。 */
+.rs-actions { align-items: stretch; margin-bottom: 54px; }
+.rs-actions .secondary { flex: none; padding-inline: 14px; }
+.rs-actions .rs-next { flex: 1 1 auto; min-height: 48px; font-size: 15px; }
+/* 次の操作のすぐ上：この一戦のあとのお財布とおなか（ui_render.js） */
+.rs-wallet { display: flex; align-items: baseline; justify-content: center; gap: 18px; margin: 14px 0 -4px;
+  padding: 9px 12px; border-radius: var(--rd-10); background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
+  font-variant-numeric: tabular-nums; }
+.rs-wallet .rw-i { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.rs-wallet i { font-style: normal; font-size: 11px; color: var(--mist-soft); letter-spacing: .04em; }
+.rs-wallet b { font-size: 16px; color: var(--white); }
+.rs-wallet small { font-size: 10.5px; color: var(--mist-soft); }
+.rs-wallet em { font-style: normal; font-size: 12px; font-weight: 800; }
+.rs-wallet em.up { color: var(--gold-bright); }
+.rs-wallet em.down { color: #ff9d9d; }
+.rs-wallet .rw-i.low b { color: #ff9d9d; }
 
 /* ===== ★RACE_SCREEN_LIVE D1：生着順ボード（実装先＝race_canvas.js の #rc-board）=====
    画面下半分の主役。8頭の行がFLIPで入れ替わり続ける＝「数字が生きている」感の本体。
@@ -8517,7 +8534,8 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 /* ===== M1：次の一手チップ（島の一日ループの結線・GAME_EXPERIENCE_DESIGN §3） ===== */
 .nx-row { margin: 10px 0 2px; }
 .nx-row .nx-k { font-size: 10px; letter-spacing: .12em; color: var(--mist-soft); margin-bottom: 5px; }
-.nx-chip { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+/* ★文字色を明示する：button の基本色（金のボタン用の濃い茶）を継いで、暗い地に暗い字になっていた（2026-11-13）。 */
+.nx-chip { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; color: var(--white); font-weight: 700;
   margin-bottom: 6px; padding: 9px 12px; border-radius: var(--r-2);
   background: linear-gradient(120deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
   border: 1px solid rgba(255,255,255,.14); transition: transform .12s ease, background .12s ease; }
@@ -10243,6 +10261,8 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 .broke-cta .broke-tx small { font-size: 10.5px; line-height: 1.45; color: var(--mist-soft); }
 .broke-cta .broke-go { flex: none; font-weight: 900; color: #ffd9a8; }
 .broke-cta:active { transform: translateY(1px); }
+/* 空腹で走れないときの一枚（金欠の一枚と同じ形・行き先はごはん） */
+.broke-cta.hungry-cta .broke-go { font-size: 12px; white-space: nowrap; }
 
 /* 目標から行き先へ直接飛ぶボタン（ユーザー指摘：モールの入口が分かりにくい＝島タブの奥にしか無かった） */
 .goal-go { flex: none; margin-left: 8px; padding: 7px 12px; border-radius: var(--r-full); cursor: pointer;

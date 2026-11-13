@@ -959,8 +959,11 @@ function renderHome() {
     } catch (e) {}   // 読めなければ静かに省略＝台座を出さないだけ（壊すより出さない）
   }
 
-  const raceBtn = el("button", "hl-race", "🐉 レースへ進む");
-  raceBtn.onclick = () => _tikGo(() => renderRaceSelect());
+  // ★おなかが空っぽで走れないときは、このボタンがごはんへ送る（2026-11-13・ui_render.js hungryNeedsMeal）。
+  //   以前は「レースへ進む」のまま、券を千切るところまで行ってから止めていた。すっからかんのときは上の札（無心する）が主役。
+  const _eatFirst = (typeof hungryNeedsMeal === "function") && hungryNeedsMeal();
+  const raceBtn = el("button", "hl-race" + (_eatFirst ? " hl-race--eat" : ""), _eatFirst ? "🍙 ごはんを食べて、レースへ" : "🐉 レースへ進む");
+  raceBtn.onclick = () => _tikGo(() => { if (_eatFirst && typeof renderMeals === "function") renderMeals(); else renderRaceSelect(); });
   dock.appendChild(raceBtn);
 
   // ★ナビ＝常時10枠固定（docs/GAME_FLOW_REDESIGN.md §1・D1/D3/A4解消）。

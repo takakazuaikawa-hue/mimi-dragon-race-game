@@ -626,6 +626,24 @@ function confirmResetGame() {
 // calculateRescueCoins（基準の救済額）。額の計算は一切変えず、“受け取り方”を黒背景の
 // 「ぱほぱほ。。。」という小芝居にしただけ（着順/オッズ/配当には非干渉）。
 // =========================================================================
+// ★おなかが空っぽで走れないときの一枚（2026-11-13）。以前は、レースを選び、竜を選び、理由を選び、券を千切る
+//   ところまで進んでから「おなかがすいて走れない…」で止めていた＝5手ぶんの行き止まり。走れないと分かっているなら、
+//   入口で言う（ホームのボタン・結果画面の「次へ」・レース選択・賭け画面）。出走表の下見はできるよう画面は出す。
+//   金欠（playerBroke）のときは金欠の一枚が出るので、こちらは出さない。hunger.js を読むだけ。
+function hungryNeedsMeal() {
+  try {
+    if (typeof hungerCanRace !== "function" || hungerCanRace()) return false;
+    return !((typeof playerBroke === "function") && playerBroke());
+  } catch (e) { return false; }
+}
+function hungryCtaEl() {
+  const free = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
+  const b = el("button", "broke-cta hungry-cta",
+    `<span class="broke-ic">🍙</span><span class="broke-tx"><b>おなかがすいて、走れません</b><small>${free ? "きょうは1品、店のおごりが出ます。" : "ひと皿食べれば、また走れます。"}</small></span><span class="broke-go">ごはんへ ▸</span>`);
+  b.onclick = () => { if (typeof renderMeals === "function") renderMeals(); };
+  return b;
+}
+
 function showMushinOverlay() {
   if (document.getElementById("mushin-ov")) return;
   const ov = el("div", "mushin-overlay"); ov.id = "mushin-ov";
@@ -2133,6 +2151,8 @@ function renderRaceSelect() {
       `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが少しずつ分けてくれます</small></span><span class="broke-go">▸</span>`);
     bk.onclick = () => renderHome();
     app.appendChild(bk);
+  } else if (hungryNeedsMeal()) {
+    app.appendChild(hungryCtaEl());
   }
 
   // 本日の注目レース — a prominent, daily-rotating spotlight
@@ -2424,6 +2444,8 @@ function renderRaceDetail(race) {
       `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが少しずつ分けてくれます</small></span><span class="broke-go">▸</span>`);
     bk.onclick = () => renderHome();
     app.appendChild(bk);
+  } else if (hungryNeedsMeal()) {
+    app.appendChild(hungryCtaEl());
   }
   // Popularity-sorted entries — shared by the pick cards and the dragon-info table.
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
@@ -4364,17 +4386,40 @@ function drawRecapScreen() {
   if (_nx) app.appendChild(_nx);
 
   // --- Persistent actions（導線：ホーム／詳しい分析＝副、次のレース＝主CTA） ---
-  const actions = el("div", "actions");
-  const home2 = el("button", "secondary", "ホーム"); home2.onclick = renderHome;
-  actions.appendChild(home2);
+  // ★次の操作のすぐ上に、この一戦のあとのお財布とおなか（2026-11-13）。結果は画面のいちばん上にあり、
+  //   ここまで降りてくると「で、いまいくら持っていて、次は走れるのか」が見えなかった（Codex の通し試験：
+  //   「その一戦で何が残ったかを、次の操作の近くに置くとよい」）。確定済みの数字を読むだけ。
+  const _brokeNow = (typeof playerBroke === "function") && playerBroke();
+  const _eatFirst = hungryNeedsMeal();
+  try {
+    const g = c.gainLedger;
+    const _net = g ? ((g.hit ? g.payout : 0) - (g.wager || 0) + (g.streakBonus || 0) + (g.featuredBonus || 0) + (g.collectionCoins || 0)) : null;
+    const _hg = (typeof hungerGet === "function") ? hungerGet() : null;
+    app.appendChild(el("div", "rs-wallet",
+      `<span class="rw-i${(state.player.coins || 0) <= 0 ? " low" : ""}"><i>お財布</i><b>${fmtCoins(state.player.coins || 0)}</b>` +
+        (_net != null ? `<em class="${_net >= 0 ? "up" : "down"}">${_net >= 0 ? "＋" : "−"}${fmtCoins(Math.abs(_net))}</em>` : "") + `</span>` +
+      (_hg != null ? `<span class="rw-i${_eatFirst || _hg <= 0 ? " low" : ""}"><i>おなか</i><b>${_hg}</b><small>／100</small></span>` : "")));
+  } catch (e) {}
+
+  const actions = el("div", "actions rs-actions");
+  // ホームへ送る1本が主役になるとき（すっからかん）は、同じ行き先の「ホーム」を並べない。
+  if (!_brokeNow) {
+    const home2 = el("button", "secondary", "ホーム"); home2.onclick = renderHome;
+    actions.appendChild(home2);
+  }
   if (_anaOn) {   // E4：詳しい分析は2章解禁（1章は勘レース）
     const detail = el("button", "secondary", "詳しい分析"); detail.onclick = renderAnalysis;
     actions.appendChild(detail);
   }
   // ★C-4：主役は「次のレースへ」1本。連勝中はその熱をボタンに乗せる（次を打ちたくなる導線）。
+  //   ★走れない状態のときは、主役の行き先を替える（2026-11-13）：すっからかん＝ホームで無心／空腹＝ごはん。
+  //     「次のレースへ」を押させて、券を千切るところで止める、をやめる。
   const _sk = (c.streakInfo && c.streakInfo.streak) || 0;
-  const next = el("button", "rs-next", _sk >= 2 ? `🔥 ${_sk}連勝中　次のレースへ ▶` : "次のレースへ ▶");
-  next.onclick = renderRaceSelect;
+  const next = el("button", "rs-next",
+    _brokeNow ? "🙏 ホームで立て直す ▶"
+    : _eatFirst ? "🍙 ごはんを食べて、次へ ▶"
+    : (_sk >= 2 ? `🔥 ${_sk}連勝中　次のレースへ ▶` : "次のレースへ ▶"));
+  next.onclick = _brokeNow ? renderHome : (_eatFirst ? (() => renderMeals()) : renderRaceSelect);
   actions.appendChild(next);
   app.appendChild(actions);
 }
@@ -4723,26 +4768,12 @@ function recapTabResult(body, recap, c) {
   body.appendChild(tbl);
   body.appendChild(el("div", "recap-note", "★ … あなたの予想竜"));
 
-  // Short 払い戻し one-liner.
-  const ps = recap.payoutSummary;
-  if (ps) {
-    body.appendChild(recapSection("払い戻し", [
-      `${ps.typeLabel}／${ps.resultText}`,
-      ps.payout > 0   // 外れのときに「× オッズ → 払戻 0」と出て計算が合わないように読めた
-        ? `賭金 ${fmtCoins(ps.wager)} × ${ps.odds.toFixed(1)}倍 → 払戻 ${fmtCoins(ps.payout)}（収支 +${fmtCoins(ps.profit)}）`
-        : `賭金 ${fmtCoins(ps.wager)} → 払戻なし（収支 −${fmtCoins(ps.wager)}）`,
-      `所持コイン: ${fmtCoins(state.player.coins)}`
-    ]));
-  }
+  // ★ここにあった「払い戻し」の3行とミミの締めの一言は外した（2026-11-13）。どちらも、いちばん上の主役の場面
+  //   （ハズレ −100・所持／ミミの吹き出し）と📦今回の獲得が、もう同じことを言っている。同じ結果を3回読ませて、
+  //   「次のレースへ」までが画面2枚半ぶんあった。払い戻しの式は「払い戻し」のタブにそのままある。
 
   // Short 勝負所 — top 2 highlights.
   body.appendChild(recapSection("勝負所", recap.broadcastHighlights.slice(0, 2)));
-
-  // Mimi sign-off (§29 §8).
-  const mimi = el("div", "recap-mimi");
-  mimi.appendChild(el("span", "speaker", "ミミ"));
-  mimi.appendChild(el("span", "line", recap.mimiRecap));
-  body.appendChild(mimi);
 }
 
 function recapTabPayout(body, recap, c) {
