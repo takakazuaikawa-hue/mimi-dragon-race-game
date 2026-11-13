@@ -95,6 +95,48 @@ function _dailyMissionText() {
   return `きょうのミッション　${items.join("・")}` + (done >= need ? "　🎉コンプ！" : "");
 }
 
+// ★財布で起きた出来事への、ミミの一言（2026-11-13）。
+//   ホームのミミは、挨拶と気まぐれな小ネタしか言わなかった。全財産で服を買っても、すっからかんになっても、
+//   分けてもらって帰ってきても、ホームのミミは「今日はどの竜にしようかな〜？」のまま＝財布の出来事が、
+//   残高の数字と案内の札だけで終わっていた（Codex の通し試験 2026-11-13：「貧乏のコメディになりそうな出来事を、
+//   まだ残高と案内文で処理している」）。ホームに帰ってきた最初の一言だけ、いま起きたことに反応させる。
+//   ・1つの出来事につき1回だけ（無心・買い物は ui._walletEvt、レースは走った数で見分ける）。
+//   ・言うことが無いときは null＝これまでどおり黙っている（気まぐれな小ネタは別の間合いで出る）。
+//   ・所持コイン・回数・直前の結果を読むだけ。ミミは反応するだけ（仕組みは説明しない）。
+function homeWalletLine() {
+  try {
+    const p = state.player, ui = state.ui || (state.ui = {});
+    const coins = p.coins || 0, races = p.completedRaces || 0;
+    const fmt = n => (typeof fmtCoins === "function") ? fmtCoins(n) : String(n);
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+    const ev = ui._walletEvt; ui._walletEvt = null;
+    const seenRace = ui._walletSaidRace === races; ui._walletSaidRace = races;
+    if (ev && ev.k === "mushin") {
+      if (ev.n <= 1) return { t: "分けてもらった" + fmt(ev.amt) + "コイン……。だ、大事に、使いますっ。", mood: "smile" };
+      if (ev.n === 2) return { t: "また、分けてもらっちゃいました……。こんどこそ、増やしますっ。", mood: "panic" };
+      return { t: pick(["村のみなさんの顔を、まともに見られません……っ。", "無心の回数って、どこかに書かれてるんでしょうか……。", "袋、あったかかったです……。ぐすっ。"]), mood: "panic" };
+    }
+    if (ev && ev.k === "bought") {
+      return ev.thin
+        ? { t: "えへへ、新しい服……！　お財布は、のこり" + fmt(ev.left) + "コインですけど……っ。", mood: "happy" }
+        : { t: "えへへ、新しい服です……！　似合ってますか？", mood: "happy" };
+    }
+    if (seenRace || races < 1) return null;                    // この一戦については、もう言った（別の画面から戻ってきただけ）
+    const br = (state.current && state.current.betResult) || null;
+    if (!br) return null;                                      // 読み込み直後など、直前の結果が無い
+    if (coins <= 0) return { t: "お財布、からっぽです……。……あ、頭を、下げてきます……っ。", mood: "panic" };
+    if (typeof hungerStuck === "function" && hungerStuck()) return { t: "おなかも、お財布も、からっぽです……っ。", mood: "panic" };
+    const peak = p.maxCoinsReached || coins;
+    if (!br.hit && coins < 300 && peak >= coins * 3)
+      return { t: "お財布、のこり" + fmt(coins) + "コイン……。こ、ここからです。ここから……！", mood: "panic" };
+    const run = p.missRun || 0;
+    if (!br.hit && run >= 2) return { t: run + "連敗……。お、お財布は、まだ生きてます……っ。", mood: "panic" };
+    const w = br.wager || (state.current.bet && state.current.bet.wager) || 0, pay = br.payout || 0;
+    if (br.hit && w > 0 && pay >= w * 5) return { t: "あ、当たりました……！　お財布が、あったかいです〜っ！", mood: "happy" };
+    return null;
+  } catch (e) { return null; }
+}
+
 function renderHome() {
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
@@ -520,6 +562,19 @@ function renderHome() {
   if (_doGreet && window.DLG && DLG.login) {
     try { setTimeout(() => mimiSay((DLG.login(state.player)[0] || {}).t || "ようこそ！", 5200), 500); } catch (e) {}
   }
+  // 財布で起きた出来事への一言（上の homeWalletLine）。挨拶をする到着では言わない（出来事の印は読んで消す）。
+  //   会話や知らせの窓が開いているあいだは待つ（whenUiIdle）。表情も合わせて替え、少しして戻す。
+  try {
+    const _wl = homeWalletLine();
+    if (_wl && !_doGreet) {
+      const _sayWl = () => {
+        if (state.ui.screen !== "home" || !document.contains(speech)) return;
+        mimiSay(_wl.t, 5600);
+        try { _flipTo(_wl.mood); setTimeout(() => { if (state.ui.screen === "home") _flipTo("default"); }, 3200); } catch (e) {}
+      };
+      setTimeout(() => { try { if (typeof whenUiIdle === "function") whenUiIdle(_sayWl); else _sayWl(); } catch (e) {} }, 1100);
+    }
+  } catch (e) {}
   // ★配信前（静かモード）は「コメント」「差し入れ」「見てくれてる」など配信前提の台詞を出さない（視聴者はまだいない）
   const _BANTER = broadcast
     ? ["今日はどの竜を推す〜？", "コメントありがとっ！", "いっしょに当てようね！", "耳、さわっていいよ？ うそうそ。", "オッズ、よーく見てね。", "ぱほぱほ〜♪", "推し竜、見つかった？", "差し入れ、うれしいな♪"]

@@ -290,10 +290,25 @@ function _scmFitting() {
     const bb = el("button", "scm-btn primary" + (poor ? " poor" : ""), `🛒 ${fmtCoins(sel.acquire.price)} で購入`);
     bb.onclick = () => {
       const r = buyOutfit(sel.id);
-      if (r.ok) { wearOutfit(sel.id); if (window.Sfx) Sfx.play("coin"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); }
+      if (r.ok) {
+        wearOutfit(sel.id); if (window.Sfx) Sfx.play("coin");
+        // はじめての一着（ブニクロ普段着）だけは、買った瞬間の反応を別に持つ（data_dialogue.js firstOutfit）。
+        const _firstBuy = sel.id === "buniqro" && window.DLG && typeof DLG.firstOutfit === "function";
+        if (window.Dialogue && window.DLG) Dialogue.play(_firstBuy ? DLG.firstOutfit(state.player.coins || 0, sel.acquire.price) : DLG.outfit(sel));
+        // ホームに戻ったときの一言（ui_home.js homeWalletLine）。買った服を着て帰ってくる＝服と財布の両方に触れる。
+        try { const _lf = state.player.coins || 0; state.ui._walletEvt = { k: "bought", left: _lf, thin: _lf < sel.acquire.price * 0.3 }; } catch (e) {}
+        renderMall();
+      }
       else if (r.reason === "poor") flashShareToast(`🪙 コインが足りません（あと ${fmtCoins(sel.acquire.price - (state.player.coins || 0))}）`);
     };
     cta.appendChild(bb);
+    // ★買う前に、払ったあとのお財布を言う（2026-11-13）。「ほぼ全財産を使う」という選択を、押す前から自分のことにする
+    //   （Codex の通し試験：1,600→100 の重さを、こちらが計算して作っていた）。所持コインと値段を読むだけ。
+    if (!poor) {
+      const _left = (state.player.coins || 0) - sel.acquire.price;
+      cta.appendChild(el("div", "scm-fit-after" + (_left < sel.acquire.price * 0.3 ? " thin" : ""),
+        `買うと、お財布は <b>${fmtCoins(_left)}</b> コインに`));
+    }
   } else if (sel.acquire.assets != null) {
     cta.appendChild(el("div", "scm-lockmsg", `🔒 総資産 ${fmtCoins(sel.acquire.assets)} で解放`));
   }

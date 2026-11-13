@@ -646,7 +646,11 @@ function buildBroadcast(timeline, ctx, opts) {
   //   引き出しが空でも null が返るだけで、その場合は今まで通り進む。
   if (typeof bcChatterPick === "function") {
     const ch = bcChatterPick(ckey, "mid", situation);
-    if (ch) { say(0.615, "color", ch.line, {}, "chat"); _chatChosen.push(ch); }
+    // ★置く位置は τ0.50（以前は 0.615＝中盤の終わりぎわ）。0.615 だと詰め込みと滞留で後ろへずれ、出た雑談の全部が
+    //   終盤（τ0.62 以降＝いちばん熱い区間）に出ていた（200戦の計測・tools/sim_telop_stale.js。Codex の通し試験でも
+    //   「全額を賭けた竜が後方にいる終盤に、解説が竜の匂いの雑談を続ける」）。0.50 なら中盤に 0.34本/戦が出て、終盤は0。
+    //   画面側も、終盤に入ってからの雑談は出さない（race_canvas.js _telopStale）。
+    if (ch) { say(0.50, "color", ch.line, {}, "chat"); _chatChosen.push(ch); }
   }
 
   // 中盤で語る入れ替わりは「1位が替わったとき」だけ。

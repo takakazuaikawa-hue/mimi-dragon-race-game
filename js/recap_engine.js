@@ -84,6 +84,10 @@ function buildRecap(ctx) {
 
 // One-line 短評 for the ranking table (§29 §4.1).
 function shortBlurb(e, race, od) {
+  // ★上位の竜は、脚が鈍っていても「先着した／粘った」事実を先に言う（2026-11-13）。以前は失速の印があると着順に関係なく
+  //   「終盤に脚が止まった」になり、1着から8着まで全員が同じ短評になるレースがあった（Codex の通し試験）。着順は読むだけ。
+  if (e.collapse && e.rank === 1) return "苦しくなりながら、押し切った";
+  if (e.collapse && e.rank <= 3) return "脚が鈍っても、粘り込んだ";
   if (e.collapse) return "終盤に脚が止まった";
   const style = e.dragon.style;
   const popRank = od.popularityRank || 9;
@@ -293,14 +297,18 @@ function buildMimiRecap(bet, betResult, raceResult, popMap) {
       "ちゃんと数字より竜を見た結果です。えっへん。……さ、勝ち飯勝ち飯。"
     ]);
   }
+  // ★「惜しい」は、的中まであと1つのときだけ（2026-11-13）。以前は単勝の4着や3着でも惜しい側の台詞になり、
+  //   4着なのに「鼻の差……」と言っていた（Codex の通し試験：具体的になった分析文と、ミミの一言の精度に差がある）。
+  //   単勝＝2着／複勝・ワイド＝4着 だけを「あと1つ」とみなす。着差そのものは言わない（ここからは着差が読めないため）。
+  const _need = bet.type === "win" ? 1 : 3;
   const nearMiss = bet.selections.some(id => {
     const e = raceResult.entries.find(x => x.dragon.id === id);
-    return e && (e.rank === 4 || (bet.type === "win" && e.rank <= 3));
+    return e && e.rank === _need + 1;
   });
   if (nearMiss) return pick([
     "〜〜っ、惜しくもない外れ方より、こういうのがいちばん悔しい！　……見てなさいよ、次。",
     "あと一歩。あとひと伸び。……ゴール板、ちょっとだけ手前に動かない？　動かないか。",
-    "うう、鼻の差……。今日は反省茶。明日は勝ち飯。そういうことにする。"
+    "うう、あとひとつ……。今日は反省茶。明日は勝ち飯。そういうことにする。"
   ]);
   return pick([
     "……外れました。はい。……お腹すいた。負け飯食べて忘れる！",

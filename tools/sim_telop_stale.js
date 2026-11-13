@@ -30,7 +30,9 @@ function simulate(tl, script, decideTau, dropStale) {
   const top = tau => tl.standingsAt(tau)[0];
   const third = tau => { const P = tl.leaderProgressAt(Math.min(1, tau)); return P < 1 / 3 ? 0 : P < 2 / 3 ? 1 : 2; };   // 画面の区間表示と同じ区切り
   const secWrong = (it, tau) => it.sec != null && third(tau) !== it.sec;
-  const isStale = (it, tau) => dropStale && ((it.lead != null && top(tau) !== it.lead) || secWrong(it, tau));
+  const LATE = 0.62;   // 終盤の入口（race_broadcast.js BC_MID_END と同じ）。ここを過ぎた雑談は「終盤の雑談」
+  const chatLate = (it, tau) => it.tag === "chat" && tau > LATE;
+  const isStale = (it, tau) => dropStale && ((it.lead != null && top(tau) !== it.lead) || secWrong(it, tau) || chatLate(it, tau));
   const show = (it, now, tau) => { if (it.tag === "getaway") getaway++; lastAt = now; lastLen = it.line.length; shown.push({ t: now / 1000, tau, it, wrong: it.lead != null && top(tau) !== it.lead, wrongSec: secWrong(it, tau) }); };
   const endT = decideTau * sec;
   for (let t = 0; t <= endT; t += dt) {
@@ -53,7 +55,8 @@ function simulate(tl, script, decideTau, dropStale) {
   const tailGap = endT - (shown.length ? shown[shown.length - 1].t : 0);
   if (tailGap > maxGap) maxGap = tailGap;
   const last8 = shown.filter(x => x.t >= endT - 8).length;
-  return { shown, stale, drops, maxGap, gaps4, last8, wrong: shown.filter(x => x.wrong), wrongSec: shown.filter(x => x.wrongSec), secShown: shown.filter(x => x.it.sec != null), secStale: stale.filter(x => x.it.sec != null) };
+  return { shown, stale, drops, maxGap, gaps4, last8, wrong: shown.filter(x => x.wrong), wrongSec: shown.filter(x => x.wrongSec), secShown: shown.filter(x => x.it.sec != null), secStale: stale.filter(x => x.it.sec != null),
+    chatShown: shown.filter(x => x.it.tag === "chat"), chatLateShown: shown.filter(x => x.it.tag === "chat" && x.tau > LATE), chatAll: items.filter(x => x.tag === "chat").length };
 }
 
 const races = S.RACES.filter(r => r && r.id);
@@ -76,6 +79,7 @@ for (let n = 0; n < N; n++) {
     const r = simulate(tl, bc.script, D, mode === 1), a = agg[mode];
     a.lines += r.shown.length; a.claims += r.shown.filter(x => x.it.lead != null).length; a.wrong += r.wrong.length; if (r.wrong.length) a.racesWrong++;
     a.stale += r.stale.length; a.drops += r.drops; a.sumMaxGap += r.maxGap; if (r.maxGap > a.maxGap) a.maxGap = r.maxGap; a.gaps4 += r.gaps4; a.last8 += r.last8;
+    a.chat = a.chat || { all: 0, shown: 0, late: 0 }; a.chat.all += r.chatAll; a.chat.shown += r.chatShown.length; a.chat.late += r.chatLateShown.length;
     a.sec = a.sec || { shown: [0, 0, 0], wrong: [0, 0, 0], stale: [0, 0, 0] };
     r.secShown.forEach(x => { a.sec.shown[x.it.sec]++; }); r.wrongSec.forEach(x => { a.sec.wrong[x.it.sec]++; }); r.secStale.forEach(x => { a.sec.stale[x.it.sec]++; });
     if (mode === 0 && r.wrongSec.length && (a.secEx = a.secEx || []).length < 4) { const x = r.wrongSec[0]; a.secEx.push(`${race.id} [区間${x.it.sec}の話]「${x.it.line}」が出たのは τ${x.tau.toFixed(3)}（台本τ${x.it.tau.toFixed(3)}）`); }
@@ -90,6 +94,7 @@ const pr = (name, a) => {
   console.log(`   古くなって出さなかった行=${(a.stale / done).toFixed(2)}本/戦  通常の間引き=${(a.drops / done).toFixed(2)}本/戦`);
   console.log(`   最長の無言：平均${(a.sumMaxGap / done).toFixed(2)}秒・最悪${a.maxGap.toFixed(2)}秒  4秒超の無言=${(a.gaps4 / done).toFixed(2)}回/戦  決着前8秒に出た行=${(a.last8 / done).toFixed(2)}本/戦`);
   if (a.sec) console.log(`   区間を語る行（序盤/中盤/終盤）：出た=${a.sec.shown.map(v => (v / done).toFixed(2)).join("/")}本/戦  うち画面の区間表示と違う=${a.sec.wrong.map(v => (v / done).toFixed(2)).join("/")}  古くて出さなかった=${a.sec.stale.map(v => (v / done).toFixed(2)).join("/")}`);
+  if (a.chat) console.log(`   中盤の雑談：台本にある=${(a.chat.all / done).toFixed(2)}本/戦  出た=${(a.chat.shown / done).toFixed(2)}  うち終盤（τ0.62以降）に出た=${(a.chat.late / done).toFixed(2)}`);
   (a.secEx || []).forEach(e => console.log("     例: " + e));
   if (lag.length) console.log(`   食い違った行の遅れ（台本の位置から）：中央${lag[Math.floor(lag.length / 2)].toFixed(1)}秒・最大${lag[lag.length - 1].toFixed(1)}秒`);
 };

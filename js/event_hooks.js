@@ -181,7 +181,8 @@ function runEventActions(ev, context) {
       case "panyu_message":
         // 立ち絵つきセリフへ（speaker は ID のまま渡す＝standee/表情解決）。
         // 任意で a.expr を指定すると表情を固定（無ければミミは文面から自動推定）。
-        _speech.push({ s: a.speaker, t: text, e: a.expr });
+        // a.expr は関数でもよい（文面を状況で分けるとき、表情も同じ条件で分ける）。
+        _speech.push({ s: a.speaker, t: text, e: (typeof a.expr === "function") ? a.expr(context) : a.expr });
         break;
       case "system_message":
         _speech.push({ s: "system", t: text, e: a.expr });

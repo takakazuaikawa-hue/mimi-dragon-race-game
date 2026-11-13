@@ -634,7 +634,8 @@ function showMushinOverlay() {
     `<div class="mushin-card">` +
       `<div class="mushin-q">村のみんなに……</div>` +
       `<div class="mushin-title">無心する？</div>` +
-      `<div class="mushin-sub">そっと頭を下げて、基準額をお願いする。<br>賭けに使えるコインを <b>${fmtCoins(amt)}</b> もらえます。</div>` +
+      // ★「基準額」はゲームの裏側の言葉だった（Codex の通し試験 2026-11-13）。暮らしの言葉で言う。額は読むだけ。
+      `<div class="mushin-sub">そっと頭を下げて、少しだけ分けてもらう。<br>みんなが持ち寄ってくれるのは <b>${fmtCoins(amt)}</b> コイン。</div>` +
     `</div>`;
   const card = ov.querySelector(".mushin-card");
   const go = el("button", "mushin-go", "🙏 無心する");
@@ -669,9 +670,34 @@ function runMushin(ov, amt) {
   })();
 }
 
+// ★無心のあとの一往復（2026-11-13）。以前は「ありがとう。…次は、当てる。」の一行だけで、恥ずかしい失敗が
+//   額を受け取る手続きに見えていた（Codex の通し試験：救済の通知として受け取った／顔のある反応が無い）。
+//   渡す村の人の一言と、ミミの取り繕いを、回数（n＝これで何回め）で変える＝繰り返すほど笑いになる。
+//   額が最初の服の3着ぶん以上なら、ミミが額そのものに驚く（1回だけ）。額・回数は読むだけ。ミミは反応するだけ。
+function mushinTalk(n, amt) {
+  let big = false;
+  try {
+    const pr = (typeof buniqroPrice === "function") ? buniqroPrice() : 1500;
+    big = amt >= pr * 3 && !(state.player.flags || {})._mushinBigSeen;
+    if (big && typeof setStoryFlag === "function") setStoryFlag("_mushinBigSeen", true);
+  } catch (e) {}
+  if (big) return ["ランクが上がりゃ、張る額も上がる。持っていきな。", "こ、こんなに……!?　あの普段着が、三着は買えちゃいますよ!?"];
+  if (n <= 1) return ["顔を上げな。腹が減ってちゃ、竜も見えんよ。", "あ、ありがとうございます……！　次は、当てますっ。"];
+  if (n === 2) return ["おや、また来たね。……まあ、持っていきな。", "うう、すみません……！　こんどこそ、当てます。……たぶん。"];
+  if (n === 3) return ["はいはい。もう袋に分けてあるよ。", "じゅ、準備がいい……！　ありがとうございますっ。"];
+  const pool = [
+    ["今日は早かったねえ。", "……き、記録、更新です。"],
+    ["まいど。", "まいど、じゃないんです……！　でも、ありがとうございますっ。"],
+    ["竜より先に、お前さんの顔を覚えたよ。", "こ、光栄……なのかな……。"]
+  ];
+  return pool[(n - 4) % pool.length];
+}
+
 function finishMushin(ov, amt) {
   state.player.coins += amt;                          // 額・計算は不変（基準の救済額）
   state.player.brokeCount = (state.player.brokeCount || 0) + 1;   // 終章伏線：破産回数（救済額には非干渉・演出のみ）
+  const _talk = mushinTalk(state.player.brokeCount, amt);
+  try { state.ui._walletEvt = { k: "mushin", n: state.player.brokeCount, amt: amt }; } catch (e) {}   // ホームに戻ったときの一言（ui_home.js homeWalletLine）
   // ✍️ 紀行の素材：すっからかんで頭を下げた日も、記事になる（額は読むだけ・書き戻さない）
   try { if (typeof kikoMatPush === "function") kikoMatPush("broke", { amt: amt, n: state.player.brokeCount }); } catch (e) {}
   if (typeof bumpMaxCoins === "function") bumpMaxCoins();
@@ -684,7 +710,8 @@ function finishMushin(ov, amt) {
       `<div class="mushin-got-ic">💰</div>` +
       `<div class="mushin-got">村のみんなが、そっと握らせてくれた</div>` +
       `<div class="mushin-amt">+${fmtCoins(amt)}<span> コイン</span></div>` +
-      `<div class="mushin-sub">ありがとう。…次は、当てる。</div>` +
+      `<div class="mushin-talk"><i>村の人</i>「${_talk[0]}」</div>` +
+      `<div class="mushin-talk mimi"><i>ミミ</i>「${_talk[1]}」</div>` +
     `</div>`;
   const done = el("button", "mushin-go", "立て直す ▶");
   done.onclick = () => {
@@ -940,7 +967,8 @@ function renderVillage() {
   runEventHooks("onVillageUpdate", { villageLevel: state.player.villageLevel });
   const app = beginScreen();
   const v = state.player.village || { level: 1, name: "竜の村", facilities: {}, unlockedDragonIds: [] };
-  const rescue = RESCUE_COINS[v.level] || 300;
+  // いま実際に受け取れる額（最大の賭け金の5回ぶんまで・assets_engine.js）。下の「道のり」は表の基準額のまま。
+  const rescue = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, state.player.rank) : (RESCUE_COINS[v.level] || 300);
   const villMult = VILLAGE_MULT[v.level] || 1.0;
   app.appendChild(el("h2", null, "🏘️ 暮らしの拠点"));   // 村名は下のヒーローに出す（見出しと二重にしない）
 
@@ -1625,7 +1653,7 @@ function renderHelp() {
   app.appendChild(section("rescue", "救済システム", [
     `コインが0になっても安心。サケ・ウダダが島の予備コインを渡してくれます（暮らしレベル1で <b>${fmtCoins(_r1)}</b>` +
       (_rMax ? `、暮らしレベル10まで育てば <b>${fmtCoins(_rMax)}</b>` : "") + `）。`,
-    `暮らしと名声が育つほど上乗せされます。<b>いまのあなたの救済見込みは ${fmtCoins(_rNow)}</b>。`,
+    `暮らしと名声が育つほど上乗せされます。ただし一度に受け取れるのは、いまの最大の賭け金の${(typeof RESCUE_MAX_BETS !== "undefined") ? RESCUE_MAX_BETS : 5}回ぶんまで。<b>いまのあなたの救済見込みは ${fmtCoins(_rNow)}</b>。`,
     "借金ではありません。小さく賭けて立て直しましょう。"
   ]));
 
@@ -2102,7 +2130,7 @@ function renderRaceSelect() {
   //   レース一覧自体は下見できるよう残す（表示専用・数値非干渉）。
   if ((typeof playerBroke === "function") ? playerBroke() : (((state.player && state.player.coins) || 0) <= 0)) {
     const bk = el("button", "broke-cta",
-      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
+      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが少しずつ分けてくれます</small></span><span class="broke-go">▸</span>`);
     bk.onclick = () => renderHome();
     app.appendChild(bk);
   }
@@ -2393,7 +2421,7 @@ function renderRaceDetail(race) {
   //   スリップまで進んで詰まるのを防ぐ（出走表の下見はできるよう画面自体は出す）。
   if ((typeof playerBroke === "function") ? playerBroke() : (((state.player && state.player.coins) || 0) <= 0)) {
     const bk = el("button", "broke-cta",
-      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
+      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが少しずつ分けてくれます</small></span><span class="broke-go">▸</span>`);
     bk.onclick = () => renderHome();
     app.appendChild(bk);
   }
@@ -3506,7 +3534,7 @@ function showBetConfirm() {
       if (typeof hungerStuck === "function" && hungerStuck()) {
         if (typeof showInfoPopup === "function") showInfoPopup("🍖 おなかがすいて走れない…",
           sakeLine +
-          `<div class="mm-row"><span class="mm-ic">🙏</span><div><b>ごはん代が足りません</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます。</small></div></div>`,
+          `<div class="mm-row"><span class="mm-ic">🙏</span><div><b>ごはん代が足りません</b><small>ホームで「無心する」と、村のみんなが少しずつ分けてくれます。</small></div></div>`,
           null,
           { label: "🙏 ホームへ ▸", fn: function () { if (typeof renderHome === "function") renderHome(); } });
         return;
@@ -4237,6 +4265,18 @@ function drawRecapScreen() {
       if (g.streakBonus > 0) R("🔥", "連勝ボーナス", "＋" + fmtCoins(g.streakBonus), "gain");
       if (g.featuredBonus > 0) R("★", "注目レース達成", "＋" + fmtCoins(g.featuredBonus), "gain");
       g.collectionLabels.forEach((lb, i) => R("📖", lb, "＋" + fmtCoins(c.collectionAwards[i].reward), "gain"));
+      // ★この一戦でお財布がどう動いたかの合計（2026-11-13）。外れ（賭金 −100）なのに注目や図鑑のごほうびで財布は増えている、
+      //   というときに、上の「ハズレ」と財布の増減が食い違って見えた（Codex の通し試験）。台帳の数字を足すだけ。
+      //   足すものが賭けの結果だけ（＝上の行と同じ数字）のときは出さない。
+      try {
+        const _extra = (g.streakBonus || 0) + (g.featuredBonus || 0) + (g.collectionCoins || 0);
+        if (_extra > 0) {
+          const _net = (g.hit ? g.payout : 0) - (g.wager || 0) + _extra;
+          // 当たりのときは上の行が「配当（賭金込みの受け取り）」なので、賭金を引いたことを題に書く＝上の行を足した数と食い違わない。
+          const _lb = g.hit ? ("賭金 −" + fmtCoins(g.wager || 0) + " を引いて、お財布は") : "この一戦で、お財布は";
+          R("🧮", _lb, (_net >= 0 ? "＋" : "−") + fmtCoins(Math.abs(_net)), "sum " + (_net >= 0 ? "gain" : "loss"));
+        }
+      } catch (e) {}
       // ★資産は「借金を返し終えて開示される概念」（assetsConceptOpen）。開示前に「資産 ＋2万」が出ると、
       //   負けたのに増えた理由も分からず、開示の物語も先に割れる → 開示後だけ出す。
       const _assetsOpen = (typeof assetsConceptOpen !== "function") || assetsConceptOpen();

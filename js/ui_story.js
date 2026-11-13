@@ -270,6 +270,13 @@ function renderStoryChapter(chId) {
   // フッター
   const foot = el("div", "news-foot");
   const btns = el("div", "news-btns");
+  // ★読み方の入口をここに一つ置く（2026-11-13）。全画面の読み物は初読のときに自動で開くだけで、
+  //   あとから同じ形で読み返す入口が無かった。本文はこのページにいつでもある＝二つの読み方をここで選べる。
+  if (typeof srOpenReader === "function") {
+    const again = el("button", "news-btn", "🎬 絵と大きな文字で読む");
+    again.onclick = () => srOpenReader(ch, (finished) => { if (finished) renderStoryChapter(ch.id); });
+    btns.appendChild(again);
+  }
   const back = el("button", "news-btn prim", "◀ エピソード一覧へ"); back.onclick = () => renderStory();
   btns.appendChild(back);
   foot.appendChild(btns);
@@ -281,8 +288,21 @@ function renderStoryChapter(chId) {
   //   1段落ずつ読ませる。読み終えたらこの記事ページに戻り、以後は全文を読み返せる。
   if (typeof srRevealInto === "function") srRevealInto(bodyEl, ch.body, ch.id);
   else bodyEl.textContent = ch.body || "";
-  if (typeof srOpenReader === "function" && typeof srRead === "function" && !srRead(ch.id)) {
-    srOpenReader(ch, (finished) => { if (finished) renderStoryChapter(ch.id); });
+  // ★会話が終わってから開く（2026-11-13）。以前は導入の立ち絵会話と同時にこの全画面を開いていたので、
+  //   会話の裏で1段落めの文字送りが済んでしまい、会話を送り終えると「別の朗読カードが残っている」ように見えた
+  //   （Codex の通し試験：話→会話→朗読カード→×→本文、と読み方が三つに割れる）。
+  //   会話 → 絵と大きな文字 → 本文 の一本道にする。会話の列の最後尾を待つ＝ポロの場面が続いても重ならない。
+  //   「本文で読む」を選んだ話（srSkipped）は、開き直しても自動では開かない。
+  if (typeof srOpenReader === "function" && typeof srRead === "function" && !srRead(ch.id)
+      && !(typeof srSkipped === "function" && srSkipped(ch.id))) {
+    const _open = () => {
+      if (state.ui.screen !== "story_read" || !bodyEl.isConnected) return;       // 待つあいだに別の画面へ移った
+      if (document.getElementById("sg-cutin")) { setTimeout(_open, 300); return; }   // 第5話：開眼のカットインが出ているあいだは待つ
+      srOpenReader(ch, (finished) => { if (finished) renderStoryChapter(ch.id); });
+    };
+    let _tail = null;
+    try { if (window.Dialogue && typeof Dialogue.play === "function") _tail = Dialogue.play([]); } catch (e) {}
+    if (_tail && _tail.then) _tail.then(() => setTimeout(_open, 60)); else _open();
   }
 }
 

@@ -2282,8 +2282,28 @@ function startRaceCanvas(container, ctx) {
     if (tag === "getaway" && _getawaySeen < 1) return true;   // 出遅れ・逃げの第一報だけは核
     return false;
   }
-  function _telopShow(line, side, tag, lead) {
+  // ★いま吹き出しに出ている行が、どの区間の話か（2026-11-13）。出す瞬間の真偽は _telopStale が確かめているが、
+  //   出したあとに区間が替わると、左上の表示は「大旋回」なのに吹き出しは「長直線スタートー！」のまま残った
+  //   （Codex の通し試験 P2）。区間が替わったら、その行だけ静かに消す。次の行が来れば普通に上書きされる。
+  const _shownSec = { call: null, color: null };
+  function _telopFadePast() {
+    if (_shownSec.call == null && _shownSec.color == null) return;
+    let cur;
+    try { if (S.finished || window.__telopNoStale) return; cur = thirdAtP(clamp(timeline.leaderProgressAt(S.tau), 0, 1)); } catch (e) { return; }
+    ["call", "color"].forEach(function (k) {
+      if (_shownSec[k] == null || _shownSec[k] === cur) return;
+      _shownSec[k] = null;
+      try {
+        const bub = (k === "call") ? _ytEl.bl : _ytEl.br;
+        const now = bub && bub.querySelector(".rcy-now");
+        if (now) now.classList.add("is-past");
+        _telopLog("past", k, now ? (now.dataset.full || "") : "", "", null);
+      } catch (e) {}
+    });
+  }
+  function _telopShow(line, side, tag, lead, sec) {
     shownLines.push({ line: line, side: side });
+    _shownSec[side !== "color" ? "call" : "color"] = (sec == null) ? null : sec;
     if (tag === "getaway") _getawaySeen++;
     _telopLastAt = performance.now();
     _telopLastLen = (line || "").length;        // 次の行を待たせる長さ＝いま出した行の長さで決まる
@@ -2307,7 +2327,13 @@ function startRaceCanvas(container, ctx) {
   function _telopTopNow() {
     try { const st = timeline.standingsAt(S.tau); return (st && st.length) ? st[0] : null; } catch (e) { return null; }
   }
-  function _telopStale(lead, sec) {
+  function _telopStale(lead, sec, tag) {
+    // ★雑談は、終盤（τ0.62＝BC_MID_END 以降）に入ったら出さない（2026-11-13）。雑談は展開と無関係な話なので、
+    //   いちばん熱い区間に出ると、賭けた竜を追う緊張を切ってしまう。台本側も中盤の早めに置き直してある。
+    try {
+      if (tag === "chat" && !S.finished && !window.__telopNoStale
+          && S.tau > ((typeof BC_MID_END !== "undefined") ? BC_MID_END : 0.62)) return true;
+    } catch (e) {}
     try { if ((lead == null && sec == null) || S.finished || window.__telopNoStale) return false; } catch (e) { return false; }
     if (lead != null) { const top = _telopTopNow(); if (top != null && top !== lead) return true; }
     // ★区間を語る行（sec＝0序盤/1中盤/2終盤・2026-11-13）も同じ扱い。画面の区間表示（左上の「大旋回」など）は
@@ -2336,8 +2362,8 @@ function startRaceCanvas(container, ctx) {
     const lead = (opt && opt.lead != null) ? opt.lead : null;
     const sec = (opt && opt.sec != null) ? opt.sec : null;
     // ★台本の詰め込みで後ろへずれたぶんだけで、もう古くなっている行はここで捨てる。
-    if (_telopStale(lead, sec)) { _telopDrop++; _telopStaleN++; _telopLog("stale", side, line, tag, lead); return; }
-    if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag, lead); return; }
+    if (_telopStale(lead, sec, tag)) { _telopDrop++; _telopStaleN++; _telopLog("stale", side, line, tag, lead); return; }
+    if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag, lead, sec); return; }
     // ★間に合わない行は、まず積む（核も雑談も区別せず）。間が空けば雑談も1本通る。
     _telopQ.push({ line: line, side: side, tag: tag, lead: lead, sec: sec });
     // ★あふれたら「雑談から」間引く。核は最後まで残す。
@@ -2356,14 +2382,15 @@ function startRaceCanvas(container, ctx) {
   }
   // 毎フレーム呼ぶ：滞留が明けたらキューから1本出す
   function telopPump() {
+    _telopFadePast();
     if (!_telopQ.length) return;
     if (performance.now() - _telopLastAt < _telopDwell()) return;
     // ★待っているあいだに先頭が替わった行は出さない。捨てたら、その場で次の行を見る
     //   （1本捨てて黙るのではなく、いま本当のことを言っている行まで進む）。
     while (_telopQ.length) {
       const it = _telopQ.shift();
-      if (_telopStale(it.lead, it.sec)) { _telopDrop++; _telopStaleN++; _telopLog("stale", it.side, it.line, it.tag, it.lead); continue; }
-      _telopShow(it.line, it.side, it.tag, it.lead);
+      if (_telopStale(it.lead, it.sec, it.tag)) { _telopDrop++; _telopStaleN++; _telopLog("stale", it.side, it.line, it.tag, it.lead); continue; }
+      _telopShow(it.line, it.side, it.tag, it.lead, it.sec);
       return;
     }
   }
@@ -3913,12 +3940,12 @@ function startRaceCanvas(container, ctx) {
       }
       // ゴール後（勝者の大写し中）は小札を出さない＝大写しの後ろに「5 バラン」等が残って安っぽく見えた（ユーザー指摘）
       if ((_lEb > 0.6 || isBet) && !S.finished) {
-        // 後方に留めて描いている自分の竜は、名札に「先頭まで何m」を添える（◂90m）。10m きざみ＝数字がちらつかない。
+        // 後方に留めて描いている自分の竜は、名札に「先頭まで何m」を添える（先頭まで90m）。10m きざみ＝数字がちらつかない。
         //   留めた位置は本当の位置ではないので、どれだけ後ろかを一緒に言う。走っているあいだだけ。
         let _nm = commentaryName(dr.id);
         if (_pinned && !_preGo && P < 1 && S.entryT <= 0 && S.preT <= 0) {
           const _dm = Math.round(Math.max(0, leaderP - P) * (timeline.distanceMeters || 0) / 10) * 10;
-          if (_dm >= 10) _nm += " ◂" + _dm + "m";
+          if (_dm >= 10) _nm += " 先頭まで" + _dm + "m";   // 「◂120m」だけでは意味を一度考える、との指摘（Codex 2026-11-13）
         }
         _lbls.push({ cx: bodyCx, top: _body ? _body.y : y - 34 * dep, bot: _body ? _body.y + _body.h : baseY + 12, dep: dep, rk: rk, isBet: isBet,
           lead: popRank[dr.id] === 1, nm: _nm, a: cctx.globalAlpha, rkText: _preGo ? "" : null });

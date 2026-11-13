@@ -124,6 +124,11 @@ function renderMeals() {
   if (_hungry && tiers.some(t => _tUnlocked(t.id) && mealsByTier(t.id).some(_eatHere))) {
     app.appendChild(el("div", "as-hint2 meal-eat-hint", `🍚 おなか <b>${_hungryNow}</b>／100　<span class="meal-eat-key">金の枠</span>の皿は、ここですぐ食べられます。`));
   }
+  // 負けた日のおごり（1品無料）が残っていれば、皿を選ぶ前に知らせる（hunger.js hungerFreeMealOk を読むだけ）。
+  try {
+    if (_hungry && typeof hungerFreeMealOk === "function" && hungerFreeMealOk())
+      app.appendChild(el("div", "as-hint2 meal-eat-hint", `🍜 きょうは1品、<b>店のおごり</b>です（負けた日だけ）。`));
+  } catch (e) {}
 
   // 選択中の段だけ：見出し＋グリッド（未開放なら開放案内）
   const t = tiers.find(x => x.id === _mealTab) || tiers[0];
@@ -143,8 +148,11 @@ function renderMeals() {
       const thumb = (un && m.photo)
         ? `<span class="meal-card-thumb"><img src="${m.photo}" alt="" decoding="async"></span>`
         : `<span class="meal-card-ic">${un ? m.icon : "❔"}</span>`;
+      // ★値段の横に、おなかの回復量も出す（2026-11-13）。初見の皿は名前を伏せるので、走れる状態へ戻したいときに
+      //   「どれが効くか」を開かないと分からなかった（Codex の通し試験）。既存の回復量（hunger.js mealHeal）を読むだけ。
       const _cardPrice = (!m.quiz && typeof mealPrice === "function")
-        ? `<span class="meal-card-price">🪙${mealPrice(m).toLocaleString("ja-JP")}</span>` : "";
+        ? `<span class="meal-card-price">🪙${mealPrice(m).toLocaleString("ja-JP")}` +
+          ((typeof mealHeal === "function" && (un || !m.where)) ? `<i class="meal-card-heal">🍚+${mealHeal(m)}</i>` : "") + `</span>` : "";
       card.innerHTML = `${thumb}<span class="meal-card-nm">${un ? m.name : "？？？"}${_cardPrice}</span>`;
       // ★B改・出会いの設計（2026-08-02・ユーザー決裁「選ぶ段階がつまらない。探し出す喜び・
       //   出会う喜びを」）：where を持つ未食の品は、**ここ（一覧）からは食べられない**。

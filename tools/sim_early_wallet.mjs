@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 序盤の財布を、本物のゲームの式で測る（確認専用・ゲームの数値は変えない）。
 // ゲームをブラウザ（画面なし・消音）で開き、画面は描かずに「賭ける→走る→精算」の実関数だけを回す。
-//   使い方: node tools/sim_early_wallet.mjs <url> [人数=150] [戦数=30] [1日の戦数=8] [服の値段を仮に替える]
+//   使い方: node tools/sim_early_wallet.mjs <url> [人数=150] [戦数=30] [1日の戦数=8] [服の値段を仮に替える=0] [nocap＝無心の上限を外して比べる]
 //   例:     node tools/sim_early_wallet.mjs http://localhost:8767/ 150 30 8
 // 賭け方5通り（慎重＝単勝100固定／複勝100固定／財布の2割／財布の半分を3番人気／最大）ごとに、
 //   最初の服（ブニクロ普段着）に届く戦・無心の回数と額・ランク2の戦・借金が消える戦と、そのときの勝ち数を出す。
@@ -9,7 +9,8 @@
 import { createRequire } from "node:module";
 const require = createRequire("C:/Users/takakazu/projects/mimi_gamble_guild/");
 const { chromium } = require("playwright");
-const [url, nS, rS, dS, pS] = process.argv.slice(2);
+const [url, nS, rS, dS, pS, capS] = process.argv.slice(2);
+const NOCAP = capS === "nocap";   // 無心の上限（assets_engine.js RESCUE_MAX_BETS）を、このページの中だけ外す＝入れる前との比較用
 const N = +nS || 150, R = +rS || 30, PER_DAY = +dS || 8, PRICE = +pS || 0;   // PRICE＝最初の服の値段を仮に替えて測る（0＝ゲームの値のまま）
 const browser = await chromium.launch({ headless: true, args: ["--mute-audio"] });
 const ctx = await browser.newContext({ viewport: { width: 375, height: 812 } });
@@ -17,10 +18,11 @@ const page = await ctx.newPage(); page.setDefaultTimeout(0);
 const errs = []; page.on("pageerror", e => { if (errs.length < 5) errs.push(String(e).slice(0, 200)); });
 await page.goto(url, { waitUntil: "load" }); await page.waitForTimeout(2500);
 
-const out = await page.evaluate(({ N, R, PER_DAY, PRICE }) => {
+const out = await page.evaluate(({ N, R, PER_DAY, PRICE, NOCAP }) => {
+  if (NOCAP) { window.calculateRescueCoins = function (st, rank) { const a = st.assets || {}; return getBaseRescueCoins(st, rank) + Math.floor((a.livingValue || 0) * 0.02) + Math.floor((a.fameValue || 0) * 0.01) + Math.floor((a.villageValue || 0) * 0.01) + (a.rescueBonus || 0); }; }
   if (PRICE) { const o = OUTFITS.find(x => x.id === "buniqro"); if (o) o.acquire.price = PRICE; }   // このページの中だけの仮の値
   // 画面を描く関数・保存・会話は止める（式は触らない）
-  try { Sfx.setMuted(true); if (window.Bgm && Bgm.setMuted) Bgm.setMuted(true); } catch (e) {}
+  try { Sfx.setMuted(true); if (window.RaceBgm && RaceBgm.setMuted) RaceBgm.setMuted(true); } catch (e) {}
   window.renderRaceRun = function () {};
   window.saveGame = function () {};
   window.updateHeader = function () {};
@@ -97,7 +99,7 @@ const out = await page.evaluate(({ N, R, PER_DAY, PRICE }) => {
     };
   }
   return { price, res };
-}, { N, R, PER_DAY, PRICE });
+}, { N, R, PER_DAY, PRICE, NOCAP });
 
 console.log(`最初の服の値段=${out.price}  人数=${N}  戦数=${R}  1日=${PER_DAY}戦`);
 for (const k in out.res) { console.log("\n【" + k + "】"); for (const m in out.res[k]) if (out.res[k][m] !== "") console.log("  " + m + ": " + JSON.stringify(out.res[k][m])); }

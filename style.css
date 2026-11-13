@@ -2740,6 +2740,9 @@ table.entry-table {
 .rs-lg-row .lb { flex: 1; min-width: 0; }
 .rs-lg-row b { font-variant-numeric: tabular-nums; }
 .rs-lg-row.gain b { color: var(--gold-bright); }
+/* この一戦の合計（ui_render.js）。上の行の足し算なので、線で区切って太く。 */
+.rs-lg-row.sum { margin-top: 3px; padding-top: 7px; border-top: 1px solid rgba(255,255,255,.22); font-weight: 800; color: var(--white); }
+.rs-lg-row.sum b { font-size: 14px; }
 .rs-lg-row.loss b { color: #ff9d9d; }
 .rs-lg-row.asset b { color: var(--jade-bright); }
 .rs-lg-row.rankup { background: rgba(255,216,119,.08); border-radius: var(--rd-8); border-top: 0; }
@@ -3601,6 +3604,10 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scm-fit-fl { font-size: 12px; color: #8a8178; line-height: 1.6; margin: 3px 0 6px; }
 .scm-fit-acq { font-size: 12.5px; color: #6a635c; } .scm-fit-acq b { color: var(--scm-org); }
 .scm-fit-cta { margin-top: 12px; }
+/* 買う前に、払ったあとのお財布（ui_mall.js）。ほぼ空になるとき（thin）は色を変える。 */
+.scm-fit-after { margin-top: 8px; text-align: center; font-size: 12px; color: var(--scm-sub); }
+.scm-fit-after b { color: var(--scm-ink); font-variant-numeric: tabular-nums; }
+.scm-fit-after.thin b { color: #c0392b; }
 /* はじめての一着（ui_mall.js・まだ持っていないあいだだけ、モールのいちばん上）。名前と値段と「試着室へ」だけの一枚。 */
 .scm-first { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "k go" "nm go" "p go"; align-items: center; column-gap: 12px; row-gap: 2px;
   width: calc(100% - 30px); margin: 12px 15px 4px; padding: 12px 14px; text-align: left; cursor: pointer;
@@ -5077,6 +5084,10 @@ body.title-mode #vol-fab { display: none !important; }
 .mushin-title { font-size: 26px; font-weight: 900; color: var(--gold-bright); margin: 6px 0 12px;
   text-shadow: 0 2px 12px rgba(230,178,74,.5); }
 .mushin-sub { font-size: 12.5px; color: var(--mist-soft); line-height: 1.7; }
+/* 無心のあとの一往復（ui_render.js mushinTalk）。渡す村の人と、ミミ。話者の名前は小さく、台詞は読める大きさで。 */
+.mushin-talk { margin-top: 8px; font-size: 13px; line-height: 1.65; color: var(--mist); text-align: left; text-wrap: balance; }
+.mushin-talk i { display: block; font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; color: var(--mist-soft); }
+.mushin-talk.mimi i { color: var(--gold-bright); }
 .mushin-sub b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
 .mushin-go { margin-top: 18px; min-height: 50px; padding: 0 26px; border: none; border-radius: 13px; cursor: pointer;
   background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--hx-2a1d06); font-weight: 900; font-size: 17px; }
@@ -8974,6 +8985,7 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 
 /* 食事：各カードに品ごとの価格バッジ（タップ前に価格が見える・食べる段位のみ）。名前の下に改行表示。 */
 .meal-card-price { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 800; color: #ffd36b; font-variant-numeric: tabular-nums; }
+.meal-card-heal { font-style: normal; margin-left: 6px; color: var(--mist); font-weight: 700; }
 
 /* ── 暮らし画面リデザイン（J-URBAN参考＝室内写真を主役に・静かな余白・金の細罫）。表示のみ・全ゲート温存。 ── */
 /* いまのお部屋ヒーロー：myroom_t{assetLevelOf}_{day|night}.webp を主役に、ミミmini＋tierシール＋総資産をscrimに。 */
@@ -9159,6 +9171,8 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 }
 /* 出すのは「いまの一言」だけ（過去行は実況が厚くなったので廃止）。 */
 .rc-yt-bub .rcy-now  { color: var(--white); }
+/* 区間が替わって古くなった行（race_canvas.js _telopFadePast）。枠は残して文字だけ消す＝高さが動かない。 */
+.rc-yt-bub .rcy-now.is-past { opacity: 0; transition: opacity .45s ease-out; }
 .rc-yt-r .rc-yt-bub { border-left: 0; border-right: 3px solid var(--c, var(--hx-888)); }
 .rc-yt-side.talking .rc-yt-bub { background: rgba(255,255,255,.10); color: var(--white); }
 /* 山場の実況だけ金に振る（解説は落ち着かせたままにして、熱の担当を分ける） */
@@ -9540,10 +9554,12 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 @keyframes srCue { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 .sr-x {
   position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px; z-index: 4;
-  width: 38px; height: 38px; border-radius: var(--r-round); cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1;
-  border: 1px solid rgba(255,255,255,.22); background: rgba(10,14,20,.55); color: var(--white); font-size: 19px;
+  height: 38px; border-radius: var(--r-full); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px 0 14px; line-height: 1;
+  border: 1px solid rgba(255,255,255,.22); background: rgba(10,14,20,.55); color: var(--white);
+  font-size: 12px; font-weight: 800; letter-spacing: .04em;
 }
+.sr-x i { font-style: normal; font-size: 18px; font-weight: 400; opacity: .8; }
 /* 記事ページ側（読み返し）＝素直な本文 */
 .sr-p { margin: 0 0 .9em; }
 @media (prefers-reduced-motion: reduce) {

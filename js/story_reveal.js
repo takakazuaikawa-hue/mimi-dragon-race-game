@@ -39,6 +39,20 @@ function srMarkRead(id) {
   } catch (e) { /* 記録できなくても読書は成立する */ }
 }
 
+// ★「本文で読む」を選んだ印（2026-11-13）。以前は ✕ で閉じても読んだ印が付かず、同じ話を開くたびに
+//   この全画面がまた開いて、また閉じることになっていた（Codex の通し試験）。閉じた＝本文で読むと決めた、として覚える。
+//   もう一度この形で読みたいときは、記事ページの「絵と大きな文字で読む」から開ける。
+function srSkipped(id) {
+  try { return !!(state.player.flags || {})["_story_skip_" + id]; } catch (e) { return false; }
+}
+function srMarkSkipped(id) {
+  try {
+    const f = state.player.flags || (state.player.flags = {});
+    f["_story_skip_" + id] = true;
+    if (typeof saveGame === "function") saveGame();
+  } catch (e) {}
+}
+
 function srParagraphs(body) {
   return String(body || "")
     .split(/\n{1,}|<br\s*\/?>/)
@@ -75,7 +89,8 @@ function srOpenReader(ch, onDone) {
       (cast ? `<span class="sr-cast">${cast.symbol || ""} ${cast.name || ""}</span>` : "") + `</div>` +
     `<div class="sr-panel"><p class="sr-line" id="sr-line"></p></div>` +
     `<div class="sr-cue" id="sr-cue"></div>` +
-    `<button class="sr-x" aria-label="閉じる">×</button>`;
+    // ★「×」だけでは、閉じたあと何が起きるのか分からなかった（読むのをやめるのか、別の形で読むのか）。行き先を書く。
+    `<button class="sr-x" aria-label="閉じて本文で読む">本文で読む<i>×</i></button>`;
   document.body.appendChild(ov);
 
   const line = ov.querySelector("#sr-line");
@@ -86,7 +101,7 @@ function srOpenReader(ch, onDone) {
     if (!alive) return;
     alive = false;
     if (raf) { try { cancelAnimationFrame(raf); } catch (err) {} raf = 0; }
-    if (finished) srMarkRead(ch.id);
+    if (finished) srMarkRead(ch.id); else srMarkSkipped(ch.id);
     ov.classList.add("out");
     setTimeout(() => { ov.remove(); if (onDone) onDone(finished); }, 220);
   };
@@ -174,5 +189,5 @@ function srRevealInto(host, body, chapterId) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { srParagraphs, srRead, srOpenReader, srRevealInto };
+  module.exports = { srParagraphs, srRead, srSkipped, srOpenReader, srRevealInto };
 }
