@@ -4418,11 +4418,15 @@ function drawRecapScreen() {
   //   「その一戦で何が残ったかを、次の操作の近くに置くとよい」）。確定済みの数字を読むだけ。
   const _brokeNow = (typeof playerBroke === "function") && playerBroke();
   const _eatFirst = hungryNeedsMeal();
+  // ★お財布の列と主役のボタンは、画面の下端に残す（2026-11-13・Codex 3回め #6）。結果を開いた最初の画面では、
+  //   全8頭・勝負どころ・島時間を送った先にしか無く、毎戦スクロールして探していた。読むのは上で、進むのは下でいつでも。
+  //   いちばん下まで送ると、ふだんの位置に収まる（position: sticky）。右下の音量ボタンは、この画面だけ帯の上へ逃がす（style.css）。
+  const dock = el("div", "rs-dock");
   try {
     const g = c.gainLedger;
     const _net = g ? ((g.hit ? g.payout : 0) - (g.wager || 0) + (g.streakBonus || 0) + (g.featuredBonus || 0) + (g.collectionCoins || 0)) : null;
     const _hg = (typeof hungerGet === "function") ? hungerGet() : null;
-    app.appendChild(el("div", "rs-wallet",
+    dock.appendChild(el("div", "rs-wallet",
       `<span class="rw-i${(state.player.coins || 0) <= 0 ? " low" : ""}"><i>お財布</i><b>${fmtCoins(state.player.coins || 0)}</b>` +
         (_net != null ? `<em class="${_net >= 0 ? "up" : "down"}">${_net >= 0 ? "＋" : "−"}${fmtCoins(Math.abs(_net))}</em>` : "") + `</span>` +
       (_hg != null ? `<span class="rw-i${_eatFirst || _hg <= 0 ? " low" : ""}"><i>おなか</i><b>${_hg}</b><small>／100</small></span>` : "")));
@@ -4448,7 +4452,8 @@ function drawRecapScreen() {
     : (_sk >= 2 ? `🔥 ${_sk}連勝中　次のレースへ ▶` : "次のレースへ ▶"));
   next.onclick = _brokeNow ? renderHome : (_eatFirst ? (() => renderMeals()) : renderRaceSelect);
   actions.appendChild(next);
-  app.appendChild(actions);
+  dock.appendChild(actions);
+  app.appendChild(dock);
 }
 
 // =========================================================================

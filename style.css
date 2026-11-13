@@ -1003,6 +1003,17 @@ body.dev-on .debug-toggle { display: inline-block; }
 /* 結果画面のいちばん下：主役の1本を横いっぱいに（副のボタンは中身の幅）。2026-11-13 */
 /* 下の余白＝右下の音量ボタン（.vol-fab・全画面に常設）が、横いっぱいの主役のボタンに重ならないように。 */
 .rs-actions { align-items: stretch; margin-bottom: 54px; }
+/* ★結果画面の下端に残す帯（2026-11-13・Codex 3回め #6）：お財布の列＋主役のボタン。スクロール中も画面の下に残り、
+   いちばん下まで送るとふだんの位置に収まる。地は画面の下の色（#0a1417）に寄せ、上の端だけ透かして中身の上に浮かせる。 */
+.rs-dock { position: sticky; bottom: 0; z-index: 5;
+  margin: 6px calc(-1 * var(--pad-x, 20px)) 0; padding: 14px var(--pad-x, 20px) calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(10,20,23,0) 0, rgba(10,20,23,.94) 14px, rgba(10,20,23,.97) 100%);
+  /* PC の枠では帯の下に枠の余白（20px）ぶんのすき間が残り、奥の中身が透けた → 同じ色で下へ塗り足して塞ぐ */
+  box-shadow: 0 28px 0 0 rgba(10,20,23,.97); }
+.rs-dock .rs-wallet { margin: 0 0 8px; }
+.rs-dock .rs-actions { margin: 0; }
+/* 右下の音量ボタン（.vol-fab）は、この画面だけ帯の上へ逃がす（主役のボタンの右端を隠さない）。 */
+body:has(.rs-dock) .vol-fab { bottom: 128px; }
 .rs-actions .secondary { flex: none; padding-inline: 14px; }
 .rs-actions .rs-next { flex: 1 1 auto; min-height: 48px; font-size: 15px; }
 /* 次の操作のすぐ上：この一戦のあとのお財布とおなか（ui_render.js） */
