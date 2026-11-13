@@ -2085,6 +2085,8 @@ table.entry-table {
 .kiko-chip:active { transform: translateY(1px); }
 .kiko-chip .kc-ic { flex: none; font-size: 17px; }
 .kiko-chip .kc-tag { flex: 1; min-width: 0; font-size: 13px; font-weight: 900; color: #d84e77; }
+.kiko-chip .kc-tag small { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 700; color: #8a7f7a; }   /* その数が何を数えているか（ui_kiko.js _kikoCats の what）と数 */
+.kiko-chip .kc-tag small b { margin-left: 5px; font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .kiko-chip .kc-n { font-size: 11.5px; font-weight: 800; color: #8a7f7a; font-variant-numeric: tabular-nums; }
 .kiko-chip.locked { opacity: .55; }
 .kiko-chip.locked .kc-tag { color: #9a908b; }

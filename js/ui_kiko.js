@@ -29,16 +29,18 @@ function playKikoIntro(done) {
 // ── カテゴリ（チップ）＝既存コレクション画面への入口。stat は開けるときだけ数える。──
 function _kikoCats() {
   const cats = [];
-  const push = (tag, ic, stat, go, locked, lockNote) =>
-    cats.push({ tag, ic, stat, go, locked: !!locked, lockNote: lockNote || "" });
+  // what＝その数が何を数えているか（2026-11-13・Codex 3回め #9：遠出も撮影もしていないのに「島さんぽ 24/33・
+  //   フォト日記 49/94」と並び、自分の記録なのか、開いている案内の数なのかが入口で読めなかった）。数え方は変えない。
+  const push = (tag, ic, stat, go, locked, lockNote, what) =>
+    cats.push({ tag, ic, stat, go, locked: !!locked, lockNote: lockNote || "", what: what || "" });
   // #たべある記（みみしんぼ）
-  try { const m = mealStatsAll(); push("たべある記", "🍜", `${m.got}/${m.total}`, () => renderMeals()); } catch (e) {}
+  try { const m = mealStatsAll(); push("たべある記", "🍜", `${m.got}/${m.total}`, () => renderMeals(), false, "", "食べた皿"); } catch (e) {}
   // #竜ずかん
   try {
     const tot = (typeof _gDexTotal === "function") ? _gDexTotal() : 8;
     const seen = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0;
     const open = (typeof dexUnlocked !== "function") || dexUnlocked();
-    push("竜ずかん", "🐲", open ? `${seen}/${tot}` : "🔒", () => renderCollection(), !open, "はじめて当てると開く");
+    push("竜ずかん", "🐲", open ? `${seen}/${tot}` : "🔒", () => renderCollection(), !open, "はじめて当てると開く", "出会った竜");
   } catch (e) {}
   // #島さんぽ（崑崙ガイドブック）
   try {
@@ -48,7 +50,7 @@ function _kikoCats() {
       KONRON_GUIDE.forEach(c => c.entries.forEach(e => { t++; if (_kmTotal() >= (KM_TIER_AT[e.tier] || 0)) o++; }));
       g = `${o}/${t}`;
     }
-    push("島さんぽ", "🏝️", open ? (g || "→") : "🔒", () => renderKonronGuide(), !open, "はじめて勝つと開く");
+    push("島さんぽ", "🏝️", open ? (g || "→") : "🔒", () => renderKonronGuide(), !open, "はじめて勝つと開く", "読める案内");
   } catch (e) {}
   // #フォト日記
   try {
@@ -64,14 +66,14 @@ function _kikoCats() {
       });
       g = `${o}/${t}`;
     }
-    push("フォト日記", "📷", open ? (g || "→") : "🔒", () => renderKonronGallery(), !open, "はじめて勝つと開く");
+    push("フォト日記", "📷", open ? (g || "→") : "🔒", () => renderKonronGallery(), !open, "はじめて勝つと開く", "見られる写真");
   } catch (e) {}
   // #ひとびと（物語の小イベント＝物語ページ下部）
-  try { const s = storyEventsStats(); push("ひとびと", "✨", `${s.got}/${s.total}`, () => renderStory()); } catch (e) {}
+  try { const s = storyEventsStats(); push("ひとびと", "✨", `${s.got}/${s.total}`, () => renderStory(), false, "", "出会った話"); } catch (e) {}
   // #おかいもの（生活資産コレクション）
   try {
     const owned = LIFE_ASSETS.filter(it => isLifeAssetUnlocked(state, it, (state.assets && state.assets.unlockedLifeStages) || 0)).length;
-    push("おかいもの", "🎁", `${owned}/${LIFE_ASSETS.length}`, () => renderLifeCollection());
+    push("おかいもの", "🎁", `${owned}/${LIFE_ASSETS.length}`, () => renderLifeCollection(), false, "", "そろえた物");
   } catch (e) {}
   return cats;
 }
@@ -545,7 +547,10 @@ function renderKiko() {
   const chips = el("div", "kiko-chips");
   _kikoCats().forEach(c => {
     const b = el("button", "kiko-chip" + (c.locked ? " locked" : ""),
-      `<span class="kc-ic">${c.ic}</span><span class="kc-tag">#${c.tag}</span><span class="kc-n">${c.stat}</span>`);
+      ((c.what && !c.locked)
+        // 数は2行めの「何を数えているか」の横へ（右端に置くと 320〜375px で題が「#たべ／ある記」と折れていた）
+        ? `<span class="kc-ic">${c.ic}</span><span class="kc-tag">#${c.tag}<small>${c.what}<b>${c.stat}</b></small></span>`
+        : `<span class="kc-ic">${c.ic}</span><span class="kc-tag">#${c.tag}</span><span class="kc-n">${c.stat}</span>`));
     b.onclick = c.locked
       ? () => { if (typeof showInfoPopup === "function") showInfoPopup(`${c.ic} #${c.tag}`,
           `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ書けないカテゴリ</b><small>${c.lockNote}。ネタができたら、ここに記事がたまっていきます。</small></div></div>`); }
