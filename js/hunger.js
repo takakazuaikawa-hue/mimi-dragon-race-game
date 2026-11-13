@@ -18,6 +18,9 @@ function hungerSet(v) {
 }
 function hungerSpend(n) { hungerSet(hungerGet() - n); }
 function hungerSpendRace() { hungerSpend(25); }          // 出走＝一番おなかが減る
+// ★おなかが h のとき、あと何戦走れるか（表示用・2026-11-13）。1戦で25減り、0より上なら走れる（下の hungerCanRace）。
+//   ＝ 15 なら1戦、30 なら2戦、55 なら3戦。食事の皿に「この皿で、あと◯戦」を出すのに使う。上の 25 を変えたらここも。
+function hungerRacesAt(h) { return Math.max(0, Math.ceil(Math.max(0, Math.min(100, h)) / 25)); }
 // FTUE保護：最初の3レースはゲート無効（減りはするが止めない＝最初の5分を守る）
 function hungerFtueSafe() { return ((state.player && state.player.completedRaces) || 0) < 3; }
 function hungerCanRace() { return hungerFtueSafe() || hungerGet() > 0; }

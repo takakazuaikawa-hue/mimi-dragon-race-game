@@ -152,7 +152,9 @@ function renderMeals() {
       //   「どれが効くか」を開かないと分からなかった（Codex の通し試験）。既存の回復量（hunger.js mealHeal）を読むだけ。
       const _cardPrice = (!m.quiz && typeof mealPrice === "function")
         ? `<span class="meal-card-price">🪙${mealPrice(m).toLocaleString("ja-JP")}` +
-          ((typeof mealHeal === "function" && (un || !m.where)) ? `<i class="meal-card-heal">🍚+${mealHeal(m)}</i>` : "") + `</span>` : "";
+          ((typeof mealHeal === "function" && (un || !m.where)) ? `<i class="meal-card-heal">🍚+${mealHeal(m)}` +
+            // 走れない（＝食べに来た）ときだけ、この皿であと何戦走れるかを添える。数字の意味が「走れる回数」で読める。
+            ((_hungry && typeof hungerRacesAt === "function") ? `<em>あと${hungerRacesAt(_hungryNow + mealHeal(m))}戦</em>` : "") + `</i>` : "") + `</span>` : "";
       card.innerHTML = `${thumb}<span class="meal-card-nm">${un ? m.name : "？？？"}${_cardPrice}</span>`;
       // ★B改・出会いの設計（2026-08-02・ユーザー決裁「選ぶ段階がつまらない。探し出す喜び・
       //   出会う喜びを」）：where を持つ未食の品は、**ここ（一覧）からは食べられない**。
@@ -220,6 +222,8 @@ function showMealDetail(m) {
           ? `<div class="meal-scent">${m.scent}</div><div class="meal-prompt">ひとくち、いってみる？</div>`
           : `<div class="meal-prompt">ひとくち、いってみる？</div>`);
       _html += `<div class="meal-buy${(_short || _full) ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
+        // この皿を食べると、あと何戦走れるか（hunger.js hungerRacesAt）。値段と回復量の行とは分けて1行で。
+        ((!_full && typeof hungerRacesAt === "function") ? `<div class="meal-buy-races">食べると、あと <b>${hungerRacesAt(_hunger + _heal)}戦</b> 走れる</div>` : "") +
         `<small>${_balTxt}</small></div>`;
       box.innerHTML = _html;
       _wirePhotoZoom();
