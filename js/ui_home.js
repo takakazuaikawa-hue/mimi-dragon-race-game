@@ -269,6 +269,16 @@ function _hqBannerAgain(o) {
 //   紀行の導入と売上（1日1回）・メーターの説明は、renderHome の中で判定したときに並べる。
 function homeQueueArrive(o) {
   o = o || {};
+  // ★前のホームで出ていた1つ（cur）が、離れているあいだに終わっていれば外す（2026-11-14・レビュー指摘）。
+  //   残したままだと同じ key の新しい項目が「もう並んでいる」扱いで弾かれ、この到着では帯・挨拶が出ず次の到着まで遅れていた。
+  try {
+    const cur = HOME_Q.cur;
+    if (cur) {
+      let fin = true;
+      try { fin = !cur.finished || !!cur.finished(Date.now() - (cur.t0 || 0)); } catch (e) { fin = true; }
+      if (fin) { HOME_Q.cur = null; HOME_Q.startAt = 0; }
+    }
+  } catch (e) {}
   try {
     const p = state.player || {};
     if (o.greet) {

@@ -190,7 +190,10 @@ const KURASHI_WATCH = [
     notifyBody: "🌱 くらしツリーが5節目。村での暮らしの記録が、少しずつ埋まってきた。日報の文化面が取材したいらしい" },   // ★2026-11-14：第3話でスミカに出会う前に届くので、スミカの名前・台詞を出さない（会話と機構を合わせる）
   { id: "k_tree15", tier: "toast",
     cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 15; },
-    notifyBody: "🌳 くらしツリーが15節目！　スミカ「ミミ様の生活調査票、空欄がほとんど埋まりました。……少し、嬉しいです」" },   // ★声表: スミカ=丁寧語・呼称ミミ様（「あんた」は声ブレ）
+    // ★2026-11-14：第3話より前に15節目へ届く経路がある（授与だけで数が進む）。出会う前はスミカの名前・台詞を出さない
+    get notifyBody() { return (typeof advisorMet === "function" && advisorMet("sumika"))
+      ? "🌳 くらしツリーが15節目！　スミカ「ミミ様の生活調査票、空欄がほとんど埋まりました。……少し、嬉しいです」"
+      : "🌳 くらしツリーが15節目！　村での暮らしの記録が、ほとんど埋まった"; } },   // ★声表: スミカ=丁寧語・呼称ミミ様（「あんた」は声ブレ）
   { id: "k_tree30", tier: "toast",
     cond: function () { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).length >= 30; },
     notifyBody: "🌳 くらしツリーが30節目！！　枝の先まで灯りがともる。日報いわく「島でいちばん豊かな木」。" },

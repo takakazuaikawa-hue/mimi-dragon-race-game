@@ -216,6 +216,8 @@ function lifeNodeHint(node) {
       var g = LIFE_GRANTS[i];
       if (g.node !== node.nodeId && g.node !== node.title) continue;
       if (state.player && state.player.lifeGranted && state.player.lifeGranted[g.id]) return "🌱 " + g.at + "に授かった";
+      // ★ポロは名前が出会いのオチなので、見つける前は伏せる（2026-11-14・会話と機構を合わせる）
+      if (g.id === "lg_poro" && !(typeof poroFound === "function" ? poroFound() : _lgFlag("poroFound"))) return "🌱 ある出会いの日に授かる";
       return "🌱 " + g.at + "に授かる";
     }
     return "🪙 コインで購入";

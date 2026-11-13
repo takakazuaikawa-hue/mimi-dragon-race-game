@@ -334,7 +334,7 @@ const BC_CHATTER = [
   { id: "unme_dragon_03", cm: "unme", topic: "dragon", at: "entry", line: "竜の鱗、爪で弾くといい音がするんですよぉ。たぶん。" },
   { id: "unme_dragon_04", cm: "unme", topic: "dragon", at: "entry", line: "アカネって名前、朝焼けから来てるらしいですって。" },
   { id: "unme_dragon_05", cm: "unme", topic: "dragon", at: "mid", line: "竜は好きな匂いがあると鼻を鳴らすんですよぉ。ほら。" },
-  { id: "unme_dragon_06", cm: "unme", topic: "dragon", at: "entry", line: "ポロはよく泣くんですって。ウンメちゃんも昔そうでしたぁ。" },
+  { id: "unme_dragon_06", cm: "unme", topic: "dragon", at: "entry", line: "竜の子は、よく泣くんですって。ウンメちゃんも昔そうでしたぁ。" },
   { id: "unme_dragon_07", cm: "unme", topic: "dragon", at: "mid", line: "竜の翼、畳むとけっこう小さくなるんですよぉ。意外！" },
   { id: "unme_dragon_08", cm: "unme", topic: "dragon", at: "mid", line: "ムラサメの尻尾、九割が筋肉らしいですって。知らんけど！" },
   { id: "unme_dragon_09", cm: "unme", topic: "dragon", at: "mid", line: "竜って人の顔を三年は覚えてるらしいですよぉ。怖い！" },
