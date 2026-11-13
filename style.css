@@ -6100,6 +6100,11 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
   white-space: pre-line; color: #e6e8ec; margin-top: 10px; }
 
 /* フッター（操作ボタン） */
+/* 物語：絵と大きな文字で読み終えた直後だけ、紙面の先頭に出す一枚（ui_story.js _storyDoneBox） */
+.news-done { margin: 0 0 14px; padding: 12px; border-radius: var(--rd-10); text-align: center;
+  background: rgba(255,109,136,.08); border: 1px solid rgba(255,109,136,.35); }
+.news-done-t { font-family: var(--nsans); font-size: 13px; font-weight: 900; color: #ffd7df; letter-spacing: .03em; margin-bottom: 8px; }
+.news-done .news-done-go { width: 100%; padding: 10px 12px; font-size: 13.5px; }
 .news-foot { margin-top: 16px; border-top: 1px solid var(--nrule); padding-top: 12px; }
 .news-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .news-btn { font-family: var(--nsans); font-size: 12.5px; font-weight: 800; letter-spacing: .03em; color: #e8eaef;
