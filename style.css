@@ -5460,6 +5460,13 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .meal-sec-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 2px; }
 /* 一覧：写真を主役にしたメニューカード（画像=ヒーロー／下に名前・価格）。参考=飲食サイトのグリッド。 */
 .meal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+/* 空腹で来たときの「前回の一皿」（ui_meta.js renderMeals）と、食べたことのある皿の畳んだ感想（showMealDetail） */
+.meal-again { margin: 8px 0 12px; }
+.meal-again-t { font-size: 12px; font-weight: 800; color: var(--mist-soft); margin: 0 2px 6px; }
+.meal-more { margin: 8px 0 2px; }
+.meal-more > summary { cursor: pointer; list-style: none; text-align: center; font-size: 12px; font-weight: 700; color: var(--mist-soft); padding: 4px 0; }
+.meal-more > summary::-webkit-details-marker { display: none; }
+.meal-more[open] > summary { opacity: .7; }
 .meal-card { display: flex; flex-direction: column; padding: 0; border-radius: var(--rd-14); overflow: hidden; cursor: pointer;
   background: var(--glass-2); border: 1px solid var(--glass-border); text-align: left;
   transition: transform .12s ease, box-shadow .14s ease, border-color .14s ease; }

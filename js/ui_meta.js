@@ -130,19 +130,8 @@ function renderMeals() {
       app.appendChild(el("div", "as-hint2 meal-eat-hint", `🍜 きょうは1品、<b>店のおごり</b>です（負けた日だけ）。`));
   } catch (e) {}
 
-  // 選択中の段だけ：見出し＋グリッド（未開放なら開放案内）
-  const t = tiers.find(x => x.id === _mealTab) || tiers[0];
-  if (t && !_tUnlocked(t.id)) {
-    app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は" + _mealLockHint(t.id) + "で開放されます。"));
-  } else if (t) {
-    const sec = el("div", "meal-sec");
-    // 価格は品ごとに異なる（各カードに表示）ので、見出しはモードのみ。当てる段位は無料。
-    const _secTag = t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める";
-    sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
-      `<small>${t.sub}　・　${_secTag}</small></span>`;
-    app.appendChild(sec);
-    const grid = el("div", "meal-grid");
-    mealsByTier(t.id).forEach(m => {
+  // 一枚のカード（段のグリッドと、下の「前回の一皿」の両方で使う）
+  const _mealCard = m => {
       const un = mealUnlocked(m);
       const card = el("button", "meal-card" + (un ? " got" : "") + ((_hungry && _eatHere(m)) ? " can-eat" : ""));
       const thumb = (un && m.photo)
@@ -167,8 +156,36 @@ function renderMeals() {
       } else {
         card.onclick = () => showMealDetail(m);
       }
-      grid.appendChild(card);
-    });
+      return card;
+  };
+  // ★おなかが空いて来たら、前回の一皿を先頭に1枚（2026-11-13・Codex 3回め）。いちばん安い皿で食いつなぐ人は
+  //   毎回12枚の中から同じ皿を探していた（「何を食べよう」が「先へ進むための確認係」になる）。
+  //   出すのは、すぐ食べられる皿（もう出会った・当てる段でない・段が開いている）のときだけ。押すと同じ窓が開く。
+  try {
+    const _lastId = _hungry && state.player && state.player._lastMealId;
+    const _last = _lastId && (typeof MEALS !== "undefined") ? MEALS.find(x => x.id === _lastId) : null;
+    if (_last && _eatHere(_last) && _tUnlocked(_last.tier)) {
+      const again = el("div", "meal-again");
+      again.appendChild(el("div", "meal-again-t", "🔁 前回の一皿"));
+      const g = el("div", "meal-grid");
+      g.appendChild(_mealCard(_last));
+      again.appendChild(g);
+      app.appendChild(again);
+    }
+  } catch (e) {}
+  // 選択中の段だけ：見出し＋グリッド（未開放なら開放案内）
+  const t = tiers.find(x => x.id === _mealTab) || tiers[0];
+  if (t && !_tUnlocked(t.id)) {
+    app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は" + _mealLockHint(t.id) + "で開放されます。"));
+  } else if (t) {
+    const sec = el("div", "meal-sec");
+    // 価格は品ごとに異なる（各カードに表示）ので、見出しはモードのみ。当てる段位は無料。
+    const _secTag = t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める";
+    sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
+      `<small>${t.sub}　・　${_secTag}</small></span>`;
+    app.appendChild(sec);
+    const grid = el("div", "meal-grid");
+    mealsByTier(t.id).forEach(m => grid.appendChild(_mealCard(m)));
     app.appendChild(grid);
   }
   // ★M2/M3 結線の穴埋め：食事のあとの「次の一手」（今日の一枚／次のレース）＝島の一日ループ。
@@ -187,6 +204,7 @@ function showMealDetail(m) {
   let _justFound = false;
   let _ateNow = false;   // この窓の中で食べた（下の「このまま、レースへ」を出す合図）
   let _lastPaid = 0;     // いま食べた一皿に払った額（おごりなら0）。食べたあとの窓は「払った結果」を出す
+  const _wasEaten = !m.quiz && mealEaten(m.id);   // この窓を開く前から食べたことがある（＝感想はもう読んだ皿）
   // ★はじめての一皿の会話（event_registry.js milestone_meal_*）を、料理の窓の裏で始めない（2026-11-13・Codex 3回め）。
   //   会話（.dlg-overlay z-index 200）は窓（.navpop-ov 9200）より下にあり、窓に隠れて送れず、
   //   「このまま、レースへ」を押した先のレース選択で現れていた。食べた直後に会話が始まったら、窓をいったん伏せ、
@@ -233,9 +251,14 @@ function showMealDetail(m) {
         : _short ? "所持 " + _bal + "（足りない）"
         : "所持 " + _bal + " → 残り 🪙" + (_coins - _price).toLocaleString("ja-JP");
       let _html = head();
+      // ★前に食べたことのある皿は、感想と豆知識を畳む（2026-11-13・Codex 3回め：同じ皿を食べ直すたびに、読んだ講評を
+      //   通ってからボタンへ下りていた）。写真・名前・値段と、食べる／レースへのボタンが先に見える。開けばいつでも読める。
+      //   はじめて食べたその窓では、これまでどおり全部見せる（発見の山）。
       _html += eaten
-        ? (_justFound ? `<div class="meal-found">🎉 あたらしい一皿と、出会った！</div>` : "") +
-          `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`
+        ? (_wasEaten
+          ? `<details class="meal-more"><summary>📖 前に食べたときの感想</summary><div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div></details>`
+          : (_justFound ? `<div class="meal-found">🎉 あたらしい一皿と、出会った！</div>` : "") +
+            `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`)
         : (m.where && m.scent
           ? `<div class="meal-scent">${m.scent}</div><div class="meal-prompt">ひとくち、いってみる？</div>`
           : `<div class="meal-prompt">ひとくち、いってみる？</div>`);
@@ -268,7 +291,11 @@ function showMealDetail(m) {
         const _c0 = (state.player && state.player.coins) || 0;
         eatMeal(m.id);
         const _ok = (typeof hungerGet === "function") ? hungerGet() > _h0 : true;
-        if (_ok) _lastPaid = Math.max(0, _c0 - ((state.player && state.player.coins) || 0));
+        if (_ok) {
+          _lastPaid = Math.max(0, _c0 - ((state.player && state.player.coins) || 0));
+          // 食事の一覧の先頭に出す「前回の一皿」（renderMeals）。表示のための印だけ。
+          try { state.player._lastMealId = m.id; if (typeof saveGame === "function") saveGame(); } catch (e) {}
+        }
         _ateNow = _ateNow || _ok;
         if (window.Sfx) Sfx.play(_justFound ? "unlock" : "coin");
         render();
