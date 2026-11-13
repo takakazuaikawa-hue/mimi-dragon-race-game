@@ -2303,6 +2303,9 @@ function startRaceCanvas(container, ctx) {
   }
   function _telopShow(line, side, tag, lead, sec) {
     shownLines.push({ line: line, side: side });
+    // ★雑談には区間が付いていないので、区間が替わっても吹き出しに残り、終盤の直線まで読めていた
+    //   （Codex 3回め：A2 の短い直線・残り309m で匂いの雑談）。出した時点の区間を持たせ、替わったら上と同じく消す。
+    if (tag === "chat" && sec == null) { try { sec = thirdAtP(clamp(timeline.leaderProgressAt(S.tau), 0, 1)); } catch (e) {} }
     _shownSec[side !== "color" ? "call" : "color"] = (sec == null) ? null : sec;
     if (tag === "getaway") _getawaySeen++;
     _telopLastAt = performance.now();
@@ -2333,6 +2336,9 @@ function startRaceCanvas(container, ctx) {
     try {
       if (tag === "chat" && !S.finished && !window.__telopNoStale
           && S.tau > ((typeof BC_MID_END !== "undefined") ? BC_MID_END : 0.62)) return true;
+      // 画面の区間表示が終盤（先頭がコースの2/3を過ぎた）になったあとも出さない（τ と区間表示がずれる展開のため）
+      if (tag === "chat" && !S.finished && !window.__telopNoStale
+          && thirdAtP(clamp(timeline.leaderProgressAt(S.tau), 0, 1)) >= 2) return true;
     } catch (e) {}
     try { if ((lead == null && sec == null) || S.finished || window.__telopNoStale) return false; } catch (e) { return false; }
     if (lead != null) { const top = _telopTopNow(); if (top != null && top !== lead) return true; }
