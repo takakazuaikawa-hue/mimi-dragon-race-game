@@ -5696,6 +5696,9 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .navpop-t { font-size: 18px; font-weight: 900; color: var(--mist); margin-top: 8px; }
 .navpop-d { font-size: 13px; color: var(--mist-soft); line-height: 1.65; margin-top: 9px; }
 .navpop-btns { display: flex; gap: 10px; margin-top: 20px; }
+/* 食べたあとの「このまま、レースへ」（ui_meta.js）。横いっぱいの主役。下の2つのボタンとの間は詰める。 */
+.meal-go-race { display: block; width: 100%; margin-top: 16px; padding: var(--pd-11); border-radius: var(--rd-10); font-weight: 900; font-size: 15px; cursor: pointer; }
+.meal-go-race + .navpop-btns { margin-top: 8px; }
 .navpop-btns button { flex: 1; padding: var(--pd-11); border-radius: var(--rd-10); cursor: pointer; font-weight: 800; font-size: 14px; white-space: nowrap; }
 .navpop-go { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; border: none; }
 .navpop-cancel { background: rgba(255,255,255,0.06); color: var(--mist-soft); border: 1px solid var(--glass-border); }

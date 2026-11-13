@@ -183,6 +183,7 @@ function showMealDetail(m) {
   //   屋台で「？？？＋気配」→ 食べた瞬間に名前と全力の講評が開く＝発見が遊びの山になる。
   //   この関数内で食べた直後の1回だけ「出会った！」バナーを立てる。
   let _justFound = false;
+  let _ateNow = false;   // この窓の中で食べた（下の「このまま、レースへ」を出す合図）
   const _mystery = () => !mealEaten(m.id) && !!m.where && !m.quiz;
   const head = () => (_mystery()
     ? `<div class="meal-pop-ic">❔</div><div class="navpop-t">？？？</div>`
@@ -225,8 +226,19 @@ function showMealDetail(m) {
       const btns = el("div", "navpop-btns");
       const eat = el("button", "navpop-go" + (_full ? " is-off" : ""), eaten ? "🍴 もう一度食べる" : "🍴 いただきます！");
       if (_full) eat.disabled = true;
-      else eat.onclick = () => { _justFound = !mealEaten(m.id) && !!m.where; eatMeal(m.id); if (window.Sfx) Sfx.play(_justFound ? "unlock" : "coin"); render(); };
+      else eat.onclick = () => { _justFound = !mealEaten(m.id) && !!m.where; const _h0 = (typeof hungerGet === "function") ? hungerGet() : 0; eatMeal(m.id); _ateNow = _ateNow || ((typeof hungerGet === "function") ? hungerGet() > _h0 : true); if (window.Sfx) Sfx.play(_justFound ? "unlock" : "coin"); render(); };
       const later = el("button", "navpop-cancel", eaten ? "閉じる" : "また今度"); later.onclick = () => _closeMeal();
+      // ★食べて走れるようになったら、ここからそのままレースへ（2026-11-13）。以前は、食べたあと窓を閉じ、
+      //   12枚のカードのいちばん下まで送って「次のレースへ」を探すか、ホームへ戻ってから進むかだった。
+      //   空腹のたびに食事へ送るようにしたぶん（ui_render.js hungryNeedsMeal）、帰り道も1手にする。
+      //   主役がレースになるので、「もう一度食べる」は脇へ（押せるのはそのまま）。hunger.js を読むだけ。
+      const _canGo = _ateNow && (typeof hungerCanRace !== "function" || hungerCanRace()) && typeof renderRaceSelect === "function";
+      if (_canGo) {
+        const go = el("button", "navpop-go meal-go-race", "🐉 このまま、レースへ ▶");
+        go.onclick = () => { ov.remove(); renderRaceSelect(); };
+        box.appendChild(go);
+        eat.className = "navpop-cancel" + (_full ? " is-off" : "");
+      }
       btns.appendChild(eat); btns.appendChild(later); box.appendChild(btns);
     } else {
       // ── 当てる（食材／隠し味） ──
