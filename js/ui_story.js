@@ -221,9 +221,11 @@ function _storyDoneBox(ch, cast) {
 }
 
 function renderStoryChapter(chId) {
+  // 読み終えた印は、その章をすぐ描くときだけ使う（別の画面へ逸れたら残さない＝あとで開いた時に誤って「読み終えた」を出さない）
+  if (state.ui && state.ui._storyJustRead && state.ui._storyJustRead !== chId) state.ui._storyJustRead = null;
   const ch = STORY_CHAPTERS.find(c => c.id === chId);
   recomputeAssets(state);
-  if (!ch || ((typeof chapterAvailable === "function") ? !chapterAvailable(ch.id) : (assetsPeak(state) < storyUnlockAt(ch.id)))) { renderStory(); return; }
+  if (!ch || ((typeof chapterAvailable === "function") ? !chapterAvailable(ch.id) : (assetsPeak(state) < storyUnlockAt(ch.id)))) { if (state.ui) state.ui._storyJustRead = null; renderStory(); return; }
   // 読み飛ばしガード：手前に“解禁済みなのに未読”の話が残っていたら、先にそこから読んでもらう（順番厳守）。
   //   ＝総資産だけで終章へ飛び、配信も体験しないまま結末のセリフを踏む断絶を防ぐ（表示のみ・レース数値に非干渉）。
   if (typeof getStoryFlag === "function") {
@@ -234,6 +236,7 @@ function renderStoryChapter(chId) {
       if (!getStoryFlag("_chapter_intro_" + _pid)) {
         if (typeof showInfoPopup === "function") showInfoPopup("📖 先に前のお話を",
           `<div class="mm-row"><span class="mm-ic">📖</span><div><b>ちょっと待って！</b><small>いきなり結末まで飛ぶと、ミミが置いてけぼりで泣いちゃう。まずは手前のお話から、順番にどうぞ。</small></div></div>`);
+        if (state.ui) state.ui._storyJustRead = null;
         renderStory();
         return;
       }
