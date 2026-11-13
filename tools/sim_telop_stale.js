@@ -31,7 +31,8 @@ function simulate(tl, script, decideTau, dropStale) {
   const third = tau => { const P = tl.leaderProgressAt(Math.min(1, tau)); return P < 1 / 3 ? 0 : P < 2 / 3 ? 1 : 2; };   // 画面の区間表示と同じ区切り
   const secWrong = (it, tau) => it.sec != null && third(tau) !== it.sec;
   const LATE = 0.62;   // 終盤の入口（race_broadcast.js BC_MID_END と同じ）。ここを過ぎた雑談は「終盤の雑談」
-  const chatLate = (it, tau) => it.tag === "chat" && tau > LATE;
+  // 画面の規則の写し（race_canvas.js _telopStale）：τ0.62 以降・区間表示が終盤・先頭の進み0.60以上 のどれかなら雑談は出さない
+  const chatLate = (it, tau) => it.tag === "chat" && (tau > LATE || third(tau) >= 2 || tl.leaderProgressAt(Math.min(1, tau)) >= 0.60);
   const isStale = (it, tau) => dropStale && ((it.lead != null && top(tau) !== it.lead) || secWrong(it, tau) || chatLate(it, tau));
   const show = (it, now, tau) => { if (it.tag === "getaway") getaway++; lastAt = now; lastLen = it.line.length; shown.push({ t: now / 1000, tau, it, wrong: it.lead != null && top(tau) !== it.lead, wrongSec: secWrong(it, tau) }); };
   const endT = decideTau * sec;

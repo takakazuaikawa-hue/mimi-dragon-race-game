@@ -2336,9 +2336,12 @@ function startRaceCanvas(container, ctx) {
     try {
       if (tag === "chat" && !S.finished && !window.__telopNoStale
           && S.tau > ((typeof BC_MID_END !== "undefined") ? BC_MID_END : 0.62)) return true;
-      // 画面の区間表示が終盤（先頭がコースの2/3を過ぎた）になったあとも出さない（τ と区間表示がずれる展開のため）
+      // 画面の区間表示が終盤（先頭がコースの2/3を過ぎた）になったあとも出さない（τ と区間表示がずれる展開のため）。
+      //   終盤の手前ぎりぎりも出さない：出した雑談は区間が替わると消える（_telopShow）ので、τ0.551 に出て τ0.561 に消える
+      //   ＝1秒も読めない出方になった（等速の実走で観測）。先頭の進み 0.60（2/3 の少し手前）を過ぎたら始めない。
+      //   台本の位置も τ0.40 へ前に出した（race_broadcast.js）。200戦の計測で、読める時間は中央5.0秒・2秒未満0本。
       if (tag === "chat" && !S.finished && !window.__telopNoStale
-          && thirdAtP(clamp(timeline.leaderProgressAt(S.tau), 0, 1)) >= 2) return true;
+          && clamp(timeline.leaderProgressAt(S.tau), 0, 1) >= 0.60) return true;
     } catch (e) {}
     try { if ((lead == null && sec == null) || S.finished || window.__telopNoStale) return false; } catch (e) { return false; }
     if (lead != null) { const top = _telopTopNow(); if (top != null && top !== lead) return true; }
