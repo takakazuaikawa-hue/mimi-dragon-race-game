@@ -4495,7 +4495,9 @@ const RESULT_TIER = {
   1: { word: "的中！",           cls: "t1",   sfx: "win" },
   2: { word: "大的中！",         cls: "t2",   sfx: "bigwin" },
   3: { word: "超的中！！",       cls: "t3",   sfx: "legendary" },
-  4: { word: "伝説の的中！！！", cls: "t4",   sfx: "legendary" }
+  // ★折れるなら「伝説の／的中！！！」の切れ目だけ（2026-11-13・Codex 3回め：375px で「伝説の的／中！！！」と語の途中で折れた）。
+  //   <wbr> と style.css .rs-t4 .rs-stamp の word-break: keep-all の組。word は innerHTML でしか使っていない。
+  4: { word: "伝説の<wbr>的中！！！", cls: "t4",   sfx: "legendary" }
 };
 
 // §37 Tier 2 — milestone streak bonus, as a multiple of the race's payout (so

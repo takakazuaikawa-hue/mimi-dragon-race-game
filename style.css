@@ -1890,7 +1890,9 @@ table.entry-table {
 .rs-hero.rs-t1 .rs-stamp { color: var(--jade-bright); text-shadow: 0 2px 10px rgba(73,200,156,0.5); }
 .rs-hero.rs-t2 .rs-stamp { color: var(--gold-bright); font-size: 33px; text-shadow: 0 2px 12px rgba(230,178,74,0.6); }
 .rs-hero.rs-t3 .rs-stamp { color: #ffd0a0; font-size: 36px; text-shadow: 0 2px 16px rgba(255,122,58,0.7); }
-.rs-hero.rs-t4 .rs-stamp { color: var(--white); font-size: 40px;
+/* 伝説の的中＝8文字。40px のままだと 375px で収まらず語の途中で折れた → 画面幅に合わせて少しだけ縮め、
+   それでも収まらない幅では「伝説の／的中！！！」の切れ目でだけ折る（ui_render.js RESULT_TIER の <wbr>）。 */
+.rs-hero.rs-t4 .rs-stamp { color: var(--white); font-size: min(40px, calc((100vw - 64px) / 8.4)); word-break: keep-all;
   background: linear-gradient(90deg, #ffe9a6, var(--gold-bright), #ff9a5a, var(--gold-bright), #ffe9a6);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   text-shadow: 0 0 22px rgba(255,200,90,0.7); }

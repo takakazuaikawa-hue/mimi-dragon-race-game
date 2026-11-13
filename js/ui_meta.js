@@ -186,6 +186,24 @@ function showMealDetail(m) {
   //   この関数内で食べた直後の1回だけ「出会った！」バナーを立てる。
   let _justFound = false;
   let _ateNow = false;   // この窓の中で食べた（下の「このまま、レースへ」を出す合図）
+  let _lastPaid = 0;     // いま食べた一皿に払った額（おごりなら0）。食べたあとの窓は「払った結果」を出す
+  // ★はじめての一皿の会話（event_registry.js milestone_meal_*）を、料理の窓の裏で始めない（2026-11-13・Codex 3回め）。
+  //   会話（.dlg-overlay z-index 200）は窓（.navpop-ov 9200）より下にあり、窓に隠れて送れず、
+  //   「このまま、レースへ」を押した先のレース選択で現れていた。食べた直後に会話が始まったら、窓をいったん伏せ、
+  //   会話が閉じたら戻す＝食べる → ミミの一言 → 窓（発見・あと何戦・レースへ）の順になる。会話が始まらなければ何もしない。
+  const _yieldToDialogue = () => {
+    if (!(window.Dialogue && Dialogue.isOpen)) return;
+    const t0 = Date.now(); let seen = false;
+    (function tick() {
+      if (!document.body.contains(ov)) return;
+      const open = Dialogue.isOpen() || (Dialogue.isHolding && Dialogue.isHolding());
+      if (open && !seen) { seen = true; ov.style.visibility = "hidden"; }
+      if (seen && !open) { ov.style.visibility = ""; return; }
+      if (!seen && Date.now() - t0 > 900) return;            // 会話は始まらなかった（2品目以降など）
+      if (seen && Date.now() - t0 > 120000) { ov.style.visibility = ""; return; }   // 永久に伏せない
+      setTimeout(tick, seen ? 250 : 60);
+    })();
+  };
   const _mystery = () => !mealEaten(m.id) && !!m.where && !m.quiz;
   const head = () => (_mystery()
     ? `<div class="meal-pop-ic">❔</div><div class="navpop-t">？？？</div>`
@@ -221,6 +239,16 @@ function showMealDetail(m) {
         : (m.where && m.scent
           ? `<div class="meal-scent">${m.scent}</div><div class="meal-prompt">ひとくち、いってみる？</div>`
           : `<div class="meal-prompt">ひとくち、いってみる？</div>`);
+      // ★食べたあとの窓は「払った結果」を出す（2026-11-13・Codex 3回め）。以前は食べたあとも「次の一皿」の予告
+      //   （「🍽 70コイン／所持 900 → 残り 830」）のままで、おごりで食べたのに払ったように、払ったのにさらに引かれるように読めた。
+      //   いま払った額・いまのおなか・いまの所持と、あと何戦。もう一品の値段は「もう一品」のボタンに書く。数字は読むだけ。
+      if (_ateNow) {
+        // 短く（375px で「支払い 40コ／イン」「おなか 30／／100」と折れたため）。いくら残ったかは下の「所持」で読める。
+        const _paidTxt = _lastPaid > 0 ? "✅ −" + _lastPaid.toLocaleString("ja-JP") + "コイン" : "✅ おごり";
+        _html += `<div class="meal-buy"><div class="meal-buy-row"><span class="meal-buy-cost">${_paidTxt}</span><span class="meal-buy-heal">🍚 おなか ${_hunger}</span></div>` +
+          ((typeof hungerRacesAt === "function") ? `<div class="meal-buy-races">いまのおなかで、あと <b>${hungerRacesAt(_hunger)}戦</b> 走れる</div>` : "") +
+          `<small>所持 ${_bal}</small></div>`;
+      } else
       _html += `<div class="meal-buy${(_short || _full) ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
         // この皿を食べると、あと何戦走れるか（hunger.js hungerRacesAt）。値段と回復量の行とは分けて1行で。
         ((!_full && typeof hungerRacesAt === "function") ? `<div class="meal-buy-races">食べると、あと <b>${hungerRacesAt(_hunger + _heal)}戦</b> 走れる</div>` : "") +
@@ -228,9 +256,24 @@ function showMealDetail(m) {
       box.innerHTML = _html;
       _wirePhotoZoom();
       const btns = el("div", "navpop-btns");
-      const eat = el("button", "navpop-go" + (_full ? " is-off" : ""), eaten ? "🍴 もう一度食べる" : "🍴 いただきます！");
+      // 食べたあとの「もう一度」は、値段をボタンに書く（上の箱は払った結果を出しているので、ここで次の一皿の額が分かる）
+      const _eatLabel = !eaten ? "🍴 いただきます！"
+        : (_ateNow && !_full) ? "🍴 もう一品（" + (_free ? "おごり" : _price.toLocaleString("ja-JP") + "コイン") + "）"
+        : "🍴 もう一度食べる";
+      const eat = el("button", "navpop-go" + (_full ? " is-off" : ""), _eatLabel);
       if (_full) eat.disabled = true;
-      else eat.onclick = () => { _justFound = !mealEaten(m.id) && !!m.where; const _h0 = (typeof hungerGet === "function") ? hungerGet() : 0; eatMeal(m.id); _ateNow = _ateNow || ((typeof hungerGet === "function") ? hungerGet() > _h0 : true); if (window.Sfx) Sfx.play(_justFound ? "unlock" : "coin"); render(); };
+      else eat.onclick = () => {
+        _justFound = !mealEaten(m.id) && !!m.where;
+        const _h0 = (typeof hungerGet === "function") ? hungerGet() : 0;
+        const _c0 = (state.player && state.player.coins) || 0;
+        eatMeal(m.id);
+        const _ok = (typeof hungerGet === "function") ? hungerGet() > _h0 : true;
+        if (_ok) _lastPaid = Math.max(0, _c0 - ((state.player && state.player.coins) || 0));
+        _ateNow = _ateNow || _ok;
+        if (window.Sfx) Sfx.play(_justFound ? "unlock" : "coin");
+        render();
+        if (_ok) _yieldToDialogue();
+      };
       const later = el("button", "navpop-cancel", eaten ? "閉じる" : "また今度"); later.onclick = () => _closeMeal();
       // ★食べて走れるようになったら、ここからそのままレースへ（2026-11-13）。以前は、食べたあと窓を閉じ、
       //   12枚のカードのいちばん下まで送って「次のレースへ」を探すか、ホームへ戻ってから進むかだった。
