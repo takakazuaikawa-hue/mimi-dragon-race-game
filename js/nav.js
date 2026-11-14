@@ -46,6 +46,7 @@ var SCREEN_INDEX = [
   { no: 31, id: "konron_gallery",  label: "フォトコレクション(図鑑)", group: "拠点" },
   { no: 32, id: "konron_walk",     label: "歩いてまわる",        group: "拠点" },
   { no: 33, id: "kiko",            label: "紀行ブログ",           group: "紀行" },
+  { no: 33.5, id: "kiko_read",     label: "紀行・連載の1回",      group: "紀行" },
   { no: 34, id: "media",           label: "メディア(物語/SNS)",   group: "SNS" },
   { no: 35, id: "shingan",         label: "神眼レース(終章)",     group: "終章" }
 ];
@@ -95,6 +96,11 @@ function screenMap() {
     timeline:        function () { opt("renderSns", "renderHome")("timeline"); },     // 後方互換（旧?go=）
     fanletters:      function () { opt("renderSns", "renderHome")("fanletters"); },
     kiko:            function () { opt("renderKiko", "renderHome")(); },              // 📖 紀行ブログ（2026-07-30）
+    kiko_read:       function () {                                                    // 📄 連載「島ぐらし」の1回（回の指定が無ければ紀行へ）
+      var id = (typeof state !== "undefined" && state.ui) ? state.ui._kikoEp : null;
+      if (id && typeof window.renderKikoEpisode === "function") window.renderKikoEpisode(id, { keepScroll: true });
+      else opt("renderKiko", "renderHome")();
+    },
     media:           function () { opt("renderMediaHub", "renderHome")(); },          // 📱 メディアハブ（物語/SNS/手紙）
     shingan:         function () { opt("renderShinganRace", "renderHome")(); }        // ☄️ 神眼レース（終章M3）
   };

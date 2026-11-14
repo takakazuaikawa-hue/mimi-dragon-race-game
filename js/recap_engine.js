@@ -28,8 +28,20 @@ function buildRecap(ctx) {
   oddsResult.oddsData.forEach(o => { popMap[o.dragonId] = o; });
 
   // ---- 4.1 着順 (all 8) ----
+  // 短評用：序盤（先頭が1/3に達した時点）の順位。結果画面の「追い上げ」の記録（bet_story）と同じ読み方。読むだけ。
+  let _earlyPos = null;
+  try {
+    const tl = ctx.timeline || (typeof buildRaceTimeline === "function" ? buildRaceTimeline(race, raceResult, oddsResult, bet) : null);
+    if (tl && typeof tl.standingsAt === "function") {
+      let t1 = 1;
+      for (let g = 1; g <= 400; g++) { if (tl.leaderProgressAt(g / 400) >= 1 / 3) { t1 = g / 400; break; } }
+      _earlyPos = tl.standingsAt(t1).slice();
+    }
+  } catch (err) { _earlyPos = null; }
   const resultSummary = raceResult.entries.map(e => {
     const od = popMap[e.dragon.id] || {};
+    const _ix = _earlyPos ? _earlyPos.indexOf(e.dragon.id) : -1;
+    const _climb = _ix < 0 ? 0 : (_ix + 1) - e.rank;
     return {
       rank: e.rank,
       id: e.dragon.id,
@@ -38,7 +50,7 @@ function buildRecap(ctx) {
       odds: od.winOdds,
       style: STYLE_LABEL[e.dragon.style] || e.dragon.style,
       isBetTarget: !!(bet && bet.selections && bet.selections.includes(e.dragon.id)),
-      blurb: shortBlurb(e, race, od)
+      blurb: shortBlurb(e, race, od, _climb)
     };
   });
 
@@ -83,7 +95,11 @@ function buildRecap(ctx) {
 }
 
 // One-line 短評 for the ranking table (§29 §4.1).
-function shortBlurb(e, race, od) {
+function shortBlurb(e, race, od, climb) {
+  // ★上位の竜は、脚が鈍っていても「先着した／粘った」事実を先に言う（2026-11-13）。以前は失速の印があると着順に関係なく
+  //   「終盤に脚が止まった」になり、1着から8着まで全員が同じ短評になるレースがあった（Codex の通し試験）。着順は読むだけ。
+  if (e.collapse && e.rank === 1) return "苦しくなりながら、押し切った";
+  if (e.collapse && e.rank <= 3) return "脚が鈍っても、粘り込んだ";
   if (e.collapse) return "終盤に脚が止まった";
   const style = e.dragon.style;
   const popRank = od.popularityRank || 9;
@@ -97,9 +113,28 @@ function shortBlurb(e, race, od) {
     if (style === "late" || style === "chase") return "終いを伸ばした";
     return "前々で粘り込んだ";
   }
+  // 序盤から3つ以上順位を上げた竜に「見せ場なし」系は付けない（同じ画面の追い上げの記録と食い違う）
+  if (e.rank >= 4 && (climb || 0) >= 3) return "後方から追い上げた";
   if (popRank <= 2 && e.rank >= 4) return "人気を裏切った";
   if (style === "escape" || style === "front") return "前半の脚が続かず";
   return "見せ場は作れず";
+}
+
+// 直近2回に出した台詞を避けて選ぶ（セッション内の記録＝state.ui。表示のみ・保存はしない）。
+function pickAvoidingRecent(key, arr) {
+  let hist = [];
+  try {
+    if (typeof state !== "undefined" && state && state.ui) {
+      state.ui._mimiCloseHist = state.ui._mimiCloseHist || {};
+      hist = state.ui._mimiCloseHist[key] = state.ui._mimiCloseHist[key] || [];
+    }
+  } catch (err) { hist = []; }
+  let pool = arr.filter(t => !hist.includes(t));
+  if (!pool.length) pool = arr.filter(t => t !== hist[hist.length - 1]);
+  if (!pool.length) pool = arr;
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  hist.push(t); while (hist.length > 2) hist.shift();
+  return t;
 }
 
 // §29 §4.2 payout block (display only — uses betResult verbatim).
@@ -293,18 +328,23 @@ function buildMimiRecap(bet, betResult, raceResult, popMap) {
       "ちゃんと数字より竜を見た結果です。えっへん。……さ、勝ち飯勝ち飯。"
     ]);
   }
+  // ★「惜しい」は、的中まであと1つのときだけ（2026-11-13）。以前は単勝の4着や3着でも惜しい側の台詞になり、
+  //   4着なのに「鼻の差……」と言っていた（Codex の通し試験：具体的になった分析文と、ミミの一言の精度に差がある）。
+  //   単勝＝2着／複勝・ワイド＝4着 だけを「あと1つ」とみなす。着差そのものは言わない（ここからは着差が読めないため）。
+  const _need = bet.type === "win" ? 1 : 3;
   const nearMiss = bet.selections.some(id => {
     const e = raceResult.entries.find(x => x.dragon.id === id);
-    return e && (e.rank === 4 || (bet.type === "win" && e.rank <= 3));
+    return e && e.rank === _need + 1;
   });
-  if (nearMiss) return pick([
+  if (nearMiss) return pickAvoidingRecent("near", [
     "〜〜っ、惜しくもない外れ方より、こういうのがいちばん悔しい！　……見てなさいよ、次。",
     "あと一歩。あとひと伸び。……ゴール板、ちょっとだけ手前に動かない？　動かないか。",
-    "うう、鼻の差……。今日は反省茶。明日は勝ち飯。そういうことにする。"
+    "うう、あとひとつ……。今日は反省茶。明日は勝ち飯。そういうことにする。"
   ]);
-  return pick([
+  return pickAvoidingRecent("lose", [
     "……外れました。はい。……お腹すいた。負け飯食べて忘れる！",
     "レースは水物。わたしの財布も水物。……次、次！",
-    "今日のは読めないって。誰に聞いても読めないって言うもん。……たぶん。"
+    "今日のは読めないって。誰に聞いても読めないって言うもん。……たぶん。",
+    "うーん、外れっ！　……でも竜が走るの、やっぱりカッコよかったです。次はもうちょっと見る目を磨く！"
   ]);
 }

@@ -135,6 +135,27 @@ function _renderMallBody() {
   head.appendChild(hic);
   scm.appendChild(head);
 
+  // ── はじめての一着（まだ持っていないあいだだけ・いちばん上）──
+  //   ★モールに入ると、特集のカルーセル・6つの入口・試着室・ショップ・サービスが並び、最初の一着（第2話のカギ）が
+  //     その中に埋もれていた（Codex の通し試験「最初の一着を買いたい段階で、売り場全体の案内を先に見せすぎる」）。
+  //     ホームの札から来た人は試着室まで運ばれるが、解放の帯やおでかけから入った人はいちばん上に着く。
+  //   ★絵は出さない（未購入の服はシルエットのまま＝ユーザー決裁）。名前・値段・あといくらか・試着室への一押しだけ。
+  //   ★買ったら消える。ほかの入口の並びは変えていない。
+  try {
+    const _first = (typeof outfitById === "function") ? outfitById("buniqro") : null;
+    if (_first && !outfitOwned(_first) && _first.acquire && _first.acquire.price != null) {
+      const _pr = _first.acquire.price, _co = state.player.coins || 0, _poor = _co < _pr;
+      const fc = el("button", "scm-first" + (_poor ? " poor" : ""));
+      fc.innerHTML =
+        `<span class="scm-first-k">はじめての一着</span>` +
+        `<span class="scm-first-nm">${_scmName(_first)}</span>` +
+        `<span class="scm-first-p"><b>${fmtCoins(_pr)}</b><small>${_poor ? "あと " + fmtCoins(_pr - _co) : "いま買えます"}</small></span>` +
+        `<span class="scm-first-go">試着室へ ▸</span>`;
+      fc.onclick = () => { state.ui.mallSel = "buniqro"; renderMall(); setTimeout(() => _scmScrollTo(".scm-fit"), 30); };
+      scm.appendChild(fc);
+    }
+  } catch (e) {}
+
   // ── ② ヒーロー・カルーセル（自動送り） ──
   scm.appendChild(_scmHero());
 
@@ -163,6 +184,11 @@ function _renderMallBody() {
 
   app.appendChild(scm);
   _scmBottomNav();                    // ⑦ 下部オレンジナビ＝body直下にfixedで設置（.scmのtransform外でfloatさせる・beginScreenで掃除）
+  // ★ホームの目標の札から来たとき（goals.js firstOutfit.go）は、目当ての一着の試着室まで送る。1回きり。
+  if (state.ui._mallFocusFit) {
+    state.ui._mallFocusFit = false;
+    setTimeout(() => { try { if (state.ui.screen === "mall") _scmScrollTo(".scm-fit"); } catch (e) {} }, 80);
+  }
 }
 
 // ヒーロー：横スクロール・カルーセル＋ドット＋自動送り（操作後はしばらく停止）。
@@ -264,10 +290,25 @@ function _scmFitting() {
     const bb = el("button", "scm-btn primary" + (poor ? " poor" : ""), `🛒 ${fmtCoins(sel.acquire.price)} で購入`);
     bb.onclick = () => {
       const r = buyOutfit(sel.id);
-      if (r.ok) { wearOutfit(sel.id); if (window.Sfx) Sfx.play("coin"); if (window.Dialogue && window.DLG) Dialogue.play(DLG.outfit(sel)); renderMall(); }
+      if (r.ok) {
+        wearOutfit(sel.id); if (window.Sfx) Sfx.play("coin");
+        // はじめての一着（ブニクロ普段着）だけは、買った瞬間の反応を別に持つ（data_dialogue.js firstOutfit）。
+        const _firstBuy = sel.id === "buniqro" && window.DLG && typeof DLG.firstOutfit === "function";
+        if (window.Dialogue && window.DLG) Dialogue.play(_firstBuy ? DLG.firstOutfit(state.player.coins || 0, sel.acquire.price) : DLG.outfit(sel));
+        // ホームに戻ったときの一言（ui_home.js homeWalletLine）。買った服を着て帰ってくる＝服と財布の両方に触れる。
+        try { const _lf = state.player.coins || 0; state.ui._walletEvt = { k: "bought", left: _lf, thin: _lf < sel.acquire.price * 0.3, at: (state.player.completedRaces || 0) }; } catch (e) {}
+        renderMall();
+      }
       else if (r.reason === "poor") flashShareToast(`🪙 コインが足りません（あと ${fmtCoins(sel.acquire.price - (state.player.coins || 0))}）`);
     };
     cta.appendChild(bb);
+    // ★買う前に、払ったあとのお財布を言う（2026-11-13）。「ほぼ全財産を使う」という選択を、押す前から自分のことにする
+    //   （Codex の通し試験：1,600→100 の重さを、こちらが計算して作っていた）。所持コインと値段を読むだけ。
+    if (!poor) {
+      const _left = (state.player.coins || 0) - sel.acquire.price;
+      cta.appendChild(el("div", "scm-fit-after" + (_left < sel.acquire.price * 0.3 ? " thin" : ""),
+        `買うと、お財布は <b>${fmtCoins(_left)}</b> コインに`));
+    }
   } else if (sel.acquire.assets != null) {
     cta.appendChild(el("div", "scm-lockmsg", `🔒 総資産 ${fmtCoins(sel.acquire.assets)} で解放`));
   }

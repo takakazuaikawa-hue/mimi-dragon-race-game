@@ -41,7 +41,11 @@ var KIKO_STORY_WATCH = [
   { flag: "sakeDebtSettled",      key: "repay"  },   // サケへの恩返し
   { flag: "poroFound",            key: "poro"   },   // 相棒ポロ
   { flag: "phoneBought",          key: "phone"  },   // スマホ購入＝配信開始
-  { flag: "dragonScoutUnlocked",  key: "scout"  }    // 竜スカウト開始
+  { flag: "dragonScoutUnlocked",  key: "scout"  },   // 竜スカウト開始
+  // 借金の発覚（event_registry.js debt_intro＝初レースの結果後に必ず1回）。専用フラグが無いので
+  //   「1戦走った＆まだ借りが残っている」で拾う。語り手はミミと師匠（第1話から登場済み）だけ。
+  { flag: "_kikoDebtTold", key: "debt", test: function () {
+      try { return (state.player.completedRaces || 0) >= 1 && typeof mimiDebtLeft === "function" && mimiDebtLeft() > 0; } catch (e) { return false; } } }
 ];
 
 function _kikoScanStory() {
@@ -51,7 +55,7 @@ function _kikoScanStory() {
     for (var i = 0; i < KIKO_STORY_WATCH.length; i++) {
       var w = KIKO_STORY_WATCH[i];
       if (seen[w.flag]) continue;
-      if (!_kikoFlag(w.flag)) continue;
+      if (w.test ? !w.test() : !_kikoFlag(w.flag)) continue;
       seen[w.flag] = 1;
       kikoMatPush("story", { key: w.key });
     }
@@ -95,12 +99,46 @@ var KIKO_CUTS = [
   {
     id: "bigwin", rare: true, tag: "大穴",
     take: function (m) { return _kikoFind(m, "bigwin"); },
-    headline: function (d) { return "💥 " + d.mult + "倍。手が、まだ震えてる"; },
-    paras: function (d) {
+    headline: function (d, c) {
+      return _kikoPick([
+        "💥 " + d.mult + "倍。手が、まだ震えてる",
+        "💥 " + d.mult + "倍。窓口のお姉さんに、二度見されました",
+        "💥 " + d.mult + "倍。うさぎは、驚くと固まります"
+      ], "bw" + c.seq);
+    },
+    paras: function (d, c) {
+      var v = _kikoSeed("bwp" + c.seq) % 3;
+      if (v === 1) return [
+        d.race + "、" + d.dragon + "、" + d.odds + "倍。当たり券を窓口に出したら、お姉さんが券とわたしの顔を、交互に二回見ました。わたしも、自分の顔が見たかったです。",
+        "買った理由を聞かれても困ります。前の日、あの子だけ、ごはんを残していなかったんです。それだけ。……食べる子は走る。これはわたしの人生の、数少ない確信です。",
+        _kikoCoins(d.payout) + "。数えているあいだに、三回まちがえました。帰りの屋台で「今日はいちばん高いのを」と言ったら、いちばん高いのが、いつものと同じ値段でした。この屋台が好きです。"
+      ];
+      if (v === 2) return [
+        "当たりました。" + d.odds + "倍。" + d.race + "の、" + d.dragon + "。ゴールの瞬間、わたしは立ったまま固まっていたそうです。となりの人が、目の前で手を振ってくれました。",
+        "みんなが見ていなかった子でした。パドックのいちばん端で、ひとりだけ空を見ていた。変な子だなと思って、変な子に賭けました。変な子どうし、通じるものがあったのかもしれません。",
+        "戻ってきたのは" + _kikoCoins(d.payout) + "。大金です。大金なので、こわくなって、すぐ半分を別のポケットに移しました。両方のポケットが重いのは、生まれてはじめてです。歩きかたが、変になりました。"
+      ];
       return [
         d.race + "。" + d.dragon + "。" + d.odds + "倍。——書き写しておいて、まだ字のほうが信じられません。",
         "みんなが本命を見ていました。わたしは、掲示板のいちばん端にいた子を見ていました。理屈はあったような、なかったような。ただ、あの子の脚だけ、ほかと違う速さで畳まれていたんです。",
         "戻ってきたのは" + _kikoCoins(d.payout) + "。お祝いに屋台で一本だけ多く頼んだら、おじさんに「今日はどうした」と聞かれて、うまく説明できませんでした。……笑ってごまかしました。"
+      ];
+    }
+  },
+  // ── 🙏 すっからかん回（無心した）＝この連載でいちばん正直な回 ──
+  //   貧乏と失敗の笑いどころを記録に残す（やらかした日ほど、読みものになる）。
+  {
+    id: "broke", tag: "すっからかん",
+    take: function (m) { return _kikoFind(m, "broke"); },
+    headline: function (d) { return (d.n || 1) >= 2 ? ("🙏 すっからかん、" + d.n + "回め。もう慣れてきました") : "🙏 すっからかんに、なりました"; },
+    paras: function (d) {
+      var n = d.n || 1;
+      return [
+        n >= 2
+          ? ("正直に書きます。また、お財布が空になりました。通算" + n + "回めです。数えているあたり、まだ余裕があります。")
+          : "正直に書きます。お財布が、空になりました。逆さにして振ったら、外れ券が一枚だけ落ちてきました。",
+        "村のみんなのところへ行って、頭を下げました。ぱほぱほ、と。……みんな、なにも聞かずに、" + _kikoCoins(d.amt || 0) + "を握らせてくれました。聞かれないのが、いちばんこたえます。",
+        "「返さなくていいから、当てな」と言われました。返さなくていいお金ほど、重いものはありません。次は当てます。……と、前にも書いた気がします。今日は屋台に寄りませんでした。前を通っただけです。匂いは、ただなので。"
       ];
     }
   },
@@ -110,6 +148,34 @@ var KIKO_CUTS = [
     take: function (m) { return _kikoFind(m, "story"); },
     headline: function (d) { return (KIKO_STORY_ARTS[d.key] || KIKO_STORY_ARTS._def).h; },
     paras: function (d) { return (KIKO_STORY_ARTS[d.key] || KIKO_STORY_ARTS._def).p; }
+  },
+  // ── 🏅 クラスが上がった回（勝っていないのに上がる“皆勤賞”も、そのまま書く）──
+  {
+    id: "rankup", tag: "暮らしの記録",
+    take: function (m) { return _kikoFind(m, "rankup"); },
+    headline: function (d) { return (d.wins || 0) === 0 ? "🏅 勝っていないのに、上のクラスへ" : "🏅 上のクラスに、行けることになりました"; },
+    paras: function (d) {
+      return [
+        (d.wins || 0) === 0
+          ? "上のクラスに上がりました。……勝っていないのに、です。走った数だけで上がったそうです。皆勤賞。学校でももらったことがないものを、賭場でもらいました。"
+          : "上のクラスに上がりました。師匠に報告したら、「竜がでかくなるぞ」とだけ言われました。お祝いの言葉としては、だいぶ変わっています。",
+        "賭けられる額も、大きくなるそうです。大きいほうの話です。わたしの財布は小さいほうで忙しいので、当面は関係ありません。でも、使わない引き出しが増えたみたいで、ちょっと気分がいいです。",
+        "知らないコースも、走れるようになりました。知らない竜、知らない歓声、知らない屋台。……最後のひとつが、じつはいちばん楽しみです。"
+      ];
+    }
+  },
+  // ── 👗 服を買った回 ──
+  {
+    id: "outfit", tag: "おかいもの",
+    take: function (m) { return _kikoFind(m, "outfit"); },
+    headline: function (d) { return "👗 " + (d.name || "新しい服") + "を、買ってしまいました"; },
+    paras: function (d) {
+      return [
+        (d.name || "新しい服") + "。買いました。" + _kikoCoins(d.price || 0) + "。値札を三回見て、財布を二回見て、店員さんの顔を一回見て、買いました。",
+        "服を買うと、ごはんが減ります。これは算数です。でも、鏡の前に立ったら、算数のことは忘れました。似合うかどうかは、わかりません。耳が勝手に立っていたので、たぶん、うれしいんだと思います。",
+        "帰りに屋台の前を通ったら、おじさんに二度見されました。「誰かと思った」。……前の格好がどれだけだったのか、という話です。今日は見るだけにして帰りました。服は、食べられないので。"
+      ];
+    }
   },
   // ── 🌙 連敗しみじみ回（5連敗以上） ──
   {
@@ -128,8 +194,25 @@ var KIKO_CUTS = [
   {
     id: "lose", tag: "敗戦記",
     take: function (m) { return _kikoFind(m, "lose3"); },
-    headline: function (d) { return "📉 " + d.run + "連敗。ちゃんと書きます"; },
-    paras: function (d) {
+    headline: function (d, c) {
+      return _kikoPick([
+        "📉 " + d.run + "連敗。ちゃんと書きます",
+        "📉 " + d.run + "連敗。外れ券で、しおりが作れます",
+        "📉 " + d.run + "連敗。竜は悪くありません"
+      ], "ls" + c.seq);
+    },
+    paras: function (d, c) {
+      var v = _kikoSeed("lsp" + c.seq) % 3;
+      if (v === 1) return [
+        d.run + "連敗です。外れ券がたまってきたので、ノートのしおりにしています。いま、しおりのほうがページより多いです。",
+        (d.race ? d.race + "。" : "") + "買った子は、スタートでくしゃみをしました。竜も、くしゃみをするんですね。知りませんでした。知りたくなかったです、あのタイミングでは。",
+        "負け飯屋台のおじさんが、外れ券の束を見て、だまって薬味を足してくれました。ここまで来ると、券は通貨です。……おいしかったです。それがまた、くやしい。"
+      ];
+      if (v === 2) return [
+        d.run + "回、つづけて外しました。先に言っておくと、竜は悪くありません。あの子たちは、いつもどおり一生けんめい走っています。おかしいのは、わたしの選びかたのほうです。",
+        "今日は、名前がおいしそうな子にしました。理由はそれだけです。……書いていて、自分でもどうかと思います。予想家を名乗るのは、もう少し先にします。",
+        "帰りに、いちばん安い串を一本だけ買いました。一本だけ、というのが、今日のわたしにできる精いっぱいの反省です。二本めは、明日の自分にゆずります。"
+      ];
       return [
         "負けました。" + d.run + "回つづけて。勝った日の記事より、こっちのほうが読み物として面白いはずなので、正直に書きます。",
         (d.race ? d.race + "。" : "") + "直線で、わたしの本命だけが止まって見えました。ゲート前に「これはいける」と思った自分の顔を、いまは思い出したくないです。",
@@ -141,8 +224,27 @@ var KIKO_CUTS = [
   {
     id: "win", tag: "勝った日",
     take: function (m) { return _kikoFind(m, "win"); },
-    headline: function (d) { return "🏆 " + d.dragon + "だけ、線がまっすぐだった"; },
-    paras: function (d) {
+    // ★勝った日の記事は3通り（2026-11-13）。以前は1通りだけで、勝つたびに同じ題・同じ文が並んでいた。
+    //   敗戦記と同じ作法＝記事の通し番号で決める（開き直しても変わらない）。書くのは確定済みの事実（レース名・竜・倍率・払い戻し）だけ。
+    headline: function (d, c) {
+      return _kikoPick([
+        "🏆 " + d.dragon + "だけ、線がまっすぐだった",
+        "🏆 " + d.dragon + "が勝って、わたしの声が裏返りました",
+        "🏆 " + d.dragon + "に、ごはんをおごってもらった日"
+      ], "wn" + c.seq);
+    },
+    paras: function (d, c) {
+      var v = _kikoSeed("wn" + c.seq) % 3;
+      if (v === 1) return [
+        "勝ちました。" + d.race + "、" + d.type + d.odds + "倍、" + d.dragon + "。数字を書いているだけで、手がまだ少し震えています。",
+        "ゴールの前で、声が出ました。自分でもびっくりするくらい大きな、裏返った声です。となりのおじさんが、だまってうなずいてくれました。知らない人です。でも、あの瞬間だけは親戚でした。",
+        "払い戻しは" + _kikoCoins(d.payout) + "。券を窓口に出すとき、落とさないように両手で持ちました。紙一枚が、こんなに重いとは知りませんでした。"
+      ];
+      if (v === 2) return [
+        "勝ちました。" + d.race + "、" + d.dragon + "、" + d.type + d.odds + "倍。昨日までのわたしに教えてあげたいです。たぶん、信じないと思いますけど。",
+        "あの子は、ゴールしたあとも、何ごともなかった顔をしていました。こっちは心臓が口から出そうだったのに。竜のほうが、ずっと大人です。",
+        "払い戻しは" + _kikoCoins(d.payout) + "。帰りの屋台で、いつもより一品多く頼みました。" + d.dragon + "のおごりです。本人は知りません。"
+      ];
       return [
         "勝ちました。書いておかないと明日の自分が信じてくれないので、先に書いておきます。" + d.race + "、" + d.type + d.odds + "倍、" + d.dragon + "。",
         "ゲートが開いた瞬間、あの子だけ、進む線がまっすぐでした。ほかの子はみんな、ちょっとだけ迷っていた。……理屈は後から付けます。とにかく、まっすぐだったんです。",
@@ -226,6 +328,14 @@ var KIKO_CUTS = [
 
 // ── 物語回の中身（フラグごと）。★ここに書く人物は、そのフラグ時点で必ず登場済み ──
 var KIKO_STORY_ARTS = {
+  debt: {
+    h: "🧾 借金が、300万あるそうです",
+    p: [
+      "初レースのあと、師匠に呼ばれました。ほめられるのかなと思って行ったら、帳面を見せられました。船賃、宿代、装備の立て替え。合計、300万。",
+      "さんびゃくまん。……声に出したら、桁が口に入りきりませんでした。わたしは着いた日から、大借金のうさぎだったんです。知らないうちに。",
+      "そのうち297万は、師匠が黙って立て替えてくれていました。わたしの持ちぶんは、3万。3万なら返せそう、と思ってしまった自分がこわいです。感覚が、もうおかしい。……とりあえず、屋台でいちばん安いものを食べました。借金があっても、おなかは減ります。"
+    ]
+  },
   assets: {
     h: "🏦 わたしに、値段がついていたらしい",
     p: [
@@ -288,7 +398,8 @@ function kikoMaybeWrite() {
 
     var mats = p.kikoMat || (p.kikoMat = []);
     var races = p.completedRaces || 0;
-    var strong = mats.filter(function (m) { return m.t === "bigwin" || m.t === "win" || m.t === "story"; });
+    // 1件あればすぐ1本になる素材（勝ち・物語に加えて、すっからかん／クラス昇格／服＝暮らしの節目）
+    var strong = mats.filter(function (m) { return m.t === "bigwin" || m.t === "win" || m.t === "story" || m.t === "broke" || m.t === "rankup" || m.t === "outfit"; });
     var floorDue = (races - (p.kikoLastRace == null ? -KIKO_DAILY_EVERY : p.kikoLastRace)) >= KIKO_DAILY_EVERY;
     if (!(mats.length >= 2 || strong.length >= 1 || floorDue)) return null;
 
@@ -330,12 +441,35 @@ function kikoMaybeWrite() {
     while (arts.length > KIKO_ART_MAX) arts.pop();
     if (art.rare) { var hof = p.kikoHof || (p.kikoHof = []); hof.unshift(art); }
     p.kikoUnread = true;
+    // 👀 書いたぶんだけ読者が増える（紀行の仕様＝やったことが記録される→読者が増える→印税になる）。
+    //   殿堂入りはよく読まれる。数は記事に持たせて、紙面で「この記事で +◯人」と見せる。
+    art.fans = kikoFansAdd(art.rare ? KIKO_FANS_RARE : KIKO_FANS_ART);
     try { if (typeof saveGame === "function") saveGame(); } catch (e) {}
     return art;
   } catch (e) { return null; }
 }
 
-function kikoHasUnread() { try { return !!(state.player && state.player.kikoUnread); } catch (e) { return false; } }
+// 紀行タブのドット＝未読の新記事、または連載の取材に行ける（どちらも「開けば何かある」状態）。
+// =========================================================================
+// 👀 書いて増えた読者（state.player.kikoFans）。goalFollowers（goals.js）が足しこむ。
+//   紀行の仕様＝島でやったことが記録される → 読者が増える → 印税（state.js checkDailyLogin）になる。
+//   ★足すのは読者の数だけ。印税の式そのものには触れない（読者×記録の充実、のまま）。
+//   記事1本 +40／殿堂入り +250／連載は回が進むほど大きく（kiko_serial.js）。
+// =========================================================================
+var KIKO_FANS_ART = 40, KIKO_FANS_RARE = 250;
+function kikoFansAdd(n) {
+  try {
+    n = Math.max(0, Math.floor(n || 0));
+    var p = state.player; p.kikoFans = (p.kikoFans || 0) + n;
+    return n;
+  } catch (e) { return 0; }
+}
+function kikoHasUnread() {
+  try { if (state.player && state.player.kikoUnread) return true; } catch (e) {}
+  try { if (typeof kikoSerialReady === "function" && kikoSerialReady()) return true; } catch (e) {}
+  try { if (state.player && state.player.kikoSerial && state.player.kikoSerial.fresh) return true; } catch (e) {}
+  return false;
+}
 
 // =========================================================================
 // 読者コメント（既存SNSのファン名資産を流用）。
@@ -379,6 +513,24 @@ var KIKO_VOICES = {
     { h: "@dragon_news", n: "竜レース速報", ic: "📰", t: "この島の記録として、この記事は残ると思います。" },
     { h: "@oshi_dragon", n: "推し竜ガチ勢", ic: "🔥", t: "こういうのが書けるやつが、結局いちばん強いんだよな。" }
   ],
+  broke: [
+    { h: "@aya_no_hibi", n: "常連のアヤ", ic: "💬", t: "頭を下げられる人は、強いよ。次の屋台は、わたしがおごる。" },
+    { h: "@shima_gohan", n: "島ごはん部", ic: "🍙", t: "「匂いは、ただ」。名言です。……明日は煮込みを多めに作っておきます。" },
+    { h: "@oshi_dragon", n: "推し竜ガチ勢", ic: "🔥", t: "すっからかんを連載に書くやつ、はじめて見た。逆に信用できる。" },
+    { h: "@usamimi_fc", n: "うさ耳ファンクラブ", ic: "🌸", t: "ぱほぱほ……🐰（意味はわからないけど、泣きました）" }
+  ],
+  rank: [
+    { h: "@aya_no_hibi", n: "常連のアヤ", ic: "💬", t: "皆勤賞、ばかにできないよ。来つづけるのが、いちばんむずかしいんだから。" },
+    { h: "@rival_yosou", n: "好敵手の予想家", ic: "🐲", t: "……上で待っている、と言いたいが、俺もまだ下にいる。" },
+    { h: "@oshi_dragon", n: "推し竜ガチ勢", ic: "🔥", t: "上のクラスの竜は、でかいぞ。首が疲れるから覚悟しとけ。" },
+    { h: "@shima_gohan", n: "島ごはん部", ic: "🍙", t: "知らない屋台を楽しみにしている人を、当部は全力で応援します。" }
+  ],
+  fit: [
+    { h: "@usamimi_fc", n: "うさ耳ファンクラブ", ic: "🌸", t: "耳が立ってるの、目に浮かびます🌸 写真も、いつかお願いします。" },
+    { h: "@shima_gohan", n: "島ごはん部", ic: "🍙", t: "服は食べられない。そのとおりです。なので、明日はちゃんと食べてください。" },
+    { h: "@aya_no_hibi", n: "常連のアヤ", ic: "💬", t: "二度見されるの、いい買い物の証拠だよ。" },
+    { h: "@rival_yosou", n: "好敵手の予想家", ic: "🐲", t: "……値札を三回見るのは、普通だ。俺は五回見る。" }
+  ],
   daily: [
     { h: "@aya_no_hibi", n: "常連のアヤ", ic: "💬", t: "なんにもない日の記事、いちばん好きかもしれない。" },
     { h: "@shima_weather", n: "島の天気よほう", ic: "🌤️", t: "明日は北寄りの風。走りやすい日になりそうです。" },
@@ -387,7 +539,7 @@ var KIKO_VOICES = {
   ]
 };
 // 切り口→声のプール（無い切り口は近いものへ寄せる）
-var KIKO_VOICE_MAP = { win: "win", bigwin: "bigwin", lose: "lose", slump: "lose", meal: "meal", view: "view", walk: "view", story: "story", daily: "daily" };
+var KIKO_VOICE_MAP = { broke: "broke", rankup: "rank", outfit: "fit", win: "win", bigwin: "bigwin", lose: "lose", slump: "lose", meal: "meal", view: "view", walk: "view", story: "story", daily: "daily" };
 
 function kikoComments(art) {
   var out = [];
@@ -406,7 +558,7 @@ function kikoComments(art) {
 
 // =========================================================================
 // M4 理由つき前回比：紀行を開いたとき、前回訪問からの読者の増分を“理由ごと”に出す。
-//   式＝goalFollowers（800 + 名声×2 + 完走×15 + 勝利×40）。増えた分だけ帰属表示する。
+//   式＝goalFollowers（800 + 完走×15 + 勝利×40 + 書いて増えた読者）。増えた分だけ帰属表示する。
 //   ★グラフも目標カウンタも置かない（計器禁止）。1行の読み物として出す。
 // =========================================================================
 function kikoReaderDelta() {
@@ -414,16 +566,20 @@ function kikoReaderDelta() {
     var p = state.player;
     var now = (typeof goalFollowers === "function") ? goalFollowers() : 0;
     var snap = p.kikoFolSnap || null;
-    var cur = { races: p.completedRaces || 0, wins: p.wins || 0, fol: now };
+    var cur = { races: p.completedRaces || 0, wins: p.wins || 0, fol: now, fans: p.kikoFans || 0 };
     p.kikoFolSnap = cur;
     if (!snap) return null;                                   // 初回は比較対象が無い
     var diff = now - (snap.fol || 0);
     if (diff <= 0) return null;
     var parts = [];
     var dw = (cur.wins - (snap.wins || 0)), dr = (cur.races - (snap.races || 0));
+    // ★内訳は式どおり（2026-11-13）：完走は勝った戦も含めて1戦15、単勝はそれに加えて40。
+    //   以前は完走を「負けた戦だけ」で数えていたので、勝った戦の15が「島での評判」に回っていた。
     if (dw > 0) parts.push("勝利のニュース +" + (dw * 40));
-    if (dr - dw > 0) parts.push("完走の記録 +" + ((dr - dw) * 15));
-    var rest = diff - dw * 40 - Math.max(0, dr - dw) * 15;
+    if (dr > 0) parts.push("完走の記録 +" + (dr * 15));
+    var dfan = Math.max(0, cur.fans - (snap.fans || 0));
+    if (dfan > 0) parts.unshift("連載と記事 +" + dfan);
+    var rest = diff - Math.max(0, dw) * 40 - Math.max(0, dr) * 15 - dfan;
     if (rest > 0) parts.push("島での評判 +" + rest);
     return { diff: diff, why: parts.join("／") };
   } catch (e) { return null; }
@@ -435,5 +591,6 @@ if (typeof window !== "undefined") {
   window.kikoHasUnread = kikoHasUnread;
   window.kikoComments = kikoComments;
   window.kikoReaderDelta = kikoReaderDelta;
+  window.kikoFansAdd = kikoFansAdd;
   window.KIKO_CUTS = KIKO_CUTS;
 }

@@ -160,8 +160,27 @@ function assetsPeak(st) {
 const MIMI_DEBT_TOTAL = 3000000;   // 総額300万（物語上の重さ）
 const MIMI_DEBT0 = 30000;          // 自力返済分＝第3話関門と同額（完済＝資産開示）
 const MIMI_DEBT_COVERED = MIMI_DEBT_TOTAL - MIMI_DEBT0;   // サケ立替 297万
+// ★最後のひと口は、単勝で1勝するまで残る（2026-11-13・ユーザーから一任されて決定）。
+//   通しプレイの計測で、0勝のまま5戦めに「のこり借金」が0になっていた（ランク2の名声ぶんで到達資産が3万を超える）。
+//   完済の祝い＝資産の開示は第3話のあと＝初勝利のあとにしか出ないので、数字だけが先に消えて、祝いは何戦も後だった。
+//   最後の MIMI_DEBT_LASTWIN を初勝利に結ぶ＝「初勝利→完済→第3話」が一つの山になる（サケ「勝ち星も返済のうちだ」）。
+//   ★表示上の物語のまま：関門（chapterAvailable）・資産の計算・コインには一切触れない。
+//     資産の開示（assetsConceptOpen・assets_reveal_*）はもともと第3話既読＝1勝以上が前提なので、条件は変わらない。
+const MIMI_DEBT_LASTWIN = 3000;
+//   ★第3話を読み終えているセーブは「もう勝った」扱い（以前の版では、勝たずに第3話へ進めた時期がある。
+//     そのセーブで資産の開示だけが止まらないように）。
+function mimiDebtWon() {
+  try {
+    if (((state.player && state.player.wins) || 0) >= 1) return true;
+    return !!(typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_3"));
+  } catch (e) { return true; }
+}
 function mimiDebtLeft() {
-  try { return Math.max(0, MIMI_DEBT0 - assetsPeak(state)); } catch (e) { return 0; }
+  try { return Math.max(0, MIMI_DEBT0 - assetsPeak(state), mimiDebtWon() ? 0 : MIMI_DEBT_LASTWIN); } catch (e) { return 0; }
+}
+// のこりが「初勝利待ちのひと口」だけになっているか（暮らしの画面の一言を出し分ける）。
+function mimiDebtAwaitsWin() {
+  try { return !mimiDebtWon() && (MIMI_DEBT0 - assetsPeak(state)) <= MIMI_DEBT_LASTWIN; } catch (e) { return false; }
 }
 
 // ★資産という「概念」が開示済みか（2026-08-02・ASSET_ONBOARDING_REDESIGN §3）。
@@ -254,13 +273,30 @@ function getBaseRescueCoins(state, rank) {
 // §13.4 — rescue = base + small lifestyle/fame/village bonuses + life-item flat
 // rescueBonus. Coefficients are deliberately small so the rescue supports a
 // retry without erasing the tension of betting (§10.4 / §16).
+// ★無心の額の上限＝「いまの最大の賭け金」の RESCUE_MAX_BETS 回ぶん（2026-11-13・ユーザーから一任されて決定）。
+//   基準額は暮らしレベルの表（Lv1 300／Lv2 1,000／Lv3 5,000／Lv4 30,000…）で、暮らしレベルは初めて見る竜1頭ごとに
+//   経験値が入るので、最初の3戦で Lv3、5戦で Lv4 まで上がる。そのころランクはまだ1（賭金の上限100〜300）なので、
+//   無心の額が最大の賭け金の25倍以上になっていた（3戦めの無心で 5,456）。上の注記の「賭けの緊張を消さずに立て直せる額」
+//   から外れ、全財産（1,500）で服を買った直後に 5,456 が出て、奮発が霞んでいた（Codex の通し試験 2026-11-13）。
+//   ★暮らしレベルの上がり方・資産の計算・物語の門には触れない。無心で受け取る額だけ。
+//   ★上限が効くのは、暮らしレベルがランクより先に進んでいる序盤だけ（ランク1・Lv3＝1,000／ランク2・Lv3＝10,000＞表の額＝変わらず）。
+//     下限は表のいちばん小さい額（Lv1 の 300）＝上限のせいで 300 を下回ることはない。
+const RESCUE_MAX_BETS = 5;
 function calculateRescueCoins(state, rank) {
   const a = state.assets || {};
   const base = getBaseRescueCoins(state, rank);
   const livingBonus  = Math.floor((a.livingValue  || 0) * 0.02);
   const fameBonus    = Math.floor((a.fameValue    || 0) * 0.01);
   const villageBonus = Math.floor((a.villageValue || 0) * 0.01);
-  return base + livingBonus + fameBonus + villageBonus + (a.rescueBonus || 0);
+  const raw = base + livingBonus + fameBonus + villageBonus + (a.rescueBonus || 0);
+  try {
+    const p = state.player || {};
+    const r = p.rank || rank || 1;
+    const lv = (p.village && p.village.level) || p.villageLevel || 1;
+    const maxBet = RANKS[r].maxWager * (VILLAGE_MULT[lv] || 1);
+    const cap = Math.max(RESCUE_COINS[1] || 300, Math.floor(maxBet * RESCUE_MAX_BETS));
+    return Math.min(raw, cap);
+  } catch (e) { return raw; }
 }
 
 // §5.4 — buy a purchasable cosmetic with current coins. Returns a small result

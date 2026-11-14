@@ -237,9 +237,32 @@ function maybePlayPoroBeat(ignoreGap) {
     if (beat.flag && typeof setStoryFlag === "function") setStoryFlag(beat.flag, true);
     _poroMarkBeat();
     if (typeof beat.done === "function") beat.done();
+    // ★出会いの会話が終わったら、「鑑定に出した。結果はあと◯戦ほど」を一言残す（2026-11-13）。
+    //   以前は会話が閉じると何も残らず、次に何を待っているのかが画面から消えていた（Codex の通し試験）。
+    //   待っているあいだは、図鑑の先頭にも「鑑定中」の一枚が出る（ui_render.js renderCollection → poroAppraisalCardHtml）。
+    if (beat.id === "met") {
+      try { if (typeof _showUnlockToast === "function") _showUnlockToast("🔍 " + PORO_UNNAMED + "を、鑑定に出した。結果は、あと" + PORO_BEAT_GAP + "戦ほどで届く。"); } catch (e) {}
+    }
     if (typeof saveGame === "function") saveGame();
   });
   return true;
+}
+// ── 鑑定待ち（出会いは済んだが、結果はまだ）の見せ方 ─────────────────────────
+//   left＝結果が届くまでのレース数（0＝次のレースのあとに届く）。表示のためだけの読み取り。
+function poroAppraisalWaiting() {
+  try {
+    if (!_poroSeen("poroMet") || poroFound()) return null;
+    return { left: Math.max(0, _poroBeatMark() + PORO_BEAT_GAP - _poroRaces()) };
+  } catch (e) { return null; }
+}
+// 図鑑の先頭に出す「鑑定中」の一枚（待っていなければ空文字）。名前の種明かしはしない＝PORO_UNNAMED のまま。
+function poroAppraisalCardHtml() {
+  const w = poroAppraisalWaiting();
+  if (!w) return "";
+  const when = w.left > 0 ? `鑑定の結果は、あと<b>${w.left}戦</b>ほどで届く。` : `鑑定の結果は、<b>次のレースのあと</b>に届きそう。`;
+  return `<div class="card dex-wait"><span class="dex-wait-ph">${poroStandeeHTML(64)}</span>` +
+    `<span class="dex-wait-tx"><b>鑑定中 — ${PORO_UNNAMED}</b>` +
+    `<small>雷雨のあと、資材置き場で拾った仔。名前は、まだ無い。<br>${when}</small></span></div>`;
 }
 // ★出会い＝序盤の「2勝目」（ユーザー指定）。ポロは第3・4章の一枚絵に既に登場するため、章開放
 //   （総資産100万＝第4章）より前に加入させる。wins＝単勝的中数。結果画面(renderResult)から呼ぶ。

@@ -37,7 +37,8 @@ const SCREEN_DEPTH = {
   title: 0, home: 1,
   race_select: 2, village: 2, collection: 2, assets: 2, help: 2, settings: 2, mall: 2, stable: 2, scout: 2,
   story: 3, consult: 3, race_detail: 3, life_tree: 3, life_collection: 3, active_skills: 3, economy: 3, collection_score: 3, poro_gourmet: 3,
-  story_read: 4, race_run: 4, result: 5, analysis: 6
+  story_read: 4, race_run: 4, result: 5, analysis: 6,
+  kiko: 2, kiko_read: 3
 };
 let _prevScreen = null;
 let _heroRect = null;   // rect of a tapped card, to expand from on the next screen
@@ -62,7 +63,7 @@ function beginScreen() {
   const app = $("app");
   const screen = state.ui.screen;
   const prev = _prevScreen;
-  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip", "kiko-page", "yt-page", "kw-page");   // 観光(.kt-page)/暮らし(.lr-page)/紀行(.kiko-page)/メディア(.yt-page)のテーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
+  app.classList.remove("nav-fwd", "nav-back", "nav-same", "nav-racestart", "kt-page", "lr-page", "hl-clip", "kiko-page", "ke-page", "yt-page", "kw-page");   // 観光(.kt-page)/暮らし(.lr-page)/紀行(.kiko-page)/メディア(.yt-page)のテーマ・ホームのはみ出しクリップ(hl-clip)を他画面へ漏らさない
   // ★kw-page（島歩き）を足した理由（2026-08-01・ユーザー報告「島の一枚絵が消えた」）：
   //   scene_konron.js が #app に付けたきり、誰も外していなかった。.kw-page は #app を
   //   display:flex／column にするので、島の観光ページ(.kt-page)へ戻ると **ヒーローの一枚絵が潰れる**。
@@ -76,6 +77,8 @@ function beginScreen() {
   if (screen !== "title") document.body.classList.remove("title-mode");
   if (typeof syncVolumeFab === "function") syncVolumeFab();              // 🔊 全画面常設の音量ボタンを画面に合わせて表示/非表示
   var _scmBn = document.getElementById("scm-bnav-host"); if (_scmBn) _scmBn.remove();   // モールのフロート下部ナビ(body直下fixed)を毎遷移で外す（モールで再設置）
+  // 解放の帯(body直下fixed・progression.js)はホーム専用＝ほかの画面へ連れて行かない。帯自身の見張りに加えて、ここでも確実に外す。
+  if (screen !== "home") { try { document.querySelectorAll(".unlock-banner").forEach(function (x) { x.remove(); }); } catch (e) {} }
   if (prev !== screen) window.scrollTo(0, 0);   // start every new screen at the top
 
   // Hero "expand from the tapped card" (race card → detail) takes priority.
@@ -111,7 +114,8 @@ function beginScreen() {
     konron_guide: "kiko",   // ★ガイドブックは紀行の連載「#島さんぽ」へ引っ越した（2026-07-31 IA統合）
     konron_gallery: "konron_map",
     konron_travelnote: "konron_map",   // 旅ノートは“次どこ行く？”の道具＝おでかけの持ち物として島に残す
-    kiko: "home", media: "home"   // 📖紀行・📱メディア（2026-07-30 IA再編）
+    kiko: "home", media: "home",   // 📖紀行・📱メディア（2026-07-30 IA再編）
+    kiko_read: "kiko"              // 📄 連載の1回 → 紀行へ
   };
   const BACK_TGT = {
     home: { l: "← ホーム", f: renderHome }, assets: { l: "← 暮らし", f: renderAssets }, story: { l: "← 物語", f: renderStory },
@@ -622,6 +626,24 @@ function confirmResetGame() {
 // calculateRescueCoins（基準の救済額）。額の計算は一切変えず、“受け取り方”を黒背景の
 // 「ぱほぱほ。。。」という小芝居にしただけ（着順/オッズ/配当には非干渉）。
 // =========================================================================
+// ★おなかが空っぽで走れないときの一枚（2026-11-13）。以前は、レースを選び、竜を選び、理由を選び、券を千切る
+//   ところまで進んでから「おなかがすいて走れない…」で止めていた＝5手ぶんの行き止まり。走れないと分かっているなら、
+//   入口で言う（ホームのボタン・結果画面の「次へ」・レース選択・賭け画面）。出走表の下見はできるよう画面は出す。
+//   金欠（playerBroke）のときは金欠の一枚が出るので、こちらは出さない。hunger.js を読むだけ。
+function hungryNeedsMeal() {
+  try {
+    if (typeof hungerCanRace !== "function" || hungerCanRace()) return false;
+    return !((typeof playerBroke === "function") && playerBroke());
+  } catch (e) { return false; }
+}
+function hungryCtaEl() {
+  const free = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
+  const b = el("button", "broke-cta hungry-cta",
+    `<span class="broke-ic">🍙</span><span class="broke-tx"><b>おなかがすいて、走れません</b><small>${free ? "きょうは1品、店のおごりが出ます。" : "ひと皿食べれば、また走れます。"}</small></span><span class="broke-go">ごはんへ ▸</span>`);
+  b.onclick = () => { if (typeof renderMeals === "function") renderMeals(); };
+  return b;
+}
+
 function showMushinOverlay() {
   if (document.getElementById("mushin-ov")) return;
   const ov = el("div", "mushin-overlay"); ov.id = "mushin-ov";
@@ -630,7 +652,8 @@ function showMushinOverlay() {
     `<div class="mushin-card">` +
       `<div class="mushin-q">村のみんなに……</div>` +
       `<div class="mushin-title">無心する？</div>` +
-      `<div class="mushin-sub">そっと頭を下げて、基準額をお願いする。<br>賭けに使えるコインを <b>${fmtCoins(amt)}</b> もらえます。</div>` +
+      // ★「基準額」はゲームの裏側の言葉だった（Codex の通し試験 2026-11-13）。暮らしの言葉で言う。額は読むだけ。
+      `<div class="mushin-sub">そっと頭を下げて、少しだけ分けてもらう。<br>みんなが持ち寄ってくれるのは <b>${fmtCoins(amt)}</b> コイン。</div>` +
     `</div>`;
   const card = ov.querySelector(".mushin-card");
   const go = el("button", "mushin-go", "🙏 無心する");
@@ -651,23 +674,59 @@ function runMushin(ov, amt) {
   //   この場面の静けさに見合わず、暗転＋文字だけのほうが強い。素の暗転を正とする。
   ov.innerHTML = `<div class="mushin-paho" id="mushin-paho"></div>`;
   const box = ov.querySelector("#mushin-paho");
-  const lines = ["ぱほ。。。", "ぱほぱほ。。。", "ぱほぱほ。。。ぱほぱほ。。。"];
-  let i = 0;
+  // ★2回め以降は暗転を短く、タップで先へ（2026-11-13・Codex 3回め §3：村の人が「もう袋に分けてあるよ」と慣れていく横で、
+  //   溜めの演出は毎回はじめてと同じ約3秒だった）。初回の静けさはそのまま。
+  //   以前は暗転中に地をタップすると窓ごと消え（確認の窓の「外を押すと閉じる」が残っていた）、受け取りの画面を飛ばしていた。
+  const repeat = (state.player.brokeCount || 0) >= 1;
+  const lines = repeat ? ["ぱほぱほ。。。"] : ["ぱほ。。。", "ぱほぱほ。。。", "ぱほぱほ。。。ぱほぱほ。。。"];
+  let i = 0, fin = false;
+  const finish = () => { if (fin) return; fin = true; finishMushin(ov, amt); };
+  // 「無心する」を押した click がこの窓まで上がってくるので、すぐには付けない（押した瞬間に飛ばさない・二度押しも拾わない）
+  ov.onclick = null;
+  setTimeout(() => { if (!fin) ov.onclick = () => finish(); }, 350);
   (function step() {
+    if (fin) return;
     if (i < lines.length) {
       box.appendChild(el("div", "paho-line", lines[i]));
       try { if (window.Sfx) Sfx.play("tick"); } catch (e) {}
       i++;
       setTimeout(step, 760);
     } else {
-      setTimeout(() => finishMushin(ov, amt), 720);
+      setTimeout(finish, repeat ? 480 : 720);
     }
   })();
+}
+
+// ★無心のあとの一往復（2026-11-13）。以前は「ありがとう。…次は、当てる。」の一行だけで、恥ずかしい失敗が
+//   額を受け取る手続きに見えていた（Codex の通し試験：救済の通知として受け取った／顔のある反応が無い）。
+//   渡す村の人の一言と、ミミの取り繕いを、回数（n＝これで何回め）で変える＝繰り返すほど笑いになる。
+//   額が最初の服の3着ぶん以上なら、ミミが額そのものに驚く（1回だけ）。額・回数は読むだけ。ミミは反応するだけ。
+function mushinTalk(n, amt) {
+  let big = false;
+  try {
+    const pr = (typeof buniqroPrice === "function") ? buniqroPrice() : 1500;
+    big = amt >= pr * 3 && !(state.player.flags || {})._mushinBigSeen;
+    if (big && typeof setStoryFlag === "function") setStoryFlag("_mushinBigSeen", true);
+  } catch (e) {}
+  if (big) return ["ランクが上がりゃ、張る額も上がる。持っていきな。", "こ、こんなに……!?　あの普段着が、三着は買えちゃいますよ!?"];
+  if (n <= 1) return ["顔を上げな。腹が減ってちゃ、竜も見えんよ。", "あ、ありがとうございます……！　次は、当てますっ。"];
+  if (n === 2) return ["おや、また来たね。……まあ、持っていきな。", "うう、すみません……！　こんどこそ、当てます。……たぶん。"];
+  if (n === 3) return ["はいはい。もう袋に分けてあるよ。", "じゅ、準備がいい……！　ありがとうございますっ。"];
+  const pool = [
+    ["今日は早かったねえ。", "……き、記録、更新です。"],
+    ["まいど。", "まいど、じゃないんです……！　でも、ありがとうございますっ。"],
+    ["竜より先に、お前さんの顔を覚えたよ。", "こ、光栄……なのかな……。"]
+  ];
+  return pool[(n - 4) % pool.length];
 }
 
 function finishMushin(ov, amt) {
   state.player.coins += amt;                          // 額・計算は不変（基準の救済額）
   state.player.brokeCount = (state.player.brokeCount || 0) + 1;   // 終章伏線：破産回数（救済額には非干渉・演出のみ）
+  const _talk = mushinTalk(state.player.brokeCount, amt);
+  try { state.ui._walletEvt = { k: "mushin", n: state.player.brokeCount, amt: amt }; } catch (e) {}   // ホームに戻ったときの一言（ui_home.js homeWalletLine）
+  // ✍️ 紀行の素材：すっからかんで頭を下げた日も、記事になる（額は読むだけ・書き戻さない）
+  try { if (typeof kikoMatPush === "function") kikoMatPush("broke", { amt: amt, n: state.player.brokeCount }); } catch (e) {}
   if (typeof bumpMaxCoins === "function") bumpMaxCoins();
   if (typeof recomputeAssets === "function") recomputeAssets(state);
   if (typeof saveGame === "function") saveGame();
@@ -678,7 +737,8 @@ function finishMushin(ov, amt) {
       `<div class="mushin-got-ic">💰</div>` +
       `<div class="mushin-got">村のみんなが、そっと握らせてくれた</div>` +
       `<div class="mushin-amt">+${fmtCoins(amt)}<span> コイン</span></div>` +
-      `<div class="mushin-sub">ありがとう。…次は、当てる。</div>` +
+      `<div class="mushin-talk"><i>村の人</i>「${_talk[0]}」</div>` +
+      `<div class="mushin-talk mimi"><i>ミミ</i>「${_talk[1]}」</div>` +
     `</div>`;
   const done = el("button", "mushin-go", "立て直す ▶");
   done.onclick = () => {
@@ -934,7 +994,8 @@ function renderVillage() {
   runEventHooks("onVillageUpdate", { villageLevel: state.player.villageLevel });
   const app = beginScreen();
   const v = state.player.village || { level: 1, name: "竜の村", facilities: {}, unlockedDragonIds: [] };
-  const rescue = RESCUE_COINS[v.level] || 300;
+  // いま実際に受け取れる額（最大の賭け金の5回ぶんまで・assets_engine.js）。下の「道のり」は表の基準額のまま。
+  const rescue = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, state.player.rank) : (RESCUE_COINS[v.level] || 300);
   const villMult = VILLAGE_MULT[v.level] || 1.0;
   app.appendChild(el("h2", null, "🏘️ 暮らしの拠点"));   // 村名は下のヒーローに出す（見出しと二重にしない）
 
@@ -1619,7 +1680,7 @@ function renderHelp() {
   app.appendChild(section("rescue", "救済システム", [
     `コインが0になっても安心。サケ・ウダダが島の予備コインを渡してくれます（暮らしレベル1で <b>${fmtCoins(_r1)}</b>` +
       (_rMax ? `、暮らしレベル10まで育てば <b>${fmtCoins(_rMax)}</b>` : "") + `）。`,
-    `暮らしと名声が育つほど上乗せされます。<b>いまのあなたの救済見込みは ${fmtCoins(_rNow)}</b>。`,
+    `暮らしと名声が育つほど上乗せされます。ただし一度に受け取れるのは、いまの最大の賭け金の${(typeof RESCUE_MAX_BETS !== "undefined") ? RESCUE_MAX_BETS : 5}回ぶんまで。<b>いまのあなたの救済見込みは ${fmtCoins(_rNow)}</b>。`,
     "借金ではありません。小さく賭けて立て直しましょう。"
   ]));
 
@@ -1900,6 +1961,9 @@ function renderCollection() {
   app.appendChild(el("div", "card", `見た竜: <b>${seenCount}</b> / ${DRAGONS.length} 種` +
     (_ls ? `　｜　📜 伝承 <b>${_ls.got}</b> / ${_ls.total}` : "")));
 
+  // 🔍 鑑定待ちの仔（出会いの会話のあと、結果が届くまでのあいだだけ・poro.js）。
+  try { const _pw = (typeof poroAppraisalCardHtml === "function") ? poroAppraisalCardHtml() : ""; if (_pw) app.insertAdjacentHTML("beforeend", _pw); } catch (e) {}
+
   // §37 — 図鑑コンプリート報酬の進捗
   try {
     const total = DRAGONS.length || 1;
@@ -1980,8 +2044,50 @@ function renderCollection() {
 function featuredRaceToday() {
   const unlocked = RACES.filter(r => r.rank <= state.player.rank);
   const pool = unlocked.length ? unlocked : RACES;
+  // ★はじめの3戦は「第1レース（はじめの一歩）」を注目に固定する（2026-11-12・ユーザー決裁）。
+  //   注目は日替わりなので、初日に当たるレース次第で最初の体験が大きく変わっていた。
+  //   実測（エンジンを読み取り専用で各500回）：新人競竜杯 第5レースは、1番人気（単勝2.1倍）が0勝。
+  //   初めての人が本命を選ぶかぎり必ず負ける。第1レースは同じ条件で1番人気の勝率が約27%。
+  //   ★どのレースを目立たせるかを替えるだけ。着順・オッズ・配当の計算には触れていない。
+  try {
+    if (((state.player && state.player.completedRaces) || 0) < 3) {
+      const first = pool.find(r => r.id === "race_grandclock_1");
+      if (first) return first;
+    }
+  } catch (e) {}
   const day = (typeof _epochDay === "function") ? _epochDay() : 0;
   return pool[((day % pool.length) + pool.length) % pool.length];
+}
+// 「次の一戦」として薦めるレース（2026-11-13・表示のみ）。
+//   ★以前はホームの「次の一戦」もレース選択の一番上のカードも、いつも「本日の注目レース」だった。
+//     注目の達成ボーナスは1日1回なので、受け取ったあとも同じレースを薦めつづけ、同じレースを何度も走ることになっていた
+//     （Codex の通し試験「Aの3戦目、同じレースの反復」）。
+//   ★受け取る前＝注目レース（ボーナスの案内つき）。受け取ったあと＝いまのランク帯の、注目とも直前とも違うレース。
+//     1戦走るごとに順ぐりに替わる（完走数で回す＝同じ画面を開き直しても変わらない）。
+//   ★薦める先を替えるだけ。ボーナスの判定（settleRace の featuredRaceToday）・着順・オッズ・配当には触れない。
+//   ★はじめの3戦のあいだは第5レースを薦めない（1番人気が0/500勝の計測。featuredRaceToday の注記と同じ理由）。
+function nextRaceSuggestion() {
+  const feat = featuredRaceToday();
+  try {
+    const claimed = (typeof _epochDay === "function") && state.player.featuredDoneDay === _epochDay();
+    if (!claimed || !feat) return { race: feat, featured: true };
+    const p = state.player, done = p.completedRaces || 0;
+    const lastId = (state.current && state.current.race && state.current.race.id) || "";
+    const unlocked = RACES.filter(r => r.rank <= p.rank);
+    const ok = r => r.id !== feat.id && r.id !== lastId && !(done < 3 && r.id === "race_grandclock_5");
+    let cands = unlocked.filter(r => r.rank === p.rank && ok(r));        // いまのランク帯が先（昇格の条件がここで進む）
+    if (!cands.length) cands = unlocked.filter(ok);
+    if (!cands.length) return { race: feat, featured: true };
+    return { race: cands[done % cands.length], featured: false };
+  } catch (e) { return { race: feat, featured: true }; }
+}
+// 開催地域のコース写真（島の地図のスポットと共用・無ければ空文字）。表示のみ。
+function _regionCoursePhoto(region) {
+  try {
+    if (!region || typeof KONRON_SPOTS === "undefined") return "";
+    for (const id in KONRON_SPOTS) { const sp = KONRON_SPOTS[id]; if (sp && sp.region === region && sp.photo) return sp.photo; }
+  } catch (e) {}
+  return "";
 }
 function featuredBonusAmount() {
   return Math.max(300, Math.floor((state.player.maxCoinsReached || 0) * 0.015));
@@ -2040,7 +2146,11 @@ function renderRaceSelect() {
   // ★開幕のミミの一言（first_race_intro_mimi）が終わった直後に、Lv.1「ドロミズすすりマン」を
   //   授ける（ユーザー案）。称号システムがここで一気に伝わり、しかも笑いになる。
   //   runEventHooks は喋り終わりの Promise を返すので、その後に出す＝セリフに被らない。
-  Promise.resolve(runEventHooks("beforeRaceSelect")).then(function () {
+  // ★財布が空で後回しにした助言（3連敗の賭式の話など・event_hooks.js deferWhileBroke）は、立て直してから最初のここで出す
+  //   （2026-11-14）。会話の列は直列なので、上のフックの会話のすぐあとに続く。
+  const _selTalk = runEventHooks("beforeRaceSelect");
+  const _laterTalk = (typeof flushDeferredEvents === "function") ? flushDeferredEvents() : null;
+  Promise.all([_selTalk, _laterTalk]).then(function () {
     try { if (typeof maybeCelebrateLiving === "function") maybeCelebrateLiving(); } catch (e) {}
   });
   const app = beginScreen();
@@ -2049,28 +2159,34 @@ function renderRaceSelect() {
   // ★金欠ガード（2026-08-02・実機プレイ指摘「コイン0でもレースに進めてしまう」）。
   //   賭けられないのにレースを選ばせるのは行き止まり。目立つ一枚を最上部に置き、無心へ送る。
   //   レース一覧自体は下見できるよう残す（表示専用・数値非干渉）。
-  if (((state.player && state.player.coins) || 0) <= 0) {
+  if ((typeof playerBroke === "function") ? playerBroke() : (((state.player && state.player.coins) || 0) <= 0)) {
     const bk = el("button", "broke-cta",
-      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>コインが尽きています</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
+      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが少しずつ分けてくれます</small></span><span class="broke-go">▸</span>`);
     bk.onclick = () => renderHome();
     app.appendChild(bk);
+  } else if (hungryNeedsMeal()) {
+    app.appendChild(hungryCtaEl());
   }
 
   // 本日の注目レース — a prominent, daily-rotating spotlight
   try {
-    const feat = featuredRaceToday();
+    // 受け取り前＝本日の注目レース／受け取り後＝別の「つぎの一戦」（nextRaceSuggestion）。
+    const _sug = nextRaceSuggestion();
+    const feat = _sug.race;
     if (feat) {
       const claimed = (typeof _epochDay === "function") && state.player.featuredDoneDay === _epochDay();
       const fc = el("div", "feat-race");
       const theme = REGION_THEME[feat.region];
       if (theme) fc.style.setProperty("--region-accent", theme.accent);
       fc.innerHTML =
-        `<div class="feat-tag">★ 本日の注目レース ★</div>` +
+        `<div class="feat-tag">${_sug.featured ? "★ 本日の注目レース ★" : "★ つぎの一戦 ★"}</div>` +
         `<div class="feat-name">${gradeBadgeHTML(feat.rank)}${raceFullName(feat)}</div>` +
         `<div class="feat-meta">ランク${feat.rank}　${RANKS[feat.rank].label}　｜　${DISTANCE[feat.distance].label}　｜　${WEATHERS[feat.weather].label}</div>` +
         `<div class="feat-purpose">${raceBlurb(feat)}</div>` +
-        `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の達成ボーナス 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
-        `<button class="feat-go">注目レースへ ▶</button>`;
+        `<div class="feat-reward ${claimed ? "done" : ""}">${claimed ? "本日の注目ボーナスは 受取済み ✓" : "🎁 今日はじめての完走で 達成ボーナス！"}</div>` +
+        `<button class="feat-go">${_sug.featured ? "注目レースへ ▶" : "このレースへ ▶"}</button>`;
+      const _fph = _regionCoursePhoto(feat.region);   // 注目カードの背にもコースの写真（右側にうっすら）
+      if (_fph) { fc.classList.add("feat-photo"); fc.style.setProperty("--feat-photo", `url("${_fph}")`); }
       fc.querySelector(".feat-go").onclick = () => renderRaceDetail(feat);
       app.appendChild(fc);
     }
@@ -2146,6 +2262,13 @@ function renderRaceSelect() {
   ctrl.appendChild(distRow);
   app.appendChild(ctrl);
 
+  // ✍️ 連載「島ぐらし」の次の回がコースの回なら、どの地域で走ると書けるかを1行だけ知らせる（表示のみ）。
+  //   レースの並びや中身には触れない＝「どれを走るか」を決める材料がひとつ増えるだけ。
+  try {
+    const _ct = (typeof kikoSerialCourseTarget === "function") && kikoSerialCourseTarget();
+    if (_ct) app.appendChild(el("div", "rs-kiko",
+      `<span class="rs-kiko-k">連載 第${_ct.no}回</span><span class="rs-kiko-t">${_ct.text}</span>`));
+  } catch (e) {}
   const listWrap = el("div", "rs-list");
   app.appendChild(listWrap);
 
@@ -2174,6 +2297,12 @@ function renderRaceSelect() {
       shownAny += vis.length;
       const head = el("div", "rs-grp-head",
         `<b>${mode === "rank" ? gradeBadgeHTML(g.grade) : "📍 "}${g.title}</b><span>${g.sub}</span>`);
+      // ★地域の見出しに、そのコースの写真を敷く（2026-11-12）。文字だけの一覧だったレース選択に、
+      //   「どんな場所で走るのか」を絵で出す。写真は島の地図のコース写真（KONRON_SPOTS の region つき）を読むだけ。
+      if (mode !== "rank") {
+        const _ph = _regionCoursePhoto(vis[0] && vis[0].region);
+        if (_ph) { head.classList.add("rs-grp-photo"); head.style.backgroundImage = `linear-gradient(90deg, rgba(8,12,16,.86) 0%, rgba(8,12,16,.55) 46%, rgba(8,12,16,.12) 100%), url("${_ph}")`; }
+      }
       listWrap.appendChild(head);
       const body = el("div", "rs-rank-body");
       vis.forEach(r => body.appendChild(buildRaceCard(r, r.rank > state.player.rank, g.hideRegion)));
@@ -2281,6 +2410,8 @@ function showRaceTermInfo(kind, race) {
 
 function renderRaceDetail(race) {
   state.ui.screen = "race_detail";
+  // 後回しにした助言が、レース選択を通らずに賭け画面へ来た場合でも、賭ける前に出る（ふつうはレース選択で出し終えている＝何もしない）
+  try { if (typeof flushDeferredEvents === "function") flushDeferredEvents(); } catch (e) {}
   runEventHooks("afterRaceSelect", { race });
 
   // §09 §12-16 Entry encouragement opportunity (may modify entries).
@@ -2323,11 +2454,13 @@ function renderRaceDetail(race) {
   const app = beginScreen();
   // ★金欠ガード（2026-08-02）：レース選択と同じ一枚を賭け画面にも。賭けられないまま
   //   スリップまで進んで詰まるのを防ぐ（出走表の下見はできるよう画面自体は出す）。
-  if (((state.player && state.player.coins) || 0) <= 0) {
+  if ((typeof playerBroke === "function") ? playerBroke() : (((state.player && state.player.coins) || 0) <= 0)) {
     const bk = el("button", "broke-cta",
-      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>コインが尽きています</b><small>ホームで「無心する」と、村のみんなが基準額を持たせてくれます</small></span><span class="broke-go">▸</span>`);
+      `<span class="broke-ic">🙏</span><span class="broke-tx"><b>${((state.player && state.player.coins) || 0) <= 0 ? "コインが尽きています" : "ごはん代が足りません"}</b><small>ホームで「無心する」と、村のみんなが少しずつ分けてくれます</small></span><span class="broke-go">▸</span>`);
     bk.onclick = () => renderHome();
     app.appendChild(bk);
+  } else if (hungryNeedsMeal()) {
+    app.appendChild(hungryCtaEl());
   }
   // Popularity-sorted entries — shared by the pick cards and the dragon-info table.
   const sorted = [...oddsResult.oddsData].sort((a, b) => a.popularityRank - b.popularityRank);
@@ -2626,6 +2759,9 @@ function renderRaceDetail(race) {
     updateExpected();
   }
 
+  // ★出走表の行に竜の姿を出す（2026-11-12・ユーザー指示「まず見た目が製品になっていること」）。
+  //   それまでは16pxの紋章と文字と数字だけで「信じる一頭」を選ばせていた（絵は「▾見る」を開いた中だけ）。
+  //   絵は images/dragons/<id>.png（透過・レース画面と同じもの）を読むだけ＝表示のみ。読めなければ枠ごと消える。
   sorted.forEach(od => {
     const d = DRAGONS.find(x => x.id === od.dragonId);
     const rk = od.popularityRank;
@@ -2636,6 +2772,7 @@ function renderRaceDetail(race) {
     card.innerHTML = `
       <span class="bp-order" style="display:none"></span>
       <span class="bp-pop p${rk <= 3 ? rk : ""}">${rk}<small>人気</small></span>
+      <span class="bp-art"><img src="images/dragons/${d.id}.png?v=${typeof RC_DRAGON_ART_V !== "undefined" ? RC_DRAGON_ART_V : 1}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.remove()"></span>
       <span class="bp-main">
         <span class="bp-name">${dragonIcon(d)}${d.name}</span>
         <span class="bp-sub"><span class="style-${d.style}">${STYLE_LABEL[d.style]}</span>${d.newspaperMark ? `<span class="bp-mark">${d.newspaperMark}</span>` : ""}<span class="bp-form">${recentResultLabel(d.recentResult)}</span>${typeof rivalTagHtml === "function" ? rivalTagHtml(d.id) : ""}</span>
@@ -3160,6 +3297,12 @@ function onConfirmBet(skipDialog) {
   // ★C-3の門番も再武装。state.current はレース間で使い回されるため、ここで戻さないと
   //   2戦目以降の「根拠の通算成績」が記録されない（実プレイで発見・1戦目だけ記録されていた）。
   c._reasonScored = false;
+  // ★同じ型の取りこぼしが、あと2つあった（2026-11-12 通しプレイで発覚）。
+  //   _poroArcTried：戻していなかったので、ポロの物語は「読み込み後の最初の1戦」でしか試されず、
+  //     同じ回のうちに2勝しても相棒と出会えなかった（実測：4勝してもポロ未登場・目標だけ達成ずみ）。
+  //   _rivalScored：前のレースのライバル対決の結果が、次のレースにもそのまま出ていた。
+  c._poroArcTried = false;
+  c._rivalScored = null;
   c.raceResult = raceResult;
   c._fixedResult = null; c._celestiaRevealed = null;   // consult is consumed by the run
   const betResult = resolveBet(c.bet, raceResult, c.oddsResult);
@@ -3173,8 +3316,24 @@ function onConfirmBet(skipDialog) {
   state.player.pendingPayout = (c.betResult && c.betResult.payout) || 0;
   saveGame();
   // レース直前の煽り（立ち絵）→ 閉じてからレース映像へ。結果は既に runRace で確定済み・不変。
-  if (window.DLG && DLG.PRE_RACE_HYPE && window.Dialogue && Dialogue.play) {
-    Dialogue.play(DLG.preRace(c.race, c.bet)).then(renderRaceRun);
+  // ★出すのは「はじめての一戦」と「大勝負」だけ（2026-11-13）。以前は毎レース出ていて、券を千切ったあとに
+  //   もう一度会話を送らないと走り出さなかった（Codex の通し試験「この手順をもう済ませたのにまだ走らない」）。
+  //   しかも台詞は賭金とランクで決まるので、同じ賭け方だと毎回同じ一言だった。
+  //   大勝負＝賭金500以上で、しかも賭ける前の財布の半分以上（ここでは賭金は引かれたあとなので、足して比べる）。
+  //   それ以外は、千切ったらそのまま入場へ（入場の実況と、キャスターのミミがそこに居る）。
+  const _hypeFirst = ((state.player.completedRaces || 0) < 1);
+  const _hypeBig = (c.bet.wager >= 500) && (c.bet.wager >= ((state.player.coins || 0) + c.bet.wager) * 0.5);
+  // ★最後のコインを全部賭けた（賭けたら財布が0）ときも言う（2026-11-13・data_dialogue.js preRaceAllIn）。
+  //   服を買って残り100、その100を賭ける——いちばん貧乏な勝負どころなのに、賭金が小さいので「大勝負」に入らず黙っていた。
+  //   無心1回につき1度だけ（毎戦ぜんぶ賭ける人に、毎戦は出さない）。賭金・所持は読むだけ。
+  const _bc = state.player.brokeCount || 0;
+  const _hypeAllIn = !_hypeFirst && c.bet.wager > 0 && (state.player.coins || 0) <= 0 && state.ui._allInSaidAt !== _bc;
+  if (_hypeAllIn) state.ui._allInSaidAt = _bc;
+  // 全部賭けた一戦の印（当てて帰ってきたときの、ホームの一言に使う・ui_home.js homeWalletLine）
+  if (c.bet.wager > 0 && (state.player.coins || 0) <= 0) state.ui._allInRace = (state.player.completedRaces || 0) + 1;
+  if (window.DLG && DLG.PRE_RACE_HYPE && window.Dialogue && Dialogue.play && (_hypeFirst || _hypeBig || _hypeAllIn)) {
+    const _lines = (_hypeAllIn && typeof DLG.preRaceAllIn === "function") ? DLG.preRaceAllIn(c.bet, _bc) : DLG.preRace(c.race, c.bet);
+    Dialogue.play(_lines).then(renderRaceRun);
   } else {
     renderRaceRun();
   }
@@ -3233,6 +3392,11 @@ function settleRace() {
   };
   updateCollectionFromRace(raceResult, c.bet, betResult);
   // §37 — 注目レース日次ボーナス + 図鑑コンプ報酬 (meta-rewards; not part of payout).
+  // ★state.current は次のレースでも同じオブジェクトを使い回す。ここで毎回 0 に戻さないと、
+  //   もらった日の ＋300 が残りつづけ、2戦め以降の結果画面と「📦 今回の獲得」に
+  //   「注目レース達成 ＋300」が**入っていないのに**出つづける（2026-11-12 通しプレイで発覚。
+  //   実測：所持 1,695→1,595 なのに ＋300 の表示）。額・支払いの条件は変えていない＝表示を事実に合わせるだけ。
+  c.featuredBonus = 0;
   try {
     const fday = (typeof _epochDay === "function") ? _epochDay() : null;
     if (fday != null && c.race && typeof featuredRaceToday === "function" &&
@@ -3303,9 +3467,21 @@ function settleRace() {
                         type: ({ win: "単勝", place: "複勝", wide: "ワイド" }[c.bet.type] || "") };
         if (_mult >= 10) kikoMatPush("bigwin", Object.assign({ mult: _mult.toFixed(1) }, _base));
         else if (c.bet.type === "win") kikoMatPush("win", _base);
-      } else if ((state.player.missRun || 0) >= 3) {
+      } else if ([3, 5, 8, 12, 17, 23, 30].indexOf(state.player.missRun || 0) >= 0) {
+        // ★連敗の記事は節目だけ（3・5・8・12…）。以前は3連敗以降ずっと毎レース素材が入り、
+        //   「8連敗→9つづき→10連敗」と同じ文面の記事が1戦ごとに並んでいた（通しプレイで確認）。
         kikoMatPush("lose3", { run: state.player.missRun, race: _rn });
       }
+      // クラスが上がった日（勝っていなくても上がる＝そのまま記事のネタになる）
+      if (state.player.rank > _rank0) kikoMatPush("rankup", { rank: state.player.rank, wins: state.player.wins || 0 });
+    }
+  } catch (e) {}
+  // ✍️ コースの記録（地域ごとの出走・的中・さいごに見た一着）＝連載「島ぐらし」のコースの回が読む。
+  //   ★ここまでで着順も払戻も確定済み。結果を写し取るだけで、数値には一切書き戻さない。
+  try {
+    if (typeof kikoCourseNote === "function") {
+      const _w = raceResult && raceResult.entries && raceResult.entries[0] && raceResult.entries[0].dragon;
+      kikoCourseNote(c.race, !!betResult.hit, (_w && _w.name) || "");
     }
   } catch (e) {}
   saveGame();
@@ -3324,6 +3500,8 @@ function showBetConfirm() {
   const overlay = document.getElementById("event-overlay");
   // ★投票券モチーフ（C演出）：半券つきチケット→「千切って出走」。表示のみ＝数値は betOdds のまま。
   const serial = `No.${String((state.player.completedRaces || 0) + 1).padStart(4, "0")}`;   // 通算何戦目か（旧＝レースIDの断片「LDERA4」が見えていた）
+  // 前回の賭けの理由（2戦目から。初回は選ばせる）。BET_REASONS に無い古い値は無視＝選ばせる側に倒す。
+  const _prevReason = ((state.player.completedRaces || 0) >= 1 && state.player.betReason && BET_REASONS[state.player.betReason]) ? state.player.betReason : null;
   document.getElementById("event-speaker").textContent = "🎫 聖龍レース投票券";
   document.getElementById("event-text").innerHTML =
     `<div class="tix" id="tix-card">` +
@@ -3342,12 +3520,12 @@ function showBetConfirm() {
     // ★根拠の宣言をここへ移設（スリップ上ではスキップされ「選ばない」が大多数になっていた）。
     //   選ばないと出走ボタンが押せない＝必ず1つ選ぶ。結果画面C-3の答え合わせの材料になる。
     `<div class="bcf-reason" id="bcf-reason">` +
-      `<div class="bcf-q">どうしてこの子？<small>選ぶと出走できます</small></div>` +
+      `<div class="bcf-q">どうしてこの子？<small>${_prevReason ? "前回と同じ。押すと変えられます" : "選ぶと出走できます"}</small></div>` +
       `<div class="bcf-chips">` +
-        `<button type="button" class="bcf-chip" data-r="kan">💗 好み</button>` +
-        `<button type="button" class="bcf-chip" data-r="data">📊 能力データ</button>` +
-        `<button type="button" class="bcf-chip" data-r="tell">🏁 レース展開</button>` +
-        `<button type="button" class="bcf-chip" data-r="value">💰 うまみ</button>` +
+        `<button type="button" class="bcf-chip${_prevReason === "kan" ? " chosen" : ""}" data-r="kan">💗 好み</button>` +
+        `<button type="button" class="bcf-chip${_prevReason === "data" ? " chosen" : ""}" data-r="data">📊 能力データ</button>` +
+        `<button type="button" class="bcf-chip${_prevReason === "tell" ? " chosen" : ""}" data-r="tell">🏁 レース展開</button>` +
+        `<button type="button" class="bcf-chip${_prevReason === "value" ? " chosen" : ""}" data-r="value">💰 うまみ</button>` +
       `</div>` +
     `</div>`;
   // Swap close button for two buttons（出走＝主ボタン／やめる＝副）
@@ -3364,8 +3542,16 @@ function showBetConfirm() {
   //   以前は disabled で灰色表示していたが、押せないボタンが見えている状態は
   //   規制されている感じ＝心理的ストレスになる。選んだ瞬間に下からせり出させて、
   //   「選んだから次に進める」という前向きな因果として見せる。
-  actions.classList.add("pending");
-  state.current.betReason = null;
+  // ★2戦目からは、前回の理由を選んだ状態で出す（2026-11-12）。
+  //   毎回かならず選び直させると、3戦目には「もう済ませた手続きなのにまだ走らない」になる
+  //   （Codex の通し試験）。初回だけは問いとして選ばせ、以後は変えたいときだけ押す。
+  //   理由別の戦績（reasonStats）はこれまでどおり、出走した時点の理由で記録される。
+  if (_prevReason) {
+    state.current.betReason = _prevReason;
+  } else {
+    actions.classList.add("pending");
+    state.current.betReason = null;
+  }
   (function wireReasonChips() {
     const host = document.getElementById("bcf-reason"); if (!host) return;
     host.querySelectorAll(".bcf-chip").forEach(chip => {
@@ -3390,6 +3576,15 @@ function showBetConfirm() {
       //   🍽ごはんタブはIA再編で廃止済み＝存在しない場所を指していた。しかもボタンが無く、
       //   走れないと言われた側は自力で辿るしかなかった。行き先を文字で書かず、ここから飛ばす。
       const _freeMeal = (typeof hungerFreeMealOk === "function") && hungerFreeMealOk();
+      // ★ごはん代も足りないなら、行き先はごはんではなく無心（詰み回避②・hunger.js hungerStuck）。
+      if (typeof hungerStuck === "function" && hungerStuck()) {
+        if (typeof showInfoPopup === "function") showInfoPopup("🍖 おなかがすいて走れない…",
+          sakeLine +
+          `<div class="mm-row"><span class="mm-ic">🙏</span><div><b>ごはん代が足りません</b><small>ホームで「無心する」と、村のみんなが少しずつ分けてくれます。</small></div></div>`,
+          null,
+          { label: "🙏 ホームへ ▸", fn: function () { if (typeof renderHome === "function") renderHome(); } });
+        return;
+      }
       if (typeof showInfoPopup === "function") showInfoPopup("🍖 おなかがすいて走れない…",
         sakeLine +
         `<div class="mm-row"><span class="mm-ic">🍽</span><div><b>ごはんを食べよう</b><small>` +
@@ -3983,6 +4178,18 @@ const RECAP_TABS = [
 function renderResult() {
   state.ui.screen = "result";
   const c = state.current;
+  // ★結果を見せ切ってから会話を出す（2026-11-12・Codex の通し試験＋ユーザーから「その程度は自分で判断を」）。
+  //   以前は結果を描くのと同時に、借金の説明・衣装の贈呈・昇格の会話が全画面でかぶさり、
+  //   的中の文字も、数字が増えていく演出も、その下で誰にも見られずに終わっていた。
+  //   会話の列に「間」を1つ挟み、当たり＝数字が数え上がってひと呼吸／外れ＝判定とミミの一言を読む時間、
+  //   を置いてから始める。会話そのもの・順番・一度きりの印は変えない（出る時刻だけ）。
+  //   1レースに1回（タブ切替の再描画では挟まない）。
+  if (!c.resultHooksRan && window.Dialogue && Dialogue.hold) {
+    try {
+      const _t = (c.betResult && c.betResult.hit && typeof resultTierOf === "function") ? resultTierOf(c.betResult) : 0;
+      Dialogue.hold(_t > 0 ? 900 + _t * 220 + 1400 : 2000);
+    } catch (e) {}
+  }
   // Settle the wallet + progression now that the race is over — once per race
   // (c.settled guard), before the bankruptcy/reaction hooks that read coins.
   settleRace();
@@ -4009,7 +4216,12 @@ function renderResult() {
     //   runEventHooks は台詞終了の Promise を返すので、喋り終わってから移動する。
     if (state.player.coins <= 0) {
       const _p = runEventHooks("onBankruptcy", { race: c.race });
-      if (_p && _p.then) _p.then(() => { if (state.player.coins <= 0) renderHome(); });
+      // ★この一戦の会話を結果画面で出し切ってからホームへ（2026-11-14）。以前はサケの一言が終わった瞬間にホームへ移り、
+      //   あとから列に入った会話（ポロの段など）がホームの上で開いていた（ホームでは立ち絵の会話を出さない決まり）。
+      //   Dialogue.play([]) ＝ いま並んでいる会話の最後尾を待つ。自分でホームや別の画面へ移っていたら、描き直さない
+      //   （ホームの知らせの順番を最初からやり直さない・読んでいる画面から引き戻さない）。
+      if (_p && _p.then) _p.then(() => ((window.Dialogue && Dialogue.play) ? Dialogue.play([]) : null))
+        .then(() => { if (state.player.coins <= 0 && state.ui.screen === "result") renderHome(); });
     }
     // 🎉 的中時＝結果画面のファンファーレ（「ファンファーレの日々」）。1レースにつき1回だけ・単発（ループ無し）。
     //   結果は zone=other なので bgm_zones は奪わず、ホームへ戻ると自然停止。外れは従来どおり無音。
@@ -4063,10 +4275,16 @@ function drawRecapScreen() {
         else _rv = c._rivalScored;
       }
       const box = el("div", "rs-reason" + (ps.hit ? " hit" : " miss"));
+      // ★理由への返事は「自分の竜と、見た区間」を名指す（js/bet_story.js・確定済みの事実を読むだけ）。
+      //   読めないときだけ、従来の総括文（BET_REASONS の win/lose）へ落ちる。
+      const _reply = (typeof reasonReplyLine === "function" && reasonReplyLine(c, rk)) || (ps.hit ? R.win : R.lose);
+      const _trace = (typeof betStoryTraceHtml === "function") ? betStoryTraceHtml(c, rk) : "";
+      const _miss = !ps.hit ? missReasonLine(c) : "";
       box.innerHTML =
         `<div class="rsr-top"><span class="rsr-ic">${R.ic}</span>` +
-        `<span class="rsr-msg">${ps.hit ? R.win : R.lose}</span></div>` +
-        (!ps.hit ? `<div class="rsr-miss">${missReasonLine(c)}</div>` : "") +
+        `<span class="rsr-msg">${_reply}</span></div>` +
+        _trace +
+        (_miss ? `<div class="rsr-miss">${_miss}</div>` : "") +
         (_rv.revenged ? `<div class="rsr-revenge">⚔️ ${_rv.name} に、借りを返した。</div>` : "") +
         `<div class="rsr-stat">${R.ic} ${R.name}での予想　<b>${st.w}勝${st.l}敗</b></div>`;
       // ★負けた相手を「名前のある相手」にする＝図鑑へ1タップで飛べる導線。
@@ -4098,6 +4316,18 @@ function drawRecapScreen() {
       if (g.streakBonus > 0) R("🔥", "連勝ボーナス", "＋" + fmtCoins(g.streakBonus), "gain");
       if (g.featuredBonus > 0) R("★", "注目レース達成", "＋" + fmtCoins(g.featuredBonus), "gain");
       g.collectionLabels.forEach((lb, i) => R("📖", lb, "＋" + fmtCoins(c.collectionAwards[i].reward), "gain"));
+      // ★この一戦でお財布がどう動いたかの合計（2026-11-13）。外れ（賭金 −100）なのに注目や図鑑のごほうびで財布は増えている、
+      //   というときに、上の「ハズレ」と財布の増減が食い違って見えた（Codex の通し試験）。台帳の数字を足すだけ。
+      //   足すものが賭けの結果だけ（＝上の行と同じ数字）のときは出さない。
+      try {
+        const _extra = (g.streakBonus || 0) + (g.featuredBonus || 0) + (g.collectionCoins || 0);
+        if (_extra > 0) {
+          const _net = (g.hit ? g.payout : 0) - (g.wager || 0) + _extra;
+          // 当たりのときは上の行が「配当（賭金込みの受け取り）」なので、賭金を引いたことを題に書く＝上の行を足した数と食い違わない。
+          const _lb = g.hit ? ("賭金 −" + fmtCoins(g.wager || 0) + " を引いて、お財布は") : "この一戦で、お財布は";
+          R("🧮", _lb, (_net >= 0 ? "＋" : "−") + fmtCoins(Math.abs(_net)), "sum " + (_net >= 0 ? "gain" : "loss"));
+        }
+      } catch (e) {}
       // ★資産は「借金を返し終えて開示される概念」（assetsConceptOpen）。開示前に「資産 ＋2万」が出ると、
       //   負けたのに増えた理由も分からず、開示の物語も先に割れる → 開示後だけ出す。
       const _assetsOpen = (typeof assetsConceptOpen !== "function") || assetsConceptOpen();
@@ -4144,11 +4374,29 @@ function drawRecapScreen() {
   //   読み飛ばす癖をつけてしまう。キャラの声は、立ち絵つきの物語と各相談役パネル
   //   （分析予想／出走表／財政）＝そのキャラが実際に情報を持っている場所に集約する。
   // next-goal nudge (north star) — keep a target in view after every race
+  // ★ここの「次の目標」を、ホームの札と同じ目標にそろえる（2026-11-13）。
+  //   以前は別の系統（nextGoals＝ランクの条件）を出していて、ホームの札は「はじめて的中する」、結果画面は
+  //   「ランク2 地方小杯 — R1戦で 的中あと2回（完走あと4戦／所持2,000でも解放）」と、目標が2つあった。
+  //   しかも後者は3つの条件を1行に詰めた内部の言葉で、毎戦これを読まされていた（Codex の通し試験：
+  //   「失敗のたびの…大きな次ランク条件を処理し、次の投票を作る感覚になる」）。
+  //   主役＝ホームの札と同じ目標（goals.js nextGoal・伏せ字の決まりも同じ）。ランクは「いちばん近い道」だけを1行で添える。
+  //   押すと目標の一覧へ。達成の判定・ランクの条件は読むだけ。
   try {
+    const _ng = (typeof nextGoal === "function") ? nextGoal() : null;
     const goals = (typeof nextGoals === "function") ? nextGoals(state) : [];
-    if (goals.length) {
-      const g = goals[0];
-      app.appendChild(el("div", "rs-nextgoal", `🎯 次の目標：${g.icon} ${g.label} — <b>${g.sub}</b>`));
+    const _rk = goals.find(g => g.kind === "rank");
+    let _h = "";
+    if (_ng) {
+      const _hint = (typeof goalHintSafe === "function") ? goalHintSafe(_ng) : "";
+      _h += `<span class="rng-k">いまの目標</span>` +
+        `<span class="rng-t">${(typeof goalIconSafe === "function") ? goalIconSafe(_ng) : _ng.icon} ${(typeof goalTitleSafe === "function") ? goalTitleSafe(_ng) : _ng.title}</span>` +
+        (_hint ? `<span class="rng-h">${_hint}</span>` : "");
+    }
+    if (_rk) _h += `<span class="rng-r">🏅 ${String(_rk.label).split(" ")[0]}へ　<b>${_rk.short || _rk.sub}</b></span>`;   // 1行に収めるため、ランクの呼び名（地方小杯 など）は一覧のほうに任せる
+    if (_h) {
+      const _gb = el("button", "rs-nextgoal", _h + `<span class="rng-go">▸</span>`);
+      _gb.onclick = () => { if (typeof renderGoals === "function") renderGoals(); };
+      app.appendChild(_gb);
     }
   } catch (e) {}
 
@@ -4185,19 +4433,47 @@ function drawRecapScreen() {
   if (_nx) app.appendChild(_nx);
 
   // --- Persistent actions（導線：ホーム／詳しい分析＝副、次のレース＝主CTA） ---
-  const actions = el("div", "actions");
-  const home2 = el("button", "secondary", "ホーム"); home2.onclick = renderHome;
-  actions.appendChild(home2);
+  // ★次の操作のすぐ上に、この一戦のあとのお財布とおなか（2026-11-13）。結果は画面のいちばん上にあり、
+  //   ここまで降りてくると「で、いまいくら持っていて、次は走れるのか」が見えなかった（Codex の通し試験：
+  //   「その一戦で何が残ったかを、次の操作の近くに置くとよい」）。確定済みの数字を読むだけ。
+  const _brokeNow = (typeof playerBroke === "function") && playerBroke();
+  const _eatFirst = hungryNeedsMeal();
+  // ★お財布の列と主役のボタンは、画面の下端に残す（2026-11-13・Codex 3回め #6）。結果を開いた最初の画面では、
+  //   全8頭・勝負どころ・島時間を送った先にしか無く、毎戦スクロールして探していた。読むのは上で、進むのは下でいつでも。
+  //   いちばん下まで送ると、ふだんの位置に収まる（position: sticky）。右下の音量ボタンは、この画面だけ帯の上へ逃がす（style.css）。
+  const dock = el("div", "rs-dock");
+  try {
+    const g = c.gainLedger;
+    const _net = g ? ((g.hit ? g.payout : 0) - (g.wager || 0) + (g.streakBonus || 0) + (g.featuredBonus || 0) + (g.collectionCoins || 0)) : null;
+    const _hg = (typeof hungerGet === "function") ? hungerGet() : null;
+    dock.appendChild(el("div", "rs-wallet",
+      `<span class="rw-i${(state.player.coins || 0) <= 0 ? " low" : ""}"><i>お財布</i><b>${fmtCoins(state.player.coins || 0)}</b>` +
+        (_net != null ? `<em class="${_net >= 0 ? "up" : "down"}">${_net >= 0 ? "＋" : "−"}${fmtCoins(Math.abs(_net))}</em>` : "") + `</span>` +
+      (_hg != null ? `<span class="rw-i${_eatFirst || _hg <= 0 ? " low" : ""}"><i>おなか</i><b>${_hg}</b><small>／100</small></span>` : "")));
+  } catch (e) {}
+
+  const actions = el("div", "actions rs-actions");
+  // ホームへ送る1本が主役になるとき（すっからかん）は、同じ行き先の「ホーム」を並べない。
+  if (!_brokeNow) {
+    const home2 = el("button", "secondary", "ホーム"); home2.onclick = renderHome;
+    actions.appendChild(home2);
+  }
   if (_anaOn) {   // E4：詳しい分析は2章解禁（1章は勘レース）
     const detail = el("button", "secondary", "詳しい分析"); detail.onclick = renderAnalysis;
     actions.appendChild(detail);
   }
   // ★C-4：主役は「次のレースへ」1本。連勝中はその熱をボタンに乗せる（次を打ちたくなる導線）。
+  //   ★走れない状態のときは、主役の行き先を替える（2026-11-13）：すっからかん＝ホームで無心／空腹＝ごはん。
+  //     「次のレースへ」を押させて、券を千切るところで止める、をやめる。
   const _sk = (c.streakInfo && c.streakInfo.streak) || 0;
-  const next = el("button", "rs-next", _sk >= 2 ? `🔥 ${_sk}連勝中　次のレースへ ▶` : "次のレースへ ▶");
-  next.onclick = renderRaceSelect;
+  const next = el("button", "rs-next",
+    _brokeNow ? "🙏 ホームで立て直す ▶"
+    : _eatFirst ? "🍙 ごはんを食べて、次へ ▶"
+    : (_sk >= 2 ? `🔥 ${_sk}連勝中　次のレースへ ▶` : "次のレースへ ▶"));
+  next.onclick = _brokeNow ? renderHome : (_eatFirst ? (() => renderMeals()) : renderRaceSelect);
   actions.appendChild(next);
-  app.appendChild(actions);
+  dock.appendChild(actions);
+  app.appendChild(dock);
 }
 
 // =========================================================================
@@ -4225,26 +4501,9 @@ function recordReasonResult(key, hit) {
   if (hit) e.w++; else e.l++;
   return e;
 }
-// ★CORE_LOOP_UX C-2：不的中の「敗因1行」＝罰ではなく学びに変える。
-//   timeline/raceResult の“確定済みの事実”を読み替えるだけ（新しい判定は作らない）。
-function missReasonLine(c) {
-  try {
-    const myId = c.bet && c.bet.selections && c.bet.selections[0];
-    if (!myId) return "";
-    const ordered = c.raceResult.entries;               // 着順どおり
-    const myIdx = ordered.findIndex(e => e.dragon.id === myId);
-    if (myIdx < 0) return "";
-    const need = c.bet.type === "win" ? 1 : 3;          // 何着以内が必要だったか
-    const my = ordered[myIdx], border = ordered[need - 1];
-    const nm = my.dragon.name;
-    if (myIdx + 1 === need + 1 && border) {             // ちょうど1つ届かなかった
-      return `${nm} は${myIdx + 1}着。あと1頭ぶん、届かなかった。`;
-    }
-    if (my.collapse) return `${nm} は途中で失速。展開が合わなかった。`;
-    if (myIdx + 1 <= need + 2) return `${nm} は${myIdx + 1}着。惜しいところまでは来ていた。`;
-    return `${nm} は${myIdx + 1}着。今日は流れに乗れなかった。`;
-  } catch (e) { return ""; }
-}
+// ★CORE_LOOP_UX C-2：不的中の1行（missReasonLine）と、理由への返事（reasonReplyLine）・道のりの帯
+//   （betStoryTraceHtml）は js/bet_story.js へ移した（2026-11-12）。BET_REASONS の win/lose は、
+//   道のりが読めないときの控えとして残してある。
 
 // Win tier from the payout odds — the thrill scales with the 穴 you cracked.
 function resultTierOf(ps) {
@@ -4261,7 +4520,9 @@ const RESULT_TIER = {
   1: { word: "的中！",           cls: "t1",   sfx: "win" },
   2: { word: "大的中！",         cls: "t2",   sfx: "bigwin" },
   3: { word: "超的中！！",       cls: "t3",   sfx: "legendary" },
-  4: { word: "伝説の的中！！！", cls: "t4",   sfx: "legendary" }
+  // ★折れるなら「伝説の／的中！！！」の切れ目だけ（2026-11-13・Codex 3回め：375px で「伝説の的／中！！！」と語の途中で折れた）。
+  //   <wbr> と style.css .rs-t4 .rs-stamp の word-break: keep-all の組。word は innerHTML でしか使っていない。
+  4: { word: "伝説の<wbr>的中！！！", cls: "t4",   sfx: "legendary" }
 };
 
 // §37 Tier 2 — milestone streak bonus, as a multiple of the race's payout (so
@@ -4297,7 +4558,7 @@ function nextGoals(state) {
     const byCoins = Math.max(0, u.coins - coins);
     const rl = (RANKS[nr] && RANKS[nr].label) || "";
     if (byHits === 0 || byRaces === 0 || byCoins === 0) {
-      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub: "次のレースで解放！", pct: 100 });
+      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub: "次のレースで解放！", short: "次のレースで上がる！", pct: 100 });
     } else {
       // 進捗%＝3レールのうち最も進んでいるもの（ゴールグラデーション：常に一番近い道を見せる）
       const pcts = [
@@ -4306,7 +4567,12 @@ function nextGoals(state) {
         coins / u.coins
       ];
       const sub = `R${p.rank}戦で 的中あと${byHits}回（完走あと${byRaces}戦／所持${fmtCoins(u.coins)}でも解放）`;
-      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub, pct: clamp(Math.max(...pcts) * 100, 2, 99) });
+      // short＝結果画面の1行用。3本の道のうち、いちばん近い1本だけを暮らしの言葉で言う（残りは目標の一覧にある）。
+      const _near = pcts.indexOf(Math.max(...pcts));
+      const short = _near === 0 ? `あと${byHits}回、当てれば上がる`
+        : _near === 2 ? `所持コインが ${fmtCoins(u.coins)} に届けば上がる`
+        : `あと${byRaces}戦、走れば上がる` + (byHits !== Infinity && byHits <= byRaces ? `（当てれば、あと${byHits}回）` : "");
+      goals.push({ kind: "rank", icon: "🏅", label: `ランク${nr} ${rl}`, sub, short, pct: clamp(Math.max(...pcts) * 100, 2, 99) });
     }
   }
   // next life stage (総資産)
@@ -4333,7 +4599,54 @@ function buildResultHero(ps, tier, c) {
   const info = RESULT_TIER[tier] || RESULT_TIER[0];
   const hit = !!ps.hit;
   const hero = el("div", "rs-hero rs-" + info.cls);
+  // ★結果の主役を「絵」にする（2026-11-12・ユーザー指示「まず見た目が製品になっていること」）。
+  //   それまでの答え合わせは文字と数字だけで、勝った竜の姿も、ミミの顔も出ていなかった。
+  //   左＝いまの衣装のミミ（当たり＝happy／外れ＝panic）とひとこと、右＝1着の竜と人気・オッズ。
+  //   ★すべて確定済みの結果を読むだけ（表示のみ）。絵が読めなければ、その部品だけ消える。
+  let stage = "";
+  try {
+    const ents = (c && c.raceResult && c.raceResult.entries) || [];
+    const win = ents.find(e => e.rank === 1) || ents[0];
+    const wd = win && win.dragon;
+    const od = wd && c.oddsResult && (c.oddsResult.oddsData || []).find(o => o.dragonId === wd.id);
+    const mine = !!(wd && c.bet && (c.bet.selections || []).indexOf(wd.id) >= 0);
+    const oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "sukanpin";
+    let say = (c.recap && c.recap.mimiRecap) || "";
+    // ★この一戦で財布が空になったら、ミミの一言はそれに反応する（2026-11-13・data_dialogue.js bustLine）。
+    //   1戦につき1回だけ決める（タブを切り替えて描き直しても同じ文）。所持コインと無心の回数を読むだけ。
+    try {
+      const _rn = state.player.completedRaces || 0;
+      if (c._bustSayAt !== _rn) {
+        c._bustSayAt = _rn;
+        c._bustSay = (!hit && (state.player.coins || 0) <= 0 && window.DLG && typeof DLG.bustLine === "function") ? DLG.bustLine(state.player.brokeCount || 0) : "";
+      }
+      if (c._bustSay) say = c._bustSay;
+    } catch (e) {}
+    const av = (typeof RC_DRAGON_ART_V !== "undefined") ? RC_DRAGON_ART_V : 1;
+    stage =
+      `<div class="rs-stage ${hit ? "hit" : "miss"}" style="--waku:${wd ? dragonColor(wd) : "#8a7fc0"}">` +
+        `<img class="rs-mimi" src="${outfitImg(oid, hit ? "happy" : "panic")}" alt="" decoding="async" onerror="this.onerror=null;this.src='${outfitImg(oid, "default")}'">` +
+        (say ? `<div class="rs-say">${say}</div>` : "") +
+        (wd ? `<div class="rs-winner${mine ? " mine" : ""}"><img src="images/dragons/${wd.id}.png?v=${av}" alt="" decoding="async" onerror="this.remove()">` +
+              `<span class="rs-win-plate"><i>1着</i><b>${wd.name}</b>${od ? `<small>${od.popularityRank}番人気・${od.winOdds.toFixed(1)}倍</small>` : ""}</span></div>` : "") +
+      `</div>`;
+  } catch (e) { stage = ""; }
+  // ★選んだ竜の札（Codex 4回め §6-4）：結果の最初の画面に「🐉 選んだ竜：モム・5着」。賭けた竜が複数なら、いちばん上位の竜。
+  //   確定済みの着順を読むだけ（表示のみ）。賭けていない・読めないときは出さない。
+  let pickTag = "";
+  try {
+    const sels = (c && c.bet && c.bet.selections) || [];
+    const ents2 = (c && c.raceResult && c.raceResult.entries) || [];
+    const mine2 = ents2.filter(e => sels.indexOf(e.dragon.id) >= 0).sort((a, b) => a.rank - b.rank);
+    if (mine2.length) {
+      const m = mine2[0], av2 = (typeof RC_DRAGON_ART_V !== "undefined") ? RC_DRAGON_ART_V : 1;
+      const nm = String(m.dragon.name).replace(/^.*竜(?=.)/, "");
+      pickTag = `<div class="rs-pick" style="--waku:${dragonColor(m.dragon)}"><img src="images/dragons/${m.dragon.id}.png?v=${av2}" alt="" decoding="async" onerror="this.remove()">` +
+        `<span>🐉 選んだ竜：<b>${nm}</b>・${m.rank}着${mine2.length > 1 ? `<small>（ほか${mine2.length - 1}頭）</small>` : ""}</span></div>`;
+    }
+  } catch (e) { pickTag = ""; }
   hero.innerHTML =
+    stage +
     `<div class="rs-confetti" aria-hidden="true"></div>` +
     `<div class="rs-stamp">${info.word}</div>` +
     (hit
@@ -4343,7 +4656,8 @@ function buildResultHero(ps, tier, c) {
       (hit
         ? `${ps.typeLabel} × ${ps.odds.toFixed(1)}倍　／　収支 <b>${fmtSigned(ps.profit)}</b>`
         : `${ps.typeLabel}　／　今回は届かず`) +
-      `　・　所持 <b>${fmtCoins(state.player.coins)}</b></div>` +
+      `　・　所持 <b${(state.player.coins || 0) <= 0 ? ' class="rs-zero"' : ""}>${fmtCoins(state.player.coins)}</b></div>` +
+    pickTag +
     `<div class="rs-streak" id="rs-streak">${streakLineHtml(c && c.streakInfo)}</div>`;
 
   // （音声操作は全画面共通の🔊FABへ一本化＝rs-mute ボタンは撤去・ユーザー指摘のUX整理）
@@ -4538,26 +4852,12 @@ function recapTabResult(body, recap, c) {
   body.appendChild(tbl);
   body.appendChild(el("div", "recap-note", "★ … あなたの予想竜"));
 
-  // Short 払い戻し one-liner.
-  const ps = recap.payoutSummary;
-  if (ps) {
-    body.appendChild(recapSection("払い戻し", [
-      `${ps.typeLabel}／${ps.resultText}`,
-      ps.payout > 0   // 外れのときに「× オッズ → 払戻 0」と出て計算が合わないように読めた
-        ? `賭金 ${fmtCoins(ps.wager)} × ${ps.odds.toFixed(1)}倍 → 払戻 ${fmtCoins(ps.payout)}（収支 +${fmtCoins(ps.profit)}）`
-        : `賭金 ${fmtCoins(ps.wager)} → 払戻なし（収支 −${fmtCoins(ps.wager)}）`,
-      `所持コイン: ${fmtCoins(state.player.coins)}`
-    ]));
-  }
+  // ★ここにあった「払い戻し」の3行とミミの締めの一言は外した（2026-11-13）。どちらも、いちばん上の主役の場面
+  //   （ハズレ −100・所持／ミミの吹き出し）と📦今回の獲得が、もう同じことを言っている。同じ結果を3回読ませて、
+  //   「次のレースへ」までが画面2枚半ぶんあった。払い戻しの式は「払い戻し」のタブにそのままある。
 
   // Short 勝負所 — top 2 highlights.
   body.appendChild(recapSection("勝負所", recap.broadcastHighlights.slice(0, 2)));
-
-  // Mimi sign-off (§29 §8).
-  const mimi = el("div", "recap-mimi");
-  mimi.appendChild(el("span", "speaker", "ミミ"));
-  mimi.appendChild(el("span", "line", recap.mimiRecap));
-  body.appendChild(mimi);
 }
 
 function recapTabPayout(body, recap, c) {

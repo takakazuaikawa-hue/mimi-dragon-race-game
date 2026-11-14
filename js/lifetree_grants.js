@@ -94,6 +94,9 @@ function _lgBandOk(node) {
 
 // ── 走査：条件を満たしていて、まだ持っていないノードを授ける ───────────────
 //   ホーム到着ごとに1回（紀行の記事と同じ息継ぎ）。複数たまっていたら順に見せる。
+// ★授けるのは走査の時点（ツリーに即反映・保存）。カットインで見せるのは、ホームの順番の列の番が来たとき（2026-11-14）。
+//   あいだにホームを離れたり読み込み直したりしても見せそびれないよう、「まだ見せていない授与」を
+//   state.player.lifeGrantUnseen（授与の id の並び・表示のためだけ）に保存し、見せたときに外す。
 function lifeGrantScan() {
   var got = [];
   try {
@@ -113,9 +116,74 @@ function lifeGrantScan() {
       log[g.id] = 1;
       if (!un[node.nodeId]) { un[node.nodeId] = true; got.push(g); }
     }
-    if (got.length) { try { if (typeof saveGame === "function") saveGame(); } catch (e) {} }
+    if (got.length) {
+      var unseen = Array.isArray(p.lifeGrantUnseen) ? p.lifeGrantUnseen : (p.lifeGrantUnseen = []);
+      for (var j = 0; j < got.length; j++) if (unseen.indexOf(got[j].id) < 0) unseen.push(got[j].id);
+      try { if (typeof saveGame === "function") saveGame(); } catch (e) {}
+    }
   } catch (e) {}
   return got;
+}
+
+// ── まだカットインで見せていない授与（ホームの順番の列が読む） ─────────────────
+function _lgById(id) {
+  for (var i = 0; i < LIFE_GRANTS.length; i++) if (LIFE_GRANTS[i].id === id) return LIFE_GRANTS[i];
+  return null;
+}
+function lifeGrantUnseenIds() {
+  try {
+    var a = state.player && state.player.lifeGrantUnseen;
+    if (!Array.isArray(a)) return [];
+    return a.filter(function (id) { return !!_lgById(id); });
+  } catch (e) { return []; }
+}
+function _lgMarkSeen(id) {
+  try {
+    var p = state.player;
+    if (p && Array.isArray(p.lifeGrantUnseen) && p.lifeGrantUnseen.indexOf(id) >= 0) {
+      p.lifeGrantUnseen = p.lifeGrantUnseen.filter(function (x) { return x !== id; });
+      if (typeof saveGame === "function") saveGame();
+    }
+  } catch (e) {}
+}
+// 1枚だけ見せる（見せたら「見せた」にする）。出せたら true。
+//   opts.quick＝同じホーム到着の2枚め以降（ui_home.js の順番の列が渡す・2026-11-14・Codex 4回め §4-4・§6-6）。
+//   「同じ大きな授与演出をもう一度見る」が続くと、レースの余韻より授与の手続きが長く残る。順番・中身・授けたものは同じで、
+//   溜め（閃光・集中線・紙吹雪）と下の小さな一言を省き、帯と文字の入りを速め、表示を短くする（2.4秒→1.5秒）。押せばすぐ閉じるのは同じ。
+var LG_QUICK_MS = 1500;
+function lifeGrantShowOne(id, opts) {
+  try {
+    var g = _lgById(id);
+    _lgMarkSeen(id);
+    if (!g) return false;
+    var node = _lgNode(g.node);
+    if (!node || typeof showLifeCutin !== "function") return false;
+    var quick = !!(opts && opts.quick);
+    var cb0 = quick ? document.querySelectorAll(".cb-layer").length : 0;
+    showLifeCutin(node);
+    var ov = document.getElementById("lt-cutin");
+    if (!ov) return false;
+    if (quick) _lgQuick(ov, cb0);
+    return true;
+  } catch (e) { return false; }
+}
+// 2枚め以降の短い出し方（見た目は style.css .lt-cutin--quick）。showLifeCutin（ui_render.js）は変えずに、出た直後に手を入れる。
+//   ・紙吹雪：showLifeCutin が同時に出した粒の層（celebrate.js .cb-layer）だけを外す（それより前からある層は触らない）。
+//   ・閉じる：1.5秒で同じ消え方（.out → 外す）。元の2.4秒のタイマーは、次の授与が出るときに showLifeCutin 自身が止める
+//     （出ていなければ空振り）。ホーム以外では早閉じしない（元の長さで閉じる）。タイマーは window._hlTimers に入れる。
+function _lgQuick(ov, cb0) {
+  try {
+    ov.classList.add("lt-cutin--quick");
+    var layers = document.querySelectorAll(".cb-layer");
+    for (var i = cb0; i < layers.length; i++) { try { layers[i].remove(); } catch (e) {} }
+    var t = setTimeout(function () {
+      if (!state.ui || state.ui.screen !== "home") return;
+      if (!document.contains(ov) || ov.classList.contains("out")) return;
+      ov.classList.add("out");
+      setTimeout(function () { try { ov.remove(); } catch (e) {} }, 260);
+    }, LG_QUICK_MS);
+    if (window._hlTimers) window._hlTimers.push(t);
+  } catch (e) {}
 }
 
 // ── 授与カットイン ───────────────────────────────────────────────────────
@@ -130,6 +198,7 @@ function lifeGrantCutIn(list, done) {
     // 会話（VN）や他のポップの最中は出さない＝帯が立ち絵とセリフに重なる（実機で確認）。閉じるのを待ってから。
     if (typeof uiBusy === "function" ? uiBusy() : (window.Dialogue && Dialogue.isOpen && Dialogue.isOpen())) { setTimeout(next, 400); return; }
     var g = list[i++];
+    _lgMarkSeen(g.id);
     var node = _lgNode(g.node);
     if (node && typeof showLifeCutin === "function") {
       showLifeCutin(node);
@@ -155,11 +224,12 @@ function lifeGrantCutIn(list, done) {
   next();
 }
 
-// ホーム到着から呼ぶ入口（走査→あれば見せる）
+// 走査→まだ見せていないものを続けて見せる入口（いまのホームは使わない＝ホームは lifeGrantScan と順番の列で見せる）
 function lifeGrantTick() {
   try {
     var got = lifeGrantScan();
-    if (got.length) lifeGrantCutIn(got);
+    var list = lifeGrantUnseenIds().map(_lgById).filter(Boolean);
+    if (list.length) lifeGrantCutIn(list);
     return got.length;
   } catch (e) { return 0; }
 }
@@ -173,6 +243,8 @@ function lifeNodeHint(node) {
       var g = LIFE_GRANTS[i];
       if (g.node !== node.nodeId && g.node !== node.title) continue;
       if (state.player && state.player.lifeGranted && state.player.lifeGranted[g.id]) return "🌱 " + g.at + "に授かった";
+      // ★ポロは名前が出会いのオチなので、見つける前は伏せる（2026-11-14・会話と機構を合わせる）
+      if (g.id === "lg_poro" && !(typeof poroFound === "function" ? poroFound() : _lgFlag("poroFound"))) return "🌱 ある出会いの日に授かる";
       return "🌱 " + g.at + "に授かる";
     }
     return "🪙 コインで購入";
@@ -183,5 +255,7 @@ if (typeof window !== "undefined") {
   window.LIFE_GRANTS = LIFE_GRANTS;
   window.lifeGrantScan = lifeGrantScan;
   window.lifeGrantTick = lifeGrantTick;
+  window.lifeGrantUnseenIds = lifeGrantUnseenIds;
+  window.lifeGrantShowOne = lifeGrantShowOne;
   window.lifeNodeHint = lifeNodeHint;
 }

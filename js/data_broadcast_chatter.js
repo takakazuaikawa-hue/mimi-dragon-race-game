@@ -334,7 +334,7 @@ const BC_CHATTER = [
   { id: "unme_dragon_03", cm: "unme", topic: "dragon", at: "entry", line: "竜の鱗、爪で弾くといい音がするんですよぉ。たぶん。" },
   { id: "unme_dragon_04", cm: "unme", topic: "dragon", at: "entry", line: "アカネって名前、朝焼けから来てるらしいですって。" },
   { id: "unme_dragon_05", cm: "unme", topic: "dragon", at: "mid", line: "竜は好きな匂いがあると鼻を鳴らすんですよぉ。ほら。" },
-  { id: "unme_dragon_06", cm: "unme", topic: "dragon", at: "entry", line: "ポロはよく泣くんですって。ウンメちゃんも昔そうでしたぁ。" },
+  { id: "unme_dragon_06", cm: "unme", topic: "dragon", at: "entry", line: "竜の子は、よく泣くんですって。ウンメちゃんも昔そうでしたぁ。" },
   { id: "unme_dragon_07", cm: "unme", topic: "dragon", at: "mid", line: "竜の翼、畳むとけっこう小さくなるんですよぉ。意外！" },
   { id: "unme_dragon_08", cm: "unme", topic: "dragon", at: "mid", line: "ムラサメの尻尾、九割が筋肉らしいですって。知らんけど！" },
   { id: "unme_dragon_09", cm: "unme", topic: "dragon", at: "mid", line: "竜って人の顔を三年は覚えてるらしいですよぉ。怖い！" },
@@ -420,7 +420,8 @@ const BC_CHATTER = [
     line: "ゴール前は長い直線だ。終いは結局、素の速さがモノを言う。" },
   // 【ハイペースの相場観】ミズ版（第4話以降の解説者用に同じ事実を別の声で）
   { id: "mizu_tips_pace_hi", cm: "mizu", topic: "tips", at: "mid", pace: ["high", "very_high"],
-    line: "前に行く竜が多い日はね、先頭の値が上がりすぎるの。安く拾うなら、後ろで脚をためてる子よ。" },
+    // ★「先頭」という語を使わない（雑談の作法＝展開の説明は実況の仕事。tools/audit_broadcast.js が見ている語）。意味は同じ。
+    line: "前へ行きたがる竜が多い日はね、前の子ほど値が上がりすぎるの。安く拾うなら、後ろで脚をためてる子よ。" },
   // 【運の幅】ミズ版
   { id: "mizu_tips_luck", cm: "mizu", topic: "tips", at: "mid",
     line: "運の振れは誰にもある。でも実力差が大きければ運は誤差。互角のときだけ、運が主役になるのよ。" },

@@ -165,7 +165,16 @@ const OUTFITS = [
   // ★ブニクロ普段着は「モールで最初に買う服」＝進行の節目。無料配布をやめて有料にした。
   //   この価格がモール解放のしきい値も兼ねる（mallUnlocked／buniqroPrice）ので、
   //   序盤のテンポを変えたいときは、ここ1か所だけを動かせばよい。
-  { id: "buniqro",   name: "ブニクロ普段着",   flavor: "トートとスニーカーの、肩の力が抜けた休日コーデ。", acquire: { price: 2000 } },
+  // ★2,000 → 1,500（2026-11-13・ユーザーから一任されて決定。計測＝tools/sim_early_wallet.mjs・ゲームが薦めるとおりに走らせた値）。
+  //   2,000：自分の所持金ではほぼ届かない。届く道は事実上「破産して無心（約5,600）」だけで、無心の直後に買えた人が
+  //     慎重（単勝100固定）93%・財布の2割賭け97%・最大賭け90%。届く戦は 最大7戦め／2割賭け21戦め／慎重24戦め＝慎重な人ほど遅い。
+  //     （ランク1は賭金の上限が100。1番人気の勝率は16〜27%。1,000 から賭けで 2,000 にはならない）
+  //   1,500：1戦めの注目ボーナス（+300）と2戦めの図鑑25%（+500）で、勝ち負けに関係なく全員が2戦のあとに届く（無心経由 0%）。
+  //     買うと財布はほぼ空になり、次の1戦で無心へ＝「全財産で服を買う→空っぽ→無心」が最初の5分に全員に起きる。
+  //     第2話の条件（3戦以上）はそのまま＝3戦めで第2話が読める。
+  //   1,700〜1,800 は「序盤に1〜2回当てた人だけ」になり、残りは 2,000 と同じ遅い道に落ちるので採らない。
+  //   レースの着順・オッズ・配当、無心の額には触れていない。
+  { id: "buniqro",   name: "ブニクロ普段着",   flavor: "トートとスニーカーの、肩の力が抜けた休日コーデ。", acquire: { price: 1500 } },
   { id: "newspaper", name: "予想新聞ドレス",   flavor: "競竜新聞をまとった、予想家ミミの正装。",         acquire: { assets: 50000 } },
   { id: "dara",      name: "きれいめコーデ",   flavor: "ジャケットを羽織って、ちょっとおでかけ気分。",   acquire: { price: 5000 } },
   { id: "jungle",    name: "ジャングルバニー", flavor: "葉っぱと馬券で武装した、探検スタイル。",         acquire: { price: 15000 } },
@@ -252,6 +261,8 @@ function buyOutfit(id) {
   state.player.coins -= o.acquire.price;           // コイン消費（既存の生活資産購入と同じ・着順/オッズ/配当には非干渉）
   if (!state.player.outfitsBought) state.player.outfitsBought = [];
   state.player.outfitsBought.push(id);
+  // ✍️ 紀行の素材：服を買った日。はじめての普段着（buniqro）は連載の回が書くので、ここでは拾わない。
+  try { if (id !== "buniqro" && typeof kikoMatPush === "function") kikoMatPush("outfit", { name: o.name, price: o.acquire.price }); } catch (e) {}
   if (typeof epPush === "function") epPush("mallBuy");   // 終章：買い物が灯り＝絶滅メーターを押し戻す（終章中のみ・表示メタ）
   if (typeof saveGame === "function") saveGame();
   if (typeof updateHeader === "function") updateHeader();

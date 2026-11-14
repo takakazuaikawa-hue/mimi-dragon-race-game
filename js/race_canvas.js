@@ -1254,7 +1254,7 @@ function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
     ctx.font = "bold " + Math.round(9.5 * l.dep) + "px " + _RC_LBL_FONT;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillStyle = l.isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.9)";
-    ctx.fillText(String(l.rk), cx, cy + 0.5);
+    ctx.fillText(l.rkText != null ? l.rkText : String(l.rk), cx, cy + 0.5);
     if (r.full) {
       ctx.font = "9.5px " + _RC_LBL_FONT;
       ctx.textAlign = "left";
@@ -1665,7 +1665,16 @@ function startRaceCanvas(container, ctx) {
   // ---- ENTRANCE timing: walk in (staggered by 思想), then a BRIEF settle → countdown.
   // ENTRY_DUR is DYNAMIC = (last dragon's arrival) + a short settle, so there's no dead
   // standing-around wait between "everyone's in position" and the count starting. ----
-  const ENTRY_WALK = 3.8, ENTRY_STAGGER = 5.0, ENTRY_SETTLE = 0.6;
+  // ★見慣れた舞台では入場を短くする（2026-11-13）。入場〜カウントダウンは毎戦およそ13秒あり、通し試験で
+  //   「3戦めで、また同じ入場を待つところでスキップしたくなった」と言われた。
+  //   短くするのは「3戦以上走っていて、このランクの舞台をもう1度は走った」とき。はじめの3戦と、新しいランクの最初の一戦は
+  //   これまでどおりの長さ＝晴れ舞台の入場は残す。歩いて入る時間・ばらけ方・紹介の間合いを詰めるだけで、
+  //   カウントダウン（3・2・1）とレースの尺・着順・オッズ・配当は変えない。目安：約8.2秒 → 約5.4秒。
+  const _quickEntry = (function () {
+    try { const p = state.player || {}; return (p.completedRaces || 0) >= 3 && (((p.completedByRank || {})[race.rank]) || 0) >= 1; }
+    catch (e) { return false; }
+  })();
+  const ENTRY_WALK = _quickEntry ? 2.8 : 3.8, ENTRY_STAGGER = _quickEntry ? 2.6 : 5.0, ENTRY_SETTLE = 0.6;
   function entranceEager(dr) {
     const pd = persoOf(dr.id), vmood = pd.visualMood || 55, style = pd.style || dr.style;
     return clamp((style === "escape" ? 0.85 : style === "front" ? 0.6 : style === "late" ? 0.4 : 0.25) + (vmood - 55) / 150, 0, 1);
@@ -1709,7 +1718,7 @@ function startRaceCanvas(container, ctx) {
   // 動きを減らす設定（B の呼吸/首かしげ/残像はここで一括OFF）
   const _reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-  const ROLL_EACH = 0.8;
+  const ROLL_EACH = _quickEntry ? 0.55 : 0.8;   // 短い入場では、1頭ずつの紹介の間合いも詰める
   const _rollOrder = laneOrder.slice();                       // 手前(ln=0)から順に
   const ROLL_SPAN = ROLL_EACH * _rollOrder.length;
   const _rollStart = Math.max(0, ENTRY_DUR - ROLL_SPAN - 0.2); // 入場の終盤に寄せる
@@ -1832,7 +1841,7 @@ function startRaceCanvas(container, ctx) {
       <div class="rc-hud-left">
         <span class="rc-phase" id="rc-phase">序盤</span>
         <span class="rc-section" id="rc-section"></span>
-        <span class="rc-race">${raceFullName(race)}</span>
+        <span class="rc-race" title="${raceFullName(race)}">${race.cup ? race.cup + " 第" + race.number + "R" : raceFullName(race)}</span>
       </div>
       <div class="rc-hud-right">
         <span class="rc-weather">${(WEATHERS[race.weather] || {}).label || ""}</span>
@@ -2053,6 +2062,17 @@ function startRaceCanvas(container, ctx) {
         if (n.parentElement) below += parseFloat(getComputedStyle(n.parentElement).paddingBottom) || 0;
       }
       const room = window.innerHeight - above - restInWrap - below - 4;
+      // ★走る絵が大きく取れない画面だけ、順位表を絞る（下の「順位表を絞る」の節）。判定は1レースに1回。
+      //   全頭のままでも 430px 以上取れるなら何もしない。自分で全頭に開いた人にも、しない。
+      try {
+        if (!boardAutoDone && boardFootEl) {
+          boardAutoDone = true;
+          let wantFull = false;
+          try { wantFull = localStorage.getItem("rc_board_full") === "1"; } catch (e) {}
+          const gain = BOARD_ROW_H * (dragons.length - boardVisN()) - BOARD_FOOT_H;
+          if (!wantFull && gain >= 50 && room < 430) { setBoardCompact(true, false); return; }   // setBoardCompact が測り直す
+        }
+      } catch (e) {}
       // 下限は「幅から決まる本来の高さ」(baseH)。ここより小さくは絶対にしない
       //   ＝レース画面を削らない、という決めごとを守る。
       const target = Math.round(Math.max(baseH, Math.min(480, room)));
@@ -2175,7 +2195,7 @@ function startRaceCanvas(container, ctx) {
         { race, bet, oddsResult, raceResult, trialForms: ctx.trialForms },
         { commentator: _commentator,
           nameOf: (id) => (typeof commentaryName === "function" ? commentaryName(id) : id) });
-      telopSchedule = (bc.script || []).map(x => ({ tau: x.tau, line: x.line, side: x.side, tag: x.tag, fired: false }));
+      telopSchedule = (bc.script || []).map(x => ({ tau: x.tau, line: x.line, side: x.side, tag: x.tag, lead: x.lead, sec: x.sec, fired: false }));
       _bcAnalysis = bc.analysis || null;
     }
   } catch (e) { telopSchedule = []; }
@@ -2248,6 +2268,7 @@ function startRaceCanvas(container, ctx) {
   const TELOP_DWELL_MIN = 1500, TELOP_DWELL_MAX = 2900;
   const TELOP_CORE_TAGS = { start: 1, countdown: 1, signature: 1, cutin: 1, lead: 1, final: 1, goal: 1, course: 1 };
   let _telopLastAt = -1e9, _telopLastLen = 20, _telopQ = [], _telopDrop = 0, _getawaySeen = 0;
+  let _telopStaleN = 0;         // 「先頭は◯◯」が出す前に古くなって捨てた本数（検証用）
   let _telopStartLine = null;   // スタートの一声（これによる割り込みは仕様＝欠けに数えない）
   function _telopDwell() {
     const need = _telopLastLen / TELOP_CPM * 60 * 1000;
@@ -2261,20 +2282,74 @@ function startRaceCanvas(container, ctx) {
     if (tag === "getaway" && _getawaySeen < 1) return true;   // 出遅れ・逃げの第一報だけは核
     return false;
   }
-  function _telopShow(line, side, tag) {
+  // ★いま吹き出しに出ている行が、どの区間の話か（2026-11-13）。出す瞬間の真偽は _telopStale が確かめているが、
+  //   出したあとに区間が替わると、左上の表示は「大旋回」なのに吹き出しは「長直線スタートー！」のまま残った
+  //   （Codex の通し試験 P2）。区間が替わったら、その行だけ静かに消す。次の行が来れば普通に上書きされる。
+  const _shownSec = { call: null, color: null };
+  function _telopFadePast() {
+    if (_shownSec.call == null && _shownSec.color == null) return;
+    let cur;
+    try { if (S.finished || window.__telopNoStale) return; cur = thirdAtP(clamp(timeline.leaderProgressAt(S.tau), 0, 1)); } catch (e) { return; }
+    ["call", "color"].forEach(function (k) {
+      if (_shownSec[k] == null || _shownSec[k] === cur) return;
+      _shownSec[k] = null;
+      try {
+        const bub = (k === "call") ? _ytEl.bl : _ytEl.br;
+        const now = bub && bub.querySelector(".rcy-now");
+        if (now) now.classList.add("is-past");
+        _telopLog("past", k, now ? (now.dataset.full || "") : "", "", null);
+      } catch (e) {}
+    });
+  }
+  function _telopShow(line, side, tag, lead, sec) {
     shownLines.push({ line: line, side: side });
+    // ★雑談には区間が付いていないので、区間が替わっても吹き出しに残り、終盤の直線まで読めていた
+    //   （Codex 3回め：A2 の短い直線・残り309m で匂いの雑談）。出した時点の区間を持たせ、替わったら上と同じく消す。
+    if (tag === "chat" && sec == null) { try { sec = thirdAtP(clamp(timeline.leaderProgressAt(S.tau), 0, 1)); } catch (e) {} }
+    _shownSec[side !== "color" ? "call" : "color"] = (sec == null) ? null : sec;
     if (tag === "getaway") _getawaySeen++;
     _telopLastAt = performance.now();
     _telopLastLen = (line || "").length;        // 次の行を待たせる長さ＝いま出した行の長さで決まる
-    _telopLog("say", side, line, tag);
+    _telopLog("say", side, line, tag, lead);
     speak(side, line);
   }
-  function _telopLog(ev, side, line, tag) {
+  function _telopLog(ev, side, line, tag, lead) {
     try {
       if (window.__telopLog) window.__telopLog.push({
-        t: performance.now(), ev: ev, side: side, n: (line || "").length, tag: tag || "", line: line
+        t: performance.now(), ev: ev, side: side, n: (line || "").length, tag: tag || "", line: line,
+        tau: S.tau, lead: lead == null ? null : lead, top: _telopTopNow()
       });
     } catch (e) {}
+  }
+  // ★「いま先頭は◯◯」の行が、出す瞬間にまだ本当かを確かめる（2026-11-12）。
+  //   台本は行を読み切れるように後ろへずらして詰め、さらに画面側の滞留キューで待たせる。
+  //   そのあいだに先頭が替わると、順位表はセラム1位なのに実況は「バラン先頭！」になる
+  //   （Codex の通し試験で観測）。遅い実況ではなく**間違った実況**なので、出さずに捨てる。
+  //   ★読むだけ。timeline.standingsAt は順位表と同じ出どころ＝絵と表と声が一致する。
+  //   ★決着後は確かめない（決め台詞は flushTelop が責任を持つ）。発走前は lead つきの行が無い。
+  function _telopTopNow() {
+    try { const st = timeline.standingsAt(S.tau); return (st && st.length) ? st[0] : null; } catch (e) { return null; }
+  }
+  function _telopStale(lead, sec, tag) {
+    // ★雑談は、終盤（τ0.62＝BC_MID_END 以降）に入ったら出さない（2026-11-13）。雑談は展開と無関係な話なので、
+    //   いちばん熱い区間に出ると、賭けた竜を追う緊張を切ってしまう。台本側も中盤の早めに置き直してある。
+    try {
+      if (tag === "chat" && !S.finished && !window.__telopNoStale
+          && S.tau > ((typeof BC_MID_END !== "undefined") ? BC_MID_END : 0.62)) return true;
+      // 画面の区間表示が終盤（先頭がコースの2/3を過ぎた）になったあとも出さない（τ と区間表示がずれる展開のため）。
+      //   終盤の手前ぎりぎりも出さない：出した雑談は区間が替わると消える（_telopShow）ので、τ0.551 に出て τ0.561 に消える
+      //   ＝1秒も読めない出方になった（等速の実走で観測）。先頭の進み 0.60（2/3 の少し手前）を過ぎたら始めない。
+      //   台本の位置も τ0.40 へ前に出した（race_broadcast.js）。200戦の計測で、読める時間は中央5.0秒・2秒未満0本。
+      if (tag === "chat" && !S.finished && !window.__telopNoStale
+          && clamp(timeline.leaderProgressAt(S.tau), 0, 1) >= 0.60) return true;
+    } catch (e) {}
+    try { if ((lead == null && sec == null) || S.finished || window.__telopNoStale) return false; } catch (e) { return false; }
+    if (lead != null) { const top = _telopTopNow(); if (top != null && top !== lead) return true; }
+    // ★区間を語る行（sec＝0序盤/1中盤/2終盤・2026-11-13）も同じ扱い。画面の区間表示（左上の「大旋回」など）は
+    //   先頭がコースの1/3・2/3に達した瞬間に替わる。表示が次の区間になったあとで前の区間を語るのは、
+    //   遅い解説ではなく食い違った解説（Codexの通し試験：表示は「大旋回」、解説は「長直線スタートー！」）。
+    if (sec != null) { try { if (thirdAtP(clamp(timeline.leaderProgressAt(S.tau), 0, 1)) !== sec) return true; } catch (e) {} }
+    return false;
   }
   // ★テロップの投入口はこの1本に集約する（2026-08-01）。
   //   理由：以前は shownLines.push が7箇所に散っていて、「1フレームに何行入ったか」も
@@ -2293,9 +2368,13 @@ function startRaceCanvas(container, ctx) {
       _telopShow(line, side, tag);
       return;
     }
-    if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag); return; }
+    const lead = (opt && opt.lead != null) ? opt.lead : null;
+    const sec = (opt && opt.sec != null) ? opt.sec : null;
+    // ★台本の詰め込みで後ろへずれたぶんだけで、もう古くなっている行はここで捨てる。
+    if (_telopStale(lead, sec, tag)) { _telopDrop++; _telopStaleN++; _telopLog("stale", side, line, tag, lead); return; }
+    if (performance.now() - _telopLastAt >= _telopDwell()) { _telopShow(line, side, tag, lead, sec); return; }
     // ★間に合わない行は、まず積む（核も雑談も区別せず）。間が空けば雑談も1本通る。
-    _telopQ.push({ line: line, side: side, tag: tag });
+    _telopQ.push({ line: line, side: side, tag: tag, lead: lead, sec: sec });
     // ★あふれたら「雑談から」間引く。核は最後まで残す。
     //   積みすぎると「もう終わった話」が後から出るので、雑談を含むうちは上限2本。
     //   ★ただし全部が核のときだけ上限を4本に緩める（2026-08-01・再計測で追加）。
@@ -2312,12 +2391,19 @@ function startRaceCanvas(container, ctx) {
   }
   // 毎フレーム呼ぶ：滞留が明けたらキューから1本出す
   function telopPump() {
+    _telopFadePast();
     if (!_telopQ.length) return;
     if (performance.now() - _telopLastAt < _telopDwell()) return;
-    const it = _telopQ.shift();
-    _telopShow(it.line, it.side, it.tag);
+    // ★待っているあいだに先頭が替わった行は出さない。捨てたら、その場で次の行を見る
+    //   （1本捨てて黙るのではなく、いま本当のことを言っている行まで進む）。
+    while (_telopQ.length) {
+      const it = _telopQ.shift();
+      if (_telopStale(it.lead, it.sec, it.tag)) { _telopDrop++; _telopStaleN++; _telopLog("stale", it.side, it.line, it.tag, it.lead); continue; }
+      _telopShow(it.line, it.side, it.tag, it.lead, it.sec);
+      return;
+    }
   }
-  try { window.__telopStats = function () { return { dropped: _telopDrop, queued: _telopQ.length }; }; } catch (e) {}
+  try { window.__telopStats = function () { return { dropped: _telopDrop, queued: _telopQ.length, stale: _telopStaleN }; }; } catch (e) {}
   // R8-W3 実況の強弱：山場ワードを含む最新行は「絶叫」スタイル（金・大きめ）＝表示のみ
   const TELOP_HOT = /先頭|差し切|抜け出|かわし|接戦|並ん|仕掛け|伸び|ゴール|突き放|猛追|一気|捕らえ/;
   // ---- ゆっくり実況の描画：左右それぞれ「最新の一言」だけを吹き出しに出す ----
@@ -3563,7 +3649,13 @@ function startRaceCanvas(container, ctx) {
     }
 
     // --- dragons (draw far lanes first for overlap) ---
-    const standings = timeline.standingsAt(S.tau);
+    // ★発走前（入場〜カウントダウン）は、まだ順位というものが無い。人気順で並べ、
+    //   順位の数字・上位3頭の強調・「いま的中なら」は出さない（2026-11-12）。
+    //   以前はここに最終着順が出ていて、走る前に答えが分かってしまっていた。
+    const _preGo = (S.entryT > 0 || S.preT > 0) && !S.finished;
+    S._preGo = _preGo;   // 順位表（updateBoard）が読む
+    let standings = timeline.standingsAt(S.tau);
+    if (_preGo) standings = standings.slice().sort((a, b) => (popRank[a] || 99) - (popRank[b] || 99));
     const standMap = {}; standings.forEach((id, i) => { standMap[id] = i + 1; });
 
     // ★世界内イベントポップ（R8-W2・表示のみ）＝順位変動/スパートをその竜の頭上で祝う
@@ -3657,7 +3749,19 @@ function startRaceCanvas(container, ctx) {
       }
 
       const offLeft = x < cw * 0.04;
-      const drawX = clamp(x, cw * 0.05, cw * 0.97);
+      // ★自分の竜は、後方に置かれても「体ごと」画面の左端に残す（2026-11-13）。
+      //   竜は鼻先が基準で、体はそこから左へ伸びる。以前は鼻先を左5%に留めていたので、体は画面の外に出て
+      //   名札だけが残っていた（駒送りの一覧で確認：7〜8番手の自分の竜が、中盤以降ずっと名札だけ）。
+      //   外れるレースのほうが多いので、「自分の竜が映らないレース」が大半になっていた。
+      //   ★留める位置は、カメラの拡大（S.zoom・軸 fx）をかけたあとで体の左端が画面内に入る所。描く位置だけ＝進み・着順は読むだけ。
+      let _minX = cw * 0.05, _pinned = false;
+      if (betSet.has(dr.id) && rcHasDragonSprite(dr.id)) {
+        const _bw = 2 * rcDragonSpriteHalfW(dr.id, _RC_INRACE * laneDepth(dr));
+        const _z = Math.max(1, S.zoom || 1);
+        _minX = Math.max(_minX, _bw + fx - (fx - cw * 0.02) / _z);
+        _pinned = x < _minX - 1;
+      }
+      const drawX = clamp(x, _minX, cw * 0.97);
 
       // Backmarkers that fall behind the lead-pack focus dissolve off the left
       // edge — reinforces the "field thins to three" read. Tied to focusT so the
@@ -3845,8 +3949,15 @@ function startRaceCanvas(container, ctx) {
       }
       // ゴール後（勝者の大写し中）は小札を出さない＝大写しの後ろに「5 バラン」等が残って安っぽく見えた（ユーザー指摘）
       if ((_lEb > 0.6 || isBet) && !S.finished) {
+        // 後方に留めて描いている自分の竜は、名札に「先頭まで何m」を添える（先頭まで90m）。10m きざみ＝数字がちらつかない。
+        //   留めた位置は本当の位置ではないので、どれだけ後ろかを一緒に言う。走っているあいだだけ。
+        let _nm = commentaryName(dr.id);
+        if (_pinned && !_preGo && P < 1 && S.entryT <= 0 && S.preT <= 0) {
+          const _dm = Math.round(Math.max(0, leaderP - P) * (timeline.distanceMeters || 0) / 10) * 10;
+          if (_dm >= 10) _nm += " 先頭まで" + _dm + "m";   // 「◂120m」だけでは意味を一度考える、との指摘（Codex 2026-11-13）
+        }
         _lbls.push({ cx: bodyCx, top: _body ? _body.y : y - 34 * dep, bot: _body ? _body.y + _body.h : baseY + 12, dep: dep, rk: rk, isBet: isBet,
-          lead: popRank[dr.id] === 1, nm: commentaryName(dr.id), a: cctx.globalAlpha });
+          lead: popRank[dr.id] === 1, nm: _nm, a: cctx.globalAlpha, rkText: _preGo ? "" : null });
       }
 
       // ★A-2 ロールコール：紹介中の1頭だけ、頭上に大きな名札プレートを出す。
@@ -3890,8 +4001,8 @@ function startRaceCanvas(container, ctx) {
         cctx.restore();
       }
 
-      // off-screen-behind indicator
-      if (offLeft) {
+      // off-screen-behind indicator（自分の竜は体ごと左端に居て、名札が距離を言うので出さない）
+      if (offLeft && !betSet.has(dr.id)) {
         cctx.fillStyle = "rgba(255,255,255,0.6)";
         cctx.font = "10px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.fillText("◀", cw * 0.03, y);
@@ -4378,6 +4489,11 @@ function startRaceCanvas(container, ctx) {
     remainEl.textContent = S.finished ? "ゴール" : "残り " + timeline.distanceRemainingAt(S.tau) + "m";
     const _tNow = (typeof performance !== "undefined" ? performance.now() : Date.now());
     updateBoard(standings, standMap, _tNow);
+    // ★同接（👁）を動かす処理を呼び戻す（2026-11-12）。「ゆっくり実況」へ刷新したとき（88ddbaf）に、
+    //   視聴者コメントの表示と一緒にこの呼び出しまで外れ、上部の視聴者数がレース中ずっと 0 のままだった。
+    //   コメントの描画先（#rc-chat）と実況ワイプ（#rc-caster）はもう無いので、そこは黙って何もしない。
+    //   生きるのは同接の数字だけ＝先頭交代・終盤・圏内・ゴールで増える“演出の数字”（結果には無関係）。
+    try { updateChat(standings, standMap, _pi, _tNow); } catch (e) {}
   }
 
   // =====================================================================
@@ -4394,12 +4510,58 @@ function startRaceCanvas(container, ctx) {
   let boardHitLineEl = null;               // 的中ラインの要素
   let boardZoneWas = null;                 // 圏内フラグの前回値（入った瞬間だけ光らせる）
 
+  // ★順位表を「上位3頭＋自分の竜」に絞る（2026-11-12・ユーザー決裁「見た目が崩れないよう慎重に」）。
+  //   スマホでは走る絵が画面の4割ほどしか取れず、8頭ぶんの表（226px）がその下を占めていた。
+  //   変えるのは「どの行を見せるか」だけ：
+  //     ・行DOM・FLIPの並び替え・的中ライン・▲▼・「いま的中なら」は、これまでの作りのまま。
+  //     ・上位3頭は必ず出す（的中ラインは1着の下か3着の下＝どちらも必ず見える）。
+  //     ・自分の竜が圏外にいるときは、4行め以降の“自分の竜でない行”と入れ替えて必ず出す。
+  //     ・表を押すと全頭に戻る／また押すと絞る。自分で開いた人には、次からも全頭で出す。
+  //     ・絞るのは「走る絵が十分に取れない画面」だけ（growToFit が測った余りで決める）。
+  //       PCや縦に長い端末では、これまでどおり全頭。
+  //   ⚠️着順は timeline で確定済み。ここは見せ方だけ。
+  const BOARD_TOP = 3;                     // 必ず見せる上位の頭数
+  const BOARD_FOOT_H = 15;                 // 絞ったときだけ出す「ほかN頭」の帯の高さ
+  let boardCompact = false;                // いま絞っているか
+  let boardAutoDone = false;               // 自動の判定は1レースに1回だけ
+  let boardFootEl = null;
+  function boardVisN() { return Math.min(dragons.length, BOARD_TOP + Math.max(1, betSet ? betSet.size : 0)); }
+  function boardApplyHeight() {
+    const rows = boardCompact ? boardVisN() : dragons.length;
+    boardEl.style.height = (BOARD_ROW_H * rows + 10 + (boardCompact ? BOARD_FOOT_H : 0)) + "px";
+    boardEl.classList.toggle("rc-board--compact", boardCompact);
+    if (boardFootEl) boardFootEl.textContent = "︙ ほか" + (dragons.length - boardVisN()) + "頭　タップで全頭";
+  }
+  // 竜id → 何行めに出すか（-1＝いまは出さない）
+  function boardSlotMap(standings) {
+    const out = {};
+    if (!boardCompact) { standings.forEach((id, i) => { out[id] = i; }); return out; }
+    const vis = boardVisN();
+    const shown = standings.slice(0, vis);
+    standings.forEach((id, i) => {
+      if (i < vis || !betSet || !betSet.has(id)) return;
+      for (let k = shown.length - 1; k >= BOARD_TOP; k--) { if (!betSet.has(shown[k])) { shown.splice(k, 1); break; } }
+      if (shown.length < vis) shown.push(id);
+    });
+    standings.forEach(id => { out[id] = shown.indexOf(id); });
+    return out;
+  }
+  function setBoardCompact(on, byUser) {
+    on = !!on;
+    if (boardCompact === on) return;
+    boardCompact = on;
+    boardApplyHeight();
+    boardLastArrange = -1;                 // 次の更新ですぐ並べ直す
+    if (byUser) { try { localStorage.setItem("rc_board_full", on ? "0" : "1"); } catch (e) {} }
+    try { growToFit(); } catch (e) {}      // 表の高さが変わったぶん、走る絵を測り直す（伸ばす／戻す）
+  }
+
   // 賭式ごとの「ここより上なら的中」の境界順位。単勝=1着まで／複勝・ワイド=3着まで。
   const HIT_LINE_RANK = !bet ? 0 : (bet.type === "win" ? 1 : 3);
 
   function buildBoard() {
     boardEl.innerHTML = "";
-    boardEl.style.height = (BOARD_ROW_H * dragons.length + 10) + "px";
+    boardApplyHeight();
     // 的中ライン（賭けているときだけ）＝射幸性の本丸。常に「あと何人抜けば的中か」が線で見える。
     if (bet && betSet.size && HIT_LINE_RANK > 0 && HIT_LINE_RANK < dragons.length) {
       boardHitLineEl = el("div", "rcb-hitline");
@@ -4428,18 +4590,30 @@ function startRaceCanvas(container, ctx) {
       boardEl.appendChild(row);
       boardRow[dr.id] = row;
     });
+    // 絞ったときだけ見える帯（何頭が隠れているか＋押せば全頭、の合図）
+    if (dragons.length > boardVisN()) {
+      boardFootEl = el("div", "rcb-foot");
+      boardEl.appendChild(boardFootEl);
+      boardEl.onclick = () => setBoardCompact(!boardCompact, true);
+      boardApplyHeight();
+    }
   }
 
   function updateBoard(standings, standMap, tNow) {
     // --- 並び替え（FLIP）: 4〜5回/秒に間引く。毎フレームやると重いだけで見た目も変わらない ---
+    const boardPreGo = !!S._preGo;         // 発走前か（描画の先頭で決めている）
     const doArrange = (tNow - boardLastArrange) > 220;
+    const slots = doArrange ? boardSlotMap(standings) : null;
     standings.forEach((id, i) => {
       const row = boardRow[id]; if (!row) return;
       const rank = i + 1;
       const prev = boardPrevRank[id];
 
       if (doArrange) {
-        const toY = BOARD_ROW_H * i;
+        // 絞って外れた行は、表の下端のすぐ下で待つ（戻るときは下から上がってくる）
+        const slot = slots[id], off = slot < 0;
+        if (row._off !== off) { row._off = off; row.classList.toggle("rcb-off", off); }
+        const toY = BOARD_ROW_H * (off ? boardVisN() : slot);
         const fromY = row._y != null ? row._y : toY;
         if (fromY !== toY) {
           // Invert→Play：一旦もとの位置に置いてから、次フレームで新しい位置へ流す
@@ -4455,12 +4629,14 @@ function startRaceCanvas(container, ctx) {
       }
 
       // --- 中身の差分更新（変わった時だけ触る＝無駄な再描画を避ける） ---
-      if (row._rank !== rank) {
-        row._rank = rank;
-        row.querySelector(".rcb-pos").textContent = rank;
-        row.classList.toggle("top3", rank <= 3);
+      // 発走前は順位を出さない（「–」）。発走した瞬間に数字へ切り替わる。
+      const rkey = boardPreGo ? "pre" : rank;
+      if (row._rank !== rkey) {
+        row._rank = rkey;
+        row.querySelector(".rcb-pos").textContent = boardPreGo ? "–" : rank;
+        row.classList.toggle("top3", !boardPreGo && rank <= 3);
         // 順位変動の矢印：上がった＝▲（緑）／下がった＝▼（赤）。1.2秒で自然に消す。
-        if (prev != null && prev !== rank) {
+        if (!boardPreGo && prev != null && prev !== rank) {
           const mv = row.querySelector(".rcb-mv");
           const up = rank < prev;
           mv.textContent = up ? "▲" : "▼";
@@ -4469,12 +4645,17 @@ function startRaceCanvas(container, ctx) {
           row._mvT = setTimeout(() => { mv.textContent = ""; mv.className = "rcb-mv"; }, 1200);
         }
       }
-      boardPrevRank[id] = rank;
+      boardPrevRank[id] = boardPreGo ? null : rank;   // 発走前の並び（人気順）からの「▲▼」は出さない
     });
     if (doArrange) boardLastArrange = tNow;
+    boardEl.classList.toggle("rc-board--prego", boardPreGo);
 
     // --- 自分の竜：期待メーター＋ライブ配当（圏内のときだけ）---
-    if (bet && betSet.size) {
+    //   発走前は判定しない（人気順の1行めにいるだけで「いま的中なら」が出てしまうため）。
+    if (boardPreGo && bet && betSet.size) {
+      betSet.forEach(id => { const row = boardRow[id]; if (!row) return; row.classList.remove("in-zone"); const pay = row.querySelector(".rcb-pay"); if (pay && row._payShown !== false) { row._payShown = false; pay.textContent = ""; } });
+      boardEl.classList.remove("in-zone"); boardZoneWas = false;
+    } else if (bet && betSet.size) {
       const exp = betExpect(standMap);
       betSet.forEach(id => {
         const row = boardRow[id]; if (!row) return;
@@ -4800,7 +4981,7 @@ function startRaceCanvas(container, ctx) {
     if (phNow !== S.phaseShown) {
       S.phaseShown = phNow;
       const lbl = RC_PHASE_BANNERS[phNow];
-      if (lbl && S.preT <= 0 && !S.finished) {
+      if (lbl && S.preT <= 0 && !S.finished && !S.tapeBroken) {
         S.banner = { text: lbl, t: 0, max: 1.9 };
         S.zoomBump = Math.min(0.2, (S.zoomBump || 0) + 0.07);
         if (phNow >= 3) S.shake = Math.max(S.shake, 2.5);
@@ -4846,6 +5027,7 @@ function startRaceCanvas(container, ctx) {
         addFloat(gx, y, cr.place + "着", cr.place === 1 ? "#ffe06a" : "#cfe6ff", cr.place === 1);
         if (cr.place === 1) {
           S.tapeBroken = true;
+          S.banner = { text: "ゴール！", t: 0, max: 1.6 };   // 勝者がテープを切ったら「ゴール前！」の帯を「ゴール！」へ（表示のみ・Codex 4回め §6-7）
           S.shake = Math.max(S.shake, 5);
           spawnSpark(gx, y, "#ffffff");
           addFloat(cw / 2, ch * 0.34, timeline.photoFinish ? "きわどい！" : "テープを切った！", "#fff");
@@ -5079,7 +5261,7 @@ function startRaceCanvas(container, ctx) {
     html += `<div class="rc-fs-title">着順</div>`;
     timeline.crossings.forEach(cr => {
       const isT = betSet.has(cr.id);
-      html += `<div class="rc-fs-row ${isT ? "t" : ""}"><b>${cr.place}</b> ${commentaryName(cr.id)}${isT ? " 🎯" : ""}</div>`;
+      html += `<div class="rc-fs-row ${isT ? "t" : ""}"><b>${cr.place}</b> ${commentaryName(cr.id)}${isT ? " ★" : ""}</div>`;   // 選んだ印は結果表と同じ★（🎯は的中の印なので、外れでも付くと紛らわしい）
     });
     finishStripEl.innerHTML = html;
     // ★D1：ゴール確定に合わせてボード上位3行を金銀銅で固める（結果画面への視覚的な橋渡し）

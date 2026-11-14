@@ -96,7 +96,7 @@ function renderAssets() {
           `<div class="lr-room-p">内訳を見る ▸</div></div>`
       : `<div class="lr-room-info"><div class="lr-room-lbl">💸 のこり借金（自力分）</div>` +
           `<div class="lr-room-total lr-debt">−${fmtCoins((typeof mimiDebtLeft === "function") ? mimiDebtLeft() : 0)}</div>` +
-          `<div class="lr-room-p">名を上げて返す ／ サケ立替 297万</div></div>`);
+          `<div class="lr-room-p">${(typeof mimiDebtAwaitsWin === "function" && mimiDebtAwaitsWin()) ? "のこりは、1勝して返す" : "名を上げて返す"} ／ サケ立替 297万</div></div>`);
   app.appendChild(hero);
   // 旧「暮らしP ◇n」の枠を、資産の内訳（計算式）への入口に置き換え。
   // 残高が出るのに減らない指標を見せるより、「何がいくらで合計いくらか」を開ける方が役に立つ。
@@ -147,7 +147,10 @@ function renderAssets() {
   if (typeof livingRankOf === "function" && typeof livingRankProgress === "function") {
     const pr = livingRankProgress(state);
     const rk = livingRankOf(pr.lv);
-    const _rescue = (typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[pr.lv]) || 0;
+    // ★表の額ではなく「いま実際に受け取れる額」を出す（assets_engine.js calculateRescueCoins＝最大の賭け金の5回ぶんまで）。
+    //   表の額のままだと、ランク1・暮らしLv3 で「救済 5,000」と出るのに、実際に無心すると 1,000 になる。
+    const _rescue = (typeof calculateRescueCoins === "function") ? calculateRescueCoins(state, state.player.rank)
+      : ((typeof RESCUE_COINS !== "undefined" && RESCUE_COINS[pr.lv]) || 0);
     const _mult = (typeof VILLAGE_MULT !== "undefined" && VILLAGE_MULT[pr.lv]) || 1.0;
     const nextRk = pr.max ? null : livingRankOf(pr.lv + 1);
     const card = el("div", "card lrank");

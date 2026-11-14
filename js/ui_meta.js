@@ -58,6 +58,7 @@ function renderGoals() {
 // UX：4段を縦に積まず“上の段タブ”で切替＝選んだ段だけ表示してスクロールを抑える（compact＋drill-down）。
 let _mealTab = null;
 function renderMeals() {
+  const _arrived = state.ui.screen !== "meals";   // ほかの画面から来た（段タブの切替や、食べたあとの描き直しではない）
   state.ui.screen = "meals";
   const app = beginScreen();
   app.appendChild(el("h2", null, `🍽️ 食事 ― みみの食べ歩き <img class="news-men news-men--h2" src="images/kurashi/men_gurume.webp" alt="グルメ面" onerror="this.remove()">`));
@@ -76,6 +77,18 @@ function renderMeals() {
   if (!_mealTab || !tiers.some(t => t.id === _mealTab) || !_tUnlocked(_mealTab)) {
     const firstInc = tiers.find(t => _tUnlocked(t.id) && (function () { const s = mealTierStats(t.id); return s.got < s.total; })());
     _mealTab = (firstInc || tiers.find(t => _tUnlocked(t.id)) || tiers[0] || {}).id;
+  }
+  // ★空腹で来たら、「ここですぐ食べられる皿」がある段を開く（2026-11-13）。
+  //   屋台の段は全品が「島で出会うまで一覧からは食べられない」品（出会いの設計・下の where）。
+  //   新しいプレイヤーが空腹で来ると、食べられない「？？？」だけが並ぶ段が開いていた（通しプレイで発覚）。
+  //   すぐ食べられる＝もう出会った皿（食べ直し）か、where の無い皿（自宅ごはん）。当てる段（quiz）は含めない。
+  //   段タブを自分で切り替えたあとは動かさない（来たときだけ）。値段・回復量・出会いの決まりは読むだけ。
+  const _eatHere = m => !m.quiz && (mealEaten(m.id) || !m.where);
+  const _hungryNow = (typeof hungerGet === "function") ? hungerGet() : 100;
+  const _hungry = _hungryNow < 100;
+  if (_arrived && _hungry) {
+    const _eatTier = tiers.find(t => _tUnlocked(t.id) && mealsByTier(t.id).some(_eatHere));
+    if (_eatTier) _mealTab = _eatTier.id;
   }
   // ★段ごとの一枚絵（2026-08-04・ユーザー依頼「今は屋台めししかないから生成しましょう／
   //   衣装はそれぞれのクラスに応じたそれっぽいミミに」→「既存の意匠から選んで欲しかった」）。
@@ -107,27 +120,30 @@ function renderMeals() {
     tabs.appendChild(tab);
   });
   app.appendChild(tabs);
+  // 空腹のあいだだけ、どの皿がいま食べられるかを一言（金の枠＝下の can-eat）。
+  if (_hungry && tiers.some(t => _tUnlocked(t.id) && mealsByTier(t.id).some(_eatHere))) {
+    app.appendChild(el("div", "as-hint2 meal-eat-hint", `🍚 おなか <b>${_hungryNow}</b>／100　<span class="meal-eat-key">金の枠</span>の皿は、ここですぐ食べられます。`));
+  }
+  // 負けた日のおごり（1品無料）が残っていれば、皿を選ぶ前に知らせる（hunger.js hungerFreeMealOk を読むだけ）。
+  try {
+    if (_hungry && typeof hungerFreeMealOk === "function" && hungerFreeMealOk())
+      app.appendChild(el("div", "as-hint2 meal-eat-hint", `🍜 きょうは1品、<b>店のおごり</b>です（負けた日だけ）。`));
+  } catch (e) {}
 
-  // 選択中の段だけ：見出し＋グリッド（未開放なら開放案内）
-  const t = tiers.find(x => x.id === _mealTab) || tiers[0];
-  if (t && !_tUnlocked(t.id)) {
-    app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は" + _mealLockHint(t.id) + "で開放されます。"));
-  } else if (t) {
-    const sec = el("div", "meal-sec");
-    // 価格は品ごとに異なる（各カードに表示）ので、見出しはモードのみ。当てる段位は無料。
-    const _secTag = t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める";
-    sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
-      `<small>${t.sub}　・　${_secTag}</small></span>`;
-    app.appendChild(sec);
-    const grid = el("div", "meal-grid");
-    mealsByTier(t.id).forEach(m => {
+  // 一枚のカード（段のグリッドと、下の「前回の一皿」の両方で使う）
+  const _mealCard = m => {
       const un = mealUnlocked(m);
-      const card = el("button", "meal-card" + (un ? " got" : ""));
+      const card = el("button", "meal-card" + (un ? " got" : "") + ((_hungry && _eatHere(m)) ? " can-eat" : ""));
       const thumb = (un && m.photo)
         ? `<span class="meal-card-thumb"><img src="${m.photo}" alt="" decoding="async"></span>`
         : `<span class="meal-card-ic">${un ? m.icon : "❔"}</span>`;
+      // ★値段の横に、おなかの回復量も出す（2026-11-13）。初見の皿は名前を伏せるので、走れる状態へ戻したいときに
+      //   「どれが効くか」を開かないと分からなかった（Codex の通し試験）。既存の回復量（hunger.js mealHeal）を読むだけ。
       const _cardPrice = (!m.quiz && typeof mealPrice === "function")
-        ? `<span class="meal-card-price">🪙${mealPrice(m).toLocaleString("ja-JP")}</span>` : "";
+        ? `<span class="meal-card-price">🪙${mealPrice(m).toLocaleString("ja-JP")}` +
+          ((typeof mealHeal === "function" && (un || !m.where)) ? `<i class="meal-card-heal">🍚+${mealHeal(m)}` +
+            // 走れない（＝食べに来た）ときだけ、この皿であと何戦走れるかを添える。数字の意味が「走れる回数」で読める。
+            ((_hungry && typeof hungerRacesAt === "function") ? `<em>あと${hungerRacesAt(_hungryNow + mealHeal(m))}戦</em>` : "") + `</i>` : "") + `</span>` : "";
       card.innerHTML = `${thumb}<span class="meal-card-nm">${un ? m.name : "？？？"}${_cardPrice}</span>`;
       // ★B改・出会いの設計（2026-08-02・ユーザー決裁「選ぶ段階がつまらない。探し出す喜び・
       //   出会う喜びを」）：where を持つ未食の品は、**ここ（一覧）からは食べられない**。
@@ -140,8 +156,36 @@ function renderMeals() {
       } else {
         card.onclick = () => showMealDetail(m);
       }
-      grid.appendChild(card);
-    });
+      return card;
+  };
+  // ★おなかが空いて来たら、前回の一皿を先頭に1枚（2026-11-13・Codex 3回め）。いちばん安い皿で食いつなぐ人は
+  //   毎回12枚の中から同じ皿を探していた（「何を食べよう」が「先へ進むための確認係」になる）。
+  //   出すのは、すぐ食べられる皿（もう出会った・当てる段でない・段が開いている）のときだけ。押すと同じ窓が開く。
+  try {
+    const _lastId = _hungry && state.player && state.player._lastMealId;
+    const _last = _lastId && (typeof MEALS !== "undefined") ? MEALS.find(x => x.id === _lastId) : null;
+    if (_last && _eatHere(_last) && _tUnlocked(_last.tier)) {
+      const again = el("div", "meal-again");
+      again.appendChild(el("div", "meal-again-t", "🔁 前回の一皿"));
+      const g = el("div", "meal-grid");
+      g.appendChild(_mealCard(_last));
+      again.appendChild(g);
+      app.appendChild(again);
+    }
+  } catch (e) {}
+  // 選択中の段だけ：見出し＋グリッド（未開放なら開放案内）
+  const t = tiers.find(x => x.id === _mealTab) || tiers[0];
+  if (t && !_tUnlocked(t.id)) {
+    app.appendChild(el("div", "as-hint2", "🔒 上級グルメ「" + t.name + "」は" + _mealLockHint(t.id) + "で開放されます。"));
+  } else if (t) {
+    const sec = el("div", "meal-sec");
+    // 価格は品ごとに異なる（各カードに表示）ので、見出しはモードのみ。当てる段位は無料。
+    const _secTag = t.mode === "guess" ? "🔍 食材・隠し味を当てる" : "🍴 食べて集める";
+    sec.innerHTML = `<span class="meal-sec-ic">${t.icon}</span><span class="meal-sec-tx"><b>${t.no}. ${t.name}</b>` +
+      `<small>${t.sub}　・　${_secTag}</small></span>`;
+    app.appendChild(sec);
+    const grid = el("div", "meal-grid");
+    mealsByTier(t.id).forEach(m => grid.appendChild(_mealCard(m)));
     app.appendChild(grid);
   }
   // ★M2/M3 結線の穴埋め：食事のあとの「次の一手」（今日の一枚／次のレース）＝島の一日ループ。
@@ -158,6 +202,26 @@ function showMealDetail(m) {
   //   屋台で「？？？＋気配」→ 食べた瞬間に名前と全力の講評が開く＝発見が遊びの山になる。
   //   この関数内で食べた直後の1回だけ「出会った！」バナーを立てる。
   let _justFound = false;
+  let _ateNow = false;   // この窓の中で食べた（下の「このまま、レースへ」を出す合図）
+  let _lastPaid = 0;     // いま食べた一皿に払った額（おごりなら0）。食べたあとの窓は「払った結果」を出す
+  const _wasEaten = !m.quiz && mealEaten(m.id);   // この窓を開く前から食べたことがある（＝感想はもう読んだ皿）
+  // ★はじめての一皿の会話（event_registry.js milestone_meal_*）を、料理の窓の裏で始めない（2026-11-13・Codex 3回め）。
+  //   会話（.dlg-overlay z-index 200）は窓（.navpop-ov 9200）より下にあり、窓に隠れて送れず、
+  //   「このまま、レースへ」を押した先のレース選択で現れていた。食べた直後に会話が始まったら、窓をいったん伏せ、
+  //   会話が閉じたら戻す＝食べる → ミミの一言 → 窓（発見・あと何戦・レースへ）の順になる。会話が始まらなければ何もしない。
+  const _yieldToDialogue = () => {
+    if (!(window.Dialogue && Dialogue.isOpen)) return;
+    const t0 = Date.now(); let seen = false;
+    (function tick() {
+      if (!document.body.contains(ov)) return;
+      const open = Dialogue.isOpen() || (Dialogue.isHolding && Dialogue.isHolding());
+      if (open && !seen) { seen = true; ov.style.visibility = "hidden"; }
+      if (seen && !open) { ov.style.visibility = ""; return; }
+      if (!seen && Date.now() - t0 > 900) return;            // 会話は始まらなかった（2品目以降など）
+      if (seen && Date.now() - t0 > 120000) { ov.style.visibility = ""; return; }   // 永久に伏せない
+      setTimeout(tick, seen ? 250 : 60);
+    })();
+  };
   const _mystery = () => !mealEaten(m.id) && !!m.where && !m.quiz;
   const head = () => (_mystery()
     ? `<div class="meal-pop-ic">❔</div><div class="navpop-t">？？？</div>`
@@ -187,21 +251,68 @@ function showMealDetail(m) {
         : _short ? "所持 " + _bal + "（足りない）"
         : "所持 " + _bal + " → 残り 🪙" + (_coins - _price).toLocaleString("ja-JP");
       let _html = head();
+      // ★前に食べたことのある皿は、感想と豆知識を畳む（2026-11-13・Codex 3回め：同じ皿を食べ直すたびに、読んだ講評を
+      //   通ってからボタンへ下りていた）。写真・名前・値段と、食べる／レースへのボタンが先に見える。開けばいつでも読める。
+      //   はじめて食べたその窓では、これまでどおり全部見せる（発見の山）。
       _html += eaten
-        ? (_justFound ? `<div class="meal-found">🎉 あたらしい一皿と、出会った！</div>` : "") +
-          `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`
+        ? (_wasEaten
+          ? `<details class="meal-more"><summary>📖 前に食べたときの感想</summary><div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div></details>`
+          : (_justFound ? `<div class="meal-found">🎉 あたらしい一皿と、出会った！</div>` : "") +
+            `<div class="meal-react">${m.react}</div><div class="meal-note">📖 ${m.note}</div>`)
         : (m.where && m.scent
           ? `<div class="meal-scent">${m.scent}</div><div class="meal-prompt">ひとくち、いってみる？</div>`
           : `<div class="meal-prompt">ひとくち、いってみる？</div>`);
+      // ★食べたあとの窓は「払った結果」を出す（2026-11-13・Codex 3回め）。以前は食べたあとも「次の一皿」の予告
+      //   （「🍽 70コイン／所持 900 → 残り 830」）のままで、おごりで食べたのに払ったように、払ったのにさらに引かれるように読めた。
+      //   いま払った額・いまのおなか・いまの所持と、あと何戦。もう一品の値段は「もう一品」のボタンに書く。数字は読むだけ。
+      if (_ateNow) {
+        // 短く（375px で「支払い 40コ／イン」「おなか 30／／100」と折れたため）。いくら残ったかは下の「所持」で読める。
+        const _paidTxt = _lastPaid > 0 ? "✅ −" + _lastPaid.toLocaleString("ja-JP") + "コイン" : "✅ おごり";
+        _html += `<div class="meal-buy"><div class="meal-buy-row"><span class="meal-buy-cost">${_paidTxt}</span><span class="meal-buy-heal">🍚 おなか ${_hunger}</span></div>` +
+          ((typeof hungerRacesAt === "function") ? `<div class="meal-buy-races">いまのおなかで、あと <b>${hungerRacesAt(_hunger)}戦</b> 走れる</div>` : "") +
+          `<small>所持 ${_bal}</small></div>`;
+      } else
       _html += `<div class="meal-buy${(_short || _full) ? " short" : ""}"><div class="meal-buy-row"><span class="meal-buy-cost">${_priceTxt}</span><span class="meal-buy-heal">🍚 おなか +${_heal}</span></div>` +
+        // この皿を食べると、あと何戦走れるか（hunger.js hungerRacesAt）。値段と回復量の行とは分けて1行で。
+        ((!_full && typeof hungerRacesAt === "function") ? `<div class="meal-buy-races">食べると、あと <b>${hungerRacesAt(_hunger + _heal)}戦</b> 走れる</div>` : "") +
         `<small>${_balTxt}</small></div>`;
       box.innerHTML = _html;
       _wirePhotoZoom();
       const btns = el("div", "navpop-btns");
-      const eat = el("button", "navpop-go" + (_full ? " is-off" : ""), eaten ? "🍴 もう一度食べる" : "🍴 いただきます！");
+      // 食べたあとの「もう一度」は、値段をボタンに書く（上の箱は払った結果を出しているので、ここで次の一皿の額が分かる）
+      const _eatLabel = !eaten ? "🍴 いただきます！"
+        : (_ateNow && !_full) ? "🍴 もう一品（" + (_free ? "おごり" : _price.toLocaleString("ja-JP") + "コイン") + "）"
+        : "🍴 もう一度食べる";
+      const eat = el("button", "navpop-go" + (_full ? " is-off" : ""), _eatLabel);
       if (_full) eat.disabled = true;
-      else eat.onclick = () => { _justFound = !mealEaten(m.id) && !!m.where; eatMeal(m.id); if (window.Sfx) Sfx.play(_justFound ? "unlock" : "coin"); render(); };
+      else eat.onclick = () => {
+        _justFound = !mealEaten(m.id) && !!m.where;
+        const _h0 = (typeof hungerGet === "function") ? hungerGet() : 0;
+        const _c0 = (state.player && state.player.coins) || 0;
+        eatMeal(m.id);
+        const _ok = (typeof hungerGet === "function") ? hungerGet() > _h0 : true;
+        if (_ok) {
+          _lastPaid = Math.max(0, _c0 - ((state.player && state.player.coins) || 0));
+          // 食事の一覧の先頭に出す「前回の一皿」（renderMeals）。表示のための印だけ。
+          try { state.player._lastMealId = m.id; if (typeof saveGame === "function") saveGame(); } catch (e) {}
+        }
+        _ateNow = _ateNow || _ok;
+        if (window.Sfx) Sfx.play(_justFound ? "unlock" : "coin");
+        render();
+        if (_ok) _yieldToDialogue();
+      };
       const later = el("button", "navpop-cancel", eaten ? "閉じる" : "また今度"); later.onclick = () => _closeMeal();
+      // ★食べて走れるようになったら、ここからそのままレースへ（2026-11-13）。以前は、食べたあと窓を閉じ、
+      //   12枚のカードのいちばん下まで送って「次のレースへ」を探すか、ホームへ戻ってから進むかだった。
+      //   空腹のたびに食事へ送るようにしたぶん（ui_render.js hungryNeedsMeal）、帰り道も1手にする。
+      //   主役がレースになるので、「もう一度食べる」は脇へ（押せるのはそのまま）。hunger.js を読むだけ。
+      const _canGo = _ateNow && (typeof hungerCanRace !== "function" || hungerCanRace()) && typeof renderRaceSelect === "function";
+      if (_canGo) {
+        const go = el("button", "navpop-go meal-go-race", "🐉 このまま、レースへ ▶");
+        go.onclick = () => { ov.remove(); renderRaceSelect(); };
+        box.appendChild(go);
+        eat.className = "navpop-cancel" + (_full ? " is-off" : "");
+      }
       btns.appendChild(eat); btns.appendChild(later); box.appendChild(btns);
     } else {
       // ── 当てる（食材／隠し味） ──

@@ -197,10 +197,35 @@ function showStoryEvent(e) {
 }
 
 // 専用画面：1話を読む（新聞の特集一面＝大見出し＋寄稿者＋ハーフトーン写真＋本文）
+// 読み終えた直後の一枚（上の renderStoryChapter）。行き先は、その話で会った人が授けるものに合わせる。
+//   走れないとき（すっからかん・空腹）は、先にそちらへ（レースへ送って入口で止めない）。行き先の画面は既存のものだけ。
+function _storyDoneBox(ch, cast) {
+  const box = el("div", "news-done");
+  const _ep = (ch.id === "ED") ? "最終話" : ("第" + ch.id + "話");
+  box.appendChild(el("div", "news-done-t", "✅ " + _ep + "を、読み終えた"));
+  if (ch.id === "ED") return box;
+  const broke = (typeof playerBroke === "function") && playerBroke();
+  const hungry = (typeof hungryNeedsMeal === "function") && hungryNeedsMeal();
+  let label, go;
+  if (broke) { label = "🙏 ホームで立て直す ▶"; go = () => renderHome(); }
+  else if (hungry) { label = "🍙 ごはんを食べて、レースへ ▶"; go = () => renderMeals(); }
+  else if (ch.cast === "sumika" && typeof renderLifeTree === "function") { label = "🏠 スミカの宿題（くらし）を見にいく ▶"; go = () => renderLifeTree(); }
+  else if (ch.cast === "makura" && typeof renderCollection === "function" && (typeof dexUnlocked !== "function" || dexUnlocked())) { label = "🐲 推し竜の記録（図鑑）を開く ▶"; go = () => renderCollection(); }
+  else if (ch.cast === "mizu") { label = "📊 市場を見る目で、次の出走表へ ▶"; go = () => renderRaceSelect(); }
+  else if (ch.cast === "sake") { label = "🐲 竜を見る目で、次の出走表へ ▶"; go = () => renderRaceSelect(); }
+  else { label = "🐉 次のレースへ ▶"; go = () => renderRaceSelect(); }
+  const b = el("button", "news-btn prim news-done-go", label);
+  b.onclick = go;
+  box.appendChild(b);
+  return box;
+}
+
 function renderStoryChapter(chId) {
+  // 読み終えた印は、その章をすぐ描くときだけ使う（別の画面へ逸れたら残さない＝あとで開いた時に誤って「読み終えた」を出さない）
+  if (state.ui && state.ui._storyJustRead && state.ui._storyJustRead !== chId) state.ui._storyJustRead = null;
   const ch = STORY_CHAPTERS.find(c => c.id === chId);
   recomputeAssets(state);
-  if (!ch || ((typeof chapterAvailable === "function") ? !chapterAvailable(ch.id) : (assetsPeak(state) < storyUnlockAt(ch.id)))) { renderStory(); return; }
+  if (!ch || ((typeof chapterAvailable === "function") ? !chapterAvailable(ch.id) : (assetsPeak(state) < storyUnlockAt(ch.id)))) { if (state.ui) state.ui._storyJustRead = null; renderStory(); return; }
   // 読み飛ばしガード：手前に“解禁済みなのに未読”の話が残っていたら、先にそこから読んでもらう（順番厳守）。
   //   ＝総資産だけで終章へ飛び、配信も体験しないまま結末のセリフを踏む断絶を防ぐ（表示のみ・レース数値に非干渉）。
   if (typeof getStoryFlag === "function") {
@@ -211,6 +236,7 @@ function renderStoryChapter(chId) {
       if (!getStoryFlag("_chapter_intro_" + _pid)) {
         if (typeof showInfoPopup === "function") showInfoPopup("📖 先に前のお話を",
           `<div class="mm-row"><span class="mm-ic">📖</span><div><b>ちょっと待って！</b><small>いきなり結末まで飛ぶと、ミミが置いてけぼりで泣いちゃう。まずは手前のお話から、順番にどうぞ。</small></div></div>`);
+        if (state.ui) state.ui._storyJustRead = null;
         renderStory();
         return;
       }
@@ -240,6 +266,9 @@ function renderStoryChapter(chId) {
 
   const app = beginScreen();   // 上部に「← 物語」
   const news = el("div", "news news-article");
+  // ★絵と大きな文字で読み終えて戻ってきた直後だけ、紙面の先頭に「読み終えた」と、その話で開いた遊びへの出口を1つ
+  //   （2026-11-13・Codex 3回め #8：「読み終える」を押すと同じ本文の冒頭へ戻るだけで、会った人への興味を次の遊びへ渡す手がなかった）。
+  if (state.ui && state.ui._storyJustRead === ch.id) { state.ui._storyJustRead = null; try { news.appendChild(_storyDoneBox(ch, cast)); } catch (e) {} }
 
   // EPバッジ（話数）＋エピソードタイトル（headline）。旧タイトルは肩の subhead に降ろす。
   const _epIdx = STORY_CHAPTERS.findIndex(c => c.id === ch.id);
@@ -270,6 +299,13 @@ function renderStoryChapter(chId) {
   // フッター
   const foot = el("div", "news-foot");
   const btns = el("div", "news-btns");
+  // ★読み方の入口をここに一つ置く（2026-11-13）。全画面の読み物は初読のときに自動で開くだけで、
+  //   あとから同じ形で読み返す入口が無かった。本文はこのページにいつでもある＝二つの読み方をここで選べる。
+  if (typeof srOpenReader === "function") {
+    const again = el("button", "news-btn", "🎬 絵と大きな文字で読む");
+    again.onclick = () => srOpenReader(ch, (finished) => { if (finished) { state.ui._storyJustRead = ch.id; renderStoryChapter(ch.id); } });
+    btns.appendChild(again);
+  }
   const back = el("button", "news-btn prim", "◀ エピソード一覧へ"); back.onclick = () => renderStory();
   btns.appendChild(back);
   foot.appendChild(btns);
@@ -281,8 +317,21 @@ function renderStoryChapter(chId) {
   //   1段落ずつ読ませる。読み終えたらこの記事ページに戻り、以後は全文を読み返せる。
   if (typeof srRevealInto === "function") srRevealInto(bodyEl, ch.body, ch.id);
   else bodyEl.textContent = ch.body || "";
-  if (typeof srOpenReader === "function" && typeof srRead === "function" && !srRead(ch.id)) {
-    srOpenReader(ch, (finished) => { if (finished) renderStoryChapter(ch.id); });
+  // ★会話が終わってから開く（2026-11-13）。以前は導入の立ち絵会話と同時にこの全画面を開いていたので、
+  //   会話の裏で1段落めの文字送りが済んでしまい、会話を送り終えると「別の朗読カードが残っている」ように見えた
+  //   （Codex の通し試験：話→会話→朗読カード→×→本文、と読み方が三つに割れる）。
+  //   会話 → 絵と大きな文字 → 本文 の一本道にする。会話の列の最後尾を待つ＝ポロの場面が続いても重ならない。
+  //   「本文で読む」を選んだ話（srSkipped）は、開き直しても自動では開かない。
+  if (typeof srOpenReader === "function" && typeof srRead === "function" && !srRead(ch.id)
+      && !(typeof srSkipped === "function" && srSkipped(ch.id))) {
+    const _open = () => {
+      if (state.ui.screen !== "story_read" || !bodyEl.isConnected) return;       // 待つあいだに別の画面へ移った
+      if (document.getElementById("sg-cutin")) { setTimeout(_open, 300); return; }   // 第5話：開眼のカットインが出ているあいだは待つ
+      srOpenReader(ch, (finished) => { if (finished) { state.ui._storyJustRead = ch.id; renderStoryChapter(ch.id); } });
+    };
+    let _tail = null;
+    try { if (window.Dialogue && typeof Dialogue.play === "function") _tail = Dialogue.play([]); } catch (e) {}
+    if (_tail && _tail.then) _tail.then(() => setTimeout(_open, 60)); else _open();
   }
 }
 

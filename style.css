@@ -958,6 +958,21 @@ body.dev-on .debug-toggle { display: inline-block; }
   font-size: 12px; line-height: 1.6; color: #bfc6d0; margin-top: 7px;
   padding-top: 7px; border-top: 1px dashed rgba(255,255,255,.14);
 }
+/* 道のりの帯（js/bet_story.js）：序盤◯番手 ▸ 中盤◯番手 ▸ ゴール◯着。返事が名指した区間だけ明るい。
+   幅が足りなければ折り返す（1マスの中では折らない）＝狭い端末でもはみ出さない。 */
+.rs-reason .rsr-trace {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px;
+  font-size: 11.5px; line-height: 1.4; color: #9aa2ae;
+}
+.rs-reason .rsr-trace i { font-style: normal; opacity: .55; }
+.rs-reason .rsr-tr {
+  white-space: nowrap; padding: 2px 8px; border-radius: var(--r-full);
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+}
+.rs-reason .rsr-tr b { color: #e2e6ec; font-variant-numeric: tabular-nums; }
+.rs-reason .rsr-tr.key { color: #f2ede0; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.34); }
+.rs-reason.hit .rsr-tr.key { color: #ffe8a8; background: rgba(255,214,120,.16); border-color: rgba(255,214,120,.55); }
+.rs-reason.hit .rsr-tr.key b { color: #fff3cf; }
 .rs-reason .rsr-stat { font-size: 11px; color: #9aa2ae; margin-top: 8px; }
 .rs-reason .rsr-stat b { color: #e2e6ec; font-variant-numeric: tabular-nums; }
 /* ★C-2 図鑑導線／C-4 リベンジ（js/rival.js・表示専用）。
@@ -981,8 +996,38 @@ body.dev-on .debug-toggle { display: inline-block; }
   background: rgba(255,110,80,.16); border: 1px solid rgba(255,140,110,.42);
   white-space: nowrap;
 }
+/* 結果の主役の場面：この一戦で所持が0になったときの数字 */
+.rs-sub b.rs-zero { color: #ff9d9d; }
 /* ★C-4：主CTAに連勝の熱を乗せる */
 .actions .rs-next { font-weight: 900; }
+/* 結果画面のいちばん下：主役の1本を横いっぱいに（副のボタンは中身の幅）。2026-11-13 */
+/* 下の余白＝右下の音量ボタン（.vol-fab・全画面に常設）が、横いっぱいの主役のボタンに重ならないように。 */
+.rs-actions { align-items: stretch; margin-bottom: 54px; }
+/* ★結果画面の下端に残す帯（2026-11-13・Codex 3回め #6）：お財布の列＋主役のボタン。スクロール中も画面の下に残り、
+   いちばん下まで送るとふだんの位置に収まる。地は画面の下の色（#0a1417）に寄せ、上の端だけ透かして中身の上に浮かせる。 */
+.rs-dock { position: sticky; bottom: 0; z-index: 5;
+  margin: 6px calc(-1 * var(--pad-x, 20px)) 0; padding: 14px var(--pad-x, 20px) calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(10,20,23,0) 0, rgba(10,20,23,.94) 14px, rgba(10,20,23,.97) 100%);
+  /* PC の枠では帯の下に枠の余白（20px）ぶんのすき間が残り、奥の中身が透けた → 同じ色で下へ塗り足して塞ぐ */
+  box-shadow: 0 28px 0 0 rgba(10,20,23,.97); }
+.rs-dock .rs-wallet { margin: 0 0 8px; }
+.rs-dock .rs-actions { margin: 0; }
+/* 右下の音量ボタン（.vol-fab）は、この画面だけ帯の上へ逃がす（主役のボタンの右端を隠さない）。 */
+body:has(.rs-dock) .vol-fab { bottom: 128px; }
+.rs-actions .secondary { flex: none; padding-inline: 14px; }
+.rs-actions .rs-next { flex: 1 1 auto; min-height: 48px; font-size: 15px; }
+/* 次の操作のすぐ上：この一戦のあとのお財布とおなか（ui_render.js） */
+.rs-wallet { display: flex; align-items: baseline; justify-content: center; gap: 18px; margin: 14px 0 -4px;
+  padding: 9px 12px; border-radius: var(--rd-10); background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
+  font-variant-numeric: tabular-nums; }
+.rs-wallet .rw-i { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.rs-wallet i { font-style: normal; font-size: 11px; color: var(--mist-soft); letter-spacing: .04em; }
+.rs-wallet b { font-size: 16px; color: var(--white); }
+.rs-wallet small { font-size: 10.5px; color: var(--mist-soft); }
+.rs-wallet em { font-style: normal; font-size: 12px; font-weight: 800; }
+.rs-wallet em.up { color: var(--gold-bright); }
+.rs-wallet em.down { color: #ff9d9d; }
+.rs-wallet .rw-i.low b { color: #ff9d9d; }
 
 /* ===== ★RACE_SCREEN_LIVE D1：生着順ボード（実装先＝race_canvas.js の #rc-board）=====
    画面下半分の主役。8頭の行がFLIPで入れ替わり続ける＝「数字が生きている」感の本体。
@@ -1009,6 +1054,16 @@ body.dev-on .debug-toggle { display: inline-block; }
   font-size: 12px; font-weight: 900; color: #93a0b0; font-variant-numeric: tabular-nums;
 }
 .rc-board .rcb-row.top3 .rcb-pos { color: var(--hx-ffd76a); }
+/* ★順位表を「上位3頭＋自分の竜」に絞ったとき（race_canvas.js の同名の節）。外れた行は消すだけ、帯は絞ったときだけ。 */
+.rc-board .rcb-row.rcb-off { opacity: 0; pointer-events: none;
+  transition: transform .34s cubic-bezier(.3,1,.35,1), opacity .18s; }
+.rc-board .rcb-foot { display: none; position: absolute; left: 0; right: 0; bottom: 0; height: 15px; line-height: 15px;
+  text-align: center; font-size: 9.5px; letter-spacing: .06em; color: #8b96a5; cursor: pointer;
+  background: linear-gradient(180deg, rgba(6,10,16,0), rgba(6,10,16,.75)); }
+.rc-board.rc-board--compact .rcb-foot { display: block; }
+/* 発走前（入場〜カウントダウン）：順位はまだ無い。的中ラインは出さず、数字のかわりに「–」を薄く出す。 */
+.rc-board.rc-board--prego .rcb-hitline { opacity: 0; }
+.rc-board.rc-board--prego .rcb-pos { color: #6f7b8c; }
 .rc-board .rcb-waku { flex: none; width: 3px; height: 15px; border-radius: 2px; }
 .rc-board .rcb-nm { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-board .rcb-style { flex: none; font-size: 10px; color: #8b96a5; }
@@ -1697,6 +1752,32 @@ table.entry-table {
 .bet-pick-card:hover { border-color: #5a4f86; background: #2a2150; }
 .bet-pick-card:active { transform: translateY(1px); }
 .bet-pick-card.selected { border-color: #ffd34d; background: #3a2f18; box-shadow: 0 0 0 1px #ffd34d inset; }
+/* ★出走表の行に竜の姿（2026-11-12）。枠色（--waku）の光を背に、右向きの竜を少しはみ出させて置く。
+   選ぶと竜が一歩前へ出る＝「この子にした」が絵で分かる。prefers-reduced-motion では動かさない（下の一括指定）。 */
+.bet-pick-card .bp-art {
+  flex: 0 0 auto; position: relative; width: 84px; height: 60px; margin: -5px 0 -5px -2px;
+  border-radius: 10px; overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.22));
+  background:
+    radial-gradient(110% 85% at 50% 108%, color-mix(in srgb, var(--waku, #8a7fc0) 55%, transparent), transparent 72%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.22));
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset;
+}
+.bet-pick-card .bp-art img {
+  position: absolute; left: 50%; top: 50%; width: 132%; max-width: none; pointer-events: none;
+  transform: translate(-50%, -52%);
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.6));
+  transition: transform .28s cubic-bezier(.2, 1.5, .4, 1);
+}
+.bet-pick-card.selected .bp-art { box-shadow: 0 0 0 1.5px #ffd34d inset, 0 0 16px rgba(255,211,77,.4); }
+.bet-pick-card.selected .bp-art img { transform: translate(-46%, -55%) scale(1.16); }
+@media (prefers-reduced-motion: reduce) { .bet-pick-card .bp-art img { transition: none; } }
+@media (max-width: 380px) { .bet-pick-card .bp-art { width: 72px; height: 54px; } }
+/* 竜の絵を入れたぶん横が詰まり、「▾ 見る」が次の段へ折り返して行が高くなっていた（スマホで2頭しか見えない）。
+   オッズの下（右下）に固定して1行に収める。ドロワーを開いても位置が動かないよう top で止める。 */
+.bet-pick-card { min-height: 72px; }
+.bet-pick-card .bp-odds { align-self: flex-start; margin-top: 3px; }
+.bet-pick-card .bp-more { position: absolute; right: 9px; top: 41px; margin: 0; }
 .bet-pick-card .bp-order {
   position: absolute; top: -8px; left: -8px; width: 22px; height: 22px;
   align-items: center; justify-content: center;
@@ -1768,6 +1849,38 @@ table.entry-table {
   background: linear-gradient(180deg, rgba(20,32,30,0.92), rgba(12,20,20,0.96));
   border: 1px solid var(--glass-border); }
 .rs-hero.rs-miss { background: linear-gradient(180deg, rgba(40,28,30,0.9), rgba(20,14,16,0.95)); border-color: rgba(255,120,110,0.25); }
+/* ★結果の舞台（2026-11-12）：左にミミの表情とひとこと、右に1着の竜。文字だけだった答え合わせの先頭に置く。 */
+.rs-stage { position: relative; height: 172px; margin: -20px -16px 12px; overflow: hidden;
+  background: linear-gradient(180deg, #1c2440, #10131f 85%);
+  background:
+    radial-gradient(85% 115% at 76% 104%, color-mix(in srgb, var(--waku, #8a7fc0) 50%, transparent), transparent 70%),
+    linear-gradient(180deg, #1c2440, #10131f 85%); }
+.rs-stage.hit { background: linear-gradient(180deg, #3a2a12, #171008 85%);
+  background: radial-gradient(85% 115% at 76% 104%, rgba(255,205,96,.6), transparent 70%), linear-gradient(180deg, #3a2a12, #171008 85%); }
+.rs-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 34px; z-index: 3; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(14,18,20,.96)); }
+.rs-stage.miss::after { background: linear-gradient(180deg, transparent, rgba(24,16,18,.96)); }
+.rs-mimi { position: absolute; left: -24px; top: 2px; height: 268px; width: auto; max-width: none; z-index: 2; pointer-events: none;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); animation: rsMimiIn .5s cubic-bezier(.2,1.3,.4,1) both; }
+.rs-stage.miss .rs-mimi { animation: rsMimiIn .5s cubic-bezier(.2,1.3,.4,1) both, rsMimiShake .5s .45s ease 1; }
+.rs-say { position: absolute; left: 132px; top: 12px; max-width: 46%; z-index: 4; text-align: left;
+  background: rgba(255,255,255,.97); color: #2a2030; font-size: 11.5px; font-weight: 700; line-height: 1.5;
+  padding: 7px 10px; border-radius: 12px 12px 12px 3px; box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  animation: rsSayIn .35s .35s ease both; }
+.rs-winner { position: absolute; right: -8px; bottom: 6px; width: 60%; z-index: 2; text-align: right; pointer-events: none; }
+.rs-winner img { display: block; width: 100%; max-width: none; margin-bottom: -38px;
+  filter: drop-shadow(0 8px 10px rgba(0,0,0,.55)); animation: rsDragonIn .7s cubic-bezier(.2,1.2,.4,1) both; }
+.rs-win-plate { position: relative; z-index: 4; display: inline-flex; align-items: baseline; gap: 6px; margin-right: 16px;
+  padding: 4px 11px; border-radius: 99px; background: rgba(10,12,18,.8); border: 1px solid rgba(255,255,255,.2);
+  font-size: 12.5px; color: #fff; white-space: nowrap; }
+.rs-win-plate i { font-style: normal; font-weight: 900; color: var(--gold-bright); }
+.rs-win-plate small { font-size: 10px; color: #c2bcd2; }
+.rs-winner.mine .rs-win-plate { border-color: var(--gold-bright); box-shadow: 0 0 12px rgba(255,205,96,.55); }
+@keyframes rsMimiIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes rsMimiShake { 0%,100% { transform: none; } 20% { transform: translateX(-4px) rotate(-1.2deg); } 40% { transform: translateX(4px) rotate(1.2deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@keyframes rsDragonIn { from { opacity: 0; transform: translateX(46px); } to { opacity: 1; transform: none; } }
+@keyframes rsSayIn { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rs-mimi, .rs-stage.miss .rs-mimi, .rs-winner img, .rs-say { animation: none; } }
 /* ★二重枠の解消（ティア枠）：内側リングが枠線と同色で「薄いほう」だったため、
    明→暗の細い線が2本並んで見えていた。リングは枠線と**同じ色**にして1本の太い縁に融合する
    （.lt-tab.on / .mall-card.worn で既に使っている作法に合わせた）。外側の光は段位のまま残す。 */
@@ -1788,7 +1901,9 @@ table.entry-table {
 .rs-hero.rs-t1 .rs-stamp { color: var(--jade-bright); text-shadow: 0 2px 10px rgba(73,200,156,0.5); }
 .rs-hero.rs-t2 .rs-stamp { color: var(--gold-bright); font-size: 33px; text-shadow: 0 2px 12px rgba(230,178,74,0.6); }
 .rs-hero.rs-t3 .rs-stamp { color: #ffd0a0; font-size: 36px; text-shadow: 0 2px 16px rgba(255,122,58,0.7); }
-.rs-hero.rs-t4 .rs-stamp { color: var(--white); font-size: 40px;
+/* 伝説の的中＝8文字。40px のままだと 375px で収まらず語の途中で折れた → 画面幅に合わせて少しだけ縮め、
+   それでも収まらない幅では「伝説の／的中！！！」の切れ目でだけ折る（ui_render.js RESULT_TIER の <wbr>）。 */
+.rs-hero.rs-t4 .rs-stamp { color: var(--white); font-size: min(40px, calc((100vw - 64px) / 8.4)); word-break: keep-all;
   background: linear-gradient(90deg, #ffe9a6, var(--gold-bright), #ff9a5a, var(--gold-bright), #ffe9a6);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   text-shadow: 0 0 22px rgba(255,200,90,0.7); }
@@ -1970,6 +2085,8 @@ table.entry-table {
 .kiko-chip:active { transform: translateY(1px); }
 .kiko-chip .kc-ic { flex: none; font-size: 17px; }
 .kiko-chip .kc-tag { flex: 1; min-width: 0; font-size: 13px; font-weight: 900; color: #d84e77; }
+.kiko-chip .kc-tag small { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 700; color: #8a7f7a; }   /* その数が何を数えているか（ui_kiko.js _kikoCats の what）と数 */
+.kiko-chip .kc-tag small b { margin-left: 5px; font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .kiko-chip .kc-n { font-size: 11.5px; font-weight: 800; color: #8a7f7a; font-variant-numeric: tabular-nums; }
 .kiko-chip.locked { opacity: .55; }
 .kiko-chip.locked .kc-tag { color: #9a908b; }
@@ -2006,6 +2123,257 @@ table.entry-table {
 .kiko-score.locked { opacity: .6; }
 .kiko-page .actions .secondary { background: var(--white); color: #55483f; border: 1px solid #e3d5ca; }
 .kiko-page .topback-btn { background: var(--white); color: #d84e77; border: 1px solid #f0d4dc; }
+
+/* =====================================================================
+   📖 紀行・連載「島ぐらし」（2026-11）＝表紙／次の取材先／あしあと／回の記事面
+   紙の色は紀行（kiko-page）の系をそのまま継ぐ。色は下の --kk-* に集めてある
+   ＝紀行の面を塗り替えるときは、ここだけ動かせばよい（直書きを増やさない）。
+   ===================================================================== */
+#app {
+  --kk-ink: #2f2925;        /* 本文のいちばん濃い字 */
+  --kk-sub: #5a4e47;        /* 本文 */
+  --kk-mut: #8f8279;        /* 補足・キャプション */
+  --kk-line: #eadfd6;       /* 罫線 */
+  --kk-paper: #fffdfb;      /* カードの紙 */
+  --kk-wash: #f8efe8;       /* 写真が来る前の地・薄い面 */
+  --kk-rose: #d84e77;       /* 紀行の差し色（題字・リンク） */
+  --kk-rose-soft: #fdeef2;
+  --kk-rose-deep: #c63f6c;  /* ボタンの下端 */
+  --kk-teal: #1f8f84;       /* 小見出し・読者の声 */
+  --kk-gold: #b7862f;       /* 回数・印 */
+  --kk-gold-soft: #fbf3e2;
+  --kk-night: #1b2029;      /* 写真の上の幕 */
+}
+
+/* ── 小見出し（紀行ぜんたいで共通）── */
+.kk-sec { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 30px 14px 12px; }
+.kk-sec-t { margin: 0; padding-bottom: 0; border-bottom: none; font-size: 19px; font-weight: 900; letter-spacing: .04em; color: var(--kk-ink); }
+.kk-sec-s { flex: 1; white-space: nowrap; font-size: 11.5px; font-weight: 700; color: var(--kk-mut); }
+.kk-q { flex: none; width: 24px; height: 24px; border-radius: var(--r-round); border: 1px solid var(--kk-line);
+  background: var(--kk-paper); color: var(--kk-mut); font-size: 12px; font-weight: 900; line-height: 1; cursor: pointer;
+  padding-block: 0; padding-inline: 0; text-shadow: none; box-shadow: none; }
+.kk-av { flex: none; display: inline-block; width: 22px; height: 22px; border-radius: var(--r-round);
+  border: 1.5px solid var(--white); box-shadow: 0 1px 3px rgba(40,24,16,.25); }
+
+/* ── 表紙（マストヘッド）── */
+.kk-mast, .ke-hero { margin: calc(-1 * var(--pad-t)) calc(-1 * var(--pad-x)) 0; }   /* 写真は端から端まで（#app の余白ぶん外へ） */
+.kk-mast { position: relative; height: 262px; overflow: hidden; background: var(--kk-night); color: var(--white); }
+.kk-mast--sub { height: 214px; }
+.kk-mast-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.kk-mast-shade { position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(27,32,41,.34) 0%, rgba(27,32,41,.06) 34%, rgba(27,32,41,.80) 100%); }
+.kk-mast-in { position: absolute; left: 20px; right: 20px; bottom: 18px; }
+.kk-mast-k { font-size: 10px; font-weight: 800; letter-spacing: .28em; color: rgba(255,255,255,.86); }
+.kk-mast-t { margin: 5px 0 0; font-size: 31px; line-height: 1.12; font-weight: 900; letter-spacing: .03em;
+  text-shadow: 0 2px 16px rgba(0,0,0,.55); }
+.kk-mast-by { margin-top: 10px; display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
+.kk-live { margin-left: 2px; padding: var(--pd-2-8); border-radius: var(--r-full); background: var(--kk-rose);
+  font-size: 10px; font-weight: 900; letter-spacing: .06em; }
+.kk-mast-st { margin-top: 9px; display: flex; align-items: center; gap: 12px; font-size: 12px; color: rgba(255,255,255,.90);
+  font-variant-numeric: tabular-nums; }
+.kk-mast-st i { width: 1px; height: 11px; background: rgba(255,255,255,.4); }
+.kk-mast-st b { font-size: 14px; font-weight: 900; color: var(--white); }
+.kk-mast-delta { margin-top: 6px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.88); }
+.kk-mast-delta b { color: var(--hx-ffe6a8); }
+.kk-mast-cap { position: absolute; top: 12px; right: 14px; font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
+  color: rgba(255,255,255,.78); text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+/* 表紙が写真になったので、上部の戻るボタンは写真に重ねる */
+#app.kiko-page:has(.kk-mast) .topback, #app.ke-page .topback { position: relative; height: 0; padding-block: 0; overflow: visible; align-items: flex-start; }
+#app.kiko-page:has(.kk-mast) .topback-btn, #app.ke-page .topback-btn { margin-top: 2px; box-shadow: 0 2px 10px rgba(27,32,41,.28); }
+
+/* ── 次の取材先 ── */
+.ks-next { margin: 0 14px; border-radius: var(--r-3); overflow: hidden; background: var(--kk-paper);
+  border: 1px solid var(--kk-line); box-shadow: var(--e-1); }
+.ks-next-ph { position: relative; height: 150px; background: var(--kk-wash); overflow: hidden; }
+.ks-next-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ks-next.veil .ks-next-ph img { filter: blur(9px) saturate(.6) brightness(.82); transform: scale(1.12); }
+.ks-next-ph::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(27,32,41,0) 46%, rgba(27,32,41,.5) 100%); }
+.ks-next-no { position: absolute; left: 12px; bottom: 10px; z-index: 1; color: var(--white); font-size: 13px; font-weight: 900;
+  letter-spacing: .08em; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.ks-next-flag { position: absolute; right: 12px; top: 12px; z-index: 1; padding: var(--pd-4-10); border-radius: var(--r-full);
+  background: var(--kk-rose); color: var(--white); font-size: 11px; font-weight: 900; letter-spacing: .04em;
+  box-shadow: 0 2px 10px rgba(216,78,119,.45); animation: ksPulse 2.4s ease-in-out infinite; }
+@keyframes ksPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.ks-next-b { padding-block: 14px 16px; padding-inline: 16px; }
+.ks-next-k { font-size: 10.5px; font-weight: 900; letter-spacing: .14em; color: var(--kk-teal); }
+.ks-next-pl { margin-top: 4px; font-size: 18px; font-weight: 900; line-height: 1.35; color: var(--kk-ink); }
+.ks-next-pl small { margin-left: 8px; font-size: 11px; font-weight: 700; color: var(--kk-mut); }
+.ks-next-memo { position: relative; margin: 10px 0 0; padding-inline: 13px 0; font-size: 13px; line-height: 1.8; color: var(--kk-sub); }
+.ks-next-memo::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; border-radius: var(--r-full); background: var(--kk-rose-soft); }
+/* 書き上げると何が起きるか（ui_kiko.js「次の取材先」）。ボタンのすぐ上に、静かに1行＋小さく理由。 */
+.ks-next-gain { margin: 12px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--kk-sub); }
+.ks-next-gain b { color: var(--lt-gold); font-variant-numeric: tabular-nums; }
+.ks-next-gain small { display: block; font-size: 11.5px; opacity: .85; }
+.ks-need { list-style: none; margin: 12px 0 0; padding-block: 10px; padding-inline: 12px; border-radius: var(--r-2);
+  background: var(--kk-gold-soft); }
+.ks-need li { font-size: 12.5px; font-weight: 800; line-height: 1.6; color: var(--lt-gold); }
+.ks-need li + li { margin-top: 3px; }
+.ks-cta { display: block; width: 100%; margin-top: 14px; padding-block: 13px; padding-inline: 14px; border: none; border-radius: var(--r-2);
+  background: var(--kk-rose); color: var(--white); font-size: 15px; font-weight: 900; letter-spacing: .06em; cursor: pointer;
+  text-shadow: none; box-shadow: 0 2px 0 rgba(150,40,75,.55), 0 8px 18px -8px rgba(216,78,119,.6); }
+.ks-cta:active { transform: translateY(2px); box-shadow: 0 0 0 rgba(150,40,75,.55); }
+.ks-cta.ghost { background: var(--kk-paper); color: var(--kk-rose); border: 1px solid var(--kk-rose-soft); box-shadow: none; font-size: 13.5px; }
+.ks-fin { margin: 0 14px; padding-block: 16px; padding-inline: 16px; border-radius: var(--r-3); background: var(--kk-gold-soft);
+  border: 1px solid var(--kk-line); }
+.ks-fin b { display: block; font-size: 15px; font-weight: 900; color: var(--kk-ink); }
+.ks-fin span { display: block; margin-top: 5px; font-size: 12.5px; line-height: 1.75; color: var(--kk-sub); }
+
+/* ── あしあと（地図に、書いた回を順に結ぶ）── */
+.ks-map { position: relative; margin: 14px 14px 0; border-radius: var(--r-3); overflow: hidden; background: var(--kk-night);
+  box-shadow: var(--e-1); }
+.ks-map-img { display: block; width: 100%; height: auto; filter: saturate(.82) brightness(.9); }
+.ks-map-line { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ks-map-line polyline, .ks-map-line line { fill: none; stroke: var(--white); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round;
+  vector-effect: non-scaling-stroke; opacity: .92; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+.ks-map-line line.to { stroke-dasharray: 3 5; opacity: .75; }
+.ks-dot { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: var(--r-round);
+  border: 2px solid var(--white); background: var(--kk-rose); color: var(--white); font-size: 9.5px; font-weight: 900; line-height: 16px;
+  text-align: center; padding-block: 0; padding-inline: 0; cursor: pointer; text-shadow: none; letter-spacing: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5); font-variant-numeric: tabular-nums; }
+.ks-dot.fresh { background: var(--hx-ffd76a); color: var(--kk-ink); }
+.ks-dot.next { background: rgba(27,32,41,.72); border-style: dashed; cursor: default; }
+.ks-dot.next.ready { background: var(--white); color: var(--kk-rose); border-style: solid; animation: ksPulse 2.4s ease-in-out infinite; }
+.ks-map-cap { position: absolute; left: 12px; bottom: 9px; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: rgba(255,255,255,.9);
+  text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+
+/* ── 走ったコース（8つの開催地域の印）── */
+.ks-courses { margin: 12px 14px 0; padding-block: 12px 13px; padding-inline: 14px; border-radius: var(--r-3); background: var(--kk-paper);
+  border: 1px solid var(--kk-line); }
+.ks-courses-k { display: flex; align-items: baseline; justify-content: space-between; font-size: 10.5px; font-weight: 900; letter-spacing: .14em;
+  color: var(--kk-teal); }
+.ks-courses-k b { font-size: 11px; letter-spacing: .04em; color: var(--kk-gold); font-variant-numeric: tabular-nums; }
+.ks-courses-row { margin-top: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 6px; }
+.ks-course { display: flex; flex-direction: column; align-items: center; gap: 5px; border: none; background: none; cursor: default;
+  padding-block: 0; padding-inline: 0; text-shadow: none; box-shadow: none; min-width: 0; }
+.ks-course.done { cursor: pointer; }
+.ks-course-ph { width: 46px; height: 46px; border-radius: var(--r-round); overflow: hidden; background: var(--kk-wash);
+  border: 1.5px dashed var(--kk-line); }
+.ks-course.done .ks-course-ph { border: 2px solid var(--kk-gold); box-shadow: var(--e-1); }
+.ks-course.next .ks-course-ph { border: 2px solid var(--kk-rose); border-style: solid; animation: ksPulse 2.4s ease-in-out infinite; }
+.ks-course-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ks-course-n { max-width: 100%; min-height: 2.6em; font-size: 9.5px; font-weight: 800; line-height: 1.3; text-align: center; color: var(--kk-mut);
+  word-break: keep-all; overflow-wrap: anywhere; }
+.ks-course.done .ks-course-n { color: var(--kk-ink); }
+.ks-course.next .ks-course-n { color: var(--kk-rose); }
+
+/* ── 書いた回の列 ── */
+.ks-rail { display: flex; gap: 10px; overflow-x: auto; padding-block: 14px 6px; padding-inline: 14px; scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.ks-rail::-webkit-scrollbar { display: none; }
+.ks-card { position: relative; flex: none; width: 138px; height: 184px; border: none; border-radius: var(--r-2); overflow: hidden;
+  background: var(--kk-night); color: var(--white); text-align: left; cursor: pointer; scroll-snap-align: start;
+  padding-block: 0; padding-inline: 0; text-shadow: none; box-shadow: var(--e-1); }
+.ks-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ks-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(27,32,41,.12) 0%, rgba(27,32,41,0) 30%, rgba(27,32,41,.86) 100%); }
+.ks-card:active { transform: scale(.98); }
+.ks-card-no { position: absolute; z-index: 1; left: 10px; top: 9px; font-size: 10.5px; font-weight: 900; letter-spacing: .1em;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.ks-card-new { position: absolute; z-index: 1; right: 8px; top: 8px; padding: var(--pd-1-6); border-radius: var(--r-full);
+  background: var(--hx-ffd76a); color: var(--kk-ink); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+.ks-card-t { position: absolute; z-index: 1; left: 10px; right: 10px; bottom: 26px; font-size: 13px; font-weight: 900; line-height: 1.4;
+  text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+.ks-card-pl { position: absolute; z-index: 1; left: 10px; right: 10px; bottom: 9px; font-size: 9.5px; font-weight: 700; color: rgba(255,255,255,.82);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-card.more { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 104px;
+  background: var(--kk-wash); border: 1px dashed var(--kk-line); box-shadow: none; cursor: default; }
+.ks-card.more::after { display: none; }
+.ks-card-more { font-size: 14px; font-weight: 900; letter-spacing: .2em; color: var(--kk-mut); }
+.ks-card-rest { font-size: 10.5px; font-weight: 800; color: var(--kk-gold); }
+
+/* ── 回の記事面（kiko_read）── */
+#app.ke-page { padding-top: 0; }
+.ke-hero { position: relative; height: 332px; overflow: hidden; background: var(--kk-night); color: var(--white); }
+.ke-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ke-hero-shade { position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(27,32,41,.30) 0%, rgba(27,32,41,0) 30%, rgba(27,32,41,.88) 100%); }
+.ke-hero-in { position: absolute; left: 20px; right: 20px; bottom: 20px; }
+.ke-no { display: flex; align-items: center; gap: 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .2em; color: rgba(255,255,255,.86); }
+.ke-no b { padding: var(--pd-2-8); border-radius: var(--r-full); background: var(--kk-rose); color: var(--white); font-size: 10.5px; letter-spacing: .08em; }
+.ke-title { margin: 9px 0 0; font-size: 26px; line-height: 1.34; font-weight: 900; letter-spacing: .02em; text-shadow: 0 2px 14px rgba(0,0,0,.6);
+  text-wrap: balance; }
+.ke-meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 0; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.84); }
+.ke-meta span + span::before { content: "／"; margin: 0 7px; opacity: .55; }
+.ke-fresh { margin: 14px 14px 0; padding-block: 11px; padding-inline: 14px; border-radius: var(--r-2); background: var(--kk-gold-soft);
+  border: 1px solid var(--kk-line); display: flex; align-items: baseline; gap: 10px; animation: keFresh .5s cubic-bezier(.2,.8,.2,1) both; }
+.ke-fresh b { flex: none; font-size: 14px; font-weight: 900; color: var(--kk-rose); letter-spacing: .06em; }
+.ke-fresh span { font-size: 12px; color: var(--kk-sub); }
+.ke-fresh { flex-wrap: wrap; }
+.ke-fresh-fans { margin-left: auto; font-style: normal; font-size: 12.5px; font-weight: 900; color: var(--kk-teal); font-variant-numeric: tabular-nums; }
+.kiko-art-fans { float: right; font-weight: 900; color: var(--kk-teal); }
+@keyframes keFresh { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ke-body { padding-block: 22px 6px; padding-inline: 14px; }
+.ke-lead { margin: 0; font-size: 16px; line-height: 1.95; font-weight: 800; color: var(--kk-ink); }
+.ke-by { margin: 16px 0 20px; padding-bottom: 16px; border-bottom: 1px solid var(--kk-line); display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; font-weight: 700; color: var(--kk-mut); }
+.ke-course { margin: 0 0 22px; padding-block: 11px 12px; padding-inline: 14px; border-radius: var(--r-2); background: var(--kk-gold-soft); }
+.ke-course-k { font-size: 10.5px; font-weight: 900; letter-spacing: .1em; color: var(--lt-gold); }
+.ke-course-r { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; font-size: 12px; color: var(--kk-sub);
+  font-variant-numeric: tabular-nums; }
+.ke-course-r b { margin: 0 2px; font-size: 18px; font-weight: 900; color: var(--kk-ink); }
+.ke-course-r .w b { margin-left: 8px; font-size: 14px; }
+.ke-body p { margin: 0 0 20px; font-size: 14.5px; line-height: 2.05; color: var(--kk-sub); letter-spacing: .02em; }
+.ke-body p.ke-lead { margin: 0; }
+.ke-fig { margin: 4px -6px 22px; }
+.ke-fig img { display: block; width: 100%; height: auto; border-radius: var(--r-2); background: var(--kk-wash); }
+.ke-fig figcaption { margin-top: 7px; padding-inline: 8px; font-size: 11px; line-height: 1.6; color: var(--kk-mut); }
+.ke-quote { position: relative; margin: 6px 0 26px; padding-block: 4px; padding-inline: 18px 0; font-size: 17.5px; line-height: 1.8; font-weight: 900;
+  color: var(--kk-rose); letter-spacing: .02em; }
+.ke-quote::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 4px; border-radius: var(--r-full); background: var(--kk-rose); }
+.ke-end { margin: 6px 0 0; padding-top: 18px; border-top: 1px solid var(--kk-line); text-align: center; font-size: 11px; font-weight: 800;
+  letter-spacing: .3em; color: var(--kk-mut); }
+.ke-next { margin: 20px 14px 0; padding-block: 15px 16px; padding-inline: 16px; border-radius: var(--r-3); background: var(--kk-paper);
+  border: 1px solid var(--kk-line); box-shadow: var(--e-1); }
+.ke-next.ready { border-color: var(--kk-rose-soft); }
+.ke-next-k { font-size: 10.5px; font-weight: 900; letter-spacing: .14em; color: var(--kk-teal); }
+.ke-next-memo { margin: 8px 0 0; font-size: 14px; line-height: 1.85; font-weight: 700; color: var(--kk-ink); }
+.ke-next-pl { margin-top: 10px; font-size: 12px; color: var(--kk-mut); }
+.ke-next-pl b { font-size: 14px; color: var(--kk-ink); }
+.ke-next-pl small { margin-left: 7px; font-size: 10.5px; }
+.ke-detour { display: flex; gap: 10px; overflow-x: auto; padding-block: 0 6px; padding-inline: 14px; scrollbar-width: none; }
+.ke-detour::-webkit-scrollbar { display: none; }
+.ke-spot { position: relative; flex: none; width: 150px; border: 1px solid var(--kk-line); border-radius: var(--r-2); overflow: hidden;
+  background: var(--kk-paper); text-align: left; cursor: pointer; padding-block: 0 10px; padding-inline: 0; text-shadow: none; box-shadow: var(--e-1); }
+.ke-spot img, .ke-spot-q { display: block; width: 100%; height: 92px; object-fit: cover; background: var(--kk-wash); }
+.ke-spot-q { display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; color: var(--kk-line); }
+.ke-spot-n { display: block; margin: 9px 10px 0; font-size: 12.5px; font-weight: 900; line-height: 1.4; color: var(--kk-ink); }
+.ke-spot-s { display: block; margin: 3px 10px 0; font-size: 10.5px; font-weight: 800; color: var(--kk-rose); }
+.ke-spot.lock { cursor: default; box-shadow: none; background: var(--kk-wash); }
+.ke-spot.lock .ke-spot-n { color: var(--kk-mut); }
+.ke-spot.lock .ke-spot-s { color: var(--kk-mut); font-weight: 700; }
+.ke-cmts { margin: 22px 14px 0; padding-block: 4px 14px; padding-inline: 16px; border-radius: var(--r-3); background: var(--kk-paper);
+  border: 1px solid var(--kk-line); }
+.ke-cmts .kiko-cmt-h { border-top: none; }
+.ke-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 14px 0; }
+.ke-nav-b { min-height: 62px; border: 1px solid var(--kk-line); border-radius: var(--r-2); background: var(--kk-paper); cursor: pointer;
+  text-align: left; padding-block: 10px; padding-inline: 12px; text-shadow: none; box-shadow: none; }
+.ke-nav-b.next { text-align: right; }
+.ke-nav-b.off { visibility: hidden; }
+.ke-nav-b small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; color: var(--kk-rose); }
+.ke-nav-b b { display: block; margin-top: 3px; font-size: 12px; font-weight: 800; line-height: 1.45; color: var(--kk-ink); }
+
+/* ── レース選択に出る、連載のコースの回の一言（暗い面）── */
+.rs-kiko { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: var(--pd-8-12); border-radius: var(--r-2);
+  background: rgba(216,78,119,.12); border: 1px solid rgba(216,78,119,.38); }
+.rs-kiko-k { flex: none; padding: var(--pd-2-8); border-radius: var(--r-full); background: var(--kk-rose); color: var(--white);
+  font-size: 10px; font-weight: 900; letter-spacing: .06em; }
+.rs-kiko-t { font-size: 12px; font-weight: 800; color: var(--mist); }
+
+/* ── 地図のスポット画面に出る「ここで連載を書く」（暗い地図モジュールの上）── */
+.km-serial { display: block; width: 100%; margin: 4px 0 10px; padding-block: 12px 13px; padding-inline: 14px; border-radius: var(--r-2);
+  border: 1px solid rgba(255,255,255,.34); background: linear-gradient(135deg, var(--kk-rose) 0%, var(--kk-rose-deep) 100%); color: var(--white);
+  text-align: left; cursor: pointer; text-shadow: none; box-shadow: 0 2px 0 rgba(120,30,60,.6), 0 10px 22px -10px rgba(224,82,125,.8); }
+.km-serial:active { transform: translateY(2px); }
+.km-serial-k { display: block; font-size: 10px; font-weight: 800; letter-spacing: .2em; opacity: .88; }
+.km-serial b { display: block; margin-top: 3px; font-size: 16px; font-weight: 900; letter-spacing: .03em; }
+.km-serial small { display: block; margin-top: 5px; font-size: 11.5px; line-height: 1.6; opacity: .92; }
+.km-serial.wait { background: rgba(255,255,255,.07); border-style: dashed; cursor: default; box-shadow: none; }
+.km-serial.wait b { font-size: 13.5px; }
+.km-chip-pen { margin-left: 6px; padding: var(--pd-1-6); border-radius: var(--r-full); background: var(--kk-rose); color: var(--white);
+  font-size: 9px; font-weight: 900; letter-spacing: .04em; }
+#app.kt-page .km-pm .km-pm-tx b { color: var(--lt-ink); }
+#app.kt-page .km-pm .km-pm-tx small { color: var(--lt-mut); }
+#app.kt-page .km-pm .km-pm-go { color: var(--lt-gold); }
+.km-pm--serial { background: linear-gradient(120deg, rgba(224,82,125,.20), rgba(255,206,110,.14)); border-color: rgba(224,82,125,.5); }
 
 /* ===== 📱 メディア＝YouTube登録チャンネル風（ダークな動画アプリ面・2026-07-30） ===== */
 #app.yt-page { background-color: #0f0f0f !important; background-image: none !important; color: #f1f1f1;
@@ -2147,6 +2515,14 @@ table.entry-table {
 .rs-nextgoal { text-align: center; font-size: 12.5px; color: var(--mist-soft); margin: -2px 0 12px; padding: var(--pd-8-12);
   background: rgba(231,242,236,0.05); border: 1px solid rgba(231,242,236,0.1); border-radius: var(--rd-10); }
 .rs-nextgoal b { color: var(--gold-bright); }
+/* 結果画面の「いまの目標」（ui_render.js）＝ホームの札と同じ目標。押すと目標の一覧へ。2026-11-13 */
+button.rs-nextgoal { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; row-gap: 2px; width: 100%; text-align: left;
+  font-weight: 400; font-size: 12.5px; color: var(--mist-soft); cursor: pointer; }
+.rs-nextgoal .rng-k { grid-column: 1; font-size: 10px; letter-spacing: .12em; color: var(--mist-soft); }
+.rs-nextgoal .rng-t { grid-column: 1; font-size: 14.5px; font-weight: 800; color: var(--white); line-height: 1.4; text-wrap: balance; }
+.rs-nextgoal .rng-h { grid-column: 1; font-size: 11.5px; line-height: 1.55; color: var(--mist-soft); }
+.rs-nextgoal .rng-r { grid-column: 1; margin-top: 5px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,.1); font-size: 11.5px; color: var(--mist-soft); text-wrap: balance; }
+.rs-nextgoal .rng-go { grid-column: 2; grid-row: 1 / span 3; align-self: center; color: var(--hx-ffd98a); font-weight: 900; }
 
 /* === 本日の注目レース (spec #37) === */
 .feat-race { position: relative; margin-bottom: 16px; padding: 16px 16px 14px; border-radius: var(--rd-14); overflow: hidden;
@@ -2155,6 +2531,14 @@ table.entry-table {
   border: 1px solid var(--gold-line); box-shadow: 0 12px 30px -14px rgba(0,0,0,0.7), var(--lift); }
 .feat-race::before { content: ""; position: absolute; right: -30px; top: -30px; width: 120px; height: 120px; pointer-events: none;
   background: radial-gradient(circle, rgba(255,140,70,0.3), transparent 70%); }
+/* ★コースの写真を敷く（2026-11-12）：注目カードは右側に、地域の見出しは帯として。文字は左の暗い側に乗る。 */
+.feat-race.feat-photo { background:
+  linear-gradient(100deg, rgba(34,22,14,.97) 0%, rgba(34,22,14,.9) 44%, rgba(34,22,14,.38) 100%),
+  var(--feat-photo) right center / cover no-repeat, var(--plate); }
+.rs-grp-head.rs-grp-photo { min-height: 64px; align-items: flex-end; padding-top: 22px; padding-bottom: 9px;
+  background-size: cover; background-position: center 42%; border-radius: var(--rd-12, 12px); overflow: hidden;
+  text-shadow: 0 1px 6px rgba(0,0,0,.85); }
+.rs-grp-head.rs-grp-photo b { font-size: 16px; }
 .feat-tag { position: relative; font-size: 11px; font-weight: 800; letter-spacing: .12em; color: var(--gold-bright); }
 .feat-name { position: relative; font-size: 18px; font-weight: 900; color: var(--white); margin: 3px 0 4px; }
 .feat-meta { position: relative; font-size: 11.5px; color: var(--mist-soft); }
@@ -2398,6 +2782,9 @@ table.entry-table {
 .rs-lg-row .lb { flex: 1; min-width: 0; }
 .rs-lg-row b { font-variant-numeric: tabular-nums; }
 .rs-lg-row.gain b { color: var(--gold-bright); }
+/* この一戦の合計（ui_render.js）。上の行の足し算なので、線で区切って太く。 */
+.rs-lg-row.sum { margin-top: 3px; padding-top: 7px; border-top: 1px solid rgba(255,255,255,.22); font-weight: 800; color: var(--white); }
+.rs-lg-row.sum b { font-size: 14px; }
 .rs-lg-row.loss b { color: #ff9d9d; }
 .rs-lg-row.asset b { color: var(--jade-bright); }
 .rs-lg-row.rankup { background: rgba(255,216,119,.08); border-radius: var(--rd-8); border-top: 0; }
@@ -3259,6 +3646,24 @@ body.home-mode, body.title-mode { position: fixed; inset: 0; width: 100%; height
 .scm-fit-fl { font-size: 12px; color: #8a8178; line-height: 1.6; margin: 3px 0 6px; }
 .scm-fit-acq { font-size: 12.5px; color: #6a635c; } .scm-fit-acq b { color: var(--scm-org); }
 .scm-fit-cta { margin-top: 12px; }
+/* 買う前に、払ったあとのお財布（ui_mall.js）。ほぼ空になるとき（thin）は色を変える。 */
+.scm-fit-after { margin-top: 8px; text-align: center; font-size: 12px; color: var(--scm-sub); }
+.scm-fit-after b { color: var(--scm-ink); font-variant-numeric: tabular-nums; }
+.scm-fit-after.thin b { color: #c0392b; }
+/* はじめての一着（ui_mall.js・まだ持っていないあいだだけ、モールのいちばん上）。名前と値段と「試着室へ」だけの一枚。 */
+.scm-first { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "k go" "nm go" "p go"; align-items: center; column-gap: 12px; row-gap: 2px;
+  width: calc(100% - 30px); margin: 12px 15px 4px; padding: 12px 14px; text-align: left; cursor: pointer;
+  border-radius: var(--rd-14); border: 1.5px solid var(--scm-org); background: linear-gradient(180deg, #fff8ef, #fff1df); color: var(--scm-ink);
+  -webkit-appearance: none; appearance: none; box-shadow: 0 8px 18px -12px rgba(239,130,0,.55); }
+.scm-first-k { grid-area: k; font-size: 11px; font-weight: 800; letter-spacing: .06em; color: var(--scm-org); }
+.scm-first-nm { grid-area: nm; font-size: 16px; font-weight: 800; line-height: 1.35; }
+.scm-first-p { grid-area: p; font-size: 13px; color: var(--scm-sub); }
+.scm-first-p b { font-size: 15px; color: var(--scm-ink); font-variant-numeric: tabular-nums; }
+.scm-first-p small { margin-left: 8px; font-size: 11.5px; font-weight: 700; color: var(--scm-org); }
+.scm-first.poor .scm-first-p small { color: var(--scm-sub); }
+.scm-first-go { grid-area: go; padding: 9px 12px; border-radius: var(--r-full); white-space: nowrap; font-size: 12.5px; font-weight: 800; color: var(--white); background: var(--scm-org); }
+.scm-first.poor .scm-first-go { background: #d9b48a; }
+.scm-first:active { transform: scale(.985); }
 .scm-btn { width: 100%; padding: 13px; border-radius: 11px; font-size: 14px; font-weight: 800; cursor: pointer; border: none; }
 .scm-btn.primary { background: var(--scm-org); color: var(--white); box-shadow: 0 8px 18px -8px rgba(239,130,0,.6); }
 .scm-btn.primary.poor { background: #d9b48a; box-shadow: none; }
@@ -4721,6 +5126,10 @@ body.title-mode #vol-fab { display: none !important; }
 .mushin-title { font-size: 26px; font-weight: 900; color: var(--gold-bright); margin: 6px 0 12px;
   text-shadow: 0 2px 12px rgba(230,178,74,.5); }
 .mushin-sub { font-size: 12.5px; color: var(--mist-soft); line-height: 1.7; }
+/* 無心のあとの一往復（ui_render.js mushinTalk）。渡す村の人と、ミミ。話者の名前は小さく、台詞は読める大きさで。 */
+.mushin-talk { margin-top: 8px; font-size: 13px; line-height: 1.65; color: var(--mist); text-align: left; text-wrap: balance; }
+.mushin-talk i { display: block; font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; color: var(--mist-soft); }
+.mushin-talk.mimi i { color: var(--gold-bright); }
 .mushin-sub b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
 .mushin-go { margin-top: 18px; min-height: 50px; padding: 0 26px; border: none; border-radius: 13px; cursor: pointer;
   background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--hx-2a1d06); font-weight: 900; font-size: 17px; }
@@ -4767,6 +5176,12 @@ body.title-mode #vol-fab { display: none !important; }
   text-shadow: 0 2px 14px rgba(0,0,0,.6); animation: ltTx .4s ease .28s both; }
 .lt-cutin-sub { font-size: 12.5px; color: var(--mist-soft); margin-top: 4px; animation: ltTx .4s ease .36s both; }
 @keyframes ltTx { 0% { opacity: 0; transform: translateX(26px); } 100% { opacity: 1; transform: translateX(0); } }
+/* 同じホーム到着の2枚め以降の授与（js/lifetree_grants.js _lgQuick・2026-11-14）：溜め（閃光・集中線）と下の一言を省き、
+   帯と文字の入りを速く。表示は1.5秒（JS）。帯の形・色・題の大きさは1枚めと同じ＝同じ授与だと分かる。 */
+.lt-cutin--quick .lt-cutin-flash, .lt-cutin--quick .lt-cutin-lines, .lt-cutin--quick .lt-cutin-sub { display: none; }
+.lt-cutin--quick .lt-cutin-band { animation-duration: .26s; }
+.lt-cutin--quick .lt-cutin-ic { animation-duration: .3s; animation-delay: 0s; }
+.lt-cutin--quick .lt-cutin-kicker, .lt-cutin--quick .lt-cutin-title { animation-duration: .2s; animation-delay: .05s; }
 
 /* ===== §42 竜の村 ===== */
 .vil-hero { background: linear-gradient(135deg, rgba(28,58,54,.55), rgba(18,32,38,.5)); }
@@ -4916,6 +5331,12 @@ body.title-mode #vol-fab { display: none !important; }
 .hl-mimi { position: absolute; left: 50%; bottom: -120px; transform: translateX(-50%); z-index: 1;
   width: min(96vw, 92%, 540px); height: min(88vh, 800px, calc(100% + 120px));
   cursor: pointer; will-change: transform; filter: drop-shadow(0 2px 7px rgba(0,0,0,.5)); }
+/* ★ホームで立ち絵つきの会話が開いているあいだ、背景の大きいミミは引っ込める（2026-11-12）。
+   紀行の導入・解放の会話などがホームで出ると、大きいミミの前に会話用のミミが別の大きさで重なり、
+   主役が二重になっていた（Codex の通し試験。開発ガイドの「ホームでVN立ち絵を出さない」に反する実表示）。
+   会話を個別に止めるのではなく、開いているあいだだけ下のミミを消す＝どの会話でも二重にならない。 */
+.hl-mimi { transition: opacity .22s ease; }
+body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .hl-mimi-in { width: 100%; height: 100%; will-change: transform; perspective: 700px; }
 .hl-mimi-flip { width: 100%; height: 100%; transition: transform .23s cubic-bezier(.45,0,.55,1); transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
 .hl-mimi-flip.flipping { transform: perspective(820px) rotateY(90deg); }   /* perspectiveを関数側に＝親のtransform/コンテナに影響されず確実に立体回転 */
@@ -5031,8 +5452,10 @@ body.title-mode #vol-fab { display: none !important; }
 .goal-row.next { border-color: #ffd966; box-shadow: 0 0 0 1px rgba(255,217,102,.5), 0 4px 14px -6px rgba(255,180,80,.5); background: rgba(255,217,102,.08); }
 .goal-ic { font-size: 20px; flex: none; width: 26px; text-align: center; }
 .goal-tx { flex: 1; min-width: 0; }
-.goal-tx b { display: block; font-size: 13.5px; color: var(--mist); }
-.goal-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; }
+/* 題と一言は、折り返すなら行の長さをそろえる（text-wrap: balance）。挑戦中の行は「挑戦中」と行き先ボタンで幅が狭くなり、
+   「屋台のごはんにありつ／く」と1文字だけ次の行に落ちていた（2026-11-13・画面の総点検）。未対応の端末では従来どおり。 */
+.goal-tx b { display: block; font-size: 13.5px; color: var(--mist); text-wrap: balance; }
+.goal-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 1px; text-wrap: balance; }
 .goal-row.done .goal-tx b { text-decoration: line-through; text-decoration-color: rgba(255,255,255,.3); }
 .goal-st { flex: none; font-size: 11px; font-weight: 800; color: #7bdca0; }
 .goal-row.next .goal-st { color: #ffd966; }
@@ -5056,9 +5479,20 @@ body.title-mode #vol-fab { display: none !important; }
 .meal-sec-tx small { display: block; font-size: 11px; color: var(--mist-soft); margin-top: 2px; }
 /* 一覧：写真を主役にしたメニューカード（画像=ヒーロー／下に名前・価格）。参考=飲食サイトのグリッド。 */
 .meal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+/* 空腹で来たときの「前回の一皿」（ui_meta.js renderMeals）と、食べたことのある皿の畳んだ感想（showMealDetail） */
+.meal-again { margin: 8px 0 12px; }
+.meal-again-t { font-size: 12px; font-weight: 800; color: var(--mist-soft); margin: 0 2px 6px; }
+.meal-more { margin: 8px 0 2px; }
+.meal-more > summary { cursor: pointer; list-style: none; text-align: center; font-size: 12px; font-weight: 700; color: var(--mist-soft); padding: 4px 0; }
+.meal-more > summary::-webkit-details-marker { display: none; }
+.meal-more[open] > summary { opacity: .7; }
 .meal-card { display: flex; flex-direction: column; padding: 0; border-radius: var(--rd-14); overflow: hidden; cursor: pointer;
   background: var(--glass-2); border: 1px solid var(--glass-border); text-align: left;
   transition: transform .12s ease, box-shadow .14s ease, border-color .14s ease; }
+/* 空腹のとき、ここですぐ食べられる皿（ui_meta.js renderMeals の can-eat）。出会っていない屋台の皿（？？？）と見分ける。 */
+.meal-card.can-eat { border-color: rgba(255,214,120,.75); box-shadow: 0 0 0 1px rgba(255,214,120,.45), 0 0 14px -4px rgba(255,190,90,.55); }
+.meal-eat-hint b { color: var(--hx-fff4e0); font-variant-numeric: tabular-nums; }
+.meal-eat-hint .meal-eat-key { padding: var(--pd-1-6); border-radius: var(--r-full); border: 1px solid rgba(255,214,120,.75); color: var(--hx-fff4e0); }
 .meal-card.got { border-color: rgba(255,217,102,.3); box-shadow: 0 7px 20px -12px rgba(0,0,0,.6); }
 .meal-card:active { transform: translateY(1px); }
 /* メディア領域＝写真（既食）or ミステリー地（未発見）。同じ高さでカードを揃える。 */
@@ -5206,6 +5640,13 @@ body.title-mode #vol-fab { display: none !important; }
 .hl-item.locked { opacity: .55; }
 .hl-item.locked .ic { filter: grayscale(1); }
 
+/* 🔍 鑑定待ちの仔（poro.js poroAppraisalCardHtml・図鑑の先頭）。出会いから結果が届くまでのあいだだけ出る一枚。 */
+.dex-wait { display: flex; align-items: center; gap: 12px; }
+.dex-wait-ph { flex: none; width: 64px; height: 64px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; border-radius: var(--r-2); background: rgba(255,255,255,.05); }
+.dex-wait-tx { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dex-wait-tx b { font-size: 14px; }
+.dex-wait-tx small { font-size: 12px; line-height: 1.6; opacity: .85; }
+.dex-wait-tx small b { font-size: 12px; color: var(--hx-fff4e0); }
 /* 🔓 解放toast（progression.js）＝下部にすっと出て消える帯。モーダルではない・タップで即消し。
    PC枠では body が containing block なので自動的に枠内へ収まる（§SCREEN_SIZE_RULES.md）。 */
 .unlock-toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 140;
@@ -5217,6 +5658,27 @@ body.title-mode #vol-fab { display: none !important; }
 .unlock-toast.out { opacity: 0; transform: translateX(-50%) translateY(8px); transition: opacity .35s, transform .35s; }
 @keyframes unlockToastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } }
 @media (prefers-reduced-motion: reduce) { .unlock-toast { animation: none; } }
+/* 🔓 解放の帯（progression.js _showUnlockBanner）＝全画面のポップアップの代わり。画面のほかの場所は押せるまま。
+   下端は JS がドックのすぐ上に合わせる（測れないときの既定＝下から200px）。帯全体が「行き先へ」、×だけ「閉じる」。 */
+.unlock-banner { position: fixed; left: 50%; bottom: 200px; transform: translateX(-50%); z-index: 140;
+  width: min(94%, 430px); box-sizing: border-box; display: flex; align-items: center; gap: 9px;
+  padding: 9px 8px 9px 12px; border-radius: 16px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(54,38,10,.97), rgba(34,24,8,.97));
+  border: 1px solid rgba(255,214,120,.55); box-shadow: 0 10px 30px -10px rgba(0,0,0,.8), 0 0 18px -4px rgba(255,190,90,.35);
+  animation: unlockToastIn .3s cubic-bezier(.22,.61,.36,1) backwards; }
+.unlock-banner.out { opacity: 0; transform: translateX(-50%) translateY(8px); transition: opacity .35s, transform .35s; }
+.unlock-banner .ub-ic { flex: none; font-size: 24px; line-height: 1; }
+.unlock-banner .ub-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.unlock-banner .ub-tx b { font-size: 13px; line-height: 1.35; color: var(--hx-fff4e0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.unlock-banner .ub-tx small { font-size: 11px; line-height: 1.45; color: rgba(255,244,224,.78);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.unlock-banner .ub-go { flex: none; padding: 7px 11px; border-radius: var(--r-full); white-space: nowrap;
+  font-size: 12px; font-weight: 800; color: #3a2410; background: linear-gradient(180deg, #ffd966, #f0a838); }
+.unlock-banner .ub-x { flex: none; width: 30px; height: 30px; padding: 0; border: none; border-radius: var(--r-full);
+  font-size: 16px; line-height: 1; color: rgba(255,244,224,.7); background: transparent; cursor: pointer;
+  -webkit-appearance: none; appearance: none; box-shadow: none; }
+.unlock-banner .ub-x:active { background: rgba(255,255,255,.12); }
+@media (prefers-reduced-motion: reduce) { .unlock-banner { animation: none; } }
 @media (max-width: 560px) {
   /* ナビを1行8列に圧縮（ドックを薄く＝ミミの領域を確保） */
   .hl-rail { grid-template-columns: repeat(8, 1fr); gap: 4px; }
@@ -5264,6 +5726,9 @@ body.title-mode #vol-fab { display: none !important; }
 .navpop-t { font-size: 18px; font-weight: 900; color: var(--mist); margin-top: 8px; }
 .navpop-d { font-size: 13px; color: var(--mist-soft); line-height: 1.65; margin-top: 9px; }
 .navpop-btns { display: flex; gap: 10px; margin-top: 20px; }
+/* 食べたあとの「このまま、レースへ」（ui_meta.js）。横いっぱいの主役。下の2つのボタンとの間は詰める。 */
+.meal-go-race { display: block; width: 100%; margin-top: 16px; padding: var(--pd-11); border-radius: var(--rd-10); font-weight: 900; font-size: 15px; cursor: pointer; }
+.meal-go-race + .navpop-btns { margin-top: 8px; }
 .navpop-btns button { flex: 1; padding: var(--pd-11); border-radius: var(--rd-10); cursor: pointer; font-weight: 800; font-size: 14px; white-space: nowrap; }
 .navpop-go { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; border: none; }
 .navpop-cancel { background: rgba(255,255,255,0.06); color: var(--mist-soft); border: 1px solid var(--glass-border); }
@@ -5641,6 +6106,11 @@ body.title-mode #vol-fab { display: none !important; }
   white-space: pre-line; color: #e6e8ec; margin-top: 10px; }
 
 /* フッター（操作ボタン） */
+/* 物語：絵と大きな文字で読み終えた直後だけ、紙面の先頭に出す一枚（ui_story.js _storyDoneBox） */
+.news-done { margin: 0 0 14px; padding: 12px; border-radius: var(--rd-10); text-align: center;
+  background: rgba(255,109,136,.08); border: 1px solid rgba(255,109,136,.35); }
+.news-done-t { font-family: var(--nsans); font-size: 13px; font-weight: 900; color: #ffd7df; letter-spacing: .03em; margin-bottom: 8px; }
+.news-done .news-done-go { width: 100%; padding: 10px 12px; font-size: 13.5px; }
 .news-foot { margin-top: 16px; border-top: 1px solid var(--nrule); padding-top: 12px; }
 .news-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .news-btn { font-family: var(--nsans); font-size: 12.5px; font-weight: 800; letter-spacing: .03em; color: #e8eaef;
@@ -6946,6 +7416,8 @@ body.title-mode #vol-fab { display: none !important; }
   font-weight: 800; font-size: 13.5px; color: #e7eef1; background: rgba(255,255,255,.08); }
 .km-vbtn:active { transform: scale(.97); }
 .km-vbtn--sns { color: #2a1d05; border: none; background: linear-gradient(180deg,#e8b94e,var(--gold-line)); }
+/* 鑑賞ビューアの「この場所の施設へ」（ui_konron_map.js _kmOpenPhoto）。主役のボタン＝金。 */
+.km-vbtn--go { background: linear-gradient(180deg, #ffd966, #f0a838); color: #3a2410; border-color: transparent; font-weight: 800; }
 .km-compose-card { position: relative; z-index: 1; width: min(420px, 92vw); background: var(--glass-2, #16242c); border: 1px solid var(--glass-border, rgba(255,255,255,.14));
   border-radius: var(--r-3); padding: var(--pd-16); box-shadow: 0 16px 48px rgba(0,0,0,.5); }
 .km-compose-h { font-size: 15px; font-weight: 800; color: #fff6e6; margin-bottom: 11px; }
@@ -8108,7 +8580,8 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 /* ===== M1：次の一手チップ（島の一日ループの結線・GAME_EXPERIENCE_DESIGN §3） ===== */
 .nx-row { margin: 10px 0 2px; }
 .nx-row .nx-k { font-size: 10px; letter-spacing: .12em; color: var(--mist-soft); margin-bottom: 5px; }
-.nx-chip { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+/* ★文字色を明示する：button の基本色（金のボタン用の濃い茶）を継いで、暗い地に暗い字になっていた（2026-11-13）。 */
+.nx-chip { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; color: var(--white); font-weight: 700;
   margin-bottom: 6px; padding: 9px 12px; border-radius: var(--r-2);
   background: linear-gradient(120deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
   border: 1px solid rgba(255,255,255,.14); transition: transform .12s ease, background .12s ease; }
@@ -8497,6 +8970,25 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 .hl-float .hl-live::before { content: none; }
 .hl-live-dot { width: 5px; height: 5px; border-radius: var(--r-round); background: var(--white); flex: none;
   box-shadow: 0 0 6px 1px rgba(255,255,255,.75); animation: hlPulse 1.4s ease-in-out infinite; }
+/* 第1話が未読のあいだの小さな入口（js/ui_home.js renderHome・2026-11-14）。目標の札のすぐ下・左上の短い2行。
+   ミミの顔（立ち絵の中央上部）にかからないよう幅を抑え、長い章題は…で省く。押すと第1話へ。 */
+.hl-stage .hl-storytip { position: absolute; top: 36px; left: 10px; z-index: 6; max-width: min(42%, 160px);
+  display: flex; align-items: center; gap: 6px; margin: 0; padding: 4px 9px 5px; text-align: left; cursor: pointer;
+  border: none; border-left: 2px solid #ff6b6b; border-radius: var(--rd-14); background: rgba(11,13,24,.5);
+  color: var(--mist); box-shadow: none; }
+.hl-stage .hl-storytip:hover { filter: none; }
+.hl-stage .hl-storytip:active { transform: scale(.97); }
+.hl-storytip-tx { display: flex; flex-direction: column; min-width: 0; }
+.hl-storytip-tx b { font-size: 11px; font-weight: 800; line-height: 1.3; white-space: nowrap; }
+.hl-storytip-tx small { font-size: 9.5px; font-weight: 600; color: var(--mist-soft); line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hl-storytip-caret { flex: none; opacity: .65; font-size: 11px; }
+/* 360px 以下はミミの顔が左へ寄る（顔の左端≒ステージ幅の42%）＝入口を細く・字を小さく。章題は…で省く。 */
+@media (max-width: 360px) {
+  .hl-stage .hl-storytip { max-width: calc(42% - 18px); gap: 4px; padding: 4px 8px 5px; }
+  .hl-storytip-tx b { font-size: 10px; }
+  .hl-storytip-tx small { font-size: 9px; }
+}
 
 /* (A) コメント列は入力バー直上へ＝下の空白を解消（旧 bottom:60px の浮きが「余白」の正体）。 */
 .hl-stage .hl-left { bottom: 10px; }
@@ -8538,6 +9030,10 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
   .hl-dock .tik-tab .tik-ic-img { width: 28px; height: 28px; }
   .hl-dock .tik-tab .lb { font-size: 9.5px; }
 }
+/* 320px 級：5文字の「物語・配信」と「🔒おでかけ」が2行に割れていた（タブの中身の幅45px）＝少し小さく・字間なしで1行に（2026-11-14） */
+@media (max-width: 340px) {
+  .hl-dock .tik-tab .lb { font-size: 9px; letter-spacing: 0; white-space: nowrap; }
+}
 
 /* ══ ユーザー指示（①②③・2026-07-08）══ */
 /* ① コメントの「枠線」だけ消す（背景box/影は保持）。.hl.tik .hl-cm.gift(0,3,0)等に勝つため!important。 */
@@ -8576,6 +9072,10 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 
 /* 食事：各カードに品ごとの価格バッジ（タップ前に価格が見える・食べる段位のみ）。名前の下に改行表示。 */
 .meal-card-price { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 800; color: #ffd36b; font-variant-numeric: tabular-nums; }
+.meal-card-heal { font-style: normal; margin-left: 6px; color: var(--mist); font-weight: 700; }
+.meal-card-heal em { font-style: normal; margin-left: 4px; padding: 0 5px; border-radius: var(--r-full); background: rgba(255,255,255,.1); color: var(--white); font-size: 10px; }
+.meal-buy-races { margin-top: 4px; font-size: 12px; color: var(--mist); }
+.meal-buy-races b { color: #9fe0b0; }
 
 /* ── 暮らし画面リデザイン（J-URBAN参考＝室内写真を主役に・静かな余白・金の細罫）。表示のみ・全ゲート温存。 ── */
 /* いまのお部屋ヒーロー：myroom_t{assetLevelOf}_{day|night}.webp を主役に、ミミmini＋tierシール＋総資産をscrimに。 */
@@ -8761,6 +9261,8 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 }
 /* 出すのは「いまの一言」だけ（過去行は実況が厚くなったので廃止）。 */
 .rc-yt-bub .rcy-now  { color: var(--white); }
+/* 区間が替わって古くなった行（race_canvas.js _telopFadePast）。枠は残して文字だけ消す＝高さが動かない。 */
+.rc-yt-bub .rcy-now.is-past { opacity: 0; transition: opacity .45s ease-out; }
 .rc-yt-r .rc-yt-bub { border-left: 0; border-right: 3px solid var(--c, var(--hx-888)); }
 .rc-yt-side.talking .rc-yt-bub { background: rgba(255,255,255,.10); color: var(--white); }
 /* 山場の実況だけ金に振る（解説は落ち着かせたままにして、熱の担当を分ける） */
@@ -9142,10 +9644,12 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 @keyframes srCue { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 .sr-x {
   position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px; z-index: 4;
-  width: 38px; height: 38px; border-radius: var(--r-round); cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1;
-  border: 1px solid rgba(255,255,255,.22); background: rgba(10,14,20,.55); color: var(--white); font-size: 19px;
+  height: 38px; border-radius: var(--r-full); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px 0 14px; line-height: 1;
+  border: 1px solid rgba(255,255,255,.22); background: rgba(10,14,20,.55); color: var(--white);
+  font-size: 12px; font-weight: 800; letter-spacing: .04em;
 }
+.sr-x i { font-style: normal; font-size: 18px; font-weight: 400; opacity: .8; }
 /* 記事ページ側（読み返し）＝素直な本文 */
 .sr-p { margin: 0 0 .9em; }
 @media (prefers-reduced-motion: reduce) {
@@ -9829,6 +10333,8 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 .broke-cta .broke-tx small { font-size: 10.5px; line-height: 1.45; color: var(--mist-soft); }
 .broke-cta .broke-go { flex: none; font-weight: 900; color: #ffd9a8; }
 .broke-cta:active { transform: translateY(1px); }
+/* 空腹で走れないときの一枚（金欠の一枚と同じ形・行き先はごはん） */
+.broke-cta.hungry-cta .broke-go { font-size: 12px; white-space: nowrap; }
 
 /* 目標から行き先へ直接飛ぶボタン（ユーザー指摘：モールの入口が分かりにくい＝島タブの奥にしか無かった） */
 .goal-go { flex: none; margin-left: 8px; padding: 7px 12px; border-radius: var(--r-full); cursor: pointer;
@@ -10106,6 +10612,15 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
 @media (prefers-reduced-motion: reduce) {
   #app::before, body::after, .title-cta, .navpop-go, .hl-race, .lt-buy { animation: none !important; }
 }
+/* ホームの知らせが出そろって閉じたら、主役のボタンを一度だけ明るくする（js/ui_home.js _hqCue・2026-11-14）。
+   「まだ次の窓が来るのか」と待たせない一区切りの合図。光るあいだだけ呼吸の光（s4Glow）と入れ替える＝filter が喧嘩しない。
+   終わったら JS がクラスを外して呼吸の光に戻る。動きを減らす設定では、すぐ上の !important で出ない。 */
+.hl-race.hl-race--cue { animation: hlRaceCue 1.3s ease-out 1; }
+@keyframes hlRaceCue {
+  0%   { filter: none; }
+  28%  { filter: brightness(1.2) drop-shadow(0 0 14px rgba(255,216,119,.9)); }
+  100% { filter: none; }
+}
 
 /* ── 面（カード）：上から1本の光＋いちばん低い影＋金の糸（S3・2026-08-03）──────
    縁を白ガラスから**淡い金の糸**へ＝窓（竜フレーム）→ヒーロー（金線+光）→カード（金糸）
@@ -10198,6 +10713,10 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
 .nw { display: inline-block; white-space: nowrap; }   /* 単語の途中で改行させない（レース名「第1レ／ース」対策） */
 body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタンと出走ボタンを重ねない */
 .ranking-table .rt-sub { display: block; font-size: 11px; font-weight: normal; opacity: .72; margin-top: 2px; line-height: 1.35; }   /* 脚質・短評を竜名の下に（4列化） */
+/* ★着順の表は4列にしたので、狭い画面用の「横スクロールの箱」扱い（display:block・折り返し禁止）から外す（2026-11-13）。
+   箱のままだと中身の幅に縮み、右に50pxほど余白が残っていた。竜の列だけ折り返し、数字の列は折り返さない。 */
+.ranking-table { display: table; white-space: normal; }
+.ranking-table th, .ranking-table td:not(:nth-child(2)) { white-space: nowrap; }
 /* 実況の吹き出し：最初の一言までは空の枠が2つ並んで「未完成」に見えた → 待機の一言を薄く */
 .rc-yt-l .rc-yt-bub:empty::before { content: "まもなく発走……！"; opacity: .45; }
 .rc-yt-r .rc-yt-bub:empty::before { content: "……"; opacity: .35; }
@@ -10223,3 +10742,10 @@ body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタ�
 .rc-goalband[hidden] { display: none; }
 /* ゴール帯の下からLIVE札の端がのぞくと雑に見える＝帯が出ている間は隠す */
 .rc-wrap:has(.rc-goalband:not([hidden])) .rc-live { visibility: hidden; }
+
+/* 結果の最初の画面：選んだ竜の札（表示のみ・Codex 4回め §6-4） */
+.rs-pick { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 6px auto 2px; padding: 3px 10px 3px 4px; max-width: 100%; box-sizing: border-box; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid var(--waku, rgba(255,255,255,0.25)); font-size: 12px; line-height: 1.3; color: #eee; }
+.rs-pick img { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.rs-pick span { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.rs-pick b { color: #fff; }
+.rs-pick small { font-size: 10px; opacity: 0.75; margin-left: 2px; }

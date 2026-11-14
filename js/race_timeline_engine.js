@@ -353,7 +353,12 @@ function buildRaceTimeline(race, raceResult, oddsResult, bet) {
     standingsAt(tau) {
       return dragons
         .map(dr => ({ id: dr.id, p: tlInterp(dr.P, tau), finishTau: dr.finishTau }))
-        .sort((a, b) => (b.p - a.p) || (a.finishTau - b.finishTau))
+        // ★進みが同じ竜の並べ方（2026-11-12）。以前は常に「ゴールした順」で並べていたので、
+        //   全頭の進みが0の発走前（τ=0）に、順位表と名札へ**最終着順がそのまま出ていた**
+        //   （Codex の通し試験と自分の画像の両方で、全8頭一致を確認）。
+        //   ゴール順で並べるのは「どちらもゴール済み」のときだけにし、それ以外の同着は
+        //   結果と無関係な並び（id順）にする。着順そのもの（finishTau）は読むだけで変えていない。
+        .sort((a, b) => (b.p - a.p) || ((a.p >= 1 && b.p >= 1) ? (a.finishTau - b.finishTau) : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)))
         .map(x => x.id);
     },
     phaseIndexAt(tau) {

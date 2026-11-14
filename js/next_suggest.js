@@ -11,14 +11,14 @@ var NEXT_SUGGEST = [
   // ── ★金欠（2026-08-02・実機プレイ指摘）：コイン0のときは「無心する」**一択**。──
   //   「次のレースへ」等を並べても賭けられず行き止まりになるだけ。exclusive=true は
   //   nextSuggestRow が他の候補を全部伏せて1つだけ出す（表示専用・レース数値に非干渉）。
-  { at: "result", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
-    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+  { at: "result", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "手持ちが尽きた。村のみんなを頼ろう",
+    cond: function () { return (typeof playerBroke === "function") ? playerBroke() : ((state.player && state.player.coins) || 0) <= 0; },   // コイン0、または空腹で走れずごはん代も無い（hunger.js）
     go: function () { renderHome(); } },
-  { at: "meals", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
-    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+  { at: "meals", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "手持ちが尽きた。村のみんなを頼ろう",
+    cond: function () { return (typeof playerBroke === "function") ? playerBroke() : ((state.player && state.player.coins) || 0) <= 0; },   // コイン0、または空腹で走れずごはん代も無い（hunger.js）
     go: function () { renderHome(); } },
-  { at: "konron", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "コインが尽きた。村のみんなを頼ろう",
-    cond: function () { return ((state.player && state.player.coins) || 0) <= 0; },
+  { at: "konron", weight: 999, exclusive: true, icon: "🙏", label: "無心する", sub: "手持ちが尽きた。村のみんなを頼ろう",
+    cond: function () { return (typeof playerBroke === "function") ? playerBroke() : ((state.player && state.player.coins) || 0) <= 0; },   // コイン0、または空腹で走れずごはん代も無い（hunger.js）
     go: function () { renderHome(); } },
 
   // ── レース結果（勝ち）：結果→島時間の結線（M1・最重要の断線だった）──
@@ -27,6 +27,13 @@ var NEXT_SUGGEST = [
   { at: "result", weight: 80, icon: "📱", label: "みんなの反応を見る", sub: "配信のファンが騒いでる",
     cond: function (ctx) { return !!(ctx && ctx.hit) && typeof broadcastOn === "function" && broadcastOn(); },
     go: function () { renderSns(); } },
+  // ── ✍️ 連載「島ぐらし」（2026-11）：取材に行ける回がある時だけ、結果画面から紀行へ ──
+  //   旧「紀行への入口チップ」は weight 60 で一度も表に出ず取り下げた（下のコメント参照）。
+  //   今回は**条件がそろった時だけ**（全18回＝1周で最大18度）なので、飯より上に置いても本線を塞がない。
+  //   紀行の画面が「どこへ行くか・何が足りないか」を持っているので、行き先は紀行にする。
+  { at: "result", weight: 95, icon: "✍️", label: "連載の取材に出かける", sub: "『島ぐらし』の次の回が、書けそう",
+    cond: function () { try { return typeof kikoSerialReady === "function" && kikoSerialReady() && getStoryFlag("kikoStarted"); } catch (e) { return false; } },
+    go: function () { renderKiko(); } },
   // ── レース結果（負け）──
   { at: "result", weight: 90, icon: "🍜", label: "負け飯で立て直す", sub: "負けても腹は減る。明日の一杯へ",
     cond: function (ctx) { return !(ctx && ctx.hit); }, go: function () { renderMeals(); } },
@@ -71,6 +78,9 @@ var NEXT_SUGGEST = [
     cond: function () { try { var a = state.player.kikoArts;
       return !!(a && a[0] && (a[0].cut === "view" || a[0].cut === "walk")) && konronMapUnlocked(); } catch (e) { return false; } },
     go: function () { renderKonronGallery(); } },
+  { at: "kiko", weight: 96, icon: "🏝️", label: "取材先へ出かける", sub: "連載の次の回は、その場所で書く",
+    cond: function () { try { var n = kikoSerialNext(); return !!(n && n.ready && !n.ep.direct); } catch (e) { return false; } },
+    go: function () { try { var n = kikoSerialNext(); if (!(typeof kmGotoSpot === "function" && kmGotoSpot(n.ep.spot))) renderKonronMap(); } catch (e) {} } },
   { at: "kiko", weight: 70, icon: "🐲", label: "次のレースへ", sub: "書いたら、また走る。それが連載",
     cond: function () { return typeof hungerCanRace !== "function" || hungerCanRace(); },
     go: function () { renderRaceSelect(); } },

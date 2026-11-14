@@ -59,7 +59,7 @@ const KONRON_SPOTS = {
   //     （lumina_course / caldera_course・アートバイブル§0.4準拠＝尖った活火山の峰・山頂湖なし）。
   //   region はレース側の表記そのまま。ここを変えると突き合わせが切れる。
   rg_clock:  { name: "グランドクロック大時計走路", cat: "race", tier: 0, region: "グランドクロック地域", portal: "renderRaceSelect", time: "昼", photo: "images/konron/spots/grandclock.webp",
-               shoot: "真鍮の大歯車・時報の鐘・金色に光る直線", line: "島の時を刻む大時計の足元を走る。鐘が鳴ると、観客が一斉に時計を見上げる。" },
+               shoot: "真鍮の大歯車・溶岩石の時計塔・金色の砂の直線・椰子と屋台", line: "島の時を刻む大時計の足元を走る。鐘が鳴ると、観客が一斉に時計を見上げる。" },
   rg_lumina: { name: "ルミナ光条コース", cat: "race", tier: 0, region: "ルミナ地域", portal: "renderRaceSelect", time: "午前", photo: "images/konron/spots/lumina_course.webp",
                shoot: "空色の壁・照り返す白砂・滝から流れる霧", line: "光がよく回る谷あいの走路。影が薄く、竜の翼の色がいちばん綺麗に出る。" },
   rg_rosso:  { name: "リングロッソ闘技走路", cat: "race", tier: 1, region: "リングロッソ地域", portal: "renderRaceSelect", time: "夕", photo: "images/konron/spots/ringrosso.webp",
@@ -73,7 +73,7 @@ const KONRON_SPOTS = {
   rg_notte:  { name: "ノッテムーンライト夜間走路", cat: "race", tier: 2, region: "ノッテムーンライト地域", portal: "renderRaceSelect", time: "夜", photo: "images/konron/spots/notte_moonlight.webp",
                shoot: "月あかりに浮かぶ白線・落とした照明・青く見える足元", line: "明るくしすぎない決まりがある。月の色に合わせた灯りの下を、影だけが走る。" },
   rg_lapan:  { name: "ラパン祭典特設走路", cat: "race", tier: 2, region: "ラパン祭典地域", portal: "renderRaceSelect", time: "祭りの三日", photo: "images/konron/spots/lapan_festival.webp",
-               shoot: "舞う金の紙吹雪・だらんとした旗・掃除の人の背中", line: "年に三日だけ組まれる特設の走路。金の紙が舞い、視界がまるごときらきらする。" },
+               shoot: "舞う金の紙吹雪・はためく旗と屋台・縄の手前の観客の背中・走路の先の竜の影", line: "年に三日だけ組まれる特設の走路。金の紙が舞い、視界がまるごときらきらする。" },
 
   // ── 奥地・霧の彼方（聖典：簡単に入れない神秘＝終盤解放のteaser・遠景のみ・出しすぎない） ──
   dadake:    { name: "ダダケ村",     cat: "okuchi", tier: 3, time: "—", photo: "images/konron/spots/dadake.webp", shoot: "段々畑と古い竜小屋・無口な村人（遠景）", line: "市街と火山のあいだ、霧に隠れた古い村。地図には載るが、道はすぐ霧に消える。" },
@@ -113,11 +113,41 @@ const KONRON_SPOTS = {
   wagashi:   { name: "島の和菓子屋", cat: "food", tier: 2, time: "昼〜夕", photo: "images/konron/spots/wagashi.webp", gourmet: "images/konron/spots/wagashi_gourmet.webp", shoot: "ガラスケースの島和菓子・カステラ・福の暖簾・南国の花", line: "南国の陽に、和の甘み。底にザラメを残す長崎カステラが、ここの看板。" },
   amazake_chaya:{ name: "甘酒だんご茶屋", cat: "food", tier: 1, time: "レース前", photo: "images/konron/spots/amazake_chaya.webp", gourmet: "images/konron/spots/amazake_chaya_gourmet.webp", shoot: "番傘と提灯・三色だんごの炭火・甘酒・“必勝”の絵馬", line: "勝負の前に、甘酒で一服。三色だんごのゲン担ぎは、この島の必勝祈願。" },
   backlot:   { name: "資材置き場・マスコットの隅", cat: "oshi", tier: 2, time: "—", photo: "images/konron/spots/backlot.webp", shoot: "レース場裏の木箱とブルーシート・雨上がりの水たまり・小さな寝床", line: "レース場の裏手、木箱の陰。島のマスコットが、ちいさく震えていた場所。" },
-  // ── ★T3 隠しスポット（写真なし＝奥地と同型でエリア俯瞰にフォールバック・KM_HIDDEN の条件で出現）──
+  // ── 第5波（2026-11・連載『島ぐらし』と同時）：街の外に“行き先”を足す ──
+  //    市街(27)に対して 温泉1・瀑布2・浜3・漁村3 と偏っていたので、街の外へ出る理由を増やした。
+  //    写真は未結線のまま眠っていた景色を1枚ずつ見て、島の地図（island_map.webp）と風土に合うものだけ採った：
+  //      ・温泉郷は内陸の湯の段々で、すぐ東がキビシスの崖 → 崖のふちの外湯は地続きで成立する
+  //      ・南岸は白砂（セナ）と黒い溶岩（バンガラ）→ 鳥居の浜は港寄りの白砂、洞は溶岩の海岸
+  //      ・水はルミナ瀑布から谷を下る → 上流に竜頭の滝、下流の斜面に棚田
+  //    ★不採用にした3枚と理由（次に同じ写真を拾わないため）：
+  //      kazan_observatory＝広い火口を覗く構図で「アレドラウ山は尖った峰・山頂に火口湖なし」に反する／
+  //      mori_no_sato＝杉の冷たい森で竜舎林（熱帯の森）と別の土地に見える／
+  //      aoikaze_village＝大きな水上都市で「素朴な漁村ホシウオ」と規模が合わない。
+  hoshizora: { name: "崖の外湯・星あかりの露天", cat: "onsen", tier: 2, time: "夜", photo: "images/konron/spots/hoshizora.webp", shoot: "崖のふちの湯船と湯けむり・足もとの行灯・星の映る湯面・東の夜の海", line: "温泉郷の湯を、東の崖のふちまで引いた外湯。灯りを落としてあるのは、星を湯に映すため。" },
+  ryujin_falls:{ name: "竜頭の滝", cat: "view", tier: 2, time: "午前", photo: "images/konron/spots/ryujin_falls.webp", shoot: "竜の横顔に見える大岩・口から落ちる滝・谷の霧・濡れて青く光る石", line: "ルミナ瀑布のさらに上流。岩が竜の顔をしていて、その口から水が落ちる。彫ったのか、山がそうなったのか、島の人も知らない。" },
+  tanada:    { name: "ルミナの棚田", cat: "view", tier: 1, time: "朝〜昼", photo: "images/konron/spots/tanada.webp", shoot: "朝日を映す段々の田・木の柵の小径・田の神の小さな祠・小径に沿う用水", line: "瀑布を落ちた水を、上の田から下の田へ。山の斜面に田が階段をつくり、最後の一枚の水は湾へ帰っていく。" },
+  shiranami: { name: "白波の鳥居浜", cat: "view", tier: 1, time: "午前", photo: "images/konron/spots/shiranami.webp", shoot: "白砂に立つ朱の鳥居・黒い岩の潮だまり・浅瀬の青・遠くに霞む港町", line: "港から南へ歩いて最初の浜。白い砂に朱の鳥居がひとつ、沖を向いて立っている。" },
+  tsubo_roji:{ name: "赤土の壺小路", cat: "shop", tier: 1, time: "昼", photo: "images/konron/spots/tsubo_roji.webp", shoot: "赤土の壁・背丈ほどの素焼きの壺・軒に吊るした唐辛子・茅の庇と石畳", line: "南岸の内陸、日のよく当たる赤土の通り。島の岩塩と果実の酢を、大壺でゆっくり寝かせている。" },
+  tsukikage: { name: "月影の洞", cat: "view", tier: 2, time: "引き潮の夜", photo: "images/konron/spots/tsukikage.webp", shoot: "天窓から落ちる月の柱・青く光る石・潮の引いた水鏡・溶岩の天井", line: "むかしの溶岩が海へ抜けた跡。引き潮のあいだだけ口をひらき、天井の穴から月が落ちてくる。" },
+  suijo_ichi:{ name: "エサナの水上市", cat: "port", tier: 1, time: "朝", photo: "images/konron/spots/suijo_ichi.webp", shoot: "舟ごとの色布の日除け・舟べりの量り売り・入江の青い水路・奥の岩壁と細い滝", line: "朝凪のあいだだけ、入江に立つ舟の市。売り切れた舟から帰るので、風が出る頃には水路しか残らない。" },
+  // ── 第6波（2026-11・絵は docs/CODEX_ORDER_ISLAND_WAVE6.md の発注＝ChatGPT 生成）：手薄だった3エリアに行き先を足す ──
+  //    温泉郷 2→4／竜舎林・ダコン湖 2→4／キビシス崖線 3→5。連載『島ぐらし』で順に歩くと、ここだけ行き先が薄かった。
+  //    ★崖線に食べもの屋は足さない（連載の崖線の回が「崖の上は、ごはん屋さんがない」と書いている）。
+  //    ★風土：崖の上の風は下から上（吹き流しは上へなびく）／櫓から西を振り返ると峰は“横から”見える（火口は覗かない）。
+  jigoku_mushi:{ name: "湯けむりの蒸し場", cat: "food", tier: 1, time: "朝", photo: "images/konron/spots/jigoku_mushi.webp", gourmet: "images/konron/spots/jigoku_mushi_gourmet.webp", shoot: "噴気孔に重ねた竹のせいろ・溶岩石の炉・籠の卵と芋・朝日の差す白い蒸気", line: "地面から湯気の立つところに、せいろを置くだけ。温泉郷の朝ごはんは、山が炊く。" },
+  ashiyu_dori: { name: "足湯の小路", cat: "onsen", tier: 1, time: "宵", photo: "images/konron/spots/ashiyu_dori.webp", shoot: "石畳のまんなかを流れる湯・縁台の浴衣の背中・石灯籠・通りの先の湖の灯り", line: "通りのまんなかを、湯が流れている。腰かけて足を浸すと、知らない人ととなりになる。" },
+  yakuso_sato: { name: "薬草干しの森の里", cat: "food", tier: 2, time: "朝", photo: "images/konron/spots/yakuso_sato.webp", gourmet: "images/konron/spots/yakuso_sato_gourmet.webp", shoot: "巨木の気根に渡した板の間・笊いっぱいの薬草・軒の束と提灯・板の端で眠る小さな竜", line: "巨木の根のあいだに板を渡した小さな里。竜の脚に貼る葉を、朝いちばんに干す。" },
+  ryu_mizunomi:{ name: "竜の水のみ場", cat: "view", tier: 1, time: "早朝", photo: "images/konron/spots/ryu_mizunomi.webp", shoot: "湧き水の澄んだ淵・苔の石・首を下げる野の竜・こちら岸の供えの鉢", line: "森の湧き水に、野の竜が首を下げにくる。人は、向こう岸で待つのが決まり。" },
+  kazami_yagura:{ name: "風見の櫓", cat: "view", tier: 2, time: "夕", photo: "images/konron/spots/kazami_yagura.webp", shoot: "崖の上の赤い櫓・上へなびく吹き流し・峰の向こうへ沈む夕日・波うつ草", line: "東風を読む赤い櫓。振り返れば、峰の煙がどちらへなびくかが一目でわかる。" },
+  tsubasa_dana:{ name: "翼竜の岩棚", cat: "view", tier: 2, time: "昼すぎ", photo: "images/konron/spots/tsubasa_dana.webp", shoot: "岩棚で羽を休める翼の竜・縄を張った見物の小道・帽子を押さえる背中・崖下の白波", line: "崖の中腹で、翼の竜が羽を休める。人が行けるのは、縄の手前まで。" },
+  // ── ★T3 隠しスポット（KM_HIDDEN の条件で出現）──
+  //    ★第6波で3件とも写真が付いた（それまではエリア俯瞰図にフォールバックしていた）。
+  //      写真を持つと「写真のあるスポットを数える／並べる」処理に乗るので、見つける前に漏れないよう
+  //      フォトコレクション・今日の一枚・エリア制覇の分母は _kmHiddenQuiet で絞ってある。
   //    告知しない＝気づいた人だけの発見（GAME_EXPERIENCE_DESIGN §2「余白3割」）。表示専用。
-  ura_bistro:{ name: "路地裏ビストロの隠し席", cat: "food", tier: 1, time: "夜", shoot: "厨房の湯気・常連しか知らない木の扉", line: "パスタを食べた客だけが教えてもらえる、扉の奥のもう一席。" },
-  neko_tsuji:{ name: "猫の辻",               cat: "view", tier: 1, time: "夕暮れ", shoot: "塀の上の猫たち・夕陽の路地", line: "食べ歩きの匂いをまとった人にだけ、猫たちが集まってくる辻。" },
-  hoshikuzu: { name: "星くずの丘",           cat: "view", tier: 2, time: "夜", shoot: "光る砂・島の灯りを見下ろす丘", line: "傑作を三枚撮った写真家だけが、地元の子に教えてもらえる丘。" }
+  ura_bistro:{ name: "路地裏ビストロの隠し席", cat: "food", tier: 1, time: "夜", photo: "images/konron/spots/ura_bistro.webp", shoot: "厨房の湯気・常連しか知らない木の扉・ろうそくの灯る二人掛けの卓", line: "パスタを食べた客だけが教えてもらえる、扉の奥のもう一席。" },
+  neko_tsuji:{ name: "猫の辻",               cat: "view", tier: 1, time: "夕暮れ", photo: "images/konron/spots/neko_tsuji.webp", shoot: "塀の上の猫たち・夕陽の路地・石畳に伸びる長い影", line: "食べ歩きの匂いをまとった人にだけ、猫たちが集まってくる辻。" },
+  hoshikuzu: { name: "星くずの丘",           cat: "view", tier: 2, time: "夜", photo: "images/konron/spots/hoshikuzu.webp", shoot: "光る砂と足跡・島の灯りを見下ろす丘・レース場の灯りの輪", line: "傑作を三枚撮った写真家だけが、地元の子に教えてもらえる丘。" }
 };
 // ★各スポットの値オブジェクトに自分のキーを id として持たせる（脆さの解消）。
 //   以前、値が自分の id を知らず data-photo="undefined" で写真ビューアが無反応になったバグがあり、
@@ -128,13 +158,13 @@ Object.keys(KONRON_SPOTS).forEach(id => { KONRON_SPOTS[id].id = id; });
 // 【エリア】＝公式図の位置に“よく離して”配置（mx,my＝画像%）。重なり/タップ不能を解消。
 const KONRON_AREAS = [
   { id: "city",    name: "港町・市街",   ic: "🏙️", color: "#5aa6d6", mx: 18, my: 41, spots: ["mistra", "kirimina", "market", "ohzuba", "hotel", "admin", "mall", "arcade", "donryu", "kachimeshi", "makemeshi", "lounge", "yosou", "cafe", "patisserie", "gelato", "rooftoppool", "lavasteak", "kissaten", "backbistro", "oyakata", "furununo", "left_wing", "ushiome_dora", "wagashi", "ura_bistro", "neko_tsuji"] },
-  { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 31, my: 31, spots: ["lumina", "lodge"] },
+  { id: "falls",   name: "ルミナ瀑布",   ic: "🏞️", color: "#5cb35e", mx: 31, my: 31, spots: ["lumina", "lodge", "ryujin_falls", "tanada"] },
   { id: "race",    name: "聖龍レース場", ic: "🏁", color: "#e2604a", mx: 36, my: 52, spots: ["racecourse", "tanryu", "rg_clock", "rg_lumina", "rg_rosso", "rg_caldera", "rg_mist", "rg_vento", "rg_notte", "rg_lapan", "oshigoods", "jogai", "ennichi", "yokukatown", "amazake_chaya", "backlot"] },
-  { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 50, my: 39, spots: ["ryusha", "dakon"] },
-  { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 55, my: 63, spots: ["uroko"] },
-  { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 84, my: 52, spots: ["kibishis", "hoshimi", "hoshikuzu"] },
-  { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 31, my: 81, spots: ["sena", "bangara", "mango"] },
-  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 82, my: 72, spots: ["hoshiuo", "ryoshimeshi", "quaybar"] },
+  { id: "sanctum", name: "竜舎林・ダコン湖", ic: "🐉", color: "#b069c8", mx: 50, my: 39, spots: ["ryusha", "ryu_mizunomi", "yakuso_sato", "dakon"] },
+  { id: "onsen",   name: "ウロコトロ温泉郷", ic: "♨️", color: "#36a892", mx: 55, my: 63, spots: ["uroko", "jigoku_mushi", "ashiyu_dori", "hoshizora"] },
+  { id: "cliff",   name: "キビシス崖線", ic: "🪨", color: "#9aa05a", mx: 84, my: 52, spots: ["kibishis", "kazami_yagura", "tsubasa_dana", "hoshimi", "hoshikuzu"] },
+  { id: "beach",   name: "南岸ビーチ",   ic: "🏖️", color: "#e0b84a", mx: 31, my: 81, spots: ["sena", "bangara", "mango", "shiranami", "tsukikage", "tsubo_roji"] },
+  { id: "fishing", name: "ホシウオ村",   ic: "🎣", color: "#e08a3a", mx: 82, my: 72, spots: ["hoshiuo", "ryoshimeshi", "quaybar", "suijo_ichi"] },
   { id: "okuchi",  name: "奥地・霧の彼方", ic: "🌫️", color: "#8a7bb0", mx: 72, my: 20, spots: ["dadake", "susufuka", "rondo", "gwaruga", "kyokai"] }
 ];
 
@@ -246,6 +276,20 @@ function renderKonronMap() {
   const rail = el("div", "kt-rail"); rail.id = "kt-rail"; app.appendChild(rail);
   _ktRenderRail();
 
+  // ✍️ 連載「島ぐらし」の取材先へ（条件がそろっている時だけ＝告知を増やさない）。タップでそのスポットへ。
+  try {
+    const _sn = (typeof kikoSerialNext === "function") && kikoSerialNext();
+    if (_sn && _sn.ready && !_sn.ep.direct && KONRON_SPOTS[_sn.ep.spot]) {
+      const _ssp = KONRON_SPOTS[_sn.ep.spot], _sar = _kmAreaOf(_sn.ep.spot);
+      const st = el("button", "km-pm km-pm--serial");
+      st.innerHTML = `<span class="km-pm-ic">✍️</span>` +
+        `<span class="km-pm-tx"><b>連載 第${_sn.no}回の取材先：${_ssp.name}</b>` +
+        `<small>${_sar ? _sar.ic + " " + _sar.name + "エリア ・ " : ""}着いたら、その場で書ける</small></span><span class="km-pm-go">▸</span>`;
+      st.onclick = () => kmGotoSpot(_sn.ep.spot);
+      app.appendChild(st);
+    }
+  } catch (e) {}
+
   // H5: 日替わりフォトミッション「今日の一枚」（表示専用・タップで対象スポットへ）
   try {
     const _pmId = _kmPhotoMission();
@@ -332,6 +376,22 @@ function renderKonronMap() {
   app.appendChild(back);
 }
 
+// ★ほかの画面（紀行の連載・記事の寄り道）から、地図のそのスポットを直接ひらく。
+//   島がまだ開いていない／そのスポットに行けないときは false（呼び出し側が留まる）。
+function kmGotoSpot(id) {
+  try {
+    const s = KONRON_SPOTS[id]; if (!s) return false;
+    if (!konronMapUnlocked()) return false;
+    renderKonronMap();
+    if (state.ui.screen !== "konron_map") return false;
+    const a = _kmAreaOf(id);
+    _kmArea = a ? a.id : null; _kmSpot = id; _kmRenderPanel();
+    const stage = document.querySelector(".km-stage"); if (stage) _kmMarkSel(stage);
+    setTimeout(() => { const p = document.getElementById("km-panel"); if (p) { try { p.scrollIntoView({ behavior: "auto", block: "start" }); window.scrollBy(0, -64); } catch (e) {} } }, 80);
+    return true;
+  } catch (e) { return false; }
+}
+
 // ④ 崑崙ガイドブック（島の図鑑）：KONRON_GUIDE を分類表示。tier＝総資産で段階解放（未解放は？？？）。表示専用。
 function renderKonronGuide() {
   if (!konronMapUnlocked()) {   // Ⓑ 親konron_mapと同じ条件でゲート（島がロック中はガイドも閉じる）。
@@ -352,12 +412,17 @@ function renderKonronGuide() {
   let total = 0, open = 0;
   (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => c.entries.forEach(e => { total++; if (_kmTotal() >= (KM_TIER_AT[e.tier] || 0)) open++; }));
 
-  // 紀行の連載の一本として名乗る（ロゴ＋著者＋この連載の進み具合）
-  const head = el("div", "kiko-head");
+  // 紀行の読みもの棚として名乗る。表紙の作りは紀行本体（ui_kiko.js の .kk-mast）と同じにそろえる
+  //   ＝紀行から来ても、別の本を開いた感じにならない。写真は島の全景（読みものは島ぜんたいの話なので）。
+  const head = el("div", "kk-mast kk-mast--sub");
   head.innerHTML =
-    `<div class="kiko-logo">🏝️ 島さんぽ</div>` +
-    `<div class="kiko-byline">『ドラゴンレース紀行』連載 by ミミ🐰 <span class="kiko-badge">${open} / ${total} 本</span></div>` +
-    `<div class="kiko-stats"><span>歩いて、聞いて、書きためた崑崙島のはなし。</span></div>`;
+    `<img class="kk-mast-img" src="images/konron/island_aerial.webp" alt="" decoding="async" onerror="this.remove()">` +
+    `<div class="kk-mast-shade"></div>` +
+    `<div class="kk-mast-in">` +
+      `<div class="kk-mast-k">ドラゴンレース紀行 ／ 読みもの</div>` +
+      `<h1 class="kk-mast-t">島さんぽ</h1>` +
+      `<div class="kk-mast-st"><span>歩いて、聞いて、書きためた崑崙島のはなし</span><i></i><span><b>${open}</b> / ${total} 本</span></div>` +
+    `</div>`;
   app.appendChild(head);
 
   (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => {
@@ -397,6 +462,7 @@ function renderKonronGallery() {
   const items = [];
   Object.keys(KONRON_SPOTS).forEach(id => {
     const s = KONRON_SPOTS[id]; const open = _kmSpotOpen(s);
+    if (!_kmHiddenQuiet(id)) return;   // 隠しスポットは、見つけるまで「？」の枠ごと並べない（枚数から存在が漏れるため）
     if (s.photo) items.push({ id: id, kind: "photo", label: s.name, src: s.photo, open: open });
     if (s.gourmet) items.push({ id: id, kind: "gourmet", label: s.name + "・グルメ", src: s.gourmet, open: open });
   });
@@ -436,7 +502,7 @@ function renderKonronGallery() {
 function _kmAreaRecord(area) {
   const kz = (state.player || {}).kurashi || {};
   const seen = kz.spotsSeen || {}, stars = kz.photoStars || {};
-  const ids = area.spots.filter(id => KONRON_SPOTS[id] && KONRON_SPOTS[id].photo);
+  const ids = area.spots.filter(id => KONRON_SPOTS[id] && KONRON_SPOTS[id].photo && _kmHiddenQuiet(id));   // 隠しスポットは見つけるまで母数に入れない
   let stamp = 0, master = 0, eats = 0, eatTotal = 0;
   ids.forEach(id => {
     if (seen[id]) stamp++;
@@ -556,16 +622,37 @@ function _kmSnsOk() {
 // フルスクリーンの写真ビューア（タップで拡大トグル＝じっくり鑑賞／SNS投稿／閉じる）。表示専用。
 function _kmPhotoOf(s, kind) { return (kind === "gourmet") ? s.gourmet : s.photo; }
 function _kmPhotoCap(s, kind) { return (kind === "gourmet") ? ("🍽 " + s.name + "のご当地グルメ") : (s.line || s.name); }
+// スポットから入れる施設（食べ歩き・モール・レース…）の入口。label＝ボタンの文／open＝いま入れるか／hint＝まだのときの理由。
+//   ★詳細カードと写真の鑑賞ビューアの両方がここを読む（文と解放条件を1か所に＝ずれない）。入口が無いスポットは null。
+function _kmPortalInfo(s) {
+  if (!s || !s.portal || typeof window[s.portal] !== "function") return null;
+  const labelMap = { renderMeals: "🍢 食べ歩きへ", renderMall: "🛍️ ショッピングへ", renderRaceSelect: "🏁 レースへ", renderSns: "📣 SNSへ", renderScout: "🐉 竜スカウトへ" };
+  // ★遷移先が未解放なら「開いてる見た目→跳ね返される」をやめ、鍵つきの案内表示にする（NARRATIVE_DESIGN §7-H）。
+  const gate = {
+    renderMall: () => (typeof mallUnlocked !== "function") || mallUnlocked(),
+    renderSns: () => (typeof broadcastOn !== "function") || broadcastOn(),
+    renderScout: () => (typeof poroScoutUnlocked !== "function") || poroScoutUnlocked()
+  };
+  // ★renderMall の文はモール側の解放条件（mallUnlocked）と同じにする
+  const lockHint = { renderMall: "服が一着買えるだけ稼ぐと開く", renderSns: "配信を始めると開く", renderScout: "相棒と出会うと開く" };
+  let open = true;
+  if (gate[s.portal]) { try { open = !!gate[s.portal](); } catch (e) { open = false; } }
+  return { fn: s.portal, label: labelMap[s.portal] || "▶ ひらく", open: open, hint: lockHint[s.portal] || "まだ開いていない" };
+}
 function _kmOpenPhoto(spotId, kind) {
   const s = KONRON_SPOTS[spotId]; const src = s && _kmPhotoOf(s, kind); if (!src) return;
   document.querySelectorAll(".km-viewer").forEach(v => v.remove());   // 既存ビューアーを先に消す（重ね開き→閉じても前の画像が残る不具合の修正）
   const ov = el("div", "km-viewer");
+  const _pt = _kmPortalInfo(s);
   ov.innerHTML =
     `<div class="km-viewer-bd"></div>` +
     `<div class="km-viewer-stage"><img class="km-viewer-img" src="${src}" alt="${s.name}"></div>` +
     `<div class="km-viewer-cap"><b>${s.name}</b><span>${_kmPhotoCap(s, kind)}</span></div>` +
     `<div class="km-viewer-bar">` +
       (_kmSnsOk() ? `<button class="km-vbtn km-vbtn--sns" data-act="sns">📣 SNSに投稿</button>` : ``) +
+      // ★写真を見たあと、その場所の施設へ進める（2026-11-13）。おでかけの写真カード（「都会のリゾートで買う」等）は
+      //   押すとこの鑑賞だけが開き、モールへ行く口が無かった（通しプレイで発覚）。入れる施設があるスポットだけ出す。
+      (_pt && _pt.open ? `<button class="km-vbtn km-vbtn--go" data-act="go">${_pt.label}</button>` : ``) +
       `<button class="km-vbtn" data-act="x">✕ 閉じる</button></div>`;
   document.body.appendChild(ov);
   const img = ov.querySelector(".km-viewer-img");
@@ -575,6 +662,8 @@ function _kmOpenPhoto(spotId, kind) {
   ov.querySelector('[data-act="x"]').onclick = close;
   const snsB = ov.querySelector('[data-act="sns"]');
   if (snsB) snsB.onclick = () => _kmSnsCompose(spotId, kind);
+  const goB = ov.querySelector('[data-act="go"]');
+  if (goB) goB.onclick = () => { close(); const fn = window[_pt.fn]; if (typeof fn === "function") fn(); };
 }
 // SNS（ぴょこったー）へコメント付きで投稿。sns.js の addMyPost(text,img) を使う＝タイムラインに流れる。
 function _kmSnsCompose(spotId, kind) {
@@ -666,7 +755,7 @@ const KM_STAMP = {
 function _kmDayKey() { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
 function _kmPhotoMission() {
   try {
-    const ids = Object.keys(KONRON_SPOTS).filter(id => KONRON_SPOTS[id].photo && _kmSpotOpen(KONRON_SPOTS[id]));
+    const ids = Object.keys(KONRON_SPOTS).filter(id => KONRON_SPOTS[id].photo && _kmSpotOpen(KONRON_SPOTS[id]) && _kmHiddenQuiet(id));
     if (!ids.length) return null;
     let h = (_kmDayKey() * 48271) % 2147483647;
     return ids[h % ids.length];
@@ -762,7 +851,7 @@ function _kmOfferDish(spotId) {
 function _kmAreaProg(area) {
   try {
     const seen = ((state.player || {}).kurashi || {}).spotsSeen || {};
-    const ids = area.spots.filter(id => KONRON_SPOTS[id] && KONRON_SPOTS[id].photo);
+    const ids = area.spots.filter(id => KONRON_SPOTS[id] && KONRON_SPOTS[id].photo && _kmHiddenQuiet(id));   // 隠しスポットは見つけるまで母数に入れない
     return { got: ids.filter(id => seen[id]).length, total: ids.length };
   } catch (e) { return { got: 0, total: 0 }; }
 }
@@ -789,6 +878,8 @@ const KM_HIDDEN = {
   mango:      { area: "beach",   cond: function () { try { return typeof mealEaten === "function" && mealEaten("t_kakigori"); } catch (e) { return false; } } },
   ryoshimeshi:{ area: "fishing", cond: function () { try { return typeof mealEaten === "function" && mealEaten("t_ikayaki"); } catch (e) { return false; } } }
 };
+// 隠しスポットの条件だけを静かに見る（初発見の祝いを出さない＝一覧の出し分け用）。
+function _kmHiddenQuiet(id) { const h = KM_HIDDEN[id]; if (!h) return true; try { return !!h.cond(); } catch (e) { return false; } }
 // 隠しスポットが表示してよい状態か（未定義＝普通のスポット＝常に true）。
 function _kmHiddenOk(id) {
   const h = KM_HIDDEN[id]; if (!h) return true;
@@ -948,6 +1039,8 @@ function _kmPlayArrival(id, s, cat) {
 // 実食(eat)品はその場で食べられる（eatMeal＝hunger.jsの課金/満腹ラップ経由＝経済は既存どおり）。
 // クイズ品(quiz)はごはん画面の名物あてへ誘導。ティア未解放は🔒＋条件表示。表示メタ＝レース数値不変。
 const KM_SPOT_MEALS = {
+  jigoku_mushi:  ["t_nikuman", "t_amazake"],   // 蒸し場＝せいろの蒸しもの＋温泉郷の甘酒
+  yakuso_sato:   ["s_curry"],                  // 森の里のまかない＝薬草をきかせた「村の名もなきカレー」（島のどこでも食べられなかった一皿）
   ura_bistro:    ["g_pasta"],   // ★T3 隠し席＝パスタの店の奥（発見条件の料理をここでも食べられる）
   market:        ["t_nikuman", "t_kakigori"],
   kachimeshi:    ["t_yakitori", "t_dote"],
@@ -1038,6 +1131,18 @@ function _kmRenderPanel() {
     if (area && area.spots.length > 1) body += `<button class="km-areaback" data-back="1">← ${area.name}</button>`;
     body += `<div class="km-card-head"><span class="km-card-ic">${c.ic}</span>` +
       `<div class="km-card-id"><b>${s.name}</b><small>${c.name}${s.time && s.time !== "—" ? "・" + s.time : ""}</small></div></div>`;
+    // ✍️ 連載「島ぐらし」の取材先（kiko_serial.js）。条件がそろっていれば、ここで書ける。
+    //   まだなら「取材先」の札だけ（何が足りないかは紀行の画面が教える＝ここでは告知を重ねない）。
+    try {
+      if (open && typeof kikoSerialNext === "function") {
+        const _sn = kikoSerialNext();
+        if (_sn && _sn.ep.spot === _kmSpot && !_sn.ep.direct) {
+          body += _sn.ready
+            ? `<button class="km-serial" data-serial="${_sn.ep.id}"><span class="km-serial-k">連載　島ぐらし</span><b>第${_sn.no}回を、ここで書き上げる</b><small>${_sn.ep.memo}</small></button>`
+            : `<div class="km-serial wait"><span class="km-serial-k">連載　島ぐらし</span><b>第${_sn.no}回の取材先</b><small>${_sn.needs[0] || ""}</small></div>`;
+        }
+      }
+    } catch (e) {}
     // K3-A3: 「いまの話の舞台」章スタンプ（現章が舞台のスポットだけ・表示のみ）
     try {
       const chNow = Math.min((typeof kurashiChapter === "function") ? kurashiChapter() : 1, 6);
@@ -1080,20 +1185,11 @@ function _kmRenderPanel() {
       body += _kmContentHtml(_kmSpot);   // 見どころ／名物／豆知識（作りこみ）
       if (s.gourmet) body += `<button class="km-gourmet" data-gourmet="${_kmSpot}"><img src="${s.gourmet}" alt="" decoding="async"><span>🍽 ご当地グルメ・タップで鑑賞／投稿</span></button>`;   // s.id は常にundefined（同種バグ・上のdata-photoと同じ原因）
       body += _kmMealHtml(_kmSpot);   // ★N5: ここで食べる（スポット↔MEALS直結）
-      if (s.portal && typeof window[s.portal] === "function") {
-        const labelMap = { renderMeals: "🍢 食べ歩きへ", renderMall: "🛍️ ショッピングへ", renderRaceSelect: "🏁 レースへ", renderSns: "📣 SNSへ", renderScout: "🐉 竜スカウトへ" };
-        // ★遷移先が未解放なら「開いてる見た目→跳ね返される」をやめ、鍵つきの案内表示にする（NARRATIVE_DESIGN §7-H）。
-        const _portalGate = {
-          renderMall: () => (typeof mallUnlocked !== "function") || mallUnlocked(),
-          renderSns: () => (typeof broadcastOn !== "function") || broadcastOn(),
-          renderScout: () => (typeof poroScoutUnlocked !== "function") || poroScoutUnlocked()
-        };
-        const _pOpen = !_portalGate[s.portal] || (function () { try { return _portalGate[s.portal](); } catch (e) { return false; } })();
-        // ★renderMall の文はモール側の解放条件（mallUnlocked）と同じにする
-        const _pLockHint = { renderMall: "服が一着買えるだけ稼ぐと開く", renderSns: "配信を始めると開く", renderScout: "相棒と出会うと開く" };
-        body += _pOpen
-          ? `<button class="km-go" data-portal="${s.portal}">${labelMap[s.portal] || "▶ ひらく"}</button>`
-          : `<div class="km-card-lock">🔒 ${labelMap[s.portal] || "この施設"}は、${_pLockHint[s.portal] || "まだ開いていない"}。</div>`;
+      const _pi = _kmPortalInfo(s);
+      if (_pi) {
+        body += _pi.open
+          ? `<button class="km-go" data-portal="${_pi.fn}">${_pi.label}</button>`
+          : `<div class="km-card-lock">🔒 ${_pi.label}は、${_pi.hint}。</div>`;
       } else {
         body += `<div class="km-card-photo">🏞️ 撮影スポット（眺めて楽しむ名所）</div>`;
       }
@@ -1101,6 +1197,8 @@ function _kmRenderPanel() {
     panel.innerHTML = body;
     const bk = panel.querySelector(".km-areaback");
     if (bk) bk.onclick = () => { _kmSpot = null; _kmRenderPanel(); };
+    const ser = panel.querySelector("button.km-serial");
+    if (ser) ser.onclick = () => { if (typeof _kikoWriteAndOpen === "function") _kikoWriteAndOpen(ser.getAttribute("data-serial")); };
     const go = panel.querySelector(".km-go");
     if (go) go.onclick = () => { const fn = window[go.getAttribute("data-portal")]; if (typeof fn === "function") fn(); };
     const ph = panel.querySelector(".km-photo");
@@ -1156,6 +1254,7 @@ function _kmRenderPanel() {
           : `<small>タップでスポットへ</small>`) +
         `</div><div class="km-chips">`;
       const _seenMap = ((state.player || {}).kurashi || {}).spotsSeen || {};
+      let _serialSpot = null; try { const _sn2 = (typeof kikoSerialNext === "function") && kikoSerialNext(); if (_sn2 && !_sn2.ep.direct) _serialSpot = _sn2.ep.spot; } catch (e) {}
       area.spots.forEach(id => {
         const s = KONRON_SPOTS[id]; if (!s) return;
         if (!_kmHiddenOk(id)) return;   // ★T3 隠しスポット＝条件を満たすまで存在ごと見せない
@@ -1163,7 +1262,7 @@ function _kmRenderPanel() {
         const open = _kmSpotOpen(s);
         const _stamped = open && s.photo && _seenMap[id];
         body += `<button class="km-chip${open ? "" : " km-chip--locked"}${_stamped ? " km-chip--seen" : ""}" data-spot="${id}" style="--cc:${c.color}">` +
-          `<span class="km-chip-ic">${open ? c.ic : "🔒"}</span>${s.name}${_stamped ? `<span class="km-chip-st">📷</span>` : ""}</button>`;
+          `<span class="km-chip-ic">${open ? c.ic : "🔒"}</span>${s.name}${_stamped ? `<span class="km-chip-st">📷</span>` : ""}${id === _serialSpot ? `<span class="km-chip-pen">取材先</span>` : ""}</button>`;
       });
       body += `</div>`;
       panel.innerHTML = body;

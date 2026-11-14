@@ -182,6 +182,9 @@ const KW_AREAS = {
       "################################", // r23
     ],
     doors: [
+      // ★第5波（2026-11）：崖の外湯は、夜だけ灯りがともる（星を湯に映すための湯）。
+      { c: 12, r: 4, ic: "🌌", n: "湯の樋をたどる小径", hint: "崖の外湯へ", stay: true, when: ["宵", "夜"], spotGate: "hoshizora",
+        go: function () { kwShoot("hoshizora"); } },
       { c: 12, r: 7, ic: "♨️", n: "湯けむりの露天", hint: "写真をとる", stay: true,
         go: function () { kwShoot("uroko"); } },
       { c: 17, r: 7, ic: "🍵", n: "休憩処", hint: "ひと息つく", stay: true,
@@ -245,6 +248,14 @@ const KW_AREAS = {
       //   スポット bangara（バンガラ溶岩海岸・定義の time も "夕方"）＝設定と時間が噛み合う。
       { c: 7, r: 11, ic: "🌇", n: "夕焼けの磯", hint: "波打ちぎわへ下りる", stay: true, when: ["夕暮れ"],
         go: function () { kwShoot("bangara"); } },
+      // ★第5波（2026-11）：浜から歩いて行ける先を2つ。どちらも地図（ピン式）の同じスポットへつながる
+      //   ＝歩きの入口は“入り方”であって新しい駅ではない。spotGate で資産の段もそのまま効く。
+      //   北＝港のほうへ波打ちぎわを歩くと鳥居の浜（「港から南へ歩いて最初の浜」という地理どおり）。
+      { c: 9, r: 5, ic: "⛩️", n: "鳥居の浜への波打ちぎわ", hint: "港のほうへ歩く", stay: true, spotGate: "shiranami",
+        go: function () { kwShoot("shiranami"); } },
+      //   南の岩場＝溶岩の海岸。洞は引き潮の夜にだけ口をひらく＝宵と夜にしか踏み跡が現れない（一期一会）。
+      { c: 6, r: 20, ic: "🌙", n: "黒い岩場へ下りる踏み跡", hint: "灯りを借りて、洞へ", stay: true, when: ["宵", "夜"], spotGate: "tsukikage",
+        go: function () { kwShoot("tsukikage"); } },
       { c: 14, r: 22, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],
@@ -308,6 +319,9 @@ const KW_AREAS = {
           }, "🍶 昼から一杯やってる漁師たち。……いい顔してるなあ。");
         } },
       { c: 14, r: 21, ic: "🏖️", n: "浜へもどる砂道", hint: "波の音の方へ", area: "beach" },
+      // ★第5波（2026-11）：舟の市は朝凪のあいだだけ＝朝にしか現れない（風が立つと舟は帰る）。
+      { c: 5, r: 14, ic: "🛶", n: "朝の舟の市", hint: "桟橋から舟を呼びとめる", stay: true, when: ["朝"], spotGate: "suijo_ichi",
+        go: function () { kwShoot("suijo_ichi"); } },
       { c: 8, r: 7, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],
@@ -365,6 +379,11 @@ const KW_AREAS = {
           }, "🛖 薪の匂い。留守みたい……鍋だけ、まだあったかい。");
         } },
       { c: 6, r: 18, ic: "♨️", n: "温泉郷へのぼる道", hint: "湯けむりの方へ", area: "onsen" },
+      // ★第5波（2026-11）：水のゆくえどおりに2つ。上流＝竜頭の滝（獣道を回りこむ）／下流＝棚田（流れに沿ってくだる）。
+      { c: 26, r: 13, ic: "🐉", n: "滝の上へ回りこむ獣道", hint: "もっと上流へ", stay: true, spotGate: "ryujin_falls",
+        go: function () { kwShoot("ryujin_falls"); } },
+      { c: 17, r: 16, ic: "🌾", n: "流れに沿ってくだる畦道", hint: "棚田のほうへ", stay: true, spotGate: "tanada",
+        go: function () { kwShoot("tanada"); } },
       { c: 11, r: 19, ic: "🏝️", n: "島の地図へ", hint: "この日の島時間をとじる",
         go: function () { if (typeof renderKonronMap === "function") renderKonronMap(); } },
     ],

@@ -110,7 +110,16 @@
       var oid = (typeof currentOutfitId === "function") ? currentOutfitId() : "buniqro";
       var ex = expr || "smile";
       var oi = (typeof outfitImg === "function") ? outfitImg : function (o, x) { return "images/cast/mimi/mimi_" + o + "_" + x + ".webp"; };
-      var list = [oi(oid, ex + "_cut"), oi(oid, ex), oi(oid, "smile_cut"), oi(oid, "smile"), oi(oid, "default")];
+      // ★切り抜き（_cut）の絵は、下の衣装の smile にしか無い（images/cast/mimi/）。以前は全衣装・全表情で毎回
+      //   先に _cut を読みにいき、無い組で 404 を出してから落ちていた（Codex 3回め：14種類・55件）。在る組だけ試す。
+      //   切り抜きを足したら、ここに1つ足す。
+      var CUT = { dragonrobe: { smile: 1 }, jungle: { smile: 1 }, newspaper: { smile: 1 }, tarzan: { smile: 1 } };
+      var hasCut = function (o, x) { return !!(CUT[o] && CUT[o][x]); };
+      var list = [];
+      if (hasCut(oid, ex)) list.push(oi(oid, ex + "_cut"));
+      list.push(oi(oid, ex));
+      if (hasCut(oid, "smile")) list.push(oi(oid, "smile_cut"));
+      list.push(oi(oid, "smile"), oi(oid, "default"));
       return uniq(list);
     }
     if (c.img) {
@@ -260,6 +269,7 @@
   // 句読点の息継ぎ（読む速さは変えず、リズムだけ台詞に寄せる）。既存の {w:ms} 指定とは加算。
   var DLG_PAUSE = { "、": 90, "，": 90, "。": 190, "！": 190, "？": 190, "…": 70, "—": 70 };
   var chain = Promise.resolve(); // 多重 play() を直列化
+  var holdUntil = 0;             // Dialogue.hold() で挟んだ「間」が明ける時刻（ms）
 
   var REDUCE = false;
   try { REDUCE = global.matchMedia && global.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
@@ -327,6 +337,8 @@
         sl.wrap.classList.remove("active", "dim", "has", "in");
       });
       d.overlay.classList.remove("hidden");
+      // ★会話が開いている印（2026-11-12）。ホームでは背景の大きいミミを引っ込める合図に使う（style.css `body.home-mode.dlg-open`）＝会話用の立ち絵と二重にしない。
+      try { document.body.classList.add("dlg-open"); } catch (e) {}
       document.addEventListener("keydown", onKey, true);
       step();
     });
@@ -557,6 +569,7 @@
     clearBg();   // ★背景は台本ごと＝次の無関係な会話に前の場面を持ち越さない
     clearStandees();   // ★立ち絵も同じ理由で空にする（前のキャラを次の会話へ持ち越さない）
     if (dom) dom.overlay.classList.add("hidden");
+    try { document.body.classList.remove("dlg-open"); } catch (e) {}
     document.removeEventListener("keydown", onKey, true);
     var r = resolveFn; resolveFn = null; queue = null;
     if (r) r();
@@ -586,6 +599,19 @@
     inferExpr: inferExpr,             // 文面→表情の推定（②表情差分）
     isOpen: function () { return !!(dom && !dom.overlay.classList.contains("hidden")); },
     dismiss: function () { try { finish(); } catch (e) {} },   // 開いているセリフを閉じる（レース開始時など）
+    // ★順番待ちの列に「間」を1つ挟む（2026-11-12）。このあと play された会話は、ms 経ってから始まる。
+    //   使いどころ＝結果画面：的中の数字が出そろう前に、借金の説明・衣装の贈呈・昇格の会話が
+    //   かぶさって、当たった喜びを味わう前に案内を読む仕事になっていた（Codex の通し試験）。
+    //   会話を出す側（フック・贈呈・ポロ…）を1つずつ遅らせるのではなく、列の入口で一度だけ待たせる
+    //   ＝どの会話にも効く。早送り（検証）中は待たない。すでに列に並んでいる会話の後ろに入る。
+    hold: function (ms) {
+      ms = +ms || 0;
+      if (ms <= 0 || fastMs > 0) return;
+      holdUntil = Math.max(holdUntil, Date.now() + ms);
+      chain = chain.then(function () { return new Promise(function (res) { setTimeout(res, ms); }); });
+    },
+    // 「間」の最中か。utils.js の uiBusy が見る＝解放のお知らせなども、この間は割り込まない。
+    isHolding: function () { return Date.now() < holdUntil; },
     // 検証用：セリフは通常どおり描画したまま、クリックを待たず自動で先へ進める。
     //   ★「出さない」ではなく「早送り」にする。消す作りにするとVN自体を
     //     検証できなくなるため（一度その実装をして中身を確認する手段を失った）。

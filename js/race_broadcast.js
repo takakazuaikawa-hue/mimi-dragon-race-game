@@ -374,7 +374,13 @@ function buildBroadcast(timeline, ctx, opts) {
   const say = (tau, side, tpl, vars, tag) => {
     if (!tpl) return false;
     const line = String(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : ""));
-    cand.push({ tau, side, line, tag, pri: PRI[tag] != null ? PRI[tag] : 50 });
+    // ★「いま先頭は◯◯」と言い切る行には、その竜のidを持たせる（lead・2026-11-12）。画面側が出す直前に「まだ本当か」を確かめ、古くなった行は出さない（Codexの通し試験：順位表はセラム1位なのに実況は「バラン先頭！」）。読むだけ＝着順・オッズ・配当には触れない。
+    const lead = (vars && vars._lead != null && (vars._leadSure || /\{n1\}/.test(tpl))) ? vars._lead : null;
+    // ★区間を語る行（「◯◯に入った」「◯◯は△△がものを言う」）には、その区間の番号を持たせる（sec・0=序盤/1=中盤/2=終盤・2026-11-13）。
+    //   画面の区間表示は先頭がコースの1/3・2/3に達した瞬間に替わる。台本の詰め込みと滞留で後ろへずれると、
+    //   表示は「大旋回」なのに解説が「長直線スタート」を語る（Codexの通し試験で観測）。画面側が出す直前に確かめる。
+    const sec = (vars && vars._sec != null) ? vars._sec : null;
+    cand.push({ tau, side, line, tag, pri: PRI[tag] != null ? PRI[tag] : 50, lead, sec });
     // ★記録するのは「差し込み前の型」。
     //   pick() は型を照合しているのに、ここで差し込み後の文を記録していたため、
     //   {n} を含む行では一度も一致せず、重複防止が効いていなかった（実測で発覚）。
@@ -562,16 +568,19 @@ function buildBroadcast(timeline, ctx, opts) {
     const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
     call(t, "getaway", ["out", "lead", "third", "settle", "lead", "third"][i], {
       n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]),
-      m: marginTier(g).label
+      m: marginTier(g).label, _lead: d.order[0]
     // ★タグは "getaway"。ゲート開放の一言（"start"）とは別物にしておく。
     //   同じタグにすると、監査で「開放の瞬間」を除外したときに
     //   発走直後の実況まで一緒に消えて、無言を誤検出する（実際にやらかした）。
     }, "getaway");
   });
 
-  call(0.20, "course", "intro", { label: early.label }, "course");
-  color(0.21, "course", "detail",
-        { label: early.label, s: (early.stats || []).join("と") }, "course");
+  // ★序盤の区間の話は τ0.10 で言う（以前は 0.20）。画面の区間表示が「中盤」へ替わるのは先頭が1/3に達した瞬間で、
+  //   0.20 だと詰め込みと滞留で後ろへずれ、74%が替わったあとに出ていた（200戦の計測・tools/sim_telop_stale.js）。
+  //   0.10 なら 1.98本/戦がそのまま間に合い、食い違い0・4秒超の無言0。
+  call(0.10, "course", "intro", { label: early.label, _sec: 0 }, "course");
+  color(0.11, "course", "detail",
+        { label: early.label, s: (early.stats || []).join("と"), _sec: 0 }, "course");
 
   // 逃げ竜が主張しているなら、それは隊列の話なので序盤に言う価値がある
   const sigFront = A.signatures.find(s => s.kind === "front");
@@ -582,7 +591,7 @@ function buildBroadcast(timeline, ctx, opts) {
 
   // ── 中盤（0.30〜0.62）＝展開を語る ───────────────────────────────
   // ★いちばん要るのは「いま上位が誰か」。抜いた抜かれたより、隊列の形。
-  call(0.31, "course", "intro", { label: mid.label }, "course");
+  call(0.31, "course", "intro", { label: mid.label, _sec: 1 }, "course");
 
   // ★序盤から中盤へ渡る隙間を埋める（実測でここに3.5秒の無言が残っていた）。
   //   隊列の速報を2本挟む。情報は落とさず、間だけを埋める。
@@ -591,13 +600,13 @@ function buildBroadcast(timeline, ctx, opts) {
     const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
     call(t, "midway", "lead", {
       n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]),
-      m: marginTier(g).label
+      m: marginTier(g).label, _lead: d.order[0]
     }, "shape");
   });
 
   A.shape.forEach((sh, i) => {
     const vars = { n1: nameOf(sh.first), n2: nameOf(sh.second), n3: nameOf(sh.third),
-                   st1: styleJP(sh.first) };
+                   st1: styleJP(sh.first), _lead: sh.first };
     call(sh.tau, "shape", i === 0 ? "first" : "update", vars, "shape");
     // ★隊列は4回示すが、解説が受けるのは最初の1回だけ。
     //   毎回論評させると「実況が言う→解説が言い直す」の往復になり、
@@ -612,14 +621,14 @@ function buildBroadcast(timeline, ctx, opts) {
       const g = Math.max(0, timeline.progressAt(d.order[0], d.tau) - timeline.progressAt(d.order[1], d.tau));
       call(mid2, "midway", i % 3 === 0 ? "lead" : (i % 3 === 1 ? "third" : "tight"), {
         n1: nameOf(d.order[0]), n2: nameOf(d.order[1]), n3: nameOf(d.order[2]),
-        m: marginTier(g).label
+        m: marginTier(g).label, _lead: d.order[0]
       }, "shape");
     }
   });
 
   // 差が開いた／詰まった＝展開が動いた瞬間を1本だけ。
   if (A.gapMove) {
-    const gv = { n1: nameOf(A.gapMove.first), n2: nameOf(A.gapMove.second) };
+    const gv = { n1: nameOf(A.gapMove.first), n2: nameOf(A.gapMove.second), _lead: A.gapMove.first };
     call(A.gapMove.tau, "gap", A.gapMove.widening ? "widen" : "close", gv, "gap");
     // ★ここは解説が入る価値がある場面。差が動いた「理由」は実況が言えないので、
     //   解説にしか出せない情報になる（相槌ではなく仕事）。
@@ -637,16 +646,23 @@ function buildBroadcast(timeline, ctx, opts) {
   //   引き出しが空でも null が返るだけで、その場合は今まで通り進む。
   if (typeof bcChatterPick === "function") {
     const ch = bcChatterPick(ckey, "mid", situation);
-    if (ch) { say(0.615, "color", ch.line, {}, "chat"); _chatChosen.push(ch); }
+    // ★置く位置は τ0.50（以前は 0.615＝中盤の終わりぎわ）。0.615 だと詰め込みと滞留で後ろへずれ、出た雑談の全部が
+    //   終盤（τ0.62 以降＝いちばん熱い区間）に出ていた（200戦の計測・tools/sim_telop_stale.js。Codex の通し試験でも
+    //   「全額を賭けた竜が後方にいる終盤に、解説が竜の匂いの雑談を続ける」）。0.50 なら中盤に 0.34本/戦が出て、終盤は0。
+    //   画面側も、終盤に入ってからの雑談は出さない（race_canvas.js _telopStale）。
+    // ★さらに τ0.40 へ（2026-11-13・控え）。τ0.50 では先頭がもうコースの2/3の近くにいて、出た雑談は区間が終盤へ替わると
+    //   消えるので、読める時間が中央0.7秒（200戦の36本中35本が2秒未満）だった。τ0.40＋「先頭の進み0.60を過ぎたら始めない」で
+    //   0.28本/戦・読める時間は中央5.0秒・2秒未満0本（tools/sim_telop_stale.js を画面の規則に合わせて計測）。
+    if (ch) { say(0.40, "color", ch.line, {}, "chat"); _chatChosen.push(ch); }
   }
 
   // 中盤で語る入れ替わりは「1位が替わったとき」だけ。
   A.leadChanges.filter(c => c.tau > BC_EARLY_END && c.tau <= BC_MID_END).slice(0, 2).forEach(c => {
     call(c.tau, "lead", "change",
-         { n: nameOf(c.to), n2: nameOf(c.from) }, "lead");
+         { n: nameOf(c.to), n2: nameOf(c.from), _lead: c.to, _leadSure: true }, "lead");
     // 先頭交代は「なぜ替わったか」を解説が言える数少ない場面なので受ける
     color(c.tau + 0.020, "lead", "change",
-          { n: nameOf(c.to), n2: nameOf(c.from) }, "lead");
+          { n: nameOf(c.to), n2: nameOf(c.from), _lead: c.to, _leadSure: true }, "lead");
   });
 
   // ── 終盤（0.62〜決着点）＝いちばん熱い区間。ここを最も厚くする ──────
@@ -660,7 +676,7 @@ function buildBroadcast(timeline, ctx, opts) {
   // ★終盤に入ったら解説はほぼ黙る。ここから先は実況が続けて刻む場面で、
   //   一言ごとに相槌が入ると畳みかけの速度が殺される。
   //   解説が口を開くのは、差し竜が来た一度と、決着の締めだけ。
-  call(back(11.0), "course", "intro", { label: late.label }, "course");
+  call(back(11.0), "course", "intro", { label: late.label, _sec: 2 }, "course");
 
   // 逃げている竜（先頭を長く守っていれば）
   if (A.frontRunnerShare > 0.35) {
@@ -683,7 +699,7 @@ function buildBroadcast(timeline, ctx, opts) {
   // 直線に入ってからの先頭交代（あれば最後の1回）
   A.leadChanges.filter(c => c.tau > back(5.0) && c.tau < D).slice(-1).forEach(c => {
     call(Math.min(D - 0.02, c.tau), "final", "leadFlip",
-         { n: nameOf(c.to), n2: nameOf(c.from) }, "final");
+         { n: nameOf(c.to), n2: nameOf(c.from), _lead: c.to, _leadSure: true }, "final");
   });
   // ★決着までの連続記録。無言の時間を作らないよう、一定間隔で必ず埋める。
   //   ただの叫びではなく「誰が前・誰が来た・差はいくつ」を毎回載せる。
@@ -708,7 +724,7 @@ function buildBroadcast(timeline, ctx, opts) {
     }
     prevGap = d.gap;
     call(t, "drive", key, {
-      n1: nameOf(d.first), n2: nameOf(d.second), n3: nameOf(d.third), m
+      n1: nameOf(d.first), n2: nameOf(d.second), n3: nameOf(d.third), m, _lead: d.first
     }, "final");
   }
 
@@ -929,7 +945,7 @@ function buildBroadcast(timeline, ctx, opts) {
     if (callTaus.some(t => Math.abs(t - p.at) < 0.010)) p.at += 0.012;
   });
 
-  packed.forEach(p => script.push({ tau: p.at, side: p.side, line: p.line, tag: p.tag, hold: p.hold }));
+  packed.forEach(p => script.push({ tau: p.at, side: p.side, line: p.line, tag: p.tag, hold: p.hold, lead: p.lead, sec: p.sec }));
   script.sort((a, b) => a.tau - b.tau);
   A.dropped = dropped.map(d => ({ tag: d.tag, line: d.line }));   // 何を捨てたかは検証で見る
 

@@ -139,9 +139,19 @@ registerEvent({
   condition: { once: false },
   // §38 — 自動支給はやめ、ホームの「無心する」ボタンから受け取る方式に変更。
   // （rescue の額・計算は不変。受け取り方を“無心”の演出にしただけ。）
+  // ★説明は最初の1回だけ（2026-11-13・Codex 3回め #7）。2回め以降も同じ説明を繰り返していて、村の人が
+  //   「もう袋に分けてあるよ」と慣れていく笑いの横で、導線のほうは毎回はじめての案内をしていた。
+  //   brokeCount＝これまでに無心した回数（ui_render.js の無心の会話と同じ数）。行き先（ホームの無心）は毎回言う。
   actions: [
     { type: "dialogue", speaker: "sake_udada",
-      text: "ミミ、コインが尽きたな。…まだ終わりじゃない。ホームで『無心する』んだ。村のみんなが、基準額をそっと握らせてくれるさ。" }
+      text: function () {
+        const n = (state.player && state.player.brokeCount) || 0;
+        if (n <= 0) return "ミミ、コインが尽きたな。…まだ終わりじゃない。ホームで『無心する』んだ。村のみんなが、少しずつ持ち寄って、そっと握らせてくれるさ。";
+        if (n === 1) return "……また尽きたか。ホームの『無心する』だ。村の連中、たぶん待ってるぞ。";
+        if (n === 2) return "わかってるな。ホームだ。……顔は、上げて行けよ。";
+        const pool = ["……ホームへ行け。袋が待ってる。", "数えるのは、やめた。行ってこい、ミミ。", "尽きたな。……知ってた。ホームだ。"];
+        return pool[n % pool.length];
+      } }
   ]
 });
 
@@ -175,17 +185,30 @@ registerEvent({
     test: ctx => ((state.player && state.player.missRun) || 0) >= 3
                && ((state.player && state.player.wins) || 0) === 0 },
   priority: 7,
+  // ★3連敗めで財布が空になったときは、結果画面では出さず、立て直してから最初のレース選択で出す（2026-11-14・event_hooks.js）。
+  //   結果画面では「からっぽ → 無心の案内」だけにして、賭式の話は次に賭ける直前へ（ミミの一言 → 知らせ → 助言 の順）。
+  //   条件・一度きりは元のまま。文面は出すときの財布で決まる（立て直したあとなので、締めは「よし、次は複勝でいってみます！」）。
+  deferWhileBroke: true,
   actions: [
     { type: "dialogue", speaker: "sake_udada",
       text: "3連敗か。……いい経験しているな、ミミ。外した数だけ、竜の見方は増える。" },
-    { type: "dialogue", speaker: "mimi", expr: "sad",
+    // 表情は panic（sad の絵はどの衣装にも無く、毎回 404 を出してから smile に落ちていた）
+    { type: "dialogue", speaker: "mimi", expr: "panic",
       text: "でも師匠、お財布が……単勝、ぜんぜん当たらないです……。" },
     { type: "dialogue", speaker: "sake_udada",
       text: "単勝は一番むずかしい賭式だ。1着をぴたりと当てるんだからな。……まずは複勝でいい。3着までに入れば拾える。" },
     { type: "dialogue", speaker: "sake_udada",
       text: "ワイドもいいぞ。2頭選んで、両方が3着以内なら的中だ。当てる感覚を体に入れてから、単勝に戻ってこい。" },
-    { type: "dialogue", speaker: "mimi", expr: "happy",
-      text: "拾い方から、覚える……。よし、次は複勝でいってみます！" }
+    // ★3連敗めで財布が空になった人（服を買った直後に多い）には「次は複勝で」と言わせない（2026-11-13）。
+    //   コイン0で「次は複勝でいってみます！」と意気込んだ直後に、ホームの札が「すっからかん」になっていた
+    //   （Codex の通し試験：破産・助言・無心の案内が一つの区切りに重なる）。空のときは、そのまま無心の場面へつながる一言に。
+    { type: "dialogue", speaker: "mimi",
+      expr: function () { return ((state.player && state.player.coins) || 0) <= 0 ? "panic" : "happy"; },
+      text: function () {
+        return ((state.player && state.player.coins) || 0) <= 0
+          ? "拾い方から、覚える……。……あの、師匠。そのまえに、お財布が、からっぽです……っ。"
+          : "拾い方から、覚える……。よし、次は複勝でいってみます！";
+      } }
   ]
 });
 
@@ -418,7 +441,10 @@ registerEvent({
   hook: "afterRaceSelect",
   condition: { once: true, region: "グランドクロック地域" },
   actions: [{ type: "dialogue", speaker: "sake_udada",
-    text: "グランドクロック地域だ。竜レースの基本を学ぶ場所。時計塔の下で、まずは予想を組み立てる癖をつけよう。" }]
+    // ★直前の開幕でサケは「講義はしない。まず一回、好きな竜に賭けてこい」と言っている。次の画面で
+    //   「基本を学ぶ場所／予想を組み立てる癖をつけよう」と講義を始めるのは食い違い（口調も「〜しよう」でサケではない）。
+    //   場所の名乗りと、同じ一言の念押しだけにした（2026-11-13）。
+    text: "グランドクロック地域だ。あの時計塔が目印だ。……細かいことはいい。気になった竜を、まず一頭選べ。" }]
 });
 registerEvent({
   id: "first_visit_lumina",
