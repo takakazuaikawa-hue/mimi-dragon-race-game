@@ -5176,6 +5176,12 @@ body.title-mode #vol-fab { display: none !important; }
   text-shadow: 0 2px 14px rgba(0,0,0,.6); animation: ltTx .4s ease .28s both; }
 .lt-cutin-sub { font-size: 12.5px; color: var(--mist-soft); margin-top: 4px; animation: ltTx .4s ease .36s both; }
 @keyframes ltTx { 0% { opacity: 0; transform: translateX(26px); } 100% { opacity: 1; transform: translateX(0); } }
+/* 同じホーム到着の2枚め以降の授与（js/lifetree_grants.js _lgQuick・2026-11-14）：溜め（閃光・集中線）と下の一言を省き、
+   帯と文字の入りを速く。表示は1.5秒（JS）。帯の形・色・題の大きさは1枚めと同じ＝同じ授与だと分かる。 */
+.lt-cutin--quick .lt-cutin-flash, .lt-cutin--quick .lt-cutin-lines, .lt-cutin--quick .lt-cutin-sub { display: none; }
+.lt-cutin--quick .lt-cutin-band { animation-duration: .26s; }
+.lt-cutin--quick .lt-cutin-ic { animation-duration: .3s; animation-delay: 0s; }
+.lt-cutin--quick .lt-cutin-kicker, .lt-cutin--quick .lt-cutin-title { animation-duration: .2s; animation-delay: .05s; }
 
 /* ===== §42 竜の村 ===== */
 .vil-hero { background: linear-gradient(135deg, rgba(28,58,54,.55), rgba(18,32,38,.5)); }
@@ -8964,6 +8970,25 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 .hl-float .hl-live::before { content: none; }
 .hl-live-dot { width: 5px; height: 5px; border-radius: var(--r-round); background: var(--white); flex: none;
   box-shadow: 0 0 6px 1px rgba(255,255,255,.75); animation: hlPulse 1.4s ease-in-out infinite; }
+/* 第1話が未読のあいだの小さな入口（js/ui_home.js renderHome・2026-11-14）。目標の札のすぐ下・左上の短い2行。
+   ミミの顔（立ち絵の中央上部）にかからないよう幅を抑え、長い章題は…で省く。押すと第1話へ。 */
+.hl-stage .hl-storytip { position: absolute; top: 36px; left: 10px; z-index: 6; max-width: min(42%, 160px);
+  display: flex; align-items: center; gap: 6px; margin: 0; padding: 4px 9px 5px; text-align: left; cursor: pointer;
+  border: none; border-left: 2px solid #ff6b6b; border-radius: var(--rd-14); background: rgba(11,13,24,.5);
+  color: var(--mist); box-shadow: none; }
+.hl-stage .hl-storytip:hover { filter: none; }
+.hl-stage .hl-storytip:active { transform: scale(.97); }
+.hl-storytip-tx { display: flex; flex-direction: column; min-width: 0; }
+.hl-storytip-tx b { font-size: 11px; font-weight: 800; line-height: 1.3; white-space: nowrap; }
+.hl-storytip-tx small { font-size: 9.5px; font-weight: 600; color: var(--mist-soft); line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hl-storytip-caret { flex: none; opacity: .65; font-size: 11px; }
+/* 360px 以下はミミの顔が左へ寄る（顔の左端≒ステージ幅の42%）＝入口を細く・字を小さく。章題は…で省く。 */
+@media (max-width: 360px) {
+  .hl-stage .hl-storytip { max-width: calc(42% - 18px); gap: 4px; padding: 4px 8px 5px; }
+  .hl-storytip-tx b { font-size: 10px; }
+  .hl-storytip-tx small { font-size: 9px; }
+}
 
 /* (A) コメント列は入力バー直上へ＝下の空白を解消（旧 bottom:60px の浮きが「余白」の正体）。 */
 .hl-stage .hl-left { bottom: 10px; }
@@ -9004,6 +9029,10 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
   .hl-dock .tik-tab .ic { font-size: 25px; }
   .hl-dock .tik-tab .tik-ic-img { width: 28px; height: 28px; }
   .hl-dock .tik-tab .lb { font-size: 9.5px; }
+}
+/* 320px 級：5文字の「物語・配信」と「🔒おでかけ」が2行に割れていた（タブの中身の幅45px）＝少し小さく・字間なしで1行に（2026-11-14） */
+@media (max-width: 340px) {
+  .hl-dock .tik-tab .lb { font-size: 9px; letter-spacing: 0; white-space: nowrap; }
 }
 
 /* ══ ユーザー指示（①②③・2026-07-08）══ */
@@ -10583,6 +10612,15 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
 @media (prefers-reduced-motion: reduce) {
   #app::before, body::after, .title-cta, .navpop-go, .hl-race, .lt-buy { animation: none !important; }
 }
+/* ホームの知らせが出そろって閉じたら、主役のボタンを一度だけ明るくする（js/ui_home.js _hqCue・2026-11-14）。
+   「まだ次の窓が来るのか」と待たせない一区切りの合図。光るあいだだけ呼吸の光（s4Glow）と入れ替える＝filter が喧嘩しない。
+   終わったら JS がクラスを外して呼吸の光に戻る。動きを減らす設定では、すぐ上の !important で出ない。 */
+.hl-race.hl-race--cue { animation: hlRaceCue 1.3s ease-out 1; }
+@keyframes hlRaceCue {
+  0%   { filter: none; }
+  28%  { filter: brightness(1.2) drop-shadow(0 0 14px rgba(255,216,119,.9)); }
+  100% { filter: none; }
+}
 
 /* ── 面（カード）：上から1本の光＋いちばん低い影＋金の糸（S3・2026-08-03）──────
    縁を白ガラスから**淡い金の糸**へ＝窓（竜フレーム）→ヒーロー（金線+光）→カード（金糸）
@@ -10704,3 +10742,10 @@ body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタ�
 .rc-goalband[hidden] { display: none; }
 /* ゴール帯の下からLIVE札の端がのぞくと雑に見える＝帯が出ている間は隠す */
 .rc-wrap:has(.rc-goalband:not([hidden])) .rc-live { visibility: hidden; }
+
+/* 結果の最初の画面：選んだ竜の札（表示のみ・Codex 4回め §6-4） */
+.rs-pick { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 6px auto 2px; padding: 3px 10px 3px 4px; max-width: 100%; box-sizing: border-box; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid var(--waku, rgba(255,255,255,0.25)); font-size: 12px; line-height: 1.3; color: #eee; }
+.rs-pick img { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.rs-pick span { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.rs-pick b { color: #fff; }
+.rs-pick small { font-size: 10px; opacity: 0.75; margin-left: 2px; }

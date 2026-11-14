@@ -4981,7 +4981,7 @@ function startRaceCanvas(container, ctx) {
     if (phNow !== S.phaseShown) {
       S.phaseShown = phNow;
       const lbl = RC_PHASE_BANNERS[phNow];
-      if (lbl && S.preT <= 0 && !S.finished) {
+      if (lbl && S.preT <= 0 && !S.finished && !S.tapeBroken) {
         S.banner = { text: lbl, t: 0, max: 1.9 };
         S.zoomBump = Math.min(0.2, (S.zoomBump || 0) + 0.07);
         if (phNow >= 3) S.shake = Math.max(S.shake, 2.5);
@@ -5027,6 +5027,7 @@ function startRaceCanvas(container, ctx) {
         addFloat(gx, y, cr.place + "着", cr.place === 1 ? "#ffe06a" : "#cfe6ff", cr.place === 1);
         if (cr.place === 1) {
           S.tapeBroken = true;
+          S.banner = { text: "ゴール！", t: 0, max: 1.6 };   // 勝者がテープを切ったら「ゴール前！」の帯を「ゴール！」へ（表示のみ・Codex 4回め §6-7）
           S.shake = Math.max(S.shake, 5);
           spawnSpark(gx, y, "#ffffff");
           addFloat(cw / 2, ch * 0.34, timeline.photoFinish ? "きわどい！" : "テープを切った！", "#fff");
@@ -5260,7 +5261,7 @@ function startRaceCanvas(container, ctx) {
     html += `<div class="rc-fs-title">着順</div>`;
     timeline.crossings.forEach(cr => {
       const isT = betSet.has(cr.id);
-      html += `<div class="rc-fs-row ${isT ? "t" : ""}"><b>${cr.place}</b> ${commentaryName(cr.id)}${isT ? " 🎯" : ""}</div>`;
+      html += `<div class="rc-fs-row ${isT ? "t" : ""}"><b>${cr.place}</b> ${commentaryName(cr.id)}${isT ? " ★" : ""}</div>`;   // 選んだ印は結果表と同じ★（🎯は的中の印なので、外れでも付くと紛らわしい）
     });
     finishStripEl.innerHTML = html;
     // ★D1：ゴール確定に合わせてボード上位3行を金銀銅で固める（結果画面への視覚的な橋渡し）

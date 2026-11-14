@@ -147,16 +147,43 @@ function _lgMarkSeen(id) {
   } catch (e) {}
 }
 // 1枚だけ見せる（見せたら「見せた」にする）。出せたら true。
-function lifeGrantShowOne(id) {
+//   opts.quick＝同じホーム到着の2枚め以降（ui_home.js の順番の列が渡す・2026-11-14・Codex 4回め §4-4・§6-6）。
+//   「同じ大きな授与演出をもう一度見る」が続くと、レースの余韻より授与の手続きが長く残る。順番・中身・授けたものは同じで、
+//   溜め（閃光・集中線・紙吹雪）と下の小さな一言を省き、帯と文字の入りを速め、表示を短くする（2.4秒→1.5秒）。押せばすぐ閉じるのは同じ。
+var LG_QUICK_MS = 1500;
+function lifeGrantShowOne(id, opts) {
   try {
     var g = _lgById(id);
     _lgMarkSeen(id);
     if (!g) return false;
     var node = _lgNode(g.node);
     if (!node || typeof showLifeCutin !== "function") return false;
+    var quick = !!(opts && opts.quick);
+    var cb0 = quick ? document.querySelectorAll(".cb-layer").length : 0;
     showLifeCutin(node);
-    return !!document.getElementById("lt-cutin");
+    var ov = document.getElementById("lt-cutin");
+    if (!ov) return false;
+    if (quick) _lgQuick(ov, cb0);
+    return true;
   } catch (e) { return false; }
+}
+// 2枚め以降の短い出し方（見た目は style.css .lt-cutin--quick）。showLifeCutin（ui_render.js）は変えずに、出た直後に手を入れる。
+//   ・紙吹雪：showLifeCutin が同時に出した粒の層（celebrate.js .cb-layer）だけを外す（それより前からある層は触らない）。
+//   ・閉じる：1.5秒で同じ消え方（.out → 外す）。元の2.4秒のタイマーは、次の授与が出るときに showLifeCutin 自身が止める
+//     （出ていなければ空振り）。ホーム以外では早閉じしない（元の長さで閉じる）。タイマーは window._hlTimers に入れる。
+function _lgQuick(ov, cb0) {
+  try {
+    ov.classList.add("lt-cutin--quick");
+    var layers = document.querySelectorAll(".cb-layer");
+    for (var i = cb0; i < layers.length; i++) { try { layers[i].remove(); } catch (e) {} }
+    var t = setTimeout(function () {
+      if (!state.ui || state.ui.screen !== "home") return;
+      if (!document.contains(ov) || ov.classList.contains("out")) return;
+      ov.classList.add("out");
+      setTimeout(function () { try { ov.remove(); } catch (e) {} }, 260);
+    }, LG_QUICK_MS);
+    if (window._hlTimers) window._hlTimers.push(t);
+  } catch (e) {}
 }
 
 // ── 授与カットイン ───────────────────────────────────────────────────────

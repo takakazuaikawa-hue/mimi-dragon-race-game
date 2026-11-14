@@ -627,7 +627,8 @@ function renderMediaHub() {
   const fol = (typeof goalFollowers === "function") ? goalFollowers() : 800;
 
   const head = el("div", "yt-head");
-  head.innerHTML = `<div class="yt-title">📱 メディア</div><div class="yt-sub">登録チャンネル</div>`;
+  // 見出しはホームのタブと同じ名前（2026-11-14：「メディア」→「物語・配信」。押した名前と開いた画面の名前をそろえる）
+  head.innerHTML = `<div class="yt-title">📱 物語・配信</div><div class="yt-sub">登録チャンネル</div>`;
   app.appendChild(head);
 
   const list = el("div", "yt-list");

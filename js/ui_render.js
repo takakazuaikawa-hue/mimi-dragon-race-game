@@ -4631,6 +4631,20 @@ function buildResultHero(ps, tier, c) {
               `<span class="rs-win-plate"><i>1着</i><b>${wd.name}</b>${od ? `<small>${od.popularityRank}番人気・${od.winOdds.toFixed(1)}倍</small>` : ""}</span></div>` : "") +
       `</div>`;
   } catch (e) { stage = ""; }
+  // ★選んだ竜の札（Codex 4回め §6-4）：結果の最初の画面に「🐉 選んだ竜：モム・5着」。賭けた竜が複数なら、いちばん上位の竜。
+  //   確定済みの着順を読むだけ（表示のみ）。賭けていない・読めないときは出さない。
+  let pickTag = "";
+  try {
+    const sels = (c && c.bet && c.bet.selections) || [];
+    const ents2 = (c && c.raceResult && c.raceResult.entries) || [];
+    const mine2 = ents2.filter(e => sels.indexOf(e.dragon.id) >= 0).sort((a, b) => a.rank - b.rank);
+    if (mine2.length) {
+      const m = mine2[0], av2 = (typeof RC_DRAGON_ART_V !== "undefined") ? RC_DRAGON_ART_V : 1;
+      const nm = String(m.dragon.name).replace(/^.*竜(?=.)/, "");
+      pickTag = `<div class="rs-pick" style="--waku:${dragonColor(m.dragon)}"><img src="images/dragons/${m.dragon.id}.png?v=${av2}" alt="" decoding="async" onerror="this.remove()">` +
+        `<span>🐉 選んだ竜：<b>${nm}</b>・${m.rank}着${mine2.length > 1 ? `<small>（ほか${mine2.length - 1}頭）</small>` : ""}</span></div>`;
+    }
+  } catch (e) { pickTag = ""; }
   hero.innerHTML =
     stage +
     `<div class="rs-confetti" aria-hidden="true"></div>` +
@@ -4643,6 +4657,7 @@ function buildResultHero(ps, tier, c) {
         ? `${ps.typeLabel} × ${ps.odds.toFixed(1)}倍　／　収支 <b>${fmtSigned(ps.profit)}</b>`
         : `${ps.typeLabel}　／　今回は届かず`) +
       `　・　所持 <b${(state.player.coins || 0) <= 0 ? ' class="rs-zero"' : ""}>${fmtCoins(state.player.coins)}</b></div>` +
+    pickTag +
     `<div class="rs-streak" id="rs-streak">${streakLineHtml(c && c.streakInfo)}</div>`;
 
   // （音声操作は全画面共通の🔊FABへ一本化＝rs-mute ボタンは撤去・ユーザー指摘のUX整理）

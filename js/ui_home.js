@@ -165,15 +165,30 @@ function homeWalletLineDone() {
 //   ・タイマーは window._hlTimers に登録する（ホームの描き直し・離脱で止まる）。描き直したホームが、また動かす。
 // 結果画面の側は、会話の列（Dialogue の hold と直列再生）がすでに「結果を見せ切ってから会話」を担っている。
 //   破産のときの賭式の助言は、立て直してから最初のレース選択へ回す（event_hooks.js deferWhileBroke）。
-const HOME_Q = { items: [], cur: null, seq: 0, timer: 0, startAt: 0 };
+// shown＝この到着で出した「知らせ」（ミミの一言より後ろの番）の数（最後が閉じたら主役のボタンを一度光らせる＝_hqCue）。
+// grants＝この到着で出したくらしの授与の枚数（2枚めからは短く＝lifetree_grants.js lifeGrantShowOne の quick）。
+//   どちらも、別の画面からホームへ来たときに0へ戻す（ホームの上での描き直し＝売上の受け取りなどは同じ到着のまま）。
+const HOME_Q = { items: [], cur: null, seq: 0, timer: 0, startAt: 0, shown: 0, grants: 0, player: null };
 const HOME_Q_ORDER = { say: 10, grant: 20, unlock: 30, toast: 35, kiko: 40, login: 41, advice: 50 };
 const HOME_Q_GAP = 420;      // 1つ閉じてから次を出すまでの息
 const HOME_Q_FIRST = 600;    // ホームに着いて（描いて）から最初の1つまで
 
+// ★列はセーブごと（2026-11-14）：設定でデータを消して作り直したら、前のセーブで並んでいた知らせは捨てる。
+//   列はページが開いているあいだ残るので、残したままだと、作り直した新しいセーブの初出走前のホームに、
+//   前のセーブの授与のカットインと「新しいエピソード公開」の帯が出ていた（確認の途中で見つけた）。
+//   読み込み（loadGame）は同じ state.player に書き足すだけなので、ここでは消えない。
+function _hqSameSave() {
+  try {
+    if (HOME_Q.player === state.player) return;
+    HOME_Q.player = state.player;
+    HOME_Q.items = []; HOME_Q.cur = null; HOME_Q.startAt = 0; HOME_Q.shown = 0; HOME_Q.grants = 0;
+  } catch (e) {}
+}
 // 列に1つ足す。it = { key, order, start()→出したら true, finished(経過ms)→閉じたら true, valid()?, gap?, maxMs? }
 //   同じ key が並んでいる（出ている）あいだは足さない＝描き直しのたびに積まない。
 function homeQueuePush(it) {
   try {
+    _hqSameSave();
     if (!it || !it.key || typeof it.start !== "function") return false;
     if ((HOME_Q.cur && HOME_Q.cur.key === it.key) || HOME_Q.items.some(function (x) { return x.key === it.key; })) return false;
     it.seq = ++HOME_Q.seq;
@@ -218,7 +233,7 @@ function _hqTick() {
       HOME_Q.cur = null;
       HOME_Q.startAt = now + (cur.gap != null ? cur.gap : HOME_Q_GAP);
     }
-    if (!HOME_Q.items.length) return;
+    if (!HOME_Q.items.length) { _hqCue(now); return; }             // 列が空いた＝この到着の知らせは出し切った
     if (now < HOME_Q.startAt) { _hqKick(HOME_Q.startAt - now); return; }
     if (typeof uiBusy === "function" && uiBusy()) { _hqKick(350); return; }   // 会話・窓・結果の「間」が明けるまで待つ
     HOME_Q.items.sort(function (a, b) { return (a.order - b.order) || (a.seq - b.seq); });
@@ -226,9 +241,33 @@ function _hqTick() {
     let ok = true, shown = false;
     try { ok = !it.valid || !!it.valid(); } catch (e) { ok = false; }
     if (ok) { try { shown = it.start() !== false; } catch (e) { shown = false; } }
-    if (shown) { it.t0 = Date.now(); HOME_Q.cur = it; _hqKick(250); }
+    if (shown) {
+      it.t0 = Date.now(); HOME_Q.cur = it;
+      if (it.order > HOME_Q_ORDER.say) HOME_Q.shown++;              // ミミの一言は数えない（知らせではない）
+      _hqKick(250);
+    }
     else _hqKick(0);                                               // 言うこと・出すものが無かった＝次へ（印は付いていない）
   } catch (e) { HOME_Q.cur = null; }
+}
+// ★列の最後の知らせが閉じたら、ホームの主役のボタン（.hl-race）を一度だけ軽く光らせる（2026-11-14・Codex 4回め §4-4・§6-10）。
+//   直列にした知らせのあと「まだ次の窓が来るのか」と待たせない、一区切りの合図。新しい窓・件数の表示は増やさない
+//   （CSS のアニメ1回＝style.css .hl-race--cue）。知らせが1つも出なかった到着（挨拶・財布の一言だけを含む）では光らせない。
+//   閉じてから一息（gap）おき、会話・窓（uiBusy）が開いていれば閉じるまで待つ。光らせたら数を0に戻す＝1到着1回。
+function _hqCue(now) {
+  if (!HOME_Q.shown) return;
+  if (now < HOME_Q.startAt) { _hqKick(HOME_Q.startAt - now); return; }
+  if (typeof uiBusy === "function" && uiBusy()) { _hqKick(350); return; }
+  HOME_Q.shown = 0;
+  try {
+    const b = document.querySelector(".hl .hl-race");
+    if (!b) return;
+    b.classList.remove("hl-race--cue"); void b.offsetWidth; b.classList.add("hl-race--cue");
+    const off = function (e) {
+      if (e.animationName !== "hlRaceCue") return;
+      b.classList.remove("hl-race--cue"); b.removeEventListener("animationend", off);
+    };
+    b.addEventListener("animationend", off);
+  } catch (e) {}
 }
 // ミミの吹き出しの1つ（財布の出来事への一言・挨拶）。文は出す瞬間に決める（並んでいたあいだに起きたことで言う）。
 //   読み終わる長さ（文の長さから2.6〜4.6秒）が過ぎたら、次が控えていれば吹き出しを引っ込めて次へ。控えていなければ、いつもの長さで消える。
@@ -269,6 +308,10 @@ function _hqBannerAgain(o) {
 //   紀行の導入と売上（1日1回）・メーターの説明は、renderHome の中で判定したときに並べる。
 function homeQueueArrive(o) {
   o = o || {};
+  _hqSameSave();
+  // 別の画面から来た＝新しい到着（授与の枚数と、光らせる合図のための知らせの数を数え直す）。
+  //   ホームの上での描き直し（売上の受け取り・無心のあとなど）は同じ到着のまま＝最後の知らせのあとで一度だけ光る。
+  if (o.visit) { HOME_Q.shown = 0; HOME_Q.grants = 0; }
   // ★前のホームで出ていた1つ（cur）が、離れているあいだに終わっていれば外す（2026-11-14・レビュー指摘）。
   //   残したままだと同じ key の新しい項目が「もう並んでいる」扱いで弾かれ、この到着では帯・挨拶が出ず次の到着まで遅れていた。
   try {
@@ -295,7 +338,13 @@ function homeQueueArrive(o) {
     const ids = (typeof lifeGrantUnseenIds === "function") ? lifeGrantUnseenIds() : [];
     ids.forEach(function (id) {
       homeQueuePush({ key: "grant:" + id, order: HOME_Q_ORDER.grant, gap: 300, maxMs: 12000,
-        start: function () { return (typeof lifeGrantShowOne === "function") && lifeGrantShowOne(id); },
+        // ★同じ到着の2枚めからは、溜め（閃光・集中線・紙吹雪）を省いて短く出す（2026-11-14・Codex 4回め §4-4・§6-6）。順番は同じ。
+        start: function () {
+          if (typeof lifeGrantShowOne !== "function") return false;
+          const ok = lifeGrantShowOne(id, { quick: HOME_Q.grants > 0 });
+          if (ok) HOME_Q.grants++;
+          return ok;
+        },
         finished: function (el) { return el > 150 && !document.getElementById("lt-cutin"); } });
     });
     // 解放・新しい話は、初出走前は出さない（最初の5分は核ループに集中させる＝これまでどおり）。1到着につき帯1件・toast 1件。
@@ -313,6 +362,7 @@ function homeQueueArrive(o) {
 }
 
 function renderHome() {
+  const _visit = !state.ui || state.ui.screen !== "home";   // 別の画面から来た（ホームの上での描き直しではない）＝列の数え直し
   state.ui.screen = "home";
   document.body.classList.remove("title-mode");
   const app = beginScreen();
@@ -331,11 +381,23 @@ function renderHome() {
   // 🌱 くらしツリーの授与：条件を満たしたノードを授ける（同じ息継ぎで）。授けるのはここで即時、
   //   カットインで見せるのはホームの順番の列（homeQueueArrive）＝ミミの一言のあと・1枚ずつ・ホームの上でだけ。
   if (typeof lifeGrantScan === "function") { try { lifeGrantScan(); } catch (e) {} }
-  // daily login reward — checked once per session, shown just after home paints
+  // daily login reward — checked once per session (after the first race), shown in the home queue
   // ★D4解消（FTUE保護）：初出走前は文脈のない報酬ポップを出さない＝初回導線（→レースへ）に集中させる。
+  // ★2026-11-14（Codex 4回め §5 優先1）：「最初のホームの挨拶」と「初完走後の紀行の導入・売上の確認」を別々の印にした。
+  //   以前は1つの印（window._mimiLoginChecked）を初出走前のホームで立てていたので、新規開始の同じセッションでは
+  //   初完走後のホームに紀行の導入も売上も来なかった（自分で紀行のタブを押すまで出ない）。
+  //   ・greeted＝このセッションで最初のホームを通った（挨拶はそこで1回だけ）。
+  //   ・loginChecked＝完走1以上のホームで、紀行の導入と売上を列に並べた（1回だけ・列の順番＝帯のあと）。
+  //   印はセーブごと（設定でデータを消して作り直したら印も新しく＝作り直した日も、初完走後に導入が来る）。
+  //   二重に出ない：導入は kikoStarted、売上は受け取りで保存される lastLoginDay が見張る（読み込み直しても同じ）。
+  //   取りこぼさない：列はホームを離れても残り、次の到着で続きから出る。読み込み直したら印も列も初めから＝もう一度並ぶ。
   let _doGreet = false;   // 挨拶はVNではなく“配信の吹き出し”で（大立ち絵と二重にしない）
-  if (!window._mimiLoginChecked && (p.completedRaces || 0) >= 1) {
-    window._mimiLoginChecked = true;
+  let _hs = window._mimiHomeSess;
+  if (!_hs || _hs.player !== p) _hs = window._mimiHomeSess = { player: p, greeted: false, loginChecked: false };
+  const _firstHome = !_hs.greeted;
+  _hs.greeted = true;
+  if (!_hs.loginChecked && (p.completedRaces || 0) >= 1) {
+    _hs.loginChecked = true;
     try {
       const _lb = (typeof checkDailyLogin === "function") && checkDailyLogin();
       // ★初回だけ：サケの勧めで『ドラゴンレース紀行』を書き始めるVN（柱A・タイトル回収）。
@@ -353,10 +415,10 @@ function renderHome() {
           start: function () { const info = checkDailyLogin(); if (!info) return false; showLoginBonus(info); return true; },
           finished: function (el) { return el > 200 && !document.querySelector(".login-ov"); } });
       }
-      else _doGreet = true;
+      else _doGreet = _firstHome;   // 売上の無い日の最初のホームは挨拶（初出走前にもう挨拶した同じセッションでは、二度は言わない）
     } catch (e) {}
-  } else if (!window._mimiLoginChecked) {
-    window._mimiLoginChecked = true; _doGreet = true;   // 新規：ログボは出さないが挨拶の吹き出しは出す
+  } else if (_firstHome && (p.completedRaces || 0) < 1) {
+    _doGreet = true;   // 新規：ログボは出さないが挨拶の吹き出しは出す（紀行の導入と売上は、初完走後のホームで並べる）
   }
   const rankLabel = (RANKS[p.rank] && RANKS[p.rank].label) || "";
   const winRate = p.completedRaces > 0 ? Math.round((p.wins / p.completedRaces) * 100) : 0;
@@ -714,6 +776,26 @@ function renderHome() {
       }
     }
   }
+
+  // 📖 第1話が未読で読めるあいだは、目標の札のすぐ下に小さな入口を残す（2026-11-14・Codex 4回め §4-2・§6-3）。
+  //   一度きりの帯（新しいエピソード公開）が消えたあと、本編を探す入口が「メディア」のタブだけになり、
+  //   目標の「はじめて的中する」だけの反復へ閉じていた。押すと第1話へ。目標の判定・章の解放条件は変えない（読むだけ）。
+  //   出すのは帯で知らせたあと（_unlocked_story_1・帯と同じく初出走前は出ない）。章題は帯と同じ門番（chapterTeaseTitle）を通す。
+  //   ミミの顔にかからないよう、左上の短い2行だけ（幅は style.css .hl-storytip の max-width で抑える）。
+  try {
+    const _ch1 = (typeof STORY_CHAPTERS !== "undefined") ? STORY_CHAPTERS.find(c => c.id === "1") : null;
+    if (_ch1 && (p.completedRaces || 0) >= 1 && typeof chapterRead === "function" && !chapterRead("1")
+        && typeof chapterAvailable === "function" && chapterAvailable("1")
+        && typeof getStoryFlag === "function" && getStoryFlag("_unlocked_story_1")
+        && typeof renderStoryChapter === "function") {
+      const _t1 = ((typeof chapterTeaseTitle === "function") ? chapterTeaseTitle(_ch1) : "").replace(/^第1話[\s　]*/, "");
+      const tip = el("button", "hl-storytip",
+        `<span class="hl-storytip-tx"><b>📖 第1話 公開中</b>${_t1 ? `<small>${_t1}</small>` : ""}</span><span class="hl-storytip-caret">▸</span>`);
+      tip.title = "物語の第1話を読む";
+      tip.onclick = (e) => { e.stopPropagation(); renderStoryChapter("1"); };
+      stage.appendChild(tip);
+    }
+  } catch (e) {}
 
   // 背景の火の粉（CSSのみで常時ゆらめく・reduced-motionでは非表示）＝画面が止まって見えない
   const emb = el("div", "hl-embers");
@@ -1240,7 +1322,9 @@ function renderHome() {
   // 📱メディア＝物語（ドキュメンタリー）＋SNS＋手紙。未読はドット。
   const _storyNew = (typeof storyHasUnread === "function") && storyHasUnread();
   const _unreadL = (broadcast && typeof snsUnreadLetters === "function") ? snsUnreadLetters() : 0;
-  bar.appendChild(tikTab("📱", "メディア", () => renderMediaHub(), { dot: _storyNew || _unreadL > 0, img: "sns" }));
+  // ★表示名を「メディア」→「物語・配信」へ（2026-11-14・Codex 4回め §4-2・§6-2）。「メディア」から本編（サケとの出会い）が
+  //   ここにあるとは想像しにくかった。中身＝本編の物語（密着ドキュメンタリー）と、スマホを買ってからの配信・SNS。ラベルだけ。
+  bar.appendChild(tikTab("📱", "物語・配信", () => renderMediaHub(), { dot: _storyNew || _unreadL > 0, img: "sns" }));
   dock.appendChild(bar);
   wrap.appendChild(dock);
 
@@ -1248,6 +1332,7 @@ function renderHome() {
 
   // 🧭 ホームの順番の列（上の homeQueueArrive）：ミミの一言 → くらしの授与 → 解放の帯・新しい話（progression.js・
   //   ホーム到着1回につき帯1件・toast 1件まで。初出走前は出さない＝FTUE保護）→ 紀行の導入と売上 → 説明、を1つずつ。
-  homeQueueArrive({ greet: _doGreet });
+  //   最後の知らせが閉じたら、主役のボタンを一度だけ光らせる（_hqCue）。
+  homeQueueArrive({ greet: _doGreet, visit: _visit });
 }
 
