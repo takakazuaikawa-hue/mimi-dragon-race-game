@@ -1170,7 +1170,7 @@ body:has(.rs-dock) .vol-fab { bottom: 128px; }
   flex: 1; min-width: 60%; padding: 12px 18px; font-size: 14px; font-weight: 900;
   background: linear-gradient(180deg, var(--hx-ffe08a), #e8b455); color: #2a2013; border-color: transparent;
   box-shadow: 0 4px 18px -4px rgba(255,214,120,.55);
-  animation: rcNextPulse 1.8s ease-in-out infinite;
+  animation: rcNextPulse 1.8s steps(14) infinite;   /* ★省電力：影の脈動は15コマ/秒の刻みで（毎コマの描き直しを避ける） */
 }
 @keyframes rcNextPulse { 0%,100% { box-shadow: 0 4px 18px -4px rgba(255,214,120,.5); } 50% { box-shadow: 0 4px 26px -2px rgba(255,214,120,.85); } }
 /* 同接はゴールで確定＝伸びが止まったことを色でも示す */
@@ -5074,8 +5074,8 @@ body.title-mode #vol-fab { display: none !important; }
 .lt-node.is-lit:not(:last-child) .lt-node-rail::after { background: var(--bc); width: 2.5px; opacity: .8; box-shadow: 0 0 6px -1px var(--bc); }
 /* 次に狙える星：脈動して視線を誘導 */
 .lt-node.is-next .lt-node-title { color: var(--gold-bright); }
-.lt-node.is-next.ready .lt-node-dot { animation: ltStarPulse 1.5s ease-in-out infinite; }
-.lt-node.is-next.ready .lt-buy { animation: ltBuyPulse 1.6s ease-in-out infinite; }
+.lt-node.is-next.ready .lt-node-dot { animation: ltStarPulse 1.5s steps(11) infinite; }   /* ★省電力：影の脈動は15コマ/秒の刻みで */
+.lt-node.is-next.ready .lt-buy { animation: ltBuyPulse 1.6s steps(12) infinite; }
 /* 段階開示：フロンティアより先は距離で淡くし、遠い星は説明を畳む（圧迫感とスクロールを減らす） */
 .lt-node.is-far1 { opacity: .6; }
 .lt-node.is-far2 { opacity: .4; }
@@ -5243,10 +5243,10 @@ body.title-mode #vol-fab { display: none !important; }
 /* ===== TikTokライブ風ホーム（背景ぶち抜き＋ミミ大立ち絵＋ライブ演出） ===== */
 .hl-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: var(--bg-world); }
 .hl-bg-img { position: absolute; inset: -6%; width: 112%; height: 112%; object-fit: cover; opacity: .82;   /* 余白±6%＝接地キャリブレーションの可動域 */
-  animation: hlKen 38s ease-in-out infinite alternate; }
+  animation: hlKen 38s steps(380) infinite alternate; }   /* ★省電力：動きは毎秒0.5px程度＝10コマ/秒で十分（§省電力の設計） */
 /* 縦構図背景：全景が縦に収まる＝素直なcover（接地はSVG側のfloorで設計）。縁が出ないようズームのみのKen Burns。 */
 .hl-bg-img.portrait { inset: 0; width: 100%; height: 100%; object-position: center; opacity: .97;
-  animation: hlKenP 42s ease-in-out infinite alternate; }
+  animation: hlKenP 42s steps(420) infinite alternate; }
 @keyframes hlKenP { from { transform: scale(1.015); } to { transform: scale(1.07); } }
 /* 背景スクリム：背景写真を全面に生かすため撤去（透明）。ヘッダーは .hl-top が自前の暗帯を持つので暗幕は不要。 */
 .hl-bg-scrim { position: absolute; inset: 0; background: transparent; }
@@ -5330,7 +5330,9 @@ body.title-mode #vol-fab { display: none !important; }
    この項を外すと画面の高さ次第で顔が切れて戻る。下の -120px と必ず同じ数にすること。 */
 .hl-mimi { position: absolute; left: 50%; bottom: -120px; transform: translateX(-50%); z-index: 1;
   width: min(96vw, 92%, 540px); height: min(88vh, 800px, calc(100% + 120px));
-  cursor: pointer; will-change: transform; filter: drop-shadow(0 2px 7px rgba(0,0,0,.5)); }
+  cursor: pointer; will-change: transform; }
+/* ★省電力（2026-11-14）：落ち影 drop-shadow は、ここ（毎フレーム動く子を持つ親）から、動かない画像そのもの（下の .hl-mimi img）へ移した。
+   親に付けると、呼吸のたびに立ち絵まるごとの影を毎フレーム描き直す（スマホが熱くなる一番の元）。画像に付ければ1回描いて使い回す。見た目は同じ。 */
 /* ★ホームで立ち絵つきの会話が開いているあいだ、背景の大きいミミは引っ込める（2026-11-12）。
    紀行の導入・解放の会話などがホームで出ると、大きいミミの前に会話用のミミが別の大きさで重なり、
    主役が二重になっていた（Codex の通し試験。開発ガイドの「ホームでVN立ち絵を出さない」に反する実表示）。
@@ -5341,7 +5343,7 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .hl-mimi-flip { width: 100%; height: 100%; transition: transform .23s cubic-bezier(.45,0,.55,1); transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
 .hl-mimi-flip.flipping { transform: perspective(820px) rotateY(90deg); }   /* perspectiveを関数側に＝親のtransform/コンテナに影響されず確実に立体回転 */
 .hl-mimi img { width: 100%; height: 100%; object-fit: contain; object-position: bottom center;
-  transform-origin: 50% 62%; will-change: transform; }
+  filter: drop-shadow(0 2px 7px rgba(0,0,0,.5)); }   /* 呼吸の伸び縮みは外側の .hl-mimi-in がまとめて受け持つ（js/ui_home.js startMimiIdle）＝画像は動かない＝影は1回だけ描く */
 .hl-mimi-tag { position: absolute; right: -2px; bottom: 14px; font-size: 11px; color: var(--mist);
   background: rgba(18,22,28,.85); border: 1px solid var(--gold-line); border-radius: var(--r-full); padding: 4px 9px; }
 .hl-dragon-fallback { font-size: 22px; }
@@ -5377,13 +5379,14 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 /* 「いま次にやること」を🎯目標チップに出す＝🙏無心(0コイン)/⚔️最終決戦。目立つよう塗り＋パルス。js/ui_home.js */
 .hl-goal--act { padding-left: 9px; }
 .hl-goal--act .hl-goal-t { font-size: 13px; }
-.hl-goal--broke { border-left: 3px solid #ff5a45; background: rgba(58,16,12,.62); animation: hlGoalPulseRed 1.7s ease-in-out infinite; }
+/* ★省電力：影（box-shadow）の脈動は1コマごとに描き直しになる＝15コマ/秒の刻み（steps）で回す（見た目の脈は同じ） */
+.hl-goal--broke { border-left: 3px solid #ff5a45; background: rgba(58,16,12,.62); animation: hlGoalPulseRed 1.7s steps(13) infinite; }
 .hl-goal--broke .hl-goal-k { color: #ff8a6a; } .hl-goal--broke .hl-goal-t { color: #ffe0d6; } .hl-goal--broke .hl-goal-n { color: #ffb0a0; }
-.hl-goal--final { border-left: 3px solid #ffcf5a; background: rgba(54,38,10,.62); animation: hlGoalPulseGold 1.6s ease-in-out infinite; }
+.hl-goal--final { border-left: 3px solid #ffcf5a; background: rgba(54,38,10,.62); animation: hlGoalPulseGold 1.6s steps(12) infinite; }
 .hl-goal--final .hl-goal-k { color: var(--hx-ffd98a); } .hl-goal--final .hl-goal-t { color: #fff2cf; } .hl-goal--final .hl-goal-n { color: var(--hx-ffd98a); }
 @keyframes hlGoalPulseRed { 0%,100% { box-shadow: 0 0 0 0 rgba(255,70,50,0); } 50% { box-shadow: 0 0 13px 1px rgba(255,70,50,.55); } }
 @keyframes hlGoalPulseGold { 0%,100% { box-shadow: 0 0 0 0 rgba(255,190,90,0); } 50% { box-shadow: 0 0 15px 2px rgba(255,190,90,.6); } }
-.hl-goal--phone { border-left: 3px solid #57b1dd; background: rgba(18,40,58,.6); animation: hlGoalPulseBlue 1.9s ease-in-out infinite; }
+.hl-goal--phone { border-left: 3px solid #57b1dd; background: rgba(18,40,58,.6); animation: hlGoalPulseBlue 1.9s steps(14) infinite; }
 .hl-goal--phone .hl-goal-k { color: #7cc0e6; } .hl-goal--phone .hl-goal-t { color: #dcefff; } .hl-goal--phone .hl-goal-n { color: #9fd0ec; }
 @keyframes hlGoalPulseBlue { 0%,100% { box-shadow: 0 0 0 0 rgba(90,170,220,0); } 50% { box-shadow: 0 0 14px 1px rgba(90,170,220,.55); } }
 @media (prefers-reduced-motion: reduce) { .hl-goal--broke, .hl-goal--final, .hl-goal--phone { animation: none; } }
@@ -5545,7 +5548,7 @@ body.home-mode.dlg-open .hl-mimi { opacity: 0; pointer-events: none; }
 .hl-embers { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
 .hl-embers span { position: absolute; bottom: -14px; width: 5px; height: 5px; border-radius: var(--r-round);
   background: radial-gradient(circle, #ffe2b0 0%, #ff9440 60%, transparent 100%);
-  opacity: 0; filter: blur(.4px); animation: hlEmber linear infinite; }
+  opacity: 0; animation: hlEmber linear infinite; }   /* ★省電力：filter: blur(.4px) を外した（もとから縁がぼけた粒＝見た目は同じ・粒ごとの毎フレームのぼかしが消える） */
 .hl-embers span:nth-child(1) { left: 8%;  animation-duration: 9.5s;  animation-delay: 0s;   --dx: 26px;  --s: 1; }
 .hl-embers span:nth-child(2) { left: 22%; animation-duration: 12.5s; animation-delay: 2.1s; --dx: -20px; --s: .8; }
 .hl-embers span:nth-child(3) { left: 38%; animation-duration: 10.6s; animation-delay: 4.4s; --dx: 16px;  --s: 1.25; }
@@ -8397,11 +8400,13 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 @keyframes tikbarIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 /* 金CTA＝4秒ごとに光が走る（商業の「押して」の合図・控えめ） */
 .hl.tik .hl-race { position: relative; overflow: hidden; }
-.hl.tik .hl-race::after { content: ""; position: absolute; top: -30%; bottom: -30%; width: 34px;
-  left: -60px; transform: rotate(18deg);
-  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.55), rgba(255,255,255,0));
+/* ★省電力（2026-11-14）：光の帯は left を動かしていた（＝毎コマ配置のやり直し＋描き直し）。いまは同じ帯を、ボタン幅いっぱいの
+   板に描いて transform で滑らせる（合成だけで動く）。帯の幅34px・傾き18°・走る区間（-60px〜130%）・間合い（4.2秒のうち72〜88%）は同じ。 */
+.hl.tik .hl-race::after { content: ""; position: absolute; top: -30%; bottom: -30%; left: 0; width: 100%;
+  background: linear-gradient(108deg, rgba(255,255,255,0) calc(50% - 17px), rgba(255,255,255,.55) 50%, rgba(255,255,255,0) calc(50% + 17px));
+  transform: translateX(calc(-50% - 43px));
   animation: ctaShine 4.2s ease-in-out infinite; pointer-events: none; }
-@keyframes ctaShine { 0%, 72% { left: -60px; } 88%, 100% { left: 130%; } }
+@keyframes ctaShine { 0%, 72% { transform: translateX(calc(-50% - 43px)); } 88%, 100% { transform: translateX(calc(80% + 17px)); } }
 @media (prefers-reduced-motion: reduce) {
   .hl.tik .tik-bar { animation: none; }
   .hl.tik .hl-race::after { display: none; }
@@ -10549,7 +10554,7 @@ button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2p
 #app::before {
   content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background: radial-gradient(120% 80% at 50% 6%, rgba(255,216,119,.075), transparent 60%);
-  animation: s4Breath 11s ease-in-out infinite;
+  animation: s4Breath 11s steps(55) infinite;   /* ★省電力：11秒かけて明るさが少し変わるだけ＝10コマ/秒の刻みで十分（毎コマ全画面を合成し直さない） */
 }
 @keyframes s4Breath { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
 
@@ -10559,8 +10564,14 @@ button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2p
      完全に隠れていた。ゲームの粒子は本来コンテンツの上に浮くレイヤなので body 直下へ移し、
      粒も大きく明るくした（1.2〜2px/α.30〜.55 → 1.8〜3.4px/α.50〜.85）・周期も 34→22秒。
      ★z-index 40＝#app(1) の上・すべてのオーバーレイ(120以上) の下。pointer-events none。 */
+/* ★省電力（2026-11-14・この作品でいちばん重かった所）：火の粉は background-position を動かしていた。これは
+   **全画面の板を毎コマ描き直す**動かし方で、ホームでもレースでも結果でも（明るい紙面とタイトル以外の全画面で）
+   スマホが毎秒60回、画面まるごとを塗り直していた（計測：これだけでレンダラーが CPU 1コア強・docs/STATUS_LEDGER.md 21）。
+   いまは同じ模様を「画面＋1枚ぶん」縦長の板に1回だけ描き、板ごと transform で持ち上げる（合成だけで動く・描き直しなし）。
+   模様・粒の大きさ・明るさ・22秒で1枚ぶん昇る速さは同じ。毎秒15pxほどの昇りなので、刻みは15コマ/秒（steps）で十分。 */
 body::after {
-  content: ""; position: fixed; inset: -12% 0 0; z-index: 40; pointer-events: none;
+  content: ""; position: fixed; left: 0; right: 0; top: 0; height: calc(100% + 42vh); z-index: 40; pointer-events: none;
+  will-change: transform;
   background-image:
     radial-gradient(2.6px 2.6px at 12% 82%, rgba(255,206,130,.85), transparent 62%),
     radial-gradient(2.2px 2.2px at 31% 64%, rgba(255,226,170,.70), transparent 62%),
@@ -10572,9 +10583,9 @@ body::after {
     radial-gradient(1.8px 1.8px at 22% 30%, rgba(255,240,200,.50), transparent 62%);
   background-repeat: repeat-y;
   background-size: 100% 42vh;
-  animation: s4Embers 22s linear infinite;
+  animation: s4Embers 22s steps(330) infinite;
 }
-@keyframes s4Embers { from { background-position: 0 0; } to { background-position: 0 -42vh; } }
+@keyframes s4Embers { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, -42vh, 0); } }
 /* 明るい紙面（紀行ブログ/観光/暮らし）とタイトルでは火の粉を出さない＝別世界の顔を守る */
 body:has(#app.kiko-page)::after, body:has(#app.kt-page)::after,
 body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
@@ -10604,7 +10615,7 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
    ★.title-cta はここから外した（2026-08-04）。タイトルの開始は「板のボタン」をやめて
      テキストの合図にしたので、主役のボタンではない。この行が後にあるため、
      §タイトル側で書いた明滅を animation ごと上書きしてしまっていた（実測で発覚）。 */
-.navpop-go, .hl-race, .lt-buy { animation: s4Glow 8.5s ease-in-out infinite; }
+.navpop-go, .hl-race, .lt-buy { animation: s4Glow 8.5s steps(43) infinite; }   /* ★省電力：光の濃さを10コマ/秒の刻みで（filter の描き直しを1/6に・見た目の呼吸は同じ） */
 @keyframes s4Glow {
   0%,100% { filter: none; }
   50%     { filter: drop-shadow(0 0 10px rgba(255,216,119,.34)); }
@@ -10749,3 +10760,30 @@ body.fab-pad .slip-actions { padding-right: 54px; }   /* 右下の音量ボタ�
 .rs-pick span { min-width: 0; overflow-wrap: anywhere; text-align: left; }
 .rs-pick b { color: #fff; }
 .rs-pick small { font-size: 10px; opacity: 0.75; margin-left: 2px; }
+
+/* =====================================================================
+   🔋 省電力の設計（2026-11-14・ユーザー「スマホ実機ではかなり熱くなる／重くて機体が熱くなる」）
+   ─────────────────────────────────────────────────────────────────
+   測って分かったこと（docs/STATUS_LEDGER.md「▶ いまの続き」21）：熱の元は「ずっと動く飾り」が、
+   毎コマ画面の大きな面積を描き直させていたこと。決まりを5つにした（新しい演出もこれに従う）：
+   ①ずっと動くアニメは transform / opacity だけで作る（合成だけで動き、描き直しが起きない）。
+     影（box-shadow）・ぼかし（filter）・背景の位置（background-position）・配置（left / margin）をずっと動かさない。
+     どうしても要るものは 10〜15コマ/秒の刻み（steps）にする。
+   ②毎コマ動くものの「親」に filter を付けない。影は動かない絵そのものに付ける（ホームのミミ）。
+   ③ずっと動く画面（ホーム＝背景のゆっくりズームとミミの呼吸）の上に、すりガラス（backdrop-filter）を置かない。
+     下が動くと、ぼかしを毎コマ計算し直すため。そのぶん地の色を少し濃くして、読みやすさと見た目を保つ。
+   ④ゆっくりした動き（背景のズーム・明るさのうねり・火の粉）は 10〜15コマ/秒、ミミの呼吸は30コマ/秒で十分。
+   ⑤毎コマ描き直す canvas（レース）の解像度は端末の2倍まで（3倍の端末で、毎コマ塗る量が 56% 減る）。
+   ===================================================================== */
+/* ③ ホームのすりガラスを外す。地の濃さは .52→.60（目標の札は .46→.56）＝ぼかしが消えたぶんの読みやすさを足す */
+.hl { --gbl: none; --gbg: rgba(11,13,24,.6); }
+.hl-goal { background: rgba(11,13,24,.56); }
+.hl .hl-dock, .hl .hl-dock .tik-bar, .hl .tik-bar, .hl-cm, .hl.tik .hl-goal, .hl.tik .hl-pin.hl-missions,
+.hl-float > div, .hl-qr-b, .hl-pin, .hl-dress, .hl-buddy-btn { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.hl .hl-dock .tik-bar { background: rgba(14,16,30,.74); }   /* もとは .62＋ぼかし15px（下はほぼ不透明のドック .82） */
+/* 全画面共通の🔊ボタンと戻るボタン：地はもとからほぼ不透明（.74／.92）＝ぼかしは見えていなかった。
+   上に重なる火の粉（z-index 40）が動くたびの、ぼかしの計算だけが残っていた */
+.vol-fab, .topback-btn { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* ④ ホームでは、世界の底の明暗のうねり（#app::before）は不透明なホームの背景（.hl-bg）の下に隠れていて見えない。
+   見えないのに全画面の板が動き続けていた＝ホームでは出さない（見た目は変わらない） */
+body.home-mode #app::before { display: none; }

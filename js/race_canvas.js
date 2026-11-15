@@ -1039,6 +1039,9 @@ function _rcRigV2At(rig, eff) {
   }
   return r;
 }
+// ★省電力（2026-11-14）：レース中に毎コマ書き換えていた札の文字（区間・残り距離・同接など）は、変わったときだけ書く。
+//   同じ文字でも textContent に入れ直すと、札の配置と描き直しが毎コマ起きていた（見た目は同じ）。
+function rcSetTextIfChanged(el, s) { if (el && el.textContent !== s) el.textContent = s; }
 function _rcCtxScale(ctx) {
   try { const m = ctx.getTransform(); return Math.hypot(m.a, m.b) || 1; } catch (e) { return (window.devicePixelRatio || 1); }
 }
@@ -2039,7 +2042,10 @@ function startRaceCanvas(container, ctx) {
     if (!parent) return;          // canvas が DOM から外れている — リサイズをスキップ
     const rect = parent.getBoundingClientRect();
     cw = Math.max(280, rect.width);
-    dpr = window.devicePixelRatio || 1;
+    // ★省電力（2026-11-14）：解像度は端末の2倍まで。走る絵は毎コマ全面を描き直すので、3倍の端末（多くの iPhone）では
+    //   塗る画素が 2.25 倍になり、これが熱の大きな元だった。背景の焼き込み（bakePara）は以前から2倍まで＝そろえる。
+    //   竜・文字は2倍でも十分に細かい（PC と2倍の端末の見た目は不変）。docs/STATUS_LEDGER.md「▶ いまの続き」21。
+    dpr = Math.min(2, window.devicePixelRatio || 1);
     baseH = Math.max(280, Math.min(480, Math.round(cw * 0.55)));
     applyStageH(baseH);
   }
@@ -4474,7 +4480,7 @@ function startRaceCanvas(container, ctx) {
 
     // HUD updates
     const _pi = timeline.phaseIndexAt(S.tau);
-    phaseEl.textContent = S.finished ? "決着" : (["序盤", "中盤", "展開", "終盤", "ゴール前"][_pi] || "");   // 走り終えても「ゴール前」のままは変
+    rcSetTextIfChanged(phaseEl, S.finished ? "決着" : (["序盤", "中盤", "展開", "終盤", "ゴール前"][_pi] || ""));   // 走り終えても「ゴール前」のままは変
     // ★CORE_LOOP_UX B-3「山を3つ」：序盤は静かに→終盤/ゴール前で盤面を締める。
     //   フェーズを盤面に出してCSSで段階的に強める（従来は全区間ほぼ均質だった）。
     if (wrap.dataset.phaseIdx !== String(_pi)) {
@@ -4484,9 +4490,10 @@ function startRaceCanvas(container, ctx) {
       }
     }
     const _hudKey = themeKeyAtP(leaderP);
-    sectionEl.textContent = rcTerrainInfo(_hudKey).icon + " " + sectionLabelAtP(leaderP);
-    sectionEl.style.borderLeftColor = (RC_THEME[_hudKey] || RC_THEME.straight).accent;
-    remainEl.textContent = S.finished ? "ゴール" : "残り " + timeline.distanceRemainingAt(S.tau) + "m";
+    rcSetTextIfChanged(sectionEl, rcTerrainInfo(_hudKey).icon + " " + sectionLabelAtP(leaderP));
+    const _hudAcc = (RC_THEME[_hudKey] || RC_THEME.straight).accent;
+    if (sectionEl._hudAcc !== _hudAcc) { sectionEl._hudAcc = _hudAcc; sectionEl.style.borderLeftColor = _hudAcc; }
+    rcSetTextIfChanged(remainEl, S.finished ? "ゴール" : "残り " + timeline.distanceRemainingAt(S.tau) + "m");
     const _tNow = (typeof performance !== "undefined" ? performance.now() : Date.now());
     updateBoard(standings, standMap, _tNow);
     // ★同接（👁）を動かす処理を呼び戻す（2026-11-12）。「ゆっくり実況」へ刷新したとき（88ddbaf）に、
@@ -4785,7 +4792,7 @@ function startRaceCanvas(container, ctx) {
     }
     const target = viewersBase + viewersTargetAdd;
     if (viewersShown < target) viewersShown += Math.max(1, Math.ceil((target - viewersShown) * 0.12));
-    if (b) b.textContent = viewersShown.toLocaleString("ja-JP");
+    if (b) rcSetTextIfChanged(b, viewersShown.toLocaleString("ja-JP"));
   }
   // 圏内に入った時だけ呼ぶ（updateBoard から）＝歓声のピーク
   function chatOnZone() { pushChat("zone", betSet.size ? commentaryName([...betSet][0]) : null); viewersTargetAdd += Math.round(viewersBase * 0.12); }
@@ -5139,6 +5146,7 @@ function startRaceCanvas(container, ctx) {
 
   function onAllFinished() {
     S.finished = true;
+    if (!S.finishedAt) S.finishedAt = performance.now();   // 省電力：ゴール後しばらくしたら描く回数を減らす（frame の頭）
     S.finishedAnnounced = true;
     S.shake = Math.max(S.shake, 4);
     // ★決め台詞を必ず言い切る。
@@ -5187,6 +5195,9 @@ function startRaceCanvas(container, ctx) {
   function frame(now) {
     if (!RC_ACTIVE || RC_ACTIVE.id !== loopId) return;        // superseded
     if (state.ui.screen !== "race_run") { stopRacePlayer(); return; }
+    // ★省電力（2026-11-14）：ゴールして6秒たった（紙吹雪・花火・余韻が済んだ）あとの“結果を見る待ち”は30コマ/秒で描く。
+    //   動きは経過時間で進むので速さ・順番は変わらない。走っている間（着順・展開の見え方）には一切かけない。
+    if (S.finished && S.finishedAt && now - S.finishedAt > 6000 && now - (S.last || 0) < 32) { S.raf = requestAnimationFrame(frame); return; }
     const dt = Math.min(0.05, (now - (S.last || now)) / 1000);
     // R8-W5: 低速機の自動検知——実フレーム間隔の移動平均が40ms超（<25fps）を2秒続けたら
     // 縮退モードに固定（レース中は戻さない＝ちらつき防止）。タブ復帰等の巨大間隔は無視。
@@ -5362,6 +5373,8 @@ function startRaceCanvas(container, ctx) {
       const _wid = _winCross ? _winCross.id : null;
       const _done = S.tau >= 1 || (_wid != null && S.crossClock[_wid] != null && S.crossClock[_wid] >= RUNOUT_DUR);
       S.finished = _done; S.finishedAnnounced = _done; S.celebrated = _done; S.confettiT = 0;
+      if (!_done) S.finishedAt = 0;   // 巻き戻したら、ゴール後の省電力（frame の頭）を解く
+
       S.trioShown = false;   // re-arm the "三つ巴！" callout for a forward replay
       S.terrainSign = null;  // baseline the terrain sign to the scrubbed-to section
       { const _lp = timeline.leaderProgressAt(S.tau); S.sectionShown = _lp < 1 / 3 ? 0 : _lp < 2 / 3 ? 1 : 2; }

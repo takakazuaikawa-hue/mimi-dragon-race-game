@@ -17,23 +17,36 @@ function startMimiIdle(frame, img) {
   if (_mimiIdleRAF) { cancelAnimationFrame(_mimiIdleRAF); _mimiIdleRAF = null; }
   const amp = (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) ? 0 : 1;
   const TAU = Math.PI * 2;
+  // ★省電力（2026-11-14・docs/STATUS_LEDGER.md「▶ いまの続き」21）：
+  //   ①書き換えは約30コマ/秒（揺れは毎秒数px・呼吸は2%＝60コマでも30コマでも見た目は同じ。120Hz の端末では描き直しが1/4）。
+  //     視線のバネだけは毎フレーム進める（ついて来る速さを以前と同じにする）。
+  //   ②呼吸の縦の伸び縮みは、以前は画像（img）に毎フレーム scaleY を掛けていた。いまはこの外側の枠にまとめて掛ける
+  //     （原点 50% 62% の scaleY を、枠の変形に translateY(12%)…translateY(-12%) で合成＝動きは同じ）。
+  //     画像そのものは動かない＝画像に付けた落ち影（style.css .hl-mimi img）を毎フレーム描き直さずに済む。
+  //   ③動きを減らす設定では、もともと揺れ幅0＝ループを回さない。
+  if (img) img.style.transform = "";
+  if (!amp) { frame.style.transform = ""; return; }
+  let lastW = -1e9;
   function loop(t) {
     if (!document.contains(frame) || state.ui.screen !== "home") { _mimiIdleRAF = null; return; }
+    _mimiIdleRAF = requestAnimationFrame(loop);
+    const k = 0.08, dmp = 0.82;
+    _mimiGaze.vx += (_mimiGaze.tx - _mimiGaze.cx) * k; _mimiGaze.vx *= dmp; _mimiGaze.cx += _mimiGaze.vx;
+    _mimiGaze.vy += (_mimiGaze.ty - _mimiGaze.cy) * k; _mimiGaze.vy *= dmp; _mimiGaze.cy += _mimiGaze.vy;
+    if (t - lastW < 32) return;   // 約30コマ/秒
+    lastW = t;
     const s = t / 1000;
     // 呼吸：周期4.5sと5.3sの非整数比サインを合成 → 機械的な反復に聞こえない有機的な揺らぎ
     const breath = Math.sin(s * TAU / 4.5) * 0.6 + Math.sin(s * TAU / 5.3) * 0.4;   // -1..1
     const sway = Math.sin(s * TAU / 7.0 + 0.6);                                      // 体重移動（横・位相ずらし）
     const rot = Math.sin(s * TAU / 9.0 + 1.2);                                       // 体のゆっくりした傾き
-    // 視線：バネ（剛性k・減衰dmp）でカーソルへ寄り、離すと少しオーバーシュートして戻る
-    const k = 0.08, dmp = 0.82;
-    _mimiGaze.vx += (_mimiGaze.tx - _mimiGaze.cx) * k; _mimiGaze.vx *= dmp; _mimiGaze.cx += _mimiGaze.vx;
-    _mimiGaze.vy += (_mimiGaze.ty - _mimiGaze.cy) * k; _mimiGaze.vy *= dmp; _mimiGaze.cy += _mimiGaze.vy;
+    // 視線：バネ（剛性k・減衰dmp）でカーソルへ寄り、離すと少しオーバーシュートして戻る（バネは上で毎フレーム進めている）
     const tx = (sway * 2.2 + _mimiGaze.cx * 6) * amp;
     const ty = (-breath * 1.1 + _mimiGaze.cy * 4) * amp;
     const rz = (rot * 0.6 + _mimiGaze.cx * 1.6) * amp;
-    frame.style.transform = "translate(" + tx.toFixed(2) + "px," + ty.toFixed(2) + "px) rotate(" + rz.toFixed(2) + "deg)";
-    if (img) { const sc = 1 + (breath * 0.5 + 0.5) * 0.02 * amp; img.style.transform = "scaleY(" + sc.toFixed(4) + ")"; }
-    _mimiIdleRAF = requestAnimationFrame(loop);
+    const sc = 1 + (breath * 0.5 + 0.5) * 0.02 * amp;                                // 呼吸の縦の伸び（画像の 62% の高さが原点）
+    frame.style.transform = "translate(" + tx.toFixed(2) + "px," + ty.toFixed(2) + "px) rotate(" + rz.toFixed(2) + "deg)" +
+      " translateY(12%) scaleY(" + sc.toFixed(4) + ") translateY(-12%)";
   }
   _mimiIdleRAF = requestAnimationFrame(loop);
 }
@@ -877,6 +890,13 @@ function renderHome() {
   // ── ライブ演出（表示専用）：視聴者数・コメント・ハート。離脱でタイマー停止。
   if (window._hlTimers) window._hlTimers.forEach(clearInterval);
   window._hlTimers = [];
+  // ★省電力（2026-11-14）：下の演出のタイマーは、ホームを離れたら全部止める（state.ui.screen のガード）。以前は配信モードの
+  //   視聴者数の係だけが止めていて、静かモードではほかの画面にいるあいだも空回りしていた。ページが裏に回っているあいだ
+  //   （document.hidden）は演出を進めない。止めたタイマーは、次にホームを描くとき（renderHome）にまた動き出す。
+  const _hlOff = () => {
+    if (state.ui.screen !== "home") { try { window._hlTimers.forEach(clearInterval); } catch (e) {} return true; }
+    return !!document.hidden;
+  };
   // ホームの順番の列が使う吹き出しと表情（homeQueueArrive は renderHome の最後で呼ぶ）
   window._hlSay = { say: mimiSay, hide: _hideSpeech, flip: function (ex) { _flipTo(ex); }, speech: speech };
   const _reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -887,7 +907,7 @@ function renderHome() {
     const _vB = viewersEl;
     _vB.textContent = _fmtV(_viewers);
     window._hlTimers.push(setInterval(() => {
-      if (state.ui.screen !== "home") { window._hlTimers.forEach(clearInterval); return; }
+      if (_hlOff()) return;
       _viewers = Math.max(120, Math.round(_viewers * (1 + (Math.random() - 0.48) * 0.05)));
       _vB.textContent = _fmtV(_viewers);
     }, 2600));
@@ -984,7 +1004,7 @@ function renderHome() {
   if (broadcast) {
     _randCm(); setTimeout(_randCm, 900);
     window._hlTimers.push(setInterval(() => {
-      if (state.ui.screen !== "home") return;
+      if (_hlOff()) return;
       if (Math.random() < 0.7) _randCm();
     }, 3300));
   }
@@ -1009,13 +1029,13 @@ function renderHome() {
     for (let i = 0; i < n; i++) _heart(e.clientX - r.left + (Math.random() * 18 - 9), e.clientY - r.top);
   });
   window._hlTimers.push(setInterval(() => {
-    if (state.ui.screen !== "home") return;
+    if (_hlOff()) return;
     if (!speech.classList.contains("hidden") && !speech.classList.contains("out")) return;  // まだ喋っている間は重ねない
     if (homeQueueBusy()) return;                                                             // 到着の一言・知らせが先（ホームの順番の列）
     if (Math.random() < 0.5) _banter();
   }, 13000));
   if (!_reduce) window._hlTimers.push(setInterval(() => {
-    if (state.ui.screen !== "home") return;
+    if (_hlOff() || !broadcast) return;   // ハートは配信モードだけ（_heart も同じ門番）＝静かモードでは位置も測らない
     const r = stage.getBoundingClientRect();
     if (r.width) _heart(r.width * (0.84 + Math.random() * 0.1), r.height * (0.55 + Math.random() * 0.3));
   }, 3800));
@@ -1044,7 +1064,7 @@ function renderHome() {
     _addCm("🌟" + nm, "#b9a0ff", " が遊びにきた！", "join");
   }
   if (broadcast) window._hlTimers.push(setInterval(() => {   // ★入場通知は配信モードのみ
-    if (state.ui.screen !== "home") return;
+    if (_hlOff()) return;
     if (Math.random() < 0.4) _joinCm(Math.random() < 0.12);
   }, 9500));
 
@@ -1082,7 +1102,7 @@ function renderHome() {
     }
   }
   if (broadcast) window._hlTimers.push(setInterval(() => {   // ★ギフト演出は配信モードのみ
-    if (state.ui.screen !== "home") return;
+    if (_hlOff()) return;
     if (Math.random() < 0.55) _giftCm();
   }, 21000));
   window._hlFx = { join: _joinCm, gift: _giftCm };   // 動作確認用フック（表示専用）
@@ -1113,7 +1133,7 @@ function renderHome() {
     }, FLIP_MS);
   }
   window._hlTimers.push(setInterval(() => {
-    if (state.ui.screen !== "home" || _flipping) return;
+    if (_hlOff() || _flipping) return;
     if (_exprNow === "default") {
       if (Math.random() < 0.6) _flipTo(_ALT_EX[Math.floor(Math.random() * _ALT_EX.length)]);
     } else {
@@ -1178,7 +1198,7 @@ function renderHome() {
     if (Math.random() < 0.07) mimiSay("いいね、ありがとっ！");
   };
   window._hlTimers.push(setInterval(() => {
-    if (state.ui.screen !== "home") return;
+    if (_hlOff()) return;
     if (Math.random() < 0.7) { _likes += 1 + Math.floor(Math.random() * 3); _setLike(); }
   }, 2600));
   cmbar.appendChild(likeBtn);

@@ -242,6 +242,10 @@ function renderTitle() {
     let g = 1.7;
     (function frame() {
       if (!document.body.contains(cv)) return;
+      // ★省電力（2026-11-14）：一枚絵（.photo-fill）があるあいだ、この竜は CSS で隠れている（display:none）。
+      //   隠れていても毎秒60回描き続けていた＝タイトルで待つあいだの無駄な熱。見えないあいだは描かず、0.6秒ごとに見え方だけ確かめる
+      //   （絵の読み込みに失敗して竜が表に出たら、その時から動き出す）。
+      if (!cv.getClientRects().length) { setTimeout(frame, 600); return; }
       tctx.clearRect(0, 0, cv.width, cv.height);
       g += 0.11;
       rcDrawDragon(tctx, {
