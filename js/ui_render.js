@@ -347,8 +347,10 @@ function sakeOutfitGiftScript(met, observedNames) {
     { s: "mimi", t: "え、いただいていいんですか……？", e: "panic" },
     { s: "sake", t: "『ジャングルバニー』。走り出したやつに渡す服だ。まず、それを羽織れ。" }
   ];
+  // 直前の借金の場面で「師匠って呼んでもいいですか」と聞いていれば、ここから師匠と呼ぶ（2026-11-23）
+  const _shisho = typeof getStoryFlag === "function" && getStoryFlag("_event_fired_debt_intro");
   const after = [
-    { s: "mimi", t: met ? "わぁ……！　ありがとうございます、サケさんっ。どう、ですか？" : "わぁ……！　ありがとうございますっ。落ち着いたら、門前でお礼をさせてください。", e: "happy" },
+    { s: "mimi", t: met ? ("わぁ……！　ありがとうございます、" + (_shisho ? "師匠" : "サケさん") + "っ。どう、ですか？") : "わぁ……！　ありがとうございますっ。落ち着いたら、門前でお礼をさせてください。", e: "happy" },
     { s: "sake", t: "悪くねえ。服はいずれ、ちゃんとした店で自分で選べる。銭が貯まったらな。" }
   ];
   if (!met) before.concat(after).forEach(line => { if (line.s === "sake") line.name = "門前の女"; });
@@ -2187,6 +2189,11 @@ function gradeBadgeHTML(rank) {
 // レース番号＝時間帯（朝→夜）。第一〜第五の並びを直感的に。
 const RACE_TIME_LABEL = { 1: "🌅朝", 2: "☀️昼", 3: "🌇夕", 4: "🌆薄暮", 5: "🌙夜" };
 function renderRaceSelect() {
+  // ★新しいセーブでは、どの入口から来ても先に第1話の出会いを通す（2026-11-23）。サケは「最初から会っている」扱いなのに、
+  //   第1話を読まずにレースへ行けたため、名乗る前のサケが名前つきで助言し、初陣祝いは名無しの「門前の女」が渡す
+  //   食い違いが出ていた。出会いが済むと ui_story.js がそのまま注目レースの出走表へ送る＝遠回りにならない。
+  if (typeof chapterRead === "function" && !chapterRead("1") && !((state.player.completedRaces || 0) > 0)
+      && typeof renderStoryChapter === "function") { renderStoryChapter("1"); return; }
   state.ui.screen = "race_select";
   // ★開幕のミミの一言（first_race_intro_mimi）が終わった直後に、Lv.1「ドロミズすすりマン」を
   //   授ける（ユーザー案）。称号システムがここで一気に伝わり、しかも笑いになる。
@@ -2454,6 +2461,11 @@ function showRaceTermInfo(kind, race) {
 }
 
 function renderRaceDetail(race) {
+  // ★新しいセーブでは、どの入口から来ても先に第1話の出会いを通す（2026-11-23）。サケは「最初から会っている」扱いなのに、
+  //   第1話を読まずにレースへ行けたため、名乗る前のサケが名前つきで助言し、初陣祝いは名無しの「門前の女」が渡す
+  //   食い違いが出ていた。出会いが済むと ui_story.js がそのまま注目レースの出走表へ送る＝遠回りにならない。
+  if (typeof chapterRead === "function" && !chapterRead("1") && !((state.player.completedRaces || 0) > 0)
+      && typeof renderStoryChapter === "function") { renderStoryChapter("1"); return; }
   state.ui.screen = "race_detail";
   // 後回しにした助言が、レース選択を通らずに賭け画面へ来た場合でも、賭ける前に出る（ふつうはレース選択で出し終えている＝何もしない）
   try { if (typeof flushDeferredEvents === "function") flushDeferredEvents(); } catch (e) {}

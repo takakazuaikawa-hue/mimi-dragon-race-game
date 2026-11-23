@@ -242,14 +242,18 @@ registerEvent({
   id: "debt_intro",
   hook: "afterRaceResult",
   priority: 8,
+  // ★第1話でサケと出会ってから（2026-11-23）。第1話を読まずに走った人には、まだ名乗っていないサケが
+  //   「ところでミミ」と名前で呼び、続く初陣祝いは名無しの「門前の女」が渡す、という食い違いになっていた。
+  //   出会う前なら、出会ったあとの最初の結果画面で出る（once は発火時に消費）。
   condition: { once: true,
-    test: () => (typeof mimiDebtLeft === "function") && mimiDebtLeft() > 0 },
+    test: () => (typeof mimiDebtLeft === "function") && mimiDebtLeft() > 0
+      && (typeof chapterRead !== "function" || chapterRead("1")) },
   actions: [
     // ★第2便決裁「3万は10億を持つ人間の借金として軽い」→ 総額300万・サケ297万立替の構図。
     { type: "dialogue", speaker: "sake_udada",
       text: "ところでミミ。お前の船賃、宿代、装備の立替——ぜんぶで300万ある。" },
     { type: "dialogue", speaker: "mimi", expr: "panic",
-      text: "さんびゃくまん！？！？　け、桁がおかしいですよ師匠！！　わたし、着いた日から大借金……！" },
+      text: "さんびゃくまん！？！？　け、桁がおかしいですよサケさん！！　わたし、着いた日から大借金……！" },
     { type: "dialogue", speaker: "sake_udada",
       text: "案ずるな。297万はおれが立て替えた。……竜王女の顔も、たまには役に立つ。" },
     { type: "dialogue", speaker: "sake_udada",
@@ -263,7 +267,12 @@ registerEvent({
         return "お前の自力分は3万。いまの持ち物も含めて、もう大半は返っとる。残りは帳場で見られる。走って名を上げろ。勝ち星も、評判も、覚えた竜も、ぜんぶ返済のうちだ。";
       } },
     { type: "dialogue", speaker: "mimi", expr: "happy",
-      text: "3万……ううん、297万も……！　よし、走って、覚えて、ぜんぶ返しますっ！" }
+      text: "3万……ううん、297万も……！　よし、走って、覚えて、ぜんぶ返しますっ！" },
+    // ★ここから「師匠」と呼ぶ（2026-11-23）。以後の会話・紀行はサケを「師匠」と呼ぶのに、呼び始める場面が無かった。
+    { type: "dialogue", speaker: "mimi", expr: "default",
+      text: "……あの、サケさん。これから、師匠って呼んでもいいですか。" },
+    { type: "dialogue", speaker: "sake_udada",
+      text: "好きにしろ。……返し終わるまで、逃がさんぞ。" }
   ]
 });
 
