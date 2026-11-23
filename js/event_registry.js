@@ -44,7 +44,9 @@
 registerEvent({
   id: "first_race_intro_mimi",
   hook: "beforeRaceSelect",
-  condition: { once: true },
+  // ★まだ1戦も走っていない時だけ（2026-11-23）。第1話の出会いからは注目レースの出走表へ直行するので、
+  //   一覧を初めて開くのが2戦め以降になる人に「レース場、ひろい！」を言わせない。
+  condition: { once: true, test: () => ((state.player && state.player.completedRaces) || 0) === 0 },
   priority: 10,
   actions: [
     { type: "tutorial_message", speaker: "mimi", expr: "panic",
@@ -87,7 +89,7 @@ registerEvent({
   condition: { once: true, betType: "win" },
   actions: [
     { type: "tutorial_message", speaker: "sake_udada",
-      text: "単竜。1着を当てる、いちばん熱い札だ。……信じた一頭に、まっすぐ張れ。" }
+      text: "単勝——島じゃ単竜と呼ぶ。1着を当てる、いちばん熱い札だ。……信じた一頭に、まっすぐ張れ。" }
   ]
 });
 registerEvent({
@@ -96,7 +98,7 @@ registerEvent({
   condition: { once: true, betType: "place" },
   actions: [
     { type: "tutorial_message", speaker: "sake_udada",
-      text: "複竜は3着以内に入れば当たり。配当は薄いが、飯代は守れる。" }
+      text: "複勝——島じゃ複竜だ。3着以内に入れば当たり。配当は薄いが、飯代は守れる。" }
   ]
 });
 registerEvent({
@@ -105,7 +107,7 @@ registerEvent({
   condition: { once: true, betType: "wide" },
   actions: [
     { type: "tutorial_message", speaker: "sake_udada",
-      text: "ワイド竜は、選んだ2頭がどっちも3着以内なら当たり。……穴を拾う時に効く。" }
+      text: "ワイド——島じゃワイド竜。選んだ2頭がどっちも3着以内なら当たり。……穴を拾う時に効く。" }
   ]
 });
 
@@ -124,7 +126,8 @@ registerEvent({
 registerEvent({
   id: "panyu_after_tense_preview",
   hook: "afterDragonPreview",
-  condition: { once: false, tag: "tense_race" },
+  // 何の技か分からないうちに出すと戸惑う＝3戦走ってから（2026-11-23）
+  condition: { once: false, tag: "tense_race", test: () => ((state.player && state.player.completedRaces) || 0) >= 3 },
   actions: [
     { type: "panyu_message", speaker: "mimi", text: "ぱほぱほ！ 場が和んだ！" }
   ]
@@ -254,7 +257,10 @@ registerEvent({
       //   ズレを謝るのではなく教材にする＝「走った分がもう返っている」で仕組みが一言で伝わる。
       text: function () {
         const left = (typeof mimiDebtLeft === "function") ? mimiDebtLeft() : 30000;
-        return "お前の自力分は3万。帳場を見ろ——初レースぶんで、もう残り" + fmtCoins(left) + "まで返っとる。走って名を上げろ。勝ち星も、評判も、覚えた竜も、ぜんぶ返済のうちだ。";
+        // ★2026-11-23：「初レースぶんで、もう残り5,465まで」は、1戦で数百コインしか増えていないのに2万以上返した
+        //   ように読めた（残りは手持ちの資産まで含めた計算）。いくら返ったかは帳場に任せ、ここでは仕組みだけ言う。
+        void left;
+        return "お前の自力分は3万。いまの持ち物も含めて、もう大半は返っとる。残りは帳場で見られる。走って名を上げろ。勝ち星も、評判も、覚えた竜も、ぜんぶ返済のうちだ。";
       } },
     { type: "dialogue", speaker: "mimi", expr: "happy",
       text: "3万……ううん、297万も……！　よし、走って、覚えて、ぜんぶ返しますっ！" }

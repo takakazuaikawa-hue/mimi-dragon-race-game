@@ -264,6 +264,16 @@ function renderStoryChapter(chId) {
       delete state.ui._storyEncounterPending;
       if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
       if (ch.id === "5" && typeof playShinganCutin === "function") playShinganCutin();
+      // ★第1話を新しいセーブで初めて見た時は、記事の朗読（6段落）とレース一覧を挟まず、注目レースの出走表へ直行する
+      //   （2026-11-23・ユーザー指摘「初回の楽しさが分かるまでに読む量が多すぎる」）。サケの最後の一言
+      //   「見てこい。……戻ったら、どの竜が気になったか聞かせろ」から、そのまま竜を選ぶ場面へつなぐ。
+      //   記事は「物語」からいつでも読める（既読の印は出会いで付いている）。
+      if (ch.id === "1" && state.ui.screen === "story_read" && !((state.player.completedRaces || 0) > 0)) {
+        let _feat = null;
+        try { _feat = (typeof nextRaceSuggestion === "function") ? nextRaceSuggestion().race : null; } catch (e) {}
+        if (_feat && typeof renderRaceDetail === "function") { renderRaceDetail(_feat); return; }
+        if (typeof renderRaceSelect === "function") { renderRaceSelect(); return; }
+      }
       if (state.ui.screen === "story_read") renderStoryChapter(ch.id);
     });
     return;
