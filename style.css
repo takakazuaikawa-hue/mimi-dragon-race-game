@@ -9344,6 +9344,19 @@ button.pg-rew { width: 100%; text-align: left; cursor: pointer; font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .rc-yt-side.pop .rc-yt-manju img { animation: none; }
 }
+/* ★顔と名前は吹き出しの下の段をやめ、吹き出しの上の縁に乗る札にする（2026-11-23）。
+   順位表を上位3頭＋自分の竜に絞っても、縦の短いスマホでは下の段（約44px）が残って
+   走る絵がほとんど伸びなかった（ユーザー指摘「上が広くなってない」）。
+   吹き出しの幅と4行の高さは変えない＝実況の文字は欠けない。空いた縦は growToFit が走る絵へ足す。 */
+.rc-yt { padding-top: 12px; }
+.rc-yt-side { position: relative; gap: 0; }
+.rc-yt-bub { height: 84px; padding-top: 12px; }
+.rc-yt-manju {
+  position: absolute; top: -10px; left: 10px; z-index: 1; gap: 4px;
+  pointer-events: none;
+}
+.rc-yt-r .rc-yt-manju { left: auto; right: 10px; }
+.rc-yt-manju img { width: 22px; height: 22px; }
 
 /* 「本体が消音でも鳴らす」行：ラベルが長いので .vol-lb の固定幅56pxを解除する。
    固定のままだと3行に折れて不格好だった（実機で確認）。トグルは右端へ寄せる。 */
@@ -10625,8 +10638,12 @@ button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2p
    スマホが毎秒60回、画面まるごとを塗り直していた（計測：これだけでレンダラーが CPU 1コア強・docs/STATUS_LEDGER.md 21）。
    いまは同じ模様を「画面＋1枚ぶん」縦長の板に1回だけ描き、板ごと transform で持ち上げる（合成だけで動く・描き直しなし）。
    模様・粒の大きさ・明るさ・22秒で1枚ぶん昇る速さは同じ。毎秒15pxほどの昇りなので、刻みは15コマ/秒（steps）で十分。 */
-body::after {
-  content: ""; position: fixed; left: 0; right: 0; top: 0; height: calc(100% + 42vh); z-index: 40; pointer-events: none;
+/* ★2026-11-23：板は画面ぴったりの枠（.s4-embers・index.html）の中で動かし、はみ出しは枠で切る。
+   body::after のまま縦長の板を置くと、板がページの高さに数えられ、レース画面などで空白へスクロールでき、
+   走る絵を伸ばす growToFit が「溢れた」と見て下限へ戻していた（火の粉の位置しだいで伸びたり伸びなかったり）。 */
+.s4-embers { position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
+.s4-embers::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: calc(100% + 42vh);
   will-change: transform;
   background-image:
     radial-gradient(2.6px 2.6px at 12% 82%, rgba(255,206,130,.85), transparent 62%),
@@ -10643,8 +10660,8 @@ body::after {
 }
 @keyframes s4Embers { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, -42vh, 0); } }
 /* 明るい紙面（紀行ブログ/観光/暮らし）とタイトルでは火の粉を出さない＝別世界の顔を守る */
-body:has(#app.kiko-page)::after, body:has(#app.kt-page)::after,
-body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
+body:has(#app.kiko-page) .s4-embers, body:has(#app.kt-page) .s4-embers,
+body:has(#app.lr-page) .s4-embers, body.title-mode .s4-embers { display: none; }
 
 /* =====================================================================
    🎉 S5 祝祭（celebrate.js）＝受け取り・勝利・授与の瞬間に紙吹雪
@@ -10677,7 +10694,7 @@ body:has(#app.lr-page)::after, body.title-mode::after { display: none; }
   50%     { filter: drop-shadow(0 0 10px rgba(255,216,119,.34)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #app::before, body::after, .title-cta, .navpop-go, .hl-race, .lt-buy { animation: none !important; }
+  #app::before, .s4-embers::before, .title-cta, .navpop-go, .hl-race, .lt-buy { animation: none !important; }
 }
 /* ホームの知らせが出そろって閉じたら、主役のボタンを一度だけ明るくする（js/ui_home.js _hqCue・2026-11-14）。
    「まだ次の窓が来るのか」と待たせない一区切りの合図。光るあいだだけ呼吸の光（s4Glow）と入れ替える＝filter が喧嘩しない。
