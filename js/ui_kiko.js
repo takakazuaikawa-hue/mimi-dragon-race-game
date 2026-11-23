@@ -34,7 +34,7 @@ function _kikoCats() {
   const push = (tag, ic, stat, go, locked, lockNote, what) =>
     cats.push({ tag, ic, stat, go, locked: !!locked, lockNote: lockNote || "", what: what || "" });
   // #たべある記（みみしんぼ）
-  try { const m = mealStatsAll(); push("たべある記", "🍜", `${m.got}/${m.total}`, () => renderMeals(), false, "", "食べた皿"); } catch (e) {}
+  try { push("たべある記", "🍜", `${mealEatenCount()}/${MEALS.length}`, () => renderMeals(), false, "", "食べた皿"); } catch (e) {}
   // #竜ずかん
   try {
     const tot = (typeof _gDexTotal === "function") ? _gDexTotal() : 8;
@@ -47,7 +47,7 @@ function _kikoCats() {
     const open = (typeof konronMapUnlocked !== "function") || konronMapUnlocked();
     let g = "", t = 0, o = 0;
     if (open && typeof KONRON_GUIDE !== "undefined" && typeof _kmTotal === "function") {
-      KONRON_GUIDE.forEach(c => c.entries.forEach(e => { t++; if (_kmTotal() >= (KM_TIER_AT[e.tier] || 0)) o++; }));
+      KONRON_GUIDE.forEach(c => c.entries.forEach(e => { t++; if (_kmSpotOpen(e)) o++; }));
       g = `${o}/${t}`;
     }
     push("島さんぽ", "🏝️", open ? (g || "→") : "🔒", () => renderKonronGuide(), !open, "はじめて勝つと開く", "読める案内");
@@ -172,7 +172,7 @@ var _KIKO_TWEETS = {
   firstOutfit:"はじめて自分の服買った！！👗 ボロ卒業。姿見の前から動けない",
   readCh2:    "オッズって生き物なんだ……📊 市場、こわい。でもおもしろい",
   changeFit:  "着替えると気分まで替わるの、なんで？👗",
-  wideHit:    "ワイド当てた✨ “妙味”ってやつ、ちょっとわかってきたかも",
+  wideHit:    "単勝とちがう券で当たった！　何着までなら届くか、券種で違うんだね。",
   rankUp:     "上のクラス、行けた🏅 竜の迫力がぜんぜん違う。ごはん食べて出直します",
   readCh3:    "総資産の話を聞いた🏠 暮らしを立てるって、こういうことか……",
   buddy:      "相棒ができました。泣き虫。でも、いちばん強い子🐲",
@@ -510,6 +510,7 @@ function renderKiko() {
   //   グラフも目標カウンタも置かない（計器禁止）。増えていない時は何も出さない。
   const rd = (typeof kikoReaderDelta === "function") ? kikoReaderDelta() : null;
   app.appendChild(_kikoMasthead(fol, earned, rd));
+  if (typeof appendReadingJournalSection === "function") appendReadingJournalSection(app);
 
   // 📖 連載「島ぐらし」＝紀行の背骨（kiko_serial.js）。次の取材先 → あしあと → 書いた回。
   try { _kikoSerialSection(app); } catch (e) { try { console.warn("kiko serial:", e); } catch (_) {} }

@@ -333,6 +333,28 @@ function mallUnlocked() {
 //   モールはまだ開いていないので、台詞で店に言及してはいけない。代わりに「銭が貯まったら
 //   ちゃんとした店で選べる」と予告し、モール解放（＝ブニクロが買える額）への動機にする。
 // 呼び出し＝結果画面（renderResult）。サケは第1話固定＝最初から登場済みなので門番は素通し。
+function sakeOutfitGiftScript(met, observedNames) {
+  const named = met && observedNames && observedNames.length;
+  const before = met ? [
+    { s: "sake", t: "戻ったな。見てきた竜の話は、あるか。" },
+    { s: "mimi", t: named ? "「" + observedNames.join("・") + "」を選びました。ゴールまで、目を離せませんでした。" : "目の前で走ると、紙の名前だけ見ていたときと違いました。", e: "default" },
+    { s: "sake", t: "そうか。その目で見た分を、覚えておけ。……ほら、初陣祝いだ。" },
+    { s: "mimi", t: "え、わたしに……服ですか？", e: "panic" },
+    { s: "sake", t: "『ジャングルバニー』。葉っぱと馬券の勝負服だ。走り出したやつに、着てもらいたくてな。", e: "smile" }
+  ] : [
+    { s: "narrator", t: "レース場の出口で、門前の女がミミに布の包みを差し出した。" },
+    { s: "sake", t: "走り切ったな。ほら、初陣祝いだ。" },
+    { s: "mimi", t: "え、いただいていいんですか……？", e: "panic" },
+    { s: "sake", t: "『ジャングルバニー』。走り出したやつに渡す服だ。まず、それを羽織れ。" }
+  ];
+  const after = [
+    { s: "mimi", t: met ? "わぁ……！　ありがとうございます、サケさんっ。どう、ですか？" : "わぁ……！　ありがとうございますっ。落ち着いたら、門前でお礼をさせてください。", e: "happy" },
+    { s: "sake", t: "悪くねえ。服はいずれ、ちゃんとした店で自分で選べる。銭が貯まったらな。" }
+  ];
+  if (!met) before.concat(after).forEach(line => { if (line.s === "sake") line.name = "門前の女"; });
+  return { before, after };
+}
+
 function playSakeOutfitGiftVN() {
   const f = state.player.flags || (state.player.flags = {});
   if (f.sakeGiftSeen || !window.Dialogue) return false;
@@ -347,21 +369,18 @@ function playSakeOutfitGiftVN() {
     if (state.player.outfitsWon.indexOf("jungle") < 0) state.player.outfitsWon.push("jungle");
     if (typeof saveGame === "function") saveGame();
   } catch (e) {}
-  Dialogue.play([
-    ["sake", "……おい。初陣、走り切ったな。"],
-    ["mimi", "は、はいっ。……足が、まだ震えてます", "panic"],
-    ["sake", "上等だ。だがミミ、いつまでそのボロを着てるつもりだ？"],
-    ["mimi", "え、ボロって……こ、これしか持ってないんですっ！", "panic"],
-    ["sake", "島の連中は験を担ぐ。装いは「今日の自分は勝てる」って気配を作る道具だ。──ほらよ、初陣祝いだ。『ジャングルバニー』。葉っぱと馬券で武装した、お前の勝負服第一号だ。", "happy"]
-  ]).then(() => {
+  const met = typeof chapterRead === "function" && chapterRead("1");
+  const current = state.current || {}, entries = current.raceResult && current.raceResult.entries || [];
+  const observed = ((current.bet && current.bet.selections) || []).map(id => {
+    const row = entries.find(entry => entry.dragon && entry.dragon.id === id); return row && row.dragon.name;
+  }).filter(Boolean);
+  const script = sakeOutfitGiftScript(met, observed);
+  Dialogue.play(script.before).then(() => {
     try {
       if (typeof wearOutfit === "function") wearOutfit("jungle"); else state.player.outfit = "jungle";
       if (typeof saveGame === "function") saveGame();
       try { if (window.Sfx) Sfx.play("unlock"); } catch (e) {}
-      Dialogue.play([
-        ["mimi", "わぁ……！ ありがとうございます、サケさんっ！ ──じゃーん！ どう、ですか？ 似合います……？", "happy"],
-        ["sake", "……悪くねえ。服はいずれ、ちゃんとした店で自分で選べるようになる。銭が貯まったらな。"]
-      ]);
+      Dialogue.play(script.after);
       if (typeof rerenderCurrent === "function") rerenderCurrent();
     } catch (e) {}
   });
@@ -397,14 +416,20 @@ function broadcastOn() {
 // ★表示専用＝レース着順/オッズ/配当には非干渉（コインの支払いは衣装購入と同じメタ消費）。docs/PROGRESSION_DESIGN.md
 function buyPhoneAndGoLive() {
   if (typeof getStoryFlag === "function" && getStoryFlag("phoneBought")) return;
-  // 実行中ガード：VN再生中に🎯チップを再タップすると購入VNが直列に二重で積まれる（実測）。
-  // 30秒で自動解除＝VNを途中離脱（＝購入不成立）してもCTAが死なない。
-  if (window._phoneBuying) return;
-  window._phoneBuying = true;
-  setTimeout(function () { window._phoneBuying = false; }, 30000);
+  const buyer = state.player;
+  if (window._phoneBuying && window._phoneBuying.buyer === buyer && window._phoneBuying.flags === buyer.flags) return;
+  const sale = { buyer, flags: buyer.flags };
+  window._phoneBuying = sale;
+  const cost = 3000;
+  const afford = (buyer.coins || 0) >= cost;
+  const release = () => { if (window._phoneBuying === sale) delete window._phoneBuying; };
   var _finish = function () {
-    var p = state.player; var cost = 3000;
-    if ((p.coins || 0) >= cost) p.coins = p.coins - cost;   // 買えるなら支払い／足りなければマクラが立て替え
+    if (window._phoneBuying !== sale || state.player !== buyer || buyer.flags !== sale.flags || getStoryFlag("phoneBought")) return;
+    if (afford !== ((buyer.coins || 0) >= cost)) {
+      if (typeof showInfoPopup === "function") showInfoPopup("📱 スマホの相談", "所持金が変わりました。いまの条件で、もう一度マクラに相談できます。");
+      return;
+    }
+    if (afford) buyer.coins -= cost;
     if (typeof setStoryFlag === "function") setStoryFlag("phoneBought", true);
     if (typeof saveGame === "function") saveGame();
     try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}
@@ -416,31 +441,36 @@ function buyPhoneAndGoLive() {
         //   1回さわらせる（do-then-explain）。VN後にSNSタイムラインへ直行。表示専用。
         if (window.Dialogue && Dialogue.play) {
           Dialogue.play([
-            ["makura", "よし、開通ついでにタイムライン見せてもらうよ。ほら——これがお前の巣だ。", "default"],
+            ["makura", "つながった。ミミ、タイムラインを見てみな。島の人たちも、ここにいるよ。", "default"],
             ["mimi", "わ……もう、コメントついてる……！", "happy"],
-            ["makura", "いいね1個は拍手1回。ファンレターは……まあ、読めば泣く。バズったら？　その日は飯が旨い。", "default"],
-            ["makura", "難しいことはいい。まず1回、好きな投稿に🔥つけてこい。……話は、その後だ。", "default"],
-            ["mimi", "それ、サケさんの真似ですか？", "smile"]
+            ["makura", "あたしなら、まず気になった景色を一枚。人を写すなら、その人に聞いてからね。", "smile"],
+            ["makura", "ミミが島で見つけたこと、ミミの言葉で聞かせてよ。好きな投稿に反応するだけでもいい。", "default"],
+            ["mimi", "……はい。次に島を歩いたら、載せたいものを探してみますっ。", "smile"]
           ], { force: true }).then(function () {
             try { if (typeof goto === "function") goto("sns"); } catch (e) {}
           });
         }
       });
   };
-  var afford = (state.player.coins || 0) >= 3000;
   if (window.Dialogue && Dialogue.play && typeof STORY_CAST !== "undefined") {
     var script = [
-      ["makura", "ミミ。お前の予想、村の中だけにしとくのは……もったいねえな。", "default"],
+      ["makura", "ミミ。さっきの話、覚えてる？　ミミが見つけた島のこと、外にも届けてみようよ。", "default"],
       ["mimi", "え？　マクラさん、それって……", "default"],
-      ["makura", "これだ。スマホ。これさえありゃ“配信”ができる。お前のぱほぱほ、島の外まで届くぞ。", "default"],
+      ["makura", "これ、配信用のスマホ。三千コイン。手元が厳しければ、最初はあたしが出すよ。", "default"],
       ["mimi", "わ、わたしが配信なんて……できるかな……", "panic"],
-      ["makura", "できるさ。もう村のみんなが応援してる。あとは、世界に見せるだけだ。", "default"],
+      ["makura", "いきなり大勢に話さなくていい。まずは、ミミがまた行きたい場所から。", "default"],
       afford ? ["mimi", "……うん。やってみますっ！　えいっ、買っちゃう！", "happy"]
-             : ["makura", "金は気にすんな。最初はおれが立て替えとく。さ、デビューだ。", "default"],
+             : ["makura", "じゃあ今回は、あたしから。食事と次の一戦の分は残しておきな。", "default"],
       ["mimi", "ありがとうございますっ……！　よーし——配信、はじめます！", "happy"]
     ];
-    Dialogue.play(script, { force: true }).then(_finish);
-  } else { _finish(); }
+    try {
+      return Dialogue.play(script, { force: true }).then(_finish, function () {
+        if (window._phoneBuying === sale && state.player === buyer && typeof showInfoPopup === "function")
+          showInfoPopup("📱 スマホの相談", "相談を中断しました。もう一度マクラに会いに行けます。");
+      }).finally(release);
+    } catch (err) { release(); throw err; }
+  }
+  try { _finish(); } finally { release(); }
 }
 
 // 汎用インフォポップアップ（？ボタン用）：説明はふだん隠し、気になった時だけ読む（オンボーディング方針）。
@@ -803,6 +833,7 @@ function playShinganCutin() {
     if (_sgCutinTimer) { clearTimeout(_sgCutinTimer); _sgCutinTimer = null; }
     const ov = el("div", "sg-cutin"); ov.id = "sg-cutin";
     ov.innerHTML =
+      `<img class="sg-celestia" src="images/cast/stand/celestia_serious.webp" alt="神眼を開くセレスティア" onload="this.parentNode.classList.add('has-celestia')" onerror="this.remove()">` +
       `<div class="sg-flash"></div><div class="sg-rays"></div>` +
       `<div class="sg-meteors"><i></i><i></i><i></i></div>` +
       `<div class="sg-eye-wrap"><div class="sg-eye"><div class="sg-iris"><div class="sg-pupil"></div></div></div><div class="sg-ring"></div></div>` +
@@ -1966,7 +1997,17 @@ function renderCollection() {
     (_ls ? `　｜　📜 伝承 <b>${_ls.got}</b> / ${_ls.total}` : "")));
 
   // 🔍 鑑定待ちの仔（出会いの会話のあと、結果が届くまでのあいだだけ・poro.js）。
-  try { const _pw = (typeof poroAppraisalCardHtml === "function") ? poroAppraisalCardHtml() : ""; if (_pw) app.insertAdjacentHTML("beforeend", _pw); } catch (e) {}
+  try {
+    const _pw = (typeof poroAppraisalCardHtml === "function") ? poroAppraisalCardHtml() : "";
+    if (_pw) {
+      app.insertAdjacentHTML("beforeend", _pw);
+      if (typeof poroAppraisalWaiting === "function" && poroAppraisalWaiting()?.left === 0) {
+        const receive = el("button", "secondary poro-appraisal-receive", "鑑定の知らせを受け取る");
+        receive.onclick = () => { if (typeof maybePlayPoroBeat === "function") maybePlayPoroBeat(false, () => { if (state.ui.screen === "collection") renderCollection(); }); };
+        app.appendChild(receive);
+      }
+    }
+  } catch (e) {}
 
   // §37 — 図鑑コンプリート報酬の進捗
   try {
@@ -2493,6 +2534,7 @@ function renderRaceDetail(race) {
     <div class="bd-course">序盤 <button type="button" class="bd-seg" data-term="early">${getSection("early", race.early).label}</button> ▸ 中盤 <button type="button" class="bd-seg" data-term="mid">${getSection("mid", race.mid).label}</button> ▸ 終盤 <button type="button" class="bd-seg" data-term="late">${getSection("late", race.late).label}</button></div>`;
   app.appendChild(head);
   // 格・距離・天候・地形はタップで意味を開く（用語を覚えていなくても賭けの判断ができるように）。
+  if (typeof appendReadingJournalReminder === "function") appendReadingJournalReminder(app, race);
   head.querySelectorAll("[data-term]").forEach(b => {
     b.onclick = () => { try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} showRaceTermInfo(b.dataset.term, race); };
   });
@@ -3469,6 +3511,9 @@ function settleRace() {
         const _mult = betResult.wager > 0 ? (betResult.payout / betResult.wager) : 0;
         const _base = { race: _rn, dragon: _dg, odds: _od.toFixed(1), payout: betResult.payout,
                         type: ({ win: "単勝", place: "複勝", wide: "ワイド" }[c.bet.type] || "") };
+        const oracleId = ReadingJournal.oracleSelection(c);
+        if (oracleId) _base.oracleTicket = {oracleDragonId:oracleId, betType:c.bet.type,
+          selections:c.bet.selections.map(id => ({dragonId:id,name:DRAGONS.find(d=>d.id===id).name}))};
         if (_mult >= 10) kikoMatPush("bigwin", Object.assign({ mult: _mult.toFixed(1) }, _base));
         else if (c.bet.type === "win") kikoMatPush("win", _base);
       } else if ([3, 5, 8, 12, 17, 23, 30].indexOf(state.player.missRun || 0) >= 0) {
@@ -4269,7 +4314,9 @@ function drawRecapScreen() {
     const rk = c.betReasonUsed || state.player.betReason;
     const R = BET_REASONS[rk];
     if (R) {
-      if (!c._reasonScored) { c._reasonScored = recordReasonResult(rk, !!ps.hit) || true; }
+      const oracleId = ReadingJournal.oracleSelection(c);
+      const ownPartner = oracleId && c.bet.type === "wide" && c.raceResult.entries.find(e => e.dragon.id !== oracleId && c.bet.selections.includes(e.dragon.id));
+      if (!c._reasonScored) { recordReasonResult(rk, !!ps.hit, c); c._reasonScored = true; }
       const st = (state.player.reasonStats || {})[rk] || { w: 0, l: 0 };
       // ★C-4 リベンジ／C-2 図鑑導線（js/rival.js・表示専用）。
       //   記録は1レース1回だけ（タブ切替の再描画で上書き連打しないよう _rivalScored で門番）。
@@ -4290,7 +4337,8 @@ function drawRecapScreen() {
         _trace +
         (_miss ? `<div class="rsr-miss">${_miss}</div>` : "") +
         (_rv.revenged ? `<div class="rsr-revenge">⚔️ ${_rv.name} に、借りを返した。</div>` : "") +
-        `<div class="rsr-stat">${R.ic} ${R.name}での予想　<b>${st.w}勝${st.l}敗</b></div>`;
+        (oracleId && c.bet.type !== "wide" ? '<div class="rsr-stat">神眼で知った一着。この券は理由別の通算に含めません。</div>' :
+          `<div class="rsr-stat">${R.ic} ${R.name}での予想　<b>${st.w}勝${st.l}敗</b>${ownPartner ? "（今回、自分で選んだ相手は" + ownPartner.dragon.name + "）" : ""}</div>`);
       // ★負けた相手を「名前のある相手」にする＝図鑑へ1タップで飛べる導線。
       //   ここで初めて、負けが次のレースの動機になる。
       if (!ps.hit && typeof rivalPickFrom === "function") {
@@ -4309,6 +4357,7 @@ function drawRecapScreen() {
     }
   }
   // 📦 今回の獲得（リワード台帳）：配当以外も含め「このレースで何が増えたか」を1枚に明示。
+  if (typeof appendReadingJournalResult === "function") appendReadingJournalResult(app, c);
   // ボーナス系バナーもここに統合（桜井流「ごほうびは分かりやすく・まとめて見せる」）。
   try {
     const g = c.gainLedger;
@@ -4498,8 +4547,9 @@ const BET_REASONS = {
   value: { ic: "💰", name: "うまみ",   win: "うまみを拾った！　人気の裏をかいた一撃。", lose: "うまみ狙いは不発。妙味と無謀は紙一重。" }
 };
 // 通算成績を1件記録して返す（state.player.reasonStats[key] = {w,l}）。
-function recordReasonResult(key, hit) {
+function recordReasonResult(key, hit, current) {
   if (!key || !BET_REASONS[key]) return null;
+  if (current && ReadingJournal.oracleSelection(current) && current.bet.type !== "wide") return null;
   const st = (state.player.reasonStats = state.player.reasonStats || {});
   const e = (st[key] = st[key] || { w: 0, l: 0 });
   if (hit) e.w++; else e.l++;

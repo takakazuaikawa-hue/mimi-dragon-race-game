@@ -29,6 +29,9 @@ function showScoutHelp() {
 const SCOUT_LOC_PHOTO = { grass: "ryusha", jungle: "lumina", cliff: "kibishis", volcano: "bangara", sea: "sena", sky: "dakon" };
 function renderScout() {
   if (typeof poroScoutUnlocked === "function" && !poroScoutUnlocked()) {   // Ⓒ 無反応→🔒案内でフィードバック。
+    if (typeof poroAppraisalWaiting === "function" && poroAppraisalWaiting()?.left === 0 && typeof renderCollection === "function") {
+      renderCollection(); return;
+    }
     if (typeof renderHome === "function") renderHome();
     if (typeof showInfoPopup === "function") showInfoPopup("🐉 ドラゴンスカウト",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>レースを勝ち進み、相棒と出会うと、新しい竜を探しに行けるようになります。</small></div></div>`);
@@ -49,6 +52,27 @@ function renderScout() {
 
   const owned = Object.keys(state.player.collection || {}).filter(id => id !== "poro" && state.player.collection[id] && state.player.collection[id].scouted).length;   // スカウトで仲間にした竜だけ（見ただけの竜は数えない）
   app.appendChild(el("div", "scout-bar", `🏠 龍舎の竜：<b>${owned}</b>頭　｜　🪙 <b>${(state.player.coins || 0).toLocaleString("ja-JP")}</b>`));
+
+  if (typeof chapterRead === "function" && chapterRead("5") && typeof stalkReportDepart === "function" && typeof SHINGAN_ROSTER !== "undefined") {
+    const missing = SHINGAN_ROSTER.filter(r => r.id !== "poro" && !(state.player.collection[r.id] && state.player.collection[r.id].scouted));
+    if (missing.length) {
+      const report = el("section", "card c4-route scout-report");
+      report.appendChild(el("h3", null, "最後の一面に向けて · 竜の取材便"));
+      report.appendChild(el("p", null, "島の編集部が旅を手配。決戦に走る竜へ会いに行こう。まずは近づき、相手の好きな話題を探す。"));
+      const targets = el("div", "scout-report-targets");
+      missing.forEach(r => {
+        const d = dragonById(r.id); if (!d) return;
+        const loc = scoutLocation(scoutDragonHome(d));
+        const b = el("button", "scout-report-target");
+        const image = el("img"); image.src = "images/dragons/" + d.id + ".png"; image.alt = ""; image.loading = "lazy";
+        const label = el("span"); label.appendChild(el("b", null, d.name)); label.appendChild(el("small", null, loc.name + "へ · 旅費は手配済み"));
+        b.appendChild(image); b.appendChild(label);
+        b.onclick = () => stalkReportDepart(r.id); targets.appendChild(b);
+      });
+      report.appendChild(targets);
+      app.appendChild(report);
+    }
+  }
 
   app.appendChild(el("div", "stable-sec", "📍 旅に出る場所をえらぶ"));
   const grid = el("div", "sc-loc-grid");
@@ -490,23 +514,28 @@ function _scoutWinFx(d) {
 }
 
 // ── 成立＝心を開く → 既存の払い出し ──────────────────────────────────────
-function _scoutWin() {
-  const d = _scoutMeetD;
+function _scoutCommitFriendship(d) {
   const e = poroColEntry(d.id);
   const isNew = !e.scouted;
   e.scouted = true; e.seen = true;
   if (typeof raiseAffection === "function") raiseAffection(d.id, 12);
-  if (isNew && typeof epPush === "function") epPush("scoutNew");   // 終章：新種保護＝絶滅メーター押し戻し
+  // Friendships become genuine scouting material for the festival. Contracting
+  // a required dragon does not also complete the island's economic rescue.
   // 🎺 新しい竜の当たり音（実ファイル・2026-07-30）。初成立だけ鳴らし、再訪は従来の合成音。
   if (isNew && window.Sfx && Sfx.sting) Sfx.sting("sting-newdragon.mp3");
   else if (window.Sfx && Sfx.play) Sfx.play("legendary");
   if (typeof saveGame === "function") saveGame();
+  const lore3 = (typeof dragonLoreUnlock === "function") ? dragonLoreUnlock(d.id, 3) : null;
+  return { dragon: d, isNew, loreNew: !!lore3 };
+}
+function _scoutWin(receipt) {
+  const committed = receipt && receipt.dragon ? receipt : _scoutCommitFriendship(_scoutMeetD);
+  const d = committed.dragon, isNew = committed.isNew;
   _scoutSess = null;
   _scoutWinFx(d);   // 🎉 成立の祝祭（駆け寄り＋紙吹雪）
   // 📜 断章III「伝承の真相」＝成立の報酬。★全文はここで読ませない＝**無言で解禁**し、
   //   「増えた」1行だけ添える（図鑑をのぞく動機づけ／STALK_TALK_DIRECTIVE §2）。
-  const lore3 = (typeof dragonLoreUnlock === "function") ? dragonLoreUnlock(d.id, 3) : null;
-  _scoutWinPop(d, isNew, !!lore3);
+  _scoutWinPop(d, isNew, committed.loreNew);
 }
 
 // 🤝 成立ポップ（ユーザー決裁＝**絵が主役**・4行以内）。

@@ -70,6 +70,7 @@ function srArtSrc(ch) {
 function srOpenReader(ch, onDone) {
   if (!ch) { if (onDone) onDone(); return; }
   const paras = srParagraphs(ch.body);
+  const reread = srRead(ch.id);
   const cast = (typeof STORY_CAST !== "undefined" && ch.cast) ? STORY_CAST[ch.cast] : null;
 
   const ex = document.getElementById("sr-reader"); if (ex) ex.remove();
@@ -89,18 +90,21 @@ function srOpenReader(ch, onDone) {
       (cast ? `<span class="sr-cast">${cast.symbol || ""} ${cast.name || ""}</span>` : "") + `</div>` +
     `<div class="sr-panel"><p class="sr-line" id="sr-line"></p></div>` +
     `<div class="sr-cue" id="sr-cue"></div>` +
+    (reread ? `<button class="sr-prev" aria-label="前の段落へ">← 前の段落</button>` : "") +
     // ★「×」だけでは、閉じたあと何が起きるのか分からなかった（読むのをやめるのか、別の形で読むのか）。行き先を書く。
     `<button class="sr-x" aria-label="閉じて本文で読む">本文で読む<i>×</i></button>`;
   document.body.appendChild(ov);
 
   const line = ov.querySelector("#sr-line");
   const cue = ov.querySelector("#sr-cue");
-  let pi = 0, alive = true, typing = false, raf = 0;
+  let pi = 0, alive = true, typing = false, raf = 0, nextTimer = 0;
 
   const close = (finished) => {
     if (!alive) return;
     alive = false;
+    clearTimeout(nextTimer);
     if (raf) { try { cancelAnimationFrame(raf); } catch (err) {} raf = 0; }
+    document.removeEventListener("keydown", onReaderKey, true);
     if (finished) srMarkRead(ch.id); else srMarkSkipped(ch.id);
     ov.classList.add("out");
     setTimeout(() => { ov.remove(); if (onDone) onDone(finished); }, 220);
@@ -122,12 +126,22 @@ function srOpenReader(ch, onDone) {
     const cells = [];
     for (let ci = 0; ci < text.length;) {
       const m = /^[0-9A-Za-z][0-9A-Za-z.,%\-]*/.exec(text.slice(ci));
-      const chunk = (m && m[0].length > 1) ? m[0] : text[ci];
+      let chunk = (m && m[0].length > 1) ? m[0] : text[ci];
+      if (/^[「『（【〈《]$/.test(chunk) && ci + chunk.length < text.length) chunk += text[ci + chunk.length];
+      while (ci + chunk.length < text.length && /[、。，．！？：；）」』】〉》]/.test(text[ci + chunk.length])) chunk += text[ci + chunk.length];
       const sp = document.createElement("span");
       sp.className = "srch"; sp.textContent = chunk;
       line.appendChild(sp);
       for (let k = 0; k < chunk.length; k++) cells.push(sp);   // 文字index→span（既存の刻みをそのまま使う）
       ci += chunk.length;
+    }
+    const prev = ov.querySelector(".sr-prev");
+    if (prev) prev.disabled = pi <= 1;
+    if (reread) {
+      line.querySelectorAll(".srch").forEach(sp => sp.classList.add("in"));
+      typing = false; line.classList.add("on");
+      cue.textContent = (pi >= paras.length) ? "▼ 読み終える" : "▼ つづき";
+      cue.classList.add("ready"); return;
     }
 
     // ★文字送りは画面の更新に乗せる（setTimeout で回さない）。
@@ -167,11 +181,28 @@ function srOpenReader(ch, onDone) {
   };
 
   // 送りは「出し切ったあと」だけ効く＝途中でスキップできない
-  ov.addEventListener("click", () => {
+  const advanceReader = () => {
     if (!alive || typing || !cue.classList.contains("ready")) return;
     cue.classList.remove("ready");
-    setTimeout(showNext, SR_GAP);
-  });
+    nextTimer = setTimeout(showNext, SR_GAP);
+  };
+  ov.addEventListener("click", advanceReader);
+  const previous = () => {
+    if (!alive || !reread || pi <= 1) return;
+    clearTimeout(nextTimer);
+    if (raf) cancelAnimationFrame(raf);
+    pi -= 2; showNext();
+  };
+  const prev = ov.querySelector(".sr-prev");
+  if (prev) prev.onclick = (ev) => { ev.stopPropagation(); previous(); };
+  function onReaderKey(ev) {
+    if (!alive || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    if (ev.target && ev.target.tagName === "BUTTON" && (ev.key === "Enter" || ev.key === " ")) return;
+    if (["Enter", " ", "ArrowRight"].includes(ev.key)) { ev.preventDefault(); ev.stopPropagation(); advanceReader(); }
+    else if (ev.key === "ArrowLeft" && reread) { ev.preventDefault(); ev.stopPropagation(); previous(); }
+    else if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); close(false); }
+  }
+  document.addEventListener("keydown", onReaderKey, true);
 
   setTimeout(showNext, 420);   // 絵を一瞬見せてから語りはじめる
 }

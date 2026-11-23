@@ -189,10 +189,11 @@ function lifeNodeBought(node) { try { return !!(state.lifeTree && state.lifeTree
   eatMeal = function (id) {
     try {
       const m = (typeof MEALS !== "undefined") ? MEALS.find(function (x) { return x.id === id; }) : null;
+      if (!m || (typeof mealTierUnlocked === "function" && !mealTierUnlocked(m.tier)) || (m.quiz && typeof mealSolved === "function" && !mealSolved(id))) return false;
       if (m) {
         const discovered = (typeof mealEaten === "function") && mealEaten(id);
         // 既食＆満腹＝再注文しない（コインの無駄食い防止）。初回発見は満腹でも許容（収集のため）。
-        if (discovered && hungerGet() >= 100) { _hToast("🈵 おなかいっぱい。今は食べなくて大丈夫。"); return; }
+        if (discovered && hungerGet() >= 100) { _hToast("🈵 おなかいっぱい。今は食べなくて大丈夫。"); return false; }
         if (hungerFreeMealOk()) {
           state.player._freeMealDay = _hDay();
           _hToast("🍜 今日は店のおごりだ。「……次は勝てよ」　おなか +" + mealHeal(m));
@@ -203,7 +204,7 @@ function lifeNodeBought(node) { try { return !!(state.lifeTree && state.lifeTree
               `<div class="mm-row"><span class="mm-ic">💸</span><div><b>${price.toLocaleString("ja-JP")} コイン 必要（所持 ${(state.player.coins || 0).toLocaleString("ja-JP")}）</b>` +
               `<small>${_hBrokeLine()}</small></div></div>` +
               `<div class="mm-row"><span class="mm-ic">💡</span><div><small>レースで稼ぐか、安い自宅ごはんから。ハズレた日は1品「店のおごり」が出ます。</small></div></div>`);
-            return;   // 食べない＝収集も満腹も進まない（ゲートは出走のみ・ここは「買えない」だけ）
+            return false;   // 食べない＝収集も満腹も進まない
           }
           state.player.coins -= price;
           if (typeof updateHeader === "function") try { updateHeader(); } catch (e) {}
@@ -212,6 +213,9 @@ function lifeNodeBought(node) { try { return !!(state.lifeTree && state.lifeTree
         hungerSet(hungerGet() + mealHeal(m));
       }
     } catch (e) {}
-    return _origEat(id);
+    _origEat(id);
+    if (typeof recordIslandLifeEvent === "function") recordIslandLifeEvent({ type: "meal", mealId: id });
+    if (typeof saveGame === "function") saveGame();
+    return true;
   };
 })();

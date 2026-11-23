@@ -54,8 +54,8 @@ function _gCh2Hint() {
 }
 // ★第3〜5話のヒントも同じ型で動的化（_gCh2Hint と同じ作法）。
 //   ゲート（data_assets.js chapterAvailable "3"/"4"/"5"）が見ている値だけを読む：
-//     3 = chapterRead("2") && wins>=1 ／ 4 = chapterRead("3") && assetsPeak>=100万
-//     5 = chapterRead("4") && assetsPeak>=1億
+//     3 = chapterRead("2") && wins>=1 ／ 4 = chapterRead("3") && chapterFourEntryMet()
+//     5 = chapterRead("4") && (到達最高1億 または 島と竜の取材)
 //   ★総資産は **到達最高（assetsPeak）** を読む。現在値（totalAssets）で「あと◯」を出すと、
 //     負けて資産が減ったときに“遠のいた”と嘘をつく（解放は一度届けば戻らない）。
 function _gRead(chId) {
@@ -67,6 +67,10 @@ function _gPeak() {
   catch (e) { return 0; }
 }
 function _gAmt(n) { try { return (typeof fmtCoins === "function") ? fmtCoins(n) : String(n); } catch (e) { return String(n); } }
+function _gOpenChapter(id) {
+  if (typeof chapterAvailable === "function" && chapterAvailable(id) && typeof renderStoryChapter === "function") renderStoryChapter(id);
+  else if (typeof renderStory === "function") renderStory();
+}
 // 残っている条件だけを並べる共通の言い方（そろったら読みに行く先を指す）。
 function _gChHint(chId, need, reward) {
   if (need.length) return "あと：" + need.join(" ／ ") + (reward ? "　→ " + reward : "");
@@ -82,20 +86,23 @@ function _gCh3Hint() {
 }
 function _gCh4Hint() {
   try {
-    var need = [], peak = _gPeak();
-    if (!_gRead("3")) need.push("📖 第3話を読む");
-    if (peak < 1000000) need.push("💰 総資産100万まであと" + _gAmt(1000000 - peak));
-    return _gChHint("4", need, "📖図鑑の深い情報");
-  } catch (e) { return "第3話を読み、総資産100万で第4話へ。"; }
+    if (!_gRead("3")) return "まず第3話を読む。";
+    if (chapterAvailable("4")) return _gChHint("4", [], "");
+    return chapterFourLifeStatus().requirements.map(item => item.label).join("か、") +
+      "。到達最高資産100万でも読める（あと" + _gAmt(storyUnlockAt("4") - _gPeak()) + "）。";
+  } catch (e) { return chapterUnlockHint("4"); }
 }
 // ★☄️（セレスティアの記号）は出さない＝未登場ゲート。文面に固有名も入れない（伏字と同じ内容で足りる）。
 function _gCh5Hint() {
   try {
-    var need = [], peak = _gPeak();
-    if (!_gRead("4")) need.push("📖 第4話を読む");
-    if (peak < 100000000) need.push("💰 総資産1億まであと" + _gAmt(100000000 - peak));
-    return _gChHint("5", need, "終章がはじまる");
-  } catch (e) { return "第4話を読み、総資産1億で第5話へ。"; }
+    if (!_gRead("4")) return "まず第4話を読む。";
+    if (chapterAvailable("5")) return _gChHint("5", [], "");
+    if (!makuraPostReviewed()) return _gFlag("phoneBought") ? "自分で選んだ写真と言葉を投稿し、届いた反応を第4話でマクラと読もう。前に出した投稿も使えます。" : "マクラに配信用スマホの相談をしよう。手持ちが足りないときは、マクラが立て替えてくれます。";
+    const field = chapterFiveFieldStatus();
+    const missing = field.requirements.filter(item => !item.done).map(item =>
+      item.id === "findings" ? "現地で確かめた発見 あと" + (item.target - item.count) + "件" : item.label);
+    return missing.join(" ／ ") + "。到達最高資産1億でも読める（あと" + _gAmt(storyUnlockAt("5") - _gPeak()) + "）。";
+  } catch (e) { return chapterUnlockHint("5"); }
 }
 function _gScouted() {
   try { return Object.values(state.player.collection || {}).filter(function (e) { return e && e.scouted; }).length; }
@@ -159,12 +166,13 @@ var GOAL_PHASES = [
 // 目標一覧。done(s) は達成判定（state を読むだけ）。★順番＝挑戦順＝解放の道筋（docs/PROGRESSION_DESIGN.md）。
 //   各目標の hint に「達成条件（両フラグ）」を明示し、達成で機能が解放される（解放ゲートは目標と同条件）。
 var GOALS = [
+  { id: "readCh1", phase: 1, icon: "📖", title: "第一話から、島の物語を始める", hint: "レース場の入口で、ミミの最初の出会いを読む。", goLabel: "▶ 第一話へ", go: function () { _gOpenChapter("1"); }, done: function () { return _gRead("1"); } },
   // ── 序章：生き延びる（静かホーム） ──
   { id: "firstRace",  phase: 1, icon: "🏁", title: "はじめてのレースに出走する", hint: "まずは1戦、走ってみよう。",                 done: function (s) { return (s.player.completedRaces || 0) >= 1; } },
   { id: "firstHit",   phase: 1, icon: "🎯", title: "はじめて的中する",           hint: "1点でも当てると 🐲竜の図鑑 が開く。",     done: function () { return _gFlag("everHit"); } },
   { id: "firstWin",   phase: 1, icon: "🏆", title: "はじめての勝利をあげる",     hint: "単勝で1着を当てる。",                       done: function (s) { return (s.player.wins || 0) >= 1; } },
   { id: "firstMeal",  phase: 1, icon: "🍙", title: "屋台のごはんにありつく",     hint: "屋台で1品たべると達成。おなかが減ったら、おでかけ先の屋台へ。", goLabel: "▶ ごはんへ", go: function () { if (typeof renderMeals === "function") renderMeals(); },
-    done: function () { return (typeof mealStatsAll === "function") && mealStatsAll().got >= 1; } },   // ★実際に食べたかで判定（旧=総資産1万の代理指標）
+    done: function () { return typeof mealEatenCount === "function" && mealEatenCount() >= 1; } },
   // ★序章に「初めて自分の服を買う」の段を新設（ユーザー指摘：第2話の一番の関門なのに階段に段が無く、
   //   何をすれば進むのか分からなかった）。判定は第2話ゲート（data_assets.js chapterAvailable "2"）と同一。
   { id: "firstOutfit", phase: 1, icon: "🛍️", title: "はじめて自分の服を買う",
@@ -182,7 +190,7 @@ var GOALS = [
   // cast: 未登場のあいだ固有名を伏せる（maskTitle/maskHint に切替）。条件＝総資産・第N話はそのまま残す。
   // ★ヒントは**実際のゲートと一致**させる（旧文は「服を買う」を書いておらず、モールを"結果"と誤読させた）。
   //   残っている条件だけを動的に出す＝いま何をすればいいかが一目で分かる。
-  { id: "readCh2",    phase: 2, icon: "📊", title: "ミズの分析を学ぶ（第2話）", hint: _gCh2Hint, cast: "mizu", maskTitle: "？？？に会う（第2話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+  { id: "readCh2",    phase: 2, icon: "📊", title: "ミズの分析を学ぶ（第2話）", hint: _gCh2Hint, cast: "mizu", maskTitle: "？？？に会う（第2話）", goLabel: "▶ 物語へ", go: function () { _gOpenChapter("2"); },
     directIf: function () { return (typeof chapterAvailable === "function") && chapterAvailable("2"); },
     done: function () { return _gFlag("_chapter_intro_2"); } },
   { id: "changeFit",  phase: 2, icon: "👗", title: "衣装を着替えてみる",         hint: "モールで服を手に入れて着替える。",         done: function () { return _gOutfitCount() >= 2; } },
@@ -190,7 +198,7 @@ var GOALS = [
   { id: "rankUp",     phase: 2, icon: "🏅", title: "ランクを上げる",             hint: "出走と勝利でランク2へ。",                   done: function (s) { return (s.player.rank || 1) >= 2; } },
 
   // ── 第三話：暮らしを立てる ── 🌱くらしツリー・生活資産／2勝で🐲龍舎・竜スカウト ──
-  { id: "readCh3",    phase: 3, icon: "🏠", title: "スミカと総資産（第3話）",   hint: _gCh3Hint, cast: "sumika", maskTitle: "？？？と総資産（第3話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+  { id: "readCh3",    phase: 3, icon: "🏠", title: "スミカと総資産（第3話）",   hint: _gCh3Hint, cast: "sumika", maskTitle: "？？？と総資産（第3話）", goLabel: "▶ 物語へ", go: function () { _gOpenChapter("3"); },
     directIf: function () { return (typeof chapterAvailable === "function") && chapterAvailable("3"); },
     done: function () { return _gFlag("_chapter_intro_3"); } },
   // hides:"poro" ＝ 発見前は名前「ポロ」を出さない（命名オチを潰さないため。発見条件の2勝は仕様どおり不変）。
@@ -199,18 +207,24 @@ var GOALS = [
   { id: "oneRoom",    phase: 3, icon: "🛏️", title: "ワンルームへ引っ越す",       hint: "🌳暮らしで、コインを払って引っ越す。",     done: function () { return (typeof roomLevel === "function") && roomLevel() >= 1; } },   // ★実際に引っ越したかで判定（引っ越しはコイン制）
 
   // ── 第四話：配信者になる ── 📱スマホ購入でホーム放送化・SNS解禁 ──
-  { id: "meetMakura", phase: 4, icon: "📣", title: "マクラに会う（第4話）",     hint: _gCh4Hint, cast: "makura", maskTitle: "？？？に会う（第4話）", goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
-    directIf: function () { return (typeof chapterAvailable === "function") && chapterAvailable("4"); },
+  { id: "meetMakura", phase: 4, icon: "📣", title: "マクラに会う（第4話）",     hint: _gCh4Hint, cast: "makura", maskTitle: "？？？に会う（第4話）", goLabel: "▶ 第4話へ", go: function () {
+      if (_gRead("3") && !chapterAvailable("4") && typeof renderChapterThreeJourney === "function") renderChapterThreeJourney();
+      else _gOpenChapter("4");
+    },
+    directIf: function () { return (typeof chapterAvailable === "function") && (chapterAvailable("4") || (_gRead("3") && typeof renderChapterThreeJourney === "function")); },
     done: function () { return _gFlag("metMakura"); } },
-  { id: "buyPhone",   phase: 4, icon: "📱", title: "スマホを買って配信を始める", hint: "マクラに背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", cast: "makura", maskHint: "？？？に背中を押されてスマホを買う → 配信ホーム・SNS・💗フォロワー解禁。", done: function () { return _gFlag("phoneBought"); } },
+  { id: "buyPhone",   phase: 4, icon: "📱", title: "スマホを手に入れ、島のことを届ける", hint: "マクラに相談する。3,000コイン、足りなければマクラが負担。島の写真や言葉をSNSへ。", cast: "makura", maskHint: "第4話の出会いから、配信とSNSが開く。", done: function () { return _gFlag("phoneBought"); } },
   { id: "fol10k",     phase: 4, icon: "💗", title: "フォロワーを1万人にする",   hint: "紀行を書くと読者が増える。連載と日々の記事を重ねる。",               done: function () { return goalFollowers() >= 10000; } },
   { id: "dexHalf",    phase: 4, icon: "📖", title: "図鑑を半分まで埋める",       hint: "出会った竜を記録していく。",               done: function () { var seen = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0; return seen >= Math.ceil(_gDexTotal() / 2); } },
 
   // ── 終章：島を守る ── 全開放（スカウト全ロケ・買い物全品・暮らし全枝・上級グルメ） ──
   // セレスティアは伏線段階（celestiaStrangerSeen）でも本名・☄️・「神眼」を出さない（解禁は第5話＝advisorMet）。
-  { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: _gCh5Hint, cast: "celestia", maskTitle: "？？？（第5話）", maskHint: _gCh5Hint, goLabel: "▶ 物語へ", go: function () { if (typeof renderStory === "function") renderStory(); },
+  { id: "meetCelestia", phase: 5, icon: "🌌", title: "セレスティアの神眼（第5話）", hint: _gCh5Hint, cast: "celestia", maskTitle: "？？？（第5話）", maskHint: _gCh5Hint, goLabel: "▶ 第5話へ", go: function () {
+      if (_gRead("4") && !chapterAvailable("5") && typeof renderChapterFourJourney === "function") renderChapterFourJourney();
+      else _gOpenChapter("5");
+    },
     directIf: function () { return (typeof chapterAvailable === "function") && chapterAvailable("5"); },
-    done: function () { return _gFlag("_chapter_intro_5") || _gFlag("celestiaStrangerSeen"); } },
+    done: function () { return _gRead("5"); } },
   { id: "scout3",     phase: 5, icon: "🌋", title: "新たな地で竜を3頭スカウトする", hint: "終章で、竜に会える新しい行き先がいくつも開く。", done: function () { return _gScouted() >= 3; } },
   // ☄️はセレスティアの記号（data_assets.js の STORY_CAST.celestia.symbol）＝未登場のあいだは出さない（R3）。文面に固有名は無いので伏せるのはアイコンだけ。
   { id: "protect",    phase: 5, icon: "☄️", title: "賭場を壊さず、島を守りきる", hint: "終章をクリアしてエンディングへ。",         cast: "celestia", maskIcon: "🏝️", done: function () { try { return !!(state.player.epilogue && state.player.epilogue.edFlag); } catch (e) { return false; } } },
@@ -227,6 +241,14 @@ function goalsStats() {
 }
 // 次に挑む目標（先頭の未達成）。全達成なら null。
 function nextGoal() {
+  // 読める本編を、任意の的中・収集・SNSノルマより先に案内する。
+  var storyGoals = { "1": "readCh1", "2": "readCh2", "3": "readCh3", "4": "meetMakura", "5": "meetCelestia" };
+  var byId = function (id) { return GOALS.find(function (g) { return g.id === id; }); };
+  if (typeof chapterAvailable === "function") {
+    for (var chapter of ["1", "2", "3", "4", "5"]) {
+      if (!_gRead(chapter) && chapterAvailable(chapter)) return byId(storyGoals[chapter]);
+    }
+  }
   // ★最初の服が「いま買える」あいだは、それを先に出す（2026-11-13）。
   //   目標は 的中→単勝で勝利→屋台のごはん→服 の順に並んでいるので、5戦めごろに服の値段へ届いても、
   //   札はまだ「はじめて的中する」などを指していた。財布は賭けと食事で減っていくので、買える時期は短い。
@@ -235,9 +257,18 @@ function nextGoal() {
   try {
     var fo = null;
     for (var k = 0; k < GOALS.length; k++) if (GOALS[k].id === "firstOutfit") { fo = GOALS[k]; break; }
-    if (fo && !goalDone(fo) && (typeof mallUnlocked !== "function" || mallUnlocked())
+    if (!_gRead("2") && fo && !goalDone(fo) && (typeof mallUnlocked !== "function" || mallUnlocked())
         && typeof buniqroPrice === "function" && ((state.player && state.player.coins) || 0) >= buniqroPrice()) return fo;
   } catch (e) {}
+  if (!_gFlag("gameCleared")) {
+    if (((state.player && state.player.completedRaces) || 0) < 1) return byId("firstRace");
+    for (var nextChapter of ["2", "3", "4", "5"]) {
+      if (_gRead(nextChapter)) continue;
+      if (nextChapter === "3" && ((state.player && state.player.wins) || 0) < 1) return byId("firstWin");
+      return byId(storyGoals[nextChapter]);
+    }
+    return byId("protect");
+  }
   for (var i = 0; i < GOALS.length; i++) if (!goalDone(GOALS[i])) return GOALS[i];
   return null;
 }

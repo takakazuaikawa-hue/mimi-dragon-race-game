@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b101b">
+  <title>神眼レース — 最後の一面・試作</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="shingan-prototype.css?v=20261118p5">
+  <script src="js/shingan_trial_bridge.js?v=20261118p5" defer></script>
+  <script src="js/reading_journal.js?v=20261118p5" defer></script>
+  <script src="js/island_life_loop.js?v=20261118p5" defer></script>
+  <script src="js/island_discovery_stories.js?v=20261118p5" defer></script>
+  <script src="js/island_discovery.js?v=20261118p5" defer></script>
+  <script src="js/shingan_prototype_engine.js?v=20261118p5" defer></script>
+  <script src="js/island_field_read.js?v=20261118p5" defer></script>
+  <script src="js/shingan_prototype_ui.js?v=20261118p5" defer></script>
+</head>
+<body>
+  <div class="game-shell">
+    <header class="game-header">
+      <a class="icon-button" href="index.html" aria-label="本編のタイトルへ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 5-7 7 7 7M5 12h15"/></svg></a>
+      <h1>神眼レース</h1>
+      <button class="icon-button" id="sound-toggle" aria-label="音をオンにする" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6m0-6-5 6"/></svg></button>
+      <button class="icon-button help-button" id="help-toggle" aria-label="遊び方と試作について">?</button>
+    </header>
+    <nav class="steps" aria-label="進行">
+      <button data-step="prepare"><span>1</span>島の備え</button>
+      <button data-step="edit"><span>2</span>予想を組む</button>
+      <button data-step="result"><span>3</span>見届ける</button>
+    </nav>
+    <main id="prototype"><p class="boot">島の灯りを、もう一度。</p></main>
+  </div>
+  <dialog id="game-dialog"><button class="dialog-close icon-button" aria-label="閉じる">×</button><div id="dialog-body"></div></dialog>
+  <div id="announcer" class="sr-only" aria-live="polite"></div>
+</body>
+</html>

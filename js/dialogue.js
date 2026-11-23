@@ -211,6 +211,7 @@
     var slots = { left: slot("left"), right: slot("right") };
 
     var box = mk("div", "dlg-box");
+    box.tabIndex = -1;
     var name = mk("span", "dlg-name");
     var text = mk("div", "dlg-text");
     var next = mk("span", "dlg-next", "▼");
@@ -219,12 +220,26 @@
     box.appendChild(next);
 
     var skip = mk("button", "dlg-skip", "スキップ ✕");
+    var encounter = mk("div", "dlg-encounter-head");
+    var episode = mk("small", "dlg-encounter-episode");
+    var place = mk("strong", "dlg-encounter-place");
+    var progress = mk("span", "dlg-encounter-progress");
+    encounter.appendChild(episode); encounter.appendChild(place); encounter.appendChild(progress);
+    var logButton = mk("button", "dlg-log-button", "会話を振り返る");
+    logButton.setAttribute("aria-expanded", "false");
+    var log = mk("section", "dlg-log hidden");
+    log.setAttribute("aria-label", "ここまでの会話");
+    var logTitle = mk("h2", null, "ここまでの会話");
+    var logBody = mk("div", "dlg-log-body");
+    var logClose = mk("button", "dlg-log-close", "場面に戻る");
+    log.appendChild(logTitle); log.appendChild(logBody); log.appendChild(logClose);
 
     overlay.appendChild(bg);
     overlay.appendChild(scrim);
     overlay.appendChild(stage);
     overlay.appendChild(box);
     overlay.appendChild(skip);
+    overlay.appendChild(encounter); overlay.appendChild(logButton); overlay.appendChild(log);
     document.body.appendChild(overlay);
 
     // 操作：本文/立ち絵タップ＝送る。スキップ＝最後まで。
@@ -233,8 +248,12 @@
     stage.addEventListener("click", onTapAdvance);
     box.addEventListener("click", onTapAdvance);
     skip.addEventListener("click", function (ev) { ev.stopPropagation(); skipAll(); });
+    logButton.addEventListener("click", function (ev) { ev.stopPropagation(); openLog(); });
+    logClose.addEventListener("click", function (ev) { ev.stopPropagation(); closeLog(); });
 
-    dom = { overlay: overlay, bg: bg, stage: stage, slots: slots, box: box, name: name, text: text, next: next, skip: skip };
+    dom = { overlay: overlay, bg: bg, stage: stage, slots: slots, box: box, name: name, text: text, next: next, skip: skip,
+      encounter: encounter, episode: episode, place: place, progress: progress,
+      logButton: logButton, log: log, logBody: logBody, logClose: logClose };
     return dom;
   }
 
@@ -246,6 +265,7 @@
     dom.bg.dataset.cur = url;
     var im = new Image();
     im.onload = function () {
+      if (dom.bg.dataset.cur !== url) return; // 閉じた場面や次の場面へ遅れて届いた画像を載せない。
       dom.bg.appendChild(im);
       // rAFは非アクティブタブで凍結する＝classが付かず透明のままになるため、強制リフローで即時に確実に発火。
       void im.offsetWidth;
@@ -288,7 +308,9 @@
       // ★img＝その行だけ立ち絵を差し替える（場面限定の衣装。例：温泉回の湯上がり姿）。
       //   通常の解決チェーンの先頭に挿すだけなので、404なら従来の絵へ自動で落ちる。
       out.push({ s: (l.s != null ? l.s : l.speaker), t: String(t), e: (l.e || l.expr), side: l.side,
-        fx: l.fx, se: l.se, bg: l.bg, w: l.w, img: l.img });
+        fx: l.fx, se: l.se, bg: l.bg, w: l.w, img: l.img,
+        name: l.name, exit: Array.isArray(l.exit) ? l.exit.slice() : [],
+        react: Array.isArray(l.react) ? l.react.map(function (r) { return { s: r.s, e: r.e }; }) : [] });
     }
     return out;
   }
@@ -331,6 +353,11 @@
       if (typeof state !== "undefined" && state && state.ui && state.ui.screen === "race_run" && !(options && options.force)) { resolve(); return; }
       queue = lines; idx = 0; opts = options; resolveFn = resolve;
       var d = ensureDom();
+      d.overlay.classList.toggle("encounter-mode", !!opts.encounter);
+      d.log.classList.add("hidden"); d.logButton.setAttribute("aria-expanded", "false");
+      d.logBody.textContent = "";
+      d.episode.textContent = opts.encounter ? opts.encounter.episode || "出会いの場面" : "";
+      d.place.textContent = opts.encounter ? opts.encounter.place || "" : "";
       // 立ち絵スロット初期化
       ["left", "right"].forEach(function (s) {
         var sl = d.slots[s]; sl.id = null; sl.expr = null; sl.imgOv = null; sl.has = false;
@@ -341,6 +368,7 @@
       try { document.body.classList.add("dlg-open"); } catch (e) {}
       document.addEventListener("keydown", onKey, true);
       step();
+      d.box.focus({ preventScroll: true });
     });
   }
 
@@ -348,8 +376,30 @@
     var d = dom, line = queue[idx];
     if (!line) { finish(); return; }
     var c = castOf(line.s);
+    d.progress.textContent = String(idx + 1).padStart(2, "0") + " / " + queue.length;
+    // 明示した人物だけ退場。三人目との会話で前の相手を残さない。
+    line.exit.forEach(function (id) {
+      ["left", "right"].forEach(function (side) {
+        var sl = d.slots[side];
+        if (sl.id !== resolveId(id)) return;
+        sl.token = (sl.token || 0) + 1;
+        sl.img.onload = sl.img.onerror = null;
+        sl.img.removeAttribute("src"); sl.img.style.visibility = "hidden";
+        sl.id = null; sl.expr = null; sl.has = false;
+        sl.wrap.classList.remove("has", "in", "active", "dim", "sil");
+      });
+    });
 
     if (line.bg) setBg(line.bg);   // ★場面（背景）は行から切替可能
+    // 相手の言葉を受けた表情。衣装は現在の装いを使い、話者フォーカスは移さない。
+    line.react.forEach(function (reaction) {
+      if (resolveId(reaction.s) === resolveId(line.s)) return;
+      var listener = castOf(reaction.s);
+      if (listener.narrator) return;
+      var listenerSide = listener.side === "right" ? "right" : "left";
+      setSlot(listenerSide, reaction.s, reaction.e || "default", listener);
+      dim(listenerSide);
+    });
 
     // 立ち絵：話者の側に表示。ナレーションは両方暗転＋名前なし。
     var side = line.side || (c.side === "right" ? "right" : "left");
@@ -360,14 +410,15 @@
     } else {
       setSlot(side, line.s, chooseExpr(line, c), c, line.img);
       activate(side);
-      d.name.style.display = c.name ? "" : "none";
-      d.name.textContent = c.name || "";
+      var displayName = line.name != null ? String(line.name) : c.name;
+      d.name.style.display = displayName ? "" : "none";
+      d.name.textContent = displayName || "";
       d.name.style.setProperty("--cg", c.color || "#caa24a");
       // ★C案：話者が替わったときだけプレートを入れ直す（毎行だと騒がしいので替わり目だけ）
-      if (!REDUCE && c.name && c.name !== lastSpeakerName) {
+      if (!REDUCE && displayName && displayName !== lastSpeakerName) {
         d.name.classList.remove("in"); void d.name.offsetWidth; d.name.classList.add("in");
       }
-      lastSpeakerName = c.name || null;
+      lastSpeakerName = displayName || null;
       // ★感情アニメ（fx: shake/hop/nod/flash）＝話者の立ち絵imgに一発アニメ。reduced-motionでは無効。
       //   fx無指定の行でも前回のfxクラスを必ず除去（残留すると呼吸アニメが止まるため）。
       var fim = d.slots[side].img;
@@ -537,7 +588,34 @@
     autoTimer = setTimeout(function () { if (queue && !typing) advance(); }, wait);
   }
 
+  function openLog() {
+    if (!dom || !queue || !opts.encounter) return;
+    clearTimeout(autoTimer);
+    dom.logBody.textContent = "";
+    // 表示中の行は全文を先取りしない。既に送った台詞だけを記録する。
+    queue.slice(0, idx).forEach(function (line) {
+      var p = mk("p", "dlg-log-line"), c = castOf(line.s);
+      if (!c.narrator) {
+        var who = mk("strong"); who.textContent = line.name != null ? String(line.name) : c.name || "";
+        p.appendChild(who);
+      }
+      var text = mk("span"); text.textContent = line.t.replace(/\{w:\d+\}/g, "");
+      p.appendChild(text); dom.logBody.appendChild(p);
+    });
+    if (!idx) { var empty = mk("p"); empty.textContent = "送った会話を、ここから読み返せます。"; dom.logBody.appendChild(empty); }
+    dom.log.classList.remove("hidden"); dom.logButton.setAttribute("aria-expanded", "true");
+    dom.logClose.focus(); dom.logBody.scrollTop = dom.logBody.scrollHeight;
+  }
+
+  function closeLog() {
+    if (!dom) return;
+    dom.log.classList.add("hidden"); dom.logButton.setAttribute("aria-expanded", "false");
+    dom.box.focus({ preventScroll: true });
+    if (!typing) maybeAuto();
+  }
+
   function advance() {
+    if (dom && !dom.log.classList.contains("hidden")) return;
     if (typing) { // タイプ中なら一気に表示
       typing = false; clearTimeout(typeTimer);
       // ★C案：残りの文字にも .in を付ける。ただし「いま出せ」というタップなので
@@ -568,7 +646,7 @@
     typing = false; clearTimeout(typeTimer); clearTimeout(autoTimer);
     clearBg();   // ★背景は台本ごと＝次の無関係な会話に前の場面を持ち越さない
     clearStandees();   // ★立ち絵も同じ理由で空にする（前のキャラを次の会話へ持ち越さない）
-    if (dom) dom.overlay.classList.add("hidden");
+    if (dom) { dom.overlay.classList.add("hidden"); dom.overlay.classList.remove("encounter-mode"); dom.log.classList.add("hidden"); }
     try { document.body.classList.remove("dlg-open"); } catch (e) {}
     document.removeEventListener("keydown", onKey, true);
     var r = resolveFn; resolveFn = null; queue = null;
@@ -577,6 +655,11 @@
 
   function onKey(ev) {
     if (!dom || dom.overlay.classList.contains("hidden")) return;
+    if (!dom.log.classList.contains("hidden")) {
+      if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); closeLog(); }
+      return;
+    }
+    if (ev.target && ev.target.tagName === "BUTTON" && (ev.key === "Enter" || ev.key === " ")) return;
     if (ev.key === "Enter" || ev.key === " " || ev.key === "ArrowRight") { ev.preventDefault(); ev.stopPropagation(); advance(); }
     else if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); skipAll(); }
   }

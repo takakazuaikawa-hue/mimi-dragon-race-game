@@ -64,6 +64,13 @@ var NEXT_SUGGEST = [
   { at: "konron", weight: 70, icon: "🐲", label: "次のレースへ", sub: "島を満喫したら、また競竜場へ",
     cond: function () { return typeof hungerCanRace !== "function" || hungerCanRace(); }, go: function () { renderRaceSelect(); } },
 
+  // 見た事実がある時だけ、観光から仮説の手帖へ。
+  { at: "konron", weight: 86, icon: "⌁", label: "気になった景色をつなぐ", sub: "手帖の根拠から、行き先を予想する",
+    cond: function () { return typeof islandDiscoveryHasClues === "function" && islandDiscoveryHasClues(); },
+    go: function () { renderIslandDiscovery(); } },
+  { at: "island_discovery", weight: 90, icon: "🏦", label: "暮らしと島の経済へ", sub: "見つけたつながりから、残したい暮らしを考える",
+    cond: function () { return true; }, go: function () { renderEconomy(); } },
+
   // ── SNSのあと（M2）：一日の締め ──
   { at: "sns", weight: 90, icon: "🌙", label: "ホームへ（配信締め）", sub: "今日もおつかれさま。また明日",
     cond: function () { return true; }, go: function () { renderHome(); } },

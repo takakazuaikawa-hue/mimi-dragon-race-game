@@ -12,16 +12,229 @@
 
 // 🎯 目標（クエスト）一覧＝ホーム左上チップのドリルダウン先。段（物語進行）ごとに達成/挑戦中/未達を表示。
 // 完全に表示専用＝goals.js の done(state) を読むだけ。js/goals.js
+// Fourth chapter's destinations share the real map/scout gates. This screen
+// never purchases, scouts, confirms a discovery, or changes chapter progress.
+function appendNextStoryEncounter(host, allowed) {
+  if (typeof nextUnreadChapter !== "function" || typeof renderStoryChapter !== "function") return false;
+  const next = nextUnreadChapter();
+  if (!next || !(allowed || ["4", "5"]).includes(String(next.id))) return false;
+  const box = el("section", "journey-encounter");
+  box.appendChild(el("small", null, "次の出会いが開きました"));
+  box.appendChild(el("h3", null, "この島で持ち帰った話を、次の出会いへ。"));
+  const go = el("button", "primary", "第" + next.id + "話の出会いへ");
+  go.onclick = () => renderStoryChapter(next.id); box.appendChild(go); host.appendChild(box);
+  return true;
+}
+
+function renderChapterThreeJourney() {
+  if (typeof chapterRead !== "function" || !chapterRead("3")) { renderGoals(); return; }
+  if (chapterRead("4")) { renderChapterFourJourney(); return; }
+  if (chapterAvailable("4")) { renderStoryChapter("4"); return; }
+  state.ui.screen = "chapter_three_journey";
+  const app = beginScreen(); app.classList.add("c4-journey", "c3-journey");
+  const p = state.player, status = typeof chapterFourLifeStatus === "function" ? chapterFourLifeStatus(p) : null;
+  const button = (host, label, action) => { const b = el("button", "secondary", label); b.onclick = action; host.appendChild(b); return b; };
+  const hero = el("section", "c4-hero c3-hero");
+  hero.appendChild(el("small", null, "第三話 · この島で暮らす、小さな一日"));
+  hero.appendChild(el("h2", null, "誰かに話したいことを、ひとつ。"));
+  hero.appendChild(el("p", null, "スミカに教わった暮らしの守り方。その先は、自分が気になる方へ。今日の一着や一杯を誰かと話すか、景色の奥の仕事を確かめてみよう。"));
+  app.appendChild(hero);
+  app.appendChild(el("p", "c3-invitation", "どちらかの寄り道から、次の出会いへ。新しい買い物や追加の勝利は必要ありません。"));
+  const choices = el("div", "c4-destinations");
+  const daily = el("section", "c4-destination");
+  const dailyImg = el("img"); dailyImg.src = "images/konron/spots/mall_tropical_atrium.png"; dailyImg.alt = ""; daily.appendChild(dailyImg);
+  const dailyBody = el("div", "c4-destination-body");
+  dailyBody.appendChild(el("small", null, status && status.outing ? "✓ 自分の体験を、話した" : "人に会い、自分の好みを見つける"));
+  dailyBody.appendChild(el("h3", null, "今日は、どの姿で歩こう？"));
+  dailyBody.appendChild(el("p", null, "売場の常連アヤは、手持ちの服でもいいと言う。着替えて歩いてみた感想を伝えよう。「別の方が好き」でも、まだ迷っていてもいい。"));
+  button(dailyBody, "手持ちの服で試す · モールへ", () => {
+    if (typeof goIslandLifePlace === "function") goIslandLifePlace("style"); else renderMall();
+  });
+  button(dailyBody, "一杯と話の続きを · 屋台へ", () => {
+    if (typeof goIslandLifePlace === "function") goIslandLifePlace("warm"); else kmGotoSpot("makemeshi");
+  });
+  dailyBody.appendChild(el("small", "c3-price-note", "服は今持っているもので。料理の注文は有料なので、財布を見て選ぼう。"));
+  daily.appendChild(dailyBody); choices.appendChild(daily);
+  const field = el("section", "c4-destination"), fieldImg = el("img");
+  fieldImg.src = "images/konron/spots/market.webp"; fieldImg.alt = ""; field.appendChild(fieldImg);
+  const fieldBody = el("div", "c4-destination-body");
+  fieldBody.appendChild(el("small", null, status && status.findings ? "✓ 確かめて持ち帰った発見" : "景色から、暮らしの裏側を見つける"));
+  fieldBody.appendChild(el("h3", null, "屋台の水は、どこから？"));
+  fieldBody.appendChild(el("p", null, "離れた屋台の水甕に、同じ小さな札。田に流す水と、飲む水は同じなのだろうか。手掛かりをつなぎ、予想した先で確かめたい。"));
+  const evidence = typeof IslandDiscovery !== "undefined" ? IslandDiscovery.normalize(p.islandDiscovery).evidence : [];
+  const first = evidence.includes("water_jars"), second = evidence.includes("water_fork");
+  button(fieldBody, status && status.findings || first && second ? "手帖で、見たことをつなぐ" : first ? "水の分かれ道へ · 棚田を歩く" : "霧待ち市場で、水甕を見てみる", () => {
+    if (status && status.findings || first && second) { renderIslandDiscovery(); return; }
+    if (!kmGotoSpot(first ? "tanada" : "market")) renderKonronMap();
+  });
+  fieldBody.appendChild(el("small", "c3-price-note", "観察と調査は無料。違う予想でも、手掛かりやお金は失いません。"));
+  field.appendChild(fieldBody); choices.appendChild(field); app.appendChild(choices);
+  const rest = el("section", "c4-route c3-purse");
+  rest.appendChild(el("h3", null, "いま使えるコイン · " + fmtCoins(p.coins || 0)));
+  rest.appendChild(el("p", null, "次のレースを楽しみたい時は、食事と賭ける分を残して。稼ぎ直す前に、手持ちでできる寄り道も選べます。"));
+  button(rest, "出走表へ · 次に見たい竜を探す", () => renderRaceSelect());
+  button(rest, "暮らしと資産を見てみる", () => renderAssets());
+  app.appendChild(rest);
+}
+
+function appendMakuraPostDesk(app) {
+  const p = state.player, panel = el("section", "c4-route");
+  app.appendChild(panel);
+  panel.appendChild(el("h3", null, "マクラの配信席"));
+  const button = (label, fn) => { const b = el("button", "secondary", label); b.onclick = fn; panel.appendChild(b); };
+  if (!p.flags?.phoneBought) {
+    panel.appendChild(el("p", null, "あの旗の前で録った声は、まだ二人だけのもの。島の外にも届けたい一枚ができたら、マクラに会いに行こう。"));
+    button((p.coins || 0) >= 3000 ? "配信用スマホを買う · 3,000コイン" : "マクラの立替で配信用スマホを持つ", buyPhoneAndGoLive);
+    return;
+  }
+  button("写真と言葉を選んで投稿する", () => { snsSyncCamera(); _igCompose(); });
+  button("島の景色や料理を地図から選ぶ", () => renderKonronMap());
+  const posts = myPosts().filter(validMakuraPost);
+  if (!posts.length) {
+    panel.appendChild(el("p", null, "今日の装い、竜の紹介、気になる景色。何を見せたい？　自分の一枚ができたら、ここで一緒に反応を読もう。"));
+    return;
+  }
+  const choose = el("select");
+  choose.setAttribute("aria-label", "マクラに見せる自分の投稿");
+  posts.forEach(post => { const o = el("option"); o.value = post.id; o.textContent = post.text; choose.appendChild(o); });
+  panel.appendChild(choose);
+  const card = el("div", "c4-route");
+  button("この投稿に届いた反応を、マクラと読む", () => {
+    const post = myPosts().find(item => item.id === choose.value && validMakuraPost(item));
+    if (!post || state.player !== p || !p.flags?.phoneBought) return;
+    card.replaceChildren();
+    const subject = makuraPostSubject(post);
+    const reacts = myPostReacts(post);
+    const reply = myPostReplies(post)[0];
+    const line = words => { const para = el("p"); para.textContent = words; card.appendChild(para); };
+    if (post.img) { const photo = el("img"); photo.src = post.img; photo.alt = subject.name; photo.width = 120; card.appendChild(photo); }
+    line("ミミの投稿「" + post.text + "」");
+    line("この投稿への反応 " + reacts + "件");
+    if (reply) line(reply.by + "「" + reply.back + "」");
+    const comment = {
+      dragon: subject.name + "の名前から始めたんだね。旗の前で録った二本目、思い出した。",
+      outfit: subject.name + "を選んだんだ。竜が走っていない時間のミミちゃんも、これで見えるね。",
+      gourmet: "この一皿に目を留めたんだね。味の話は、食べた人の言葉で聞きたいな。",
+      photo: subject.name + "を見せたんだね。あたしがカメラを置くなら、ミミちゃんが立ち止まったところに置きたい。",
+      camera: "写真だけで流れてきたら、あたしは通り過ぎたかも。ミミちゃんが選んだこの一言で、立ち止まれたよ。",
+      text: "文字だけで送ってくれたときのだ。声に出して読むと、どこでひと息ついたか、聞こえてくるね。"
+    };
+    line("マクラ「" + comment[subject.kind] + "」");
+    p.makuraPostMemory = { id: post.id, day: post.day, img: post.img, text: post.text, reacts };
+    if (typeof saveGame === "function") saveGame();
+    if (chapterAvailable("5") && !chapterRead("5")) {
+      const next = el("button", "primary", "石段の観覧席へ · 第5話"); next.onclick = () => renderStoryChapter("5"); card.appendChild(next);
+    }
+  });
+  panel.appendChild(card);
+}
+
+function renderChapterFourJourney(revisit) {
+  if (typeof chapterRead !== "function" || !chapterRead("4")) { renderGoals(); return; }
+  if (!revisit && chapterRead("5")) { renderEconomy(); return; }
+  if (!revisit && typeof chapterAvailable === "function" && chapterAvailable("5")) { renderStoryChapter("5"); return; }
+  state.ui.screen = "chapter_four_journey";
+  const app = beginScreen();
+  app.classList.add("c4-journey");
+  const p = state.player;
+  const button = (host, label, action, cls) => { const b = el("button", cls || "secondary", label); b.onclick = action; host.appendChild(b); return b; };
+  const hero = el("section", "c4-hero");
+  hero.appendChild(el("small", null, "第四話 · 島を知る時間"));
+  hero.appendChild(el("h2", null, "島の続きを、見つけに。"));
+  hero.appendChild(el("p", null, "マクラに話したくなる景色を探そう。竜のしぐさも、島の人の仕事も、見たことを自分の言葉にして持ち帰る。"));
+  app.appendChild(hero);
+  appendMakuraPostDesk(app);
+  if (chapterRead("5")) { button(app, "第4話の記事へ", () => renderStoryChapter("4")); return; }
+  if (typeof chapterFiveFieldStatus === "function") {
+    const status = chapterFiveFieldStatus(p), route = el("section", "c4-route");
+    route.appendChild(el("h3", null, "島を知って、物語の先へ"));
+    if (status.hint) route.appendChild(el("p", null, status.hint));
+    (status.requirements || []).forEach(r => route.appendChild(el("p", "c4-route-step" + (r.done ? " done" : ""), (r.done ? "✓ " : "○ ") + r.label + "　" + Math.min(r.count || 0, r.target) + "／" + r.target)));
+    if ((status.requirements || []).some(r => r.id === "report" && !r.done)) {
+      route.appendChild(el("p", null, "レースの結果で「この読みを、手帖に残す」を選べます。外れた予想も、考えた理由を残しておこう。"));
+      button(route, "一戦を予想して、読みを残しに行く", () => renderRaceSelect());
+    }
+    app.appendChild(route);
+  }
+  const fields = typeof IslandDiscovery !== "undefined" ? IslandDiscovery.normalize(p.islandDiscovery) : { evidence: [] };
+  const found = typeof IslandDiscovery !== "undefined" ? IslandDiscovery.exportDiscoveries(p.islandDiscovery) : [];
+  const choices = el("div", "c4-destinations");
+  const journeys = [
+    { id: "dragon_trace", title: "水際の、止まった足跡", body: "水を飲みに来た、だけだろうか。風の方を向いた爪あとから、竜の一日を追ってみる。", spot: "ryu_mizunomi", image: "ryu_mizunomi", evidence: "trace_toes", next: "kazami_yagura", second: "trace_quill" },
+    { id: "legend_ring", title: "昔話の品は、今どこに？", body: "夜市の古布屋にある、小さな環の写し。飾りなのか、道具なのか。暮らしの中に続きを探す。", spot: "furununo", image: "furununo", evidence: "ring_rubbing", next: null, second: "ring_mending" }
+  ];
+  journeys.forEach(j => {
+    const done = found.some(f => f.caseId === j.id), started = fields.evidence.includes(j.evidence), paired = fields.evidence.includes(j.second);
+    const card = el("section", "c4-destination" + (done ? " done" : ""));
+    const img = el("img"); img.src = "images/konron/spots/" + j.image + ".webp"; img.alt = ""; card.appendChild(img);
+    const body = el("div", "c4-destination-body");
+    body.appendChild(el("small", null, done ? "✓ 手帖に残した発見" : started ? "手掛かりを持っている" : "寄り道から始まる発見"));
+    body.appendChild(el("h3", null, j.title)); body.appendChild(el("p", null, j.body));
+    button(body, done ? "発見と同行の記録を読む" : paired || started && !j.next ? "手掛かりから続きを考える" : started ? "風見の櫓へ" : "現地で見てみる", () => {
+      if (done || paired || started && !j.next) { renderIslandDiscovery(); return; }
+      if (typeof kmGotoSpot !== "function" || !kmGotoSpot(started ? j.next : j.spot)) renderKonronMap();
+    });
+    card.appendChild(body); choices.appendChild(card);
+  });
+  app.appendChild(choices);
+  const scouts = el("section", "c4-route");
+  scouts.appendChild(el("h3", null, "いま探しに行ける住処"));
+  scouts.appendChild(el("p", null, "出会う竜は抽選。住処で近づき方を考え、竜自身を知る。走りや着順を頼む交渉ではありません。"));
+  const roster = typeof DRAGONS !== "undefined" ? DRAGONS : [];
+  const homes = new Map(); let later = 0, totalScouted = 0;
+  roster.filter(d => d.id !== "poro").forEach(r => {
+    if (p.collection && p.collection[r.id] && p.collection[r.id].scouted) { totalScouted++; return; }
+    const d = typeof dragonById === "function" ? dragonById(r.id) : null;
+    if (!d || typeof scoutDragonHome !== "function") return;
+    const home = scoutDragonHome(d);
+    if (typeof scoutLocationUnlocked === "function" && scoutLocationUnlocked(home)) homes.set(home, (homes.get(home) || 0) + 1);
+    else later++;
+  });
+  scouts.appendChild(el("small", null, "仲よくなった竜 " + totalScouted + "頭。どの住処の相手でも、実際の出会いが取材の記録になります。"));
+  homes.forEach((count, id) => {
+    const loc = typeof SCOUT_LOCATIONS !== "undefined" ? SCOUT_LOCATIONS.find(l => l.id === id) : null;
+    if (!loc) return;
+    const population = typeof dragonsAtLocation === "function" ? dragonsAtLocation(id).length : count;
+    button(scouts, loc.name + " · 未加入 " + count + "／生息 " + population + "頭 · 旅費 " + fmtCoins(loc.cost) + (loc.cost > (p.coins || 0) ? "（手持ち不足）" : ""), () => { state.ui.scoutFrom = id; renderScout(); }, "c4-scout-link");
+  });
+  if (!homes.size) scouts.appendChild(el("p", null, totalScouted > 0 && !later
+    ? "この名簿の竜とは、すでに仲よくなっている。手帖を読み直したり、まだ見ぬ島の暮らしへ。"
+    : "いま案内できる住処は、まだありません。現地の発見を確かめ、一戦の読みを手帖に残す道でも先へ進めます。"));
+  if (later) scouts.appendChild(el("small", "c4-later", "空の住処は第五話から。今は残りの竜を探し回らなくて大丈夫。"));
+  scouts.appendChild(el("p", null, "旅費は手持ちから。遠征を選ばない日は、一戦の読みを手帖に残す道もあります。"));
+  app.appendChild(scouts);
+  const money = el("section", "c4-route");
+  money.appendChild(el("h3", null, "次の一戦と、暮らしに残すお金"));
+  const amounts = el("div", "c4-amounts");
+  [["いま使えるコイン", p.coins || 0], ["いまの総資産", p.totalAssets || 0], ["到達した最高資産", typeof assetsPeak === "function" ? assetsPeak(state) : p.assetsPeak || 0]].forEach(a => { const cell = el("div"); cell.appendChild(el("small", null, a[0])); cell.appendChild(el("b", null, fmtCoins(a[1]))); amounts.appendChild(cell); });
+  money.appendChild(amounts);
+  money.appendChild(el("p", null, "旅費と食事は手持ちから。暮らしの購入は、次の一戦に残す分を見て選ぼう。島の施設への投資は第五話で開く。"));
+  button(money, "買える暮らしを選ぶ", () => renderLifeTree());
+  button(money, "出走表を見て、次の読みを考える", () => renderRaceSelect());
+  app.appendChild(money);
+  button(app, "目標の一覧を見る", () => renderGoals());
+}
+
 function renderGoals() {
   state.ui.screen = "goals";
   const app = beginScreen();
   app.appendChild(el("h2", null, "🎯 目標（クエスト）"));
   const gs = (typeof goalsStats === "function") ? goalsStats() : { done: 0, total: 0 };
-  app.appendChild(el("div", "as-hint2", `ストーリーを進めながら、ひとつずつクリアしていこう。`));
+  app.appendChild(el("div", "as-hint2", `本編の次の一歩と、島で試せる寄り道。全項目の達成はエンディングの条件ではありません。`));
   const bar = el("div", "goals-bar");
   bar.innerHTML = `<i style="width:${gs.total ? Math.round(gs.done / gs.total * 100) : 0}%"></i><b>${gs.done}/${gs.total} 達成</b>`;
   app.appendChild(bar);
   const ng = (typeof nextGoal === "function") ? nextGoal() : null;
+  if (ng) {
+    const step = el("div", "card goals-next");
+    step.appendChild(el("small", null, (typeof getStoryFlag === "function" && getStoryFlag("gameCleared")) ? "次の寄り道" : "本編の次の一歩"));
+    step.appendChild(el("h3", null, typeof goalTitleSafe === "function" ? goalTitleSafe(ng) : ng.title));
+    step.appendChild(el("p", "as-hint2", typeof goalHintSafe === "function" ? goalHintSafe(ng) : ""));
+    if (ng.go && (!ng.goIf || ng.goIf())) {
+      const go = el("button", "primary", ng.goLabel || "行ってみる"); go.onclick = () => ng.go(); step.appendChild(go);
+    }
+    app.appendChild(step);
+  }
   (typeof GOAL_PHASES !== "undefined" ? GOAL_PHASES : []).forEach(ph => {
     const items = GOALS.filter(g => g.phase === ph.id);
     if (!items.length) return;
@@ -70,8 +283,8 @@ function renderMeals() {
   app.appendChild(ob);
 
   const tiers = (typeof MEAL_TIERS !== "undefined") ? MEAL_TIERS : [];
-  const _tUnlocked = id => (typeof mealTierUnlocked !== "function") || mealTierUnlocked(id);   // グルマン=総資産100万／しんぼ=終章（meals.js）
-  const _mealLockHint = id => id === "shinbo" ? "終章（第5話）" : "総資産100万";   // ★段位ごとの解禁条件（新ゲートと一致させる）
+  const _tUnlocked = id => (typeof mealTierUnlocked !== "function") || mealTierUnlocked(id);
+  const _mealLockHint = mealTierRequirement;
   const _lockMsg = (id) => { if (typeof showInfoPopup === "function") showInfoPopup("🥢 上級グルメ",
     `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ開いていません</b><small>この段位は<u>${_mealLockHint(id)}</u>で開放されます。まずは食べ歩きから。</small></div></div>`); };
   if (!_mealTab || !tiers.some(t => t.id === _mealTab) || !_tUnlocked(_mealTab)) {
@@ -133,6 +346,7 @@ function renderMeals() {
   // 一枚のカード（段のグリッドと、下の「前回の一皿」の両方で使う）
   const _mealCard = m => {
       const un = mealUnlocked(m);
+      const everyday = !m.where && !m.quiz;
       const card = el("button", "meal-card" + (un ? " got" : "") + ((_hungry && _eatHere(m)) ? " can-eat" : ""));
       const thumb = (un && m.photo)
         ? `<span class="meal-card-thumb"><img src="${m.photo}" alt="" decoding="async"></span>`
@@ -144,7 +358,8 @@ function renderMeals() {
           ((typeof mealHeal === "function" && (un || !m.where)) ? `<i class="meal-card-heal">🍚+${mealHeal(m)}` +
             // 走れない（＝食べに来た）ときだけ、この皿であと何戦走れるかを添える。数字の意味が「走れる回数」で読める。
             ((_hungry && typeof hungerRacesAt === "function") ? `<em>あと${hungerRacesAt(_hungryNow + mealHeal(m))}戦</em>` : "") + `</i>` : "") + `</span>` : "";
-      card.innerHTML = `${thumb}<span class="meal-card-nm">${un ? m.name : "？？？"}${_cardPrice}</span>`;
+      const mood = everyday ? String(m.scent || m.desc || "").replace(/<[^>]*>/g, "").slice(0, 38) : "";
+      card.innerHTML = `${thumb}<span class="meal-card-nm">${un || everyday ? m.name : "？？？"}${mood ? `<small class="meal-card-mood">${mood}</small>` : ""}${_cardPrice}</span>`;
       // ★B改・出会いの設計（2026-08-02・ユーザー決裁「選ぶ段階がつまらない。探し出す喜び・
       //   出会う喜びを」）：where を持つ未食の品は、**ここ（一覧）からは食べられない**。
       //   タップすると出会いのヒント（場所×時間の噂）だけが出る＝島へ探しに行く動機になる。
@@ -197,7 +412,12 @@ function showMealDetail(m) {
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop meal-pop");
   // 閉じる時、食事画面なら再描画＝食べた/解いたカードが即「取得済み」に反映される。
-  const _closeMeal = () => { ov.remove(); if (state.ui.screen === "meals" && typeof renderMeals === "function") renderMeals(); };
+  const _closeMeal = () => {
+    ov.remove();
+    if (state.ui.screen === "meals" && typeof renderMeals === "function") renderMeals();
+    else if (typeof window.refreshIslandLifePanels === "function") window.refreshIslandLifePanels();
+    if (typeof window.refreshIslandCareOffers === "function") window.refreshIslandCareOffers();
+  };
   // ★B改・出会いの演出（2026-08-02）：where を持つ品は、食べるまで名前も写真も伏せる。
   //   屋台で「？？？＋気配」→ 食べた瞬間に名前と全力の講評が開く＝発見が遊びの山になる。
   //   この関数内で食べた直後の1回だけ「出会った！」バナーを立てる。
@@ -289,8 +509,9 @@ function showMealDetail(m) {
         _justFound = !mealEaten(m.id) && !!m.where;
         const _h0 = (typeof hungerGet === "function") ? hungerGet() : 0;
         const _c0 = (state.player && state.player.coins) || 0;
-        eatMeal(m.id);
-        const _ok = (typeof hungerGet === "function") ? hungerGet() > _h0 : true;
+        const _outcome = eatMeal(m.id);
+        const _ok = _outcome === true || (_outcome !== false && ((typeof hungerGet === "function") ? hungerGet() > _h0 : true));
+        _justFound = _justFound && _ok;
         if (_ok) {
           _lastPaid = Math.max(0, _c0 - ((state.player && state.player.coins) || 0));
           // 食事の一覧の先頭に出す「前回の一皿」（renderMeals）。表示のための印だけ。
@@ -319,7 +540,22 @@ function showMealDetail(m) {
       if (mealSolved(m.id)) {
         box.innerHTML = head() + `<div class="meal-desc">${m.desc}</div><div class="meal-react meal-hit">${m.quiz.hit}</div><div class="meal-note">📖 ${m.note}</div>`;
         _wirePhotoZoom();
-        const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "ごちそうさま"); ok.onclick = () => _closeMeal(); btns.appendChild(ok); box.appendChild(btns);
+        const eaten = mealEaten(m.id), full = eaten && typeof hungerGet === "function" && hungerGet() >= 100;
+        const price = typeof mealPrice === "function" ? mealPrice(m) : 0, heal = typeof mealHeal === "function" ? mealHeal(m) : 0;
+        const free = typeof hungerFreeMealOk === "function" && hungerFreeMealOk();
+        const info = el("div", "meal-buy");
+        info.innerHTML = _ateNow ? `<b>✅ ${_lastPaid ? "−" + _lastPaid.toLocaleString("ja-JP") + "コイン" : "店のおごり"} · 一皿を味わった</b><p>おなか ${typeof hungerGet === "function" ? hungerGet() : ""}／100。${_justFound ? "初めての味を、食べ歩きの記録へ。" : ""}</p>` : `<b>${eaten ? "また味わう" : "味がわかったら、一皿を注文する"}</b><p>${free ? "店のおごり" : price.toLocaleString("ja-JP") + "コイン"} · おなか +${heal}</p>`;
+        box.appendChild(info);
+        const btns = el("div", "navpop-btns"), order = el("button", "navpop-go", full ? "おなかいっぱい" : (eaten ? "もう一度味わう" : "この一皿を味わう") + (free ? "・おごり" : "・" + price.toLocaleString("ja-JP") + "枚"));
+        order.disabled = full;
+        order.onclick = () => {
+          const was = mealEaten(m.id), coins = state.player.coins || 0;
+          if (eatMeal(m.id) !== true) return;
+          _ateNow = true; _justFound = !was; _lastPaid = Math.max(0, coins - (state.player.coins || 0)); state.player._lastMealId = m.id;
+          if (typeof saveGame === "function") saveGame(); if (window.Sfx) Sfx.play(was ? "coin" : "unlock"); render(); _yieldToDialogue();
+        };
+        const close = el("button", "navpop-cancel", _ateNow ? "ごちそうさま" : "今は味の記録だけ残す"); close.onclick = _closeMeal;
+        btns.appendChild(order); btns.appendChild(close); box.appendChild(btns);
       } else {
         box.innerHTML = head() + `<div class="meal-desc">${m.desc}</div><div class="meal-q">${m.quiz.q}</div>`;
         _wirePhotoZoom();
@@ -341,6 +577,7 @@ function showMealDetail(m) {
         const later = el("button", "meal-x", "✕ また今度"); later.onclick = () => _closeMeal(); box.appendChild(later);
       }
     }
+    if (_ateNow && typeof appendIslandLifeMealExit === "function") appendIslandLifeMealExit(box, () => ov.remove());
   };
   render();
   ov.appendChild(box);

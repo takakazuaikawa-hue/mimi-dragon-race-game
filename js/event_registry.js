@@ -925,7 +925,7 @@ function _r4LastMealName() {
     return (m && m.name) || null;
   } catch (e) { return null; }
 }
-function _r4MealCount() { try { return mealStatsAll().got; } catch (e) { return 0; } }
+function _r4MealCount() { return typeof mealEatenCount === "function" ? mealEatenCount() : 0; }
 function _r4Masterpieces() { try { return ((state.player || {}).kurashi || {}).masterpieces || 0; } catch (e) { return 0; } }
 function _r4Scouted() { try { return scoutedRoster().length; } catch (e) { return 0; } }
 function _r4Outfits() { try { return OUTFITS.filter(x => outfitOwned(x)).length; } catch (e) { return 0; } }

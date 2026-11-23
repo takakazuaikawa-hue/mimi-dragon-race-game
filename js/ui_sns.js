@@ -3,7 +3,7 @@
 // =========================================================================
 // 3セクション：🏠フィード（ストーリーズ＋写真フィード）／👤プロフィール（3カラムグリッド）／💬DM（ファンレター）。
 // 日替わりで遊べる要素はInstagramの文法に載せ替え：
-//   ・ストーリーズ … ミミのストーリー＝その日の「お題（投票スティッカー）」。
+//   ・ストーリーズ … その日の島のお題と、島の人のひとこと。
 //   ・フィード     … 日替わりの写真投稿。ダブルタップ/♡でいいね、💬でコメント（選択肢→返信）。
 //   ・自分で投稿   … カメラロールから写真＋キャプション→プロフィールのグリッドに増え、いいねが伸びてバズる。
 //   ・連続ログイン … プロフィールのハイライト＋バッジ（コスメ・コイン非干渉）。
@@ -91,7 +91,7 @@ function showSnsHelp() {
     `<div class="mm-row"><span class="mm-ic">🏠</span><div><b>フィード</b>` +
       `<small>島のみんなの投稿が流れます。写真をダブルタップ、または♡でいいね。💬から返事を選ぶと会話が続きます。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">📊</span><div><b>きょうのお題（ストーリーズ）</b>` +
-      `<small>上の丸いアイコン。ミミのストーリーはその日の投票で、答えると島のみんなの割合が見られます。日替わりです。</small></div></div>` +
+      `<small>上の「きょうのお題」から投票できます。答えると島のみんなの回答の割合が見られます。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">＋</span><div><b>自分で投稿する</b>` +
       `<small>ストーリーズ左端の「あなた＋」から。島めぐりで撮った写真（スポットの📸）にひとこと添えて出すと、プロフィールに並んでいいねが伸びます。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">👤</span><div><b>プロフィール</b>` +
@@ -114,6 +114,7 @@ function maybeShowSnsHelpFirstTime() {
 function _igFeed(body, ci) {
   // ストーリーズ
   body.appendChild(_igStories(ci));
+  if (typeof appendIslandLifeFeed === "function") appendIslandLifeFeed(body);
   // ★自分の投稿もフィードに出す（プロフィールだけ更新されフィードに出ないバグ修正）。新しい順で最上部に。
   const mine = (typeof myPosts === "function") ? myPosts() : [];
   const today = (typeof _snsDay === "function") ? _snsDay() : 0;
@@ -121,7 +122,7 @@ function _igFeed(body, ci) {
     const d = today - (m.day || today);
     return { id: m.id, ic: "🐰", name: "予想家ミミ", handle: "@mimi_yosou",
       base: (typeof myPostReacts === "function") ? myPostReacts(m) : 0,
-      text: m.text, img: m.img, replies: [], ago: d <= 0 ? "きょう" : d + "日前", _mine: true };
+      text: m.text, img: m.img, replies: typeof myPostReplies === "function" ? myPostReplies(m) : [], ago: d <= 0 ? "きょう" : d + "日前", _mine: true };
   });
   // フィード投稿＝自分の投稿（上）＋みんなの投稿（下）
   const posts = minePosts.concat((typeof timelinePosts === "function") ? timelinePosts() : []);
@@ -136,7 +137,7 @@ function _igStories(ci) {
   you.innerHTML = `<span class="ig-story-ring you"><span class="ig-story-av">🐰</span><span class="ig-story-plus">＋</span></span><span class="ig-story-nm">あなた</span>`;
   you.onclick = () => _igCompose();
   row.appendChild(you);
-  // ミミのストーリー＝きょうのお題（投票）
+  // きょうの島のお題（投票）
   const poll = (typeof todayPoll === "function") ? todayPoll() : null;
   if (poll) {
     const voted = (typeof pollVoted === "function") ? (pollVoted(poll) != null) : false;
@@ -147,12 +148,9 @@ function _igStories(ci) {
   }
   // NPCのストーリー（軽い・タップで画像＋ひとこと）
   // ★門番：まだ出会っていない相手はストーリー枠にも出さない（gate＝sns.js の _snsCastOk と同じ台帳）。
-  //   ポロは発見前＝名前も「ぐすっ」も出さない（命名オチ）。マクラは第4話で出会うまで出さない。
+  //   マクラは第4話で出会うまで出さない。
   const npc = [
-    { ic: "🐰", nm: "mimi", h: "@mimi_yosou", t: "きょうも配信するよ〜！見にきてね🐰" },
     { ic: "🔥", nm: "推し竜", h: "@oshi_dragon", t: "本命は決めた。…当たるとは言ってない。" },
-    // ★声表：ポロは喋らない＝代筆でしぐさを伝える（sns.js の d_poro と同じ体で統一）
-    { ic: "🐉", nm: "ポロ（代筆・ミミ）", h: "@poro_naki", t: "（代筆）今日も配信の前に陣取ってます。しっぽ、さっきから止まりません", gate: "@poroFound" },
     { ic: "🎤", nm: "マクラ", h: "@makura_live", t: "さあ今日も竜が駆ける——！🐉🔥", gate: "makura" }
   ].filter(n => !n.gate || ((typeof _snsCastOk === "function") ? _snsCastOk(n.gate) : false));   // fail-closed
   npc.forEach((n, i) => {
@@ -164,6 +162,9 @@ function _igStories(ci) {
   return row;
 }
 
+function _igCaptionText(text) {
+  return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 function _igPost(po) {
   const card = el("div", "ig-post");
   const txt = (typeof _snsText === "function") ? _snsText(po.text) : (typeof po.text === "function" ? po.text() : po.text);
@@ -179,7 +180,7 @@ function _igPost(po) {
     `<div class="ig-post-imgwrap"><img class="ig-post-img" src="${img}" alt="" loading="lazy" decoding="async"><span class="ig-heart-burst">🤍</span></div>` +
     `<div class="ig-post-actions"><span class="ig-act-left"><button class="ig-like${liked ? " on" : ""}">${liked ? "❤️" : "🤍"}</button><button class="ig-comment">💬</button><button class="ig-share">✈️</button></span><button class="ig-save">🔖</button></div>` +
     `<div class="ig-likes"><b>${(typeof postLikeCount === "function" ? postLikeCount(po) : (po.base || 0)).toLocaleString()}</b> 件のいいね！</div>` +
-    `<div class="ig-cap"><b>${(po.handle || "").replace(/^@/, "")}</b> ${txt}</div>` +
+    `<div class="ig-cap"><b>${(po.handle || "").replace(/^@/, "")}</b> ${po._mine ? _igCaptionText(txt) : txt}</div>` +
     `<div class="ig-comline"></div>` +
     `<div class="ig-post-time">${po.ago || "今日"}</div>`;
 
@@ -206,6 +207,7 @@ function _igPost(po) {
   const comline = card.querySelector(".ig-comline");
   const paintComments = () => {
     comline.innerHTML = "";
+    if (po._mine) { _igPlaceReplyRows(comline, po.replies); return; }
     if (po.replies && po.replies.length) {
       const r2 = postReplied(po.id);
       if (r2 == null) {
@@ -234,14 +236,39 @@ function _igPost(po) {
 }
 
 // コメント（IGのコメント欄風モーダル：相手の本文＋あなたの選べる返信）。
+function _igPlaceReplyRows(host, replies) {
+  (replies || []).slice(0, 1).forEach(r => {
+    const row = el("div", "ig-com");
+    const author = document.createElement("b"); author.textContent = (r.ic || "💬") + " " + r.by;
+    row.appendChild(author); row.appendChild(document.createTextNode(" " + r.back)); host.appendChild(row);
+    if (r.spotId && snsRouteOpen(r.spotId)) {
+      const b = el('button','secondary');
+      b.textContent = KONRON_SPOTS[r.spotId].name + 'を地図で開く ›';
+      b.onclick = () => {
+        if (!snsRouteOpen(r.spotId)) return;
+        const overlay = b.closest('.navpop-ov');
+        if (kmGotoSpot(r.spotId)) overlay?.remove();
+      };
+      host.appendChild(b);
+    }
+  });
+}
 function _igComments(po, card) {
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop ig-comments");
   const txt = (typeof _snsText === "function") ? _snsText(po.text) : po.text;
   const render = () => {
     const replied = (typeof postReplied === "function") ? postReplied(po.id) : null;
-    box.innerHTML = `<div class="ig-cm-head"><span class="ig-post-av">${po.ic}</span><div><b>${(po.handle || "").replace(/^@/, "")}</b><div class="ig-cm-cap">${txt}</div></div></div>`;
+    box.innerHTML = `<div class="ig-cm-head"><span class="ig-post-av">${po.ic}</span><div><b>${(po.handle || "").replace(/^@/, "")}</b><div class="ig-cm-cap">${po._mine ? _igCaptionText(txt) : txt}</div></div></div>`;
     const list = el("div", "ig-cm-list");
+    if (po._mine) {
+      _igPlaceReplyRows(list, po.replies);
+      if (!(po.replies || []).length) list.appendChild(el("div", "ig-empty", "まだ返事はありません。"));
+      box.appendChild(list);
+      const btns = el("div", "navpop-btns"), close = el("button", "navpop-go", "とじる");
+      close.onclick = () => ov.remove(); btns.appendChild(close); box.appendChild(btns);
+      return;
+    }
     if (replied != null) {
       const r = po.replies[replied];
       list.innerHTML = `<div class="ig-cm-row mine"><span class="ig-post-av sm">🐰</span><div><b>あなた</b> ${r.choice}</div></div>` +
@@ -320,7 +347,19 @@ function _igCompose() {
   const ov = el("div", "navpop-ov");
   const box = el("div", "navpop ig-compose");
   let picked = 0;
-  const cam = (typeof SNS_CAMERA !== "undefined") ? SNS_CAMERA : [];
+  const cam = [];
+  const outfit = OUTFITS.find(o => o.id === currentOutfitId() && outfitOwned(o));
+  if (outfit) cam.push({ img: outfitImg(outfit.id), ref:{kind:'outfit',id:outfit.id}, cap: "今日の装いは「" + outfit.name + "」。" });
+  DRAGONS.filter(d => state.player.collection?.[d.id]?.scouted === true).forEach(d => {
+    cam.push({ img: "images/dragons/" + d.id + ".png", ref:{kind:'dragon',id:d.id}, cap: "島で仲よくなった" + d.name + "を紹介します。"});
+  });
+  if (typeof MEALS !== 'undefined') {
+    for (const meal of MEALS) {
+      if (state.player.meals?.eaten?.[meal.id] !== true) continue;
+      if (meal.photo) cam.push({img:meal.photo,ref:{kind:'meal',id:meal.id},cap:'前に味わった「' + meal.name + '」。'});
+    }
+  }
+  if (typeof SNS_CAMERA !== 'undefined') cam.push(...SNS_CAMERA);
   box.innerHTML = `<div class="navpop-t">新しい投稿</div>`;
   const prev = el("div", "ig-cp-prev");
   const ta = el("textarea", "ig-cp-cap"); ta.setAttribute("maxlength", "140"); ta.setAttribute("placeholder", "キャプションを書く…");
@@ -331,7 +370,8 @@ function _igCompose() {
   };
   cam.forEach((c, i) => {
     const t = el("button", "ig-cp-thumb"); t.style.backgroundImage = `url('${c.img}')`;
-    t.onclick = () => { picked = i; if (!ta.value.trim()) ta.value = c.cap; paint(); };
+    t.setAttribute("aria-label", c.cap);
+    t.onclick = () => { if (!ta.value.trim() || ta.value === cam[picked].cap) ta.value = c.cap; picked = i; paint(); };
     roll.appendChild(t);
   });
   box.appendChild(prev);
@@ -342,10 +382,11 @@ function _igCompose() {
   const post = el("button", "navpop-go", "シェアする");
   post.onclick = () => {
     const cap = ta.value.trim() || (cam[picked] ? cam[picked].cap : "📷");
-    if (typeof addMyPost === "function") addMyPost(cap, cam[picked] ? cam[picked].img : null);
+    const submitted = typeof addMyPost === "function" ? addMyPost(cap, cam[picked]?.img, cam[picked]?.ref) : null;
     if (window.Sfx) Sfx.play("bigwin");
     ov.remove(); _snsTab = "profile"; renderSns();
-    _snsToast("シェアしたよ！ いいね、増えるかな…？🐰");
+    if (submitted && myPostReplies(submitted).length) _igMyPostDetail(submitted);
+    else _snsToast("シェアしたよ！🐰");
   };
   const cancel = el("button", "navpop-cancel", "やめる"); cancel.onclick = () => ov.remove();
   btns.appendChild(post); btns.appendChild(cancel); box.appendChild(btns);
@@ -439,7 +480,8 @@ function _igMyPostDetail(p) {
     `<div class="ig-post-head"><span class="ig-post-av">🐰</span><span class="ig-post-who"><b>mimi_yosou</b></span>${buzz ? `<span class="ig-buzz">🔥バズ中</span>` : ""}</div>` +
     `<div class="ig-post-imgwrap"><img class="ig-post-img" src="${p.img || ""}" alt=""></div>` +
     `<div class="ig-likes"><b>${reacts.toLocaleString()}</b> 件のいいね！</div>` +
-    `<div class="ig-cap"><b>mimi_yosou</b> ${String(p.text).replace(/</g, "&lt;")}</div>`;
+    `<div class="ig-cap"><b>mimi_yosou</b> ${_igCaptionText(p.text)}</div>`;
+  _igPlaceReplyRows(box, typeof myPostReplies === "function" ? myPostReplies(p) : []);
   const btns = el("div", "navpop-btns"); const ok = el("button", "navpop-go", "とじる"); ok.onclick = () => ov.remove(); btns.appendChild(ok); box.appendChild(btns);
   ov.appendChild(box); ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
   document.body.appendChild(ov);

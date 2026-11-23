@@ -1,0 +1,11 @@
+'use strict';
+const assert = require('node:assert/strict'), fs = require('node:fs');
+const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
+const scripts = [...html.matchAll(/<script\b[^>]*src="([^"?]+)(?:\?[^" ]*)?"/g)].map(m => m[1]);
+const before = (a, b) => { assert(scripts.includes(a), a); assert(scripts.includes(b), b); assert(scripts.indexOf(a) < scripts.indexOf(b), a + ' must load before ' + b); };
+for (const dependency of ['shingan_economy_lab', 'shingan_prototype_engine', 'shingan_trial_bridge', 'shingan_recovery', 'island_life_loop', 'island_discovery', 'island_care']) before('js/' + dependency + '.js', 'js/shingan_festival.js');
+before('js/island_discovery.js', 'js/island_care.js');
+before('js/island_discovery_stories.js', 'js/island_discovery.js');
+before('js/shingan_festival.js', 'js/shingan_festival_ui.js');
+assert.equal(scripts.at(-1), 'js/main.js', 'boot must wait for both the island and festival modules');
+console.log('PASS browser dependency order: real discovery/life records exist before the festival captures them, and main boots last');

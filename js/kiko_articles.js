@@ -110,17 +110,17 @@ var KIKO_CUTS = [
       var v = _kikoSeed("bwp" + c.seq) % 3;
       if (v === 1) return [
         d.race + "、" + d.dragon + "、" + d.odds + "倍。当たり券を窓口に出したら、お姉さんが券とわたしの顔を、交互に二回見ました。わたしも、自分の顔が見たかったです。",
-        "買った理由を聞かれても困ります。前の日、あの子だけ、ごはんを残していなかったんです。それだけ。……食べる子は走る。これはわたしの人生の、数少ない確信です。",
+        "どうして選べたの、と聞かれると、当たったあとの説明は難しいです。当たり券だけでは、選び方が正しかったところまでは分かりません。次の一枚を選ぶ前に、手帖を読み返します。",
         _kikoCoins(d.payout) + "。数えているあいだに、三回まちがえました。帰りの屋台で「今日はいちばん高いのを」と言ったら、いちばん高いのが、いつものと同じ値段でした。この屋台が好きです。"
       ];
       if (v === 2) return [
         "当たりました。" + d.odds + "倍。" + d.race + "の、" + d.dragon + "。ゴールの瞬間、わたしは立ったまま固まっていたそうです。となりの人が、目の前で手を振ってくれました。",
-        "みんなが見ていなかった子でした。パドックのいちばん端で、ひとりだけ空を見ていた。変な子だなと思って、変な子に賭けました。変な子どうし、通じるものがあったのかもしれません。",
+        "券に書いた名前と、着順を、何度も見比べました。当たったうれしさで、選ぶ前から全部分かっていたような顔はしないでおこう。そこだけ、手帖の端に書きました。",
         "戻ってきたのは" + _kikoCoins(d.payout) + "。大金です。大金なので、こわくなって、すぐ半分を別のポケットに移しました。両方のポケットが重いのは、生まれてはじめてです。歩きかたが、変になりました。"
       ];
       return [
         d.race + "。" + d.dragon + "。" + d.odds + "倍。——書き写しておいて、まだ字のほうが信じられません。",
-        "みんなが本命を見ていました。わたしは、掲示板のいちばん端にいた子を見ていました。理屈はあったような、なかったような。ただ、あの子の脚だけ、ほかと違う速さで畳まれていたんです。",
+        "この一枚を選んだ自分と、次を選ぶ自分は、同じはずなのに。もう同じように当てられる気がしてしまいます。……いったん深呼吸。結果と、選んだ根拠は、分けて残しておきます。",
         "戻ってきたのは" + _kikoCoins(d.payout) + "。お祝いに屋台で一本だけ多く頼んだら、おじさんに「今日はどうした」と聞かれて、うまく説明できませんでした。……笑ってごまかしました。"
       ];
     }
@@ -361,11 +361,11 @@ var KIKO_STORY_ARTS = {
     ]
   },
   phone: {
-    h: "📱 スマホを買いました。配信、はじめます",
+    h: "📱 配信用のスマホが、手元に来ました",
     p: [
-      "買いました。人生ではじめての、自分の端末。手が震えて、開封に5分かかりました。",
+      "自分の端末を手にしました。これからは、島で誰かを呼ぶ声も、竜の名前も、わたしが選んで届けられます。",
       "画面の向こうに人がいるのが、まだ信じられません。わたしのぱほぱほを聞きたい人が、この島の外にもいるらしい。……ほんとうに？",
-      "とりあえず、屋台の湯気を撮って送ってみました。それが記念すべき一本目です。内容は、ない。"
+      "竜の写真にするか、暮らしの一枚にするか。今日のわたしが何を見たかで、書くことも変わります。"
     ]
   },
   scout: {
@@ -421,13 +421,18 @@ function kikoMaybeWrite() {
     var seq = (p.kikoSeq || 0) + 1; p.kikoSeq = seq;
     var ctx = { races: races, wins: p.wins || 0, seq: seq };
     var d = picked.mat.d || {};
+    var oracleAccount = (picked.cut.id === "win" || picked.cut.id === "bigwin") && d.oracleTicket
+      ? ReadingJournal.oracleAccount(d.oracleTicket) : "";
     var art = {
       id: "ka" + seq, cut: picked.cut.id, tag: picked.cut.tag, race: races,
-      headline: String(picked.cut.headline(d, ctx) || ""),
-      paras: (picked.cut.paras(d, ctx) || []).map(function (x) { return String(x || ""); }).filter(Boolean),
+      headline: oracleAccount ? "🎫 " + d.dragon + "。予言を聞いて買った券" : String(picked.cut.headline(d, ctx) || ""),
+      paras: oracleAccount ? [d.race + "。私の券のこと、買ったときから書いておきます。", oracleAccount,
+        d.type + "の的中、" + d.odds + "倍。窓口で受け取ったのは" + _kikoCoins(d.payout) + "でした。"] :
+        (picked.cut.paras(d, ctx) || []).map(function (x) { return String(x || ""); }).filter(Boolean),
       photo: (picked.cut.photo ? (picked.cut.photo(d) || "") : ""),
       rare: !!picked.cut.rare
     };
+    if (oracleAccount) art.oracleDragonId = d.oracleTicket.oracleDragonId;
     if (!art.headline || !art.paras.length) return null;
 
     // 使った素材を落とす（日常回はキューをまとめて掃除）
@@ -477,6 +482,11 @@ function kikoHasUnread() {
 //   セレスティア）とポロは出さない。門番の要らない相手だけを並べることで fail-closed。
 // =========================================================================
 var KIKO_VOICES = {
+  oracle: [
+    { h: "@rival_yosou", n: "好敵手の予想家", ic: "🐲", t: "予言を聞いてから買った券か。どこで一着を知ったのか、記事に残してくれたんだな。" },
+    { h: "@dragon_news", n: "竜レース速報", ic: "📰", t: "神眼が告げたのは一着。券の種類と払戻も、一緒に読みました。" },
+    { h: "@usamimi_fc", n: "うさ耳ファンクラブ", ic: "🌸", t: "買う前と、窓口で券を出したあと。順番に読めて、わかりやすかったよ。" }
+  ],
   win: [
     { h: "@oshi_dragon", n: "推し竜ガチ勢", ic: "🔥", t: "うおおお獲ったか！ 俺は3着に泣いた。悔しい。でも、うれしい。" },
     { h: "@usamimi_fc", n: "うさ耳ファンクラブ", ic: "🌸", t: "「線がまっすぐ」って言い方、ミミちゃんにしか書けないんだよなあ🐰" },
@@ -544,7 +554,7 @@ var KIKO_VOICE_MAP = { broke: "broke", rankup: "rank", outfit: "fit", win: "win"
 function kikoComments(art) {
   var out = [];
   try {
-    var pool = KIKO_VOICES[KIKO_VOICE_MAP[art.cut] || "daily"] || KIKO_VOICES.daily;
+    var pool = art.oracleDragonId ? KIKO_VOICES.oracle : KIKO_VOICES[KIKO_VOICE_MAP[art.cut] || "daily"] || KIKO_VOICES.daily;
     var n = 2 + (_kikoSeed(art.id) % 2);            // 2〜3件
     var start = _kikoSeed(art.id + "c") % pool.length;
     var fol = (typeof goalFollowers === "function") ? goalFollowers() : 800;

@@ -133,6 +133,15 @@ function _bsBuild(c) {
 
 // 理由（kan/data/tell/value）への返事を1〜2文で。読めなければ null。
 function reasonReplyLine(c, key) {
+  const known = c?._celestiaRevealed || c?.oddsResult?.oddsData?.find(o => o._celestia)?.dragonId;
+  if (known && c?.betResult && c.bet?.selections?.includes(known)) {
+    if (c.bet.type === "wide") return c.betResult.hit
+      ? "一着の予言を聞いて組んだワイドが的中。もう一頭に選んだ竜も、三着以内へ届いた。"
+      : "一着は予言で確かめたが、選んだ組合せは届かなかった。もう一頭の走りを振り返ろう。";
+    return c.betResult.hit
+      ? "一着の予言を聞いて選んだ札が的中。教わった答えと払戻を、今回の記録に残そう。"
+      : "一着の予言を聞いて選んだ札。結果と払戻を、この券の記録で確かめよう。";
+  }
   const s = betStoryOf(c);
   if (!s) return null;
   const core = `${s.sec}で${s.move}`;

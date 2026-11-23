@@ -79,37 +79,105 @@ function tryMoveRoom() {
 //   body=場面ごとの段落（\n区切り・.news-text は pre-line）＋談話（章の顧問の一言で締める）。
 //   キャラの声：サケ=短い命令＋情／ミズ=「〜のであるわ、あはん」／スミカ=丁寧語で殴る／
 //   マクラ=配信テンション／セレスティア=世間話のような天災（第5話のみコメディ抑制）。
+// ED copy reads verified outcomes only; it never promotes a preview or writes progress.
+function storyEndingNarrative() {
+  let sg = null;
+  try { sg = typeof state !== "undefined" && state.player ? state.player.shingan : null; } catch (e) {}
+  let kind = "neutral", festivalIssue = false, recoveryProof = null;
+  const festival = sg && sg.festival && sg.festival.version === 2;
+  if (festival || (sg && sg.official && sg.official.issue)) {
+    try {
+      if (typeof ShinganOfficial !== "undefined" && typeof ShinganOfficial.getOutcome === "function") {
+        const result = ShinganOfficial.getOutcome();
+        if (result && result.success === true) {
+          kind = "fair";
+          festivalIssue = result.provenance === "festival-v2";
+          if (result.recovery?.complete) recoveryProof = result.recovery;
+        }
+      }
+    } catch (e) { /* Missing or unverifiable new outcomes must not become old ties. */ }
+  }
+  // Once the new mode exists, only its captured origin can prove an old tie.
+  // A failed new issue must not erase that history or invent it from cleared.
+  if (kind === "neutral" && sg && (festival ? sg.festival.legacy?.legacyCleared === true : sg.official
+    ? sg.official.version === 1 && sg.official.legacyCleared === true
+    : sg.cleared === true)) {
+    kind = "legacyTie";
+  }
+  if (kind === "fair") return {
+    kind: kind,
+    headline: "予言どおりの一着、その先へ——島に、次の営業日",
+    scene: "発行した一面と読者の払戻を見届け、ミミが島の朝を迎える",
+    lead: "神眼の一着は変わらなかった。私が出した一面を手に、読者はそれぞれの札を選んだ。" + (recoveryProof ? "そのあとも季節ごとの受渡しを続け、借りた分を返し、次の開催費を残した。" : "結果と帳面を確かめたあとに、明日の店の話が続いた。"),
+    body: "竜たちは、それぞれの走りでゴールした。私の紙面が走りを変えたわけではないし、セレスティアさんの眼が曇ったわけでもない。予言の一着は、最後まで正しかった。\n私が出したのは、" + (festivalIssue ? "この窓口に来た人へ、予言の先の読みを伝える一面" : "三つの予想を載せた一面") + "だった。何を信じて選ぶか、誰に届けるか。決めたあとも、読者が手にした札を見ていると、指先が落ち着かなかった。\nレースのあと、一面と結果を並べた。どの予想が当たり、読者へいくら戻ったか。島の営業を続けるだけの収支が残ったか。歓声だけを記事にせず、その数字も確かめた。次も同じ紙面でうまくいくとは限らない。\n店先では、明日の仕込みの話が始まっていた。セレスティアさんがそちらを見て、少し笑った。「わたしは当てた。でも、この賭場は続くんだね」。私はうなずいた。ここまでなら、引き分けと呼んでもいいだろうか。\n朝の桟橋で、発行した紙を折り直す。この島で見つけたものを、次の場所でも思い出せるように。霧の向こうへ行く前に、まずは朝ご飯にしよう。\n\n【談話】セレスティア・ブラックメテオ「次の一着も、きっと視えるよ。その先であなたが何を話すかは、また聞きたいな。」",
+    finStory: [
+      "神眼が告げた一着は、最後まで正しかった。",
+      "ミミの一面を手に、読者がそれぞれの札を選ぶ。竜たちは、自分の走りで駆け抜けた。",
+      recoveryProof ? "季節ごとの納入と平日・祭日の営業を続けた。借入と未払を清算し、次の開催費を自分たちの口座に残した。" : "予想の結果と読者への払戻、そして島の営業収支を確かめた。",
+      "夜が明ける。店先には、明日の仕込みを話す声がある。",
+      "「わたしは当てた。でも、この賭場は続くんだね」——それを、二人は引き分けと呼んだ。",
+      "ミミは一面を折り直す。霧の向こうの、次の物語へ。"
+    ]
+  };
+  if (kind === "legacyTie") return {
+    kind: kind,
+    headline: "三頭同着、神眼も見届けた結末——夜明けの聖龍レース場",
+    scene: "三頭同着の結末を正確に見届けたセレスティアが、引き分けを認める",
+    lead: "三頭が同着となった。セレスティアさんも、その結末を正確に視ていた。予言を外したのではなく、二人の勝負を引き分けとして認めてくれた。",
+    body: "ゴールの判定は、三頭同着だった。歓声が重なり、私は息を吸うのを忘れていたことに気づいた。セレスティアさんの眼が視えなくなったのではない。彼女は、この結末まで正確に見届けていた。\nそのうえで、私との勝負を引き分けとして認めた。神眼を破った、と書けば派手な見出しになる。でも、それではあの人が見たものも、選んだことも違ってしまう。記事には、三頭同着と書いた。\nレース場を出るころには、空の色が変わっていた。さっきまでの声が、少しずつ朝の物音に混じっていく。私はノートを閉じ、セレスティアさんと石段の下を見た。\n朝の桟橋。霧の向こうには、まだ知らない場所がある。次の話を始める前に、まず何か食べていこう。\n\n【談話】セレスティア・ブラックメテオ「うん、引き分け。この結末を、あなたと見届けられたね。」",
+    finStory: [
+      "ゴールの判定は、三頭同着だった。",
+      "セレスティアの神眼は、その結末まで正確に視ていた。",
+      "そのうえで彼女は、ミミとの勝負を引き分けとして認めた。",
+      "歓声のあとに朝が来る。ミミは、見届けた結末をノートに残した。",
+      "朝の桟橋、霧の向こうへ。——まず食べてから、次の物語へ。"
+    ]
+  };
+  return {
+    kind: kind,
+    headline: "朝の桟橋——次の物語へ",
+    scene: "島の朝と、霧の向こうへ続く桟橋を眺めるミミ",
+    lead: "朝の桟橋に、潮の匂いが届く。ミミはノートを開き、次に書く頁を指で押さえた。",
+    body: "朝の桟橋。波の音の向こうで、船の鐘が鳴った。ミミはノートを開き、潮風から頁を押さえる。\nこれから何を見て、誰と話し、何を食べるのか。書き始めるには、まだ早い。まずは、自分で歩いて確かめよう。\n「行く前に、朝ご飯ですね」\nミミはノートをしまい、店の灯りの方へ向いた。霧の向こうの物語は、もう少しだけ待ってもらう。",
+    finStory: [
+      "朝の桟橋に、潮の匂いが届く。",
+      "ミミはノートを開き、次に書く頁を押さえた。",
+      "何を見て、誰と話すのか。まずは、自分で歩いて確かめよう。",
+      "霧の向こうの、次の物語へ。——朝ご飯を食べてから。"
+    ]
+  };
+}
 const STORY_CHAPTERS = [
   { id: "1",  level: 0, cast: "sake",     title: "第1話　竜王女サケに拾われる",
-    headline: "「所持金、涙のみ」——霧の島に本日、バニー一名漂着",
-    scene: "聖龍レース場の入口で、倒れかけたミミをサケ・ウダダが拾う",
-    lead: "船を降りた時点で、財布はもう空だった。行き倒れかけた私を拾ったのは、竜使いの女。差し出されたのは熱いスープと、なぜか出走表だった。",
-    body: "財布は軽いのに、人生だけがやたら重い。そんな積み荷で船を降りたのが、運の尽きだった。観光案内には「活気あふれる竜の楽園」とあった。桟橋に立った私にあふれていたのは、借金の利息だけだったけれど。\n手作り感の残る聖龍レース場の入口で、視界が急に狭くなった。ああ、これは。観光名所より先に、行き倒れ名所として島の地図に載るやつだ。膝から崩れた私の耳に、地面より先に声が落ちてきた。\n「まず食え。泣くな。」\n竜王女サケ・ウダダ。拾っておいて、甘やかす気はまるで無い人だった。スープは熱く、続いた言葉はもっと熱かった。「借金は泣いても減らん。だが、勝つ竜を当てれば明日の飯くらいは増えるかもしれん」。女神かと思った次の瞬間には、現実を丼で出してくる人だった。\n食べ終わる頃には、なぜか観客席にいた。助けられたはずなのに、連行されていた。「まずは一着になる竜を選ぶ。単勝だ。難しく考えるな、お前が信じる一頭を選べ」。出走表の数字はまだ呪文にしか見えない。それでも湯気の向こうで竜たちが翼を広げた瞬間、空腹とは別の何かが、お腹の底で鳴った。\nこうして私は、島に着いたその日に、人生最初の賭け札を握らされた。逃げ場はない。というか、帰りの船賃がない。\n\n【談話】サケ・ウダダ「拾ったからには死なせん。だが甘やかしもせん。まず一頭、自分で選べ。話はそれからだ。」" },
+    headline: "拾われたのは、丼のこちら側——聖龍レース場、入口の一席",
+    scene: "レース場の入口で、サケが腰掛けと熱いスープを差し出す",
+    lead: "名前を聞かれる前に、お腹の音を聞かれた。差し出された丼には条件がなく、門の向こうには、まだ知らない竜たちがいた。",
+    body: "丼の縁には、小さな欠けがあった。飲み口を探して回すと、反対側にもある。何度も誰かがここで食べた器なのだろう。私一人のために用意された特別な救済より、その使い込まれ方に、少し息が楽になった。\nサケさんは鍋のそばへ戻ると、私の返事を待たずに自分の分をよそった。助けてもらった理由も、立派なお礼の言葉も、急いで用意しなくてよかった。ただ、落とさないように丼を持つ。そのくらいなら、今の私にもできた。\n膝に載せた出走表には、湯気のしずくが一つ落ちていた。まだ読めない数字の横で、竜の名前だけは読める。門をくぐる前に、どの子を見たいか考えてみる。誰かに決めてもらわずに。\n「戻ったら聞かせろ」と言われたことが、あとから効いてきた。勝ったらでも、稼げたらでもない。見てきたものが一つあれば、ここへ戻って話せる。\n島の最初の記事は、借金の桁から書くつもりだった。でも一行目は、入口に置かれた木の腰掛けのことにした。\n\n【談話】サケ・ウダダ「丼は逃げん。慌てて食って舌をやるなよ。」" },
   { id: "2",  level: 1, cast: "mizu",     title: "第2話　ミズの分析予想",
-    headline: "「ラッキー番号教」本日破産——新人予想家、分析へ強制入信",
-    scene: "ミミとミズが同じ竜を見ているが、見ているものが違う",
-    lead: "7は幸運。3も悪くない。そんな私の予想を、市場の女はひと言で粉砕した。——数字は祈るものじゃない、読むものだ。",
-    body: "白状すると、勝てた気でいた。単勝＝一着の竜を当てる。ルールを覚えた翌日の私は、もう予想家のつもりだった。7は幸運、3も悪くない、耳がピンと立った竜は来る。私の理論は完璧で、財布だけが毎日薄くなった。\n「当たった気がしたレース」ほど、きれいに外れるのはなぜなのか。観客席で頭を抱えていた私の隣に、その人はすっと座った。ミズ・アオラ。差し出された名刺はやたら立派で、本人は少し頼りなさそうに笑う。のに——オッズ表を開いた瞬間、目だけが据わった。\n「その理論で勝てるなら、投資商会はとっくに神社に吸収合併されているのであるわ。あはん。」\n私のラッキー番号教は、資本主義ごと粉砕された。\nミズさんの講義は容赦なかった。オッズは飾りじゃない。みんなの賭け札が積み上げた、群衆の祈りの跡だ。人気が集まるほど配当は痩せ、誰も見ない竜の脚に、ときどき宝が眠っている。数字は、祈るものではなく読むもの。\nその夜、私は生まれて初めて出走表を「読んだ」。脚質、コース、天気、これまでの走り。呪文だった数字が、少しずつ竜の顔に見えてくる。……見えてきたところで当たるとは限らないのが、この島の意地悪なところなのだけど。\n\n【談話】ミズ・アオラ「オッズは祈りではないの。群衆の祈りの、成れの果てなのであるわ。読める者だけが、その先へ行ける。あはん。」" },
+    headline: "丸印の隣に、空欄あり——予想家の手帳を押さえた夜",
+    scene: "夜市の風からミズの手帳を守り、ミミが空欄の理由を尋ねる",
+    lead: "すごい予想家の手帳は、答えで埋まっていると思っていた。けれど気になったのは、丸の数より、何度も消して空いた場所だった。",
+    body: "別れ際、ミズさんは鉛筆の芯を爪で確かめた。紙に押しつけると、先が欠けていたらしい。「今日の確かな損失はこれね」。たったそれだけを、少し悔しそうに言った。何でもお見通しの人だと思いかけていた私は、そこでようやく笑えた。\nもらった紙の裏には、私の引いた曲がった線が残っている。左は見たこと。右はまだわからないこと。右側を空けておくのは、勉強不足を見せるようで、ちょっと恥ずかしい。ミズさんの手帳にも同じ空白があったと思うと、そのまま持っていていい気がした。\nオッズは皆の賭け札が作る数字で、人気が集まれば配当は痩せる。それでも、人気のない竜なら何でもよいわけではない。脚質とコースと天気、これまでの走り。その竜を選ぶ理由は、数字の外からも持ってこなくてはいけない。\n次に読み違えたら、丸ごと消さずに持っていこう。あの人は私の正解を買うと言ったのではなく、見てきたことを聞きたがっていた。風で頁が閉じそうになったら、今度は先に鉛筆を一本置いておこうと思う。\n\n【談話】ミズ・アオラ「わからないことを隠すより、確かめる場所を覚えておく方が安上がりよ。」" },
   { id: "3",  level: 2, cast: "sumika",   title: "第3話　スミカと総資産",
-    headline: "「貧困ではなく遭難です」——行政窓口、新人予想家を保護",
-    scene: "村の行政窓口で、スミカが住居・食事・竜舎・施設の選択肢を案内する",
-    lead: "勝った。この調子で、次も。……そう思った私の手首を、帳簿の角がそっと押さえた。「現在の生活状態は、貧困ではなく遭難です」",
-    body: "昨日より財布が少し重い。それだけで、人生まで軽くなった気がしていた。借金完済、床ではなく布団、スープには具、バニーには未来。勝利の生活再建コースが見えた気がして、私は勝ち分をぜんぶ、次のレースへ流し込もうとしていた。\nその手首を、帳簿の角がそっと押さえた。「ミミ様。少々よろしいでしょうか」。村の住居も食事も竜舎も会計も再起支援も一手に握る行政秘書、スミカ・ラグナ。優しい窓口の人だと思った。次の一言までは。\n「現在の生活状態は、貧困ではなく遭難です。」\n窓口に座らされた私は、丁寧語で殴られ続けた。帰る部屋がない。食事は屋台の残り物。竜舎も知らない。それで勝負だけ続けるのは、命綱なしで火山に登るのと同じでございます——ぐうの音も出なかった。ぐう。\nスミカさんの処方箋は明快だった。コインを増やすだけでは足りない。住むところ、食べるもの、竜舎、村での信用。ぜんぶ引っくるめて「総資産」。負けた夜にも人生が終わらないための、本当の準備。\n帰り際、竜舎の隅から小さな泣き声がした気がした。スミカさんは帳簿から顔も上げずに言った。「ああ、最近入った子です。泣き虫で。……ミミ様と気が合うかもしれませんね」。失礼な。……ちょっと気になった。\n\n【談話】スミカ・ラグナ「勝負運は天気ですが、暮らしは屋根でございます。まず屋根を。話はそれからです、ミミ様。」" },
+    headline: "買わずに帰れる相談窓口——地図の余白に、一本の遠回り",
+    scene: "行政窓口で、ミミが増やすものより先になくしたくないものを尋ねる",
+    lead: "まだ何も決めていない相談用紙に、「継続」の印がついた。渡された地図には、施設の値段だけでなく、スミカさんの好きな道が一本増えていた。",
+    body: "窓口の椅子を戻すと、脚の下に布が巻いてあった。引くたびに大きな音がしないように、ということらしい。申込書や印鑑ばかり見ていた目に、帰り際になってそういうものが入ってきた。\nスミカさんの机には、何度も貼り直した島の地図がある。新しい建物を書き足すだけなら、こんなに折り目は傷まない。迷った人の前へ広げ、畳んで、また広げてきた地図なのだと思う。\n手元のお金を増やすことと、暮らしを残すことは、似ているようで違う。住まいも食事も、これから欲しいものも、もう持っているものもある。全部をいっぺんに立派にする相談でなくてよい、と聞けたのはありがたかった。\n私は借りた写しを、相談用紙と一緒に折った。余白の遠回りは、まだ歩いていない。だから今は、よい道だったとは書かない。歩いて確かめて、気に入ったらそう伝えたいし、別の道がよかったら、それも話してみたい。\n次に窓口へ来る理由が、困り事だけでなくなった。あの鉛筆の線について、一言返すために戻ってもいいのだ。\n\n【談話】スミカ・ラグナ「地図の余白は残しておいてくださいませ。ミミ様が見つけた道も、教えていただきたいので。」" },
   { id: "4",  level: 3, cast: "makura",   title: "第4話　マクラと推し竜文化",
-    headline: "「賭けてる？ 生きてる？」——クラウン劇場、レース場を配信の渦に",
-    scene: "マクラが配信しながら、人気竜・地方・コースの魅力を見せつける",
-    lead: "レース場が、いつのまにかリゾートの顔をしていた。そこへ魔導カメラが飛んでくる。——当てるだけなら予想。名前を覚えさせたら、物語だぜ？",
-    body: "気づけばレース場が「うちはリゾートですけど？」という顔をしていた。屋台、観光客、ピカピカの魔導掲示板。ここまで育った島の熱の中に、ほんの少し、自分の賭け札も混ざっている——そう思ったら、団子が三割増しで美味しくなった。\n「賭けてる？ 生きてる？ クラウン劇場、緊急で動画回してます！」\n派手な声と魔導カメラが、私の横顔を勝手に抜いた。マクラ・クラウン・バズーカー。島いちばんの配信者は、コメントの渦を引き連れて笑っていた。「ミミちゃん、つまんない勝ち方してんね」\n失礼すぎる。でも、続く言葉が抜けなかった。「当てるだけなら予想。叫ばせたらショー。名前を覚えさせたら——物語だぜ？」。そのまま配信に巻き込まれた私は、生まれて初めて、配当の数字ではなく「竜の名前」で歓声が起きる瞬間を見た。\nその夜、私は図鑑とコース伝承を朝まで読み漁った。冠名の由来、地方ごとの走り、あの子の癖、この子の好物。ただの金額表だったはずの出走表が、物語の目次に見えてくる。朝焼けの中で「この子の走り、ちょっと見たいかも」と呟いた私は、もう戻れないところにいた。\nちなみにマクラさんの配信アーカイブには、私の後ろで竜舎の泣き虫が一瞬映り込んでいて、コメント欄が「今の子だれ！？」で埋まっていた。……先を越された気がして、ちょっと悔しい。\n帰り際、マクラさんは私のポケットの薄さを見抜いた顔で言った。「スマホ、持ちなよ。お前の予想、村の外まで届くぜ」\n\n【談話】マクラ・クラウン・バズーカー「つまんない勝ち方すんな、って言ったろ？ 明日から面白い勝ち方しようぜ。カメラはこっちだ、ミミちゃん！」" },
+    headline: "録音の合図は、こちらから——配信小屋で旗の表を向けた日",
+    scene: "応援旗を支えたミミが、マクラと条件を確かめて声の録音を試す",
+    lead: "カメラの灯は、最初からついていたわけではない。私がうなずいて初めて、マイクがこちらを向いた。「当たる」以外に何を話すか、考える時間があった。",
+    body: "小屋を出る前に、マクラさんは録音を止めたまま、旗を結び直していた。結び目は見栄えが悪くても、表が風に負けない方がいいらしい。さっきまで「ばっちり」と笑っていた人が、こういうところでは何度でもやり直す。\n録った声は、二人で聞くためのものとして手元に残した。誰かに届けるかは、私が確かめてから決める。それを待ってもらえるとわかると、もう少し話したいことが出てくるのが不思議だった。\n先頭の竜を追えば、映像はわかりやすい。けれど後ろで踏ん張っている子の名前も、応援旗には書いてある。私が最後まで見たいと思った理由を、マクラさんは「その方が人気が出る」とは言わなかった。ただ、もう一度聞いてくれた。\n島には、まだ名前しか知らない竜も、通り過ぎただけの場所もある。知っているふりで紹介するより、気になったところから確かめて、次の話を持っていきたい。画面に映らないときのあの人にも、聞いてほしい。\n小屋の外で振り返ると、旗の名前はちゃんとこちらを向いていた。\n\n【談話】マクラ・クラウン・バズーカー「聞いてから、次のカットを決める。……今日はあたしも、それ忘れないようにする。」" },
   { id: "5",  level: 4, cast: "celestia", title: "第5話　セレスティアの神眼",
-    headline: "気さくな旅人、正体は「絶滅」——神眼、賭場の答えをひとつに淘汰",
-    scene: "星空ドレスのセレスティアが、観光客のようにレース場へふらっと現れる",
-    lead: "その人は、屋台の場所を聞くみたいな軽さで現れた。そして世間話のように、勝つ竜の名を言う。島じゅうの賭け札が、一頭へ吸い込まれていった。",
-    body: "その人は、屋台の場所を聞くみたいな軽さで現れた。星空みたいなドレスで、観光客のように笑って、私の予想ノートを「いいね、それ」と褒めた。心強い味方が増えた——最初は本当に、そう思った。\n違和感は小さかった。この人だけ、賭け場に「来た」のではなく、賭け場を「見物しに来た」顔をしている。台風が海水浴場を眺めるときの、あの顔だ。\nセレスティア・ブラックメテオ。世界の天井の一人にして、最強のレースギャンブラー。生命淘汰の神眼——竜たちの「生き残る順番」が、見えてしまう人。\n彼女が世間話のように一頭の名を口にした瞬間、島が変わった。観客も予想屋も、私の常連さんたちも、同じ竜へ賭け札を重ねていく。昨日まで誰の手にもあったはずの「応え」が、たった一つの正解へ淘汰されていく。オッズ表が、みるみる痩せていく。\n「この賭場は、壊れないといいな」。彼女はそう呟いて、ド級の隕石を落としていった。悪意はなかったのだと思う。台風に悪意がないのと、同じ意味で。\n\n【談話】セレスティア・ブラックメテオ「え？ 私はただ、見えたものを言っただけだよ。……ねえ、この賭場はどんな答えを返すのかな。」" },
+    headline: "神眼の旅人が、白い頁に書いたこと——答えのある島で、話を続ける",
+    scene: "レース場を見下ろす石段で、セレスティアがミミに隣の席を空ける",
+    lead: "勝つ竜を視る人の手帳に、書けない頁があった。そこへ最初に戻ってきたのは、もうない賭場の勝ち負けではなく、熱いスープを出した人の話だった。",
+    body: "手帳に書かれた文字は小さかった。セレスティアさんは、店の人がどちら側に座っていたか、少し考えてから余白へ椅子を描き足した。未来の勝者が視える人も、昔の食卓を思い出すときは手を止める。その違いが、私には忘れられそうになかった。\n神眼の答えは、外れるから恐ろしいのではない。当たる答えへみんなが集まったあと、この島でどんな声が残るのか。それを考えようとすると、頭の中の出走表より先に、屋台や窓口の顔が浮かんだ。\nあの人は、まだこの頁に島の結末を書いていない。だからといって安心できるわけではない。今まで閉じてきた賭場の話は、鉛筆の先を少し止めただけでは変わらない。熱いスープの思い出が一つ戻っても、それで次の店を守れたことにはならない。\nそれでも、次に会ったときに話すことはできた。私がこの島で何を見て、誰の話を聞いたのか。答えを教えてもらうためだけに近づくのではなく、こちらから持っていくものがある。\n手帳をしまうと、セレスティアさんはリュックの肩紐を直した。石段の下には、まだ店の灯りがあった。私はその方へ体を向けた。\n\n【談話】セレスティア・ブラックメテオ「この島の話、次はどこから聞こうかな。急がなくていいよ。まだ、ここにいるから。」" },
   { id: "ED", level: 5, cast: "celestia", title: "エンディング　次の物語へ",
-    headline: "夜明け前、賭場は答えた——「正解は、ひとつじゃない」",
-    scene: "発展した島とレース場を背景に、ミミが大量の資産と聖龍の加護を得て再出発する",
-    lead: "正解は、もう全員が知っていた。単勝はどこまでも薄い。——それでも私は、ノートを開く。四人が教えてくれたものを、ぜんぶ使うために。",
-    body: "正解は、もう全員が知っていた。神眼の告げた一頭。単勝はどこまでも薄くなり、賭場は「考えること」をやめかけていた。私は団子を飲み込んで、ノートを開いた。サケさんの、一頭を選ぶ勇気。ミズさんの、数字の読み。スミカさんの、負けても終わらない構え。マクラさんの、物語の愛し方。\n単勝で乗れないなら、複勝で残る席を探す。ワイドで、まだ沈んでいない組み合わせを拾う。オッズの端に残った小さな歪みを、ぜんぶかき集める。「これが私の全部です」。震える手で、最後の賭け札を切り直した。\n夜明け前の聖龍レース場に、もう一度だけ歓声が爆発した。正解へ一直線ではない、ばらばらで、にぎやかで、誰のものでもある歓声が。振り向いたセレスティアさんは、少しだけ嬉しそうだった。「この賭場、壊れなかったね」\nそれからの島は、朝まで灯りの消えないレースリゾートに育った。最後のレースを走り切った竜たちが、なぜか全員こっちを見て鳴いた。え、これ祝福ですか、請求書じゃなくて？ と震えていたら、本当に聖龍の加護が降った。屋台も宿も竜舎も観覧席も、まとめて総資産に化けていく。けたを数えるのは、途中であきらめた。\nあの日、レース場の入口で拾われた私は、今度は自分で島の出口を選ぶ。朝の桟橋。霧の向こう。次の物語へ——まず食べてから、行きます。\n\n【談話】セレスティア・ブラックメテオ「壊れなかったね、ここ。……ふふ。次はどこの賭場を、見に行こうかな。」" }
+    get headline() { return storyEndingNarrative().headline; },
+    get scene() { return storyEndingNarrative().scene; },
+    get lead() { return storyEndingNarrative().lead; },
+    get body() { return storyEndingNarrative().body; } }
 ];
 
 // ★クリア後「特別號」（B3解消＝ED後の送り出し・docs/GAME_FLOW_REDESIGN.md §3）。
@@ -331,6 +399,83 @@ function advisorMet(castKey) {
 //     （1話サケの基礎→数レース走って勘に詰まる→2話ミズ→初勝利→3話スミカ→島がリゾート→4話マクラ→世界の天井→5話）。
 // 章の解放判定は全画面この chapterAvailable() を唯一の入口にする（storyUnlockAt は表示テキスト用に残す）。
 function chapterRead(id) { try { return typeof getStoryFlag === "function" && !!getStoryFlag("_chapter_intro_" + id); } catch (e) { return false; } }
+
+function chapterFourLifeStatus(player = state.player) {
+  const local = player.islandLife && typeof IslandLifeLoop !== "undefined"
+    ? IslandLifeLoop.normalize(player.islandLife).firstLocalStory : null;
+  const outing = local && local.completedRace <= (player.completedRaces || 0) ? local : null;
+  const findings = player.islandDiscovery && typeof IslandDiscovery !== "undefined"
+    ? IslandDiscovery.exportDiscoveries(player.islandDiscovery).length : 0;
+  const requirements = [
+    { id: "outing", label: "寄り道で実際に試したことを、現地でアヤに話す", done: !!outing, count: outing ? 1 : 0, target: 1 },
+    { id: "finding", label: "島で気になったことを調べ、発見を1件確かめる", done: findings > 0, count: findings, target: 1 }
+  ];
+  return { ready: requirements.some(item => item.done), outing, findings, requirements };
+}
+function chapterFourEntryMet(st = state) {
+  return assetsPeak(st) >= storyUnlockAt("4") || chapterFourLifeStatus(st.player).ready;
+}
+
+// 第五話の取材経路。既に行った現地確認・実契約・自分の予想の記録を読む。
+function chapterFiveFieldStatus(player = state.player) {
+  const findings = player.islandDiscovery && typeof IslandDiscovery !== "undefined"
+    ? IslandDiscovery.exportDiscoveries(player.islandDiscovery).length : 0;
+  const scouted = typeof DRAGONS === "undefined" ? 0 : DRAGONS.filter(dragon =>
+    dragon.id !== "poro" && player.collection?.[dragon.id]?.scouted === true).length;
+  const notes = typeof ReadingJournal !== "undefined"
+    ? ReadingJournal.normalizeNotes(player.readingNotes, typeof DRAGONS === "undefined" ? undefined : DRAGONS)
+      .filter(note => note.completedRace <= (player.completedRaces || 0)).length : 0;
+  const hasNote = notes > 0 || player.flags?.readingNoteKept === true;
+  const requirements = [
+    { id: "findings", label: "島で異なる発見を2件確かめる", count: findings, target: 2, done: findings >= 2 },
+    { id: "report", label: "一戦の読みを手帖に残すか、スカウト先で竜1頭と仲よくなる", count: hasNote || scouted ? 1 : 0, target: 1, done: hasNote || scouted > 0 }
+  ];
+  return { ready: requirements.every(item => item.done), requirements, findings, scouted, notes, hasNote };
+}
+function makuraPostSubject(post, player = state.player) {
+  if (!post) return null;
+  if (post.img == null && !post.source) return { name: "文字の投稿", kind: "text" };
+  if (typeof post.img !== "string") return null;
+  const spots = typeof KONRON_SPOTS === "undefined" ? {} : KONRON_SPOTS;
+  if (post.source) {
+    const source = post.source, spot = Object.hasOwn(spots, source.spotId) && spots[source.spotId];
+    return source.version === 1 && spot && ["photo", "gourmet"].includes(source.kind) && spot[source.kind] === post.img
+      ? { name: spot.name, kind: source.kind } : null;
+  }
+  const dishes = typeof MEALS === "undefined" ? [] : MEALS;
+  if (post.subject?.kind === "meal") {
+    const dish = dishes.find(m => m.id === post.subject.id && m.photo === post.img);
+    return dish && player.meals?.eaten?.[dish.id] === true ? {name:dish.name,kind:"gourmet"} : null;
+  }
+  // The original review snapshot kept the picture but no structured subject.
+  const eaten = dishes.find(m => m.photo === post.img && player.meals?.eaten?.[m.id] === true);
+  if (!post.subject && eaten) return {name:eaten.name,kind:"gourmet"};
+  const spot = Object.values(spots).find(s => s.photo === post.img || s.gourmet === post.img);
+  if (spot) return { name: spot.name, kind: spot.gourmet === post.img ? "gourmet" : "photo" };
+  const dragon = typeof DRAGONS !== "undefined" && DRAGONS.find(d => post.img === "images/dragons/" + d.id + ".png");
+  if (dragon) return { name: dragon.name, kind: "dragon" };
+  const outfit = typeof OUTFITS !== "undefined" && OUTFITS.find(o => post.img === outfitImg(o.id));
+  if (outfit) return { name: outfit.name, kind: "outfit" };
+  const camera = typeof SNS_CAMERA_ALL !== "undefined" && SNS_CAMERA_ALL.some(c => c.img === post.img);
+  return camera ? { name: "カメラロールの一枚", kind: "camera" } : null;
+}
+function validMakuraPost(post) {
+  return validMakuraPostForPlayer(post,state.player);
+}
+function validMakuraPostForPlayer(post,player) {
+  const id = post && typeof post.id === "string" && /^my_(\d+)_(\d+)$/.exec(post.id);
+  const today = typeof _epochDay === "function" ? _epochDay() : Math.floor(Date.now() / 86400000);
+  return !!id && Number(id[1]) === post.day && Number.isSafeInteger(post.day) && post.day <= today &&
+    Number.isSafeInteger(Number(id[2])) && Number(id[2]) > 0 &&
+    typeof post.text === "string" && !!post.text.trim() && post.text.length <= 140 && !!makuraPostSubject(post,player);
+}
+function makuraPostReviewed(player = state.player) {
+  const m = player.makuraPostMemory;
+  return !!player.flags?.phoneBought && validMakuraPostForPlayer(m,player) && Number.isSafeInteger(m.reacts) && m.reacts > 0;
+}
+function chapterFiveEntryMet(st = state) {
+  return (assetsPeak(st) >= storyUnlockAt("5") || chapterFiveFieldStatus(st.player).ready) && makuraPostReviewed(st.player);
+}
 // ブニクロ普段着の値段＝「モールが開く額」でもある序盤テンポの単一ノブ（OUTFITS から引く）。
 function buniqroPrice() {
   try { const o = OUTFITS.find(x => x.id === "buniqro"); return (o && o.acquire && o.acquire.price) || 2000; }
@@ -342,7 +487,7 @@ function chapterAvailable(chId) {
     // ★不変条件：一度読んだ章は、条件が後から変わっても必ず読み返せる。
     //   解放条件を足すたびに既存プレイヤーの既読章が消える事故を、ここで構造的に防ぐ。
     if (chapterRead(chId)) return true;
-    const total = assetsPeak(state), races = p.completedRaces || 0, wins = p.wins || 0;   // ★章の解放＝到達最高
+    const races = p.completedRaces || 0, wins = p.wins || 0;   // ★章の解放＝到達最高
     switch (String(chId)) {
       case "1":  return true;                                       // サケ＝島に着いた最初から
       // ミズ＝1話を読み、数戦こなし、さらに「初めて自分の服を買う」ところまで到達してから。
@@ -351,8 +496,8 @@ function chapterAvailable(chId) {
       case "2":  return chapterRead("1") && races >= 3
                         && (typeof outfitOwned === "function") && outfitOwned(OUTFITS.find(o => o.id === "buniqro"));
       case "3":  return chapterRead("2") && wins >= 1;             // スミカ＝2話を読み、初勝利で勝ち分の守り方に直面してから
-      case "4":  return chapterRead("3") && total >= 1000000;      // マクラ＝島がリゾートに育つ頃（総資産100万）
-      case "5":  return chapterRead("4") && total >= 100000000;    // セレスティア＝世界の天井が見える頃（総資産1億）
+      case "4":  return chapterRead("3") && chapterFourEntryMet();
+      case "5":  return chapterRead("4") && chapterFiveEntryMet();
       // ★M3（2026-07-30）：EDの金額バイパスを廃止。総資産10億は「神眼レースの解放額」であって
       //   EDの直行券ではない（クリマックス＝3頭同着のパズルを飛ばせない）。edFlag は
       //   神眼レースのクリア（shingan_race.js _sgClear→epilogueClear）で立つ。
@@ -366,8 +511,8 @@ function chapterUnlockHint(chId) {
   switch (String(chId)) {
     case "2":  return "第1話を読み、数戦こなして「ブニクロ普段着」を買うと解禁";
     case "3":  return "第2話を読み、はじめて単勝を当てると解禁";
-    case "4":  return "第3話を読み、総資産 " + fmtCoins(1000000) + " で解禁";
-    case "5":  return "第4話を読み、総資産 " + fmtCoins(100000000) + " で解禁";
+    case "4":  return "第3話のあと、寄り道で試したことを現地でアヤに話すか、島の発見を1件確かめる。到達最高資産100万でも読めます。";
+    case "5":  return "第4話のあと、自分の投稿への反応をマクラと読む。島で発見2件と予想手帖か竜の取材を重ねるか、到達最高資産1億で島の次の出来事へ。";
     case "ED": return "第5話を読み、最終決戦をクリアすると解禁";
     default:   return "";
   }

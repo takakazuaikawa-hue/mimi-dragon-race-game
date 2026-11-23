@@ -1,0 +1,36 @@
+const assert = require("node:assert/strict"), vm = require("node:vm"), fs = require("node:fs");
+const J = require("../js/reading_journal.js"), B = require("../js/shingan_trial_bridge.js"), E = require("../js/shingan_prototype_engine.js");
+const world = vm.createContext({ console });
+for (const file of ["data_dragons.js", "data_courses.js", "data_weather.js", "data_ranks.js", "data_races.js", "data_dragons_ext.js"]) vm.runInContext(fs.readFileSync(require.resolve("../js/" + file), "utf8"), world);
+const catalog = JSON.parse(vm.runInContext("JSON.stringify(DRAGONS)", world));
+const rubel = catalog.find(d => d.id === "rubel"), poro = catalog.find(d => d.id === "poro");
+const player = { completedRaces: 23, coins: 2000, flags: {}, collection: {} };
+const current = { settled: true, race: { id: "race_mid_a", cup: "中盤の一戦", region: "火山地域" }, betReasonUsed: "tell",
+  bet: { type: "place", selections: [rubel.id], wager: 100 }, betResult: { hit: true, payout: 250 },
+  raceResult: { entries: [{ dragon: poro, rank: 1 }, { dragon: rubel, rank: 3 }] } };
+const before = structuredClone({ player, current });
+assert.equal(J.capture(player, { ...current, settled: false }, catalog), null, "unfinished races must not create a record");
+assert.equal(J.capture(player, { ...current, betReasonUsed: undefined }, catalog), null, "a later default reason must not fabricate the pre-race choice");
+const note = J.capture(player, current, catalog, { trace: { dragonId: rubel.id, earlyRank: 6, midRank: 4, section: "中盤の旋回", stat: "旋回", pace: "標準", popularity: 4 } });
+assert.equal(note.selections[0].rank, 3); assert.equal(note.reason, "tell"); assert.equal(note.trace.midRank, 4);
+assert.deepEqual({ player, current }, before, "capturing history must not affect race, payout or wallet");
+assert.deepEqual(J.normalizeNotes([{ ...note, hit: false }]), [], "contradictory hit/rank records are invalid");
+assert.deepEqual(J.normalizeNotes([{ ...note, reason: "constructor" }]), []);
+assert.deepEqual(J.normalizeNotes([{ ...note, selections: [{ dragonId: "unknown", name: "fiction", rank: 3 }] }], catalog), []);
+assert.equal(J.normalizeNotes([{ ...note, selections: [{ ...note.selections[0], name: "fake" }] }], catalog)[0].selections[0].name, rubel.name);
+const lost = { ...note, id: "race-24", completedRace: 24, hit: false, selections: [{ ...note.selections[0], rank: 7 }] };
+assert.equal(J.normalizeNotes([lost])[0].hit, false, "a loss is a valid memory");
+let pinned = J.pin([], note); assert(pinned.added); assert.equal(J.pin(pinned.notes, note).added, false);
+for (let i = 24; i <= 28; i++) pinned = J.pin(pinned.notes, { ...note, id: "race-" + i, completedRace: i });
+const full = J.pin(pinned.notes, { ...note, id: "race-29", completedRace: 29 }); assert(full.full); assert.deepEqual(full.notes, pinned.notes, "a new pin must never silently evict a chosen memory");
+assert.equal(J.remove(full.notes, "race-23").length, 5);
+assert.equal(J.forRace([note, lost], { region: "elsewhere" }, [rubel.id]).id, lost.id);
+assert.equal(J.forRace([note], { region: "火山地域" }, [poro.id]).id, note.id);
+const snapshot = B.capture({ ...player, readingNotes: [note, lost] }, {}), carried = B.fromHash(B.toURL(snapshot).split("#").map((s, i) => i ? "#" + s : "")[1]);
+assert.deepEqual(carried.readingNotes, [note, lost]);
+const state = B.apply(E.createState("prepared", "coast"), carried), plan = ["p_raiou", "p_fugaku", "w_fugaku_glaze"], normal = E.resolve(state, plan), annotated = E.resolve(state, plan, [null, { readingNoteId: note.id }, null]);
+assert(annotated.valid); assert.equal(annotated.hits, normal.hits); assert.deepEqual(annotated.race, normal.race); assert.deepEqual(annotated.settlement, normal.settlement);
+assert.match(annotated.features[1].evidence.connection, /別の竜/); assert.match(annotated.features[1].evidence.connection, /本編の複勝は3着以内/);
+assert.match(annotated.chronicle.entries[0].review, /ルベル/);
+assert.deepEqual(E.preview(state, plan, [{ readingNoteId: "not_saved" }]).valid, false);
+console.log("PASS actual-catalog history: pre-reason/settled guards, immutable capture, valid losses, invalid snapshots, six pins without eviction, next-race reminder, handoff, ordinary-dragon transfer, condition differences and unchanged race/economy");

@@ -38,8 +38,7 @@ function _ksFlag(n) {
 function _ksRaces() { return _ksP().completedRaces || 0; }
 function _ksWins() { return _ksP().wins || 0; }
 function _ksRead(ch) { try { return (typeof chapterRead === "function") ? !!chapterRead(ch) : _ksFlag("_chapter_intro_" + ch); } catch (e) { return false; } }
-function _ksPeak() { try { return (typeof assetsPeak === "function") ? assetsPeak(state) : (_ksP().assetsPeak || 0); } catch (e) { return 0; } }
-function _ksMeals() { try { return (typeof mealStatsAll === "function") ? (mealStatsAll().got || 0) : 0; } catch (e) { return 0; } }
+function _ksMeals() { return typeof mealEatenCount === "function" ? mealEatenCount(_ksP()) : 0; }
 function _ksSeen() { try { return Object.keys((_ksP().kurashi || {}).spotsSeen || {}).length; } catch (e) { return 0; } }
 function _ksFol() { try { return (typeof goalFollowers === "function") ? goalFollowers() : 0; } catch (e) { return 0; } }
 function _ksNodes() { try { return Object.keys((state.lifeTree && state.lifeTree.unlocked) || {}).filter(function (k) { return state.lifeTree.unlocked[k]; }).length; } catch (e) { return 0; } }
@@ -86,7 +85,6 @@ function _ksCourseNeed(region, key, need) {
   if (key === "hit") return ["🎯 " + nm + "のレースで当てる" + (need > 1 ? "（あと" + (need - have) + "回）" : "")];
   return ["🏁 " + nm + "のレースを走る" + (need > 1 ? "（あと" + (need - have) + "戦）" : "")];
 }
-function _ksAmt(n) { try { return (typeof fmtCoins === "function") ? fmtCoins(n) : String(n); } catch (e) { return String(n); } }
 
 // ── 読者の声（紀行の記事と同じ顔ぶれ＝全員モブ。顧問とポロは出さない）──────
 var KS_VOICES = {
@@ -624,9 +622,7 @@ function kikoSerialNext() {
         var sp = null; try { sp = KONRON_SPOTS[ep.spot]; } catch (e) {}
         var open = true; try { open = !sp || _kmSpotOpen(sp); } catch (e) { open = false; }
         if (!open) {
-          var at = 0; try { at = KM_TIER_AT[sp.tier] || 0; } catch (e) {}
-          var rest = Math.max(0, at - _ksPeak());
-          needs.push("💰 " + kikoSerialSpot(ep).name + "まで行けるようになる（総資産 あと" + _ksAmt(rest) + "）");
+          needs.push("🗺️ " + kikoSerialSpot(ep).name + "まで行けるようになる（" + _kmTierRequirement(sp.tier) + "）");
         }
       }
     }

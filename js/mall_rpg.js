@@ -22,6 +22,14 @@ function rpgData() {
   }
   const d = p.rpg;
   if (!d.items) d.items = { potion: 0, ether: 0, calm: 0 };
+  // Older express shops used aliases that the shared battle menu could not
+  // consume. Preserve every owned item and migrate each alias exactly once.
+  [["pot", "potion"], ["eth", "ether"]].forEach(function (pair) {
+    if (!Object.prototype.hasOwnProperty.call(d.items, pair[0])) return;
+    const old = Number(d.items[pair[0]]), current = Number(d.items[pair[1]]);
+    d.items[pair[1]] = (Number.isFinite(current) ? Math.max(0, Math.floor(current)) : 0) + (Number.isFinite(old) ? Math.max(0, Math.floor(old)) : 0);
+    delete d.items[pair[0]];
+  });
   if (d.items.calm == null) d.items.calm = 0;   // 🔕 静けさのお香（しばらくエンカウントしない）
   if (!d.codex) d.codex = {};
   if (!d.skills) d.skills = ["atk"];
@@ -115,11 +123,17 @@ function rpgFinishRun(reason) {
   if (reason !== "lost" && (RPG.wagon || 0) > 0) { const got = rpgCashOut(); if (got > 0) rpgLog(`💰 帰り道でワゴンを精算＝🪙+${got.toLocaleString("ja-JP")}。`, "win"); }
   rpgEndRun(true);
   RPG.summary = { reason: reason, rows: rpgRunLedger(), next: rpgNextGoalText(), cleared: !!rpgData().cleared };
+  if (typeof recordIslandLifeEvent === "function") recordIslandLifeEvent({ type: "mall_return" });
   RPG.mode = "summary"; RPG.battle = null; RPG.busy = false;
   rpgSfx(reason === "lost" ? "nav" : "unlock");
   renderMallRpg();
 }
 function rpgToday() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return "x"; } }
+function rpgLifeMark(kind) {
+  if (kind !== "battles" && kind !== "purchases") return;
+  const d = rpgData(); d.lifeProgress = d.lifeProgress || { battles: 0, purchases: 0 };
+  d.lifeProgress[kind] = Math.max(0, Number(d.lifeProgress[kind]) || 0) + 1;
+}
 function rpgSave() { if (typeof saveGame === "function") saveGame(); }
 
 // =========================================================================
@@ -133,7 +147,7 @@ const WAGON_MULT = 1.3;   // 積み増し1階ごとの倍率（§9採用値：�
 // ラン中のゴールド獲得はワゴンへ、それ以外（ハブ/タワー/払い戻し）は即財布へ。
 function rpgGainGold(n) {
   if (!n) return;
-  if (RPG && !RPG.tower && (RPG.mode === "explore" || RPG.mode === "battle" || RPG.mode === "won")) {
+  if (RPG && !RPG.tower && !RPG.express && (RPG.mode === "explore" || RPG.mode === "battle" || RPG.mode === "won")) {
     RPG.wagon = (RPG.wagon || 0) + n;
   } else { rpgData().gold += n; }
 }
@@ -1068,6 +1082,7 @@ function rpgFlee() {
 function rpgAfterAct(weakHit) {
   if (!RPG || !RPG.battle) return;
   const b = RPG.battle;
+  if (!b._lifeExperienced) { b._lifeExperienced = true; rpgLifeMark("battles"); }
   if (rpgAliveEnemies().length === 0) { RPG.busy = true; b.phase = "anim"; setTimeout(() => { if (RPG && RPG.battle) rpgBattleWin(); }, 560); return; }   // 撃破の余韻を見せてから勝利へ
   if (weakHit && (b.acts || 1) < 3) { b.acts = (b.acts || 1) + 1; rpgFx.banner("1 MORE!", "more"); rpgBLog("✨ 弱点を突いた！ もう1回！", "good"); }
   b.acts = (b.acts || 1) - 1;
@@ -1461,6 +1476,7 @@ function rpgBuyGoods(id) {
   if (coins < price) { rpgSfx("tick"); if (RPG) RPG._shopMsg = "あら、コインが足りないみたい…"; renderMallRpg(); return; }
   const save = Math.max(0, it.price - price);           // 値切り/セールで浮いた額（成功体験を明示）
   state.player.coins = coins - price; d.shop = d.shop || {}; d.shop[id] = true;
+  rpgLifeMark("purchases");
   if (RPG) { RPG._shopMsg = save > 0 ? `お買い上げ♪ ${fmtCoins(save)}もお得でしたわね、ミミ様！` : "お買い上げ、ありがとうございますっ♪ お似合いですわ"; rpgLog(`🛍️ ${it.ic} ${it.n} を ${fmtCoins(price)} で買った！${save > 0 ? `（−${fmtCoins(save)}）` : ""}`, "good"); }
   rpgSfx("coin"); rpgFx.banner(it.ic + " おかいあげ！" + (save > 0 ? ` −${fmtCoins(save)}` : ""), "victory");
   if (typeof updateHeader === "function") updateHeader();   // 財布ヘッダ更新（通常モールの buyOutfit と同じ作法）

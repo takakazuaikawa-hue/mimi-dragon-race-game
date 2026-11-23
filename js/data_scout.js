@@ -19,13 +19,13 @@ const SCOUT_LOCATIONS = [
   { id: "jungle",  name: "密林",       ic: "🌳", tier: "序盤", cost: 900,   mood: "湿った緑の奥。隠れたがりの竜の気配。",
     unlockLabel: "スカウト解放で開放（2勝）",                  archs: ["cloud_chaser", "fog_mystic"] },
   { id: "cliff",   name: "崖",         ic: "🪨", tier: "中盤", cost: 2000,  mood: "切り立った岩棚。頑固で誇り高い竜の住処。",
-    unlockLabel: "総資産3万で開放（第3話・くらし）",            archs: ["stamina_tank"] },
+    unlockLabel: "第3話を読む、または最高資産3万で開放",        archs: ["stamina_tank"] },
   { id: "volcano", name: "火山地帯",   ic: "🌋", tier: "中盤", cost: 4000,  mood: "熱気と火の粉。気の立った竜が多い。難所。",
-    unlockLabel: "総資産100万で開放（第4話）",                 archs: ["fire_bruiser", "speed_escape"] },
+    unlockLabel: "第4話を読む、または最高資産100万で開放",      archs: ["fire_bruiser", "speed_escape"] },
   { id: "sea",     name: "水中",       ic: "🌊", tier: "中盤", cost: 3000,  mood: "青い静寂。動きはゆるやか、しぐさは読みやすい。",
-    unlockLabel: "総資産100万で開放（第4話）",                 archs: ["wing_closer"] },
+    unlockLabel: "第4話を読む、または最高資産100万で開放",      archs: ["wing_closer"] },
   { id: "sky",     name: "空中",       ic: "☁️", tier: "終盤", cost: 12000, mood: "雲の高み。高潔な竜が翼を休める。最難。",
-    unlockLabel: "終章で開放（第5話・総資産1億）",              archs: ["speed_dragon", "_star"] }
+    unlockLabel: "第5話を読むか、到達最高資産1億で開放",              archs: ["speed_dragon", "_star"] }
 ];
 
 // ── 2. 心情(mood)：竜のしぐさで表す10種 ───────────────────────────────

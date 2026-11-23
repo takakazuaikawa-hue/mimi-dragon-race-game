@@ -82,14 +82,15 @@ function shinganScouted(id) {
   try { const e = (state.player.collection || {})[id]; return !!(e && e.scouted); } catch (e) { return false; }
 }
 function shinganAllScouted() { return SHINGAN_ROSTER.every(d => shinganScouted(d.id)); }
-// 解放＝第5話既読 ∧（到達最高10億 ∨ メーター押し切り）
+// 公示の入口。友情は築いた時期を問わず同じ八頭の取材として扱う。
+// 実際の開催・経済救済は、全頭を知った上で未知の読みと当日の会計で判定する。
 function shinganUnlocked() {
   try {
     const read5 = (typeof chapterRead === "function") ? chapterRead("5") : false;
     if (!read5) return false;
     const peak = (typeof assetsPeak === "function") ? assetsPeak(state) : 0;
     const fin = !!(state.player.epilogue && state.player.epilogue.finalReady);
-    return peak >= ((typeof storyUnlockAt === "function" && storyUnlockAt("ED")) || 1000000000) || fin;
+    return shinganAllScouted() || peak >= ((typeof storyUnlockAt === "function" && storyUnlockAt("ED")) || 1000000000) || fin;
   } catch (e) { return false; }
 }
 
@@ -314,6 +315,12 @@ var _sgLast = null;      // 直近の予想（＝決定的シミュレーショ�
 var _sgChoice = null;    // 挑んだ買い方（"tan"/"fuku"/"wide"）
 
 function renderShinganRace() {
+  if (typeof renderShinganFairRace === "function") { renderShinganFairRace(); return; }
+  if (typeof showInfoPopup === "function") showInfoPopup("最後の一面", "<p>決戦の画面を読み込めませんでした。ページを読み込み直してください。進行と準備の記録は残っています。</p>");
+}
+
+// 旧保存の計算・検証用。正式の入口から能力調整パズルへは進まない。
+function renderShinganLegacyStudy() {
   if (!shinganUnlocked()) {
     if (typeof showInfoPopup === "function") showInfoPopup("☄️ ？？？",
       `<div class="mm-row"><span class="mm-ic">🔒</span><div><b>まだ視えない</b><small>第5話を読み、総資産10億（または絶滅メーターを押し切る）に届いた者だけが、この舞台に立てる。</small></div></div>`);
@@ -329,6 +336,7 @@ function renderShinganRace() {
 
   const head = el("div", "sg-head");
   head.innerHTML =
+    `<div class="late-vista late-vista--arena"><img src="images/story/late/arena_before_dawn.webp" alt="夜明けを待つ聖龍レース場" onerror="this.remove()"><span>終章 ─ 最後の舞台</span></div>` +
     `<div class="sg-title">☄️ 神眼レース</div>` +
     `<div class="sg-sub">決着の視える眼に、決着の無い結末を。</div>` +
     `<div class="sg-rule">スカウトしてきた<b>最高クラスの七頭</b>と、<b>相棒のポロ</b>。竜舎で説得して鍛え上げろ。<br>` +
@@ -347,7 +355,7 @@ function renderShinganRace() {
     const ab = shinganAb(d.id);
     let h =
       `<button class="sg-card-h">` +
-      `<span class="sg-d-ic">${ok ? d.ic : "❔"}</span>` +
+      `<span class="sg-d-ic">${ok ? `<img class="sg-dragon-portrait" src="images/dragons/${d.id}.png" alt="" onerror="this.replaceWith(document.createTextNode('${d.ic}'))">` : "❔"}</span>` +
       `<span class="sg-d-tx"><b>${ok ? _sgName(d.id) : "？？？"}</b>` +
       `<small>${ok ? `${d.q} — ${d.qd}`
         : (d.id === "poro" ? "🔒 まだ出会っていない相棒（島のどこかで泣いている）"

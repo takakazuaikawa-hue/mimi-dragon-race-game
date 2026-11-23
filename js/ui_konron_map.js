@@ -23,8 +23,9 @@ const KM_CATS = {
   civic: { name: "行政・施設",   ic: "🏛️", color: "#7d93a8" }
 };
 
-// 解放しきい値（総資産＝高水位。序章0／第2話3千／第4話100万／終章1億）。表示専用ゲート。
+// 旅先が広がる資産の目安。後半と終盤は、その章を読んでも開く。
 const KM_TIER_AT = [0, 3000, 1000000, 100000000];
+const KM_TIER_CHAPTER = [null, null, "4", "5"];
 
 // スポット（写真スポットカード＋ポータル）。位置は持たない＝エリアに属する。
 const KONRON_SPOTS = {
@@ -172,8 +173,14 @@ const KONRON_AREAS = [
 //   序盤3目標（出走→的中→勝利）の締めのご褒美として島が開く。ロックは条件明示（ホームの🔒枠）。
 function konronMapUnlocked() { return ((state.player && state.player.wins) || 0) >= 1; }
 function _kmTotal() { return assetsPeak(state); }   // ★解放判定＝到達最高
-function _kmSpotOpen(s) { return _kmTotal() >= (KM_TIER_AT[(s && s.tier) || 0] || 0); }
-function _kmTierLabel(t) { return ["序盤", "中盤", "後半", "終盤"][t] || ""; }
+function _kmSpotOpen(s) {
+  const tier = (s && s.tier) || 0, chapter = KM_TIER_CHAPTER[tier];
+  return _kmTotal() >= (KM_TIER_AT[tier] || 0) || !!(chapter && typeof chapterRead === "function" && chapterRead(chapter));
+}
+function _kmTierRequirement(tier) {
+  const chapter = KM_TIER_CHAPTER[tier];
+  return (chapter ? "第" + chapter + "話の読了、または" : "") + "最高資産" + (KM_TIER_AT[tier] || 0).toLocaleString("ja-JP");
+}
 
 // ②「いまの崑崙島」＝時刻(実時計)・天候(日替わり・決定的)・賑わい。表示専用の空気演出。
 function _kmIslandNow() {
@@ -212,7 +219,7 @@ function _ktSpotCard(id, label, force) {
     card.innerHTML = `<span class="kt-card-cat">${c.ic} ${c.name}</span><span class="kt-card-nm">${label || s.name}</span>`;
     card.onclick = () => _kmOpenPhoto(id, s.photo ? "photo" : "gourmet");
   } else {
-    card.innerHTML = `<span class="kt-card-q">🔒</span><span class="kt-card-nm">${s.name}</span><span class="kt-card-cat">${_kmTierLabel(s.tier)}で解放</span>`;
+    card.innerHTML = `<span class="kt-card-q">🔒</span><span class="kt-card-nm">${s.name}</span><span class="kt-card-cat">${_kmTierRequirement(s.tier)}で解放</span>`;
   }
   return card;
 }
@@ -252,6 +259,8 @@ function renderKonronMap() {
       `<h1 class="kt-hero-h">島で、<span class="kt-gold">遊ぶ。</span></h1>` +
       `<p class="kt-hero-sub">霧の火山に抱かれた、竜と亜人のリゾート。<br>あなたの“いちばん”を、写真で見つけよう。</p></div>`;
   app.appendChild(hero);
+
+  if (typeof appendIslandDiscoveryEntry === "function") appendIslandDiscoveryEntry(app);
 
   // ②「いまの崑崙島」
   const now = _kmIslandNow();
@@ -332,7 +341,7 @@ function renderKonronMap() {
   app.appendChild(_ktSectionHead("地図でさがす", "エリアのピンから、その地区のスポットと施設へ。"));
   const mapmod = el("div", "kt-mapmod");
   const stage = el("div", "km-stage");
-  stage.innerHTML = `<img class="km-mapimg" src="images/konron/island_map.webp?v=20260727a" alt="崑崙島 観光ジオラマ地図" decoding="async">`;
+  stage.innerHTML = `<img class="km-mapimg" src="images/konron/island_map.webp?v=20260727a" width="4096" height="2751" alt="崑崙島 観光ジオラマ地図" decoding="async">`;
   KONRON_AREAS.forEach(a => {
     const pin = el("button", "km-areapin", `<span class="km-areapin-dot">${a.ic}</span><span class="km-areapin-lbl">${a.name}</span>`);
     pin.style.left = a.mx + "%"; pin.style.top = a.my + "%"; pin.style.setProperty("--pc", a.color);
@@ -386,6 +395,9 @@ function kmGotoSpot(id) {
     if (state.ui.screen !== "konron_map") return false;
     const a = _kmAreaOf(id);
     _kmArea = a ? a.id : null; _kmSpot = id; _kmRenderPanel();
+    const destination = document.getElementById("km-panel");
+    const foldedMap = destination && destination.closest("details");
+    if (foldedMap) foldedMap.open = true;
     const stage = document.querySelector(".km-stage"); if (stage) _kmMarkSel(stage);
     setTimeout(() => { const p = document.getElementById("km-panel"); if (p) { try { p.scrollIntoView({ behavior: "auto", block: "start" }); window.scrollBy(0, -64); } catch (e) {} } }, 80);
     return true;
@@ -410,7 +422,7 @@ function renderKonronGuide() {
   const app = beginScreen();
   app.classList.add("kiko-page");   // 図鑑の体裁(kt-page)をやめ、紀行の明るいWEBメディア面に合わせる
   let total = 0, open = 0;
-  (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => c.entries.forEach(e => { total++; if (_kmTotal() >= (KM_TIER_AT[e.tier] || 0)) open++; }));
+  (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => c.entries.forEach(e => { total++; if (_kmSpotOpen(e)) open++; }));
 
   // 紀行の読みもの棚として名乗る。表紙の作りは紀行本体（ui_kiko.js の .kk-mast）と同じにそろえる
   //   ＝紀行から来ても、別の本を開いた感じにならない。写真は島の全景（読みものは島ぜんたいの話なので）。
@@ -428,7 +440,7 @@ function renderKonronGuide() {
   (typeof KONRON_GUIDE !== "undefined" ? KONRON_GUIDE : []).forEach(c => {
     app.appendChild(el("div", "kiko-sec", `${c.ic} ${c.cat}`));
     c.entries.forEach(e => {
-      const unlocked = _kmTotal() >= (KM_TIER_AT[e.tier] || 0);
+      const unlocked = _kmSpotOpen(e);
       const art = el("div", "kiko-post" + (unlocked ? "" : " locked"));
       art.innerHTML = unlocked
         ? `<div class="kiko-post-k">${c.ic} ${c.cat}</div>` +
@@ -437,7 +449,7 @@ function renderKonronGuide() {
           `<div class="kiko-post-tags">#島さんぽ #崑崙島 #${c.cat}</div>`
         : `<div class="kiko-post-k">🔒 取材中</div>` +
           `<div class="kiko-post-t">？？？</div>` +
-          `<div class="kiko-post-b">${_kmTierLabel(e.tier)}まで暮らしが育つと書ける記事です（総資産 ${(KM_TIER_AT[e.tier] || 0).toLocaleString("ja-JP")}）。</div>`;
+          `<div class="kiko-post-b">${_kmTierRequirement(e.tier)}で読める記事です。</div>`;
       app.appendChild(art);
     });
   });
@@ -653,6 +665,7 @@ function _kmOpenPhoto(spotId, kind) {
       // ★写真を見たあと、その場所の施設へ進める（2026-11-13）。おでかけの写真カード（「都会のリゾートで買う」等）は
       //   押すとこの鑑賞だけが開き、モールへ行く口が無かった（通しプレイで発覚）。入れる施設があるスポットだけ出す。
       (_pt && _pt.open ? `<button class="km-vbtn km-vbtn--go" data-act="go">${_pt.label}</button>` : ``) +
+      (_kmSpotOpen(s) && konronMapUnlocked() ? `<button class="km-vbtn km-vbtn--visit" data-act="visit">ここで過ごす</button>` : ``) +
       `<button class="km-vbtn" data-act="x">✕ 閉じる</button></div>`;
   document.body.appendChild(ov);
   const img = ov.querySelector(".km-viewer-img");
@@ -663,6 +676,8 @@ function _kmOpenPhoto(spotId, kind) {
   const snsB = ov.querySelector('[data-act="sns"]');
   if (snsB) snsB.onclick = () => _kmSnsCompose(spotId, kind);
   const goB = ov.querySelector('[data-act="go"]');
+  const visitB = ov.querySelector('[data-act="visit"]');
+  if (visitB) visitB.onclick = () => { close(); kmGotoSpot(spotId); };
   if (goB) goB.onclick = () => { close(); const fn = window[_pt.fn]; if (typeof fn === "function") fn(); };
 }
 // SNS（ぴょこったー）へコメント付きで投稿。sns.js の addMyPost(text,img) を使う＝タイムラインに流れる。
@@ -670,7 +685,9 @@ function _kmSnsCompose(spotId, kind) {
   const s = KONRON_SPOTS[spotId]; const src = s && _kmPhotoOf(s, kind); if (!src) return;
   if (!_kmSnsOk()) { _kmToast("📱 スマホを手に入れると投稿できます"); return; }   // 二重の守り（呼ばれても通さない）
   document.querySelectorAll(".km-compose").forEach(v => v.remove());   // 既存の投稿モーダルを先に消す（同種の重ね開き対策）
-  const def = (kind === "gourmet" ? `${s.name}でこれ食べた😋📸` : `${s.name}で一枚📸 ${s.line || ""}`).trim();
+  const ref = { spotId, kind };
+  const verifiedCaption = typeof snsPlacePostCaption === "function" ? snsPlacePostCaption(ref, src) : null;
+  const def = verifiedCaption || (kind === "gourmet" ? `${s.name}の、気になる一皿📸` : `${s.name}、気になる景色📸`);
   const cm = el("div", "km-compose");
   cm.innerHTML =
     `<div class="km-compose-bd"></div>` +
@@ -686,9 +703,9 @@ function _kmSnsCompose(spotId, kind) {
   cm.querySelector('[data-act="cancel"]').onclick = close;
   cm.querySelector('[data-act="send"]').onclick = () => {
     const txt = (cm.querySelector(".km-compose-ta").value || "").trim() || def;
-    addMyPost(txt, src);
+    const post = addMyPost(txt, src, ref);
     close();
-    _kmToast("Pyogramに投稿しました！📣");
+    _kmToast(post && post.replies && post.replies.length ? "投稿しました。近所の人からSNSに返事が届いたよ📣" : "Pyogramに投稿しました！📣");
   };
 }
 function _kmToast(msg) {
@@ -910,6 +927,7 @@ const KM_GUIDE = { port: "sake", okuchi: "sake", food: "mizu", shop: "mizu", civ
 function _kmArrivalScript(id, s, cat) {
   const nm = s.name;
   let g = KM_GUIDE[cat] || null;
+  if (typeof islandDiscoveryCompanion === "function") { const selected=islandDiscoveryCompanion();if(selected!==null)g=selected==='solo'?null:selected; }
   const met = k => { try { return typeof advisorMet === "function" && advisorMet(k); } catch (e) { return false; } };
   const hasPoro = (typeof poroFound === "function") && poroFound();
   if (g === "poro" && !hasPoro) g = null;
@@ -1074,10 +1092,10 @@ function _kmMealHtml(spotId) {
       const tierOpen = (typeof mealTierUnlocked !== "function") || mealTierUnlocked(m.tier);
       const got = (typeof mealUnlocked === "function") && mealUnlocked(m);
       if (!tierOpen) {
-        const hint = m.tier === "shinbo" ? "終章（第5話）で解放" : m.tier === "gourman" ? "総資産100万で解放" : "まだ食べられない";
+        const hint = mealTierRequirement(m.tier) + "で解放";
         rows += `<div class="km-eat locked"><span class="ke-ic">🔒</span><span class="ke-nm">${m.icon || "🍽"} ${m.name}</span><small>${hint}</small></div>`;
       } else if (m.quiz) {
-        rows += `<button class="km-eat quiz" data-meal="${m.id}"><span class="ke-ic">${got ? "✅" : "❓"}</span><span class="ke-nm">${m.icon || "🍽"} ${m.name}</span><small>${got ? "攻略済み・ごはん画面で読み返す" : "名物あてに挑戦（ごはん画面へ）"}</small></button>`;
+        rows += `<button class="km-eat quiz" data-meal="${m.id}"><span class="ke-ic">${got ? "✅" : "❓"}</span><span class="ke-nm">${m.icon || "🍽"} ${m.name}</span><small>${got ? "この一皿を味わう・読み返す" : "ひと口の味から、食材を当てる"}</small></button>`;
       } else {
         rows += `<button class="km-eat" data-meal="${m.id}"><span class="ke-ic">${got ? "✅" : "🍽"}</span><span class="ke-nm">${m.icon || "🍽"} ${m.name}</span><small>${got ? "おかわりする" : "はじめての実食！"}</small></button>`;
       }
@@ -1131,6 +1149,8 @@ function _kmRenderPanel() {
     if (area && area.spots.length > 1) body += `<button class="km-areaback" data-back="1">← ${area.name}</button>`;
     body += `<div class="km-card-head"><span class="km-card-ic">${c.ic}</span>` +
       `<div class="km-card-id"><b>${s.name}</b><small>${c.name}${s.time && s.time !== "—" ? "・" + s.time : ""}</small></div></div>`;
+    if (open) body += '<div class="km-life-host"></div>';
+    if (open) body += '<div class="km-discovery-host"></div>';
     // ✍️ 連載「島ぐらし」の取材先（kiko_serial.js）。条件がそろっていれば、ここで書ける。
     //   まだなら「取材先」の札だけ（何が足りないかは紀行の画面が教える＝ここでは告知を重ねない）。
     try {
@@ -1167,7 +1187,7 @@ function _kmRenderPanel() {
       }
     } catch (e) {}
     if (!open) {
-      body += `<div class="km-card-lock">🔒 まだ行けない場所（<b>${_kmTierLabel(s.tier)}</b>で解放）。総資産 ${KM_TIER_AT[s.tier].toLocaleString("ja-JP")} で開放。</div>`;
+      body += `<div class="km-card-lock">🔒 <b>${_kmTierRequirement(s.tier)}</b>で、この場所を訪ねられます。</div>`;
     } else {
       body += `<div class="km-card-line">${s.line}</div>`;
       const _shoot = _kmShootOf(_kmSpot, s);   // ★門番経由（未登場の顧問名を「撮れるもの」に出さない）
@@ -1195,6 +1215,10 @@ function _kmRenderPanel() {
       }
     }
     panel.innerHTML = body;
+    const lifeHost = panel.querySelector(".km-life-host");
+    if (lifeHost && typeof appendIslandLifePlace === "function") appendIslandLifePlace(lifeHost, _kmSpot);
+    const discoveryHost = panel.querySelector(".km-discovery-host");
+    if (discoveryHost && typeof appendIslandDiscoveryPlace === "function") appendIslandDiscoveryPlace(discoveryHost, _kmSpot);
     const bk = panel.querySelector(".km-areaback");
     if (bk) bk.onclick = () => { _kmSpot = null; _kmRenderPanel(); };
     const ser = panel.querySelector("button.km-serial");

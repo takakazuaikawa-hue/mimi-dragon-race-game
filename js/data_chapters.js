@@ -148,7 +148,7 @@ var CH_REQ = {
 // ★adds には「その章で新しく必要になるもの」だけを書く。required は下の _chBuild が
 //   前章ぶんを畳み込んで累積にする。手で累積を書くと必ず書き漏れる（実際、初版は
 //   第3話以降で races(3)/outfit を落として chapterVerify に I3 で捕まった）。
-// ★onRead には「その章を開いた瞬間に実ゲームが起こす副作用」を書く。ui_story.js が
+// ★onRead には「その章の導入が完了すると実ゲームが起こす副作用」を書く。ui_story.js が
 //   無条件でやること（第4話=metMakura／第5話=epilogueStart）を再現しないと、
 //   デバッグジャンプが本物と違う state を作ってしまう。
 var CHAPTERS = [
@@ -188,32 +188,44 @@ var CHAPTERS = [
   },
   {
     id: "4", storyId: "4", phase: 4, title: "第4話　マクラと推し竜文化",
-    gate: function () { return _chAvail("4"); },        // 既読3 && assetsPeak>=100万
-    adds: [CH_REQ.read(3), CH_REQ.peak(1000000, "到達最高資産 100万")],
+    gate: function () { return _chAvail("4"); },
+    adds: [CH_REQ.read(3), _req("fourthEntry", "寄り道の体験を現地で話す、島の発見1件、または到達最高資産100万",
+      chapterFourEntryMet, function (st) { CH_REQ.peak(storyUnlockAt("4")).fix(st); })],
     teaches: ["名声も資産である＝配信で稼ぐ", "スマホ購入＝ホームが変身する"],
     budget: { races: [22, 60], minutes: [60, 90] },
-    // ★ui_story.js は第4話を開いた瞬間に metMakura を無条件でセットする。
+    // ★ui_story.js は第4話の導入完了後に metMakura をセットする。
     onRead: function () { _chSet("metMakura"); },
     opensOnEnter: ["metMakura を無条件セット", "📖図鑑の深い記録", "📱スマホ購入CTA",
                    "スカウト volcano/sea", "セレスティア伏線VN"]
   },
   {
     id: "5", storyId: "5", phase: 5, title: "第5話　セレスティアの神眼",
-    gate: function () { return _chAvail("5"); },        // 既読4 && assetsPeak>=1億
-    adds: [CH_REQ.read(4), CH_REQ.flag("metMakura", "マクラに会っている"), CH_REQ.peak(100000000, "到達最高資産 1億")],
+    gate: function () { return _chAvail("5"); },
+    adds: [CH_REQ.read(4), CH_REQ.flag("metMakura", "マクラに会っている"),
+      _req("fifthEntry", "到達最高資産1億、または島と竜の取材を完了",
+        st => assetsPeak(st) >= storyUnlockAt("5") || chapterFiveFieldStatus(st.player).ready,
+        function (st) { CH_REQ.peak(storyUnlockAt("5")).fix(st); }),
+      _req("makuraPost", "マクラと自分の投稿への反応を読んだ（既読の第5話はそのまま）",
+        st => st.player.flags?._chapter_intro_5 || makuraPostReviewed(st.player),
+        function (st) {
+          // 開発ジャンプだけの再現用データ。通常の進行・旧保存の読み込みでは作らない。
+          const day = _epochDay();
+          st.player.flags.phoneBought = true;
+          st.player.makuraPostMemory = { id: "my_" + day + "_1", day, img: outfitImg(DEFAULT_OUTFIT), text: "開発用の装いの記録", reacts: 1 };
+        })],
     teaches: ["終章＝綱引きのルール"],
     budget: { races: [60, 110], minutes: [60, 90] },
-    // ★ui_story.js は第5話を開いた瞬間に epilogueStart() を呼ぶ＝終章が起動する。
+    // ★ui_story.js は第5話を導入完了後に epilogueStart() を呼ぶ＝終章が起動する。
     onRead: function () { if (typeof epilogueStart === "function") epilogueStart(); },
     // ★開いた瞬間に不可逆な状態遷移が走る（章を開く前の告知が要る＝設計文書 §D-5）
-    irreversible: ["epilogueStart()＝終章の起動（ui_story.js）", "導入VNは二度と再生されない"]
+    irreversible: ["epilogueStart()＝終章の起動（導入完了後）", "初回導入済み印を保存（出会いの再読は可能）"]
   },
   {
     id: "EP", storyId: null, phase: 5, title: "終章 ― 絶滅メーターの綱引き",
     // ★終章は章データを持たず epilogue.active だけで表現されている（物語一覧に居場所が無い）。
     gate: function (st) { var e = (_chSt(st).player || {}).epilogue; return !!(e && e.active); },
     adds: [CH_REQ.read(5), CH_REQ.epActive(), CH_REQ.poroFound(), CH_REQ.scoutAll()],
-    teaches: ["押し戻しの4活動", "★同着＝1.0倍の元返し（この島の掟）"],
+    teaches: ["押し戻しの4活動", "三枚の予想と読者の違い・二枚以上の的中と開催収支"],
     budget: { races: [110, 190], minutes: [60, 120] },
     opensOnEnter: ["☄️絶滅メーター", "🏦島の経済", "⚔️竜帝の戴冠衣（安全ゾーン到達で授与）", "☄️神眼レース"]
   },
@@ -311,8 +323,8 @@ function chapterInvariants(st) {
   // I3〜I5 既読章の“実績”は単調なので後から検算できる
   if (rd("2") && (p.completedRaces || 0) < 3) out.push("I3 第2話既読なのに完走3戦未満");
   if (rd("3") && (p.wins || 0) < 1) out.push("I4 第3話既読なのに単勝0勝");
-  if (rd("4") && _chPeak(st) < 1000000) out.push("I5 第4話既読なのに到達最高資産 <100万");
-  if (rd("5") && _chPeak(st) < 100000000) out.push("I5 第5話既読なのに到達最高資産 <1億");
+  if (rd("4") && !chapterFourEntryMet(st)) out.push("I5 第4話の資産または島での体験の実績が欠けている");
+  if (rd("5") && assetsPeak(st) < storyUnlockAt("5") && !chapterFiveFieldStatus(p).ready) out.push("I5 第5話の資産または取材の実績が欠けている");
   // I6 終章の起動 ⇔ 第5話既読
   var e = p.epilogue || {};
   if (!!e.active !== rd("5")) out.push("I6 epilogue.active と第5話既読が食い違う");

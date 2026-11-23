@@ -34,7 +34,8 @@ const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "
 const FILES = [
   "utils", "data_dragons", "data_dragons_ext", "data_ranks", "data_races", "data_assets",
   "state", "assets_engine", "event_hooks", "lifetree_engine", "goals", "progression",
-  "shingan_race", "epilogue_engine", "poro", "data_chapters"
+  "shingan_race", "epilogue_engine", "poro", "data_chapters", "reading_journal",
+  "island_life_loop", "island_discovery_stories", "island_discovery", "scout_engine"
 ];
 
 function fresh() {
@@ -145,6 +146,114 @@ test("健全な新規セーブでは不変条件に問題が無い", () => {
   const ctx = fresh();
   const p = runInContext("chapterInvariants(state)", ctx);
   assert(p.length === 0, `新規セーブで問題が出た: ${JSON.stringify(p)}`);
+});
+
+test("相棒の取材案内は単勝の残数から鑑定の残り完走数に切り替わる", () => {
+  const ctx = fresh();
+  const run = code => runInContext(code, ctx);
+  run("state.player.wins=1");
+  assert(run('poroRaceLead().includes("単勝をあと1回")'), "未達の単勝数が違う");
+  run('state.player.wins=2;setStoryFlag("poroMet",true);_poroMarkBeat()');
+  assert(run('poroRaceLead().includes("あと" + PORO_APPRAISAL_GAP + "戦")'), "鑑定の待ち時間が違う");
+  run("state.player.completedRaces += PORO_APPRAISAL_GAP");
+  assert(run('poroRaceLead().includes("図鑑で受け取")'), "鑑定が届く場所が違う");
+});
+
+test("メーターを押し返した時の案内は、相棒と取材便の残り頭数を見て切り替わる", () => {
+  const ctx = fresh();
+  const run = code => runInContext(code, ctx);
+  ctx.showInfoPopup = (title, message) => { ctx.lastPopup = message; };
+  run("onFinalReady()");
+  assert(ctx.lastPopup.includes("あと8頭") && ctx.lastPopup.includes("相棒"), "相棒との出会いを案内していない");
+  run('setStoryFlag("poroMet", true); setStoryFlag("poroFound", true); onFinalReady()');
+  assert(ctx.lastPopup.includes("あと7頭") && ctx.lastPopup.includes("取材便"), "取材便で会える残り頭数が違う");
+  run('SHINGAN_ROSTER.filter(d => d.id !== "poro").forEach(d => { state.player.collection[d.id] = { scouted: true }; }); onFinalReady()');
+  assert(ctx.lastPopup.includes("八頭の取材もそろった"), "全頭の取材が終わっても予想紙に進めない");
+});
+
+test("アヤに現地で自分の体験を話すと第四話へ進み、本音・過去の履歴・会計を保つ", () => {
+  const ctx = fresh();
+  const run = code => runInContext(code, ctx);
+  run('chapterApply("3",{read:true}); const p=state.player, L=IslandLifeLoop;');
+  run('const purse=()=>JSON.stringify([state.player.coins,assetsPeak(state),state.player.outfitsBought,state.player.island]), initial=purse();');
+  run('const local={enabled:true,completedRaces:p.completedRaces,openSpots:["mall"],currentSpotId:"mall",currentOutfitId:"buniqro",ownedOutfits:[{id:"buniqro",name:"ブニクロ普段着"},{id:"jungle",name:"手持ちの勝負服"}]};');
+  run('const start=()=>L.record(L.start(null,"style",local),{type:"visit",spotId:"mall"},local);');
+  run('const experienced=L.record(start(),{type:"outfit",outfitId:"jungle",previousOutfitId:"buniqro"},{...local,currentOutfitId:"jungle"});');
+  run('p.islandLife=L.respond(start(),"unsure","in_person",local)');
+  assert(!run('chapterAvailable("4")'), "顔を合わせ、未体験のまま見送っただけで第四話を開いた");
+  run('p.islandLife=experienced');
+  assert(!run('chapterAvailable("4")'), "感想を伝える前に第四話を開いた");
+  run('p.islandLife=L.respond(experienced,"different","sns",local)');
+  assert(!run('chapterAvailable("4")'), "現地の対話を経ていない");
+  for (const opinion of ["different","unsure","again"]) {
+    run('p.islandLife=L.respond(experienced,"'+opinion+'","in_person",local)');
+    assert(run('chapterAvailable("4") && !chapterAvailable("5") && !advisorMet("makura") && nextGoal().id==="meetMakura"'), "本音を話した後の第四話の開放・次の目標が違う");
+    assert(run('chapterFourLifeStatus().outing.experience.id==="jungle"'), "実際に選んだ経験が消えた");
+  }
+  run('delete p.islandLife.firstLocalStory; p.islandLife.favorite=null; p.islandLife.conversations={}; delete p.islandLife.history[0].visitedSpotId;');
+  assert(run('chapterFourLifeStatus().ready'), "旧形式の現地会話が復元されない");
+  run('for(let i=0;i<8;i++){let a=L.start(p.islandLife,"style",local); p.islandLife=L.respond(a,"unsure","in_person",local);} saveGame();loadGame()');
+  assert(run('chapterFourLifeStatus().outing.experience.id==="jungle" && chapterAvailable("4")'), "手帳の履歴が流れて、認定済みの体験が消えた");
+  run('setStoryFlag("_chapter_intro_3",false)');
+  assert(!run('chapterAvailable("4")'), "第三話を飛ばした");
+  run('setStoryFlag("_chapter_intro_3",true);chapterApply("4",{read:true})');
+  assert(run('chapterVerify("4").length===0 && advisorMet("makura") && purse()===initial && assetsPeak(state)<storyUnlockAt("4")'), "資産を付与したか、低資産で第四話を検算できない");
+});
+
+test("無料の現地調査で第四話を開き、第五話に同じ発見を持ち越す", () => {
+  const ctx = fresh();
+  const run = code => runInContext(code, ctx);
+  run('chapterApply("3",{read:true}); const p=state.player, E=IslandDiscovery; const at=currentSpotId=>({enabled:true,openSpots:["market","tanada"],currentSpotId});');
+  run('p.islandDiscovery=E.observe(null,"water_jars",at("market"));p.islandDiscovery=E.observe(p.islandDiscovery,"water_fork",at("tanada"));p.islandDiscovery=E.propose(p.islandDiscovery,"water","upstream",["water_jars","water_fork"],at("market"));');
+  assert(!run('chapterAvailable("4")'), "二つの手掛かりや未確認の仮説だけで第四話を開いた");
+  run('p.islandDiscovery=E.inspect(p.islandDiscovery,"water","trace",at("tanada"));');
+  assert(run('chapterAvailable("4") && chapterFourLifeStatus().findings===1 && chapterFiveFieldStatus().findings===1 && !chapterAvailable("5")'), "発見1件の第四話と第五話での扱いが違う");
+  run('chapterApply("4",{read:true});saveGame();loadGame()');
+  assert(run('chapterVerify("4").length===0 && !chapterAvailable("5") && assetsPeak(state)<1000000'), "確定発見経路を再読込できない");
+});
+
+test("現地で異なる発見2件と一戦の手帖で第五話へ進み、財布・最高資産・工事を保持する", () => {
+  const ctx = fresh();
+  const run = code => runInContext(code, ctx);
+  run(`chapterApply("4",{read:true});
+    const p = state.player, at = currentSpotId => ({enabled:true,
+      openSpots:["market","tanada","tsubo_roji","kirimina"],currentSpotId});
+    const E = IslandDiscovery;
+    for (const [id,spot] of [["water_jars","market"],["water_fork","tanada"],
+      ["vinegar_crates","tsubo_roji"],["return_cargo","kirimina"]])
+      p.islandDiscovery = E.observe(p.islandDiscovery,id,at(spot));
+    p.islandDiscovery=E.propose(p.islandDiscovery,"water","upstream",["water_jars","water_fork"],at("market"));
+    p.islandDiscovery=E.inspect(p.islandDiscovery,"water","trace",at("tanada"));
+    p.islandDiscovery=E.propose(p.islandDiscovery,"trade","roundtrip",["vinegar_crates","return_cargo"],at("kirimina"));
+    p.islandDiscovery=E.inspect(p.islandDiscovery,"trade","count",at("kirimina"));
+    p.collection.poro={scouted:true}; p.flags.poroFound=true; p.flags.dragonScoutUnlocked=true;
+    p.collection.goka={seen:true}; p.collection.rubel={seen:true};
+    p.collection.unknownDragon={scouted:true};`);
+  assert(run('chapterFiveFieldStatus().findings === 1 && !chapterAvailable("5")'), "手掛かり、未確定の調査を数えた");
+  run('p.islandDiscovery=E.inspect(p.islandDiscovery,"trade","labels",at("kirimina"))');
+  assert(run('chapterFiveFieldStatus().findings === 2 && !chapterAvailable("5")'), "目撃やポロだけで取材が完了した");
+  run('p.collection.rubel.scouted=true');
+  assert(!run('chapterAvailable("5")'), "第四話で届いた声を聞く前に第五話が開いた");
+  run('const day=_epochDay(); p.flags.phoneBought=true; p.makuraPostMemory={id:"my_"+day+"_1",day,img:outfitImg(DEFAULT_OUTFIT),text:"今日の装い",reacts:3}');
+  assert(run('!SHINGAN_ROSTER.some(d=>d.id==="rubel") && chapterFiveFieldStatus().scouted === 1 && chapterAvailable("5") && !shinganAllScouted()'), "通常の竜との成立が第五話と神眼で区別されていない");
+  run('p.collection.rubel.scouted=false');
+  run('p.collection.goka.scouted=true');
+  assert(run('chapterFiveFieldStatus().scouted === 1 && chapterAvailable("5")'), "スカウト経路が開かない");
+  run('p.collection.goka.scouted=false; p.readingNotes=[{id:"race-1"}]');
+  assert(!run('chapterAvailable("5")'), "不完全な手帖記録が有効");
+  run(`const dragon=DRAGONS[0]; const note=ReadingJournal.capture(p,
+    {settled:true,betResult:{hit:false},raceResult:{entries:[{dragon,rank:4}]},
+    race:{id:"race_test",cup:"取材で見た競走"},bet:{type:"win",selections:[dragon.id]},betReasonUsed:"data"},DRAGONS,{});
+    p.readingNotes=ReadingJournal.pin([],note).notes;`);
+  assert(run('chapterAvailable("5") && chapterFiveFieldStatus().notes === 1'), "外れた実予想や旧形式の既存手帖を評価しなかった");
+  run('setStoryFlag("_chapter_intro_4",false)');
+  assert(!run('chapterAvailable("5")'), "第四話を飛ばした");
+  run('setStoryFlag("_chapter_intro_4",true); const accounting=()=>JSON.stringify([p.coins,assetsPeak(state),p.island]); const before=accounting()');
+  assert(run('chapterAvailable("5") && !advisorMet("celestia") && !scoutLocationUnlocked("sky")'), "出会い前に第五話の後続機能を開けた");
+  run('setStoryFlag("_chapter_intro_5",true);epilogueStart();saveGame();loadGame()');
+  assert(run('chapterAvailable("5") && chapterVerify("5").length===0 && advisorMet("celestia") && scoutLocationUnlocked("sky")'), "低資産での第五話の再開に失敗");
+  assert(run('JSON.stringify([state.player.coins,assetsPeak(state),state.player.island])===before'), "財布・最高資産・島施設を付与した");
+  assert(run('!shinganUnlocked() && !shinganAllScouted()'), "第五話を読んだだけで決戦にも進めた");
 });
 
 // ── 3) 表そのものの健全性 ──

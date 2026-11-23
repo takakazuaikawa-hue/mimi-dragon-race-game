@@ -123,14 +123,14 @@
       var dexT = (typeof DRAGONS !== "undefined") ? DRAGONS.filter(function (d) { return d.id !== "poro"; }).length : 0;
       var dexS = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0;
       var scouted = Object.values(p.collection || {}).filter(function (e) { return e && e.scouted; }).length;
-      var ob = (p.outfitsBought || []).length + ((p.outfitsWon || []).length);
       var ot = (typeof OUTFITS !== "undefined") ? OUTFITS.length : 0;
+      var ob = ot && typeof outfitOwned === "function" ? OUTFITS.filter(outfitOwned).length : 0;
       var rows = [
         ["完走", run + "戦 " + win + "勝（勝率 " + rate + "％）"],
         ["総資産", fc(p.totalAssets || 0)],
         ["図鑑", dexS + " ／ " + dexT + " 頭"],
         ["スカウト", scouted + " 頭を龍舎へ"],
-        ["晴れ着", Math.min(ob, ot) + " ／ " + ot + " 着"],
+        ["所持している衣装", ob + " ／ " + ot + " 着"],
         // ★旧称「村レベル」→「暮らし」。数字だけでなく称号を出す（LIVING_RANKS）。
         ["暮らし", (function(){ var lv = p.villageLevel || (p.village && p.village.level) || 1;
           var rk = (typeof LIVING_RANKS !== "undefined") ? LIVING_RANKS[lv-1] : null;
@@ -189,6 +189,27 @@
     var html = "";
     for (var i = 0; i < blocks.length; i++) html += blockHTML(blocks[i]);
     return html;
+  }
+
+  // Only completed, authored encounters appear in the held ending. Opening the
+  // keepsakes is optional; no completion flags, rewards or race data are written.
+  function discoveryFinaleHTML() {
+    if (typeof IslandDiscovery === "undefined" || typeof state === "undefined" || !state.player) return "";
+    var entries = IslandDiscovery.exportDiscoveries(state.player.islandDiscovery)
+      .filter(function(r){ return r.caseId === "dragon_trace" || r.caseId === "legend_ring"; })
+      .map(function(r){ return IslandDiscovery.describeDiscovery(r); }).filter(Boolean);
+    if (!entries.length) return "";
+    var out = '<details class="edr-discoveries"><summary>一緒に見つけた、島の続き</summary>';
+    entries.forEach(function(e){
+      var f=e.finding, company=typeof IslandDiscoveryStories!=="undefined"&&f.companionId&&IslandDiscoveryStories.companions[f.companionId];
+      out+='<article class="edr-discovery"><img src="'+esc(f.image)+'" alt="'+esc(f.title)+'"><div><h3>'+esc(f.title)+'</h3>';
+      if(company)out+='<small>'+esc(company.short)+'と、一緒に見つけた記憶</small>';
+      out+='<p>'+esc(f.id==='dragon_trace'?'あの岩棚で、同じ風を待った。走っていない時のあの子にも会えたことを、覚えている。':'小さな渡し環を開くと、網を繕う手を思い出す。伝説の原品はサヨの仕事台で、明日も使われる。')+'</p>';
+      if(company)IslandDiscoveryStories.dialogue(f.id,'return',f.companionId).forEach(function(l){out+='<p>'+esc(l.t)+'</p>';});
+      if(f.souvenir)out+='<p class="edr-keepsake">旅に残ったもの：'+esc(f.souvenir.name)+'</p>';
+      out+='</div></article>';
+    });
+    return out+'</details>';
   }
 
   // ── ロール再生 ────────────────────────────────────────────────
@@ -276,7 +297,7 @@
           var storyHTML = ((cF.finStory) || []).map(function (s) { return "<p>" + esc(s) + "</p>"; }).join("");
           var fnl = document.createElement("div");
           fnl.className = "edr-finale";
-          fnl.innerHTML = artHTML + '<div class="edr-finale-tx"><div class="edr-finale-ttl">― 次の物語へ ―</div>' + storyHTML + "</div>";
+          fnl.innerHTML = artHTML + '<div class="edr-finale-tx"><div class="edr-finale-ttl">― 次の物語へ ―</div>' + storyHTML + discoveryFinaleHTML() + "</div>";
           overlay.insertBefore(fnl, bar);
         }
         bar.innerHTML = "";

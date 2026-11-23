@@ -42,17 +42,17 @@ function renderStory() {
   const app = beginScreen();
 
   const news = el("div", "news");
-  const issue = (state.player.completedRaces || 0) + 1;
+  const completed = state.player.completedRaces || 0;
   const unlockedCount = STORY_CHAPTERS.filter(ch => (typeof chapterAvailable === "function") ? chapterAvailable(ch.id) : (total >= storyUnlockAt(ch.id))).length;
 
   // シリーズヒーロー
-  news.appendChild(_newsMast(`配信 ${issue} 日目`, `EP ${unlockedCount}／${STORY_CHAPTERS.length} 公開中`));
+  news.appendChild(_newsMast(`ここまで ${completed} 戦`, `EP ${unlockedCount}／${STORY_CHAPTERS.length} 公開中`));
 
   // シノプシス（あらすじ）
   const lead = el("div", "news-lead");
   lead.innerHTML =
     `借金まみれで島に流れ着いたバニー娘が、竜レースで人生を取り返すまで。` +
-    `本人も知らなかった舞台裏を、<b>5人の証言</b>と未公開映像で追う。総資産を積むほど、次のエピソードが公開される。`;
+    `本人も知らなかった舞台裏を、<b>5人の証言</b>と未公開映像で追う。島で重ねた出会いと体験が、次の物語につながる。`;
   news.appendChild(lead);
 
   // EPISODES（章一覧）＝話数カード
@@ -211,6 +211,7 @@ function _storyDoneBox(ch, cast) {
   else if (hungry) { label = "🍙 ごはんを食べて、レースへ ▶"; go = () => renderMeals(); }
   else if (ch.cast === "sumika" && typeof renderLifeTree === "function") { label = "🏠 スミカの宿題（くらし）を見にいく ▶"; go = () => renderLifeTree(); }
   else if (ch.cast === "makura" && typeof renderCollection === "function" && (typeof dexUnlocked !== "function" || dexUnlocked())) { label = "🐲 推し竜の記録（図鑑）を開く ▶"; go = () => renderCollection(); }
+  else if (ch.cast === "celestia") { label = "🏝️ 島に戻って、明日の開催に備える ▶"; go = () => renderHome(); }
   else if (ch.cast === "mizu") { label = "📊 市場を見る目で、次の出走表へ ▶"; go = () => renderRaceSelect(); }
   else if (ch.cast === "sake") { label = "🐲 竜を見る目で、次の出走表へ ▶"; go = () => renderRaceSelect(); }
   else { label = "🐉 次のレースへ ▶"; go = () => renderRaceSelect(); }
@@ -218,6 +219,11 @@ function _storyDoneBox(ch, cast) {
   b.onclick = go;
   box.appendChild(b);
   return box;
+}
+
+function storyEncounterOptions(ch) {
+  const places = { "1": "レース場の門前", "2": "夜市の出走表", "3": "村の行政窓口", "4": "場外の配信席", "5": "星の見える観覧席" };
+  return places[ch.id] ? { encounter: { episode: "EPISODE " + String(ch.id).padStart(2, "0") + " / 出会い", place: places[ch.id] } } : {};
 }
 
 function renderStoryChapter(chId) {
@@ -245,14 +251,22 @@ function renderStoryChapter(chId) {
   state.ui.screen = "story_read";
   const cast = STORY_CAST[ch.cast];
   // ▼▼ 物語ロジック（不変・表示専用の演出トリガ）▼▼
-  // 各話の導入セリフ（立ち絵）— 章ごとに1回だけ。本文はそのまま下に表示。
+  // 初回は出会いが終わってから既読と登場を確定。中断・再読で失わない。
   if (window.Dialogue && window.DLG && typeof getStoryFlag === "function" && !getStoryFlag("_chapter_intro_" + ch.id)) {
-    const _introP = Dialogue.play(DLG.chapterIntro(ch, cast));
-    if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
-    // 第5話：導入セリフのあと、神眼開眼のカットインを一度だけ（初回のみ・表示専用）。
-    if (ch.id === "5" && typeof playShinganCutin === "function" && _introP && _introP.then) {
-      _introP.then(function () { playShinganCutin(); });
-    }
+    if (state.ui._storyEncounterPending === ch.id) return;
+    state.ui._storyEncounterPending = ch.id;
+    const openingPlayer = state.player;
+    const opening = beginScreen();
+    opening.appendChild(el("div", "news-lead", "出会いの場面へ……"));
+    const _introP = Dialogue.play(DLG.chapterIntro(ch, cast), storyEncounterOptions(ch));
+    Promise.resolve(_introP).then(() => {
+      if (state.player !== openingPlayer) return;
+      delete state.ui._storyEncounterPending;
+      if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
+      if (ch.id === "5" && typeof playShinganCutin === "function") playShinganCutin();
+      if (state.ui.screen === "story_read") renderStoryChapter(ch.id);
+    });
+    return;
   }
   // フォールバック：2勝より先に第3/4章へ到達していた場合のみ、章を開いた時にポロ発見アークを再生。
   if (typeof maybePlayPoroArcOnChapter === "function") maybePlayPoroArcOnChapter(ch.id);
@@ -278,13 +292,22 @@ function renderStoryChapter(chId) {
   news.appendChild(el("div", "news-headline", ch.headline || chapterDisplayTitle(ch)));
   news.appendChild(el("div", "news-subhead", ch.title));
   if (cast) news.appendChild(el("div", "news-byline", `出演：${cast.name}（${cast.tag}）　／　授けるもの＝${cast.gives}`));
+  if (ch.id !== "ED" && window.Dialogue && window.DLG) {
+    const encounter = el("button", "news-btn news-encounter-replay", "出会いの場面をもう一度");
+    encounter.onclick = () => {
+      encounter.disabled = true;
+      Promise.resolve(Dialogue.play(DLG.chapterIntro(ch, cast), storyEncounterOptions(ch)))
+        .finally(() => { encounter.disabled = false; });
+    };
+    news.appendChild(encounter);
+  }
   // リード＝あらすじ（本文の前に1段）
   if (ch.lead) news.appendChild(el("div", "news-lead", ch.lead));
 
   // キービジュアル（タップで全画面）
   const photo = el("div", "news-photo viewable");
   photo.innerHTML =
-    `<div class="news-photo-img">${photoOr("images/story/" + ch.id + ".jpg", `<span class="sym">${cast ? cast.symbol : "🐲"}</span>`)}` +
+    `<div class="news-photo-img"><img class="news-story-art" src="images/story/${ch.id}.webp" alt="" width="683" height="1024" decoding="async" onerror="this.onerror=null;this.src='images/story/${ch.id}.jpg'">` +
       `<span class="news-photo-zoom">🔍 全画面</span></div>` +
     `<div class="news-cap"><span class="news-cap-tag">SCENE</span>${ch.scene || ""}</div>`;
   photo.onclick = () => showStoryArt(ch);
@@ -301,6 +324,16 @@ function renderStoryChapter(chId) {
   const btns = el("div", "news-btns");
   // ★読み方の入口をここに一つ置く（2026-11-13）。全画面の読み物は初読のときに自動で開くだけで、
   //   あとから同じ形で読み返す入口が無かった。本文はこのページにいつでもある＝二つの読み方をここで選べる。
+  if (ch.id === "4" && typeof buyPhoneAndGoLive === "function" && !getStoryFlag("phoneBought")) {
+    const terms = (state.player.coins || 0) >= 3000 ? "3,000コインで購入" : "マクラが立て替え";
+    const phone = el("button", "news-btn prim", "📱 マクラに相談して配信用スマホを持つ（" + terms + "）");
+    phone.onclick = () => buyPhoneAndGoLive();
+    btns.appendChild(phone);
+  } else if (ch.id === "4" && typeof renderChapterFourJourney === "function") {
+    const desk = el("button", "news-btn prim", "📱 マクラの配信席で、自分の一枚に届いた反応を読む");
+    desk.onclick = () => renderChapterFourJourney(true);
+    btns.appendChild(desk);
+  }
   if (typeof srOpenReader === "function") {
     const again = el("button", "news-btn", "🎬 絵と大きな文字で読む");
     again.onclick = () => srOpenReader(ch, (finished) => { if (finished) { state.ui._storyJustRead = ch.id; renderStoryChapter(ch.id); } });

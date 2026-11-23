@@ -92,15 +92,15 @@ function _snsPostImg(po) {
 }
 // 自分の投稿で選べる“カメラロール”（写真＋既定キャプション）。gate＝門番（"@フラグ" or 顧問キー）。
 var SNS_CAMERA_ALL = [
-  { img: "images/39_char_mimi-keyvisual-racetrack.png", cap: "きょうのわたし📸 配信たのしかった！" },
-  { img: "images/homebg/beach_day.webp", cap: "島のビーチでひとやすみ🏖️" },
-  { img: "images/homebg/balcony_night.webp", cap: "夜のバルコニーから。いい風🌙" },
-  { img: "images/racebg/fire.webp", cap: "今日のレース場、熱かった🔥" },
-  { img: "images/home_vista_day.jpg", cap: "いい天気！ 竜たちもごきげん☀️" },
-  { img: "images/12_stage_seiryu-street-sunset_v2.png", cap: "聖龍街の夕暮れ、すきだなぁ🌇" },
+  { img: "images/39_char_mimi-keyvisual-racetrack.png", cap: "カメラロールから、レース場の一枚📸" },
+  { img: "images/homebg/beach_day.webp", cap: "島のビーチの写真🏖️" },
+  { img: "images/homebg/balcony_night.webp", cap: "夜のバルコニーの写真🌙" },
+  { img: "images/racebg/fire.webp", cap: "炎のコースの写真🔥" },
+  { img: "images/home_vista_day.jpg", cap: "晴れた島を写した一枚☀️" },
+  { img: "images/12_stage_seiryu-street-sunset_v2.png", cap: "夕暮れの聖龍街🌇" },
   // ★BUGFIX（出会う前のキャラが出る）：発見前のカメラロールに「ポロ」の名前も立ち絵も出さない。
   { img: "images/cast/stand/poro.webp?v=2", cap: "相棒のポロと📷 泣き虫だけど最高の子", gate: "@poroFound" },
-  { img: "images/homebg/market_day.webp", cap: "食べ歩き中〜🍢 なに食べよ" }
+  { img: "images/homebg/market_day.webp", cap: "市場のカメラロールから🍢" }
 ];
 // ui_sns.js は SNS_CAMERA を配列として直接読むので、中身を“その場で”入れ替えて同期する（snsCheckin から毎描画）。
 var SNS_CAMERA = [];
@@ -117,9 +117,6 @@ snsSyncCamera();   // 読み込み時にも中身を入れておく（state未�
 //   base=元のリアクション数の目安。replies=リプライ選択肢[{choice, back}]（任意）。
 // =========================================================================
 var SNS_DAILY = [
-  { id: "d_morning", ic: "🐰", name: "ミミ", handle: "@mimi_yosou", base: 420,
-    text: "おはよ〜！ 今日もいっしょに竜たち応援しよ？ 耳ぴょこっとしながら待ってるね🐰",
-    replies: [{ choice: "おはよう！", back: "えへへ、来てくれてうれしい！" }, { choice: "ねむい…", back: "わかる〜。甘いもの食べて、いこ？" }] },
   { id: "d_weather", ic: "🌤️", name: "島の天気よほう", handle: "@shima_weather", base: 88,
     text: "本日の島は晴れ、午後から風つよめ。翼の強い竜にはおいかぜ、かも？🍃" },
   { id: "d_oshi", ic: "🔥", name: "推し竜ガチ勢", handle: "@oshi_dragon", base: 156,
@@ -129,11 +126,6 @@ var SNS_DAILY = [
     text: "脚質ってのはな、性格だ。逃げる奴、待つ奴、差す奴。竜にも生き方がある。…よく見てやれ。" },
   { id: "d_mizu", ic: "💧", name: "ミズ", handle: "@mizu_market", base: 134,
     text: "人気が集まる竜ほど、配当はしぼむ。…みんなが見てない“価値”は、いつも端っこに落ちてるわ。あはん。" },
-  // ★声表スイープ：ポロは言葉を持たない。アカウントは「代筆・ミミ」＝しぐさの翻訳という体で統一。
-  { id: "d_poro", ic: "🐉", name: "ポロ（代筆・ミミ）", handle: "@poro_naki", base: 240,
-    text: "（代筆）配信の準備をしていたら、ポロが画面の前に座り込んで動かなくなりました。……たぶん、いちばん前で見たいらしい。",
-    replies: [{ choice: "ポロえらい！", back: "（代筆）褒められた言葉が分かるのか、耳がぴんと立ちました。しっぽ、高速。" },
-              { choice: "なでなで", back: "（代筆）首すじを撫でたら、目を細めて体重を全部あずけてきました。……重い。しあわせ。" }] },
   { id: "d_gohan", ic: "🍙", name: "島ごはん部", handle: "@shima_gohan", base: 73,
     text: "レース場の屋台、今日は焼きとうもろこしの日！ 醤油の焦げる匂い、罪すぎる……🌽" },
   { id: "d_makura", ic: "🎤", name: "実況マクラ", handle: "@makura_live", base: 198,
@@ -146,7 +138,14 @@ var SNS_DAILY = [
   { id: "d_news", ic: "📰", name: "竜レース速報", handle: "@dragon_news", base: 102,
     text: "【速報】本日のメインレース、出走表が公開。波乱の予感に場内ざわめく。あなたの予想は？" },
   { id: "d_rival", ic: "🐲", name: "好敵手の予想家", handle: "@rival_yosou", base: 117,
-    text: "ミミの予想、今日もチェックしてる。…言っとくが、参考にしてるわけじゃない。たまたまだ。" },
+    text: function () {
+      const articles = _snsP().kikoArts;
+      const raceStory = Array.isArray(articles) && articles.find(a => a && /^ka[1-9]\d*$/.test(a.id) &&
+        ["win", "lose", "bigwin"].includes(a.cut) && Number.isInteger(a.race) && a.race > 0 && a.race <= _snsRaces() &&
+        typeof a.headline === "string" && a.headline.trim() && Array.isArray(a.paras) && a.paras.some(p => typeof p === "string" && p.trim()));
+      if (raceStory) return (raceStory.cut === "lose" ? "ミミの紀行の敗戦記、読んだぞ。" : "ミミの紀行、当てた一戦の話を読んだぞ。") + "……俺の出走表は俺が書く。読み比べたくて開いただけだ。";
+      return "こっちでも予想の話ができるんだな。俺はまず枠順を見る。そっちは、何から見る？";
+    } },
   { id: "d_aya", ic: "💬", name: "常連のアヤ", handle: "@aya_no_hibi", base: 95,
     text: "ミミちゃんの「ぱほぱほ〜」聞くと、なんか今日もがんばれる気がするんだよね。ふしぎ。" },
   { id: "d_celes", ic: "🌌", name: "セレスティア", handle: "@celestia_sky", base: 333,
@@ -161,7 +160,7 @@ function _snsCastOk(gate) {
   if (gate.charAt(0) === "@") return _snsFlag(gate.slice(1));
   return (typeof advisorMet === "function") ? !!advisorMet(gate) : false;
 }
-var SNS_DAILY_GATE = { d_sake: "sake", d_mizu: "mizu", d_makura: "makura", d_sumika: "sumika", d_celes: "celestia", d_poro: "@poroFound" };
+var SNS_DAILY_GATE = { d_sake: "sake", d_mizu: "mizu", d_makura: "makura", d_sumika: "sumika", d_celes: "celestia" };
 function _snsDailyOk(po) { return _snsCastOk(SNS_DAILY_GATE[po.id]); }
 
 // =========================================================================
@@ -174,10 +173,6 @@ var SNS_POSTS = [
   { id: "p_rank2", ic: "🎤", name: "実況マクラ", handle: "@makura_live", base: 158,
     text: function () { return `ミミ、ランク${_snsRank()}到達！ 新しい地域のレースにも挑めるぞ。視聴者みんなで応援だ！`; },
     unlock: function () { return _snsRank() >= 2; } },
-  { id: "p_poro", ic: "🐉", name: "ポロ", handle: "@poro_naki", base: 311,
-    // ★声表スイープ：ポロは言葉を持たない（セリフ禁止）。SNSも例外にしない＝しぐさをミミが代筆する体に。
-    text: "（代筆・ミミ）ポロが、拾われた日の毛布をまだ離さない。ぐすっと鼻を鳴らして、尻尾で三回わたしの膝を叩く。……たぶん「おぼえてる」。",
-    unlock: function () { return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_poro", _snsFlag("poroFound")) : _snsFlag("poroFound"); } },   // ★D9-11
   { id: "p_followers", ic: "🔥", name: "推し竜ガチ勢", handle: "@oshi_dragon", base: 207,
     text: function () { return `フォロワー${_snsFollowers().toLocaleString()}人突破！？ もう立派な“予想界の星”じゃん。最初から見てる俺、誇らしい。`; },
     unlock: function () { return _snsFollowers() >= 3000; } },
@@ -196,15 +191,13 @@ var SNS_POSTS = [
     text: "……面白い灯りだね。消えそうで、消えない。あなたの“視る目”、わたしがちゃんと見ててあげる。",
     // ★D15: 第5話VN→(+1走)手紙→(+3走)この投稿、の時差解禁。門番SNS_POST_GATEは従来どおり併用。
     unlock: function () { var c = (typeof advisorMet === "function") && advisorMet("celestia"); return (typeof unlockDelayRace === "function") ? unlockDelayRace("p_celestia", c, 3) : c; } },
-  { id: "p_thanks", ic: "🐰", name: "ミミ", handle: "@mimi_yosou", base: 888,
-    text: "いつも見てくれて、ほんとにありがとう。わたし、この世界に来てよかった。…これからも、いっしょに当てようね！", unlock: function () { return _snsRaces() >= 10; } },
   // ── 暮らし還流（docs/KURASHI_STORY_WEAVE.md B）──
   { id: "p_walker", ic: "📷", name: "聖龍日報・文化面", handle: "@seiryu_bunka", base: 121,
     text: "本日の「島を歩く人」——予想家ミミ。レースのない日、彼女は島のどこかを歩いている。市場の湯気の中に、崖の風の中に。",
     unlock: function () { var c = Object.keys((((typeof state !== "undefined" && state.player) || {}).kurashi || {}).spotsSeen || {}).length >= 8; return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_walker", c) : c; } },   // ★D9-11: 號外(+1レース)とさらに時差
   { id: "p_gourmet", ic: "🍜", name: "屋台のおやじ", handle: "@yatai_oyaji", base: 96,
     text: "また来たよ、あの子。うちの新作、いちばんうまそうに食うんだ。……悪い気はしねえ。（グルメ面『みみしんぼ』連載中）",
-    unlock: function () { var c = (typeof mealStatsAll === "function") && mealStatsAll().got >= 10; return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_gourmet", c) : c; } },   // ★D9-11: toast即時→號外+1レース→投稿+1日
+    unlock: function () { var c = typeof mealEatenCount === "function" && mealEatenCount(_snsP()) >= 10; return (typeof unlockDelayDay === "function") ? unlockDelayDay("p_gourmet", c) : c; } },   // ★D9-11: toast即時→號外+1レース→投稿+1日
 
   // ── R4：島でやったことを、SNSが**実名で**拾う（docs/REWARD_LOOP_DESIGN.md）──
   // ★既存の p_walker / p_gourmet は「島を歩く人」「よく食う子」と**匿名の一般論**だった。
@@ -246,8 +239,7 @@ var SNS_POST_GATE = {
   p_rank2: "makura", p_makura_legend: "makura",   // 実況マクラ＝第4話
   p_rich: "mizu",                                 // ミズ＝第2話
   p_veteran: "sake",                              // サケ＝第1話（最初から会っている）
-  p_celestia: "celestia",                         // セレスティア＝第5話（伏線段階では本名も立ち絵も出さない）
-  p_poro: "@poroFound"                            // ポロ＝単勝2勝目の発見後だけ
+  p_celestia: "celestia"                          // セレスティア＝第5話（伏線段階では本名も立ち絵も出さない）
 };
 
 // =========================================================================
@@ -285,10 +277,10 @@ var POST_TEMPLATES = [
 // =========================================================================
 var FAN_LETTERS = [
   { id: "l_first", ic: "🌸", from: "はじめてのファンより", subject: "応援しています！",
-    body: "ミミさんへ。\n配信、毎回楽しみにしています。予想が当たっても外れても、まっすぐ竜を見るミミさんが好きです。\nこれからも、わたしのヒーローでいてください。\n\n——耳ぴょこ、だいすきな一人より🐰",
+    body: "ミミさんへ。\n島のレース場に来ると、応援旗にいろんな竜の名前があるでしょう。私も端っこの席で一本振っています。\nいつか気になる子がいたら、お名前を聞かせてください。\n\n——スタンドの端のファンより🐰",
     unlock: function () { return true; } },
   { id: "l_kid", ic: "🧒", from: "村の子どもより", subject: "ぼくもよそうかになりたい！",
-    body: "ミミおねえちゃんへ。\nぼく、ミミおねえちゃんみたいに竜のことがわかるようになりたいです。\nきのう、はじめて『きはい』ってことばをおぼえました。サケのおじさんがおしえてくれた！\nまたはいしん、みにいきます。",
+    body: "ミミおねえちゃんへ。\nぼく、ミミおねえちゃんみたいに竜のことがわかるようになりたいです。\nきのう、はじめて『きはい』ってことばをおぼえました。竜のどこを見たら、ぼくにもわかるかな。\nいつかはいしんでも、おしえてください。",
     unlock: function () { return _snsRaces() >= 5; } },
   { id: "l_sake", ic: "🍶", from: "サケ・ウダダ", subject: "（不器用な殴り書き）",
     body: "ミミ。\nこういうのは柄じゃないが、一度だけ書く。\nお前、最初は右も左もわからん顔をしていた。今は、竜を見る目をしている。\n……誇りに思う。次の一戦も、気配を見ろ。それだけだ。",
@@ -297,10 +289,9 @@ var FAN_LETTERS = [
   { id: "l_rescued", ic: "🏘️", from: "串屋のおやじより", subject: "串、2枚に戻します",
     body: "ミミ様へ。\nむずかしいことはわかりません。ただ、うちの炭が、去年より早く減ります。\nレース帰りの客が増えたからです。あなたが勝った日も、負けた日も、みんな寄ってくれる。\n女房と話して、串を2枚に戻すことにしました。2枚です。1枚に減らした、あの冬からやっと。\nそれだけ、お伝えしたくて。",
     unlock: function () { return _snsMaxCoins() >= 100000; } },
-  // ★声表スイープ：ポロは字も書けない（セリフ禁止の徹底）。ミミの代筆＝しぐさの翻訳という体にする。
-  //   「言葉を持たない相棒」という設定こそがポロの魅力なので、手紙でも崩さない。
-  { id: "l_poro", ic: "🐉", from: "ポロ（代筆・ミミ）", subject: "おねえちゃんへ（なみだのあと）",
-    body: "——と、ポロが言ったわけではありません。字が書けないので、わたしが代わりに書いています。\n\n今日、ポロは龍舎の入口でずっと外を見ていました。\nわたしの足音が聞こえた瞬間、耳がぴんと立って、尻尾が三回、地面を叩きました。\n毎日、きっかり三回です。たぶんそれが「おかえり」。\n\nグルメレースを走った日は、四回叩きました。\n一回ぶんだけ、うれしかったんだと思います。\n\n——以上、ポロからの手紙でした。　代筆：ミミ",
+  // poroAppraisalScript で実際に届いた紙の控え。既読の l_poro を保持する。
+  { id: "l_poro", ic: "🐉", from: "鑑定所", subject: "仔竜の鑑定結果（控え）",
+    body: "ミミ様\n先日お届けした鑑定結果の控えです。\n\n種族　ムラサキマルチビ竜\n成長段階　幼体\n希少指定　なし\n聖龍との血縁　なし\n特殊能力　なし\n備考　食べ過ぎ傾向あり\n\n鑑定所",
     unlock: function () { return (typeof unlockDelayDay === "function") ? unlockDelayDay("l_poro", _snsFlag("poroFound")) : _snsFlag("poroFound"); } },   // ★D9-11: 発見の翌日に届く
   { id: "l_rival", ic: "🐲", from: "かつての好敵手より", subject: "次は負けない",
     body: "ミミへ。\nお前の予想に、何度も悔しい思いをさせられた。\nだが、おかげで俺も腕を上げた。お前がいなけりゃ、ここまで来られなかった。\n……礼は言わん。次のレースで、ぜんぶ返す。覚悟しておけ。",
@@ -393,23 +384,203 @@ function pollResults(poll) {
 }
 
 // ── 自分で投稿してバズる ──
-function myPosts() { return snsData().myPosts.slice().reverse(); }   // 新しい順
-function addMyPost(text, img) {
+function _snsNextPostId(s, day) {
+  if (!Number.isSafeInteger(s.myPostSerial) || s.myPostSerial < 0) {
+    // Old saves have no counter. Reactions can outlive the forty visible posts.
+    s.myPostSerial = 0;
+    const ids = s.myPosts.map(p => p.id).concat(Object.keys(s.reacts), Object.keys(s.liked), Object.keys(s.replies));
+    for (const id of ids) {
+      const match = /^my_-?\d+_(\d+)$/.exec(id);
+      if (match) s.myPostSerial = Math.max(s.myPostSerial, Number(match[1]));
+    }
+  }
+  return "my_" + day + "_" + (++s.myPostSerial);
+}
+function _snsSeparateDuplicatePosts(s) {
+  const seen = new Set(), duplicates = new Set();
+  for (const p of s.myPosts) {
+    if (seen.has(p.id)) duplicates.add(p.id);
+    seen.add(p.id);
+  }
+  if (!duplicates.size) return false;
+  // The shared old reaction cannot be attributed to either post. Keep that
+  // key and its data intact, and give every member its own ID for future use.
+  for (const p of s.myPosts) if (duplicates.has(p.id)) {
+    p.legacyPostId = p.id;
+    p.id = _snsNextPostId(s, p.day);
+  }
+  return true;
+}
+function myPosts() {
+  const s = snsData();
+  if (_snsSeparateDuplicatePosts(s)) _snsSave();
+  return s.myPosts.slice().reverse();
+}
+// Capture provenance when the player posts from a real map viewer. Reading an
+// old post never re-evaluates today's meal album or invents a past visit.
+function snsPlacePostSource(ref, img) {
+  if (!ref || !/^[a-z][a-z0-9_]{0,60}$/.test(ref.spotId || "") || !["photo", "gourmet"].includes(ref.kind)) return null;
+  if (typeof KONRON_SPOTS === "undefined" || !Object.prototype.hasOwnProperty.call(KONRON_SPOTS, ref.spotId)) return null;
+  var spot = KONRON_SPOTS[ref.spotId];
+  if (!spot[ref.kind] || spot[ref.kind] !== img) return null;
+  try {
+    if (typeof konronMapUnlocked !== "function" || !konronMapUnlocked() || typeof _kmSpotOpen !== "function" || !_kmSpotOpen(spot)) return null;
+    if (typeof _kmHiddenQuiet === "function" && !_kmHiddenQuiet(ref.spotId)) return null;
+  } catch (e) { return null; }
+  var p = _snsP(), kz = p.kurashi || {};
+  var meal = ref.kind === "gourmet" && typeof MEALS !== "undefined" ? MEALS.find(function (m) { return m.spot === ref.spotId; }) : null;
+  var tasted = meal && ((p.meals || {}).eaten || {})[meal.id] === true;
+  var stars = Number((kz.photoStars || {})[ref.spotId]);
+  return { version: 1, spotId: ref.spotId, kind: ref.kind, spotName: spot.name,
+    visited: !!(kz.spotsSeen || {})[ref.spotId], photoStars: ref.kind === "photo" && Number.isInteger(stars) && stars >= 1 && stars <= 3 ? stars : 0,
+    mealId: tasted ? meal.id : null, mealName: tasted ? meal.name : null };
+}
+function snsPlacePostCaption(ref, img) {
+  var source = snsPlacePostSource(ref, img);
+  if (!source) return null;
+  if (source.kind === "gourmet") return source.mealId ? "前に味わった「" + source.mealName + "」のお店📸" : source.spotName + "の、気になる一皿📸";
+  return source.spotName + (source.photoStars ? "で撮影した一枚📸" : source.visited ? "に寄った記念📸" : "、気になる景色📸");
+}
+function _snsPlaceReply(source) {
+  if (!source) return null;
+  var spot = KONRON_SPOTS[source.spotId];
+  var tips = {
+    market: "市場の湯気は、屋台ごとに匂いが違うんだ。気になったところで足を止めてみて。",
+    makemeshi: "負け飯屋台の一杯は、勝負の話をしなくても落ち着くよ。黙って座る日があってもいい。",
+    backbistro: "あの無銘の扉、見つけるとうれしいよね。塩パスタが好みだったか、飾らない感想を聞いてみたい。",
+    kachimeshi: "横丁の串は、派手なお祝いじゃなくても似合うよ。自分の小さな祝いごとで寄るのも好き。",
+    mall: "モールの大屋根は、買い物をしない日の待ち合わせにも使ってる。吹き抜けを眺めているだけでも、ひと休みになるよ。",
+    sena: "白砂とラグーン、近くで見ると青の色が違うんだ。浜では急がず眺めてみて。",
+    kirimina: "霧港の提灯は、船が動くたび水面でほどけるんだ。港を歩くときは、足元の水も見てみて。",
+    furununo: "夜市の古布は、一枚ずつ色の褪せ方が違う。買う物を決めずに眺める時間も好きだよ。",
+    ryoshimeshi: "まかない食堂の大鍋を囲む席が好き。漁から帰った人たちの声まで、ごちそうみたいなんだ。",
+    kissaten: "みすとの窓辺では、プリンを急いで食べなくていい。海を見ながらスプーンを休める時間も好き。",
+    lavasteak: "竜窯の溶岩石グリルは、焼き上がりを待つ間まで熱気が伝わる。あの店らしい景色だよ。",
+    quaybar: "船着き場の樽テーブルは、夕陽を見るにはいい場所。鍋を囲まなくても、漁船の帰りを眺めたくなるね。"
+  };
+  var detail = tips[source.spotId];
+  if (!detail) {
+    var feature = String(spot.shoot || "").split("・")[0];
+    detail = feature && feature !== "—" ? "「" + feature + "」に目が留まったら、急がず眺めてみて。ここらしさが出るところだよ。" : "この景色が気になったんだね。自分のペースで眺めていって。";
+  }
+  var lead = source.mealId ? "「" + source.mealName + "」を味わったことがあるんだね。" : source.photoStars ? "☆" + source.photoStars + "の一枚、見せてくれてありがとう。" : source.visited ? source.spotName + "に足を運んでくれたんだね。" : source.spotName + "が気になった？　";
+  return { by: source.spotName + "の近所の人", ic: "💬", back: lead + detail };
+}
+// A reply refers to the subject selected at publication. Captions are the
+// player's own words and never certify a meal, a visit, or a friendship.
+function snsPersonalPostSubject(ref, img, publishing) {
+  if (!ref || typeof ref.id !== 'string') return null;
+  if (ref.kind === 'outfit' && typeof OUTFITS !== 'undefined') {
+    const outfit = OUTFITS.find(o => o.id === ref.id);
+    if (outfit && outfitImg(outfit.id) === img && (!publishing || (currentOutfitId() === outfit.id && outfitOwned(outfit))))
+      return {kind:'outfit', id:outfit.id, name:outfit.name};
+  }
+  if (ref.kind === 'dragon' && typeof DRAGONS !== 'undefined') {
+    const dragon = DRAGONS.find(d => d.id === ref.id);
+    if (dragon && img === 'images/dragons/' + dragon.id + '.png' && (!publishing || _snsP().collection?.[dragon.id]?.scouted === true))
+      return {kind:'dragon', id:dragon.id, name:dragon.name};
+  }
+  if (ref.kind === 'meal' && typeof MEALS !== 'undefined') {
+    const meal = MEALS.find(m => m.id === ref.id);
+    if (meal?.photo && meal.photo === img && (!publishing || _snsP().meals?.eaten?.[meal.id] === true))
+      return {kind:'meal',id:meal.id,name:meal.name};
+  }
+  return null;
+}
+const SNS_FIELD_ROUTES = {
+  cloth: [
+    ['furununo','cloth_marks','古布屋には、わざわざ繕い残した短い線があるの。刺繍にするには間隔が妙でしょう？'],
+    ['shiranami','gate_seaward','浜の鳥居の下にも高さ違いの線があるよ。布の線とどう重なるか、私も知りたい。']
+  ],
+  dragon: [
+    ['ryusha','dragon_carry','竜舎で魚を受け取る小さな翼竜がいるよ。食べるのか、どこかへ運ぶのか、口元を見てみて。'],
+    ['ryu_mizunomi','trace_toes','水のみ場では、水際より手前で足が止まった跡も探せる。爪先はどちら向きかな。'],
+    ['kazami_yagura','trace_quill','櫓なら吹き流しと岩棚が一緒に見える。竜が動く前、布と首のどちらが先に動くかな。']
+  ],
+  water: [
+    ['market','water_jars','屋台の水甕、違う店でも同じ札が下がってる。裏に何が書いてあるか、店先で見ていって。'],
+    ['tanada','water_fork','棚田の手前で水が二手に分かれるんだ。ふたのある方は、田んぼには入らないよ。']
+  ],
+  harbor: [
+    ['kirimina','return_cargo','港で「空なのに降ろす箱」を探してみて。荷がどちら向きに旅をするのか、見方が変わるよ。'],
+    ['tsubo_roji','vinegar_crates','壺の路地に、注文の札はあるのに詰められない酢があるよ。棚に何が足りないかな。']
+  ]
+};
+function snsRouteOpen(id) {
+  if (typeof KONRON_SPOTS === 'undefined' || !Object.hasOwn(KONRON_SPOTS,id)) return false;
+  return typeof konronMapUnlocked === 'function' && konronMapUnlocked() && _kmSpotOpen(KONRON_SPOTS[id]) && _kmHiddenQuiet(id);
+}
+function snsFieldReply(subject, place) {
+  let reply, route;
+  if (subject?.kind === 'outfit') {
+    route = 'cloth'; reply = {by:'夜市の繕い屋',ic:'🧵',back:'「' + subject.name + '」を載せたんだね。私は布を見ると、誰がどこを直して長く着たかが気になるの。'};
+  } else if (subject?.kind === 'dragon') {
+    route = 'dragon'; reply = {by:'竜舎の餌番',ic:'🐟',back:'「' + subject.name + '」って、名前で紹介してくれたのがうれしいな。うちでも一頭ずつ、餌を受け取ったあとの様子が違うよ。'};
+  } else if (subject?.kind === 'meal') {
+    route = 'water'; reply = {by:'市場の水汲み当番',ic:'🏺',back:'「' + subject.name + '」の一枚、ありがとう。料理の写真を見ると、店へ最初の水を届ける朝を思い出すよ。'};
+  } else if (place) {
+    reply = _snsPlaceReply(place);
+    if (place.kind === 'gourmet' || ['market','tanada'].includes(place.spotId)) {
+      route = 'water';
+      if (place.mealId) reply = {by:'市場の水汲み当番',ic:'🏺',back:'「' + place.mealName + '」を味わったことがあるんだね。うちは料理の前に、甕の札を確かめるところから朝が始まるよ。'};
+    } else if (['furununo','shiranami','mall'].includes(place.spotId)) route = 'cloth';
+    else if (['ryusha','ryu_mizunomi','kazami_yagura','tsubasa_dana'].includes(place.spotId)) route = 'dragon';
+    else route = 'harbor';
+  }
+  if (!reply) return null;
+  if (typeof chapterRead !== 'function' || !chapterRead('3')) return reply;
+  const records = typeof IslandDiscovery !== 'undefined' ? IslandDiscovery.normalize(_snsP().islandDiscovery) : null;
+  const reachable = SNS_FIELD_ROUTES[route].filter(([id]) => snsRouteOpen(id));
+  const next = reachable.find(([,clue]) => !records?.evidence.includes(clue));
+  if (next) return {...reply, back:reply.back + ' ' + next[2], spotId:next[0]};
+  if (reachable.length) {
+    const spotId = reachable[0][0];
+    const revisits = {
+      furununo:'写しといまの布、線が同じ所で途切れるか、見比べられるよ。', shiranami:'手帖の横線を、浜の護岸の高さに重ねてみてね。',
+      ryusha:'魚を運ぶ子とその場で食べる子、今度は口元を見分けられるね。', ryu_mizunomi:'手帖の控えと、水際に残る爪の向きを見比べてみて。', kazami_yagura:'今日の風向きと手帖の見取り図、櫓で見比べられるよ。',
+      market:'今度は、手帖の控えと甕の札を並べて見られるね。', tanada:'覆いのある方の水路を、手帖の控えでもう一度たどれるよ。',
+      kirimina:'もう一度歩くなら、箱の行き先を示す札にも目を向けてみて。', tsubo_roji:'もう一度壺の棚を見たら、実が来る方と瓶を送る方を見比べてみて。'
+    };
+    return {...reply, back:reply.back + ' ' + revisits[spotId], spotId};
+  }
+  return reply;
+}
+function myPostReplies(post) {
+  if (!post || !Array.isArray(post.replies)) return [];
+  if (!(post.source?.version === 1 && ["photo", "gourmet"].includes(post.source.kind)) && !snsPersonalPostSubject(post.subject,post.img,false)) return [];
+  return post.replies.filter(function (r) { return r && typeof r.by === "string" && typeof r.back === "string"; }).slice(0, 1).map(function (r) {
+    return { by: r.by.slice(0, 100), ic: typeof r.ic === "string" ? r.ic.slice(0, 12) : "💬", back: r.back.slice(0, 500), ...(Object.values(SNS_FIELD_ROUTES).some(route => route.some(([id]) => id === r.spotId)) ? {spotId:r.spotId} : {}) };
+  });
+}
+function addMyPost(text, img, ref) {
   var s = snsData();
-  s.myPosts.push({ id: "my_" + _snsDay() + "_" + (s.myPosts.length + 1), text: String(text || "").slice(0, 140), img: img || SNS_CAMERA[0].img, day: _snsDay() });
+  _snsSeparateDuplicatePosts(s);
+  var day = _snsDay();
+  var post = { id: _snsNextPostId(s, day), text: String(text || "").slice(0, 140), img: img || SNS_CAMERA[0].img, day: day };
+  var source = snsPlacePostSource(ref, post.img);
+  if (source) post.source = source;
+  const subject = snsPersonalPostSubject(ref,post.img,true);
+  if (subject) post.subject = subject;
+  const reply = snsFieldReply(subject,source);
+  if (reply) post.replies = [reply];
+  s.myPosts.push(post);
   if (s.myPosts.length > 40) s.myPosts = s.myPosts.slice(-40);   // 上限
   _snsSave();
+  return post;
 }
 // 投稿のリアクション数＝フォロワー連動＋経過日で“じわっと伸びる”（コスメ）。
 function myPostReacts(post) {
   var age = Math.max(0, _snsDay() - (post.day || _snsDay()));
   var f = _snsFollowers();
   var grow = Math.min(1, 0.35 + age * 0.18);                 // 時間でじわ伸び（最大1）
-  var seed = _snsRandFrom((post.id.length * 131 + (post.day || 0)) >>> 0);
+  var seed = _snsRandFrom(((post.legacyPostId || post.id).length * 131 + (post.day || 0)) >>> 0);
   var n = Math.floor(f * (0.012 + seed * 0.05) * grow) + 3 + Math.floor(seed * 20);
   return n;
 }
-function myPostBuzzing(post) { return myPostReacts(post) >= Math.max(120, _snsFollowers() * 0.08); }
+// 反応の多かった投稿を飾る表示だけの印。反応数・読者数・印税は増やさない。
+// 旧条件 max(120, 読者×8%) は反応式の上限(読者×6.2%+22)を常に上回り、
+// どの投稿も到達できなかった。既存の反応分布の中に届く基準を置く。
+function myPostBuzzing(post) { return myPostReacts(post) >= Math.max(45, _snsFollowers() * 0.04); }
 function postTemplates() { return POST_TEMPLATES.filter(function (t) { try { return t.when ? t.when() : true; } catch (e) { return true; } }); }
 
 // ── 連続ログイン（SNSを開いた連続日数・コスメ専用＝コイン非干渉） ──

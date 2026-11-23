@@ -86,7 +86,8 @@ function maybeStrangerCameo() {
 // 終章＝絶滅メーターの綱引き（第5話セレスティアの神眼で起動）
 // =========================================================================
 // 仕様（docs/epilogue_extinction_design.md §4-6）：第5話再生で起動。レース確定ごとに
-//   絶滅メーターが上昇（doom）。🌴スカウト/🏠暮らし向上/🛍️買い物/🏅評判 が押し戻す（push）。
+//   絶滅メーターが上昇（doom）。暮らし・島づくり・装い・評判が備えを支える。
+//   友情は築いた時期を問わず取材資料へ。実際の救済は本番の予想と会計で確かめる。
 //   メーターを0まで押し切ると「最終バトルレース」解放→完走でED。失敗してもソフト（仕切り直し）。
 // ★メーターは“演出専用の別ゲージ”。実レースのオッズ・配当・着順には一切触れない（[[race-math-immutable]]）。
 //   表示は「答えの竜の単勝が 1.1倍 → 1.0倍 へ近づく」体（実オッズではない）。
@@ -95,7 +96,7 @@ function maybeStrangerCameo() {
 const EP_CONST = {
   RANGE: 160,            // メーター幅（0=安全1.1倍 / RANGE=絶滅1.0倍＝ソフト失敗ライン）
   DOOM_PER_RACE: 3,      // レース確定ごとに絶滅(1.0)側へ
-  PUSH: { scoutNew: 22, assetLevel: 16, mallBuy: 6, hit: 6, win: 11 }   // 押し戻し配点（要バランス）
+  PUSH: { assetLevel: 16, hit: 6, win: 11 }   // 友好は取材へ、経済救済は実開催へ。衣装は有限節目。
 };
 function epData() {
   const p = state.player;
@@ -136,10 +137,10 @@ function showEpilogueMeterHelp() {
   if (typeof showInfoPopup !== "function") return;
   showInfoPopup("☄️ 絶滅メーターって？",
     `<div class="mm-flow">▼ 1.0倍（淘汰）　…　1.05倍（いま）　…　1.1倍（安全）▲</div>` +
-    `<div class="mm-row"><span class="mm-ic">🎯</span><div><b>これは「綱引き」です</b><small>終章のあいだ、淘汰（絶滅）の圧と、あなたの積み上げが綱を引き合います。メーターは<u>ちょうど真ん中＝単勝1.05倍</u>から始まります。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🎯</span><div><b>これは「綱引き」です</b><small>終章のあいだ、淘汰（絶滅）の圧と、あなたの積み上げが綱を引き合います。基準は<u>真ん中＝単勝1.05倍</u>。これまで手に入れた装いの節目も、最初に押し戻す力になります。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">☄️</span><div><b>淘汰（1.0倍へ）</b><small>レースを走るたび、淘汰の圧が少しずつ <u>1.0倍（絶滅）側</u> へ進みます。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">🛡️</span><div><b>押し戻し（1.1倍へ）</b><small>🌴スカウト・🏠暮らしの向上・🛍️お買い物・🏅的中——積み上げが <u>1.1倍（安全）側</u> へ押し返します。</small></div></div>` +
-    `<div class="mm-row"><span class="mm-ic">⚔️</span><div><b>1.1倍まで押し切ると最終決戦</b><small>安全（1.1倍）まで押し切れば、ホームに「最終決戦へ」が現れます。逆に1.0倍へ振り切れても<u>仕切り直すだけ（ゲームオーバーなし）</u>。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">🛡️</span><div><b>開催に臨む備え</b><small>🏠暮らしの向上・👗装い・🏅的中が備えを支えます。竜との友情は、いつ築いたものも八頭の取材へ。契約だけで島の経済が救われたとはしません。装いは所持3着ごとに3、最大12で、終章以前の服も同じように数えます。</small></div></div>` +
+    `<div class="mm-row"><span class="mm-ic">⚔️</span><div><b>八頭の取材を、本番の開催へ</b><small>第5話を読み、ポロを含む八頭の取材がそろえば公示へ進めます。以前に得たメーター完了・到達最高資産10億の資格も残ります。どの入口でも、予言の外の読みと当日の収支を成立させるまで島の救済は確定しません。1.0倍側に振り切れても<u>仕切り直し（ゲームオーバーなし）</u>です。</small></div></div>` +
     `<div class="mm-row"><span class="mm-ic">📌</span><div><b>これは演出メーターです</b><small>このゲージは物語の演出専用。<u>実際のレースの着順・オッズ・配当には一切影響しません</u>。安心して綱を引いてください。</small></div></div>`);
 }
 // 初めてメーターが表示された時に一度だけ自動で開く（"表示時にしっかり説明"）。既読＝storyFlag "epMeterHelpSeen"。
@@ -155,8 +156,32 @@ function maybeShowMeterHelpFirstTime() {
 
 // 第5話再生で起動（renderStoryChapter("5") から）。★真ん中(RANGE/2＝1.05倍)スタート。
 function epilogueStart() {
-  const e = epData(); if (e.active) return;
-  e.active = true; e.meter = Math.round(EP_CONST.RANGE / 2); epSave();
+  const e = epData(); if (e.active) { epSyncOutfits(); return; }
+  e.active = true; e.meter = Math.round(EP_CONST.RANGE / 2); e.outfitCredit = 0;
+  epSyncOutfits(); epSave();
+}
+// Three acquired outfits earn 3 points, capped at 12. Buying before chapter 5
+// counts equally. Use the actual catalog, deduplicate gifts/purchases, and
+// exclude the free starting outfit. This function never initializes player data.
+function epOutfitContribution(player) {
+  if (typeof OUTFITS === "undefined") return 0;
+  const p = player || {}, bought = new Set(Array.isArray(p.outfitsBought) ? p.outfitsBought : []), won = new Set(Array.isArray(p.outfitsWon) ? p.outfitsWon : []);
+  const peak = Math.max(Number(p.assetsPeak) || 0, Number(p.totalAssets) || 0);
+  const owned = new Set(OUTFITS.filter(o => o.acquire && !o.acquire.free &&
+    (bought.has(o.id) || won.has(o.id) || (o.acquire.assets != null && peak >= o.acquire.assets))).map(o => o.id));
+  return Math.min(12, Math.floor(owned.size / 3) * 3);
+}
+function epSyncOutfits() {
+  if (!epiloguePushable()) return 0;
+  const e = epData(), credit = epOutfitContribution(state.player);
+  // Existing saves cannot tell which clothes already earned the old 6-point
+  // event credit. Establish their baseline once; never undo progress or pay twice.
+  if (!Number.isFinite(e.outfitCredit)) { e.outfitCredit = credit; epSave(); return 0; }
+  const delta = Math.max(0, credit - e.outfitCredit);
+  e.outfitCredit = Math.max(e.outfitCredit, credit);
+  const applied = delta ? epPushAmount(delta) : 0;
+  if (applied > 0 && typeof _showUnlockToast === "function") _showUnlockToast("👗 装いの節目が、島の灯りを支えた（" + credit + "/12）");
+  return applied;
 }
 // レース確定ごとに絶滅(1.0)側へ（settleRace から。終章中のみ内部ガード）。
 function doomTick() {
@@ -168,6 +193,10 @@ function doomTick() {
 }
 // 4活動の成果が安全(1.1)側へ押し戻す（各フックから epPush("reason")）。
 function epPush(reason) {
+  // Saved preparation and achievements remain intact. New friendships supply
+  // knowledge, not free economic-rescue points; even legacy callers are inert.
+  if (reason === "scoutNew") return;
+  if (reason === "mallBuy") { epSyncOutfits(); return; }
   if (!epiloguePushable()) return;
   const e = epData();
   e.meter -= (EP_CONST.PUSH[reason] || 0);
@@ -225,30 +254,39 @@ function _epRobeOwned() {
     return won.indexOf(EP_ROBE_ID) >= 0;
   } catch (e) { return false; }
 }
-// 安全ゾーンに入っていれば1回だけ授与。VN/ポップアップ中なら見送って次の機会に（重ねない）。
+// 安全ゾーンまたは八頭の公示ルートで授与。途中の「授与予定」だけの保存も再開する。
 // 呼び元＝epPush / epPushAmount（押し戻した瞬間）と renderHome（見送られた分の拾い直し）。
-function maybeGrantDragonRobe() {
+function maybeGrantDragonRobe(onDone) {
   try {
     if (!epilogueOn()) return false;                                     // 終章中だけ
-    if (typeof getStoryFlag !== "function" || getStoryFlag("dragonRobeGranted")) return false;
-    if (epilogueZone() !== "safe") return false;                         // 押し戻して安全側に入ったら
+    if (typeof getStoryFlag !== "function" || _epRobeOwned()) return false;
+    const offered = getStoryFlag("dragonRobeGranted");
+    const readyRoster = typeof chapterRead === "function" && chapterRead("5") &&
+      typeof shinganAllScouted === "function" && shinganAllScouted();
+    if (!offered && epilogueZone() !== "safe" && !readyRoster) return false;
     if (typeof document === "undefined") return false;
     if (document.querySelector(".navpop-ov")) return false;              // 別ポップアップが開いている
     if (document.querySelector(".dlg-overlay:not(.hidden)")) return false; // VN再生中
     if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
+    const recipient = state.player;
     setStoryFlag("dragonRobeGranted", true);
     Dialogue.play(_epRobeScript(), { force: true }).then(function () {
+      if (state.player !== recipient) return;
       if (!_epRobeOwned()) {
         state.player.outfitsWon = state.player.outfitsWon || [];
         state.player.outfitsWon.push(EP_ROBE_ID);
       }
       epSave();
       if (typeof showInfoPopup === "function") showInfoPopup("⚔️ 竜帝の戴冠衣を授かった",
+        `<div class="ep-robe-reveal"><img src="images/cast/mimi/mimi_dragonrobe_default.webp" alt="島のみんなから託された竜帝の戴冠衣" onerror="this.remove()"><span>島から、あなたへ。</span></div>` +
         `<div class="mm-row"><span class="mm-ic">👗</span><div><b>竜帝の戴冠衣</b>` +
           `<small>聖龍の翼と宝玉をまとう、最上位の正装。島じゅうの職人が一枚ずつ持ち寄って仕立てた、決戦の装束。</small></div></div>` +
         `<div class="mm-row"><span class="mm-ic">🛍️</span><div><b>着替えはモールから</b><small>「特別」の棚に並びます。最後の一戦は、この一着で。</small></div></div>` +
-        `<div class="mm-note">※ 衣装は立ち絵が変わるだけです。レースの着順・オッズ・配当は変わりません（表示専用）。</div>`);
-      if (typeof renderHome === "function") renderHome();
+        `<div class="mm-note">※ 衣装は立ち絵が変わるだけです。レースの着順・オッズ・配当は変わりません（表示専用）。</div>`,
+        typeof onDone === "function" ? () => { if (state.player === recipient) onDone(); } : undefined);
+      const reveal = document.querySelector(".ep-robe-reveal");
+      if (reveal && reveal.closest(".navpop")) reveal.closest(".navpop").classList.add("ep-robe-popup");
+      if (typeof onDone !== "function" && typeof renderHome === "function") renderHome();
     });
     return true;
   } catch (e) { return false; }
@@ -256,8 +294,17 @@ function maybeGrantDragonRobe() {
 
 // メーターを0に押し切った＝最終決戦解放。
 function onFinalReady() {
-  if (typeof showInfoPopup === "function") showInfoPopup("⚔️ 最終決戦",
-    `<div class="mm-row"><span class="mm-ic">☄️</span><div><b>淘汰を、押し返した</b><small>島の灯りは消えなかった。あとは——最後の一戦だけ。ホームから挑もう。</small></div></div>`);
+  if (typeof showInfoPopup !== "function") return;
+  const missing = SHINGAN_ROSTER.filter(dragon => !shinganScouted(dragon.id));
+  let next = "八頭の取材もそろった。ホームから最後の予想紙をつくろう。";
+  if (missing.length) {
+    const lead = missing.some(dragon => dragon.id === "poro")
+      ? "まずはレースの結果で、相棒との出会いを追おう。"
+      : "島の経済から編集部の取材便に乗り、竜に会いに行こう。";
+    next = "最後の予想紙まで、会っておきたい竜はあと" + missing.length + "頭。" + lead;
+  }
+  showInfoPopup("☄️ 開催への備え",
+    `<div class="mm-row"><span class="mm-ic">☄️</span><div><b>本番で、明日をつなぐ</b><small>積み上げた備えを、開催へ持ち込もう。島の経済を支えられるかは、未知の予想と当日の帳簿で確かめる。${next}</small></div></div>`);
 }
 // 最終バトルレース完走＝終章クリア→ED解放。
 function epilogueClear() {
@@ -309,27 +356,57 @@ function finalShowcaseBeats() {
   const dex = (typeof collectionSeenCount === "function") ? collectionSeenCount() : 0;
   if (dex > 0) beats.push({ ic: "📖", k: "出会った竜たち", v: dex + "頭を図鑑に", c: "どの子にも、ちゃんと物語があった。" });
   const roster = (typeof scoutedRoster === "function") ? scoutedRoster() : [];
-  if (roster.length > 0) {
-    const names = roster.slice(0, 3).map(function (d) { return d.name; }).join("・");
-    beats.push({ ic: "🐲", k: "心を通わせた竜", v: (roster.length >= 8) ? "八竜、集結" : roster.length + "頭が龍舎に",
-      c: names + (roster.length > 3 ? "……ほか" + (roster.length - 3) + "頭。" : "。") + "強さじゃなく、好きで選んだ。" });
+  if (roster.length) {
+    const shown = roster.slice(0, 3);
+    beats.push({ ic: "🐲", k: "心を通わせた竜", v: roster.length + "頭が龍舎に",
+      c: shown.map(d => d.name).join("・") + "。島で出会い、仲よくなった。", dragons: shown.map(d => d.id), cutout: true });
   }
-  let mealsGot = 0, mealName = "";
-  try {
-    if (typeof MEALS !== "undefined" && typeof mealEaten === "function") {
-      for (let i = 0; i < MEALS.length; i++) if (mealEaten(MEALS[i].id)) { mealsGot++; mealName = MEALS[i].name; }
+  const favorites = typeof DRAGONS === "undefined" ? [] : DRAGONS.filter(d =>
+    (p.collection?.[d.id]?.favorite ?? p.village?.favoriteDragonIds?.includes(d.id)) === true);
+  if (favorites.length) {
+    const shown = favorites.slice(0, 3);
+    beats.push({ ic: "⭐", k: "図鑑のお気に入り", v: shown.map(d => d.name).join("・"),
+      c: "図鑑を開くと、あの日つけた星印が残っている。", dragons: shown.map(d => d.id), cutout: true });
+  }
+  const eaten = typeof MEALS === "undefined" ? [] : MEALS.filter(m => p.meals?.eaten?.[m.id]);
+  if (eaten.length) beats.push({ ic: "🍜", k: "食事の記録", v: eaten.length + " 品", c: "島で食べた料理が、アルバムに残っている。",
+    art: eaten.filter(m => m.photo).slice(0, 3).map(m => m.photo) });
+  if (p.islandLife && typeof IslandLifeLoop !== "undefined") {
+    const life = IslandLifeLoop.normalize(p.islandLife);
+    // Include a first reply even after the short diary has rolled over.
+    // A later opinion about the same experience takes precedence.
+    const replies = [life.firstLocalStory, life.favorite, ...Object.values(life.conversations), ...life.history]
+      .filter(e => e?.experience).sort((a, b) => Number(b.id.slice(7)) - Number(a.id.slice(7)));
+    const recent = replies[0];
+    const shown = new Set();
+    for (const entry of [recent, life.firstLocalStory, life.favorite]) {
+      if (!entry?.experience) continue;
+      const { id, kind } = entry.experience;
+      const key = kind + "/" + id;
+      if (shown.has(key)) continue;
+      shown.add(key);
+      const reply = replies.find(e => e.experience.kind === kind && e.experience.id === id);
+      const verdict = { again: kind === "meal" ? "また食べたい" : "また選びたい", different: "今日はしっくりこなかった", unsure: "まだ決められない" }[reply.opinion];
+      beats.push({ ic: "💬", k: "アヤに返したひと言", v: reply.experience.name,
+        c: "「" + verdict + "」。あのとき、" + (reply.channel === "in_person" ? "会ってそう伝えた。" : "そう返信した。"), art: reply.experience.image });
     }
-  } catch (e) {}
-  if (mealsGot > 0) beats.push({ ic: "🍜", k: "食べ歩いた味", v: mealsGot + " 品", c: (mealName ? "「" + mealName + "」も——" : "") + "ぜんぶ、おいしかった。" });
+  }
   const fol = (typeof goalFollowers === "function") ? goalFollowers() : 0;
   if (fol > 0) beats.push({ ic: "💗", k: "見てくれた人", v: fol.toLocaleString() + " 人", c: "無一文のうさぎを、ここまで連れてきてくれた。" });
-  const outfits = (p.outfitsBought || []).length;
-  if (outfits > 0) beats.push({ ic: "👗", k: "着てきた晴れ着", v: outfits + "着", c: "今日も、いちばんの一着で。" });
-  if (typeof poroFound === "function" && poroFound()) beats.push({ ic: "🐉", k: "いちばんの相棒", v: "ポロ", c: "特別じゃなくても、愛されていい。" });
+  const worn = typeof OUTFITS !== "undefined" && typeof currentOutfitId === "function" && OUTFITS.find(o => o.id === currentOutfitId());
+  if (worn) beats.push({ ic: "👗", k: "今日の装い", v: worn.name, c: "島の夜明けを、この姿で迎えた。",
+    art: typeof outfitImg === "function" ? outfitImg(worn.id, "default") : null, cutout: true });
+  if (typeof poroFound === "function" && poroFound()) beats.push({ ic: "🐉", k: "相棒と歩いた島", v: "ポロ", c: "島で出会った、わたしの相棒。", art: "images/cast/stand/poro.webp", cutout: true });
   const vlv = p.villageLevel || (p.village && p.village.level) || 1;
   // ★旧称「村レベル」→称号で見せる（LIVING_RANKS）。数字より「どんな暮らしか」が伝わる。
   const _vrk = (typeof LIVING_RANKS !== "undefined") ? LIVING_RANKS[vlv-1] : null;
   beats.push({ ic: "🏘️", k: "灯りを守った島", v: (_vrk ? _vrk.title : ("暮らしLv " + vlv)), c: "この賭場の灯りは、消えなかった。" });
+  // 既読・所持の実画像だけを振り返る。ミッション報酬CGは先出ししない。
+  const chapterArt = { "築いた暮らし": "3", "駆け抜けた軌跡": "1", "忘れない一撃": "2", "出会った竜たち": "1", "見てくれた人": "4" };
+  beats.forEach(function (b) {
+    const ch = chapterArt[b.k];
+    if (ch && typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_" + ch)) b.art = "images/story/" + ch + ".webp";
+  });
   return beats;
 }
 // 走馬灯ショー（全画面・自動送り＋タップで先へ）。完了で resolve（→ 締めのVN）。表示専用。
@@ -341,33 +418,60 @@ function playFinalShowcase() {
     var ex = document.getElementById("fin-show"); if (ex) ex.remove();
     if (_finShowTimer) { clearTimeout(_finShowTimer); _finShowTimer = null; }
     var beats = finalShowcaseBeats();
-    beats.push({ ic: "☄️", k: "そして、最後のレース", v: "全員が、沸いた", c: "単勝の正解は動かない。それでも複で、ワイドで、穴で——みんな、まだ笑っていた。", finale: true });
+    beats.push({ ic: "✦", k: "そして、この先へ", v: "灯りは、続いていく", c: "何度でも立ち上がった。その日々が、この島の朝になった。", finale: true });
     var ov = el("div", "fin-show"); ov.id = "fin-show";
-    ov.innerHTML = '<div class="fin-rays"></div><div class="fin-card"></div>' +
+    ov.innerHTML = '<img class="fin-island" src="images/story/late/island_new_dawn.webp" alt="夜を越えた島の朝" onerror="this.remove()"><div class="fin-memory"></div><div class="fin-rays"></div><div class="fin-card"></div>' +
       '<div class="fin-dots">' + beats.map(function () { return "<i></i>"; }).join("") + '</div>' +
       '<div class="fin-skip">タップで進む ▶</div>';
     document.body.appendChild(ov);
     var card = ov.querySelector(".fin-card");
+    var memory = ov.querySelector(".fin-memory");
     var dots = ov.querySelector(".fin-dots").children;
     var i = -1;
+    var closed = false;
     function show(b) {
+      memory.replaceChildren();
+      memory.className = "fin-memory" + (b.cutout ? " fin-memory--cutout" : "");
+      // 冷キャッシュ時は構築時にnull。表示時に再取得し、未完了なら既知の実画像へ落とす。
+      if (b.dragons) b.art = b.dragons.map(function (id) { return _ecSpriteURL(id) || "images/dragons/" + id + ".png"; });
+      (Array.isArray(b.art) ? b.art : b.art ? [b.art] : []).forEach(function (src) {
+        const img = document.createElement("img"); img.src = src; img.alt = "";
+        img.onerror = function () { img.remove(); };
+        memory.appendChild(img);
+      });
       card.className = "fin-card" + (b.finale ? " finale" : "");
-      card.innerHTML = '<div class="fin-ic">' + b.ic + '</div><div class="fin-k">' + b.k + '</div>' +
-        '<div class="fin-v">' + b.v + '</div><div class="fin-c">' + b.c + '</div>';
+      card.replaceChildren();
+      for (const field of ["ic", "k", "v", "c"]) {
+        const line = document.createElement("div");
+        line.className = "fin-" + field;
+        line.textContent = b[field];
+        card.appendChild(line);
+      }
       void card.offsetWidth; card.classList.add("in");
       for (var d = 0; d < dots.length; d++) dots[d].className = (d <= i) ? "on" : "";
     }
     function done() {
+      if (closed) return; closed = true; ov.onclick = null;
       if (_finShowTimer) { clearTimeout(_finShowTimer); _finShowTimer = null; }
       ov.classList.add("out");
       setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); resolve(); }, 440);
     }
     function next() {
+      if (closed) return;
       i++;
       if (i >= beats.length) { done(); return; }
       show(beats[i]);
       if (_finShowTimer) clearTimeout(_finShowTimer);
-      _finShowTimer = setTimeout(next, beats[i].finale ? 2800 : 1750);
+      // 読み込み猶予は最大1.4秒。読み込めなくても文章で先へ進める。
+      const shown = i, dwell = beats[i].finale ? 4200 : 3600, started = Date.now();
+      _finShowTimer = setTimeout(next, dwell + 1400);
+      Promise.all(Array.from(memory.querySelectorAll("img")).map(function (img) {
+        return img.decode ? img.decode().catch(function () {}) : Promise.resolve();
+      })).then(function () {
+        if (closed || i !== shown) return;
+        if (_finShowTimer) clearTimeout(_finShowTimer);
+        _finShowTimer = setTimeout(next, Math.min(dwell, Math.max(0, dwell + 1400 - (Date.now() - started))));
+      });
     }
     ov.onclick = function () { next(); };
     try { if (window.Sfx) Sfx.play("legendary"); } catch (e) {}

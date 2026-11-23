@@ -182,6 +182,7 @@ function renderIslandBuild() {
   const app = beginScreen();
   app.appendChild(el("h2", null, "🏗 島づくり"));
   app.appendChild(el("div", "as-hint2", "富を島に注ぐ。育てるほど、島が変わる。"));
+  if (typeof appendIslandCareOffer === "function") appendIslandCareOffer(app);
 
   const tier = islandTier();
   const head = el("div", "card isl-head");
@@ -189,9 +190,9 @@ function renderIslandBuild() {
   head.innerHTML =
     `<div class="isl-radar">${islandRadarSVG(132)}</div>` +
     `<div class="isl-head-id"><div class="isl-tier">${["🌱", "🌿", "🌳", "🏝️"][tier]} ${ISLAND_TIER_NAME[tier]}</div>` +
-    `<div class="isl-dev">発展度 <b>${islandDevTotal()}</b> / ${islandDevMax()}</div>` +
+    `<div class="isl-dev">新しい建設の発展度 <b>${islandDevTotal()}</b> / ${islandDevMax()}</div>` +
     (meterPct != null ? `<div class="isl-meter">☄️ 島の余命 <b>${meterPct}%</b><span class="isl-meter-bar"><i style="width:${meterPct}%"></i></span></div>` : "") +
-    `<div class="isl-hint">レーダーの凹みが“手薄な分野”。安いLvから少しずつ、バランスよく。</div></div>`;
+    `<div class="isl-hint">小さな手入れは現地で。新しい施設は、下の建設計画から選べます。</div></div>`;
   app.appendChild(head);
 
   // 施設カード＝Lvバー＋次の節目の予告＋「投資する（次Lvのコスト）」
@@ -202,13 +203,14 @@ function renderIslandBuild() {
     const nm = islandNextMilestone(cat);
     const curMs = islandMilestoneAt(cat, lv);   // 今の到達名（あれば）
     const card = el("div", "isl-fac" + (maxed ? " maxed" : ""));
+    card.dataset.islandCat = cat.id;
     card.style.setProperty("--ic", cat.color);
     // 進捗バー（Lv/maxLv・節目位置に印）
     let pips = "";
     for (let i = 1; i <= cat.maxLv; i++) pips += `<span class="isl-pip${i <= lv ? " on" : ""}${cat.milestones[i] ? " ms" : ""}"></span>`;
     card.innerHTML =
       `<div class="isl-fac-top"><span class="isl-fac-ic">${cat.ic}</span>` +
-        `<span class="isl-fac-id"><b>${cat.name}</b><small>${curMs ? curMs.name : (lv > 0 ? "整備中" : "手つかず")}</small></span>` +
+        `<span class="isl-fac-id"><b>${cat.name}</b><small>${curMs ? curMs.name : (lv > 0 ? "整備中" : cat.id === "public" && typeof IslandCare !== "undefined" && IslandCare.paid(state.player) ? "既存の配水設備を手入れ済み" : "新しい建設はこれから")}</small></span>` +
         `<span class="isl-fac-lv">${maxed ? "極" : "Lv" + lv}<small>/${cat.maxLv}</small></span></div>` +
       `<div class="isl-fac-bar">${pips}</div>` +
       (nm ? `<div class="isl-fac-next">次の見どころ：<b>Lv${nm.lv} ${nm.name}</b></div>` : (maxed ? `<div class="isl-fac-next done">🏆 この分野は極まった</div>` : "")) +
@@ -218,6 +220,7 @@ function renderIslandBuild() {
           `<span class="isl-fac-buy-cost">🪙${nextCost.toLocaleString("ja-JP")}</span>` +
           `<span class="isl-fac-buy-doom">☄️−${cat.milestones[lv + 1] ? cat.milestones[lv + 1].doom : ISLAND_GEN_DOOM}</span>` +
         `</button>`);
+    if (typeof appendIslandDiscoveryInvestment === "function") appendIslandDiscoveryInvestment(card, cat.id);
     if (!maxed) { const b = card.querySelector(".isl-fac-buy"); if (b) b.onclick = function () { islandInvest(cat); }; }
     app.appendChild(card);
   });

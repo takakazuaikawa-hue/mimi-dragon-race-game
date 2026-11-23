@@ -104,6 +104,9 @@ const state = {
   current: null  // { race, entries, oddsData, raceResult, bet, ... }
 };
 
+// Each save owns its full state, including the absence of optional progress.
+const INITIAL_SAVE_STATE = JSON.stringify(state);
+
 function saveGame() {
   try {
     const data = {
@@ -115,8 +118,10 @@ function saveGame() {
       savedAt: Date.now()
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    return true;
   } catch (e) {
     console.warn("save failed", e);
+    return false;
   }
 }
 
@@ -125,52 +130,58 @@ function loadGame() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return false;
     const data = JSON.parse(raw);
-    if (data && data.player) {
-      Object.assign(state.player, data.player);
-      if (data.assets) Object.assign(state.assets, data.assets);
-      if (data.lifeTree && data.lifeTree.unlocked) state.lifeTree = data.lifeTree;   // §38
-      if (!state.lifeTree || !state.lifeTree.unlocked) state.lifeTree = { unlocked: {} };
-      if (data.settings && data.settings.infoLevel) state.ui.infoLevel = data.settings.infoLevel;
+    if (data && data.player && typeof data.player === "object" && !Array.isArray(data.player)) {
+      const initial = JSON.parse(INITIAL_SAVE_STATE);
+      const saved = data.player;
+      const player = { ...initial.player, ...saved };
+      player.flags = { ...initial.player.flags, ...saved.flags };
+      player.village = { ...initial.player.village, ...saved.village };
+      player.village.facilities = { ...initial.player.village.facilities, ...saved.village?.facilities };
       // §30 migration: pre-1.1 saves lack maxCoinsReached — seed it from coins
       // so an existing player's progression isn't reset to zero.
-      if (state.player.maxCoinsReached == null) state.player.maxCoinsReached = state.player.coins || 0;
+      if (saved.maxCoinsReached == null) player.maxCoinsReached = player.coins || 0;
       // ★村名の改名（2026-09-26・ユーザー決裁）：旧「泣き虫ドラゴン村」は、ポロ発見前に
       //   「泣き虫」を出してしまい命名オチが割れるうえ、名前としても据わりが悪かった → 「竜の村」。
-      if (state.player.village && state.player.village.name === "泣き虫ドラゴン村") state.player.village.name = "竜の村";
+      if (player.village && player.village.name === "泣き虫ドラゴン村") player.village.name = "竜の村";
       // ★資産の二値化 移行：旧セーブの totalAssets は「到達最高」の意味だったので、
       //   そのまま assetsPeak（解放判定の正本）へ引き継ぐ。totalAssets は直後の
       //   recomputeAssets() で現在の純資産として計算し直されるため、ここでは触らない。
       //   これを忘れると、既存プレイヤーの解放済みの章・スポットが一斉に閉じる。
-      if (state.player.assetsPeak == null) state.player.assetsPeak = state.player.totalAssets || 0;
+      if (saved.assetsPeak == null) player.assetsPeak = player.totalAssets || 0;
       // ★ブニクロ普段着の有料化 移行：旧仕様では free だったので、既に第2話まで進んだ
       //   セーブは「持っていたのに買った履歴が無い」状態になる。そのままだと手持ちの服が
       //   消え、さらに第2話の新条件（購入済み）も満たせなくなるため、購入済みとして引き継ぐ。
-      if (typeof getStoryFlag === "function" && getStoryFlag("_chapter_intro_2")) {
-        if (!Array.isArray(state.player.outfitsBought)) state.player.outfitsBought = [];
-        if (state.player.outfitsBought.indexOf("buniqro") < 0) state.player.outfitsBought.push("buniqro");
+      if (player.flags._chapter_intro_2) {
+        if (!Array.isArray(player.outfitsBought)) player.outfitsBought = [];
+        if (player.outfitsBought.indexOf("buniqro") < 0) player.outfitsBought.push("buniqro");
       }
       // 旧「サケの開店祝いVN」を見ている＝勝負服はもう受け取っている。初陣祝いを再生しない。
-      if ((state.player.flags || {}).mallIntroSeen && state.player.flags.sakeGiftSeen == null) {
-        state.player.flags.sakeGiftSeen = true;
+      if (player.flags.mallIntroSeen && saved.flags?.sakeGiftSeen == null) {
+        player.flags.sakeGiftSeen = true;
       }
       // ★ランク3本レール移行：旧セーブは hitsByRank を持たない。過去の的中履歴は帯別に
       //   復元できないため 0 から積む（獲得済みランクは下がらない設計なので不利益は「次の昇格が
       //   新基準になる」ことのみ＝リリース前につき許容・progression-redesign 方針）。
-      if (!state.player.hitsByRank) state.player.hitsByRank = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 };
+      if (!player.hitsByRank) player.hitsByRank = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 };
       // §37 migration: pre-streak saves lack the streak fields.
-      if (state.player.streak == null) state.player.streak = 0;
-      if (state.player.bestStreak == null) state.player.bestStreak = 0;
-      if (state.player.lastLoginDay === undefined) state.player.lastLoginDay = null;
-      if (state.player.loginStreak == null) state.player.loginStreak = 0;
-      if (state.player.featuredDoneDay === undefined) state.player.featuredDoneDay = null;
-      if (!Array.isArray(state.player.collectionRewards)) state.player.collectionRewards = [];
+      if (player.streak == null) player.streak = 0;
+      if (player.bestStreak == null) player.bestStreak = 0;
+      if (player.lastLoginDay === undefined) player.lastLoginDay = null;
+      if (player.loginStreak == null) player.loginStreak = 0;
+      if (player.featuredDoneDay === undefined) player.featuredDoneDay = null;
+      if (!Array.isArray(player.collectionRewards)) player.collectionRewards = [];
       // Durability: a race confirmed but abandoned before its 答え合わせ left an owed
       // payout (settleRace never ran). Credit it now so no winning ticket is lost.
-      if (state.player.pendingPayout > 0) {
-        state.player.coins += state.player.pendingPayout;
-        if (state.player.coins > (state.player.maxCoinsReached || 0)) state.player.maxCoinsReached = state.player.coins;
+      if (player.pendingPayout > 0) {
+        player.coins += player.pendingPayout;
+        if (player.coins > (player.maxCoinsReached || 0)) player.maxCoinsReached = player.coins;
       }
-      state.player.pendingPayout = 0;
+      player.pendingPayout = 0;
+      state.player = player;
+      state.assets = { ...initial.assets, ...data.assets };
+      state.lifeTree = data.lifeTree?.unlocked ? data.lifeTree : initial.lifeTree;
+      state.ui = { ...initial.ui, infoLevel: data.settings?.infoLevel || initial.ui.infoLevel };
+      state.current = null;
       return true;
     }
   } catch (e) {

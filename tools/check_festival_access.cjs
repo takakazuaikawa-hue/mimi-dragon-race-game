@@ -1,0 +1,45 @@
+'use strict';
+const assert = require('node:assert/strict'), vm = require('node:vm'), fs = require('node:fs');
+const ctx = { state: { player: { assetsPeak: 0, coins: 0, collection: {}, epilogue: { meter: 80, finalReady: false } } }, read5: false, buddy: true };
+ctx.chapterRead = () => ctx.read5; ctx.poroFound = () => ctx.buddy;
+ctx.assetsPeak = () => ctx.state.player.assetsPeak; ctx.storyUnlockAt = () => 1000000000;
+vm.createContext(ctx); vm.runInContext(fs.readFileSync(require.resolve('../js/shingan_race.js'), 'utf8'), ctx);
+const ids = vm.runInContext('SHINGAN_ROSTER.map(d=>d.id)', ctx);
+const all = () => { ctx.state.player.collection = Object.fromEntries(ids.filter(id => id !== 'poro').map(id => [id, { scouted: true }])); };
+all(); assert.equal(ctx.shinganUnlocked(), false, 'eight friends never skip the fifth episode');
+ctx.read5 = true; const prepared = JSON.stringify(ctx.state.player); assert.equal(ctx.shinganUnlocked(), true);
+assert.equal(JSON.stringify(ctx.state.player), prepared, 'existing friendships do not rewrite the meter, wealth or clear flags');
+ctx.state.player.collection = {}; ids.filter(id => id !== 'poro').slice(0, 4).forEach(id => { ctx.state.player.collection[id] = { scouted: true }; });
+assert.equal(ctx.shinganUnlocked(), false, 'four free contracts are not a final qualification');
+all(); assert.equal(ctx.shinganUnlocked(), true, 'late and early friendship collections have the same qualification');
+ctx.buddy = false; assert.equal(ctx.shinganUnlocked(), false, 'a collection entry cannot replace the real Poro discovery');
+ctx.state.player.epilogue.finalReady = true; assert.equal(ctx.shinganUnlocked(), true); assert.equal(ctx.shinganAllScouted(), false, 'old preparation grants entry to the missing-roster guide, not publication');
+ctx.state.player.epilogue.finalReady = false; ctx.state.player.assetsPeak = 1000000000; assert.equal(ctx.shinganUnlocked(), true);
+assert.equal(ctx.state.player.epilogue.edFlag, undefined);
+console.log('PASS fifth-episode gate, equal early/late friendships, four-contract rejection, real Poro discovery, preserved old access and no artificial rescue/clear');
+
+async function robe() {
+  const pending = [], popups = [], c = vm.createContext({ console, document: { querySelector: selector => selector === '.dlg-overlay:not(.hidden)' && c.open ? {} : null }, setTimeout() {}, clearTimeout() {}, localStorage: { setItem() {}, getItem() { return null; } } });
+  c.window = c;
+  for (const file of ['data_ranks', 'data_assets', 'state', 'assets_engine', 'event_hooks', 'island', 'epilogue_engine']) vm.runInContext(fs.readFileSync(require.resolve('../js/' + file + '.js'), 'utf8'), c);
+  c.shinganAllScouted = () => true; c.chapterRead = () => true;
+  c.Dialogue = { play: () => { c.open = true; return new Promise(resolve => pending.push(() => { c.open = false; resolve(); })); } };
+  c.showInfoPopup = (title, body, close) => popups.push({ title, close }); c.renderHome = () => {};
+  vm.runInContext('state.player.flags._chapter_intro_5=true;epilogueStart();epData().meter=80;', c);
+  assert.equal(c.maybeGrantDragonRobe(), true, 'the eight-friend route receives the promised pre-finale garment');
+  assert.equal(c.maybeGrantDragonRobe(), false, 'an open gift scene cannot be queued twice');
+  pending.shift()(); await Promise.resolve();
+  assert.equal(vm.runInContext('state.player.outfitsWon.filter(id=>id==="dragonrobe").length', c), 1);
+  assert.equal(c.maybeGrantDragonRobe(), false);
+  vm.runInContext('state.player.outfitsWon=[];state.player.flags.dragonRobeGranted=true;', c);
+  assert.equal(c.maybeGrantDragonRobe(), true, 'an interrupted old offer without its garment can be resumed');
+  pending.shift()(); await Promise.resolve();
+  assert.equal(vm.runInContext('state.player.outfitsWon.length', c), 1);
+  vm.runInContext('state.player.outfitsWon=[];state.player.flags.dragonRobeGranted=false;', c);
+  assert.equal(c.maybeGrantDragonRobe(), true);
+  vm.runInContext('state.player=JSON.parse(JSON.stringify(state.player));state.player.flags.dragonRobeGranted=false;', c);
+  pending.shift()(); await Promise.resolve();
+  assert.equal(vm.runInContext('state.player.outfitsWon.length', c), 0, 'a previous player gift completion cannot reward the replacement save');
+  console.log('PASS eight-friend garment, no duplicate grant, interrupted-offer recovery and cross-save callback rejection');
+}
+robe().catch(error => { console.error(error); process.exitCode = 1; });

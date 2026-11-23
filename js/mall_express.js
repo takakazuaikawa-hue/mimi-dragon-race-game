@@ -212,8 +212,8 @@ function mexLoot() {
   for (let i = 0; i < n; i++) {
     const r = Math.random();
     if (r < 0.5) { const g = 30 + Math.floor(Math.random() * 50); d.gold += g; got.push(`🪙 ${g}G`); }
-    else if (r < 0.8) { d.items.pot = (d.items.pot || 0) + 1; got.push("🧪 回復薬 ×1"); }
-    else { d.items.eth = (d.items.eth || 0) + 1; got.push("🔵 マナ水 ×1"); }
+    else if (r < 0.8) { d.items.potion = (d.items.potion || 0) + 1; got.push("🧪 回復薬 ×1"); }
+    else { d.items.ether = (d.items.ether || 0) + 1; got.push("🔵 マナ水 ×1"); }
   }
   ex.loot.push(...got);
   rpgSave();
@@ -226,8 +226,8 @@ function mexShop() {
   const d = rpgData();
   const off = mexHas("nego") ? 0.7 : 1;
   const items = [
-    { k: "pot", ic: "🧪", n: "回復薬", p: Math.round(20 * off) },
-    { k: "eth", ic: "🔵", n: "マナ水", p: Math.round(30 * off) },
+    { k: "potion", ic: "🧪", n: "回復薬", p: Math.round(20 * off) },
+    { k: "ether", ic: "🔵", n: "マナ水", p: Math.round(30 * off) },
     { k: "hp",  ic: "💗", n: "その場で全回復", p: Math.round(60 * off) }
   ];
   const body = el("div");
@@ -241,6 +241,7 @@ function mexShop() {
         const it = items[+b.getAttribute("data-i")];
         if (d.gold < it.p) return;
         d.gold -= it.p;
+        rpgLifeMark("purchases");
         if (it.k === "hp") { d.hp = d.maxhp; d.mp = d.maxmp; }
         else d.items[it.k] = (d.items[it.k] || 0) + 1;
         try { if (window.Sfx) Sfx.play("coin"); } catch (e) {}
@@ -312,7 +313,9 @@ function mexGrantBuild(after) {
 }
 // ラン終了＝戦利品リザルト→龍舎/きせかえへの導線
 function mexFinish(how) {
+  if (!RPG || !RPG.express) return;
   const ex = RPG.express, d = rpgData();
+  if ((RPG.wagon || 0) > 0) rpgCashOut();
   const earned = d.gold - ex.gold0;
   let outfit = null;
   if (how === "clear" && typeof rpgGrantOutfit === "function") outfit = rpgGrantOutfit(Math.random() < 0.3 ? "r" : "c");
@@ -325,6 +328,7 @@ function mexFinish(how) {
     const steps = ex.floor - 1;   // 通過したフロア数
     if (!rec.mexBestSteps || steps < rec.mexBestSteps) { rec.mexBestSteps = steps; best.steps = true; }
   }
+  if (typeof recordIslandLifeEvent === "function") recordIslandLifeEvent({ type: "mall_return" });
   RPG = null;
   if (typeof rpgSave === "function") rpgSave();
   const body = el("div");
@@ -342,7 +346,7 @@ function mexFinish(how) {
   const again = el("button", "mex-pick", `<span class="mp-ic">🛗</span><b>もう一度</b><small>エクスプレスに乗る</small>`);
   again.onclick = () => { document.querySelectorAll(".navpop-ov").forEach(e => e.remove()); rpgStartExpress(); };
   const home = el("button", "mex-pick", `<span class="mp-ic">🏬</span><b>モールへ</b><small>きせかえ・龍舎へ</small>`);
-  home.onclick = () => { document.querySelectorAll(".navpop-ov").forEach(e => e.remove()); if (typeof renderMallRpg === "function") renderMallRpg(); else renderMall(); };
+  home.onclick = () => { document.querySelectorAll(".navpop-ov").forEach(e => e.remove()); if (typeof renderMall === "function") renderMall(); else renderMallRpg(); };
   row.appendChild(again); row.appendChild(home);
   body.appendChild(row);
   mexPopupEl("📦 今回の戦利品", body, null, true);

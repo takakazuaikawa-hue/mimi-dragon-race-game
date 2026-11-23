@@ -189,7 +189,7 @@ const HOME_Q_FIRST = 600;    // ホームに着いて（描いて）から最初
 // ★列はセーブごと（2026-11-14）：設定でデータを消して作り直したら、前のセーブで並んでいた知らせは捨てる。
 //   列はページが開いているあいだ残るので、残したままだと、作り直した新しいセーブの初出走前のホームに、
 //   前のセーブの授与のカットインと「新しいエピソード公開」の帯が出ていた（確認の途中で見つけた）。
-//   読み込み（loadGame）は同じ state.player に書き足すだけなので、ここでは消えない。
+//   別の保存を読み込んだときにも、前のプレイヤーの通知はここで破棄する。
 function _hqSameSave() {
   try {
     if (HOME_Q.player === state.player) return;
@@ -727,28 +727,49 @@ function renderHome() {
   //   ★優先順位：⚔️最終決戦 ＞ 🙏無心(0コイン) ＞ ☄️絶滅メーター(綱引き中) ＞ 🎯通常の目標。
   //   無心/最終決戦も「必ず次にやること」なのでここに統合（ユーザー指摘）＝別CTAは出さない＝ミミの上もスッキリ・立ち位置不変。
   //   チップはステージ左上の絶対配置＝出入りしてもレイアウト（ミミ/ドック）を一切動かさない。表示専用。
+  let primaryChapterOneEntry = false;
   {
     const _epOn = (typeof epilogueOn === "function") && epilogueOn();
     const _ep = _epOn ? epData() : null;
+    const _pendingEnding = !!(p.epilogue && p.epilogue.edFlag && (p.shingan?.festival?.version === 2 || p.shingan?.official?.issue))
+      && !(typeof getStoryFlag === "function" && getStoryFlag("gameCleared"))
+      && typeof ShinganOfficial !== "undefined" && !!(ShinganOfficial.getOutcome(p) || {}).success;
+    let _business = null;
+    try {
+      if (p.shingan?.festival && typeof ShinganFestival !== "undefined" && typeof ShinganFestival.recoveryView === "function")
+        _business = ShinganFestival.recoveryView(ShinganFestival.restore(p));
+    } catch (_) {}
     const _broke = (typeof playerBroke === "function") ? playerBroke() : (p.coins <= 0);   // コイン0、または空腹で走れずごはん代も無い（hunger.js 詰み回避②）
     let _title = null, _cls = "hl-goal", _onclick = null;
     // ★単一行に簡素化（ユーザー指摘＝もっとシンプルに入りきるように）：アイコン＋やること＋常設の▸だけ。
     //   長いときは末尾を…省略し▸は常に残る（flex行で幅を譲る側＝LIVE帯を必ず優先表示）。
-    if (_epOn && (_ep.finalReady || (typeof shinganUnlocked === "function" && shinganUnlocked()))) {
-      // ★M3：最終決戦の中身＝神眼レース（3頭同着パズル）。メーター押し切り or 総資産10億で解放。
+    if (_pendingEnding || (_epOn && (_ep.finalReady || (typeof shinganUnlocked === "function" && shinganUnlocked())))) {
+      // 正式な決戦入口は予想紙の編集・結果画面へ進む。
       _cls += " hl-goal--act hl-goal--final";
-      _title = "☄️ 神眼レースへ";
+      _title = _pendingEnding || _business?.complete ? "🌅 一面の結果とエンディングへ" :
+        _business?.required ? "🏝 次の営業と、島の受渡しを決める" :
+        typeof shinganAllScouted === "function" && !shinganAllScouted() ? "🐉 決戦の取材名簿を見る" : "☄️ 最後の予想紙をつくる";
       _onclick = () => {
         if (typeof renderShinganRace === "function") renderShinganRace();
-        else if (typeof startFinalBattle === "function") startFinalBattle();   // 旧演出＝読み込み失敗時の保険
+        else showInfoPopup("最後の一面", "<p>決戦の画面を読み込めませんでした。ページを再読み込みしてから、もう一度開いてください。</p>");
       };
     } else if (_broke) {
       _cls += " hl-goal--act hl-goal--broke";
       _title = "🙏 無心する";
       _onclick = () => { if (typeof showMushinOverlay === "function") showMushinOverlay(); };
-    } else if (_metMakura && !broadcast) {
+    } else if (!_epOn && typeof chapterRead === "function" && chapterRead("3") && !chapterRead("4")
+        && !(typeof chapterAvailable === "function" && chapterAvailable("4")) && typeof renderChapterThreeJourney === "function") {
+      _cls += " hl-goal--act hl-goal--go";
+      _title = "🌴 今日の暮らしを、選びに";
+      _onclick = () => renderChapterThreeJourney();
+    } else if (!_epOn && typeof chapterRead === "function" && chapterRead("4") && !chapterRead("5")
+        && !(typeof chapterAvailable === "function" && chapterAvailable("5")) && typeof renderChapterFourJourney === "function") {
+      _cls += " hl-goal--act hl-goal--go";
+      _title = makuraPostReviewed(p) ? "🗺 島の続きを、見つけに" : "📱 マクラと、島からの便りを届ける";
+      _onclick = () => renderChapterFourJourney();
+    } else if (_metMakura && !broadcast && !_epOn && !(typeof nextUnreadChapter === "function" && nextUnreadChapter())) {
       _cls += " hl-goal--act hl-goal--phone";
-      _title = "📱 スマホを買って配信を始める";
+      _title = "📱 マクラと配信の準備をする";
       _onclick = () => { if (typeof buyPhoneAndGoLive === "function") buyPhoneAndGoLive(); };
     } else if (_epOn) {
       const _zone = (typeof epilogueZone === "function") ? epilogueZone() : "mid";
@@ -769,6 +790,7 @@ function renderHome() {
       //   行き先の無い目標（レースで達成するもの）は、これまでどおり一覧を開く。
       try {
         if (_ng && typeof _ng.go === "function" && (!_ng.goIf || _ng.goIf()) && (!_ng.directIf || _ng.directIf())) {
+          primaryChapterOneEntry = _ng.id === "readCh1";
           _cls += " hl-goal--act hl-goal--go";
           _onclick = () => { try { _ng.go(); } catch (e) { if (typeof renderGoals === "function") renderGoals(); } };
         }
@@ -793,17 +815,16 @@ function renderHome() {
   // 📖 第1話が未読で読めるあいだは、目標の札のすぐ下に小さな入口を残す（2026-11-14・Codex 4回め §4-2・§6-3）。
   //   一度きりの帯（新しいエピソード公開）が消えたあと、本編を探す入口が「メディア」のタブだけになり、
   //   目標の「はじめて的中する」だけの反復へ閉じていた。押すと第1話へ。目標の判定・章の解放条件は変えない（読むだけ）。
-  //   出すのは帯で知らせたあと（_unlocked_story_1・帯と同じく初出走前は出ない）。章題は帯と同じ門番（chapterTeaseTitle）を通す。
+  //   初出走前から入口を置き、レースへ進む選択肢も残す。章題は帯と同じ門番（chapterTeaseTitle）を通す。
   //   ミミの顔にかからないよう、左上の短い2行だけ（幅は style.css .hl-storytip の max-width で抑える）。
   try {
     const _ch1 = (typeof STORY_CHAPTERS !== "undefined") ? STORY_CHAPTERS.find(c => c.id === "1") : null;
-    if (_ch1 && (p.completedRaces || 0) >= 1 && typeof chapterRead === "function" && !chapterRead("1")
+    if (!primaryChapterOneEntry && _ch1 && typeof chapterRead === "function" && !chapterRead("1")
         && typeof chapterAvailable === "function" && chapterAvailable("1")
-        && typeof getStoryFlag === "function" && getStoryFlag("_unlocked_story_1")
         && typeof renderStoryChapter === "function") {
       const _t1 = ((typeof chapterTeaseTitle === "function") ? chapterTeaseTitle(_ch1) : "").replace(/^第1話[\s　]*/, "");
       const tip = el("button", "hl-storytip",
-        `<span class="hl-storytip-tx"><b>📖 第1話 公開中</b>${_t1 ? `<small>${_t1}</small>` : ""}</span><span class="hl-storytip-caret">▸</span>`);
+        `<span class="hl-storytip-tx"><b>📖 はじめの出会い</b>${_t1 ? `<small>${_t1}</small>` : ""}</span><span class="hl-storytip-caret">▸</span>`);
       tip.title = "物語の第1話を読む";
       tip.onclick = (e) => { e.stopPropagation(); renderStoryChapter("1"); };
       stage.appendChild(tip);

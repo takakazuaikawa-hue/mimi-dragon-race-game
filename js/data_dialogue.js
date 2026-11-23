@@ -91,38 +91,149 @@
        ★声表準拠（docs/NARRATIVE_DESIGN §2）＝決め台詞の単独行でなく、転のある掛け合いに。 */
     CHAPTER: {
       "1": [
-        // ★場所と食べ物は、一枚絵（images/story/1）・本文（data_assets.js）・連載第1回（kiko_serial.js）に合わせる（2026-11-13）。
-        //   以前は「レース場裏の路地・段ボール・串焼き」で、絵と本文（レース場の入口・熱いスープ）と食い違っていた。
-        { s: "narrator", t: "聖龍レース場の入口。破産したてのうさ耳が、門の前で行き倒れている。" },
-        { s: "sake", t: "おい。……生きてるか。死んでるなら、片すぞ。" },
-        { s: "mimi", t: "い、生きてますっ！　生きてますけど、無一文です……！", e: "panic", fx: "shake" },
-        { s: "sake", t: "なら、まず食え。{w:420}……話は、その後だ。" },
-        { s: "mimi", t: "（こわい人だ……。でもこのスープ、あったかい……）", e: "default" }
+        { s: "narrator", t: "聖龍レース場の入口。膝から崩れかけたミミの前に、木の腰掛けが差し込まれた。", bg: "images/bg/first_meeting_gate.webp" },
+        { s: "sake", name: "腰掛けを出した女", t: "そこに座れ。丼まで落とすなよ。", e: "default" },
+        { s: "mimi", t: "ど、丼……？　あ、あったかい。", e: "panic" },
+        { s: "sake", name: "腰掛けを出した女", t: "まず食え。話は飲み込んでからだ。", e: "default" },
+        { s: "narrator", t: "湯気で前が見えなくなった。ミミは両手で丼を抱え、それから相手の手元を見た。" },
+        { s: "mimi", t: "……これ、あなたの分じゃないですか。", e: "default" },
+        { s: "sake", name: "腰掛けを出した女", t: "鍋を見ろ。私一人であれを飲む気か。", e: "smile" },
+        { s: "mimi", t: "じゃあ、いただきます。丼は、わたしが洗って戻します。", e: "smile" },
+        { s: "sake", name: "腰掛けを出した女", t: "返すのは丼だけでいい。……名前は。", e: "default" },
+        { s: "mimi", t: "ミミです。お腹が鳴る前に、名乗ればよかった。", e: "default" },
+        { s: "sake", t: "サケだ。そっちの挨拶の方がよく聞こえたぞ。", e: "smile" },
+        { s: "narrator", t: "門を抜けた風に、出走表が一枚めくれた。ミミが押さえた紙の向こうで、竜の翼が開く。" },
+        { s: "mimi", t: "この名前の子たちが、走るんですか。……紙より、ずっと大きい。", e: "default" },
+        { s: "sake", t: "見てこい。札を買うかは、見てから自分で決めろ。", e: "default" },
+        { s: "mimi", t: "はい。でも、先にこれを飲みきります。冷めたら、もったいないので。", e: "smile" },
+        { s: "sake", t: "よし。戻ったら、どの竜が気になったか聞かせろ。", e: "smile" }
       ],
       "2": [
-        { s: "mizu", t: "ねえ。あなたが昨日握りつぶした8.2倍、あれ、いくらの価値があったと思う？", bg: "images/bg/nightmarket.webp" },
-        { s: "mimi", t: "え……む、むずかしい話ですか？　わたし、算数は食べ物の値段しか……", e: "panic" },
-        { s: "mizu", t: "ふふ、その顔が見たかったのよ、あはん。{w:420}——人気と価値は、別物。ここから先は、それがわかる子だけ儲かるの。" },
-        { s: "mimi", t: "（お金の話なのに……なんだろう、ちょっとわくわくしてる。）", e: "default" }
+        { s: "narrator", t: "夜市の端で、開いた手帳が風にあおられている。女が片手で頁を押さえ、もう片方で飛んだ鉛筆を追った。", bg: "images/bg/nightmarket.webp" },
+        { s: "mizu", name: "手帳を押さえる女", t: "そこのあなた、右の角をお願い。今日の仕事が風に買い叩かれるわ。", e: "panic" },
+        { s: "mimi", t: "ここですね。……丸をつけた竜なのに、横は空欄なんですか。", e: "default" },
+        { s: "mizu", name: "手帳を押さえる女", t: "丸は、気になる値段という印。勝つと決めた印ではないの。", e: "think" },
+        { s: "mimi", t: "じゃあ、空いてるところは。", e: "default" },
+        { s: "mizu", name: "手帳を押さえる女", t: "まだ確かめていない走り。このコースで、あの脚がどこまで保つか。", e: "default" },
+        { s: "mimi", t: "そこは、わからないままなんだ。", e: "default" },
+        { s: "mizu", name: "手帳を押さえる女", t: "ええ。わからない欄まで埋めたら、立派な紙くずの完成よ。", e: "smile" },
+        { s: "narrator", t: "鉛筆を拾った女は、手帳を閉じなかった。ミミの指の下には、何度も消した薄い跡が残っている。" },
+        { s: "mizu", t: "ミズ・アオラ。丸だけ写していく人は多いけれど、空欄を聞いたのはあなたが初めて。", e: "smile" },
+        { s: "mimi", t: "ミミです。紙の裏、少し借りていいですか。わたしのも分けてみたいです。", e: "default" },
+        { s: "narrator", t: "ミミは紙の裏に線を引き、『見たこと』と『まだわからないこと』と書いた。" },
+        { s: "mizu", t: "その左側を増やしていらっしゃい。オッズは皆の賭け札、あなたの目の代わりにはならないわ。", e: "default" },
+        { s: "mimi", t: "読み違えた分も、持ってきていいですか。そっちは、たくさん書けそうで。", e: "panic" },
+        { s: "mizu", t: "消さないで。同じ読み違いに二度払うのは損だし、私の見落としが見つかれば、こちらも得だもの。あはん。", e: "smile" },
+        { s: "mimi", t: "じゃあ、この丸はまだつけません。見てから、またここへ来ます。", e: "smile" }
       ],
       "3": [
-        { s: "sumika", t: "ミミ様。本日、届け出が2件ございます。……1件は住所不定の是正勧告。もう1件は——わたくしからの、お願いです。", bg: "images/bg/office.webp" },
-        { s: "mimi", t: "こ、この島、路上生活にも書類がいるんだ……。", e: "panic" },
-        { s: "sumika", t: "賭けは水物。ですが、屋根と食事は裏切りません。{w:380}……まず、住むところから整えましょう。" },
-        { s: "mimi", t: "はいっ。……あの、ちなみに家賃って、おいくらですか？", e: "default" }
+        { s: "narrator", t: "行政窓口。名前を書いたミミの鉛筆が、『相談したいこと』の小さな枠で止まった。", bg: "images/bg/office.webp" },
+        { s: "sumika", name: "窓口の係員", t: "ミミ様。入りきらなければ、裏もお使いください。", e: "default" },
+        { s: "mimi", t: "逆なんです。何から書けばいいか、決まらなくて。", e: "default" },
+        { s: "sumika", name: "窓口の係員", t: "では、帰り道から伺いましょう。ここを出たあと、ひと息つける場所はございますか。", e: "default" },
+        { s: "mimi", t: "増やす相談じゃなくても、いいですか。なくしたくないものを先に書いても。", e: "default" },
+        { s: "sumika", name: "窓口の係員", t: "もちろんです。なくしてからでなければ相談できない窓口には、したくありません。", e: "serious" },
+        { s: "narrator", t: "係員は申込書を脇へよけ、島の地図を広げた。折り目には、何度も継ぎ直した細い紙が貼ってある。" },
+        { s: "sumika", t: "申し遅れました。スミカ・ラグナと申します。今日は買うものを決めず、お帰りになっても結構です。", e: "default" },
+        { s: "mimi", t: "それ、先に聞けてよかったです。椅子に座ったら契約かと思いました。", e: "smile" },
+        { s: "sumika", t: "その方式ですと、わたくしが毎日いちばん多く契約することになります。", e: "smile" },
+        { s: "narrator", t: "スミカが地図に指を置いた。村の家々の横に、小さく『雨戸の修繕』と書き添えてある。" },
+        { s: "mimi", t: "同じお金で、次の札も、雨戸の修理もできるんだ。……わたし、当たったら次はいくら張れるかって、先に考えちゃう。", e: "default" },
+        { s: "sumika", t: "雨戸でしたら、次のレースを外した晩にも、ちゃんと閉まりますよ。", e: "default" },
+        { s: "mimi", t: "そっか。外してしょんぼり帰っても、布団は乾いたままだ。……その欄、消さずに置いといてください。", e: "smile" },
+        { s: "narrator", t: "小さく笑ったスミカは、相談用紙の端に『継続』と印を押した。金額の欄は空いたままだ。" },
+        { s: "mimi", t: "まだ、何も決めてないのに。", e: "default" },
+        { s: "sumika", t: "次に続きをお話しするための印です。決まらなかったことも、そのままお持ちください。", e: "default" },
+        { s: "mimi", t: "なら、この地図を借りたいです。自分で歩いてから、どこに戻りたいか考えます。", e: "smile" },
+        { s: "sumika", t: "お渡しできる写しがございます。……帰り道は、こちらも。", e: "default" },
+        { s: "narrator", t: "スミカが余白に一本の道を足した。建物の説明とは違う、柔らかい鉛筆の線だった。" },
+        { s: "mimi", t: "近道ですか。", e: "default" },
+        { s: "sumika", t: "少し遠回りです。昼も日陰が続きますので、わたくしは好きなのです。", e: "smile" }
       ],
-      "4": [
-        { s: "makura", t: "見ーつけた！　場外で予想を叫んでた耳の子！　あんた声いいね、マイク持ったことある？", bg: "images/bg/studio.webp" },
-        { s: "mimi", t: "えっ、な、ないですけど……！", e: "panic" },
-        { s: "makura", t: "よし採用、今から初配信。噛んだら一生アーカイブに残るからね。{w:420}……嘘。残るのは3日。" },
-        { s: "mimi", t: "3日も残るんですか！？", e: "panic", fx: "hop" }
-      ],
-      "5": [
-        { s: "celestia", t: "いい眺めでしょ、ここ。島でいちばん、レース場が星に近い席なんだよ。", bg: "images/bg/shrine.webp" },
-        { s: "mimi", t: "あ……！　あなたは、あのときの……。", e: "panic" },
-        { s: "celestia", t: "うん。今度こそ、名乗るね。{w:500}——セレスティア。勝つ竜の名前が視えちゃう、つまんない女だよ。" },
-        { s: "mimi", t: "（星空のドレス……やっぱり、あの夜のお姉さんだ。）", e: "default" }
-      ],
+      get "4"() {
+        var memory = "";
+        if (typeof chapterRead === "function" && !chapterRead("4") && typeof chapterFourLifeStatus === "function") {
+          var shared = chapterFourLifeStatus();
+          if (shared.outing) {
+            var opinion = { again: "また選びたい", different: "自分には別の方が合う", unsure: "まだ決められない" }[shared.outing.opinion];
+            memory = "「" + shared.outing.experience.name + "」は" + opinion + "。アヤにそう話した帰り道。";
+          } else if (shared.findings && typeof IslandDiscovery !== "undefined") {
+            var finding = IslandDiscovery.describeDiscovery(IslandDiscovery.exportDiscoveries(state.player.islandDiscovery)[0]);
+            if (finding) memory = "手帖の「" + finding.finding.title + "」を、誰かに見せてみたくなった。";
+          }
+        }
+        return [
+        { s: "narrator", t: memory ? memory + "配信小屋の前で、倒れかけた応援旗を支えた。竜の名前が表へ向く。カメラの灯は消えている。" : "場外の配信小屋。倒れかけた応援旗をミミが支えると、竜の名前が表へ向いた。カメラの灯は消えている。", bg: "images/bg/studio.webp" },
+        { s: "makura", name: "機材を抱えた女", t: "助かった！　そこ、ずっと裏返しで映るとこだった。", e: "happy" },
+        { s: "mimi", t: "名前が見えないのは、さみしいかなって。持つの、ここでいいですか。", e: "default" },
+        { s: "makura", t: "ばっちり。あたしはマクラ。今の一言、もう一回聞きたいな。", e: "smile" },
+        { s: "mimi", t: "ミミです。……もう撮ってます？", e: "panic" },
+        { s: "makura", t: "まだ。声だけ録ってみない？　配信じゃなくて、ここで一緒に聞く練習。", e: "default" },
+        { s: "mimi", t: "顔は映さないで、出す前には聞かせてください。それなら、やってみたいです。", e: "default" },
+        { s: "makura", t: "了解。聞いて嫌なら消そう。カメラは旗へ、マイクだけこっち。", e: "smile" },
+        { s: "narrator", t: "ミミがうなずいてから、録音の灯がついた。マクラは口を閉じ、旗の端を一緒に押さえた。" },
+        { s: "mimi", t: "この子が勝つかは、まだわかりません。でも、次に走るとき、最後まで見ていたいです。", e: "default" },
+        { s: "makura", t: "……はい、止めた。どうして最後まで？", e: "default" },
+        { s: "mimi", t: "先頭じゃなくなったら、名前まで見えなくなるのは、いやなので。", e: "default" },
+        { s: "makura", t: "そっか。あたし、先頭を追って旗までひっくり返してたな。", e: "default" },
+        { s: "narrator", t: "再生した声は、思ったより小さかった。ミミは耳を押さえかけ、途中で手を下ろした。" },
+        { s: "mimi", t: "もう一度いいですか。今度は名前から言いたいです。勝つって約束は、できないけど。", e: "default" },
+        { s: "makura", t: "よし、二本目！　名前は一番前、息継ぎはそのあと！{w:300}……急がなくていい、合図はミミちゃんから。", e: "happy" },
+        { s: "mimi", t: "はい。……今度は、わたしから始めます。", e: "smile" },
+        { s: "narrator", t: "柵の向こうを竜たちが引き上げていく。旗の持ち主が一頭を追って叫んだ。「フガク！　あの登り、よく踏ん張ったなあ！」" },
+        { s: "mimi", t: "……フガク。今のひと言で、わたしもあの坂を見たくなりました。", e: "smile" },
+        { s: "makura", t: "ね。そこに来られなかった人にも、あの坂を見せられたらいいな。ミミちゃん、自分のスマホで撮ってみたい？", e: "default" },
+        { s: "mimi", t: "まずは、お値段を聞いてからで……！　さっきの録音は、二人だけで聞く分ですよ。", e: "panic" },
+        { s: "makura", t: "もちろん。録音はここまで。配信用のスマホのことは、あとであたしと相談しよ。", e: "smile" }
+      ]; },
+      get "5"() {
+        var seen = typeof castStrangerSeen === "function" && castStrangerSeen();
+        const memory = [], player = typeof state !== "undefined" && state.player;
+        // The chapter has no dated snapshot. On a replay, today's diary may describe a later outing.
+        if (player?.islandLife && !player.flags?._chapter_intro_5 && typeof IslandLifeLoop !== "undefined" && typeof MEALS !== "undefined") {
+          const outings = IslandLifeLoop.normalize(player.islandLife);
+            const replies = [outings.firstLocalMeal, outings.firstLocalStory, ...outings.history, ...Object.values(outings.conversations)]
+            .filter(e => e?.experience?.kind === "meal" && e.completedRace <= (player.completedRaces || 0)
+              && player.meals?.eaten?.[e.experience.id] === true)
+            .sort((a, b) => Number(b.id.slice(7)) - Number(a.id.slice(7)));
+          const reply = replies[0], dish = reply && MEALS.find(m => m.id === reply.experience.id);
+          if (dish) {
+            const lines = {
+              again: ["また、これがいい", "次にあそこへ行ったら、もう一度あれを頼みたい。明日も火を入れてくれるつもりで、そう言ったんだ。"],
+              different: ["わたしには、別の方が合いそう", "あのときは、次は何にしようって選べたんです。……灯りが消えてたら、献立の前で迷うこともできないんだ。"],
+              unsure: ["まだ、決めないでおく", "もう少し考えて、また覗きに行けばいいって思ってました。次に行ったとき、灯りが消えてるかもしれないなんて。"]
+            }[reply.opinion];
+            memory.push({ s: "narrator", t: "ミミは自分の手帖を開いた。食べた「" + dish.name + "」の欄に、アヤに返したひと言がある。「" + lines[0] + "」。" },
+              { s: "mimi", t: lines[1], e: "default" });
+          }
+        }
+        return [
+          { s: "narrator", t: "石段を上がりきり、ミミは膝に手をついた。手帳を開いていた先客が大きなリュックをずらし、隣を空ける。", bg: "images/bg/shrine.webp" },
+          { s: "mimi", t: "あ、座ってもいいですか。ここまで来るだけで、お腹が……。", e: "default" },
+          { s: "celestia", name: seen ? "あのお姉さん" : "旅の人", t: "どうぞ、下の屋台まで見える席だよ。眺めていると、余計にお腹がすいちゃうけどね。", e: "smile" },
+          { s: "mimi", t: seen ? "前に、お名前を聞きそびれたままでしたね。今日は、教えてもらえますか。" : "ここから、ずっと眺めていたんですか。わたし、ミミといいます。", e: "default" },
+          { s: "celestia", t: seen ? "うん。名前、まだだったね。セレスティア・ブラックメテオ。" : "セレスティア・ブラックメテオ。旅の途中で、少し長居しているんだ。", e: "smile" },
+          { s: "mimi", t: "この頁だけ、何も書いてないんですね。", e: "default" },
+          { s: "celestia", t: "もうない賭場の頁。何を書こうか迷って、そのままにしてしまったの。", e: "sad" },
+          { s: "narrator", t: "セレスティアは折れた紙の角を、指でゆっくり伸ばした。下のレース場から、いくつもの声が届く。" },
+          { s: "mimi", t: "……ここも、そうなるんですか。", e: "default" },
+          { s: "celestia", t: "わたしには、勝つ竜が視える。答えを伝えると、みんなの札が同じ方を向くんだ。", e: "serious" },
+          { s: "narrator", t: "下の馬場で、夕方の組が門に並んだ。石段の手すり越しに、一人の客が「今日は誰が先に帰ってくる？」と声をかけた。" },
+          { s: "celestia", t: "この組なら、ライオウ。……ほら、今の人がもう窓口に着いた。", e: "default" },
+          { s: "narrator", t: "「ライオウの単勝、一枚」「こっちもライオウ」。掲示板の同じ欄に札が重なった。やがて門が開き、雷を引く翼が最初に線を越えた。" },
+          { s: "mimi", t: "……ほんとに、一着。あれだけ札が売れたら、窓口の人も助かるんじゃ……？", e: "default" },
+          { s: "narrator", t: "払い戻しを待つ列は、さっき券を買った列とほとんど同じ長さだった。窓口から「明日の灯油、何缶頼む？」と声がした。「待って。払い戻して、いくら残るか見てから」" },
+          { s: "mimi", t: "買った人に戻る分も、あの箱の中なんだ。札がたくさんあるのと、明日の灯りがつくのは、別なんですね。", e: "default" },
+          { s: "celestia", t: "前の賭場でも、最初はそんな夕方だった。最後に消えたのは、奥の店の灯り。あそこ、夜も開けてくれてたのに。", e: "sad" },
+          ...memory,
+          { s: "mimi", t: "その、なくなった賭場で。何を食べたんですか。", e: "default" },
+          { s: "celestia", t: "……食べたもの？　熱いスープを。店の人が、冷めるまで隣に座っていたっけ。", e: "default" },
+          { s: "mimi", t: "それなら、最初の一行は書けますね。賭場の答えじゃなくて、その人のこと。", e: "default" },
+          { s: "narrator", t: "手帳の上で鉛筆が止まった。それから、白かった頁に小さな文字が並び始めた。" },
+          { s: "celestia", t: "この一行が増えても、次の勝者は変わらないよ。……それでも、この島の話を続けたい？", e: "default", react: [{ s: "mimi", e: "panic" }] },
+          { s: "mimi", t: "はい。まだ、書きたいことがあります。下へ降りませんか。お店の灯りが、見えるうちに。", e: "smile" }
+        ];
+      },
       "ED": [
         { s: "mimi", t: "ふー……。走って、賭けて、食べて。……ぜんぶ、やりきった！", e: "happy", fx: "hop", bg: "images/bg/home_room.webp" },
         { s: "mimi", t: "ここまで来られたのは——みんなの、おかげです。", e: "smile" }

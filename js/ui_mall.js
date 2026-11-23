@@ -158,6 +158,7 @@ function _renderMallBody() {
 
   // ── ② ヒーロー・カルーセル（自動送り） ──
   scm.appendChild(_scmHero());
+  if (typeof appendIslandLifePlace === "function") appendIslandLifePlace(scm, "mall");
 
   // ── ③ アイコンメニュー（3列・線画） ──
   const cats = [

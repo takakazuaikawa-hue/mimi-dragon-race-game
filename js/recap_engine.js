@@ -310,6 +310,13 @@ function buildCourseWeatherAnalysis(race, analysis) {
 //   旧文はコーチの講評口調（「〜ましょう」）＝誰の声か分からない声ブレだった。状況4分岐×各2〜3種の池（D3解消）。
 function buildMimiRecap(bet, betResult, raceResult, popMap) {
   if (!bet || !betResult) return "さ、今日はどんなレースかな。";
+  const known = Object.values(popMap).find(o => o._celestia && bet.selections?.includes(o.dragonId));
+  if (known) {
+    if (bet.type === "wide") return betResult.hit
+      ? "一着は教わったとおり。もう一頭も届きました……！　組み合わせた札の払戻を見てみよう。"
+      : "一着は教わっても、もう一頭までは決まらないんですね……。次は、その走りを見てみたいです。";
+    return "教わった一頭が、ほんとうに先着しました……。払戻を確かめてから、次を考えよう。";
+  }
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   const winner = raceResult.entries[0];
   const winnerPop = (popMap[winner.dragon.id] || {}).popularityRank || 9;

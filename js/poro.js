@@ -114,9 +114,10 @@ function dexUnlocked() {
 //   → ポロの物語は **1回にひとつだけ／レースを挟んで順に** 進む（nextPoroBeat／maybePlayPoroBeat）。
 //   切れ目は物語のほうが元から用意していた：サケの「鑑定に出せ。話はそれからだ。」——鑑定に出したのに
 //   結果が同じ場面で読み上げられていたのが不自然だったので、ここで段を割る。
-//   ①出会い（単勝2勝目）→ 鑑定に出して引く／②鑑定の結果（+2レース）→ 種明かし・命名・解放
+//   ①出会い（単勝2勝目）→ 鑑定に出して引く／②鑑定の結果（+1レース）→ 種明かし・命名・解放
 //   ／③以降 顧問の後日談を1本ずつ（+2レースずつ）。
-const PORO_BEAT_GAP = 2;   // 段と段のあいだに挟むレース数（テンポ調整はここ1か所）
+const PORO_BEAT_GAP = 2;   // 顧問の後日談の間隔は維持する
+const PORO_APPRAISAL_GAP = 1; // 出会いと鑑定は分け、もう一戦を待つだけの反復は足さない
 
 // ① 出会い：拾う → 聖龍の幼体では！？の騒ぎ → サケ「鑑定に出せ」で引く。まだ名前は無い。
 function poroDiscoveryScript() {
@@ -210,10 +211,10 @@ function _poroBeatMark() {
 function _poroMarkBeat() {
   try { state.player.flags._poroBeatAt = _poroRaces(); if (typeof saveGame === "function") saveGame(); } catch (e) {}
 }
-function _poroGapOk() { return _poroRaces() >= _poroBeatMark() + PORO_BEAT_GAP; }
+function _poroGapOk(beat) { return _poroRaces() >= _poroBeatMark() + (beat?.id === "appraisal" ? PORO_APPRAISAL_GAP : PORO_BEAT_GAP); }
 
 // ★次に進むべき段を1つだけ返す（無ければ null）。ここがポロの物語の唯一の進行表。
-//   gap:false ＝ 間合い不要（アークの1本目）／gap:true ＝ 前の段から PORO_BEAT_GAP レース空ける。
+//   gap:false ＝ 間合い不要／gap:true ＝ 鑑定は一戦、顧問の後日談は二戦を空ける。
 function nextPoroBeat() {
   if (!_poroSeen("poroMet")) {
     if (((state.player && state.player.wins) || 0) < 2) return null;   // 出会い＝単勝2勝目
@@ -225,15 +226,17 @@ function nextPoroBeat() {
   return null;
 }
 // 段を1つだけ再生する。ignoreGap＝章を開いた取りこぼし救済など、間合いを問わず出したい時。
-function maybePlayPoroBeat(ignoreGap) {
+function maybePlayPoroBeat(ignoreGap, onDone) {
   if (!(typeof window !== "undefined" && window.Dialogue && Dialogue.play)) return false;
   if (window._poroArcPlaying) return false;
   const beat = nextPoroBeat();
   if (!beat) return false;
-  if (beat.gap && !ignoreGap && !_poroGapOk()) return false;
+  if (beat.gap && !ignoreGap && !_poroGapOk(beat)) return false;
+  const recipient = state.player;
   window._poroArcPlaying = true;
   Dialogue.play(beat.script(), { force: true }).then(function () {
     window._poroArcPlaying = false;
+    if (state.player !== recipient) return;
     if (beat.flag && typeof setStoryFlag === "function") setStoryFlag(beat.flag, true);
     _poroMarkBeat();
     if (typeof beat.done === "function") beat.done();
@@ -241,10 +244,11 @@ function maybePlayPoroBeat(ignoreGap) {
     //   以前は会話が閉じると何も残らず、次に何を待っているのかが画面から消えていた（Codex の通し試験）。
     //   待っているあいだは、図鑑の先頭にも「鑑定中」の一枚が出る（ui_render.js renderCollection → poroAppraisalCardHtml）。
     if (beat.id === "met") {
-      try { if (typeof _showUnlockToast === "function") _showUnlockToast("🔍 " + PORO_UNNAMED + "を、鑑定に出した。結果は、あと" + PORO_BEAT_GAP + "戦ほどで届く。"); } catch (e) {}
+      try { if (typeof _showUnlockToast === "function") _showUnlockToast("🔍 " + PORO_UNNAMED + "を、鑑定に出した。一戦を終えると、図鑑で知らせを受け取れます。"); } catch (e) {}
     }
     if (typeof saveGame === "function") saveGame();
-  });
+    if (typeof onDone === "function") onDone();
+  }, function () { window._poroArcPlaying = false; });
   return true;
 }
 // ── 鑑定待ち（出会いは済んだが、結果はまだ）の見せ方 ─────────────────────────
@@ -252,14 +256,22 @@ function maybePlayPoroBeat(ignoreGap) {
 function poroAppraisalWaiting() {
   try {
     if (!_poroSeen("poroMet") || poroFound()) return null;
-    return { left: Math.max(0, _poroBeatMark() + PORO_BEAT_GAP - _poroRaces()) };
+    return { left: Math.max(0, _poroBeatMark() + PORO_APPRAISAL_GAP - _poroRaces()) };
   } catch (e) { return null; }
+}
+// 終章に先に着いた場合も、出会いと鑑定を通常の結果画面から進める。
+function poroRaceLead() {
+  const left = Math.max(0, 2 - (state.player.wins || 0));
+  if (left) return "単勝をあと" + left + "回当てて、レースの結果を見届けよう。";
+  const appraisal = poroAppraisalWaiting();
+  if (appraisal && appraisal.left > 0) return "鑑定中。あと" + appraisal.left + "戦を完走して、結果画面で知らせを受け取ろう。";
+  return appraisal ? "鑑定の知らせが届いた。竜の図鑑で受け取ろう。" : "単勝2勝に到達。次のレースの結果画面で、仔竜との出会いを見届けよう。";
 }
 // 図鑑の先頭に出す「鑑定中」の一枚（待っていなければ空文字）。名前の種明かしはしない＝PORO_UNNAMED のまま。
 function poroAppraisalCardHtml() {
   const w = poroAppraisalWaiting();
   if (!w) return "";
-  const when = w.left > 0 ? `鑑定の結果は、あと<b>${w.left}戦</b>ほどで届く。` : `鑑定の結果は、<b>次のレースのあと</b>に届きそう。`;
+  const when = w.left > 0 ? `鑑定の結果は、あと<b>${w.left}戦</b>ほどで届く。` : `鑑定所から、<b>知らせが届いている</b>。`;
   return `<div class="card dex-wait"><span class="dex-wait-ph">${poroStandeeHTML(64)}</span>` +
     `<span class="dex-wait-tx"><b>鑑定中 — ${PORO_UNNAMED}</b>` +
     `<small>雷雨のあと、資材置き場で拾った仔。名前は、まだ無い。<br>${when}</small></span></div>`;
