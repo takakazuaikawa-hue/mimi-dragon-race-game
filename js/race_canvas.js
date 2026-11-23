@@ -1198,8 +1198,16 @@ function rcDrawGate(ctx, o) {
   return { bx: bx, by: by, bw: bw, bh: bh, capY: capY - 3, orbL: Lx + pw / 2, orbR: Rx + pw / 2 };
 }
 
+// ★名札のガタつき止め（2026-11-23・ユーザー指摘「レース中に名前がガタガタ動く」）。
+//   以前は毎コマ置き場所をゼロから選び直していたので、竜が少し上下するだけで札が体の下⇔上・
+//   全幅⇔番号だけ を行き来し、位置も体の揺れに毎コマ追従していた。
+//   ・前のコマの置き場所（段・幅・横ずれ）を覚え、まだ置けるうちはそこを最優先で使う。
+//   ・置き場所が同じあいだは位置をなめらかに追わせ（縦は強めに）、整数pxに丸める＝文字が震えない。
+//   ・置き場所が替わる時も一瞬で飛ばさず、数コマで滑らせる。表示のみ。
+const _rcLblMem = {};
 function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
   if (!lbls.length) return;
+  const _lnow = performance.now();
   const m = ctx.getTransform(), k = dpr || 1;
   const tp = function (x, y) { return { x: (m.a * x + m.c * y + m.e) / k, y: (m.b * x + m.d * y + m.f) / k }; };
   const zs = Math.hypot(m.a, m.b) / k;                      // 世界→画面の倍率（ズーム）
@@ -1214,7 +1222,10 @@ function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
   };
   const BOT = ch - 16;   // 画面下端の飾り枠に隠れない
   const off = function (r) { return r.x < 1 || r.x + r.w > cw - 1 || r.y < 1 || r.y + r.h > BOT; };
-  const order = lbls.slice().sort(function (a, b) { return (b.isBet - a.isBet) || (a.rk - b.rk); });
+  // 置く順番＝自分の竜→1着→あとは出走の並び（固定）。順位で並べると、抜きつ抜かれつのたびに
+  //   先に置く札が入れ替わり、玉突きで何枚もの札が段を替えていた（ガタつきの元）。
+  const _ix = new Map(lbls.map(function (l, i) { return [l, i]; }));
+  const order = lbls.slice().sort(function (a, b) { return (b.isBet - a.isBet) || (b.lead - a.lead) || (_ix.get(a) - _ix.get(b)); });
   ctx.save();
   ctx.setTransform(k, 0, 0, k, 0, 0);
   ctx.font = "9.5px " + _RC_LBL_FONT;
@@ -1224,24 +1235,41 @@ function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
     const fullW = Math.round(dia + 8 + ctx.measureText(l.nm).width + 4);
     const ys = [yb + 1, yt - h - 1, yb + h + 3, yt - 2 * h - 3];   // 体のすぐ下→すぐ上→一段下→一段上
     const tryW = l.isBet ? [fullW] : [fullW, dia + 4];
+    // 候補（段×幅×横ずれ）を優先順に並べ、前のコマで使った候補を先頭へ＝置けるうちは動かさない
+    const cands = [];
+    for (let wi = 0; wi < tryW.length; wi++) for (let yi = 0; yi < ys.length; yi++) for (const dx of [0, -0.5, 0.5]) cands.push({ wi: wi, yi: yi, dx: dx });
+    let mem = l.id != null ? _rcLblMem[l.id] : null;
+    if (mem && _lnow - mem.t > 600) mem = null;               // しばらく描いていない＝別のレース・別の場面
+    if (mem) {
+      const j = cands.findIndex(function (q) { return q.wi === mem.wi && q.yi === mem.yi && q.dx === mem.dx; });
+      if (j > 0) cands.unshift(cands.splice(j, 1)[0]);
+    }
     let pick = null;
     for (let pass = 0; pass < 2 && !pick; pass++) {           // pass0＝体も避ける／pass1＝体の上は許す
-      for (let wi = 0; wi < tryW.length && !pick; wi++) {
-        const w = tryW[wi];
-        for (let yi = 0; yi < ys.length && !pick; yi++) {
-          for (const dx of [0, -0.5, 0.5]) {
-            const r = { x: Math.max(2, Math.min(cw - w - 2, c - w / 2 + dx * w)), y: ys[yi], w: w, h: h, full: w === fullW };
-            if (off(r) || over(r, placed, 2) || (pass === 0 && over(r, bs, 0))) continue;
-            pick = r; break;
-          }
-        }
+      for (let ci = 0; ci < cands.length; ci++) {
+        const q = cands[ci], w = tryW[q.wi];
+        const r = { x: Math.max(2, Math.min(cw - w - 2, c - w / 2 + q.dx * w)), y: ys[q.yi], w: w, h: h, full: w === fullW, wi: q.wi, yi: q.yi, dx: q.dx };
+        // いま置いている場所（先頭の候補）は、体に少しかかっても札どうしが重ならなければ動かさない
+        const keep = mem && ci === 0;
+        if (off(r) || over(r, placed, 2) || (pass === 0 && !keep && over(r, bs, 0))) continue;
+        pick = r; break;
       }
     }
-    if (!pick && l.isBet) pick = { x: Math.max(2, Math.min(cw - fullW - 2, c - fullW / 2)), y: Math.max(2, Math.min(BOT - h, ys[0])), w: fullW, h: h, full: true };
+    if (!pick && l.isBet) pick = { x: Math.max(2, Math.min(cw - fullW - 2, c - fullW / 2)), y: Math.max(2, Math.min(BOT - h, ys[0])), w: fullW, h: h, full: true, wi: 0, yi: 0, dx: 0 };
     if (!pick) return;
+    // 重なり判定は本来の位置で済ませた。描く位置だけ前のコマからなめらかに寄せる。
+    if (mem) {
+      const same = mem.yi === pick.yi && mem.wi === pick.wi && mem.dx === pick.dx;
+      const ky = same ? 0.22 : 0.35, kx = same ? 0.5 : 0.35;
+      // 同じ置き場所で3px未満の上下は追わない＝竜の羽ばたき・呼吸の揺れで文字が震えない
+      pick.dy = (same && Math.abs(pick.y - mem.y) < 3) ? mem.y : Math.round(mem.y + (pick.y - mem.y) * ky);
+      pick.dxp = Math.round(mem.x + (pick.x - mem.x) * kx);
+    } else { pick.dy = Math.round(pick.y); pick.dxp = Math.round(pick.x); }
+    if (l.id != null) _rcLblMem[l.id] = { wi: pick.wi, yi: pick.yi, dx: pick.dx, x: pick.dxp, y: pick.dy, t: _lnow };
     pick.l = l;
     placed.push(pick);
   });
+  placed.forEach(function (r) { r.x = r.dxp; r.y = r.dy; });   // ここから下は描くだけ
   placed.forEach(function (r) {
     const l = r.l, rad = r.h / 2;
     ctx.globalAlpha = l.a;
@@ -3963,7 +3991,7 @@ function startRaceCanvas(container, ctx) {
           if (_dm >= 10) _nm += " 先頭まで" + _dm + "m";   // 「◂120m」だけでは意味を一度考える、との指摘（Codex 2026-11-13）
         }
         _lbls.push({ cx: bodyCx, top: _body ? _body.y : y - 34 * dep, bot: _body ? _body.y + _body.h : baseY + 12, dep: dep, rk: rk, isBet: isBet,
-          lead: popRank[dr.id] === 1, nm: _nm, a: cctx.globalAlpha, rkText: _preGo ? "" : null });
+          lead: popRank[dr.id] === 1, nm: _nm, a: cctx.globalAlpha, rkText: _preGo ? "" : null, id: dr.id });
       }
 
       // ★A-2 ロールコール：紹介中の1頭だけ、頭上に大きな名札プレートを出す。
