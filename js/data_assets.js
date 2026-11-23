@@ -398,6 +398,16 @@ function advisorMet(castKey) {
 //   ②序盤は総資産でなく“実績”（走った回数・勝ち）で刻む＝幸運な高配当で飛ばない。物語本文の流れとも一致
 //     （1話サケの基礎→数レース走って勘に詰まる→2話ミズ→初勝利→3話スミカ→島がリゾート→4話マクラ→世界の天井→5話）。
 // 章の解放判定は全画面この chapterAvailable() を唯一の入口にする（storyUnlockAt は表示テキスト用に残す）。
+// ★章を読んだ時点の走った回数（ui_story.js が既読の印と一緒に付ける）。次の章は「前の章を読んだあとに1戦以上」走ってから
+//   （2026-11-23・Codex 再監査「章を早く読むと、後の章と地域がまとめて開く」）。先に島を回っていた人の発見や手帖はそのまま活きる。
+//   印が無い古いセーブは、従来どおり待たせない。
+function raceSinceChapter(id) {
+  try {
+    const at = state.player && state.player.flags ? state.player.flags["_chapter_read_race_" + id] : null;
+    if (typeof at !== "number") return true;
+    return ((state.player && state.player.completedRaces) || 0) > at;
+  } catch (e) { return true; }
+}
 function chapterRead(id) { try { return typeof getStoryFlag === "function" && !!getStoryFlag("_chapter_intro_" + id); } catch (e) { return false; } }
 
 function chapterFourLifeStatus(player = state.player) {
@@ -495,9 +505,9 @@ function chapterAvailable(chId) {
       //   ブニクロ普段着を買う、という一連の暮らしの立ち上げを、2話より前に置き切る。
       case "2":  return chapterRead("1") && races >= 3
                         && (typeof outfitOwned === "function") && outfitOwned(OUTFITS.find(o => o.id === "buniqro"));
-      case "3":  return chapterRead("2") && wins >= 1;             // スミカ＝2話を読み、初勝利で勝ち分の守り方に直面してから
-      case "4":  return chapterRead("3") && chapterFourEntryMet();
-      case "5":  return chapterRead("4") && chapterFiveEntryMet();
+      case "3":  return chapterRead("2") && wins >= 1 && raceSinceChapter("2");             // スミカ＝2話を読み、初勝利で勝ち分の守り方に直面してから
+      case "4":  return chapterRead("3") && chapterFourEntryMet() && raceSinceChapter("3");
+      case "5":  return chapterRead("4") && chapterFiveEntryMet() && raceSinceChapter("4");
       // ★M3（2026-07-30）：EDの金額バイパスを廃止。総資産10億は「神眼レースの解放額」であって
       //   EDの直行券ではない（クリマックス＝3頭同着のパズルを飛ばせない）。edFlag は
       //   神眼レースのクリア（shingan_race.js _sgClear→epilogueClear）で立つ。
@@ -510,9 +520,9 @@ function chapterAvailable(chId) {
 function chapterUnlockHint(chId) {
   switch (String(chId)) {
     case "2":  return "第1話を読み、数戦こなして「ブニクロ普段着」を買うと解禁";
-    case "3":  return "第2話を読み、はじめて単勝を当てると解禁";
-    case "4":  return "第3話のあと、寄り道で試したことを現地でアヤに話すか、島の発見を1件確かめる。到達最高資産100万でも読めます。";
-    case "5":  return "第4話のあと、自分の投稿への反応をマクラと読む。島で発見2件と予想手帖か竜の取材を重ねるか、到達最高資産1億で島の次の出来事へ。";
+    case "3":  return "第2話を読み、はじめて単勝を当てると解禁（第2話のあとに1戦走ってから）";
+    case "4":  return "第3話のあと1戦走り、寄り道で試したことを現地でアヤに話すか、島の発見を1件確かめる。到達最高資産100万でも読めます。";
+    case "5":  return "第4話のあと1戦走り、自分の投稿への反応をマクラと読む。島で発見2件と予想手帖か竜の取材を重ねるか、到達最高資産1億で島の次の出来事へ。";
     case "ED": return "第5話を読み、最終決戦をクリアすると解禁";
     default:   return "";
   }

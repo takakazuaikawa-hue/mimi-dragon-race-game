@@ -263,6 +263,7 @@ function renderStoryChapter(chId) {
       if (state.player !== openingPlayer) return;
       delete state.ui._storyEncounterPending;
       if (typeof setStoryFlag === "function") setStoryFlag("_chapter_intro_" + ch.id, true);
+      try { if (typeof setStoryFlag === "function") setStoryFlag("_chapter_read_race_" + ch.id, (state.player.completedRaces || 0)); } catch (e) {}
       if (ch.id === "5" && typeof playShinganCutin === "function") playShinganCutin();
       // ★第1話を新しいセーブで初めて見た時は、記事の朗読（6段落）とレース一覧を挟まず、注目レースの出走表へ直行する
       //   （2026-11-23・ユーザー指摘「初回の楽しさが分かるまでに読む量が多すぎる」）。サケの最後の一言

@@ -693,6 +693,36 @@
       holdUntil = Math.max(holdUntil, Date.now() + ms);
       chain = chain.then(function () { return new Promise(function (res) { setTimeout(res, ms); }); });
     },
+    // ★「間」のあと、プレイヤーが押してから会話を始める（2026-11-23・Codex 指摘「結果のあとの会話が時間で勝手に始まる」）。
+    //   minMs 待っても後ろに会話が並んでいなければ、そのまま通す（何も出ない一戦で待たせない）。
+    //   並んでいれば「💬 話しかけられています」の札を出し、札か画面のどこかを押したら始める。押されなくても maxMs で始める（詰まらせない）。
+    holdForTap: function (minMs, maxMs) {
+      if (fastMs > 0) return;
+      minMs = +minMs || 0; maxMs = Math.max(minMs, +maxMs || 15000);
+      var gateTicket = ticketSeq, t0 = Date.now();
+      holdUntil = Math.max(holdUntil, t0 + maxMs);
+      chain = chain.then(function () {
+        return new Promise(function (res) {
+          var done = false, pill = null, armT = 0, maxT = 0;
+          function go() {
+            if (done) return; done = true; holdUntil = 0;
+            clearTimeout(armT); clearTimeout(maxT);
+            document.removeEventListener("pointerdown", go, true);
+            if (pill && pill.parentNode) pill.parentNode.removeChild(pill);
+            res();
+          }
+          armT = setTimeout(function () {
+            if (ticketSeq <= gateTicket) { go(); return; }   // 後ろに会話が無い
+            pill = document.createElement("button");
+            pill.type = "button"; pill.className = "dlg-wait-pill";
+            pill.innerHTML = "💬 話しかけられています <b>▸</b>";
+            document.body.appendChild(pill);
+            document.addEventListener("pointerdown", go, true);
+            maxT = setTimeout(go, Math.max(0, maxMs - (Date.now() - t0)));
+          }, Math.max(0, minMs - (Date.now() - t0)));
+        });
+      });
+    },
     // 「間」の最中か。utils.js の uiBusy が見る＝解放のお知らせなども、この間は割り込まない。
     isHolding: function () { return Date.now() < holdUntil; },
     // 検証用：セリフは通常どおり描画したまま、クリックを待たず自動で先へ進める。

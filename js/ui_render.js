@@ -2460,6 +2460,44 @@ function showRaceTermInfo(kind, race) {
   showInfoPopup(`🗺 ${s.label}`, body);
 }
 
+// ★前の一戦の学び → 次の出走表（2026-11-23・Codex 指摘「『速さで負けた』などの反省が、次の出走表で何を見ればいいかにつながらない」）。
+//   結果から1つだけ「流れ」か「人気」の学びを取り出して保存し、次の出走表の上に、今回の出走表で同じ所を見る数字と並べて出す。
+//   読むだけ・表示用（着順・オッズ・払戻には触れない）。何も学びが無い一戦なら消す。
+function raceLessonOf(c) {
+  const rr = c && c.raceResult, od = c && c.oddsResult;
+  if (!rr || !od || !rr.entries || !rr.entries.length) return null;
+  const pace = (rr.pace && rr.pace.type) || "standard";
+  const win = rr.entries[0].dragon;
+  const fav = od.oddsData.find(o => o.popularityRank === 1);
+  const favE = fav && rr.entries.find(e => e.dragon.id === fav.dragonId);
+  const front = s => s === "escape" || s === "front";
+  if ((pace === "high" || pace === "very_high") && !front(win.style))
+    return { kind: "fast", text: "前に行く竜が多くて流れが速くなり、後ろから来た" + win.name + "が勝った" };
+  if (pace === "slow" && front(win.style))
+    return { kind: "slow", text: "流れが落ち着いて、前に行った" + win.name + "がそのまま残った" };
+  if (favE && favE.rank > 3)
+    return { kind: "favfade", text: "1番人気の" + favE.dragon.name + "が" + favE.rank + "着に沈んだ" };
+  return null;
+}
+function raceLessonStrip(race, oddsResult) {
+  const L = state.player && state.player.lastLesson;
+  if (!L || !L.text || !((state.player.completedRaces || 0) > 0)) return null;
+  let now = "";
+  if (L.kind === "fast" || L.kind === "slow") {
+    const ds = getRaceDragons(race);
+    const n = ds.filter(d => d.style === "escape" || d.style === "front").length;
+    now = `この出走表の逃げ・先行は <b>${n}頭</b>（${ds.length}頭中）。前に行く竜が多いほど、流れは速くなりやすい。`;
+  } else if (L.kind === "favfade") {
+    const f = oddsResult.oddsData.find(o => o.popularityRank === 1);
+    const d = f && DRAGONS.find(x => x.id === f.dragonId);
+    if (d) now = `今回の1番人気は <b>${d.name}</b>（単${f.winOdds.toFixed(1)}）。人気の理由が、このコースに合っているか見てみよう。`;
+  }
+  if (!now) return null;
+  const s = el("div", "bd-lesson");
+  s.innerHTML = `<span class="bd-lesson-k">📝 前の一戦から</span><span class="bd-lesson-t">${L.text}。</span><span class="bd-lesson-n">${now}</span>`;
+  return s;
+}
+
 function renderRaceDetail(race) {
   // ★新しいセーブでは、どの入口から来ても先に第1話の出会いを通す（2026-11-23）。サケは「最初から会っている」扱いなのに、
   //   第1話を読まずにレースへ行けたため、名乗る前のサケが名前つきで助言し、初陣祝いは名無しの「門前の女」が渡す
@@ -2547,6 +2585,7 @@ function renderRaceDetail(race) {
   app.appendChild(head);
   // 格・距離・天候・地形はタップで意味を開く（用語を覚えていなくても賭けの判断ができるように）。
   if (typeof appendReadingJournalReminder === "function") appendReadingJournalReminder(app, race);
+  try { const ls = raceLessonStrip(race, oddsResult); if (ls) app.appendChild(ls); } catch (e) {}
   head.querySelectorAll("[data-term]").forEach(b => {
     b.onclick = () => { try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} showRaceTermInfo(b.dataset.term, race); };
   });
@@ -4248,7 +4287,9 @@ function renderResult() {
   if (!c.resultHooksRan && window.Dialogue && Dialogue.hold) {
     try {
       const _t = (c.betResult && c.betResult.hit && typeof resultTierOf === "function") ? resultTierOf(c.betResult) : 0;
-      Dialogue.hold(_t > 0 ? 900 + _t * 220 + 1400 : 2000);
+      // 数字が出そろうまでは待ち、そのあとはプレイヤーが押してから会話を始める（holdForTap が無い古い版は時間だけ）
+      const _ms = _t > 0 ? 900 + _t * 220 + 1400 : 2000;
+      if (Dialogue.holdForTap) Dialogue.holdForTap(_ms, _ms + 15000); else Dialogue.hold(_ms);
     } catch (e) {}
   }
   // Settle the wallet + progression now that the race is over — once per race
@@ -4266,6 +4307,8 @@ function renderResult() {
     });
   }
   if (!c.recapTab) c.recapTab = "result";
+  // ★前の一戦の学びを、次の出走表まで持ち越す（2026-11-23・Codex 指摘「反省が次の予想につながらない」）。読むだけ・表示用。
+  if (!c._lessonSaved) { c._lessonSaved = true; try { state.player.lastLesson = raceLessonOf(c); } catch (e) {} }
 
   // Mimi/Sake reaction after race result + bankruptcy — fire exactly once.
   if (!c.resultHooksRan) {
