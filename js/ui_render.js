@@ -2581,7 +2581,7 @@ function renderRaceDetail(race) {
       <button type="button" class="bd-chip" data-term="distance">📏 ${DISTANCE[race.distance].label}</button>
       <button type="button" class="bd-chip" data-term="weather">${WEATHERS[race.weather].label}</button>
     </div>
-    <div class="bd-course">序盤 <button type="button" class="bd-seg" data-term="early">${getSection("early", race.early).label}</button> ▸ 中盤 <button type="button" class="bd-seg" data-term="mid">${getSection("mid", race.mid).label}</button> ▸ 終盤 <button type="button" class="bd-seg" data-term="late">${getSection("late", race.late).label}</button></div>`;
+    <div class="bd-course"><span class="bd-cs"><i>序盤</i><button type="button" class="bd-seg" data-term="early">${getSection("early", race.early).label}</button></span><span class="bd-cs"><i>中盤</i><button type="button" class="bd-seg" data-term="mid">${getSection("mid", race.mid).label}</button></span><span class="bd-cs"><i>終盤</i><button type="button" class="bd-seg" data-term="late">${getSection("late", race.late).label}</button></span></div>`;
   app.appendChild(head);
   // 格・距離・天候・地形はタップで意味を開く（用語を覚えていなくても賭けの判断ができるように）。
   if (typeof appendReadingJournalReminder === "function") appendReadingJournalReminder(app, race);
@@ -2876,8 +2876,8 @@ function renderRaceDetail(race) {
         <span class="bp-traits">${d.traits.join("・")}</span>
       </span>
       <span class="bp-odds">
-        <span class="bp-win"><b>${od.winOdds.toFixed(1)}</b><small>単</small></span>
-        <span class="bp-place"><b>${od.placeOdds.toFixed(1)}</b><small>複</small></span>
+        <span class="bp-win"><small>単勝</small><b>${od.winOdds.toFixed(1)}</b></span>
+        <span class="bp-place"><small>複勝</small><b>${od.placeOdds.toFixed(1)}</b></span>
       </span>
       <span class="bp-more" role="button" tabindex="0" aria-label="この竜をもっと見る">▾ 見る</span>
       <span class="bp-drawer" hidden></span>
