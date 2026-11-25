@@ -45,6 +45,17 @@ function dragonColor(d) {
   return (d && d.color) || (d && STYLE_COLOR[d.style]) || "#888";
 }
 
+// 竜の色の丸札（出走表・スリップ・順位表・レース中の札で共通＝docs/RESEARCH_RACE_VISUAL.md §3C）の文字色。
+// 明るい色（黄・白・水色など）の上では白い数字が読めないので、明るさで黒/白を切り替える。表示のみ。
+function dragonChipInk(hex) {
+  const h = String(hex || "#888").replace("#", "");
+  const f = h.length === 3 ? h.split("").map(c => c + c).join("") : h.slice(0, 6);
+  const n = parseInt(f, 16); if (isNaN(n)) return "#fff";
+  const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255);
+  return L > 0.36 ? "#12100c" : "#fff";
+}
+
 function dragonAssetIds(id) {
   const base = DRAGON_ASSET_BASE[id] || `dragon_${id}`;
   return {

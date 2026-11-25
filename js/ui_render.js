@@ -2866,9 +2866,10 @@ function renderRaceDetail(race) {
     card.type = "button";
     card.dataset.id = d.id;
     card.style.setProperty("--waku", dragonColor(d));   // 枠色バー＝竜のアイデンティティ（勝負服相当）
+    card.style.setProperty("--wakut", (typeof dragonChipInk === "function") ? dragonChipInk(dragonColor(d)) : "#fff");
     card.innerHTML = `
       <span class="bp-order" style="display:none"></span>
-      <span class="bp-pop p${rk <= 3 ? rk : ""}">${rk}<small>人気</small></span>
+      <span class="bp-pop p${rk <= 3 ? rk : ""}"><b>${rk}</b><small>人気</small></span>
       <span class="bp-art"><img src="images/dragons/${d.id}.png?v=${typeof RC_DRAGON_ART_V !== "undefined" ? RC_DRAGON_ART_V : 1}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.remove()"></span>
       <span class="bp-main">
         <span class="bp-name">${dragonIcon(d)}${d.name}</span>
@@ -3338,7 +3339,8 @@ function updateExpected() {
   const ss = $("bet-sel-sum");
   if (ss) {
     const tL = { win: "単勝", place: "複勝", wide: "ワイド" }[type] || type;
-    const nm = id => { const d = DRAGONS.find(x => x.id === id); return d ? d.name : ""; };
+    // 竜の色の丸札＋名前（出走表・レース中の札・順位表と同じ記号＝docs/RESEARCH_RACE_VISUAL.md §3C）
+    const nm = id => { const d = DRAGONS.find(x => x.id === id); return d ? `<i class="dchip-dot" style="--c:${dragonColor(d)}"></i>${d.name}` : ""; };
     ss.innerHTML =
       `<span class="bss-tix">🎫</span><b class="bss-nm">${nm(a)}${type === "wide" ? " ＋ " + nm(b) : ""}</b>` +
       `<span class="bss-odds">${tL} <b>${odds.toFixed(1)}</b>倍</span>`;

@@ -1,0 +1,165 @@
+/* =========================================================================
+   予想画面（冷静）とレース画面の見た目 — 根拠は docs/RESEARCH_RACE_VISUAL.md（2026-11-26）
+   ・TIPSTAR 2025「冷静と熱狂」：予想を組む場面は落ち着いたトーンと分かりやすい情報設計
+     → 地は無彩に近い濃灰（世界の青緑をわずかに残す）、カードは枠線なしの一段明るい面、光彩・グラデ・火の粉なし
+   ・金は役割色＝「選んだ竜」と「押すボタン」だけ（賭式の切替は選び物ではないので中立の明るい面）
+   ・JRA中継の枠色の丸札 → 竜の色の丸札を出走表・スリップ・順位表・レース中の札で共通に
+   style.css の後に読む上書き。表示のみ（レースの数値は不変）。
+   ========================================================================= */
+:root {
+  --cs-bg: #0f1517;        /* 地：青緑をわずかに含む濃灰 */
+  --cs-card: #182023;      /* カード：地より一段明るい */
+  --cs-card-2: #1f282b;    /* カードの上の部品・押した時 */
+  --cs-inset: #0b1012;     /* 入れ子の面（金額・払戻） */
+  --cs-line: rgba(255,255,255,.07);
+  --cs-text: #eef2f1;
+  --cs-sub: #a1aca9;
+  --cs-mute: #6f7b7f;
+  --cs-gold: #f0c050;      /* 役割色：選んだもの・押すボタン */
+  --cs-gold-ink: #241a04;
+  --cs-pos: #6fdca8;       /* 払戻（もらえる額） */
+}
+
+/* ---------------- 予想画面（冷静） ---------------- */
+body:has(#app .bd-head) { background: var(--cs-bg); }
+html:has(#app .bd-head) { background: var(--cs-bg); }
+/* 火の粉は世界観の演出だが、予想を組む画面では読む邪魔＝この画面だけ止める */
+body:has(#app .bd-head) .s4-embers { display: none; }
+
+#app .bd-head {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--region-from, #1d2a33) 38%, var(--cs-bg)), var(--cs-bg));
+  border-bottom: 1px solid var(--cs-line);
+  box-shadow: none;
+}
+#app .bd-back { background: var(--cs-card); border: 0; color: var(--cs-text); }
+#app .bd-title b { font-size: 17px; font-weight: 700; color: var(--cs-text); text-shadow: none; }
+#app .bd-sub { color: var(--cs-sub); font-size: 11px; }
+#app .bd-chip { background: var(--cs-card); border: 0; color: var(--cs-text); font-weight: 500; font-size: 11px; }
+#app .bd-chip::after { opacity: .45; }
+#app .bd-course { color: var(--cs-sub); font-size: 11px; }
+#app .bd-seg { color: var(--cs-text); font-weight: 600; border-bottom-color: rgba(255,255,255,.28); }
+
+/* 賭式：中立のセグメント（選んでいる賭式は明るい面＋白字） */
+#app .bet-tabs.bd-tabs { background: var(--cs-card); border: 0; padding: 3px; gap: 3px; border-radius: 12px; backdrop-filter: none; }
+#app .bet-tabs.bd-tabs button {
+  background: transparent; border: 0; box-shadow: none; color: var(--cs-sub);
+  font-size: 14px; font-weight: 600; padding: 8px 4px; border-radius: 10px;
+}
+#app .bet-tabs.bd-tabs button small { font-weight: 400; opacity: .8; }
+#app .bet-tabs.bd-tabs button.active { background: #2c373a; color: var(--cs-text); box-shadow: none; border: 0; }
+
+#app .bet-pick-head { color: var(--cs-sub); }
+#app .bet-pick-head .pick-count { color: var(--cs-text); font-weight: 600; }
+
+/* 出走カード：枠線なしの面。竜の色は左の丸札（太い色帯はやめる） */
+#app .bet-pick-card {
+  background: var(--cs-card); border: 1px solid transparent; border-left: 1px solid transparent;
+  border-radius: 14px; color: var(--cs-text); box-shadow: none;
+}
+#app .bet-pick-card:hover { background: #1b2427; border-color: transparent; }
+#app .bet-pick-card.expanded { background: #1b2427; }
+#app .bet-pick-card.selected {
+  background: color-mix(in srgb, var(--cs-gold) 9%, var(--cs-card));
+  border-color: var(--cs-gold); box-shadow: none;
+}
+/* 人気番号＝竜の色の丸札 */
+#app .bet-pick-card .bp-pop { min-width: 30px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+#app .bet-pick-card .bp-pop b {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--waku, #888); color: var(--wakut, #fff);
+  font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;
+}
+#app .bet-pick-card .bp-pop small { margin: 0; font-size: 9px; color: var(--cs-mute); font-weight: 400; }
+/* 竜の絵：箱も光彩もやめ、カードの面にそのまま置く（Racing Post の勝負服と同じく、識別の絵は箱に入れない）。
+   黒い箱に入れると切り抜きの写真のように見えた（撮って確認）。足元にだけ薄い影 */
+#app .bet-pick-card .bp-art {
+  background: radial-gradient(50% 18% at 50% 86%, rgba(0,0,0,.45), transparent 75%);
+  box-shadow: none; overflow: visible;
+}
+#app .bet-pick-card.selected .bp-art { box-shadow: none; }
+#app .bet-pick-card .bp-name { font-size: 14.5px; font-weight: 700; color: var(--cs-text); }
+#app .bet-pick-card .bp-sub { color: var(--cs-sub); font-weight: 400; }
+#app .bet-pick-card .bp-mark { color: var(--cs-gold); }
+#app .bet-pick-card .bp-traits { color: var(--cs-mute); font-weight: 400; }
+/* オッズ：数字を大きく、太さは中くらい。ラベルは小さく灰 */
+#app .bet-pick-card .bp-win b, #app .bet-pick-card .bp-place b {
+  font-size: 19px; font-weight: 600; color: var(--cs-text); font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+#app .bet-pick-card .bp-win small, #app .bet-pick-card .bp-place small { font-size: 9px; color: var(--cs-mute); }
+#app .bet-pick-card .dim { opacity: .3; }
+#app .bet-pick-card.selected .bp-win:not(.dim) b, #app .bet-pick-card.selected .bp-place:not(.dim) b { color: var(--cs-gold); }
+#app .bet-pick-card .bp-more { background: transparent; border: 0; color: var(--cs-sub); font-weight: 500; }
+#app .bet-pick-card .bp-more:hover { background: transparent; color: var(--cs-text); }
+#app .bet-pick-card .bp-order { background: var(--cs-gold); color: var(--cs-gold-ink); box-shadow: 0 0 0 2px var(--cs-bg); }
+#app .bet-pick-card .bp-drawer { border-top: 1px solid var(--cs-line); }
+#app .bet-pick-card .bpd-stats b { background: var(--cs-card-2); }
+
+/* 前の一戦から・読みの手帖の帯：同じ面 */
+#app .bd-lesson { background: var(--cs-card); border: 0; border-left: 3px solid var(--cs-gold); }
+#app .rj-reminder { background: var(--cs-card); border: 0; }
+
+/* 相談役 */
+#app .adv-hub-cap { color: var(--cs-sub); opacity: 1; }
+#app .adv-tab { background: var(--cs-card); border: 1px solid transparent; color: var(--cs-text); }
+#app .adv-tab:hover { transform: none; border-color: transparent; background: #1b2427; }
+#app .adv-tab.active { background: var(--cs-card-2); border-color: color-mix(in srgb, var(--cg, #888) 70%, transparent); box-shadow: none; }
+#app .adv-tab.locked { opacity: .5; }
+
+/* 下のスリップ：単色の面。金はボタンだけ */
+#app .bd-slip {
+  background: #121a1c; border-top: 1px solid var(--cs-line);
+  border-radius: 16px 16px 0 0; box-shadow: 0 -10px 24px -16px rgba(0,0,0,.9);
+}
+#app .bd-slip .bet-sel-sum { color: var(--cs-sub); }
+#app .bss-tix { display: none; }
+#app .bss-nm { color: var(--cs-text); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+#app .bss-odds { color: var(--cs-sub); }
+#app .bss-odds b { color: var(--cs-text); font-weight: 600; }
+#app .dchip-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #888); flex: none; }
+#app .slip-wager .wager-step { background: var(--cs-card-2); border: 0; color: var(--cs-text); font-weight: 500; }
+#app .slip-wager .wager-amount { background: var(--cs-inset); border: 0; }
+#app .slip-wager .wager-big { color: var(--cs-text); font-weight: 700; }
+#app .slip-wager .wager-unit { color: var(--cs-mute); }
+#app .slip-wager .wchip { background: var(--cs-card-2); border: 1px solid transparent; white-space: nowrap; }
+#app .slip-wager .wchip .wchip-amt { color: var(--cs-text); font-weight: 600; }
+#app .slip-wager .wchip .wchip-sub { color: var(--cs-mute); }
+#app .slip-wager .wchip.chosen { background: var(--cs-card-2); border-color: var(--cs-gold); }
+#app .bd-slip .payout-box, #app .bd-slip .payout-box.valid, #app .bd-slip .payout-box.invalid { background: var(--cs-inset); border: 0; }
+#app .bd-slip .payout-box.invalid .po-hint { color: #ff9b8f; }
+#app .bd-slip .po-hint { color: var(--cs-mute); }
+#app .po-hero .pl-k { color: var(--cs-sub); }
+#app .po-hero .pl-v { color: var(--cs-pos); font-weight: 700; }
+#app .slip-actions #bet-confirm {
+  background: var(--cs-gold); color: var(--cs-gold-ink); border-radius: 12px;
+  font-weight: 700; box-shadow: none;
+}
+#app .slip-actions #bet-confirm:disabled { background: var(--cs-card-2); color: var(--cs-mute); filter: none; opacity: 1; }
+#app .bd-slip .slip-note { color: var(--cs-mute); }
+
+/* ---------------- レース画面（熱狂）：絵の外は同じ地、記号は竜の色の丸札 ---------------- */
+body:has(#app.nav-racestart) { background: var(--cs-bg); }
+body:has(#app.nav-racestart) .s4-embers { display: none; }   /* 走る絵の上と順位表の上を粒が横切っていた */
+#app .rc-hud { background: var(--cs-bg); border: 0; border-bottom: 1px solid var(--cs-line); }
+#app .rc-section { background: var(--cs-card); border-top: 0; border-right: 0; border-bottom: 0; }
+#app .rc-yt { background: transparent; border: 0; }
+#app .rc-yt-bub { background: var(--cs-card); border-top: 0; border-right: 0; border-bottom: 0; }
+#app .rc-yt-r .rc-yt-bub { border-left: 0; }
+#app .rc-yt-side.talking .rc-yt-bub { background: var(--cs-card-2); }
+/* 順位表：順位の数字を竜の色の丸札に（絵の中の札と同じ記号）。細い色棒は役目を丸札へ渡す */
+#app .rc-board { background: #141b1d; border: 0; }
+#app .rc-board .rcb-waku { display: none; }
+#app .rc-board .rcb-pos {
+  width: 19px; height: 19px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--c, #888); color: var(--ct, #fff); font-size: 11px; font-weight: 700;
+}
+#app .rc-board .rcb-row.top3 .rcb-pos, #app .rc-board.rc-board--prego .rcb-pos { color: var(--ct, #fff); }
+#app .rc-board .rcb-nm { font-weight: 600; }
+#app .rc-board .rcb-odds { font-weight: 600; color: var(--cs-sub); }
+#app .rc-controls button, #app .rc-speedseg { background: var(--cs-card); border-color: transparent; }
+#app .rc-speedseg button.rc-spd { background: transparent; }
+#app .rc-speedseg button.rc-spd.on { background: var(--cs-gold); color: var(--cs-gold-ink); }
+/* 絵を箱から出したぶん、はみ出した頭が名前の行にかかった（撮って確認）→ 枠の幅に収まる大きさに */
+#app .bet-pick-card .bp-art img { width: 108%; }
+/* 1頭＝1行（docs/RESEARCH_BETTING_UX.md Z1-1）。PCの470px枠で2列に割れ、名前とオッズが崩れていた */
+#app .bet-pick-grid { grid-template-columns: 1fr; }

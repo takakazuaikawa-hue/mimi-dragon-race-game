@@ -1205,6 +1205,14 @@ function rcDrawGate(ctx, o) {
 //   ・置き場所が同じあいだは位置をなめらかに追わせ（縦は強めに）、整数pxに丸める＝文字が震えない。
 //   ・置き場所が替わる時も一瞬で飛ばさず、数コマで滑らせる。表示のみ。
 const _rcLblMem = {};
+// 竜の色（順位表・出走表と同じ dragonColor）。札の丸に使う。表示のみ。
+const _rcChipColCache = {};
+function _rcChipCol(id) {
+  if (_rcChipColCache[id]) return _rcChipColCache[id];
+  let c = "#888";
+  try { const d = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === id) : null; if (d && typeof dragonColor === "function") c = dragonColor(d); } catch (e) {}
+  return (_rcChipColCache[id] = c);
+}
 function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
   if (!lbls.length) return;
   const _lnow = performance.now();
@@ -1234,7 +1242,11 @@ function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
     const h = Math.round(15 * l.dep), dia = h - 3;
     const fullW = Math.round(dia + 8 + ctx.measureText(l.nm).width + 4);
     const ys = [yb + 1, yt - h - 1, yb + h + 3, yt - 2 * h - 3];   // 体のすぐ下→すぐ上→一段下→一段上
-    const tryW = l.isBet ? [fullW] : [fullW, dia + 4];
+    // ★名札の整理（2026-11-26・docs/RESEARCH_RACE_VISUAL.md §3F）：名前つきは自分の竜と先頭だけ。
+    //   他は竜の色の丸札だけ（下の順位表が同じ色＋名前で並ぶ＝JRA中継の「枠色の丸札」と同じ照らし合わせ）。
+    //   発走前（rkText===""）は全員の名前を出す＝紹介の時間に誰が誰かを覚えてもらう。
+    const named = l.isBet || l.front || l.rkText === "";
+    const tryW = l.isBet ? [fullW] : named ? [fullW, h] : [h];
     // 候補（段×幅×横ずれ）を優先順に並べ、前のコマで使った候補を先頭へ＝置けるうちは動かさない
     const cands = [];
     for (let wi = 0; wi < tryW.length; wi++) for (let yi = 0; yi < ys.length; yi++) for (const dx of [0, -0.5, 0.5]) cands.push({ wi: wi, yi: yi, dx: dx });
@@ -1273,18 +1285,19 @@ function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
   placed.forEach(function (r) {
     const l = r.l, rad = r.h / 2;
     ctx.globalAlpha = l.a;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(r.x, r.y, r.w, r.h, rad); else ctx.rect(r.x, r.y, r.w, r.h);
-    ctx.fillStyle = l.isBet ? "rgba(40,28,6,0.66)" : "rgba(8,10,20,0.50)"; ctx.fill();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = l.isBet ? "rgba(255,211,77,0.75)" : (l.lead ? "rgba(127,209,255,0.45)" : "rgba(255,255,255,0.18)");
-    ctx.stroke();
-    const cx = r.x + rad, cy = r.y + rad, cr = rad - 1.5;   // 順位の丸
+    if (r.full) {   // 名前つきの札＝暗い面（枠線は自分の竜の金だけ）
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(r.x, r.y, r.w, r.h, rad); else ctx.rect(r.x, r.y, r.w, r.h);
+      ctx.fillStyle = "rgba(8,12,14,0.66)"; ctx.fill();
+      if (l.isBet) { ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(255,211,77,0.9)"; ctx.stroke(); }
+    }
+    const cx = r.x + rad, cy = r.y + rad, cr = r.full ? rad - 1.5 : rad;   // 竜の色の丸（中は いまの順位）
     ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2);
-    ctx.fillStyle = l.isBet ? "rgba(255,211,77,0.92)" : "rgba(255,255,255,0.16)"; ctx.fill();
+    ctx.fillStyle = l.col || "#888"; ctx.fill();
+    if (!r.full) { ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(6,8,10,0.6)"; ctx.stroke(); }   // 絵の上で丸の縁が溶けないように
     ctx.font = "bold " + Math.round(9.5 * l.dep) + "px " + _RC_LBL_FONT;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillStyle = l.isBet ? "rgba(33,21,3,0.95)" : "rgba(255,255,255,0.9)";
+    ctx.fillStyle = (typeof dragonChipInk === "function") ? dragonChipInk(l.col) : "#fff";
     ctx.fillText(l.rkText != null ? l.rkText : String(l.rk), cx, cy + 0.5);
     if (r.full) {
       ctx.font = "9.5px " + _RC_LBL_FONT;
@@ -3196,17 +3209,20 @@ function startRaceCanvas(container, ctx) {
   function drawMinimap() {
     const mx0 = cw * 0.15, mx1 = cw * 0.85, my = ch * 0.05;
     const bx = mx0 - 16, bw = (mx1 - mx0) + 40, by = my - 9, bh = 18;
+    void bx; void bw; void by; void bh;
     cctx.save();
-    // backing strip
-    cctx.fillStyle = "rgba(10,14,28,0.50)";
-    if (cctx.roundRect) { cctx.beginPath(); cctx.roundRect(bx, by, bw, bh, 9); cctx.fill(); }
-    else cctx.fillRect(bx, by, bw, bh);
-    cctx.strokeStyle = "rgba(255,255,255,0.12)"; cctx.lineWidth = 1;
-    if (cctx.roundRect) { cctx.beginPath(); cctx.roundRect(bx, by, bw, bh, 9); cctx.stroke(); }
-    else cctx.strokeRect(bx, by, bw, bh);
-    // track baseline
-    cctx.strokeStyle = "rgba(255,255,255,0.16)"; cctx.lineWidth = 2;
+    // ★背板と外枠は外す（2026-11-26・docs/RESEARCH_RACE_VISUAL.md §3G）。ウマ娘・JRA中継とも、絵の上の進み具合は
+    //   細い線と走者の点だけ。線は暗い縁取りの上に白を重ねて、明るい空でも暗い地面でも見えるようにする。
+    let _mmLead = 0;
+    for (const dr of dragons) _mmLead = Math.max(_mmLead, clamp(timeline.progressAt(dr.id, S.tau), 0, 1));
+    cctx.lineCap = "round";
+    cctx.strokeStyle = "rgba(6,8,10,0.45)"; cctx.lineWidth = 4;
     cctx.beginPath(); cctx.moveTo(mx0, my); cctx.lineTo(mx1, my); cctx.stroke();
+    cctx.strokeStyle = "rgba(255,255,255,0.28)"; cctx.lineWidth = 2;
+    cctx.beginPath(); cctx.moveTo(mx0, my); cctx.lineTo(mx1, my); cctx.stroke();
+    cctx.strokeStyle = "rgba(255,255,255,0.75)";   // 先頭までの進み
+    cctx.beginPath(); cctx.moveTo(mx0, my); cctx.lineTo(mx0 + _mmLead * (mx1 - mx0), my); cctx.stroke();
+    cctx.lineCap = "butt";
     // start tick
     cctx.fillStyle = "rgba(255,255,255,0.45)";
     cctx.fillRect(mx0 - 1, my - 4, 2, 8);
@@ -3228,8 +3244,9 @@ function startRaceCanvas(container, ctx) {
       const isLead = dr.id === leaderId, isPick = betSet.has(dr.id);
       const r = isLead ? 4.5 : 3;
       if (isPick) { cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2; cctx.beginPath(); cctx.arc(x, my, r + 3, 0, Math.PI * 2); cctx.stroke(); }
-      cctx.fillStyle = dr.color || "#fff";
+      cctx.fillStyle = _rcChipCol(dr.id);
       cctx.beginPath(); cctx.arc(x, my, r, 0, Math.PI * 2); cctx.fill();
+      cctx.strokeStyle = "rgba(6,8,10,0.6)"; cctx.lineWidth = 1; cctx.stroke();
       if (isLead) { cctx.strokeStyle = "#fff"; cctx.lineWidth = 1.5; cctx.beginPath(); cctx.arc(x, my, r + 1.5, 0, Math.PI * 2); cctx.stroke(); }
     }
     cctx.restore();
@@ -3991,7 +4008,8 @@ function startRaceCanvas(container, ctx) {
           if (_dm >= 10) _nm += " 先頭まで" + _dm + "m";   // 「◂120m」だけでは意味を一度考える、との指摘（Codex 2026-11-13）
         }
         _lbls.push({ cx: bodyCx, top: _body ? _body.y : y - 34 * dep, bot: _body ? _body.y + _body.h : baseY + 12, dep: dep, rk: rk, isBet: isBet,
-          lead: popRank[dr.id] === 1, nm: _nm, a: cctx.globalAlpha, rkText: _preGo ? "" : null, id: dr.id });
+          lead: popRank[dr.id] === 1, nm: _nm, a: cctx.globalAlpha, rkText: _preGo ? "" : null, id: dr.id,
+          col: _rcChipCol(dr.id), front: !_preGo && rk === 1 });
       }
 
       // ★A-2 ロールコール：紹介中の1頭だけ、頭上に大きな名札プレートを出す。
@@ -4614,6 +4632,8 @@ function startRaceCanvas(container, ctx) {
       const d = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === dr.id) : null;
       const col = (typeof dragonColor === "function" && d) ? dragonColor(d) : "#888";
       const styleLb = (d && typeof STYLE_LABEL !== "undefined") ? (STYLE_LABEL[d.style] || "") : "";
+      row.style.setProperty("--c", col);
+      row.style.setProperty("--ct", (typeof dragonChipInk === "function") ? dragonChipInk(col) : "#fff");
       row.innerHTML =
         `<span class="rcb-pos"></span>` +
         `<span class="rcb-waku" style="background:${col}"></span>` +
