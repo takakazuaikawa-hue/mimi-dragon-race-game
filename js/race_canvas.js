@@ -1934,6 +1934,17 @@ function startRaceCanvas(container, ctx) {
     <div class="rc-log" id="rc-log" style="display:none"></div>
   `;
   container.appendChild(wrap);
+  // ★v2「中継の一枚絵」（2026-11-26・docs/RACE_SCREENS_V2_DESIGN.md §1）：
+  //   実況（字幕）・順位の塔・自分の竜の主役表示を、走る絵の上に重ねる。絵の外に縦積みしていたため
+  //   視線が絵と表の間を往復し、絵も画面の半分しか取れなかった。重ねた要素は高さを持たないので、
+  //   growToFit が空いた縦をそのまま走る絵に回す。
+  wrap.classList.add("rc-v2");
+  {
+    const _stg = wrap.querySelector(".rc-stage");
+    const _mine = el("div", "rc-mine"); _mine.id = "rc-mine"; _mine.hidden = true;
+    [wrap.querySelector("#rc-board"), _mine, wrap.querySelector("#rc-yt")].forEach(n => { if (n && _stg) _stg.appendChild(n); });
+    const _hud = wrap.querySelector(".rc-hud"); if (_hud && _stg) _stg.appendChild(_hud);
+  }
 
   const canvas = wrap.querySelector("#rc-canvas");
   const cctx = canvas.getContext("2d");
@@ -1948,6 +1959,32 @@ function startRaceCanvas(container, ctx) {
   const phaseEl = wrap.querySelector("#rc-phase");
   const sectionEl = wrap.querySelector("#rc-section");
   const boardEl = wrap.querySelector("#rc-board");
+  const mineEl = wrap.querySelector("#rc-mine");
+  // ★v2 自分の竜の主役表示（ウマ娘の「1/18」）：いま何着か＋「的中まであと何頭／いま的中なら +N」。
+  //   順位の塔＝全体の中の位置、こちら＝自分の賭けがどうなっているか、で役目を分ける。表示のみ。
+  let _mineKey = "";
+  function renderMine(standMap, exp, pre) {
+    if (!mineEl) return;
+    if (!bet || !betSet || !betSet.size) { mineEl.hidden = true; return; }
+    const ids = [...betSet];
+    const N = dragons.length;
+    const typeL = { win: "単勝", place: "複勝", wide: "ワイド" }[bet.type] || "";
+    let amt = 0; try { amt = Math.floor(bet.wager * betOdds(bet, oddsResult)); } catch (e) { amt = 0; }
+    const ranks = ids.map(id => pre ? null : (standMap[id] || null));
+    const msg = pre ? `${typeL} ${fmtCoins(bet.wager)}コイン → 的中なら ${fmtCoins(amt)}`
+      : exp && exp.inZone ? `いま的中なら <b>+${fmtCoins(amt)}</b>` : (exp ? exp.label : "");
+    const key = ranks.join(",") + "|" + msg + "|" + (exp && exp.inZone ? 1 : 0);
+    if (key === _mineKey) return;
+    _mineKey = key;
+    const chip = id => { const c = _rcChipCol(id); return `<i class="rcm-chip" style="--c:${c};--ct:${(typeof dragonChipInk === "function") ? dragonChipInk(c) : "#fff"}"></i>`; };
+    const rows = ids.map((id, k) =>
+      `<div class="rcm-row">${chip(id)}<span class="rcm-nm">${commentaryName(id)}</span>` +
+      (ranks[k] == null ? "" : `<span class="rcm-rk">${ranks[k]}<small>/${N}</small></span>`) + `</div>`).join("");   // 発走前は着順が無い＝数字を出さない
+    mineEl.innerHTML = rows + `<div class="rcm-msg">${msg}</div>`;
+    mineEl.classList.toggle("in-zone", !!(exp && exp.inZone));
+    mineEl.classList.toggle("multi", ids.length > 1);
+    mineEl.hidden = false;
+  }
   const controlsEl = wrap.querySelector("#rc-controls");
   const finishStripEl = wrap.querySelector("#rc-finishstrip");
   const logEl = wrap.querySelector("#rc-log");
@@ -2068,6 +2105,7 @@ function startRaceCanvas(container, ctx) {
   //   足りない高さは**囲いの余白**（HUD・実況・着順ボード・操作列のpadding/margin）から出す。
   //   逆に余白を詰めて余った縦は、下の growToFit で走る絵に足す（伸ばすだけ・縮めない）。
   let baseH = 280;                 // 幅から決まる本来の高さ＝これより小さくはしない
+  let RC_STAGE_MAX = 480;          // 伸ばせる上限（resize で決める）
   function applyStageH(h) {
     ch = h;
     canvas.style.width = cw + "px";
@@ -2088,6 +2126,8 @@ function startRaceCanvas(container, ctx) {
     //   竜・文字は2倍でも十分に細かい（PC と2倍の端末の見た目は不変）。docs/STATUS_LEDGER.md「▶ いまの続き」21。
     dpr = Math.min(2, window.devicePixelRatio || 1);
     baseH = Math.max(280, Math.min(480, Math.round(cw * 0.55)));
+    // v2：絵の上に字幕・順位の塔・主役表示を重ねるので、絵そのものは縦の大半を取る（上限を広げる）
+    RC_STAGE_MAX = 920;
     applyStageH(baseH);
   }
   // ★空いている縦を走る絵に足す（2026-08-04）。**伸ばす方向にしか動かさない**。
@@ -2117,12 +2157,14 @@ function startRaceCanvas(container, ctx) {
           let wantFull = false;
           try { wantFull = localStorage.getItem("rc_board_full") === "1"; } catch (e) {}
           const gain = BOARD_ROW_H * (dragons.length - boardVisN()) - BOARD_FOOT_H;
-          if (!wantFull && gain >= 50 && room < 430) { setBoardCompact(true, false); return; }   // setBoardCompact が測り直す
+          // v2：順位の塔は絵の上に重なる＝行が多いほど絵を隠す。上位3頭＋自分の竜を既定にする（押せば全頭）。
+          void gain;
+          if (!wantFull) { setBoardCompact(true, false); return; }   // setBoardCompact が測り直す
         }
       } catch (e) {}
       // 下限は「幅から決まる本来の高さ」(baseH)。ここより小さくは絶対にしない
       //   ＝レース画面を削らない、という決めごとを守る。
-      const target = Math.round(Math.max(baseH, Math.min(480, room)));
+      const target = Math.round(Math.max(baseH, Math.min(RC_STAGE_MAX, room)));
       if (Math.abs(target - ch) > 2) { applyStageH(target); draw(); }
       // 後から組み上がる部分があるので、実際に溢れていたら baseH まで段階的に戻す。
       let guard = 0;
@@ -3207,7 +3249,8 @@ function startRaceCanvas(container, ctx) {
   // =====================================================================
   // ---- live position minimap (compact strip: every dragon at a glance) ----
   function drawMinimap() {
-    const mx0 = cw * 0.15, mx1 = cw * 0.85, my = ch * 0.05;
+    // v2：上の帯（序盤・区間・残り距離）の真下に置く。帯は絵の上に重なっている（高さ約48px）
+    const mx0 = cw * 0.06, mx1 = cw * 0.90, my = 58;
     const bx = mx0 - 16, bw = (mx1 - mx0) + 40, by = my - 9, bh = 18;
     void bx; void bw; void by; void bh;
     cctx.save();
@@ -4351,7 +4394,7 @@ function startRaceCanvas(container, ctx) {
       const enterX = -bw - 50, restX = -8;
       let x = enterX + (restX - enterX) * eb;               // slam in (overshoot, settle)
       if (outP < 1) x -= (1 - outP) * (bw + 60);            // snap out to the left
-      const y0 = ch * 0.30;
+      const y0 = Math.round(Math.max(ch * 0.30, 292));   // v2：左上の順位の塔（〜約215px）の下へ
       cctx.globalAlpha = clamp(a, 0, 1);
       // speed lines trailing the slam-in
       if (inP < 1) {
@@ -4387,7 +4430,7 @@ function startRaceCanvas(container, ctx) {
       const slideIn = (1 - Math.min(1, u / 0.16)) * 46;
       const slideOut = u > 0.74 ? ((u - 0.74) / 0.26) * 34 : 0;
       const sx = slideIn - slideOut;
-      const by = ch * 0.17;
+      const by = Math.round(Math.max(ch * 0.17, 246));   // v2：順位の塔と重ならない高さへ
       cctx.save();
       cctx.globalAlpha = clamp(fade, 0, 1);
       cctx.fillStyle = "rgba(12,14,28,0.46)";
@@ -4710,8 +4753,10 @@ function startRaceCanvas(container, ctx) {
     if (boardPreGo && bet && betSet.size) {
       betSet.forEach(id => { const row = boardRow[id]; if (!row) return; row.classList.remove("in-zone"); const pay = row.querySelector(".rcb-pay"); if (pay && row._payShown !== false) { row._payShown = false; pay.textContent = ""; } });
       boardEl.classList.remove("in-zone"); boardZoneWas = false;
+      renderMine(standMap, null, true);
     } else if (bet && betSet.size) {
       const exp = betExpect(standMap);
+      renderMine(standMap, exp, false);
       betSet.forEach(id => {
         const row = boardRow[id]; if (!row) return;
         row.classList.toggle("in-zone", exp.inZone);

@@ -163,3 +163,100 @@ body:has(#app.nav-racestart) .s4-embers { display: none; }   /* 走る絵の上�
 #app .bet-pick-card .bp-art img { width: 108%; }
 /* 1頭＝1行（docs/RESEARCH_BETTING_UX.md Z1-1）。PCの470px枠で2列に割れ、名前とオッズが崩れていた */
 #app .bet-pick-grid { grid-template-columns: 1fr; }
+
+/* =========================================================================
+   レース画面 v2「中継の一枚絵」— docs/RACE_SCREENS_V2_DESIGN.md §1
+   走る絵を画面いっぱいに取り、上の帯・順位の塔（F1式）・自分の竜の主役表示・字幕を絵の上に重ねる。
+   絵の上の文字は箱に入れず、上下の暗いグラデ（スクリム）で読ませる。
+   ========================================================================= */
+#app .rc-v2 .rc-stage { position: relative; overflow: hidden; }
+#app .rc-v2 .rc-stage canvas { border: 0; border-radius: 0; }
+#app .rc-v2 .rc-stage > :not(canvas) { line-height: 1.35; }
+
+/* 上の帯：箱なし。上端の暗いグラデの上に直接 */
+#app .rc-v2 .rc-hud {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 6;
+  margin: 0; padding: 8px 12px 26px; border: 0; border-radius: 0;
+  background: linear-gradient(180deg, rgba(4,7,9,.82) 0%, rgba(4,7,9,.5) 55%, rgba(4,7,9,0) 100%);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  font-size: 11.5px; color: #c9d2d4; text-shadow: 0 1px 2px rgba(0,0,0,.7);
+}
+#app .rc-v2 .rc-hud-left { gap: 8px; align-items: center; }
+#app .rc-v2 .rc-phase { font-size: 11px; font-weight: 800; padding: 2px 9px; box-shadow: none; text-shadow: none; }
+#app .rc-v2 .rc-section { background: none; border: 0; padding: 0; font-size: 13px; font-weight: 700; color: #fff; }
+#app .rc-v2 .rc-race { display: none; }
+#app .rc-v2 .rc-hud-right { flex-direction: column; align-items: flex-end; gap: 0; }
+#app .rc-v2 .rc-remain { font-size: 19px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: -.01em; line-height: 1.1; }
+#app .rc-v2 .rc-weather, #app .rc-v2 .rc-viewers { font-size: 10.5px; color: #aeb8ba; }
+#app .rc-v2 .rc-hud-right .rc-weather { order: 2; }
+#app .rc-v2 .rc-live { left: auto; right: 12px; top: auto; bottom: 10px; z-index: 6; }   /* 右下の隅へ（上の帯と字幕を避ける） */
+#app .rc-v2 .rc-play { top: 72px; right: 10px; bottom: auto; width: 34px; height: 34px; z-index: 6;
+  background: rgba(4,7,9,.5); border: 1px solid rgba(255,255,255,.18); color: #fff; font-size: 13px; }
+
+/* 順位の塔（F1式）：絵の左。上位3頭＋自分の竜。押せば全頭。的中ラインは塔の中の金の線 */
+#app .rc-v2 .rc-board {
+  --rcb-h: 27px;
+  position: absolute; left: 8px; top: 76px; z-index: 5; width: 148px; margin: 0;
+  background: rgba(6,10,12,.66); border: 0; border-radius: 10px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+#app .rc-v2 .rc-board .rcb-row { padding: 0 8px; gap: 7px; font-size: 12.5px; color: #eef2f1; }
+#app .rc-v2 .rc-board .rcb-style, #app .rc-v2 .rc-board .rcb-odds, #app .rc-v2 .rc-board .rcb-pay { display: none; }
+#app .rc-v2 .rc-board .rcb-nm { font-weight: 700; }
+#app .rc-v2 .rc-board .rcb-row.mine { background: rgba(240,192,80,.16); box-shadow: inset 2px 0 0 var(--cs-gold); }
+#app .rc-v2 .rc-board .rcb-row.mine.in-zone { background: rgba(240,192,80,.28); box-shadow: inset 2px 0 0 var(--cs-gold); }
+#app .rc-v2 .rc-board .rcb-hl-tag { font-size: 8px; right: 4px; padding: 0 5px; }
+#app .rc-v2 .rc-board .rcb-foot { background: none; color: #93a0a4; font-size: 9px; letter-spacing: .02em; }
+
+/* 自分の竜の主役表示：いま何着か（大きな数字）＋当たりまでの距離 */
+#app .rc-v2 .rc-mine {
+  position: absolute; left: 12px; bottom: 116px; z-index: 5; max-width: 70%;
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.85), 0 0 12px rgba(0,0,0,.45);
+}
+#app .rc-v2 .rc-mine[hidden] { display: none; }
+#app .rc-v2 .rcm-row { display: flex; align-items: center; gap: 7px; line-height: 1; }
+#app .rc-v2 .rcm-chip { width: 14px; height: 14px; border-radius: 50%; background: var(--c, #888); box-shadow: 0 0 0 2px rgba(0,0,0,.45); flex: none; }
+#app .rc-v2 .rcm-nm { font-size: 15px; font-weight: 800; }
+#app .rc-v2 .rcm-rk { font-size: 38px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; margin-left: 2px; }
+#app .rc-v2 .rcm-rk small { font-size: 15px; font-weight: 700; color: #c8d0d2; margin-left: 2px; }
+#app .rc-v2 .rc-mine.multi .rcm-rk { font-size: 26px; }
+#app .rc-v2 .rc-mine.multi .rcm-row + .rcm-row { margin-top: 2px; }
+#app .rc-v2 .rcm-msg { margin-top: 4px; font-size: 12.5px; font-weight: 700; color: #dfe6e7; }
+#app .rc-v2 .rc-mine.in-zone .rcm-rk, #app .rc-v2 .rc-mine.in-zone .rcm-msg, #app .rc-v2 .rc-mine.in-zone .rcm-msg b { color: var(--cs-gold); }
+#app .rc-v2 .rc-mine.in-zone .rcm-msg b { font-size: 15px; }
+
+/* 字幕：箱なし。下の暗いグラデの上に2人並び（1人4行まで読める高さを残す） */
+#app .rc-v2 .rc-yt {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  margin: 0; padding: 30px 12px 10px; gap: 12px; border: 0;
+  background: linear-gradient(0deg, rgba(4,7,9,.9) 0%, rgba(4,7,9,.78) 60%, rgba(4,7,9,0) 100%);
+}
+#app .rc-v2 .rc-yt-bub {
+  height: 74px; padding: 14px 0 0 9px; background: none; border: 0; border-left: 2px solid var(--c, #888); border-radius: 0;
+  font-size: 12px; font-weight: 600; line-height: 1.5; color: #f2f5f5; text-shadow: 0 1px 2px rgba(0,0,0,.8);
+  justify-content: flex-start;
+}
+#app .rc-v2 .rc-yt-r .rc-yt-bub { border-right: 0; border-left: 2px solid var(--c, #888); }
+#app .rc-v2 .rc-yt-side.talking .rc-yt-bub { background: none; }
+#app .rc-v2 .rc-yt-manju { top: -8px; left: 9px; }
+#app .rc-v2 .rc-yt-r .rc-yt-manju { left: 9px; right: auto; flex-direction: row; }
+
+/* 固定フッタ：操作だけ */
+#app .rc-v2 .rc-controls { margin: 0; padding: 8px 10px 6px; background: var(--cs-bg); }
+#app .rc-v2.rc-ended .rc-mine { display: none; }
+/* 撮って直した所（2026-11-26） */
+#app .rc-v2 .rc-mine { padding: 10px 28px 10px 12px; margin-left: -12px;
+  background: radial-gradient(120% 100% at 0% 50%, rgba(4,7,9,.62), rgba(4,7,9,0) 75%); }   /* 地面の竜と重なっても読める */
+#app .rc-v2 .rc-live { top: 112px; bottom: auto; right: 10px; }   /* 字幕の文字に重なっていた → 一時停止の下へ */
+#app .rc-v2 .rc-goalband { top: 64px; }                           /* 上の帯とぶつかっていた */
+/* 固定フッタは1段に（360幅で「全ログ」が2段めへ落ち、縦を44px失っていた） */
+#app .rc-v2 .rc-controls { flex-wrap: nowrap; gap: 6px; }
+#app .rc-v2 .rc-ctl-label { display: none; }
+#app .rc-v2 .rc-controls > button { padding: 8px 12px; font-size: 12.5px; white-space: nowrap; }
+#app .rc-v2 .rc-speedseg button.rc-spd { padding: 8px 12px; }
+#app .rc-v2.rc-ended .rc-controls { flex-wrap: wrap; }
+/* ゴール後：絵の中の「的中／ハズレ」の札（絵の下寄り）を字幕が隠していた → 字幕は役目を終えたので引っ込める */
+#app .rc-v2 .rc-yt { transition: opacity .4s ease; }
+#app .rc-v2.rc-ended .rc-yt { opacity: 0; pointer-events: none; }
+/* 「結果を見る」は押す場所＝金（操作ボタンを中立の面にした指定が、金の指定より強く効いていた） */
+#app .rc-v2.rc-ended .rc-controls .rc-next { background: var(--cs-gold); color: var(--cs-gold-ink); border-color: transparent; font-weight: 800; }
