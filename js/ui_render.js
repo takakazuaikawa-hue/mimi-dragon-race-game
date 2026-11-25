@@ -2571,17 +2571,32 @@ function renderRaceDetail(race) {
     head.style.setProperty("--region-to", theme.to);
     head.style.setProperty("--region-accent", theme.accent);
   }
+  // ★v2（2026-11-26・docs/RACE_SCREENS_V2_DESIGN.md §2）：上の帯は「戻る・レース名・所持コイン」の1行＋条件＋コースの図。
+  //   共通ヘッダ（作品名・コイン・ランク）はこの画面では隠し、コインの役目をこの帯が持つ（レース中の画面と同じやり方）。
+  //   コースの図＝序盤・中盤・終盤の地形と「効く能力」。効く能力は地形の説明（押すと開く）と同じデータ＝公開情報。
+  const _fullNm = raceFullName(race);
+  const _shortNm = race.cup ? `${race.cup} 第${race.number}R` : _fullNm;
+  const _region = _fullNm.split(" ")[0] || "";
+  const _cs = ["early", "mid", "late"].map((ph, i) => {
+    const sec = getSection(ph, race[ph]) || {};
+    let ic = "";
+    try { if (typeof rcThemeOf === "function" && typeof rcTerrainInfo === "function") ic = rcTerrainInfo(rcThemeOf(race[ph])).icon || ""; } catch (e) {}
+    const dem = (typeof termTopStats === "function") ? (termTopStats(sec.weights, 1)[0] || "") : "";
+    return `<button type="button" class="bd-cs" data-term="${ph}"><i>${["序盤", "中盤", "終盤"][i]}</i>` +
+      `<b><span class="bd-cs-ic">${ic}</span>${sec.label || ""}</b>${dem ? `<small>${dem}が効く</small>` : ""}</button>`;
+  }).join("");
   head.innerHTML = `
     <div class="bd-head-top">
       <button class="bd-back" id="back-race-select" type="button" aria-label="レース選択へ戻る">←</button>
-      <div class="bd-title"><b>${raceFullName(race).split(" ").map(t => `<span class="nw">${t}</span>`).join(" ")}</b><span class="bd-sub">${raceBlurb(race)}</span></div>
+      <div class="bd-title"><b>${_shortNm}</b><span class="bd-sub">${_region}</span></div>
+      <span class="bd-coin" title="所持コイン"><i>🪙</i><b>${fmtCoins(Math.floor(state.player.coins || 0))}</b></span>
     </div>
     <div class="bd-chips">
       <button type="button" class="bd-chip" data-term="rank">🏅 R${race.rank} ${RANKS[race.rank].label}</button>
       <button type="button" class="bd-chip" data-term="distance">📏 ${DISTANCE[race.distance].label}</button>
       <button type="button" class="bd-chip" data-term="weather">${WEATHERS[race.weather].label}</button>
     </div>
-    <div class="bd-course">序盤 <button type="button" class="bd-seg" data-term="early">${getSection("early", race.early).label}</button> ▸ 中盤 <button type="button" class="bd-seg" data-term="mid">${getSection("mid", race.mid).label}</button> ▸ 終盤 <button type="button" class="bd-seg" data-term="late">${getSection("late", race.late).label}</button></div>`;
+    <div class="bd-course">${_cs}</div>`;
   app.appendChild(head);
   // 格・距離・天候・地形はタップで意味を開く（用語を覚えていなくても賭けの判断ができるように）。
   if (typeof appendReadingJournalReminder === "function") appendReadingJournalReminder(app, race);
@@ -2797,9 +2812,14 @@ function renderRaceDetail(race) {
   app.appendChild(buildAdvisorHub());
 
   // ===== 常設ベットスリップ（sticky bottom・研究②tap-to-slip＋クイック賭金＋払戻ヒーロー） =====
-  const slip = el("div", "bd-slip");
+  // ★v2 育つ賭け札（FanDuel のシート：小さな要約から始まり、押すと全部へ広がる）。
+  //   畳んだ状態＝選んだ竜・賭け金→的中時の払戻・出走ボタン。賭け金を変えたい時だけ広げる。
+  //   常に全部開いていた頃は、360×640 で画面の45%をスリップが占めていた。
+  const slip = el("div", "bd-slip" + (state.ui.slipOpen ? "" : " collapsed"));
   slip.innerHTML = `
     <div class="bet-sel-sum" id="bet-sel-sum"></div>
+    <button class="slip-mini" id="slip-mini" type="button" aria-label="賭け金を変える"></button>
+    <button class="slip-fold" id="slip-fold" type="button">▴ たたむ</button>
     <div class="slip-wager">
       <button class="wager-step" id="wager-minus" type="button" aria-label="減らす">−</button>
       <span class="wager-amount"><input id="wager" class="wager-big" type="text" inputmode="numeric" value="${wagerInit}"><span class="wager-unit">コイン</span></span>
@@ -2869,16 +2889,14 @@ function renderRaceDetail(race) {
     card.style.setProperty("--wakut", (typeof dragonChipInk === "function") ? dragonChipInk(dragonColor(d)) : "#fff");
     card.innerHTML = `
       <span class="bp-order" style="display:none"></span>
-      <span class="bp-pop p${rk <= 3 ? rk : ""}"><b>${rk}</b><small>人気</small></span>
-      <span class="bp-art"><img src="images/dragons/${d.id}.png?v=${typeof RC_DRAGON_ART_V !== "undefined" ? RC_DRAGON_ART_V : 1}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.remove()"></span>
+      <span class="bp-art"><img src="images/dragons/${d.id}.png?v=${typeof RC_DRAGON_ART_V !== "undefined" ? RC_DRAGON_ART_V : 1}" alt="" loading="lazy" decoding="async" onerror="this.remove()"><span class="bp-pop p${rk <= 3 ? rk : ""}"><b>${rk}</b><small>人気</small></span></span>
       <span class="bp-main">
-        <span class="bp-name">${dragonIcon(d)}${d.name}</span>
+        <span class="bp-name">${d.name}</span>
         <span class="bp-sub"><span class="style-${d.style}">${STYLE_LABEL[d.style]}</span>${d.newspaperMark ? `<span class="bp-mark">${d.newspaperMark}</span>` : ""}<span class="bp-form">${recentResultLabel(d.recentResult)}</span>${typeof rivalTagHtml === "function" ? rivalTagHtml(d.id) : ""}</span>
-        <span class="bp-traits">${d.traits.join("・")}</span>
       </span>
       <span class="bp-odds">
-        <span class="bp-win"><b>${od.winOdds.toFixed(1)}</b><small>単</small></span>
-        <span class="bp-place"><b>${od.placeOdds.toFixed(1)}</b><small>複</small></span>
+        <span class="bp-win"><small>単勝</small><b>${od.winOdds.toFixed(1)}</b></span>
+        <span class="bp-place"><small>複勝</small><b>${od.placeOdds.toFixed(1)}</b></span>
       </span>
       <span class="bp-more" role="button" tabindex="0" aria-label="この竜をもっと見る">▾ 見る</span>
       <span class="bp-drawer" hidden></span>
@@ -2914,7 +2932,8 @@ function renderRaceDetail(race) {
       lv = n;
       if (n === 0) { drawer.hidden = true; drawer.innerHTML = ""; moreBtn.textContent = "▾ 見る"; card.classList.remove("expanded"); return; }
       const f = state.current.trialForms[d.id];
-      let html = `<span class="bp-tell">👀 ${paddockTell(d, f)}</span>`;
+      // v2：特徴の行はカードの表から外して、開いた中の先頭へ（カードは名前とオッズが主役）
+      let html = `<span class="bp-traits">特徴　${d.traits.join("・")}</span><span class="bp-tell">👀 ${paddockTell(d, f)}</span>`;
       if (n >= 2) {
         // ③データ＝既存の出走表の内容をここへ“移設”（新規データは作らない）
         const S = [["速", d.stats.speed], ["耐", d.stats.stamina], ["回", d.stats.turn],
@@ -2982,6 +3001,9 @@ function renderRaceDetail(race) {
   // ※ onclickに直接渡すとclickイベントが skipDialog 扱いになり確認（投票券）を飛ばして即出走する
   //   （潜在バグが常設スリップ化で顕在化＝ラッパで明示的に引数なし呼び出し）。
   $("bet-confirm").onclick = () => onConfirmBet();
+  const _slipToggle = open => { state.ui.slipOpen = !!open; slip.classList.toggle("collapsed", !open); try { if (window.Sfx) Sfx.play("tick"); } catch (e) {} };
+  $("slip-mini").onclick = () => _slipToggle(true);
+  $("slip-fold").onclick = () => _slipToggle(false);
   $("back-race-select").onclick = renderRaceSelect;
 
   // ※根拠の宣言はスリップから投票券ダイアログ（showBetConfirm）へ移設した。
@@ -3312,7 +3334,9 @@ function updateExpected() {
   box.style.color = "";                             // clear any prior inline error tint
   box.classList.remove("empty", "valid", "invalid");
   if (wagerEl) wagerEl.classList.remove("invalid");
+  const mini = $("slip-mini");
   const setHint = (cls, msg) => {
+    if (mini) { mini.className = "slip-mini " + cls; mini.innerHTML = `<span class="sm-hint">${msg}</span><span class="sm-chev">賭け金 ▾</span>`; }
     box.classList.add(cls);
     box.innerHTML = `<div class="po-hint">${msg}</div>`;
     if (confirmBtn) confirmBtn.disabled = true;
@@ -3344,6 +3368,12 @@ function updateExpected() {
     ss.innerHTML =
       `<span class="bss-tix">🎫</span><b class="bss-nm">${nm(a)}${type === "wide" ? " ＋ " + nm(b) : ""}</b>` +
       `<span class="bss-odds">${tL} <b>${odds.toFixed(1)}</b>倍</span>`;
+  }
+  // 畳んだ賭け札の要約：賭け金 → 的中時の払戻（押すと広がって賭け金を変えられる）
+  if (mini) {
+    mini.className = "slip-mini valid";
+    mini.innerHTML = `<span class="sm-k">賭け金</span><b class="sm-w">${fmtCoins(c.bet.wager)}</b><span class="sm-arrow">→</span>` +
+      `<span class="sm-k">的中なら</span><b class="sm-pay">${fmtCoins(payout)}</b><span class="sm-chev">変更 ▾</span>`;
   }
   // 払戻をヒーロー数字に（リスク＝ハズレ時も対で明示）
   box.innerHTML =

@@ -260,3 +260,125 @@ body:has(#app.nav-racestart) .s4-embers { display: none; }   /* 走る絵の上�
 #app .rc-v2.rc-ended .rc-yt { opacity: 0; pointer-events: none; }
 /* 「結果を見る」は押す場所＝金（操作ボタンを中立の面にした指定が、金の指定より強く効いていた） */
 #app .rc-v2.rc-ended .rc-controls .rc-next { background: var(--cs-gold); color: var(--cs-gold-ink); border-color: transparent; font-weight: 800; }
+
+/* =========================================================================
+   予想画面 v2 — docs/RACE_SCREENS_V2_DESIGN.md §2
+   上＝1行のヘッダ＋条件＋コースの図／中＝1頭1枚（大きな絵・名前・オッズの札）／下＝育つ賭け札
+   文字は4段（見出し17／名前15／本文12／補足10.5）＋数字の別枠（オッズ22・払戻19）
+   ========================================================================= */
+body:has(#app .bd-head) #header { display: none; }
+
+/* --- 上の帯 --- */
+#app .bd-head { padding-bottom: 10px; }
+#app .bd-head-top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+#app .bd-back { width: 34px; height: 34px; border-radius: 10px; font-size: 16px; }
+#app .bd-title b { font-size: 17px; line-height: 1.25; }
+#app .bd-title .bd-sub { margin-top: 1px; font-size: 10.5px; color: var(--cs-mute); }
+#app .bd-coin { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px 5px 8px; border-radius: 999px; background: var(--cs-card); }
+#app .bd-coin i { font-style: normal; font-size: 13px; }
+#app .bd-coin b { font-size: 14px; font-weight: 700; color: var(--cs-text); font-variant-numeric: tabular-nums; }
+#app .bd-chips { margin-top: 10px; gap: 6px; }
+#app .bd-chip { padding: 3px 9px; font-size: 10.5px; }
+
+/* コースの図：3区間をつないだ1本の帯。区間ごとに地形と「効く能力」 */
+#app .bd-course { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 10px; }
+#app .bd-cs {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0;
+  padding: 7px 9px 7px; border: 0; border-radius: 0; background: var(--cs-card); color: var(--cs-text);
+  font: inherit; text-align: left; cursor: pointer; box-shadow: none;
+}
+#app .bd-cs:first-child { border-radius: 10px 0 0 10px; }
+#app .bd-cs:last-child { border-radius: 0 10px 10px 0; }
+#app .bd-cs:active { background: var(--cs-card-2); }
+#app .bd-cs::before { display: none; }
+#app .bd-cs i { font-style: normal; font-size: 9.5px; letter-spacing: .08em; color: var(--cs-mute); }
+#app .bd-cs b { display: flex; align-items: center; gap: 4px; max-width: 100%; font-size: 12.5px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app .bd-cs-ic { font-size: 12px; }
+#app .bd-cs small { font-size: 10px; color: var(--cs-sub); }
+
+/* --- 出走カード：大きな絵（人気の丸札を重ねる）／名前と脚質／オッズの札 --- */
+#app .bet-pick-grid { grid-template-columns: 1fr; gap: 8px; }
+#app .bet-pick-card {
+  display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; column-gap: 10px;
+  min-height: 90px; padding: 8px 12px 8px 6px; flex-wrap: nowrap;
+}
+#app .bet-pick-card .bp-drawer { grid-column: 1 / -1; }
+#app .bet-pick-card .bp-art {
+  position: relative; width: 112px; height: 74px; margin: 0; overflow: visible; border-radius: 0;
+  background: radial-gradient(46% 16% at 52% 88%, rgba(0,0,0,.5), transparent 75%);
+}
+#app .bet-pick-card .bp-art img { width: 112%; transform: translate(-50%, -56%); }
+#app .bet-pick-card.selected .bp-art img { transform: translate(-46%, -59%) scale(1.08); }
+#app .bet-pick-card .bp-pop {
+  position: absolute; left: 2px; top: 0; z-index: 2; min-width: 0;
+  flex-direction: row; align-items: center; gap: 4px;
+}
+#app .bet-pick-card .bp-pop b { width: 24px; height: 24px; font-size: 13px; box-shadow: 0 0 0 2px var(--cs-card); }
+#app .bet-pick-card .bp-pop small { font-size: 9.5px; color: var(--cs-sub); text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+#app .bet-pick-card .bp-main { min-width: 0; }
+#app .bet-pick-card .bp-name { display: block; font-size: 15px; line-height: 1.3; }
+#app .bet-pick-card .bp-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 6px; font-size: 11px; }
+#app .bet-pick-card .bp-sub > span:first-child { padding: 1px 8px; border-radius: 999px; background: var(--cs-card-2); color: var(--cs-text); font-weight: 600; }
+#app .bet-pick-card .bp-form::before { content: "近走 "; color: var(--cs-mute); }
+#app .bet-pick-card .bp-drawer .bp-traits { font-size: 11px; color: var(--cs-sub); }
+
+/* オッズの札：いまの賭式の数字だけ大きな札に。もう一方は下に小さく */
+#app .bet-pick-card .bp-odds { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-width: 66px; align-self: start; margin-top: 2px; }
+#app .bet-pick-card .bp-win, #app .bet-pick-card .bp-place {
+  display: flex; flex-direction: row; align-items: baseline; justify-content: space-between; gap: 6px; line-height: 1.1;
+}
+#app .bet-pick-card .bp-win small, #app .bet-pick-card .bp-place small { font-size: 9.5px; color: var(--cs-mute); }
+#app .bet-pick-card .bp-win b, #app .bet-pick-card .bp-place b { font-size: 14px; font-weight: 600; }
+#app .bet-pick-card .bp-odds:has(.dim) > :not(.dim) {
+  flex-direction: column; align-items: center; gap: 1px; padding: 5px 10px 6px; border-radius: 10px; background: var(--cs-card-2);
+}
+#app .bet-pick-card .bp-odds:has(.dim) > :not(.dim) b { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+#app .bet-pick-card .bp-odds:has(.bp-win.dim) .bp-place { order: -1; }
+#app .bet-pick-card .bp-odds .dim { opacity: .6; padding: 0 4px; }
+#app .bet-pick-card.selected .bp-odds:has(.dim) > :not(.dim) { background: var(--cs-gold); }
+#app .bet-pick-card.selected .bp-odds:has(.dim) > :not(.dim) b,
+#app .bet-pick-card.selected .bp-odds:has(.dim) > :not(.dim) small { color: var(--cs-gold-ink); }
+#app .bet-pick-card .bp-more { top: auto; bottom: 7px; right: 12px; padding: 2px 0; font-size: 10.5px; }
+#app .bet-pick-card.expanded .bp-more { bottom: auto; top: 70px; }
+#app .bet-pick-card .bp-order { top: 6px; left: 6px; width: 22px; height: 22px; font-size: 12px; z-index: 3; }
+#app .bet-pick-card.selected .bp-pop { visibility: hidden; }   /* 選んだ印と同じ場所＝重ねない */
+
+/* --- 育つ賭け札 --- */
+#app .bd-slip { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+#app .bd-slip .bet-sel-sum { border: 0; background: none; padding: 0 2px; margin-bottom: 8px; box-shadow: none; }
+#app .slip-mini {
+  display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 9px 12px; border: 0; border-radius: 10px;
+  background: var(--cs-inset); color: var(--cs-text); font: inherit; text-align: left; cursor: pointer; box-shadow: none;
+}
+#app .slip-mini .sm-k { font-size: 10.5px; color: var(--cs-mute); }
+#app .slip-mini .sm-w { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#app .slip-mini .sm-arrow { color: var(--cs-mute); margin: 0 2px; }
+#app .slip-mini .sm-pay { font-size: 19px; font-weight: 700; color: var(--cs-pos); font-variant-numeric: tabular-nums; }
+#app .slip-mini .sm-chev { margin-left: auto; font-size: 11px; color: var(--cs-sub); white-space: nowrap; }
+#app .slip-mini .sm-hint { font-size: 11.5px; color: var(--cs-mute); }
+#app .slip-mini.invalid .sm-hint { color: #ff9b8f; }
+#app .slip-fold { position: absolute; right: 12px; top: 8px; padding: 4px 8px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--cs-sub); font-size: 11px; font-weight: 600; cursor: pointer; box-shadow: none; }
+#app .bd-slip.collapsed .slip-wager, #app .bd-slip.collapsed .payout-box,
+#app .bd-slip.collapsed .slip-note, #app .bd-slip.collapsed .slip-fold { display: none; }
+#app .bd-slip:not(.collapsed) .slip-mini { display: none; }
+#app .bd-slip:not(.collapsed) .bet-sel-sum { padding-right: 70px; }
+#app .bd-slip .slip-actions { margin-top: 8px; }
+#app .slip-actions #bet-confirm { height: 50px; font-size: 15.5px; }
+
+/* 撮って直した所（2026-11-26） */
+/* ① 単勝・複勝のとき、もう一方の小さな行が「▾ 見る」と重なった → いまの賭式の札だけを出す（切り替えれば見える） */
+#app .bet-pick-card .bp-odds:has(.dim) .dim { display: none; }
+/* ② 丸札の横の「人気」が竜の絵の上に乗って汚れた → 外す（並びと丸札の数字で人気順は読める） */
+#app .bet-pick-card .bp-pop small { display: none; }
+/* ③ コースの図の地形名が切れた（長直線スター…）→ 2行まで折り返す */
+#app .bd-cs b { white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#app .bd-cs-ic { margin-right: 3px; }
+
+/* ④ 390幅で「スター／ト」と1文字だけ次の行に落ちた → 折り返さず、1行に収まる大きさに（7文字＋記号で約98px） */
+#app .bd-cs { padding: 7px 8px; }
+#app .bd-cs b { display: flex; white-space: nowrap; -webkit-line-clamp: unset; font-size: 12px; letter-spacing: -.02em; }
+#app .bd-cs-ic { font-size: 11px; margin-right: 1px; }
+/* ⑤ 360幅ではまだ切れた → 狭い画面では記号を外す（記号は地形名と同じことを言っているだけ）*/
+@media (max-width: 380px) { #app .bd-cs-ic { display: none; } }
