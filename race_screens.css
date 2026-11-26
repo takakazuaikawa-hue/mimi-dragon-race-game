@@ -490,3 +490,25 @@ body:has(#app .rs-hero) .s4-embers { display: none; }
 #app .recap-note { color: var(--cs-mute); }
 #app .analysis-section { border: 0; border-radius: 12px; background: var(--cs-card); padding: 12px 14px; }
 #app .analysis-section .label { color: var(--cs-text); font-size: 12.5px; font-weight: 700; margin-bottom: 6px; }
+
+/* =========================================================================
+   相談役の中（ドラゴン情報の出走表など）— 予想画面の決まりにそろえる（2026-11-26）
+   金の枠・浮き出したタブ・赤青黄の四角い人気番号（色の意味が他の画面と食い違う）をやめる。
+   能力の S〜D の色は Racing Post の信号色と同じ「意味のある色」なので残す。
+   ========================================================================= */
+#app .adv-panel, #app .card.adv-panel { background: var(--cs-card); border: 0; border-radius: 14px; box-shadow: none; }
+#app .ana-tabs { display: flex; gap: 3px; padding: 3px; margin-bottom: 10px; background: var(--cs-inset); border-radius: 10px; }
+#app .ana-tabs button { flex: 1; padding: 8px 4px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; color: var(--cs-sub); font-weight: 600; font-size: 13px; }
+#app .ana-tabs button.active { background: #2c373a; color: var(--cs-text); }
+#app .entry-table, #app .trial-table { border-collapse: collapse; }
+#app .entry-table th, #app .entry-table td, #app .trial-table th, #app .trial-table td { border: 0; border-bottom: 1px solid var(--cs-line); }
+#app .entry-table th, #app .trial-table th { background: transparent; color: var(--cs-mute); font-size: 10.5px; font-weight: 600; }
+#app .entry-table td { padding: 8px 4px; }
+#app .entry-table td[class^="style-"], #app .entry-table td[class*=" style-"] { white-space: nowrap; font-size: 11px; }
+#app .entry-table .popularity-rank, #app .entry-table .popularity-rank.p1, #app .entry-table .popularity-rank.p2, #app .entry-table .popularity-rank.p3 {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--cs-card-2); color: var(--cs-text); font-weight: 700; box-shadow: none; border: 0;
+}
+#app .entry-table .odds-win, #app .entry-table .odds-place { color: var(--cs-text); font-weight: 600; }
+#app .entry-table .dragon-traits { color: var(--cs-mute); }
+#app .adv-voice { background: var(--cs-inset); border: 0; border-radius: 10px; }
