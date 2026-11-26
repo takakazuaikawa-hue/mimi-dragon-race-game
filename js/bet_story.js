@@ -175,7 +175,9 @@ function betStoryTraceHtml(c, reasonKey) {
   const s = betStoryOf(c);
   if (!s) return "";
   const k = (reasonKey === "kan" && !s.hit) ? s.shineKey : s.key;
-  const cell = (i, lb, v) => `<span class="rsr-tr${k === i ? " key" : ""}">${lb} <b>${v}</b></span>`;
+  // 区間の地形名を添える＝予想画面のコースの図と同じ名前で「その区間でどう動いたか」が読める（2026-11-26・表示のみ）
+  const _sec = i => { try { const ph = ["early", "mid", "late"][i]; const s2 = (typeof getSection === "function" && c.race) ? getSection(ph, c.race[ph]) : null; return s2 && s2.label ? `<small class="rsr-sec">${s2.label}</small>` : ""; } catch (e) { return ""; } };
+  const cell = (i, lb, v) => `<span class="rsr-tr${k === i ? " key" : ""}">${lb} <b>${v}</b>${_sec(i)}</span>`;
   return `<div class="rsr-trace" aria-label="${s.name}の道のり">` +
     cell(0, "序盤", _bsPos(s.a)) + `<i>▸</i>` + cell(1, "中盤", _bsPos(s.b)) + `<i>▸</i>` + cell(2, "ゴール", s.f + "着") +
     `</div>`;

@@ -4396,6 +4396,7 @@ function drawRecapScreen() {
   const ps = recap.payoutSummary;
   if (ps) {
     app.appendChild(buildResultHero(ps, resultTierOf(ps), c));
+    try { const _bd = resultBoardEl(c); if (_bd) app.appendChild(_bd); } catch (e) {}
     // ★C-3 根拠の答え合わせ（A-2の宣言と対）＋C-2 不的中の敗因1行。
     //   記録は1レース1回だけ（タブ切替の再描画で二重計上しないよう c._reasonScored で門番）。
     const rk = c.betReasonUsed || state.player.betReason;
@@ -4734,6 +4735,32 @@ function nextGoals(state) {
     }
   }
   return goals;
+}
+
+// ★確定の掲示板（2026-11-26・docs/RACE_SCREENS_V2_DESIGN.md §4）：本物の競馬場とウマ娘の結果画面の「確定」板。
+//   1〜3着＋自分の竜（圏外なら下に1行）を、竜の色の丸札で並べる＝予想画面・レース画面と同じ記号。
+//   確定済みの着順・オッズを読むだけ（表示のみ）。
+function resultBoardEl(c) {
+  const ents = ((c && c.raceResult && c.raceResult.entries) || []).slice().sort((a, b) => a.rank - b.rank);
+  if (!ents.length) return null;
+  const sels = (c.bet && c.bet.selections) || [];
+  const odOf = id => ((c.oddsResult && c.oddsResult.oddsData) || []).find(o => o.dragonId === id) || {};
+  const shown = ents.filter(e => e.rank <= 3);
+  ents.filter(e => e.rank > 3 && sels.indexOf(e.dragon.id) >= 0).forEach(e => shown.push(e));
+  const row = e => {
+    const col = dragonColor(e.dragon), ink = (typeof dragonChipInk === "function") ? dragonChipInk(col) : "#fff";
+    const od = odOf(e.dragon.id), mine = sels.indexOf(e.dragon.id) >= 0;
+    return `<div class="rb-row${mine ? " mine" : ""}${e.rank > 3 ? " out" : ""}">` +
+      `<span class="rb-rk">${e.rank}<small>着</small></span>` +
+      `<i class="rb-chip" style="--c:${col};--ct:${ink}"></i>` +
+      `<b class="rb-nm">${e.dragon.name}</b>` +
+      (mine ? `<span class="rb-mine">あなたの竜</span>` : "") +
+      `<span class="rb-od">${od.popularityRank != null ? od.popularityRank + "番人気" : ""}${od.winOdds != null ? "・" + od.winOdds.toFixed(1) + "倍" : ""}</span></div>`;
+  };
+  const b = el("div", "rs-board");
+  b.innerHTML = `<div class="rb-head"><span class="rb-kakutei">確定</span><span class="rb-race">${c.race ? raceFullName(c.race) : ""}</span></div>` +
+    shown.map(row).join("");
+  return b;
 }
 
 function buildResultHero(ps, tier, c) {

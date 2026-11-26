@@ -4326,16 +4326,19 @@ function startRaceCanvas(container, ctx) {
         cctx.save();
         cctx.globalAlpha = clamp(0.2 + frac, 0, 1);
         cctx.translate(cw / 2, ch * 0.40); cctx.scale(pulse, pulse);
-        cctx.font = "bold 66px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+        // v2：太い縁取りをやめ、影で読ませる（絵の上の文字の決まり）
+        cctx.font = "800 72px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
         cctx.textAlign = "center"; cctx.textBaseline = "middle";
-        cctx.lineWidth = 6; cctx.strokeStyle = "rgba(10,12,24,0.7)";
+        cctx.shadowColor = "rgba(0,0,0,0.7)"; cctx.shadowBlur = 18; cctx.shadowOffsetY = 2;
         cctx.fillStyle = "#fff";
-        cctx.strokeText(String(n), 0, 0); cctx.fillText(String(n), 0, 0);
+        cctx.fillText(String(n), 0, 0);
         cctx.restore();
       }
-      cctx.globalAlpha = 0.85; cctx.fillStyle = "#ffe9a8";
-      cctx.font = "bold 13px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif"; cctx.textAlign = "center";
-      cctx.fillText("位置について…", cw / 2, ch * 0.40 + 54);
+      cctx.globalAlpha = 0.9; cctx.fillStyle = "#fff";
+      cctx.font = "700 13px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif"; cctx.textAlign = "center";
+      cctx.shadowColor = "rgba(0,0,0,0.8)"; cctx.shadowBlur = 6;
+      cctx.fillText("位置について…", cw / 2, ch * 0.40 + 58);
+      cctx.shadowBlur = 0;
       cctx.globalAlpha = 1;
     } else if (S.goFlash > 0) {
       const k = clamp(S.goFlash / 0.8, 0, 1);
@@ -4433,17 +4436,22 @@ function startRaceCanvas(container, ctx) {
       const by = Math.round(Math.max(ch * 0.17, 246));   // v2：順位の塔と重ならない高さへ
       cctx.save();
       cctx.globalAlpha = clamp(fade, 0, 1);
-      cctx.fillStyle = "rgba(12,14,28,0.46)";
-      cctx.fillRect(0, by - 23, cw, 46);
-      cctx.fillStyle = "rgba(255,224,106,0.92)";
-      cctx.fillRect(0, by - 23, cw, 3);
-      cctx.fillRect(0, by + 20, cw, 3);
-      cctx.font = "bold 30px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
+      // ★v2（2026-11-26・docs/RACE_SCREENS_V2_DESIGN.md §5）：暗い帯＋金の2本線＋縁取りの太い文字（古い中継の作り）をやめ、
+      //   絵の上の文字の決まり（箱なし・暗いグラデで読ませる＝JRA中継・ウマ娘の字幕）にそろえる。
+      //   帯は中央が濃く左右が透ける横グラデ、文字は影だけ、下に金の短い線1本。
+      const g = cctx.createLinearGradient(0, 0, cw, 0);
+      g.addColorStop(0, "rgba(4,7,9,0)"); g.addColorStop(0.22, "rgba(4,7,9,0.62)");
+      g.addColorStop(0.78, "rgba(4,7,9,0.62)"); g.addColorStop(1, "rgba(4,7,9,0)");
+      cctx.fillStyle = g;
+      cctx.fillRect(0, by - 26, cw, 52);
+      cctx.font = "800 26px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
       cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      cctx.lineWidth = 5; cctx.strokeStyle = "rgba(8,10,22,0.7)";
+      cctx.shadowColor = "rgba(0,0,0,0.75)"; cctx.shadowBlur = 10; cctx.shadowOffsetY = 1;
       cctx.fillStyle = "#fff";
-      cctx.strokeText(b.text, cw / 2 + sx, by);
-      cctx.fillText(b.text, cw / 2 + sx, by);
+      cctx.fillText(b.text, cw / 2 + sx, by - 2);
+      cctx.shadowBlur = 0; cctx.shadowOffsetY = 0;
+      cctx.fillStyle = "rgba(240,192,80,0.95)";
+      cctx.fillRect(cw / 2 + sx - 18, by + 17, 36, 2);
       cctx.restore(); cctx.globalAlpha = 1;
     }
 
