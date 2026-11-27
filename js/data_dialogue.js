@@ -100,9 +100,9 @@
         { s: "sake", name: "腰掛けを出した女", t: "鍋を見ろ。私一人であれを飲む気か。……名前は。", e: "smile" },
         { s: "mimi", t: "ミミです。お腹が鳴る前に、名乗ればよかった。", e: "default" },
         { s: "sake", t: "サケだ。そっちの挨拶の方がよく聞こえたぞ。", e: "smile" },
-        { s: "narrator", t: "門を抜けた風に、出走表が一枚めくれた。ミミが押さえた紙の向こうで、竜の翼が開く。" },
-        { s: "mimi", t: "この名前の子たちが、走るんですか。……紙より、ずっと大きい。", e: "default" },
-        { s: "sake", t: "見てこい。札を買うかは、見てから自分で決めろ。……戻ったら、どの竜が気になったか聞かせろ。", e: "smile" }
+        { s: "narrator", t: "門を抜けた風に、出走表が一枚めくれた。ミミが押さえた紙の向こうで、竜の翼が開く。", bg: "images/bg/first_meeting_gate.webp", shot: "opening-race-pass" },
+        { s: "mimi", t: "この名前の子たちが、飛ぶんですか。……紙より、ずっと大きい。", e: "default", bg: "images/bg/first_meeting_gate.webp", shot: "opening-race-pass" },
+        { s: "sake", t: "見てこい。札を買うかは、見てから自分で決めろ。……戻ったら、どの竜が気になったか聞かせろ。", e: "smile", bg: "images/bg/first_meeting_gate.webp", shot: "opening-mimi-walk" }
       ],
       "2": [
         { s: "narrator", t: "夜市の端で、開いた手帳が風にあおられている。女が片手で頁を押さえ、もう片方で飛んだ鉛筆を追った。", bg: "images/bg/nightmarket.webp" },

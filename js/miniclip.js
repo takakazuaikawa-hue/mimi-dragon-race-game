@@ -75,5 +75,39 @@
     return true;
   }
 
-  window.MiniClip = { play: play, clear: clear, clips: CLIPS };
+  // Overlay a silent shot while dialogue stays interactive. Hold its last frame.
+  function playScene(host, src) {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
+
+    const video = document.createElement("video");
+    if (!video.canPlayType('video/mp4; codecs="avc1.64001f"')) return null;
+    video.className = "story-video";
+    video.setAttribute("aria-hidden", "true");
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.disablePictureInPicture = true;
+    video.disableRemotePlayback = true;
+    video.tabIndex = -1;
+
+    let disposed = false;
+    function dispose() {
+      if (disposed) return;
+      disposed = true;
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      video.remove();
+    }
+    video.addEventListener("playing", function () {
+      video.classList.add("is-playing");
+    }, { once: true });
+    video.addEventListener("error", dispose, { once: true });
+    video.src = src;
+    host.appendChild(video);
+    video.play().catch(dispose);
+    return dispose;
+  }
+
+  window.MiniClip = { play: play, clear: clear, clips: CLIPS, playScene: playScene };
 })();

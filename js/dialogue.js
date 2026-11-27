@@ -258,23 +258,48 @@
   }
 
   // ★背景のクロスフェード（bg:"stable" → images/bg/stable.webp。パス指定もそのまま通す）。404は静かに無視。
-  function setBg(id) {
+  var stopBackgroundVideo = null;
+
+  function stopBgVideo() {
+    if (stopBackgroundVideo) stopBackgroundVideo();
+    stopBackgroundVideo = null;
+    dom.overlay.classList.remove("dlg-film-shot");
+    dom.bg.style.removeProperty("--dlg-shot-still");
+  }
+
+  function setBg(id, shot) {
     if (!dom) return;
-    var url = /[/.]/.test(id) ? id : "images/bg/" + id + ".webp";
+    var fallback = id && (/[/.]/.test(id) ? id : "images/bg/" + id + ".webp");
+    var url = shot ? "images/story/video/" + shot + ".webp" : fallback;
     if (dom.bg.dataset.cur === url) return;
+    stopBgVideo();
     dom.bg.dataset.cur = url;
     var im = new Image();
+    im.alt = "";
     im.onload = function () {
       if (dom.bg.dataset.cur !== url) return; // 閉じた場面や次の場面へ遅れて届いた画像を載せない。
       dom.bg.appendChild(im);
       // rAFは非アクティブタブで凍結する＝classが付かず透明のままになるため、強制リフローで即時に確実に発火。
       void im.offsetWidth;
       im.classList.add("on");
-      while (dom.bg.children.length > 2) dom.bg.removeChild(dom.bg.firstChild);
+      var stills = dom.bg.querySelectorAll("img");
+      if (stills.length > 2) stills[0].remove();
     };
+    if (shot) {
+      dom.bg.replaceChildren();
+      dom.overlay.classList.add("dlg-film-shot");
+      dom.bg.style.setProperty("--dlg-shot-still", 'url("' + url + '")');
+      if (fallback) im.onerror = function () { im.onerror = null; im.src = fallback; };
+      if (global.MiniClip) stopBackgroundVideo = MiniClip.playScene(dom.bg, "images/story/video/" + shot + ".mp4");
+    }
     im.src = url;
   }
-  function clearBg() { if (dom && dom.bg) { dom.bg.innerHTML = ""; delete dom.bg.dataset.cur; } }
+  function clearBg() {
+    if (!dom) return;
+    stopBgVideo();
+    dom.bg.replaceChildren();
+    delete dom.bg.dataset.cur;
+  }
 
   // ★感情アニメ→効果音の自動対応（fx1語で音まで付く）。行の se: 明示が最優先。
   var FX_SE = { shake: "miss", hop: "paho", nod: "tick", flash: "alert" };
@@ -308,7 +333,7 @@
       // ★img＝その行だけ立ち絵を差し替える（場面限定の衣装。例：温泉回の湯上がり姿）。
       //   通常の解決チェーンの先頭に挿すだけなので、404なら従来の絵へ自動で落ちる。
       out.push({ s: (l.s != null ? l.s : l.speaker), t: String(t), e: (l.e || l.expr), side: l.side,
-        fx: l.fx, se: l.se, bg: l.bg, w: l.w, img: l.img,
+        fx: l.fx, se: l.se, bg: l.bg, shot: l.shot, w: l.w, img: l.img,
         name: l.name, exit: Array.isArray(l.exit) ? l.exit.slice() : [],
         react: Array.isArray(l.react) ? l.react.map(function (r) { return { s: r.s, e: r.e }; }) : [] });
     }
@@ -390,7 +415,7 @@
       });
     });
 
-    if (line.bg) setBg(line.bg);   // ★場面（背景）は行から切替可能
+    if (line.bg || line.shot) setBg(line.bg, line.shot);
     // 相手の言葉を受けた表情。衣装は現在の装いを使い、話者フォーカスは移さない。
     line.react.forEach(function (reaction) {
       if (resolveId(reaction.s) === resolveId(line.s)) return;
