@@ -3,7 +3,7 @@
 function rcChaseLandscape(T, course, width, slug, venue){
   const cliff=slug==="vento" || slug==="caldera";
   const lake=slug==="mistlake" || slug==="lumina";
-  const sections=course.grand?260:480;
+  const sections=course.grand?360:480;
   const levels=cliff?[0,.12,.24,.34,.45,.49,.55,.62,.68,.72,.82,.89,.94,1,1.15,1.35]:
     [0,.12,.24,.38,.5,.64,.78,.90,1,1.12,1.28];
   const length=course.end-course.start;
@@ -43,10 +43,14 @@ function rcChaseLandscape(T, course, width, slug, venue){
     const positions=[],uv=[],flow=[],colors=[],indices=[];
     for(let i=0;i<=sections;i++){
       const u=i/sections;
+      let previous=null,across=0;
       for(let j=0;j<levels.length;j++){
         const v=levels[j],p=terrain(u,v,side);positions.push(p.x,p.y,p.z);
-        if(venue==="shinto")uv.push(u*length/9,v*9);
-        else uv.push((p.x+p.z*.16)/11,(p.z+p.y*.55)/9);
+        // Measure across the slope, including its rise. Top-down texture
+        // coordinates collapse to a scanline on a steep inside bank.
+        if(previous)across+=Math.hypot(p.x-previous.x,p.y-previous.y,p.z-previous.z);
+        uv.push(u*length/11,across/9);
+        previous=p;
         flow.push(u*length/17+.11*Math.sin(19*v+u*9),v*5.8+p.y*.026);
         const light=.69+.20*v+.055*Math.sin(u*47+side)+.035*Math.sin(v*28+u*11);
         colors.push(light,light*.985,light*.965);
@@ -66,20 +70,22 @@ function rcChaseLandscape(T, course, width, slug, venue){
     return g;
   }
   function vergeGeometry(side){
-    const distances=[0,.045,.13,.27,.43,.65,.82,1],positions=[],uv=[],flow=[],shades=[],indices=[];
+    const positions=[],uv=[],flow=[],shades=[],indices=[];
     for(let i=0;i<=sections;i++){
       const u=i/sections,s=course.start+u*length,edge=course.point(s,side*width);
       const variation=Math.sin(s*.12+side)+.48*Math.sin(s*.31-side);
       const toe=!lake?terrain(u,0,side):course.point(s,side*(width+18+variation*3.8));
       const drop=!lake?toe.y-edge.y:-8.6;
+      // Keep a level footing under the rail, signal lamps and festival flags.
+      const shelf=Math.min(.62,(venue?7.6:3.4)/Math.max(1,Math.hypot(toe.x-edge.x,toe.z-edge.z)));
+      const distances=[0,shelf*.5,shelf,...[.15,.35,.58,.81,1].map(t=>shelf+t*(1-shelf))];
       for(let j=0;j<distances.length;j++){
-        const v=distances[j],weight=v+.05*Math.sin(v*Math.PI)*variation;
+        const v=distances[j],weight=v;
         const x=T.MathUtils.lerp(edge.x,toe.x,weight),z=T.MathUtils.lerp(edge.z,toe.z,weight);
-        const ledge=T.MathUtils.smoothstep(v,.05,.86);
-        const y=edge.y+drop*ledge+Math.sin(v*Math.PI)*variation*.51-.06;
+        const fall=Math.max(0,(v-shelf)/(1-shelf));
+        const y=edge.y+drop*T.MathUtils.smoothstep(fall,0,1)+Math.sin(fall*Math.PI)*variation*.38;
         positions.push(x,y,z);
-        if(venue==="shinto")uv.push(s/9,v*2.4);
-        else uv.push((x+z*.16)/11,(z+y*.55)/9);
+        uv.push(u*length/11,-Math.hypot(x-toe.x,y-(edge.y+drop),z-toe.z)/9);
         flow.push(u*length/17+.11*Math.sin(u*9),(v-1)*1.1+y*.026);
         const light=.78+.15*v+.045*variation;shades.push(light,light,light);
         if(i && j){const k=i*distances.length+j;indices.push(k-distances.length-1,k-1,k,k-distances.length-1,k,k-distances.length);}
@@ -89,7 +95,7 @@ function rcChaseLandscape(T, course, width, slug, venue){
     g.setAttribute("uv",new T.Float32BufferAttribute(uv,2));g.setAttribute("color",new T.Float32BufferAttribute(shades,3));
     g.setAttribute("flowCoord",new T.Float32BufferAttribute(flow,2));g.setIndex(indices);return g;
   }
-  return {terrain,geometry,vergeGeometry,cliff,lake};
+  return {terrain,geometry,vergeGeometry,cliff,lake,sections};
 }
 
 // Broken reflections of the lamps on either edge of the wet road.
@@ -135,9 +141,10 @@ function rcLavaStrata(material,clock){
  // banks and trees share world positions with the main view.
 function rcChaseLake(T,material,haze,clock){
   const target=new T.WebGLRenderTarget(1,1,{depthBuffer:true});
-  const lens=new T.PerspectiveCamera(),matrix=new T.Matrix4(),advance=new T.Vector3();
+  const perspective=new T.PerspectiveCamera(),parallel=new T.OrthographicCamera(),matrix=new T.Matrix4(),advance=new T.Vector3();
   const previousEye=new T.Vector3(Infinity,Infinity,Infinity),previousLook=new T.Quaternion();
-  let lastFov=-1;
+  const lastProjection=new T.Matrix4();
+  let previousFov=NaN;
   const planeY=-5.4;
   const clip=[new T.Plane(new T.Vector3(0,1,0),-planeY+.03)];
   material.transparent=true;
@@ -160,18 +167,23 @@ function rcChaseLake(T,material,haze,clock){
       // Let the painted, fog-bound waterline take over beyond the shore.
       diffuseColor.a*=1.-smoothstep(105.,295.,d);
       vec3 shoreLight=texture2D(shore,clamp(uv,.002,.998)).rgb;
-      diffuseColor.rgb=mix(diffuseColor.rgb,shoreLight,.46+.34*fresnel);
+      vec2 edge=min(uv,1.-uv);
+      float valid=step(.001,reflectionClip.w)*smoothstep(0.,.025,min(edge.x,edge.y));
+      diffuseColor.rgb=mix(diffuseColor.rgb,shoreLight,valid*(.46+.34*fresnel));
       diffuseColor.rgb+=vec3(.014,.019,.022)*smoothstep(.71,1.36,wave)*falloff;
     `);
   };
   material.needsUpdate=true;
   return {
     render(renderer,scene,camera,water,models,w,h,lowSpec){
+      const lens=camera.isOrthographicCamera?parallel:perspective;
       const width=Math.min(lowSpec?272:512,Math.max(160,Math.round(w*.52))),height=Math.max(80,Math.round(width*h/w));
       // Only scenery is reflected. Tiny lens moves can reproject the same image.
-      if(target.width===width && target.height===height && Math.abs(lastFov-camera.fov)<.12 &&
+      const sameLens=camera.isOrthographicCamera?lastProjection.equals(camera.projectionMatrix):
+        Math.abs(camera.fov-previousFov)<.12 && camera.projectionMatrix.elements[14]===lastProjection.elements[14];
+      if(target.width===width && target.height===height && sameLens &&
         previousEye.distanceToSquared(camera.position)<(lowSpec?1:.12) && previousLook.angleTo(camera.quaternion)<.012)return;
-      previousEye.copy(camera.position);previousLook.copy(camera.quaternion);lastFov=camera.fov;
+      previousEye.copy(camera.position);previousLook.copy(camera.quaternion);lastProjection.copy(camera.projectionMatrix);previousFov=camera.fov??NaN;
       if(target.width!==width || target.height!==height)target.setSize(width,height);
       lens.copy(camera,false);lens.position.y=2*planeY-camera.position.y;
       camera.getWorldDirection(advance);advance.y*=-1;advance.add(lens.position);

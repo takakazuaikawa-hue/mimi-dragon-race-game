@@ -26,10 +26,10 @@ const rcChaseScripts=new Map();
 function rcLoadChaseRuntime(){
   const sources=[
     "js/vendor/three-r160.min.js",
-    "js/race_chase_landscape.js?v=20261127h",
+    "js/race_chase_landscape.js?v=20261128k",
     "js/race_chase_legs.js?v=20261128d",
     "js/race_chase_head.js?v=20261128j",
-    "js/race_chase_camera.js?v=20261128i"
+    "js/race_chase_camera.js?v=20261128k"
   ];
   return Promise.all(sources.map(src=>{
     if(!rcChaseScripts.has(src)){

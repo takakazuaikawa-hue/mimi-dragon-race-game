@@ -76,13 +76,14 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
   const shrine=festival?.vista==="shinto",shrineTrees=[];
   function ribbon(inner,outer,bottom,top,material,repeats=1){
     const verts=[],uv=[],coords=[],indices=[];
-    for(let i=0;i<=360;i++){
+    const sections=land.sections;
+    for(let i=0;i<=sections;i++){
       for(const [side,y,v] of [[inner,bottom,0],[outer,top,1]]){
-        const p=coursePoint(course.start+(course.end-course.start)*i/360,side);
+        const p=coursePoint(course.start+(course.end-course.start)*i/sections,side);
         verts.push(p.x,y+p.y,p.z);
-        if(material===dirt && (slug==="mistlake" || shrine))coords.push(course.start+(course.end-course.start)*i/360,side);
+        if(material===dirt && (slug==="mistlake" || shrine))coords.push(course.start+(course.end-course.start)*i/sections,side);
         if(repeats===1)uv.push(p.x/340+.5,p.z/340+.5);
-        else uv.push(i/360*repeats,v);
+        else uv.push(i/sections*repeats,v);
       }
       if(i){const j=i*2;indices.push(j-2,j-1,j,j-1,j+1,j);}
     }
@@ -127,8 +128,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
   const forward=new T.Vector3(Math.cos(finishPoint.yaw),0,-Math.sin(finishPoint.yaw));
   const normal=new T.Vector3(Math.sin(finishPoint.yaw),0,Math.cos(finishPoint.yaw));
   const finishOrigin=new T.Vector3(finishPoint.x,finishPoint.y,finishPoint.z);
-  const nearVerge=new T.Plane().setFromNormalAndCoplanarPoint(normal.clone().negate(),
-    finishOrigin.clone().addScaledVector(normal,width+1));
+
   const checkers=document.createElement("canvas");checkers.width=48;checkers.height=2;
   const checkerPen=checkers.getContext("2d");
   for(let x=0;x<48;x++)for(let y=0;y<2;y++){
@@ -143,11 +143,16 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
   const gold=0xc39548, enamel=0x294348;
   for(const side of [-1,1]){
     const z=side*(width+.7);
+    if(side>0){
+      // A low brass marker leaves the crossing noses visible from the line camera.
+      cylinder(gate,0,.16,z,.40,.46,.32,gold);
+      continue;
+    }
     cylinder(gate,0,2.85,z,.21,.36,5.7,enamel);
     for(const y of [.45,3.9,5.35])cylinder(gate,0,y,z,.35,.36,.18,gold);
     mesh(gate,new T.SphereGeometry(.42,16,10),matte(gold),0,5.83,z);
   }
-  // Twin standards leave the waterline of a close finish clear in profile.
+  // The finish sign is carried by the far standard.
   const sign=document.createElement("canvas");sign.width=512;sign.height=192;
   const ink=sign.getContext("2d");
   ink.fillStyle="#20383b";ink.fillRect(0,0,512,192);ink.strokeStyle="#ddbd76";ink.lineWidth=9;
@@ -155,10 +160,8 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
   ink.font="bold 88px Georgia";ink.fillText("FINISH",256,106);
   ink.font="bold 32px system-ui";ink.fillText(race.region.replace(/地域$/,""),256,158,470);
   const signMat=new T.MeshBasicMaterial({map:texture(sign),side:T.DoubleSide});
-  for(const side of [-1,1]){
-    const flag=mesh(gate,new T.PlaneGeometry(5.8,2.18),signMat,0,4.3,side*(width+3.6));
-    flag.rotation.y=Math.PI/2;
-  }
+  const flag=mesh(gate,new T.PlaneGeometry(5.8,2.18),signMat,0,4.3,-(width+3.6));
+  flag.rotation.y=Math.PI/2;
   let disposed=false, sceneryReady=false;
   const festivalClock={value:0},quietScenery=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   rcIslandAir(T,scene,course,land,slug,festival,festivalClock,texture,time);
@@ -182,6 +185,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       const p=i/24;
       for(const side of [-1,1]){
         const rim=side*(width+1);
+        const photoSideAtLine=i===24 && side>0;
         if(slug!=="mistlake" && slug!=="caldera"){
           prop("post",p,rim,.49,.28,.98,.28,0x635950);
           prop("post",p,rim,1.03,.38,.17,.38,accent);
@@ -233,11 +237,11 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
             }
           }
         }
-        if(slug!=="vento" && slug!=="lumina" && (race.mid==="aerial_wind_lane" || race.late==="tailwind_straight") && side===1 && i%4===0){
+        if(slug!=="vento" && slug!=="lumina" && (race.mid==="aerial_wind_lane" || race.late==="tailwind_straight") && side===1 && i%4===0 && !photoSideAtLine){
           prop("post",p,rim+2,2.15,.17,4.3,.17,0x74675d);
           prop("post",p+.002,rim+2,4.05,2.1,.38,.075,accent,0,.12);
         }
-        if(race.early==="fire_gate_start" && i<=4 || race.region==="灼熱回廊地域" && i%4===0){
+        if(race.early==="fire_gate_start" && i<=4 || race.region==="灼熱回廊地域" && i%4===0 && !photoSideAtLine){
           prop("column",p,rim+side*3,1.4,.7,2.8,.7,0x443431);
           prop("beacon",p,rim+side*3,3.25,.53,1.05,.53,0xff923f,0,.11);
         }
@@ -343,13 +347,18 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       const rock=slug!=="vento" && slug!=="lumina";
       const bank=mapped(rock?crop(near,.12,.71,.26,.23):land.cliff?crop(town,.10,.26,.11,.24):crop(near,...paint.road));
       bank.vertexColors=true;
-      if(rock){
+      if(slug==="mistlake")surfaceAlbedo(bank.map,0x495761);
+      else if(rock){
         // Keep the painted grains but suppress highlights baked for one view.
         const cv=bank.map.image,pen=cv.getContext("2d");pen.globalAlpha=.43;
         pen.fillStyle=({caldera:"#473239",ringrosso:"#6c3833",lapan:"#584339",notte:"#554466",mistlake:"#47565a"})[slug] || "#525257";pen.fillRect(0,0,cv.width,cv.height);
       }else surfaceAlbedo(bank.map,slug==="vento"?0x736962:land.lake?0x677d72:0x687750);
       if(festival?.vista==="shinto"){
-        bank.map=crop(sky,.145,.58,.085,.16);bank.map.wrapS=bank.map.wrapT=T.MirroredRepeatWrapping;
+        // Use the track's mineral grain on the cliff face. The panorama
+        // contains shrine windows and people that would repeat on each rock.
+        const stone=document.createElement("canvas");stone.width=stone.height=256;
+        stone.getContext("2d").drawImage(gravel,0,0);
+        bank.map.image=stone;
         surfaceAlbedo(bank.map,0x9aa9a6);
         rcShrineCloudVeil(bank);
         surfaceAlbedo(dirt.map,0x899496);
@@ -471,6 +480,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
   const pen=shadowStamp.getContext("2d"),blur=pen.createRadialGradient(32,32,2,32,32,32);
   blur.addColorStop(0,"rgba(43,26,18,.42)");blur.addColorStop(.58,"rgba(43,26,18,.24)");
   blur.addColorStop(1,"rgba(43,26,18,0)");pen.fillStyle=blur;pen.fillRect(0,0,64,64);
+  const landscapeLens=new T.PerspectiveCamera(39,1,.1,2600);
   const photoLens=new T.OrthographicCamera(-12,12,8,-8,.1,900);
   const shadows=new T.MeshBasicMaterial({map:texture(shadowStamp),transparent:true,depthWrite:false});
   const models=new Map();
@@ -922,26 +932,42 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       const right=Math.max(1.5,leading+4,chasing+4);
       const cx=(left+right)/2,span=Math.max(12,(right-left)*1.15);
       const center=finishTarget.clone().addScaledVector(forward,cx);
-      const halfH=Math.max(4,span/(2*camera.aspect));
+      const slope=.19;
+      const laneDepth=Math.abs(first.clone().sub(second).dot(normal));
+      const halfH=Math.max(5+laneDepth*slope*.5,span/(2*camera.aspect));
       photoLens.left=-halfH*camera.aspect;photoLens.right=halfH*camera.aspect;
       photoLens.top=halfH;photoLens.bottom=-halfH;
-      // Place the near clip just outside the near verge. Rocks between a
-      // telephoto lens and the outside rail must never hide a crossing nose.
-      photoLens.near=Math.max(.1,150+lateralFocus-width-2);
+      const setback=width+Math.max(55,halfH/slope+8);
+      photoLens.near=.1;
+      photoLens.far=setback*Math.hypot(1,slope)+width+Math.abs(lateralFocus)+8;
       photoLens.updateProjectionMatrix();
-      photoLens.position.copy(center).addScaledVector(normal,150);
-      photoLens.position.y+=9.3;photoLens.lookAt(center);
+      photoLens.position.copy(center).addScaledVector(normal,setback);
+      photoLens.position.y+=setback*slope;photoLens.lookAt(center);
       photoLens.updateMatrixWorld();lens=photoLens;
+
+      // Both frusta have the same rectangle at the far edge of the racing
+      // lanes. The line photo keeps parallel sight lines across all noses;
+      // hills, water and buildings beyond it recede into the actual venue.
+      const join=halfH/Math.tan(T.MathUtils.degToRad(landscapeLens.fov*.5));
+      landscapeLens.aspect=camera.aspect;
+      landscapeLens.near=join;
+      landscapeLens.far=join+2400;
+      landscapeLens.updateProjectionMatrix();
+      landscapeLens.position.copy(photoLens.position).addScaledVector(photoLens.getWorldDirection(offset),photoLens.far-join);
+      landscapeLens.quaternion.copy(photoLens.quaternion);
+      landscapeLens.updateMatrixWorld();
     }
-    renderer.clippingPlanes=photo?[nearVerge]:[];
-    const outdoorFog=scene.fog;
     if(photo){
-      // The parallel lens would magnify a distant cliff to the same size
-      // as a nearby one. Let the far bank recede beyond the last lane.
-      scene.fog=new T.Fog(outdoorFog.color,150+lateralFocus+width,150+lateralFocus+width+28);
+      if(reflection)reflection.render(renderer,scene,landscapeLens,waterSurface,models,rw,rh,lowSpec);
+      renderer.render(scene,landscapeLens);
     }
-    if(reflection && !photo)reflection.render(renderer,scene,lens,waterSurface,models,rw,rh,lowSpec);
-    renderer.render(scene,lens);scene.fog=outdoorFog;
+    if(reflection)reflection.render(renderer,scene,lens,waterSurface,models,rw,rh,lowSpec);
+    if(photo){
+      const background=scene.background;
+      scene.background=null;renderer.autoClear=false;
+      try{renderer.clearDepth();renderer.render(scene,lens);}
+      finally{scene.background=background;renderer.autoClear=true;}
+    }else renderer.render(scene,lens);
     ctx.clearRect(0,0,w,h);
     ctx.save();
     if(race.weather==="rain" || race.weather==="thunder"){

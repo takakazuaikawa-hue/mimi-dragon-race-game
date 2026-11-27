@@ -248,7 +248,9 @@ function rcChaseFestival(T,scene,course,width,festival,clock,texture,night){
     matrix.position.set(p.x,p.y+y,p.z);matrix.rotation.set(0,p.yaw,0);matrix.scale.set(w,h,d);matrix.updateMatrix();batch.push(matrix.matrix.clone());
   }
   for(let j=0;j<RC_FESTIVAL_STATIONS.length;j++)for(const side of [-1,1]){
-    const p=RC_FESTIVAL_STATIONS[j]+(side>0?.018:0),s=course.distance(p);
+    // Leave the last stretch of the camera-side verge open for a photo finish.
+    const stagger=side<0?0:j===RC_FESTIVAL_STATIONS.length-1?-.025:.018;
+    const p=RC_FESTIVAL_STATIONS[j]+stagger,s=course.distance(p);
     const at=course.point(s,side*(width+5.8)),high=j>7?5.8:4.8;
     put(feet,at,-1.7,1.3,4.6,1.3);put(posts,at,high*.43,.20,high*1.15,.20);
     const arm=course.point(s+1.10,side*(width+5.8));

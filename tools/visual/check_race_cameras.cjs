@@ -145,7 +145,26 @@ async function verify() {
       });
       assert(frames >= 3, id+" chase did not render");
       await page.getByRole("button",{name:"着順を見る"}).click();
-      await page.getByRole("button",{name:"決勝写真"}).click();
+      const joinError=await page.evaluate(()=>{
+        // Observe the two main-scene passes, ignoring the lake reflection.
+        const before=THREE.Mesh.prototype.onBeforeRender;
+        let near,far;
+        THREE.Mesh.prototype.onBeforeRender=function(renderer,scene,camera,...args){
+          if(!renderer.getRenderTarget()){
+            if(camera.isOrthographicCamera)near=camera;
+            if(camera.isPerspectiveCamera)far=camera;
+          }
+          return before.call(this,renderer,scene,camera,...args);
+        };
+        try{
+          [...document.querySelectorAll(".rc-camera-choices button")].find(b=>b.textContent==="決勝写真").click();
+          state.current.racePlayer.seek(1);
+          if(!near || !far)return Infinity;
+          const join=new THREE.Vector3(.8,-.7,1).unproject(near).project(far);
+          return Math.max(Math.abs(join.x-.8),Math.abs(join.y+.7),Math.abs(join.z+1));
+        }finally{THREE.Mesh.prototype.onBeforeRender=before;}
+      });
+      assert(joinError<.0001,id+" finish photo scenery disconnected from the track");
       const result = await page.evaluate(() => ({
         photo: document.querySelector(".rc-wrap").classList.contains("rc-photo"),
         clearLine: document.querySelector("#rc-finishstrip .rc-fs-winner").getBoundingClientRect().top >=
