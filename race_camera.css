@@ -199,3 +199,17 @@
 #app .rc-v2 .rc-bearing-inactive { visibility:hidden; }
 #app .rc-ended .rc-bearing-inactive { display:none; }
 #app .rc-v2 .rc-chase-surface { will-change:opacity; }
+
+/* Keep section aptitude in the free strip between the compact board and pause. */
+.rc-stage .rc-fitness {
+  position:absolute; top:69px; right:53px; z-index:5; pointer-events:none;
+  display:grid; justify-items:end; gap:3px; max-width:calc(100% - min(34%, 150px) - 60px);
+}
+.rc-stage .rc-fitness[hidden] { display:none; }
+.rc-fitness-row {
+  display:flex; align-items:baseline; gap:.45em; flex-wrap:wrap;
+  padding:4px 8px; border-radius:4px; border-inline-start:3px solid #99e3ba;
+  background:rgba(13,31,35,.93); color:#bdf5d0; font:700 clamp(12px,1.25vw,15px)/1.35 system-ui,sans-serif;
+}
+.rc-fitness-row.weak { border-color:#95c5de; color:#c4e5fb; }
+.rc-fitness-row span { color:#f6f4e9; font-size:.9em; }

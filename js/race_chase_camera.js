@@ -14,7 +14,7 @@ const RC_FRONT_HEADS = {
   momu:[.86,.35,.69,.74], murasame:[.83,.35,.71,.79], nagi:[.84,.29,.59,.75],
   phenix:[.84,.50,1.00,.84], poro:[.78,.35,.70,.78], raijin:[.84,.31,.59,.79],
   raika:[.82,.32,.65,.78], raiou:[.83,.32,.65,.80], reppu:[.84,.29,.56,.73],
-  rosso:[.86,.34,.59,.75], rubel:[.87,.52,.52,.74], sazare:[.84,.31,.62,.74],
+  rosso:[.86,.34,.59,.75], rubel:[.87,.52,.66,.74], sazare:[.84,.31,.62,.74],
   senpu:[.84,.32,.60,.73], seram:[.89,.34,.52,.76], shakunetsu:[.83,.35,.70,.76],
   shio:[.85,.29,.58,.74], shirahae:[.85,.34,.67,.80], sora:[.84,.29,.60,.75],
   souten:[.85,.34,.68,.79], stella:[.84,.31,.62,.80], susu:[.84,.33,.65,.74],
@@ -975,7 +975,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
     const obstacles=bodyBounds.slice();
     if(viewport.width && viewport.height){
       const scaleX=w/viewport.width,scaleY=h/viewport.height;
-      for(const selector of [".rc-hud","#rc-board","#rc-yt","#rc-mine","#rc-play"]){
+      for(const selector of [".rc-hud","#rc-board","#rc-yt","#rc-mine","#rc-play",".rc-fitness"]){
         const box=ctx.canvas.closest(".rc-stage").querySelector(selector)?.getBoundingClientRect();
         if(box?.height)obstacles.push({left:(box.left-viewport.left)*scaleX,right:(box.right-viewport.left)*scaleX,
           top:(box.top-viewport.top)*scaleY,bottom:(box.bottom-viewport.top)*scaleY});

@@ -265,13 +265,18 @@ function rcChaseHead(T,id,body,img,canvas,rect,b,k,depth,nx,ny,flank,texture){
       const x=skirt?cut:end-(end-join)*Math.pow(Math.abs(q),exponent);
       const sx=(rect.x-b.x+x*rect.w)/b.w,sy=(rect.y-b.y+y*rect.h)/b.h;
       const base=depth[clamp(Math.round(sy*ny),0,ny)*(nx+1)+clamp(Math.round(sx*nx),0,nx)];
-      pos.push((sx-.5)*b.w*k,(1-sy)*b.h*k,-q*(skirt?base:extent*width));
+      // Rubel's long, low neck blends into a deeper cheek. Keep the seam and
+      // tip of the nose registered to the side art and the finish line.
+      const cheekLift = id === "rubel" ? .20 * T.MathUtils.smoothstep(x, cut, eyeX) * (eyeY-y) : 0;
+      pos.push((sx-.5)*b.w*k,(1-sy)*b.h*k+cheekLift*rect.h*k,-q*(skirt?base:extent*width));
       // Correct the length foreshortening of the illustrated muzzle on a turn.
       // The neck seam stays fixed. Both views still share one depth surface.
       const muzzle=Math.max(0,1-Math.pow((v-noseV)/.58,2));
-      const faceX=eyeX+.045+.078*muzzle-.085*q*q;
-      const faceY=eyeY+(v-eyeV)*relativeHeight;
-      turnPose.push(skirt?0:(faceX-x)*rect.w*k,skirt?0:(y-faceY)*rect.h*k,0);
+      // The short snout on Rubel's portrait sits close to the brow. Too much
+      // forward relief hides the eyes when seen from above the leaders.
+      const faceX=eyeX+.045+(id==="rubel"?.046:.078)*muzzle-.085*q*q;
+      const faceY=eyeY+(v-eyeV)*relativeHeight-(id==="rubel"?.032:0);
+      turnPose.push(skirt?0:(faceX-x)*rect.w*k,skirt?0:(y-cheekLift-faceY)*rect.h*k,0);
       uv.push(.5+q*extent,1-v);sideUV.push(sx,1-sy);rim.push(skirt?1:0);cheek.push(Math.abs(q));
       if(j && i>=0){const a=pos.length/3-1;idx.push(a-cols-1,a-1,a,a-cols-1,a,a-cols);}
     }

@@ -28,8 +28,8 @@ function rcLoadChaseRuntime(){
     "js/vendor/three-r160.min.js",
     "js/race_chase_landscape.js?v=20261127h",
     "js/race_chase_legs.js?v=20261128d",
-    "js/race_chase_head.js?v=20261128b",
-    "js/race_chase_camera.js?v=20261128f"
+    "js/race_chase_head.js?v=20261128h",
+    "js/race_chase_camera.js?v=20261128h"
   ];
   return Promise.all(sources.map(src=>{
     if(!rcChaseScripts.has(src)){
@@ -1900,6 +1900,7 @@ function startRaceCanvas(container, ctx) {
     <div class="rc-stage">
       <canvas id="rc-canvas"></canvas>
       <div class="rc-chase-surface" aria-hidden="true"><canvas class="rc-chase-labels"></canvas></div>
+      <div class="rc-fitness" hidden></div>
       <div class="rc-camera-loading"><span role="status">出走竜を準備中…</span><button type="button" hidden>実況のみで発走</button></div>
       <button class="rc-play" id="rc-play" title="再生/一時停止">⏸</button>
     </div>
@@ -1981,6 +1982,50 @@ function startRaceCanvas(container, ctx) {
     mineEl.classList.toggle("in-zone", !!(exp && exp.inZone));
     mineEl.classList.toggle("multi", ids.length > 1);
     mineEl.hidden = false;
+  }
+  // This caption belongs to the race, so it survives an angle or camera change.
+  const fitnessCaption = wrap.querySelector(".rc-fitness");
+  const fitnessRows = new Map();
+  function clearFitness() {
+    fitnessRows.clear();
+    fitnessCaption.replaceChildren();
+    fitnessCaption.hidden = true;
+  }
+  function showRaceCue(id, text, weak, section) {
+    if (!section && fitnessRows.has(id)) return false;
+    if (!fitnessRows.has(id) && fitnessRows.size >= 2) {
+      if (!betSet.has(id)) return false;
+      const other = [...fitnessRows.keys()].find(shown => !betSet.has(shown));
+      if (other == null) return false;
+      fitnessRows.get(other).node.remove();
+      fitnessRows.delete(other);
+    }
+    const row = fitnessRows.get(id)?.node || el("div", "rc-fitness-row");
+    row.classList.toggle("weak", weak);
+    row.replaceChildren(el("span", "", commentaryName(id)), el("strong", "", text));
+    fitnessCaption.appendChild(row);
+    fitnessRows.set(id, {node: row, remaining: section ? 3.2 : 2.1});
+    fitnessCaption.hidden = false;
+    return true;
+  }
+  function updateFitness(prevTau, dt, standings) {
+    for (const [id, row] of fitnessRows) {
+      row.remaining -= dt;
+      if (row.remaining > 0) continue;
+      row.node.remove();
+      fitnessRows.delete(id);
+    }
+    for (const [place, id] of standings.entries()) {
+      if (place >= 2 && !betSet.has(id)) continue;
+      const p = timeline.progressAt(id, S.tau);
+      const third = thirdAtP(p);
+      if (p >= 1 || (prevTau > 0 && thirdAtP(timeline.progressAt(id, prevTau)) === third)) continue;
+      const fit = dragonFitnessAtP(id, p);
+      if (!fit) continue;
+      showRaceCue(id, STAT_JP[_sectionStat[third]] + (fit > 0 ? "が得意！" : "は苦手…"), fit < 0, true);
+    }
+    const hidden = fitnessRows.size === 0;
+    if (fitnessCaption.hidden !== hidden) fitnessCaption.hidden = hidden;
   }
   const controlsEl = wrap.querySelector("#rc-controls");
   const finishStripEl = wrap.querySelector("#rc-finishstrip");
@@ -2791,9 +2836,17 @@ function startRaceCanvas(container, ctx) {
   // past 1 (coasting, decelerating) from the moment IT crossed, so the field flows
   // through the line in finishing order. Presentation only: the official order is
   // already fixed by timeline.crossings and the result screen is authoritative.
-  const RUNOUT_SMO     = 0.40;  // DEEPEST slow-mo, right at the wire; lifts to 1 over RUNOUT_RELEASE
-  const RUNOUT_RELEASE = 0.40;  // coast-clock units over which slow-mo lifts back to NORMAL speed
-                                // → slow-motion is only a brief beat AT the goal, then a normal run-through
+  // Ease through the winner's actual crossing in race seconds, at any playback speed.
+  function finishRate() {
+    const win = timeline.crossings[0];
+    if (!win || S.finished) return 1;
+    const coast = S.crossClock[win.id];
+    const ramp = coast == null
+      ? (win.tau - S.tau) * timeline.durationSecHint / .90
+      : (coast - .12) / .80;
+    const u = clamp(ramp, 0, 1);
+    return .32 + .68 * u * u * (3 - 2 * u);
+  }
   const RUNOUT_COAST   = 0.09;  // progress coasted past the wire (tuned so the normal-speed run-out ≈ gallop)
   const RUNOUT_TAU     = 4.6;   // gentle pull-up constant
   const RUNOUT_DUR     = 2.2;   // run-out + post-goal celebration window before the result
@@ -4874,10 +4927,7 @@ function startRaceCanvas(container, ctx) {
     // a cinematic slow-mo gallop-through with FULL stride & effort — not the dragons
     // tiring. Applied uniformly to gait / particles / coast / τ so nothing desyncs.
     const _winId = timeline.crossings.length ? timeline.crossings[0].id : null;
-    // Goal slow-motion REMOVED — the finish and the gallop-through play at normal
-    // speed; the post-goal beat is carried by celebration / pull-up behavior instead.
-    const smo = 1;
-    const sdt = dt * smo;
+    const sdt = dt * finishRate();
 
     // gait clocks advance with each dragon's speed (slowed in slow-mo, but FULL stride —
     // never a tired cadence drop)
@@ -5010,9 +5060,7 @@ function startRaceCanvas(container, ctx) {
     }
 
     const prevTau = S.tau;
-    // advance τ at full speed through the wire (goal slow-motion removed — the
-    // finish reads as a real gallop-through, then celebration / pull-up behavior)
-    let adv = dt * S.speed / timeline.durationSecHint;
+    const adv = sdt * S.speed / timeline.durationSecHint;
     S.tau = Math.min(1, S.tau + adv);
 
     // --- phase-entry banner: a sweeping caption as the field rolls into a new
@@ -5039,20 +5087,11 @@ function startRaceCanvas(container, ctx) {
         const dname = STAT_JP[_sectionStat[third]] || "総合力";
         S.terrainSign = { icon: info.icon, label: label, demand: dname + "が問われる", key: tkey, t: 0, max: 2.8 };
         if (info.turn) S.shake = Math.max(S.shake, 1.6);
-        // tell the player how THEIR pick fits this section — so the course's effect
-        // becomes something they can carry into the next prediction.
-        for (const dr of dragons) {
-          if (!betSet.has(dr.id)) continue;
-          const fit = dragonFitnessAtP(dr.id, leadPnow);
-          if (!fit) continue;
-          const gp = trackGeom();
-          const xx = clamp(screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3), cw * 0.12, cw * 0.88);
-          const yy = laneY(dr, gp) - 22;
-          if (fit > 0) addFloat(xx, yy, dname + "が得意！", "#9bffa0", true);
-          else addFloat(xx, yy, dname + "は苦手…", "#9bd4ff", false);
-        }
       }
     }
+
+    const standNow = timeline.standingsAt(S.tau);
+    updateFitness(prevTau, dt, standNow);
 
     // detect crossings between prevTau and S.tau
     for (const cr of timeline.crossings) {
@@ -5080,6 +5119,11 @@ function startRaceCanvas(container, ctx) {
         }
       }
     }
+    function showFormEvent(dr, y, text, color, weak) {
+      const watched = betSet.has(dr.id) || standNow[0] === dr.id || standNow[1] === dr.id;
+      if (watched && !S.tapeBroken && showRaceCue(dr.id, text, weak, false)) return;
+      addFloat(screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3), y, text, color);
+    }
     // shout on stumble/surge moments (once each)
     for (const dr of dragons) {
       const ownU = Math.min(1, S.tau / dr.finishTau);
@@ -5090,19 +5134,18 @@ function startRaceCanvas(container, ctx) {
           ev._shouted = true;
           S.shake = Math.max(S.shake, 2.5);
           const gp = trackGeom(); const y = laneY(dr, gp) - 18;
-          addFloat(screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3), y, "つまずいた！", "#ff9a8a");
+          showFormEvent(dr, y, "つまずいた！", "#ff9a8a", true);
           S.pops.push({ x: screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3) + 14, y: y - 14, tx: "💫", c: "#fff", t0: performance.now() / 1000, sz: 13 });   // 目回し
         }
         if (ev.type === "surge" && prevU < ev.u && ownU >= ev.u && dr.rank <= 4) {
           ev._shouted = true;
           const gp = trackGeom(); const y = laneY(dr, gp) - 18;
-          addFloat(screenX(timeline.progressAt(dr.id, S.tau), S._winw || 0.3), y, "伸びる！", "#aef2b0");
+          showFormEvent(dr, y, "伸びる！", "#aef2b0", false);
         }
       }
     }
 
     // --- overtake & close-battle drama (presentation only; order is fixed) ---
-    const standNow = timeline.standingsAt(S.tau);
     if (S.overT > 0) S.overT -= dt;
     if (S.prevStand && S.overT <= 0 && S.tau > 0.08 && S.tau < 0.99) {
       for (let i = 0; i < standNow.length; i++) {
@@ -5178,6 +5221,7 @@ function startRaceCanvas(container, ctx) {
   }
 
   function onAllFinished() {
+    clearFitness();
     S.finished = true;
     if (!S.finishedAt) S.finishedAt = performance.now();   // 省電力：ゴール後しばらくしたら描く回数を減らす（frame の頭）
     S.finishedAnnounced = true;
@@ -5441,6 +5485,7 @@ function startRaceCanvas(container, ctx) {
     // scrubber / verification; settles the eased camera so the static frame is
     // framed correctly.
     seek(t) {
+      clearFitness();
       S.playing = false;
       boardLastArrange=-1;
       broadcastLabels=Object.create(null);
