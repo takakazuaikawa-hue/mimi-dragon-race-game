@@ -821,9 +821,21 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
     const finishTarget=finishOrigin.clone().addScaledVector(normal,lateralFocus);
     finishTarget.y+=2.8;
     if(finishCamera){
+      // Pan alongside the noses. A fixed target at the stripe forced the lens
+      // extremely wide until the runners actually arrived there.
+      const liveTarget=finishTarget.clone();
+      let pan=0;
+      if(!photo){
+        const lead=offset.subVectors(first,finishOrigin).dot(forward);
+        const gap=Math.max(0,offset.subVectors(first,second).dot(forward));
+        pan=lead-Math.min(gap*.5,3)+1.7;
+        liveTarget.addScaledVector(forward,pan);
+        liveTarget.y=first.y+2.1;
+      }
       const photoPosition=finishOrigin.clone().addScaledVector(normal,width+24);
       photoPosition.y+=10.5;
-      target.lerp(finishTarget,finishCamera);camera.position.lerp(photoPosition,finishCamera);
+      photoPosition.addScaledVector(forward,pan);
+      target.lerp(liveTarget,finishCamera);camera.position.lerp(photoPosition,finishCamera);
     }
     camera.lookAt(target);
     if(directing && !photo){
@@ -850,12 +862,18 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       for(const id of standings.slice(0,2)){
         const model=models.get(id);if(!model)continue;
         model.group.updateWorldMatrix(true,true);
+        const leadFit=fit;
         for(const point of model.outline){eye.copy(point).applyMatrix4(model.body.matrixWorld);framePoint();}
         for(const wing of model.wings)for(const i of wing.rim){
           eye.fromBufferAttribute(wing.geo.attributes.position,i).applyMatrix4(wing.mesh.matrixWorld);framePoint();
         }
         for(const leg of model.legRig?.legs || []){
           eye.set(leg.tipX,leg.tipY,leg.tipZ).applyMatrix4(leg.ankle.matrixWorld);framePoint();
+        }
+        if(id===standings[1] && finishCamera){
+          const gap=Math.max(0,offset.subVectors(first,second).dot(forward));
+          const solo=T.MathUtils.smoothstep(gap,4,12)*finishCamera;
+          fit=T.MathUtils.lerp(fit,Math.min(fit,Math.max(.32,leadFit*1.18)),solo);
         }
       }
       fit=Math.max(fit,5.1/(lensRange*tanV));
@@ -915,7 +933,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       photoLens.position.y+=9.3;photoLens.lookAt(center);
       photoLens.updateMatrixWorld();lens=photoLens;
     }
-    renderer.clippingPlanes=finishCamera>.98?[nearVerge]:[];
+    renderer.clippingPlanes=photo?[nearVerge]:[];
     const outdoorFog=scene.fog;
     if(photo){
       // The parallel lens would magnify a distant cliff to the same size
@@ -1015,6 +1033,8 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
     }
     for(const id of nameplates.keys())if(id!==standings[0] && id!==standings[1])nameplates.delete(id);
     pair.forEach(({label,x,y,box,anchor,above,shift},i)=>{
+      const body=bodyBounds[i];
+      if(finishCamera && (body.right<0 || body.left>w))return;
       const id=standings[i],previous=nameplates.get(id);
       const width=box.right-box.left,height=box.bottom-box.top;
       if(previous){

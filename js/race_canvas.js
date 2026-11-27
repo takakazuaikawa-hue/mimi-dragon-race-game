@@ -29,7 +29,7 @@ function rcLoadChaseRuntime(){
     "js/race_chase_landscape.js?v=20261127h",
     "js/race_chase_legs.js?v=20261128d",
     "js/race_chase_head.js?v=20261128h",
-    "js/race_chase_camera.js?v=20261128h"
+    "js/race_chase_camera.js?v=20261128i"
   ];
   return Promise.all(sources.map(src=>{
     if(!rcChaseScripts.has(src)){
