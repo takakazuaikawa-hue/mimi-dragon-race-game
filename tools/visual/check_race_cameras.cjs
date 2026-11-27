@@ -52,6 +52,7 @@ async function verify() {
       // Observe calls through the real renderer, including whether the GPU
       // actually drew the chase views. Just checking the buttons misses a
       // silent return to the normal broadcast when art or WebGL is missing.
+      await page.waitForFunction(()=>state.current.racePlayer?.cameraReady,null,{timeout:90000});
       const frames = await page.evaluate(() => {
         const race = state.current.race, course = rcChaseCourse(race);
         for (const progress of [0, 1/3, 2/3, 1]) {
@@ -61,11 +62,16 @@ async function verify() {
             if (!(Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z)<.04)) throw Error(race.id+" discontinuous course");
           }
         }
-        // Count completed WebGL frames copied to the broadcast canvas.
+        // Count rendered panorama/dragon frames through the native WebGL surface.
         const original = CanvasRenderingContext2D.prototype.drawImage;
-        let rendered = 0, vistas=0, checkedPanorama=false;
+        let rendered = 0, lastFrame=-1, vistas=0, checkedPanorama=false;
+        const surface=document.querySelector(".rc-chase-surface");
         const before=THREE.Mesh.prototype.onBeforeRender;
         THREE.Mesh.prototype.onBeforeRender=function(...args){
+          const renderer=args[0];
+          if(surface.classList.contains("is-live") && renderer.domElement.parentElement===surface && lastFrame!==renderer.info.render.frame){
+            lastFrame=renderer.info.render.frame;rendered++;
+          }
           if(!checkedPanorama && this.material?.map?.name==="venue-panorama"){
             const image=this.material.map.image;
             const row=image.getContext("2d").getImageData(0,Math.floor(image.height*.48),image.width,1).data;
@@ -97,7 +103,6 @@ async function verify() {
             if(x>.01 || y>.01 || x+w<width-.01 || y+h<height-.01)throw Error(race.id+" exposed scenic edge");
             vistas++;
           }
-          if (this.canvas.id === "rc-canvas" && source?.dataset?.engine?.startsWith("three.js")) rendered++;
           return original.call(this,source,...rest);
         };
         try {
@@ -143,7 +148,9 @@ async function verify() {
       await page.getByRole("button",{name:"決勝写真"}).click();
       const result = await page.evaluate(() => ({
         photo: document.querySelector(".rc-wrap").classList.contains("rc-photo"),
-        clearLine: document.querySelector("#rc-goalband").hidden,
+        clearLine: document.querySelector("#rc-finishstrip .rc-fs-winner").getBoundingClientRect().top >=
+          document.querySelector("#rc-canvas").getBoundingClientRect().bottom-1 &&
+          !document.querySelector("#rc-finishstrip details").open,
         photoInView: document.querySelector("#rc-canvas").getBoundingClientRect().top>=-1 &&
           document.querySelector("#rc-canvas").getBoundingClientRect().bottom<=innerHeight+1,
         callVisible: Number(getComputedStyle(document.querySelector("#rc-yt")).opacity)>.8 &&

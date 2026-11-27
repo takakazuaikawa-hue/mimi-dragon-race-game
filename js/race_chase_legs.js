@@ -101,10 +101,13 @@ function rcChaseLegs(T,id,body,canvas,rect,b,k,texture,winged){
       const mid=T.MathUtils.lerp(low.mid,high.mid,u),radius=T.MathUtils.lerp(low.radius,high.radius,u);
       const paint=samples[j]||(u<.5?low:high),t=j/rows,y=top+(sole-top)*t;
       const pad=T.MathUtils.smoothstep(t,.66,.86);
-      const depth=Math.min(fore?.245:.27,radius*k*(.86+.39*pad));
+      // The shoulder carries the mass. Below the elbow the forearm narrows
+      // into a wrist, then turns forwards into a shallow palm.
+      const taper=fore ? 1-.47*T.MathUtils.smoothstep(t,.45,.87) : 1;
+      const depth=fore ? Math.min(.22,radius*k*.83)*taper : Math.min(.27,radius*k*(.86+.39*pad));
       for(let i=0;i<=sections;i++){
         const a=i*Math.PI*2/sections,cos=Math.cos(a),sin=Math.sin(a);
-        const sampleX=mid+cos*radius;
+        const sampleX=mid+cos*radius*taper;
         const x=(sampleX-b.w/2)*k,my=modelY(y);
         const z=side*(flank+spread*T.MathUtils.smoothstep(t,.24,.88))+sin*depth;
         positions.push(x,my,z);
@@ -116,10 +119,10 @@ function rcChaseLegs(T,id,body,canvas,rect,b,k,texture,winged){
         joints.push(joint,joint+1,joint+2,0);weights.push(1-lower,lower-foot,foot,0);
         if(j && i){const v=positions.length/3-1;indices.push(v-sections-2,v-1,v,v-sections-2,v,v-sections-1);}
       }
-      if(samples[j] && t>=.82){
+      if(samples[j] && (t>=.82 || j===lastSolid)){
         tip={x:(mid-b.w/2)*k,y:modelY(y)};
-        contacts.push([tip.x-radius*k-root.position.x-hinge.position.x-ankle.position.x,tip.y-root.position.y-hinge.position.y-ankle.position.y],
-                      [tip.x+radius*k-root.position.x-hinge.position.x-ankle.position.x,tip.y-root.position.y-hinge.position.y-ankle.position.y]);
+        contacts.push([tip.x-radius*k*taper-root.position.x-hinge.position.x-ankle.position.x,tip.y-root.position.y-hinge.position.y-ankle.position.y],
+                      [tip.x+radius*k*taper-root.position.x-hinge.position.x-ankle.position.x,tip.y-root.position.y-hinge.position.y-ankle.position.y]);
       }
     }
     // Close the ring at each end; the upper cap stays inside the shoulder.
@@ -127,6 +130,36 @@ function rcChaseLegs(T,id,body,canvas,rect,b,k,texture,winged){
       for(let i=1;i<sections-1;i++)indices.push(offset,offset+i,offset+i+1);
     }
     if(!tip)tip={x:modelX(toe),y:modelY(sole)};
+    if(fore){
+      // Three digits share the ankle bone and atlas. They fan apart from the
+      // palm, with a raised knuckle and a short, downturned distal phalanx.
+      const size=T.MathUtils.clamp(rect.h*k*.105,.15,.35)*(id==="poro"?.72:curled?1.16:1);
+      const swatch=samples[lastSolid];
+      const baseZ=side*(flank+spread);
+      const ankleX=root.position.x+hinge.position.x+ankle.position.x;
+      const ankleY=root.position.y+hinge.position.y+ankle.position.y;
+      for(const digit of [-1,0,1]){
+        const start=positions.length/3;
+        const length=size*(digit===0?1:.81),width=size*(id==="poro"?.18:.145);
+        for(let j=0;j<=6;j++){
+          const t=j/6, rad=width*(1-.97*t)*(.82+.42*Math.sin(Math.PI*t));
+          const x=tip.x+length*(t-.18);
+          const y=tip.y+size*(.20+.18*Math.sin(Math.PI*t)-.20*t*t);
+          const z=baseZ+digit*size*(.13+.40*t);
+          for(let n=0;n<=8;n++){
+            const angle=n*Math.PI/4,cos=Math.cos(angle),sin=Math.sin(angle);
+            positions.push(x,y+sin*rad,z+cos*rad);
+            uv.push((swatch.mid+cos*swatch.radius*.45-ax+.5)/aw,1-(swatch.row-ay+.5)/ah);
+            const light=.80+.16*sin+.20*t*t;
+            colors.push(light,light,light*.97);
+            joints.push(joint+2,0,0,0);weights.push(1,0,0,0);
+            if(j && n){const v=start+j*9+n;indices.push(v-10,v-1,v,v-10,v,v-9);}
+          }
+          contacts.push([x-ankleX,y-rad-ankleY]);
+        }
+      }
+      tip.x+=size*.82;
+    }
     const tipX=tip.x-root.position.x-hinge.position.x-ankle.position.x,tipY=tip.y-root.position.y-hinge.position.y-ankle.position.y;
     if(!contacts.length)contacts.push([tipX,tipY]);
     const upper=hinge.position,lower=ankle.position;

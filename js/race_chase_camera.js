@@ -664,22 +664,30 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
     const model=createDragon(dr,rig);models.set(dr.id,model);return model;
   }
   let frozenFrame=null;
+  const nameplates=new Map();
+  let labelWidth=0, labelHeight=0, labelPhoto=false;
   let lastTau=-1, lastWidth=0,lastHeight=0, lastHeadDistance=0;
   let shotSide=1, directorYaw=0, liftAngle=0, lastRange=0, lastFit=0, wasDirecting=false;
-  function draw(ctx,w,h,degrees,tau,progressAt,standings,directing,photo=false,lowSpec=false){
+  // Course progress keeps the shot reproducible at every playback speed and on seek.
+  const middlePullStart=Math.max(.36,flight.start-.05);
+  function pullAt(progress,start){
+    return T.MathUtils.smoothstep(progress,start,start+.065)*
+      (1-T.MathUtils.smoothstep(progress,start+.115,start+.18));
+  }
+  function draw(ctx,w,h,degrees,tau,progressAt,standings,directing,photo=false,lowSpec=false,gapLabel=""){
     lakeClock.value=tau*55;
     festivalClock.value=quietScenery?0:tau*55;
     const stationary=tau===lastTau;
-    const key=[tau,w,h,directing?0:degrees,directing,photo,lowSpec,progressAt(standings[0]),progressAt(standings[1])].join("|");
-    if(frozenFrame?.key===key){
-      ctx.drawImage(frozenFrame.canvas,0,0,w,h);return;
-    }
+    const key=[tau,w,h,directing?0:degrees,directing,photo,lowSpec,progressAt(standings[0]),progressAt(standings[1]),gapLabel,ctx.canvas.width,ctx.canvas.height].join("|");
+    if(frozenFrame===key)return false;
     let a=degrees*Math.PI/180;
     const points=new Map(), head=progressAt(standings[0]);
     let leadersLift=0;
     const headDistance=distanceAt(head);
     const finishBlend=T.MathUtils.smoothstep(head,.90,.985);
     const finishCamera=directing ? finishBlend : 0;
+    const pull=directing && !photo && !quietScenery ?
+      Math.max(pullAt(head,middlePullStart),pullAt(head,.735)) : 0;
     const headPoint=coursePoint(headDistance,0);
     for(const dr of dragons){
       const gap=headDistance-distanceAt(progressAt(dr.id));
@@ -750,7 +758,13 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       for(const {geo} of m.wings)geo.attributes.position.needsUpdate=true;
     }
     const first=points.get(standings[0]),second=points.get(standings[1]);
-    look.addVectors(first,second).multiplyScalar(.5);look.y+=2.95-leadersLift*.22;
+    look.addVectors(first,second).multiplyScalar(.5);
+    if(pull && standings.length>2){
+      const third=points.get(standings[2]),fourth=points.get(standings[3])||third;
+      offset.addVectors(third,fourth).multiplyScalar(.5).sub(look).clampLength(0,12);
+      look.addScaledVector(offset,.60*pull);
+    }
+    look.y+=2.95-leadersLift*.22;
     const reset=lastTau<0 || tau<lastTau || tau-lastTau>.025;
     const dt=reset?1:Math.min(1,(tau-lastTau)*55);
     if(reset)focus.copy(look);
@@ -775,7 +789,9 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       const gap=Math.max(0,headDistance-distanceAt(progressAt(standings[1])));
       const duel=1-T.MathUtils.smoothstep(gap,3,30);
       const laneRoom=T.MathUtils.smoothstep(Math.abs(lanes[standings[0]]-lanes[standings[1]])*laneSpacing,2,10);
-      const bearing=.46+duel*(.28+.48*laneRoom)+.07*Math.sin(tau*18);
+      const closeBearing=.46+duel*(.28+.48*laneRoom)+.07*Math.sin(tau*18);
+      // From the high shot, see the field advance across the frame as well as into it.
+      const bearing=T.MathUtils.lerp(closeBearing,.48,.52*pull);
       const desired=shotSide>0?bearing:Math.PI-bearing;
       directorYaw=newShot?desired:directorYaw+(desired-directorYaw)*(1-Math.exp(-dt*2.4));
       a=directorYaw;
@@ -786,7 +802,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
     const across=Math.abs(dx*Math.cos(yaw)-dz*Math.sin(yaw));
     const depth=Math.abs(dx*Math.sin(yaw)+dz*Math.cos(yaw));
     const baseLift=grandclock?.047:.062;
-    const desiredLift=baseLift+(directing?.165:.085)*(1-T.MathUtils.smoothstep(across,2,8));
+    const desiredLift=baseLift+.26*pull+(directing?.165:.085)*(1-T.MathUtils.smoothstep(across,2,8));
     liftAngle=newShot?desiredLift:T.MathUtils.lerp(liftAngle,desiredLift,1-Math.exp(-dt*3));
     const verticalRange=(Math.abs(first.y-second.y)+7.2)/(2*Math.tan(Math.PI/10));
     const needed=Math.max(14,(across+11)/(2*Math.tan(Math.PI/10)*camera.aspect)*1.14+depth*.55,depth*.8+8,verticalRange+depth*.5);
@@ -795,7 +811,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
     lastRange=range;
     // When the pair is several lanes deep, stand farther back and tighten
     // the lens together. Both noses then have comparable apparent size.
-    const lensRange=range+Math.min(range,depth*.85)*(1-finishCamera);
+    const lensRange=range*(1+.24*pull)+Math.min(range,depth*.85)*(1-finishCamera);
     camera.fov=2*Math.atan(Math.tan(Math.PI/10)*range/lensRange)*180/Math.PI;
     camera.updateProjectionMatrix();
     offset.set(Math.sin(yaw)*lensRange,lensRange*liftAngle+.55,Math.cos(yaw)*lensRange);
@@ -843,6 +859,19 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
         }
       }
       fit=Math.max(fit,5.1/(lensRange*tanV));
+      if(pull){
+        // Fit the chasing group only as far as the two leaders remain readable.
+        const pairFit=fit, overviewLimit=camera.aspect<1 ? 1.40 : 1.58;
+        for(let i=2;i<Math.min(4,standings.length);i++){
+          const model=models.get(standings[i]);
+          if(!model)continue;
+          model.body.updateWorldMatrix(true,false);
+          for(const x of [-3,3]){
+            eye.set(x,2,0).applyMatrix4(model.body.matrixWorld);framePoint();
+          }
+        }
+        fit=T.MathUtils.lerp(pairFit,T.MathUtils.clamp(fit,pairFit*1.16,pairFit*overviewLimit),pull);
+      }
       if(!newShot && dt>0)fit=Math.max(fit,T.MathUtils.lerp(lastFit,fit,1-Math.exp(-dt*2.6)));
       lastFit=fit;
       camera.fov=2*Math.atan(tanV*fit)*180/Math.PI;
@@ -860,7 +889,8 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       model.face.userData.mix.value=blend;
     }
     // Keep the 2D names and commentary at native resolution on slow devices.
-    const density=lowSpec && !photo ? .72 : Math.min(2,window.devicePixelRatio||1);
+    const nativeDensity=window.devicePixelRatio||1;
+    const density=photo ? Math.min(2,nativeDensity) : lowSpec ? .72 : Math.min(1.5,nativeDensity);
     const rw=Math.round(w*density),rh=Math.round(h*density);
     if(rw!==lastWidth||rh!==lastHeight){renderer.setSize(rw,rh,false);lastWidth=rw;lastHeight=rh;}
     camera.updateMatrixWorld();
@@ -894,7 +924,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
     }
     if(reflection && !photo)reflection.render(renderer,scene,lens,waterSurface,models,rw,rh,lowSpec);
     renderer.render(scene,lens);scene.fog=outdoorFog;
-    ctx.drawImage(renderer.domElement,0,0,w,h);
+    ctx.clearRect(0,0,w,h);
     ctx.save();
     if(race.weather==="rain" || race.weather==="thunder"){
       ctx.strokeStyle="rgba(203,224,242,.34)";ctx.lineWidth=1;ctx.beginPath();
@@ -946,7 +976,7 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
     if(viewport.width && viewport.height){
       const scaleX=w/viewport.width,scaleY=h/viewport.height;
       for(const selector of [".rc-hud","#rc-board","#rc-yt","#rc-mine","#rc-play"]){
-        const box=ctx.canvas.parentElement.querySelector(selector)?.getBoundingClientRect();
+        const box=ctx.canvas.closest(".rc-stage").querySelector(selector)?.getBoundingClientRect();
         if(box?.height)obstacles.push({left:(box.left-viewport.left)*scaleX,right:(box.right-viewport.left)*scaleX,
           top:(box.top-viewport.top)*scaleY,bottom:(box.bottom-viewport.top)*scaleY});
       }
@@ -955,8 +985,12 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       return Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left))*
         Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
     }
+    const now=performance.now();
+    if(newShot || photo!==labelPhoto || w!==labelWidth || h!==labelHeight || stationary)nameplates.clear();
+    labelWidth=w;labelHeight=h;labelPhoto=photo;
     const candidates=bodyBounds.map((body,i)=>{
-      const label=(i+1)+"位 "+commentaryName(standings[i]),width=ctx.measureText(label).width+14;
+      const previous=nameplates.get(standings[i]);
+      const label=(i+1)+"位 "+commentaryName(standings[i])+(gapLabel && i===(gapLabel==="先頭交代"?0:1)?"  "+gapLabel:""),width=ctx.measureText(label).width+14;
       const height=font+7,cx=(body.left+body.right)/2;
       const options=[];
       for(const above of [false,true])for(const shift of [0,-.58,.58]){
@@ -967,7 +1001,10 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
         const y=T.MathUtils.clamp(edge+(above?-1:1)*(height/2+5),height/2+4,h-height/2-4);
         const box={left:x-width/2,right:x+width/2,top:y-height/2,bottom:y+height/2};
         const score=obstacles.reduce((v,o)=>v+overlap(box,o),0)*4+Math.abs(x-anchor.x)+Math.abs(y-anchor.y)+(above?12:0);
-        options.push({label,x,y,box,score,anchor,above});
+        // A sliver of overlap or a moving foot is not enough to move a plate
+        // to the other side. Keep the preference with the dragon at an overtake.
+        const changeCost=previous ? (above!==previous.above?540:0)+(shift!==previous.shift?180:0) : 0;
+        options.push({label,x,y,box,score:score+changeCost,anchor,above,shift});
       }
       return options;
     });
@@ -976,34 +1013,58 @@ function rcChaseCamera(race, dragons, lanes, flight, portraits=rcLoadRaceFronts(
       const score=firstLabel.score+secondLabel.score+12*overlap(firstLabel.box,secondLabel.box);
       if(score<lowest){lowest=score;pair=[firstLabel,secondLabel];}
     }
-    pair.forEach(({label,x,y,box,anchor,above},i)=>{
+    for(const id of nameplates.keys())if(id!==standings[0] && id!==standings[1])nameplates.delete(id);
+    pair.forEach(({label,x,y,box,anchor,above,shift},i)=>{
+      const id=standings[i],previous=nameplates.get(id);
+      const width=box.right-box.left,height=box.bottom-box.top;
+      if(previous){
+        const elapsed=Math.max(0,now-previous.time);
+        // Keep the name steady when the trailing gap text changes length.
+        x=rcFollowRaceLabel(previous.left,x-width/2,elapsed,85,1)+width/2;
+        y=rcFollowRaceLabel(previous.y,y,elapsed,135,2);
+        anchor.x=rcFollowRaceLabel(previous.ax,anchor.x,elapsed,85,1);
+        anchor.y=rcFollowRaceLabel(previous.ay,anchor.y,elapsed,85,1);
+      }
+      x=T.MathUtils.clamp(x,width/2+3,w-width/2-3);
+      y=T.MathUtils.clamp(y,height/2+4,h-height/2-4);
+      nameplates.set(id,{left:x-width/2,y,ax:anchor.x,ay:anchor.y,above,shift,time:now});
+      x=Math.round(x);y=Math.round(y);
+      box={left:x-width/2,right:x+width/2,top:y-height/2,bottom:y+height/2};
       const tint=i?"#e3eef3":"#ffda86";
       ctx.strokeStyle=tint;ctx.lineWidth=1.4;
-      ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(x,above?box.bottom:box.top);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(T.MathUtils.clamp(anchor.x,box.left+5,box.right-5),above?box.bottom:box.top);ctx.stroke();
       ctx.fillStyle=i?"rgba(24,36,43,.94)":"rgba(70,46,16,.94)";
       ctx.fillRect(box.left,box.top,box.right-box.left,box.bottom-box.top);
       ctx.fillStyle=tint;ctx.fillText(label,x,y);
     });
     ctx.restore();
-    if((photo||tau>=1||stationary) && models.size===dragons.length){
-      const canvas=frozenFrame?.canvas||document.createElement("canvas");
-      canvas.width=ctx.canvas.width;canvas.height=ctx.canvas.height;
-      canvas.getContext("2d").drawImage(ctx.canvas,0,0);
-      frozenFrame={key,canvas};
-    }
+    frozenFrame=photo||tau>=1||stationary ? key : null;
+    return true;
   }
-  draw.prepareNext=()=>{
-    const runner=dragons.find(dr=>!models.has(dr.id));
-    if(!runner){
-      // Submit the first draw offscreen while the broadcast shows the starting grid.
-      // The live draw sets its own lens, tracking target and viewport.
-      renderer.setSize(8,8,false);camera.position.set(13,6,12);camera.lookAt(0,2,0);
-      renderer.render(scene,camera);return true;
-    }
+  draw.resetLabels=()=>{nameplates.clear();frozenFrame=null;};
+  draw.surface=renderer.domElement;
+  draw.prepareRunner=runner=>{
     const model=modelFor(runner);
     model?.group.traverse(part=>{if(part.material?.map)renderer.initTexture(part.material.map);});
-    return false;
   };
-  draw.dispose=()=>{disposed=true;reflection?.dispose();const mats=new Set();scene.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();if(o.geometry)o.geometry.dispose();if(o.material)for(const m of [].concat(o.material))mats.add(m);});mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();};
+  // Submitting a shader or texture does not mean the first live frame can use it yet.
+  // Wait on the GPU during the grid preparation without blocking the browser.
+  const gl=renderer.getContext();
+  let warmFence=null;
+  draw.warmupComplete=()=>{
+    if(gl.isContextLost())throw Error("WebGL context lost");
+    if(!gl.fenceSync){gl.finish();return true;}
+    if(!warmFence){
+      warmFence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);
+      if(!warmFence)throw Error("WebGL fence unavailable");
+      gl.flush();
+    }
+    const status=gl.clientWaitSync(warmFence,0,0);
+    if(status===gl.TIMEOUT_EXPIRED)return false;
+    gl.deleteSync(warmFence);warmFence=null;
+    if(status===gl.WAIT_FAILED)throw Error("WebGL warmup failed");
+    return true;
+  };
+  draw.dispose=()=>{disposed=true;if(warmFence)gl.deleteSync(warmFence);reflection?.dispose();const mats=new Set();scene.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.dispose();if(o.geometry)o.geometry.dispose();if(o.material)for(const m of [].concat(o.material))mats.add(m);});mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();};
   return draw;
 }

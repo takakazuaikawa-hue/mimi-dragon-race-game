@@ -27,9 +27,9 @@ function rcLoadChaseRuntime(){
   const sources=[
     "js/vendor/three-r160.min.js",
     "js/race_chase_landscape.js?v=20261127h",
-    "js/race_chase_legs.js?v=20261128b",
+    "js/race_chase_legs.js?v=20261128d",
     "js/race_chase_head.js?v=20261128b",
-    "js/race_chase_camera.js?v=20261128b"
+    "js/race_chase_camera.js?v=20261128f"
   ];
   return Promise.all(sources.map(src=>{
     if(!rcChaseScripts.has(src)){
@@ -110,33 +110,6 @@ function rcSpeak(line, commentator) {
   } catch (e) { return line; }
 }
 
-// ★的中/ハズレの板の下地＝部品シートの飾りバー（2026-08-04・ユーザー提案
-//   「今ある装飾用UIのどれかで装飾できませんか？」）。
-//   意匠板(ui_plaque)も試したが、中の面が横25.7〜74.5%・縦39.5〜73.5%と狭く、
-//   2行（判定＋金額）が入らない。飾りバーは 558x118＝比4.73 で、いま描いている
-//   角丸(252x70＝比3.6)に近く、そのまま下地に置き換えられる。
-//   読めなければ従来の角丸のまま描く（fail-safe・レースの数値には一切触らない）。
-var _rcPlate = (function () {
-  var im = new Image(); var st = { img: im, ok: false };
-  im.onload = function () { st.ok = true; };
-  im.onerror = function () { st.ok = false; };
-  im.src = "images/ui_bar.webp?v=1";
-  return st;
-})();
-// ★ゴール演出の札（2026-09-26・描き込み素材／ChatGPT画像生成）。旧＝飾りバー1枚を色違いで使い回し＋
-//   「🏆1着」の平たい金の角丸で安っぽかった（ユーザー指摘）。1着札／的中／ハズレ／伝説の4枚。
-//   face＝文字を置ける平らな面（w＝横幅に対する割合・y＝縦の中心の位置）。読めなければ従来の描き方。
-var RC_GOAL_ART = { winner_plate: { w: .6, y: .6 }, hit_plate: { w: .56, y: .51, h: .56 }, miss_plate: { w: .72, y: .5 }, legend_plate: { w: .42, y: .54, h: .56 } };   // h＝文字を置ける面の高さ（2行のとき字をこれに収める）
-var _rcGoalArt = (function () {
-  var L = {};
-  Object.keys(RC_GOAL_ART).forEach(function (k) {
-    var im = new Image(); var st = { img: im, ok: false, face: RC_GOAL_ART[k] };
-    im.onload = function () { st.ok = true; };
-    im.src = "images/race_ui/" + k + ".webp?v=1";
-    L[k] = st;
-  });
-  return L;
-})();
 function rcBgForSlug(slug, fbSlug, onReady) {
   var e = _rcBgCache[slug];
   if (!e) {
@@ -1248,7 +1221,11 @@ function rcDrawGate(ctx, o) {
 //   ・前のコマの置き場所（段・幅・横ずれ）を覚え、まだ置けるうちはそこを最優先で使う。
 //   ・置き場所が同じあいだは位置をなめらかに追わせ（縦は強めに）、整数pxに丸める＝文字が震えない。
 //   ・置き場所が替わる時も一瞬で飛ばさず、数コマで滑らせる。表示のみ。
-const _rcLblMem = {};
+function rcFollowRaceLabel(previous, target, elapsedMs, responseMs, deadband) {
+  const delta = target - previous;
+  const travel = Math.max(0, Math.abs(delta) - deadband);
+  return previous + Math.sign(delta) * travel * -Math.expm1(-elapsedMs / responseMs);
+}
 // 竜の色（順位表・出走表と同じ dragonColor）。札の丸に使う。表示のみ。
 const _rcChipColCache = {};
 function _rcChipCol(id) {
@@ -1257,7 +1234,7 @@ function _rcChipCol(id) {
   try { const d = (typeof DRAGONS !== "undefined") ? DRAGONS.find(x => x.id === id) : null; if (d && typeof dragonColor === "function") c = dragonColor(d); } catch (e) {}
   return (_rcChipColCache[id] = c);
 }
-function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
+function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr, memory) {
   if (!lbls.length) return;
   const _lnow = performance.now();
   const m = ctx.getTransform(), k = dpr || 1;
@@ -1294,7 +1271,7 @@ function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
     // 候補（段×幅×横ずれ）を優先順に並べ、前のコマで使った候補を先頭へ＝置けるうちは動かさない
     const cands = [];
     for (let wi = 0; wi < tryW.length; wi++) for (let yi = 0; yi < ys.length; yi++) for (const dx of [0, -0.5, 0.5]) cands.push({ wi: wi, yi: yi, dx: dx });
-    let mem = l.id != null ? _rcLblMem[l.id] : null;
+    let mem = l.id != null ? memory[l.id] : null;
     if (mem && _lnow - mem.t > 600) mem = null;               // しばらく描いていない＝別のレース・別の場面
     if (mem) {
       const j = cands.findIndex(function (q) { return q.wi === mem.wi && q.yi === mem.yi && q.dx === mem.dx; });
@@ -1316,16 +1293,15 @@ function rcDrawRaceLabels(ctx, lbls, bodies, cw, ch, dpr) {
     // 重なり判定は本来の位置で済ませた。描く位置だけ前のコマからなめらかに寄せる。
     if (mem) {
       const same = mem.yi === pick.yi && mem.wi === pick.wi && mem.dx === pick.dx;
-      const ky = same ? 0.22 : 0.35, kx = same ? 0.5 : 0.35;
-      // 同じ置き場所で3px未満の上下は追わない＝竜の羽ばたき・呼吸の揺れで文字が震えない
-      pick.dy = (same && Math.abs(pick.y - mem.y) < 3) ? mem.y : Math.round(mem.y + (pick.y - mem.y) * ky);
-      pick.dxp = Math.round(mem.x + (pick.x - mem.x) * kx);
-    } else { pick.dy = Math.round(pick.y); pick.dxp = Math.round(pick.x); }
-    if (l.id != null) _rcLblMem[l.id] = { wi: pick.wi, yi: pick.yi, dx: pick.dx, x: pick.dxp, y: pick.dy, t: _lnow };
+      const elapsed = Math.max(0, _lnow - mem.t);
+      pick.dxp = rcFollowRaceLabel(mem.x, pick.x, elapsed, 85, same ? 1 : 0);
+      pick.dy = rcFollowRaceLabel(mem.y, pick.y, elapsed, 145, same ? 2.5 : 0);
+    } else { pick.dy = pick.y; pick.dxp = pick.x; }
+    if (l.id != null) memory[l.id] = { wi: pick.wi, yi: pick.yi, dx: pick.dx, x: pick.dxp, y: pick.dy, t: _lnow };
     pick.l = l;
     placed.push(pick);
   });
-  placed.forEach(function (r) { r.x = r.dxp; r.y = r.dy; });   // ここから下は描くだけ
+  placed.forEach(function (r) { r.x = Math.round(r.dxp); r.y = Math.round(r.dy); });   // ここから下は描くだけ
   placed.forEach(function (r) {
     const l = r.l, rad = r.h / 2;
     ctx.globalAlpha = l.a;
@@ -1425,7 +1401,7 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
   const e = RC_DSPRITE[id];
   if (!v2 && (!e || !e.ok || !e.box)) return false;
   const img = v2 ? null : (e.cv || e.img), b = v2 ? v2._bbox : e.box;
-  const H = Math.min(150, cw * 0.34), sc = H / b.h, W = b.w * sc;
+  const H = Math.min(205, cw * .76 * b.h / b.w, baseY * .83), sc = H / b.h, W = b.w * sc;
   const inK = Math.min(1, rt / 0.22);
   const a = inK;   // ★出しっぱなし＝結果を見るまで勝者が生き続ける（フェードアウト廃止・ユーザー指定）
   if (a <= 0) return true;
@@ -1487,36 +1463,6 @@ function rcDrawWinnerCut(ctx, id, cx, baseY, rt, cw) {
     ctx.drawImage(img, b.x + i * sw, b.y, sw, b.h, -W / 2 + i * dw - 0.5, -H + dy, dw + 1, H);
   }
   ctx.restore();
-  // 1着の名札（描き込み素材）。読めていなければ従来の金の角丸。
-  ctx.save();
-  ctx.globalAlpha = a;
-  const nm = (typeof commentaryName === "function") ? commentaryName(id) : id;
-  const wp = _rcGoalArt.winner_plate;
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  if (wp && wp.ok) {
-    const pw = Math.min(W * 1.15, cw * 0.7, 270), ph = pw * wp.img.naturalHeight / wp.img.naturalWidth, py = baseY - ph * 0.2;   // 足もとに少し重ねる＝お立ち台
-    ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
-    ctx.drawImage(wp.img, cx - pw / 2, py, pw, ph);
-    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-    const label = "1着　" + nm, inner = pw * wp.face.w;
-    let f = 18;
-    for (; f > 11; f--) { ctx.font = "bold " + f + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif"; if (ctx.measureText(label).width <= inner) break; }
-    const ty = py + ph * wp.face.y;
-    ctx.lineWidth = 3; ctx.strokeStyle = "rgba(40,6,10,.85)"; ctx.strokeText(label, cx, ty);
-    ctx.fillStyle = "#ffe9ae"; ctx.fillText(label, cx, ty);
-  } else {
-    const label = "1着　" + nm;
-    ctx.font = "bold 16px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-    const tw = ctx.measureText(label).width, rw = tw + 34, rh = 26, ry = baseY + 14;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(cx - rw / 2, ry, rw, rh, 13); else ctx.rect(cx - rw / 2, ry, rw, rh);
-    const rg = ctx.createLinearGradient(0, ry, 0, ry + rh);
-    rg.addColorStop(0, "#ffd465"); rg.addColorStop(1, "#e2a22e");
-    ctx.fillStyle = rg; ctx.fill();
-    ctx.fillStyle = "#2a1d05"; ctx.fillText(label, cx, ry + rh / 2 + 0.5);
-  }
-  ctx.restore();
-
   return true;
 }
 function rcDrawDragon(ctx, o) {
@@ -1668,6 +1614,7 @@ function startRaceCanvas(container, ctx) {
   const { race, raceResult, oddsResult, bet, betResult, timeline, commentary, broadcast } = ctx;
   const dragons = timeline.dragons;
   let stopped=false;
+  let broadcastLabels=Object.create(null);
   // Bound decoded art across meetings while keeping returning entrants warm.
   const entrants=new Set(dragons.map(d=>d.id));
   for(const cache of [RC_DRIG,RC_DSPRITE]){
@@ -1952,13 +1899,8 @@ function startRaceCanvas(container, ctx) {
     </div>
     <div class="rc-stage">
       <canvas id="rc-canvas"></canvas>
-      <!-- ★D3：生中継の徽章。ホーム＝配信・物語＝密着ドキュメンタリーと同じ世界であることを一目で示す -->
-      <!-- ゴールの合図＝このデザインされた帯に一本化（canvas側の素の「ゴールイン！」は撤去した）。 -->
-      <div class="rc-goalband" id="rc-goalband" hidden>ゴール！</div>
-      <!-- ★CODEX納品：ゴール後に座席から立ち上がる観客の背中（12フレーム・1回再生） -->
-      <div class="rc-crowdglow" aria-hidden="true">
-        <img src="images/race_live/crowd_glow_sprite.webp" alt="" decoding="async" onerror="this.parentNode.remove()">
-      </div>
+      <div class="rc-chase-surface" aria-hidden="true"><canvas class="rc-chase-labels"></canvas></div>
+      <div class="rc-camera-loading"><span role="status">出走竜を準備中…</span><button type="button" hidden>実況のみで発走</button></div>
       <button class="rc-play" id="rc-play" title="再生/一時停止">⏸</button>
     </div>
     <!-- ★RACE_SCREEN_LIVE D1：生着順ボード。画面下半分の主役＝8頭の行がFLIPで入れ替わり続ける。
@@ -1985,8 +1927,8 @@ function startRaceCanvas(container, ctx) {
       </div>
     </div>
     <div class="rc-board" id="rc-board"></div>
-    <div class="rc-controls" id="rc-controls"></div>
     <div class="rc-finishstrip" id="rc-finishstrip" style="display:none"></div>
+    <div class="rc-controls" id="rc-controls"></div>
     <div class="rc-log" id="rc-log" style="display:none"></div>
   `;
   container.appendChild(wrap);
@@ -2113,6 +2055,7 @@ function startRaceCanvas(container, ctx) {
     if(paraBaked)skyBase=null;else buildSkyBase();
   }
   function resize() {
+    broadcastLabels=Object.create(null);
     const parent = canvas.parentElement;
     if (!parent) return;          // canvas が DOM から外れている — リサイズをスキップ
     const rect = parent.getBoundingClientRect();
@@ -2223,7 +2166,7 @@ function startRaceCanvas(container, ctx) {
     preT: ctx.chaseDemo ? 1.2 : 5.0,          // pre-start countdown (holds τ at the gate)
     goFlash: 0,         // "GO！" burst after the countdown
     zoomBump: 0,        // extra push-in impulse from overtakes / close battles
-    photoT: 0,          // R8-W1: フォトフィニッシュ静止1拍の残り秒（>0の間 世界を止める・表示のみ）
+    photoT: 0,          // finish-line flash, in seconds
     photoUsed: false,   // 1着の鼻先ゴールで一度だけ発火
     flyIn: 0,           // R8-W6d: GOからの秒数——地面スタート→各飛行高度へ舞い上がる演出用（表示のみ）
     tapeAlpha: 1,       // ★A-1 発走テープの不透明度（GOで0へ＝弾けて消える・表示のみ）
@@ -2703,26 +2646,6 @@ function startRaceCanvas(container, ctx) {
       }
     });
     if (changed) renderTelop();
-  }
-
-  // ---- ゴール後に立ち上がる観客（キャンバス描画版）----
-  // 画像そのものは既存のDOM <img>（.rc-crowdglow img）を供給元として使い回す。
-  // CSSアニメでコマを送っていたのを、ここで経過時間からコマ番号を出す方式に置き換えた。
-  const CROWD_FRAMES = 12, CROWD_STEP_MS = 60;   // 12コマ・1コマ60ms（旧CSSの steps(11,end)/.66s と同等）
-  let _crowdT0 = 0;
-  function drawCrowdStand() {
-    if (!S.finished) { _crowdT0 = 0; return; }          // 走行中は出さない（席は静か）
-    const host = wrap.querySelector(".rc-crowdglow");
-    const img = host && host.querySelector("img");
-    if (!img || !img.complete || !img.naturalWidth) return;   // 未ロード／画像なしは黙って何もしない
-    if (!_crowdT0) _crowdT0 = performance.now();
-    const fi = Math.min(CROWD_FRAMES - 1, Math.floor((performance.now() - _crowdT0) / CROWD_STEP_MS));
-    const fh = img.naturalHeight / CROWD_FRAMES;
-    const bandH = ch * 0.36, bandY = ch - bandH;              // 旧CSSと同じ「下36%」
-    cctx.save();
-    cctx.globalAlpha = 0.55;                                   // 旧 .is-standing と同じ濃さ
-    cctx.drawImage(img, 0, fi * fh, img.naturalWidth, fh, 0, bandY, cw, bandH);
-    cctx.restore();
   }
 
   // ---- floating shout / placement text ----
@@ -3252,31 +3175,31 @@ function startRaceCanvas(container, ctx) {
   // DRAW
   // =====================================================================
   // ---- live position minimap (compact strip: every dragon at a glance) ----
-  function drawMinimap() {
+  function drawMinimap(pen=cctx) {
     // v2：上の帯（序盤・区間・残り距離）の真下に置く。帯は絵の上に重なっている（高さ約48px）
     const mx0 = cw * 0.06, mx1 = cw * 0.90, my = 58;
     const bx = mx0 - 16, bw = (mx1 - mx0) + 40, by = my - 9, bh = 18;
     void bx; void bw; void by; void bh;
-    cctx.save();
+    pen.save();
     // ★背板と外枠は外す（2026-11-26・docs/RESEARCH_RACE_VISUAL.md §3G）。ウマ娘・JRA中継とも、絵の上の進み具合は
     //   細い線と走者の点だけ。線は暗い縁取りの上に白を重ねて、明るい空でも暗い地面でも見えるようにする。
     let _mmLead = 0;
     for (const dr of dragons) _mmLead = Math.max(_mmLead, clamp(timeline.progressAt(dr.id, S.tau), 0, 1));
-    cctx.lineCap = "round";
-    cctx.strokeStyle = "rgba(6,8,10,0.45)"; cctx.lineWidth = 4;
-    cctx.beginPath(); cctx.moveTo(mx0, my); cctx.lineTo(mx1, my); cctx.stroke();
-    cctx.strokeStyle = "rgba(255,255,255,0.28)"; cctx.lineWidth = 2;
-    cctx.beginPath(); cctx.moveTo(mx0, my); cctx.lineTo(mx1, my); cctx.stroke();
-    cctx.strokeStyle = "rgba(255,255,255,0.75)";   // 先頭までの進み
-    cctx.beginPath(); cctx.moveTo(mx0, my); cctx.lineTo(mx0 + _mmLead * (mx1 - mx0), my); cctx.stroke();
-    cctx.lineCap = "butt";
+    pen.lineCap = "round";
+    pen.strokeStyle = "rgba(6,8,10,0.45)"; pen.lineWidth = 4;
+    pen.beginPath(); pen.moveTo(mx0, my); pen.lineTo(mx1, my); pen.stroke();
+    pen.strokeStyle = "rgba(255,255,255,0.28)"; pen.lineWidth = 2;
+    pen.beginPath(); pen.moveTo(mx0, my); pen.lineTo(mx1, my); pen.stroke();
+    pen.strokeStyle = "rgba(255,255,255,0.75)";   // 先頭までの進み
+    pen.beginPath(); pen.moveTo(mx0, my); pen.lineTo(mx0 + _mmLead * (mx1 - mx0), my); pen.stroke();
+    pen.lineCap = "butt";
     // start tick
-    cctx.fillStyle = "rgba(255,255,255,0.45)";
-    cctx.fillRect(mx0 - 1, my - 4, 2, 8);
+    pen.fillStyle = "rgba(255,255,255,0.45)";
+    pen.fillRect(mx0 - 1, my - 4, 2, 8);
     // finish checker flag
     for (let r = 0; r < 3; r++) {
-      cctx.fillStyle = (r % 2) ? "#1c2030" : "#f0f0f0"; cctx.fillRect(mx1 + 2, my - 4 + r * 3, 3, 3);
-      cctx.fillStyle = (r % 2) ? "#f0f0f0" : "#1c2030"; cctx.fillRect(mx1 + 5, my - 4 + r * 3, 3, 3);
+      pen.fillStyle = (r % 2) ? "#1c2030" : "#f0f0f0"; pen.fillRect(mx1 + 2, my - 4 + r * 3, 3, 3);
+      pen.fillStyle = (r % 2) ? "#f0f0f0" : "#1c2030"; pen.fillRect(mx1 + 5, my - 4 + r * 3, 3, 3);
     }
     // leader (visProgress so the winner stays drawn on top through the run-out)
     let leaderP = -1, leaderId = null;
@@ -3290,60 +3213,100 @@ function startRaceCanvas(container, ctx) {
       const x = mx0 + p * (mx1 - mx0);
       const isLead = dr.id === leaderId, isPick = betSet.has(dr.id);
       const r = isLead ? 4.5 : 3;
-      if (isPick) { cctx.strokeStyle = "#ffd34d"; cctx.lineWidth = 2; cctx.beginPath(); cctx.arc(x, my, r + 3, 0, Math.PI * 2); cctx.stroke(); }
-      cctx.fillStyle = _rcChipCol(dr.id);
-      cctx.beginPath(); cctx.arc(x, my, r, 0, Math.PI * 2); cctx.fill();
-      cctx.strokeStyle = "rgba(6,8,10,0.6)"; cctx.lineWidth = 1; cctx.stroke();
-      if (isLead) { cctx.strokeStyle = "#fff"; cctx.lineWidth = 1.5; cctx.beginPath(); cctx.arc(x, my, r + 1.5, 0, Math.PI * 2); cctx.stroke(); }
+      if (isPick) { pen.strokeStyle = "#ffd34d"; pen.lineWidth = 2; pen.beginPath(); pen.arc(x, my, r + 3, 0, Math.PI * 2); pen.stroke(); }
+      pen.fillStyle = _rcChipCol(dr.id);
+      pen.beginPath(); pen.arc(x, my, r, 0, Math.PI * 2); pen.fill();
+      pen.strokeStyle = "rgba(6,8,10,0.6)"; pen.lineWidth = 1; pen.stroke();
+      if (isLead) { pen.strokeStyle = "#fff"; pen.lineWidth = 1.5; pen.beginPath(); pen.arc(x, my, r + 1.5, 0, Math.PI * 2); pen.stroke(); }
     }
-    cctx.restore();
+    pen.restore();
   }
 
   let cameraMode = ctx.frontPreview ? "chase" : _reduceMotion ? "broadcast" : "director";
   let stackAngle = ctx.frontPreview ? 90 : 46, angleDial=null, angleValue=null;
-  let chaseCamera;
+  const chaseSurface=wrap.querySelector(".rc-chase-surface");
+  const chaseLabels=chaseSurface.querySelector("canvas").getContext("2d");
+  let chaseCamera, chasePrepared=false, warmShots=0, preparedRunners=0;
+  const cameraLoadStarted=performance.now();
+  function sizeLabels(){
+    const layer=chaseLabels.canvas;
+    if(layer.width!==canvas.width || layer.height!==canvas.height){
+      layer.width=canvas.width;layer.height=canvas.height;
+      chaseLabels.setTransform(dpr,0,0,dpr,0,0);
+    }
+  }
   let cameraUnavailable = false;
   const chaseRigs=dragons.map(dr=>_rcDragonRigV2(dr.id));
-  let chaseFronts, runtimePending=false;
-  function loadCamera(){
-    if(runtimePending || chaseFronts || cameraUnavailable)return;
-    runtimePending=true;
-    rcLoadChaseRuntime().then(()=>{
-      if(stopped)return;
-      chaseFronts=rcLoadRaceFronts(dragons);
-      if(S.finished || !S.playing)draw();
-    }).catch(err=>{
-      if(stopped)return;
-      console.warn("追走カメラを読み込めません",err);
-      cameraUnavailable=true;cameraMode="broadcast";renderControls();
-    }).finally(()=>{runtimePending=false;});
-  }
-  if(cameraMode!=="broadcast")loadCamera();
+  let chaseFronts;
+  rcLoadChaseRuntime().then(async ()=>{
+    if(stopped)return;
+    const images=rcLoadRaceFronts(dragons);
+    await Promise.allSettled([...images.values()].map(img=>img.decode()));
+    if(stopped || cameraUnavailable)return;
+    chaseFronts=images;
+    if(S.finished || !S.playing)draw();
+  }).catch(err=>{
+    if(stopped)return;
+    console.warn("追走カメラを読み込めません",err);
+    cameraUnavailable=true;cameraMode="broadcast";renderControls();
+  });
   const flight=rcRaceFlight(race,dragons,chaseRigs,_reduceMotion);
   const chaseArt=rcParaFor(race,null,RC_TIME_DIR[rcRaceTime(race)]);
-  let prepJob=null, chasePrepared=false;
-  const schedulePrep=window.requestIdleCallback?.bind(window) || (fn=>setTimeout(fn,16));
-  const cancelPrep=window.cancelIdleCallback?.bind(window) || clearTimeout;
-  function initChase(){
-    try { chaseCamera=rcChaseCamera(race,dragons,laneOf,flight,chaseFronts); }
-    catch(error){
+  const broadcastStart=wrap.querySelector(".rc-camera-loading button");
+  broadcastStart.onclick=()=>{
+    cameraUnavailable=true;cameraMode="broadcast";
+    chaseCamera?.dispose();chaseCamera=null;
+    renderControls();
+  };
+  function prepareChase(){
+    try{
+      if(chaseArt?.fail || chaseRigs.some(e=>!e || e.bad))
+        throw Error("会場または出走竜の準備が完了しませんでした");
+      if(!chaseFronts || !chaseArt?.ok || !chaseRigs.every(e=>e.ok)){
+        if(performance.now()-cameraLoadStarted>5000)broadcastStart.hidden=false;
+        return;
+      }
+      if(!chaseCamera){
+        chaseCamera=rcChaseCamera(race,dragons,laneOf,flight,chaseFronts);
+        chaseSurface.prepend(chaseCamera.surface);
+      }else if(warmShots===2){
+        chasePrepared=chaseCamera.warmupComplete();
+      }else if(preparedRunners<dragons.length){
+        // The side-on camera uses mipmapped painted parts. Returning from the
+        // chase should not allocate new canvases for eight runners in one frame.
+        const runner=dragons[preparedRunners++];
+        const rig=_rcDragonRigV2(runner.id).rig;
+        const scale=RC_DSP_H*_RC_INRACE*laneDepth(runner)*(RC_SIZE_MUL[runner.id]||1)/rig._bbox.h;
+        _rcRigV2At(rig,scale*dpr);
+        chaseCamera.prepareRunner(runner);
+      }else{
+        // The finish uses a clipping plane and a second shader variant. Warm both
+        // at display size on separate frames, leaving the opening lens active.
+        sizeLabels();
+        const t=warmShots===1 ? .10 : timeline.crossings[0].tau;
+        chaseCamera(chaseLabels,cw,ch,stackAngle,t,id=>timeline.progressAt(id,t),timeline.standingsAt(t),true,false,S.lowSpec);
+        warmShots++;
+      }
+    }catch(error){
       console.warn("追走カメラを起動できません",error);
+      chaseCamera?.dispose();chaseCamera=null;
       cameraUnavailable=true;cameraMode="broadcast";renderControls();
     }
   }
-  function prepareChase(){
-    prepJob=null;
-    if(chasePrepared || cameraUnavailable || cameraMode==="broadcast")return;
-    if(!chaseCamera){initChase();return;}
-    chasePrepared=chaseCamera.prepareNext();
+  function gapAt(t,first,second){
+    return timeline.distanceMeters*(timeline.progressAt(first,t)-timeline.progressAt(second,t));
+  }
+  function duelLabel(t,order){
+    const [first,second]=order;
+    if(!second || t>=timeline.crossings[0].tau)return "";
+    const earlier=Math.max(0,t-1/timeline.durationSecHint);
+    const gap=gapAt(t,first,second),previous=gapAt(earlier,first,second);
+    if(timeline.standingsAt(earlier)[0]!==first)return "先頭交代";
+    if(gap<.5)return "横並び";
+    const meters=gap<10?gap.toFixed(1):Math.round(gap);
+    return meters+"m差"+(previous-gap>1?"に迫る":gap-previous>1?"に開く":"");
   }
   const finishOrder=timeline.crossings.map(crossing=>crossing.id);
-  // Pick one shot for the run towards the home straight. Holding the cut
-  // decision prevents the view flickering when two dragons trade places.
-  const fieldShotTau=.62;
-  const [frontAtCut,nextAtCut]=timeline.standingsAt(fieldShotTau);
-  const gapAtCut=timeline.distanceMeters*(timeline.progressAt(frontAtCut,fieldShotTau)-
-    timeline.progressAt(nextAtCut,fieldShotTau));
   function cheerForLeader(id,progress) {
     if (typeof window.Sfx?.play!=="function" || !S.playing || S.finished || S.tau<=.03) return;
     const now=performance.now()/1000;
@@ -3356,46 +3319,57 @@ function startRaceCanvas(container, ctx) {
       S._fsCheered=true;Sfx.play("cheer",1.05);
     }
   }
+  function drawScreenParticles(){
+    // --- screen-space FX: confetti ribbons + firework sparks ---
+    for (const p of S.particles) {
+      if (!p.scr) continue;
+      const a = clamp(p.life, 0, 1);
+      if (p.kind === "confetti") {
+        cctx.save();
+        cctx.translate(p.x, p.y); cctx.rotate(p.rot || 0);
+        cctx.globalAlpha = a; cctx.fillStyle = p.color;
+        cctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size * 0.55);
+        cctx.restore();
+      } else {
+        cctx.globalAlpha = a; cctx.fillStyle = p.color || "#ffe9a8";
+        cctx.beginPath(); cctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); cctx.fill();
+      }
+    }
+    cctx.globalAlpha = 1;
+  }
+
   function draw() {
     const cam = updateCamera();
     const _preGo = (S.entryT > 0 || S.preT > 0) && !S.finished;
     S._preGo = _preGo;
     if(!_preGo)cheerForLeader(cam.leaderId,cam.leaderP);
-    const showField=gapAtCut>18 && S.tau>=fieldShotTau &&
-      cam.leaderP>flight.lastCrest+.035 && cam.leaderP<.845;
     const cut = cameraMode === "photo" || cameraMode === "chase" || (cameraMode === "director" &&
-      !S.finished && !showField && ((cam.leaderP>.07 && cam.leaderP<flight.start-.13) ||
+      !S.finished && ((cam.leaderP>.07 && cam.leaderP<flight.start-.13) ||
       cam.leaderP>flight.start-.055));
-    // Use the opening broadcast to prepare one runner per idle slice before the first cut.
-    if((!cut || !S.tau) && !chasePrepared && !cameraUnavailable && prepJob===null &&
-      cameraMode!=="broadcast" && chaseFronts && chaseArt?.ok && chaseRigs.every(entry=>entry?.ok)){
-      prepJob=schedulePrep(prepareChase,{timeout:200});
+    const showingChase=cut && S.tau>0 && chasePrepared;
+    if(showingChase!==chaseSurface.classList.contains("is-live")){
+      broadcastLabels=Object.create(null);
+      chaseCamera?.resetLabels();
+      chaseSurface.classList.toggle("is-live",showingChase);
     }
-    if(cut && !cameraUnavailable && (chaseArt?.fail || chaseRigs.some(entry=>!entry || entry.bad))){
-      cameraUnavailable=true;
-      cameraMode="broadcast";
-      renderControls();
-    }
-    if (cut && S.tau > 0 && chaseFronts && !cameraUnavailable &&
-        chaseRigs.every(entry=>entry?.ok) && chaseArt?.ok) {
-      if(!chaseCamera)initChase();
-      if (chaseCamera) {
-        chasePrepared=true;
-        const winningCrossing=timeline.crossings[0];
-        const photo=cameraMode==="photo";
-        const shotTime=photo?winningCrossing.tau:S.tau;
-        const standings=S.finished && !photo ? finishOrder : timeline.standingsAt(shotTime);
-        const position=photo ? id=>id===winningCrossing.id?1:timeline.progressAt(id,shotTime) : visProgress;
-        chaseCamera(cctx,cw,ch,stackAngle,shotTime,position,standings,cameraMode==="director"||photo,photo,S.lowSpec && S.playing);
-        if(cameraMode==="director" && Number.isFinite(chaseCamera.angle)){
-          stackAngle=chaseCamera.angle;
-          if(angleDial && angleDial.valueAsNumber!==stackAngle){angleDial.value=String(stackAngle);angleValue.textContent=stackAngle+"°";}
-        }
-        if(photo) return;
-        const ranks = Object.fromEntries(standings.map((id,i)=>[id,i+1]));
-        updateRaceHud(cam.leaderP,standings,ranks);
-        return;
+    if(showingChase){
+      const winningCrossing=timeline.crossings[0];
+      const photo=cameraMode==="photo";
+      const shotTime=photo?winningCrossing.tau:S.tau;
+      const standings=S.finished && !photo ? finishOrder : timeline.standingsAt(shotTime);
+      const position=photo ? id=>id===winningCrossing.id?1:timeline.progressAt(id,shotTime) : visProgress;
+      sizeLabels();
+      const drawn=chaseCamera(chaseLabels,cw,ch,stackAngle,shotTime,position,standings,cameraMode==="director"||photo,photo,S.lowSpec && !photo,
+        S.finished || photo?"":duelLabel(shotTime,standings));
+      if(drawn && !S.finished)drawMinimap(chaseLabels);
+      if(cameraMode==="director" && Number.isFinite(chaseCamera.angle)){
+        stackAngle=chaseCamera.angle;
+        if(angleDial && angleDial.valueAsNumber!==stackAngle){angleDial.value=String(stackAngle);angleValue.textContent=stackAngle+"°";}
       }
+      if(photo) return;
+      const ranks = Object.fromEntries(standings.map((id,i)=>[id,i+1]));
+      updateRaceHud(cam.leaderP,standings,ranks);
+      return;
     }
     const WINW = cam.WINW;
     const leaderP = cam.leaderP;
@@ -3413,9 +3387,6 @@ function startRaceCanvas(container, ctx) {
 
     // blended terrain theme around the leader → tints the whole scene
     const tb = themeBlendAtP(leaderP);
-    // Keep the generic grandstand skyline only for the plain straight; every other
-    // terrain now shows its own dedicated backdrop so the course reads at a glance.
-    const stadium = (tb.keyA === "straight");
 
     // --- sky: R8-W1 3層パララックス（夜系＆納品地域）→ 一枚絵ベース → プロシージャル ---
     const para = paraBaked;
@@ -3464,9 +3435,18 @@ function startRaceCanvas(container, ctx) {
       if (tb.keyB !== tb.keyA) drawThemeBackdrop(tb.keyB, g, tb.t);
     }
 
-    // stadium dressing (skyline + clock tower + crowd) only on ground courses
-    // (skipped when the painted base is active — it already has 聖龍門 + grandstand)
-    if (stadium && !skyBase) {
+    // Keep the venue in the victory shot and clear the course for the winner.
+    if(S.finished && rcHasDragonSprite(finishOrder[0])){
+      drawScreenParticles();
+      rcDrawWinnerCut(cctx,finishOrder[0],cw/2,ch*.64,Math.max(.22,S.rewardT),cw);
+      const ranks=Object.fromEntries(finishOrder.map((id,i)=>[id,i+1]));
+      updateRaceHud(leaderP,finishOrder,ranks);
+      return;
+    }
+
+    // The procedural stands belong only to an unpainted stadium straight.
+    const venueSlug = RC_PARA_SLUG[race.region] || "stadium";
+    if (!para && !skyBase && tb.keyA === "straight" && (venueSlug === "stadium" || venueSlug === "grandclock")) {
       const skl = (S.camL * 210) % 60;
       cctx.fillStyle = "rgba(20,26,52,0.9)";
       for (let i = -1; i < cw / 60 + 1; i++) {
@@ -4194,7 +4174,7 @@ function startRaceCanvas(container, ctx) {
       cctx.globalAlpha = _prevAlpha;             // end per-dragon edge fade
     }
     if (_popsOn) S.prevStand = standMap;         // 次フレームの順位変動検知用スナップショット
-    rcDrawRaceLabels(cctx, _lbls, _bodies, cw, ch, dpr);
+    rcDrawRaceLabels(cctx, _lbls, _bodies, cw, ch, dpr, broadcastLabels);
 
     // イベントポップ描画（0.95s＝ポップイン→浮き上がり→フェード。世界座標＝竜と一緒に流れる）
     if (S.lowSpec && S.pops.length > 2) S.pops.splice(0, S.pops.length - 2);   // R8-W5: 同時2件まで
@@ -4303,22 +4283,7 @@ function startRaceCanvas(container, ctx) {
     // --- finish dim (so confetti & banner pop) ---
     if (S.finished) { cctx.fillStyle = "rgba(8,10,20,0.32)"; cctx.fillRect(0, 0, cw, ch); }
 
-    // --- screen-space FX: confetti ribbons + firework sparks ---
-    for (const p of S.particles) {
-      if (!p.scr) continue;
-      const a = clamp(p.life, 0, 1);
-      if (p.kind === "confetti") {
-        cctx.save();
-        cctx.translate(p.x, p.y); cctx.rotate(p.rot || 0);
-        cctx.globalAlpha = a; cctx.fillStyle = p.color;
-        cctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size * 0.55);
-        cctx.restore();
-      } else {
-        cctx.globalAlpha = a; cctx.fillStyle = p.color || "#ffe9a8";
-        cctx.beginPath(); cctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); cctx.fill();
-      }
-    }
-    cctx.globalAlpha = 1;
+    drawScreenParticles();
 
     // --- PRE-RACE ATMOSPHERE during the entrance: the arena dims with a quickening
     // heartbeat and camera flashes pop from the stands — building the ドキドキ tension. ---
@@ -4542,126 +4507,6 @@ function startRaceCanvas(container, ctx) {
       cctx.fillStyle = "rgba(240,192,80,0.95)";
       cctx.fillRect(cw / 2 + sx - 18, by + 17, 36, 2);
       cctx.restore(); cctx.globalAlpha = 1;
-    }
-
-    // --- ゴール後に立ち上がる観客（手前の席）---
-    // ★DOMのオーバーレイからキャンバス描画へ移した理由：
-    //   観客はキャンバスの前面に置く必要がある（背面だと不透明なキャンバスに隠れて消える）が、
-    //   DOMで前面に置くと、この直後にキャンバスへ描く「🏆1着◯◯」「的中！/ハズレ」プレートの
-    //   上にも被さってしまう（プレートは ch*0.82＝観客帯の中）。z-index では両立できない。
-    //   描画順に組み込めば「観客の手前にプレート」が自然に成立する。
-    //   スプライトは12コマ縦積み。ゴールから 0.06s ごとに1コマ進み、最終コマで静止。
-    drawCrowdStand();
-    // --- finish celebration + goal-moment reward reveal (spec #37) ---
-    if (S.finished) {
-      const winner = timeline.crossings[0];
-      const rt = S.rewardT || 0;
-      // ★R8-W4：勝者ウィニングカット（HD-2D絵があれば rt 0〜1.55s に大写し・
-      //   見出し/払戻プレートはカットの終盤 rt-1.35s から＝順に語る）。表示のみ。
-      const hasCut = rcHasDragonSprite(winner.id);
-      if (hasCut) rcDrawWinnerCut(cctx, winner.id, cw / 2, ch * 0.5, rt, cw);
-      const rtd = hasCut ? Math.max(0, rt - 1.35) : rt;
-      const _fc = (n) => (typeof fmtCoins === "function" ? fmtCoins(n) : String(n));
-      cctx.save();
-      cctx.textAlign = "center"; cctx.textBaseline = "middle";
-      // headline fades in first（カット時は「1着〈名前〉」行を省略＝金リボンと重複するため）
-      cctx.globalAlpha = Math.min(1, rtd / 0.22);
-      // ※「ゴールイン！」の素テキストは撤去（デザイン済みの .rc-goalband 帯と重複するため）。
-      //   ゴールの合図は帯に一本化し、canvas側は「1着 ◯◯」と配当プレートに専念する。
-      cctx.fillStyle = "#ffe9a8"; cctx.font = "bold 25px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-      if (!hasCut) {
-        cctx.fillStyle = "#fff"; cctx.font = "bold 15px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-        cctx.fillText("1着  " + commentaryName(winner.id), cw / 2, ch * 0.14 + 24);
-      }
-      cctx.globalAlpha = 1;
-      // the reward plate pops in a beat later, showing the actual payout
-      if (betResult) {
-        const rp = Math.max(0, Math.min(1, (rtd - 0.18) / 0.4));
-        const ease = 1 - Math.pow(1 - rp, 3);
-        const overshoot = rp < 1 ? Math.sin(rp * Math.PI) * 0.08 : 0;
-        const sc = 0.62 + 0.38 * ease + overshoot;
-        const hit = betResult.hit;
-        const tier = hit ? ((typeof resultTierOf === "function") ? resultTierOf(betResult)
-          : (betResult.odds >= 7 ? 3 : betResult.odds >= 3 ? 2 : 1)) : 0;
-        const col = !hit ? "#ff9a8a"
-          : tier >= 4 ? "#ffd877" : tier >= 3 ? "#ffb070" : tier >= 2 ? "#ffe09a" : "#8df0a6";
-        const word = !hit ? "ハズレ"
-          : tier >= 4 ? "伝説の的中！" : tier >= 3 ? "超的中！" : tier >= 2 ? "大的中！" : "的中！";
-        const amount = hit ? ("＋" + _fc(betResult.payout) + " コイン")
-          : ("−" + _fc(Math.abs(betResult.profit)) + " コイン");
-        // ★下地は飾りバー。読めていないときだけ従来の角丸に落ちる。
-        // 札の絵：ハズレ／的中／伝説（超的中以上）で描き分け。無ければ従来の飾りバー。
-        const _ga = _rcGoalArt[!hit ? "miss_plate" : tier >= 3 ? "legend_plate" : "hit_plate"];
-        const _art = (_ga && _ga.ok) ? _ga : null;
-        const useArt = !!_art || _rcPlate.ok;
-        // 札は横いっぱい（最大360）。ただし縦長の絵は画面の下からはみ出さないよう高さ26%までに収める
-        const pw = _art ? Math.min(360, cw - 24, ch * 0.26 * _art.img.naturalWidth / _art.img.naturalHeight) : useArt ? Math.min(360, Math.max(300, cw - 24)) : 252;
-        const ph = _art ? Math.round(pw * _art.img.naturalHeight / _art.img.naturalWidth) : useArt ? Math.round(pw * 118 / 558) : 70;
-        cctx.save();
-        // ★プレートは下段へ＝ウィニングカット（中央）の主役を邪魔しない（ユーザー指定）
-        cctx.translate(cw / 2, hasCut ? ch - ph / 2 - 6 : ch * 0.35);   // 画面の下端に据える＝1着の札と重ならない
-        cctx.scale(sc, sc);
-        cctx.globalAlpha = Math.min(1, rp * 1.4);
-        if (useArt) {
-          if (hit && tier >= 3) { cctx.shadowColor = col; cctx.shadowBlur = 20; }
-          cctx.drawImage(_art ? _art.img : _rcPlate.img, -pw / 2, -ph / 2, pw, ph);
-          cctx.shadowBlur = 0;
-        } else {
-          cctx.beginPath();
-          if (cctx.roundRect) cctx.roundRect(-pw / 2, -ph / 2, pw, ph, 15);
-          else cctx.rect(-pw / 2, -ph / 2, pw, ph);
-          cctx.fillStyle = "rgba(8,12,18,0.84)"; cctx.fill();
-          cctx.lineWidth = 2.5; cctx.strokeStyle = col;
-          if (hit && tier >= 3) { cctx.shadowColor = col; cctx.shadowBlur = 18; }
-          cctx.stroke(); cctx.shadowBlur = 0;
-        }
-        // ★文字は幅を測って収める（2026-08-04・実機指摘「収まってなくない？」「桁が大きくなったら困る」）。
-        //   金額は 100 のことも 1,234,567 のこともあるので、決め打ちの字の大きさだと必ず破綻する。
-        //   バーの平らな面は絵の横 125〜433px／558＝約56%。そこに入る大きさを毎回計算する。
-        const inner = _art ? pw * _art.face.w : useArt ? pw * 0.56 : pw - 26;
-        const fit = (txt, base, min) => {
-          let f = base;
-          while (f > min) {
-            cctx.font = "bold " + f + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-            if (cctx.measureText(txt).width <= inner) break;
-            f -= 1;
-          }
-          return f;
-        };
-        // ★縦の中心（2026-08-04・実機指摘「高さの中心がずれてます」）。
-        //   原因は2つ。①文字の基準線を指定しておらず、その時どうなっているかに依存していた。
-        //   ②バーの平らな面は絵の縦 27〜99px／118＝中心が53.4%で、バーの真ん中(50%)ではない。
-        //   基準線を middle に固定し、面の中心に合わせる。
-        cctx.textBaseline = "middle";
-        const midY = _art ? (_art.face.y - 0.5) * ph : useArt ? (0.534 - 0.5) * ph : 0;
-        const oneLine = word + "　" + amount;
-        const f1 = fit(oneLine, useArt ? 20 : 22, 15);
-        // 1行にすると字が小さくなりすぎる組み合わせ（例：伝説の的中！＋123,456,789）は
-        // 2行のほうが大きく出せる。17px を境にする。
-        if (f1 >= 17) {
-          // 1行で収まる＝そのほうが読みやすい
-          cctx.font = "bold " + f1 + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-          const wW = cctx.measureText(word + "　").width, allW = cctx.measureText(oneLine).width;
-          cctx.textAlign = "left";
-          cctx.fillStyle = col; cctx.fillText(word, -allW / 2, midY);
-          cctx.fillStyle = "#fff"; cctx.fillText(amount, -allW / 2 + wW, midY);
-          cctx.textAlign = "center";
-        } else {
-          // 入らなければ2行。各行それぞれ縮めて必ず面の中に収め、2行の塊を面の中心に置く。
-          // 面の高さが決まっている札（伝説）は、2行ぶんが面からはみ出ないよう字の大きさに上限を置く
-          const cap = (_art && _art.face.h) ? Math.floor(_art.face.h * ph / 2.35) : 99;
-          const fw = Math.min(cap, fit(word, useArt ? 20 : 22, 13));
-          const fa = Math.min(cap, fit(amount, useArt ? 19 : 21, 12));
-          const gap = (fw + fa) * 0.58;                 // 行間＝2行の中心どうしの距離
-          cctx.fillStyle = col; cctx.font = "bold " + fw + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-          cctx.fillText(word, 0, midY - gap / 2);
-          cctx.fillStyle = "#fff"; cctx.font = "bold " + fa + "px 'Hiragino Sans','Yu Gothic','Meiryo',sans-serif";
-          cctx.fillText(amount, 0, midY + gap / 2);
-        }
-        cctx.textBaseline = "alphabetic";
-        cctx.restore();
-      }
-      cctx.restore();
     }
 
     updateRaceHud(leaderP, standings, standMap);
@@ -5098,9 +4943,8 @@ function startRaceCanvas(container, ctx) {
     const ov = document.getElementById("event-overlay");
     if (ov && !ov.classList.contains("hidden")) return;
 
-    // R8-W1: フォトフィニッシュ静止1拍 — 1着の鼻先がゴールに触れた瞬間、世界ごと止める
-    // （τ/歩様/粒子すべて凍結＝写真。描画は続くのでフラッシュだけが減衰する。表示のみ）
-    if (S.photoT > 0) { S.photoT -= dt; if (S.photoT > 0) return; S.photoT = 0; }
+    // Let the flash decay while the field continues through the wire.
+    S.photoT=Math.max(0,S.photoT-dt);
 
     // --- entrance: parade the field in from the side before the countdown ---
     if (S.entryT > 0) {
@@ -5387,6 +5231,18 @@ function startRaceCanvas(container, ctx) {
     // ★省電力（2026-11-14）：ゴールして6秒たった（紙吹雪・花火・余韻が済んだ）あとの“結果を見る待ち”は30コマ/秒で描く。
     //   動きは経過時間で進むので速さ・順番は変わらない。走っている間（着順・展開の見え方）には一切かけない。
     if (S.finished && S.finishedAt && now - S.finishedAt > 6000 && now - (S.last || 0) < 32) { S.raf = requestAnimationFrame(frame); return; }
+    if(!chasePrepared && !cameraUnavailable){
+      const atGrid=S.tau===0 && !S.finished;
+      if(atGrid && !wrap.hasAttribute("data-camera-loading")){
+        wrap.setAttribute("data-camera-loading","");draw();
+      }
+      prepareChase();
+      if(atGrid){
+        S.last=performance.now();
+        S.raf=requestAnimationFrame(frame);return;
+      }
+    }
+    wrap.removeAttribute("data-camera-loading");
     const dt = Math.min(0.05, (now - (S.last || now)) / 1000);
     // R8-W5: 低速機の自動検知——実フレーム間隔の移動平均が40ms超（<25fps）を2秒続けたら
     // 縮退モードに固定（レース中は戻さない＝ちらつき防止）。タブ復帰等の巨大間隔は無視。
@@ -5418,32 +5274,40 @@ function startRaceCanvas(container, ctx) {
     // on the finish line can both be read. A backward seek restores the overlay.
     const commentaryBar=wrap.querySelector("#rc-yt");
     const stage=wrap.querySelector(".rc-stage");
-    if(S.finished && commentaryBar.parentElement===stage)controlsEl.before(commentaryBar);
+    if(S.finished && commentaryBar.parentElement===stage)finishStripEl.before(commentaryBar);
     else if(!S.finished && commentaryBar.parentElement!==stage)stage.appendChild(commentaryBar);
     const cameras=el("div","rc-camera-choices");
     cameras.setAttribute("role","group");cameras.setAttribute("aria-label","カメラ");
     wrap.classList.toggle("rc-photo",cameraMode==="photo");
-    if(S.finished) wrap.querySelector("#rc-goalband").hidden=cameraMode==="photo";
+
     const choices=[["broadcast","実況"],["chase","先頭追走"],["director","自動演出"]];
     if(S.finished) choices.push(["photo","決勝写真"]);
+    function selectCamera(key){
+      cameraMode=key;
+      wrap.classList.toggle("rc-photo",key==="photo");
+      for(const button of cameras.children){
+        const selected=button.dataset.view===key;
+        button.classList.toggle("on",selected);
+        button.setAttribute("aria-pressed",String(selected));
+      }
+      const adjustable=key==="chase" || key==="director";
+      angleDial.disabled=!adjustable;
+      angleDial.parentElement.classList.toggle("rc-bearing-inactive",!adjustable);
+      if(S.finished){
+        growToFit();draw();
+        if(key==="photo")stage.scrollIntoView({block:"start",behavior:"instant"});
+      }
+    }
     for (const [key,label] of choices) {
       const b=el("button","rc-spd"+(cameraMode===key?" on":""),label);
+      b.dataset.view=key;
       b.setAttribute("aria-pressed",String(cameraMode===key));
       b.disabled=cameraUnavailable && key!=="broadcast";
-      b.onclick=()=>{
-        cameraMode=key;
-        if(key!=="broadcast")loadCamera();
-        renderControls();
-        if(S.finished){
-          growToFit();
-          draw();
-          if(key==="photo")stage.scrollIntoView({block:"start",behavior:"instant"});
-        }
-      };
+      b.onclick=()=>selectCamera(key);
       cameras.appendChild(b);
     }
     controlsEl.appendChild(cameras);
-    if (cameraMode==="chase" || cameraMode==="director") {
+    {
       const dial = document.createElement("input");
       dial.type = "range";
       dial.min = "-180";
@@ -5452,8 +5316,10 @@ function startRaceCanvas(container, ctx) {
       const angleGroup=el("label","rc-bearing");
       angleValue=el("span","rc-bearing-value",stackAngle+"°");
       dial.setAttribute("aria-label", "観戦角度");
-      dial.oninput = () => { stackAngle = Number(dial.value);angleValue.textContent=stackAngle+"°"; if(cameraMode==="director"){cameraMode="chase"; Array.from(cameras.children).forEach((b,i)=>{b.classList.toggle("on",i===1);b.setAttribute("aria-pressed",String(i===1));});} };
+      dial.oninput = () => { stackAngle = Number(dial.value);angleValue.textContent=stackAngle+"°"; if(cameraMode==="director")selectCamera("chase"); };
       angleDial=dial;
+      dial.disabled=cameraMode!=="chase" && cameraMode!=="director";
+      angleGroup.classList.toggle("rc-bearing-inactive",dial.disabled);
       angleGroup.append(el("span","rc-bearing-name","角度"),dial,angleValue);
       controlsEl.appendChild(angleGroup);
     }
@@ -5513,50 +5379,28 @@ function startRaceCanvas(container, ctx) {
   }
   function showFinishOrder() {
     finishStripEl.style.display = "";
-    const cr0 = timeline.crossings[0];                       // 勝者を大きく掲示（DOMのみ・数値は不変）
-    // ★「🎯的中」は賭けが当たったときだけ（ワイドで1頭が1着・もう1頭が外れた場合に、下の配当プレート「ハズレ」と矛盾していた）
-    const winHit = cr0 && betSet.has(cr0.id) && !!(betResult ? betResult.hit : (bet && bet.type === "win"));
-    let html = cr0
-      ? `<div class="rc-fs-winner ${winHit ? "t" : ""}"><span class="rc-fs-tro">🏆</span><span class="rc-fs-wlbl">1着</span><b>${commentaryName(cr0.id)}</b>${winHit ? '<span class="rc-fs-hit">🎯的中</span>' : ""}</div>`
-      : "";
-    html += `<div class="rc-fs-title">着順</div>`;
+    const winner=timeline.crossings[0];
+    let result="";
+    if(betResult){
+      const verdict=RESULT_TIER[resultTierOf(betResult)].word;
+      const amount=betResult.hit ? "＋"+fmtCoins(betResult.payout) : "−"+fmtCoins(Math.abs(betResult.profit));
+      result=verdict+" "+amount+" コイン";
+    }
+    let html='<div class="rc-fs-winner"><span class="rc-fs-wlbl">1着</span><b>'+commentaryName(winner.id)+'</b>'+
+      (result?'<span class="rc-fs-payout">'+result+'</span>':'')+'</div>'+
+      '<details><summary>全'+timeline.crossings.length+'頭の着順</summary><div class="rc-fs-places">';
     timeline.crossings.forEach(cr => {
       const isT = betSet.has(cr.id);
       html += `<div class="rc-fs-row ${isT ? "t" : ""}"><b>${cr.place}</b> ${commentaryName(cr.id)}${isT ? " ★" : ""}</div>`;   // 選んだ印は結果表と同じ★（🎯は的中の印なので、外れでも付くと紛らわしい）
     });
-    finishStripEl.innerHTML = html;
+    finishStripEl.innerHTML = html+"</div></details>";
   }
 
   function renderFinishStrip() {
     showFinishOrder();
     // ★D1：ゴール確定に合わせてボード上位3行を金銀銅で固める（結果画面への視覚的な橋渡し）
     freezeBoardPodium(timeline.crossings.map(cr => cr.id));
-    // ★B-5 ゴール後のエモート：1着に💕連発・2/3着に👏（既存 S.pops の流儀・popCd間引き不要の一発）
-    try {
-      const _nw5 = performance.now() / 1000;
-      timeline.crossings.slice(0, 3).forEach((cr, i) => {
-        const em = i === 0 ? "💕" : "👏";
-        const n = i === 0 ? 3 : 1;
-        for (let k = 0; k < n; k++) {
-          S.pops.push({ x: cw * (0.42 + i * 0.14) + k * 12, y: ch * (0.46 + k * 0.05),
-            tx: em, c: "#fff", t0: _nw5 + i * 0.15 + k * 0.12, sz: i === 0 ? 17 : 13 });
-        }
-      });
-    } catch (e) {}
-    // ★ゴール後の状態へ切り替える（ユーザー指摘：走行中の賑やかさが鳴り止まないと不自然）。
-    //   ①LIVE→中継終了 ②同接カウンタは伸びを止めて確定値で固定 ③観客はスタンディングで1度だけ沸き、
-    //   以後は静止 ④視聴者コメントは「余韻」プールへ切替 ⑤盤面をゴール後モードに（着順は畳む）。
-    // ゴールの合図＝デザイン済みの帯（赤橙グラデ＋スケールイン）。これが本編の見出し。
-    const gb = wrap.querySelector("#rc-goalband");
-    if (gb) { gb.hidden = false; gb.classList.remove("show"); void gb.offsetWidth; gb.classList.add("show"); }
-    const lv = wrap.querySelector("#rc-live");
-    if (lv) lv.classList.add("ended");
-    const crowdGlow = wrap.querySelector(".rc-crowdglow");
-    if (crowdGlow) {
-      crowdGlow.classList.remove("is-standing");
-      void crowdGlow.offsetWidth;
-      crowdGlow.classList.add("is-standing");
-    }
+    wrap.querySelector("#rc-live")?.classList.add("ended");
     wrap.classList.add("rc-ended");     // CSS側でゴール後レイアウトに切替（着順を畳む・操作を主役に）
     // ★ゴールでヘッダが戻る＝上に40px増えるので、走る絵を測り直して収める
     //   （growToFit は下限 baseH までしか縮まないので、レース画面が潰れることはない）。
@@ -5579,6 +5423,7 @@ function startRaceCanvas(container, ctx) {
   const loopId = Symbol("rc");
   const controller = {
     id: loopId,
+    get cameraReady(){return chasePrepared;},
     stop() {
       if(stopped)return;
       stopped=true;
@@ -5587,7 +5432,7 @@ function startRaceCanvas(container, ctx) {
       if (S.raf) cancelAnimationFrame(S.raf);
       S.raf = null;
       window.removeEventListener("resize", onResize);
-      if(prepJob!==null)cancelPrep(prepJob);
+
       if(chaseCamera){chaseCamera.dispose();chaseCamera=null;}
       chaseFronts?.clear();
       paraBaked=null;skyBase=null;
@@ -5598,6 +5443,8 @@ function startRaceCanvas(container, ctx) {
     seek(t) {
       S.playing = false;
       boardLastArrange=-1;
+      broadcastLabels=Object.create(null);
+      chaseCamera?.resetLabels();
       if (playBtn) playBtn.textContent = "▶";
       S.countdown = 0;
       // skip the start ceremony when scrubbing; re-baseline standings so resuming
@@ -5659,10 +5506,7 @@ function startRaceCanvas(container, ctx) {
         finishStripEl.style.display="none";
       }
       // ★LIVE徽章・観客・ゴール後レイアウトもスクラブ位置に合わせる（戻したら中継中の顔に戻す）
-      { const gb = wrap.querySelector("#rc-goalband"), lv = wrap.querySelector("#rc-live"), crowdGlow = wrap.querySelector(".rc-crowdglow");
-        if (gb) { gb.hidden = !_done; if (!_done) gb.classList.remove("show"); }
-        if (lv) lv.classList.toggle("ended", _done);
-        if (crowdGlow) crowdGlow.classList.toggle("is-standing", _done);
+      { wrap.querySelector("#rc-live")?.classList.toggle("ended",_done);
         wrap.classList.toggle("rc-ended", _done);
         if (viewersEl) { viewersEl.classList.toggle("fixed", _done); if (!_done) viewersEl._fixed = false; }
         if (!_done) { chatGoalDone = false; _goalChatLeft = 0; } }
