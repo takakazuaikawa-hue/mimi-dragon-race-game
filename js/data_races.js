@@ -12,6 +12,8 @@
  *   3. If introducing a new region → add to REGION_THEME and consider
  *      adding a `first_visit_<region>` event in event_registry.js.
  *   4. Story-driven late entry? Add an offer to ENTRY_ENCOURAGEMENTS.
+ *   5. For camera geometry, regional art and finish-line QA see
+ *      docs/RACE_CAMERA_GUIDE.md.
  *
  * Region color theme per §11 §23 (8 regions covered).
  */

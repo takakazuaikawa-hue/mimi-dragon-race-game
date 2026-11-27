@@ -12,6 +12,46 @@
  *      visible on the current screen.
  */
 window.addEventListener("DOMContentLoaded", () => {
+  const previewParams=new URLSearchParams(location.search);
+  if (previewParams.has("grandclockPreview") || previewParams.has("racePreview")) {
+    document.body.classList.add("rc-preview");
+    const race=RACES.find(r=>r.id===previewParams.get("racePreview")) || RACES[0];
+    state.ui.screen="race_run";
+    const app=beginScreen(),host=el("div");host.id="race-canvas-host";app.appendChild(host);
+    function runPreview(race){
+      const oddsResult=simulateMarket(race),raceResult=runRace(race);
+      const bet={type:"win",selections:[],wager:0};
+      const timeline=buildRaceTimeline(race,raceResult,oddsResult,bet);
+      const broadcast=buildBroadcastData(race,raceResult,bet,oddsResult,timeline);
+      const commentary=buildAllCommentary(broadcast,{race,bet,oddsResult,raceResult});
+      state.current={race,raceResult,oddsResult,bet,timeline,broadcast,commentary};
+      host.replaceChildren();
+      startRaceCanvas(host,{...state.current,chaseDemo:true,frontPreview:previewParams.get("view")==="front"});
+    }
+    const replay=el("button","rc-spd","再出走");
+    replay.onclick=()=>runPreview(state.current.race);
+    const programs=el("select");
+    programs.setAttribute("aria-label","観戦するレース");
+    for(const region of new Set(RACES.map(r=>r.region))){
+      const group=document.createElement("optgroup");group.label=region;
+      for(const r of RACES.filter(r=>r.region===region).sort((a,b)=>a.number-b.number)){
+        const option=new Option(region.replace(/地域$/,"")+" · "+r.cup+" 第"+r.number+"レース",r.id);
+        group.appendChild(option);
+      }
+      programs.appendChild(group);
+    }
+    programs.value=race.id;
+    programs.onchange=()=>{
+      const url=new URL(location.href);
+      url.searchParams.delete("grandclockPreview");url.searchParams.set("racePreview",programs.value);
+      history.replaceState(null,"",url);
+      runPreview(RACES.find(r=>r.id===programs.value));
+    };
+    const programBar=el("div","rc-preview-program");
+    programBar.append(programs,replay);app.appendChild(programBar);
+    runPreview(race);
+    return;
+  }
   loadGame();
   // §30 — initialize total-asset progression from the loaded save (seeds
   // maxCoinsReached / 総資産 / unlocked lifestyle stage before first render).

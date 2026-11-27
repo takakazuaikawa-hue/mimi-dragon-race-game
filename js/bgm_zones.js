@@ -38,15 +38,19 @@
   // 実在チェック（ゾーン単位・1回だけ）。null=判定中／true=鳴らす／false=無音のまま。
   var zoneOk = {};
   function probeZone(z) {
-    var path = (TRACKS[z] || [])[0];
+    var path = (z === "home" ? HOME_TRACKS : TRACKS[z] || [])[0];
     if (!path) return false;
     if (zoneOk[z] !== undefined) return zoneOk[z];
     zoneOk[z] = null;
     try {
       var a = new Audio();
       a.preload = "metadata";
-      a.onloadedmetadata = function () { zoneOk[z] = true; };
-      a.onerror = function () { zoneOk[z] = false; };
+      function settled(ok) {
+        zoneOk[z] = ok;
+        if (typeof state !== "undefined" && zoneOf(state.ui.screen) === z) apply(false);
+      }
+      a.onloadedmetadata = function () { settled(true); };
+      a.onerror = function () { settled(false); };
       a.src = path;
     } catch (e) { zoneOk[z] = false; }
     return zoneOk[z];
@@ -68,8 +72,12 @@
     try {
       var a = new Audio();
       a.preload = "metadata";
-      a.onloadedmetadata = function () { moodOk[m] = true; };
-      a.onerror = function () { moodOk[m] = false; };
+      function settled(ok) {
+        moodOk[m] = ok;
+        if (typeof state !== "undefined" && zoneOf(state.ui.screen) === "mall" && moodOf() === m) apply(false);
+      }
+      a.onloadedmetadata = function () { settled(true); };
+      a.onerror = function () { settled(false); };
       a.src = MOOD_TRACKS[m];
     } catch (e) { moodOk[m] = false; }
     return moodOk[m];
@@ -204,12 +212,8 @@
     window.addEventListener(ev, kick, { once: true, passive: true });
   });
 
-  // 実在チェックは**起動時に全ゾーンぶん済ませておく**（画面に入ってから調べると判定待ちで一瞬遅れる）。
-  try {
-    probeMood("boss"); probeMood("fever");
-    probeZone("home");
-    Object.keys(TRACKS).forEach(function (z) { probeZone(z); });
-  } catch (e) {}
+  // Probe the current zone only. Later visits reuse the cached verdict.
+  probeZone("title");
 
   if (typeof window !== "undefined") window.ZoneBgm = { apply: apply, zoneOf: zoneOf, _probe: probeZone, _tracks: TRACKS };
 })();

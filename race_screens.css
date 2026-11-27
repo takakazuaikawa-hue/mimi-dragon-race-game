@@ -200,6 +200,11 @@ body:has(#app.nav-racestart) .s4-embers { display: none; }   /* 走る絵の上�
   background: rgba(6,10,12,.66); border: 0; border-radius: 10px;
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
+#app .rc-v2 .rc-board.rc-board--compact { top: 42px; width: 128px; }
+@media (max-width: 480px) {
+  #app .rc-v2 .rc-board.rc-board--compact { width: 148px; }
+  #app .rc-v2 .rc-yt-side:not(.talking) { opacity: .88; }
+}
 #app .rc-v2 .rc-board .rcb-row { padding: 0 8px; gap: 7px; font-size: 12.5px; color: #eef2f1; }
 #app .rc-v2 .rc-board .rcb-style, #app .rc-v2 .rc-board .rcb-odds, #app .rc-v2 .rc-board .rcb-pay { display: none; }
 #app .rc-v2 .rc-board .rcb-nm { font-weight: 700; }
@@ -232,7 +237,7 @@ body:has(#app.nav-racestart) .s4-embers { display: none; }   /* 走る絵の上�
   background: linear-gradient(0deg, rgba(4,7,9,.9) 0%, rgba(4,7,9,.78) 60%, rgba(4,7,9,0) 100%);
 }
 #app .rc-v2 .rc-yt-bub {
-  height: 74px; padding: 14px 0 0 9px; background: none; border: 0; border-left: 2px solid var(--c, #888); border-radius: 0;
+  height: auto; min-height: 74px; overflow: visible; overflow-wrap: anywhere; padding: 14px 0 0 9px; background: none; border: 0; border-left: 2px solid var(--c, #888); border-radius: 0;
   font-size: 12px; font-weight: 600; line-height: 1.5; color: #f2f5f5; text-shadow: 0 1px 2px rgba(0,0,0,.8);
   justify-content: flex-start;
 }
@@ -244,6 +249,8 @@ body:has(#app.nav-racestart) .s4-embers { display: none; }   /* 走る絵の上�
 /* 固定フッタ：操作だけ */
 #app .rc-v2 .rc-controls { margin: 0; padding: 8px 10px 6px; background: var(--cs-bg); }
 #app .rc-v2.rc-ended .rc-mine { display: none; }
+#app .rc-v2.rc-ended .rc-live,
+#app .rc-v2.rc-ended .rc-play { visibility: hidden; }
 /* 撮って直した所（2026-11-26） */
 #app .rc-v2 .rc-mine { padding: 10px 28px 10px 12px; margin-left: -12px;
   background: radial-gradient(120% 100% at 0% 50%, rgba(4,7,9,.62), rgba(4,7,9,0) 75%); }   /* 地面の竜と重なっても読める */
@@ -255,9 +262,15 @@ body:has(#app.nav-racestart) .s4-embers { display: none; }   /* 走る絵の上�
 #app .rc-v2 .rc-controls > button { padding: 8px 12px; font-size: 12.5px; white-space: nowrap; }
 #app .rc-v2 .rc-speedseg button.rc-spd { padding: 8px 12px; }
 #app .rc-v2.rc-ended .rc-controls { flex-wrap: wrap; }
-/* ゴール後：絵の中の「的中／ハズレ」の札（絵の下寄り）を字幕が隠していた → 字幕は役目を終えたので引っ込める */
-#app .rc-v2 .rc-yt { transition: opacity .4s ease; }
-#app .rc-v2.rc-ended .rc-yt { opacity: 0; pointer-events: none; }
+/* ゴールの実況席は写真直下。話者と最後の一言を着順と一緒に読める。 */
+#app .rc-v2.rc-ended .rc-yt {
+  position: relative; inset: auto; padding: 16px 12px 8px;
+  background: #121a20;
+}
+#app .rc-v2.rc-ended .rc-yt-side { opacity: 1; }
+#app .rc-v2.rc-ended .rc-yt-bub { height: auto; min-height: 3.4em; overflow: visible; }
+#app .rc-v2 .rc-yt-bub .rcy-now.is-past { opacity: .85; }
+#app .rc-v2 .rcy-now.is-past::before { content: "前の区間　"; font-size: .85em; }
 /* 「結果を見る」は押す場所＝金（操作ボタンを中立の面にした指定が、金の指定より強く効いていた） */
 #app .rc-v2.rc-ended .rc-controls .rc-next { background: var(--cs-gold); color: var(--cs-gold-ink); border-color: transparent; font-weight: 800; }
 

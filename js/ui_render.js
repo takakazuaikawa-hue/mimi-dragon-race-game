@@ -3829,7 +3829,8 @@ function renderRaceRun() {
   const c = state.current;
   // If a player is already animating this race, don't tear it down on an
   // incidental rerender (e.g. the debug / info-level toggles call us again).
-  if (c.racePlayer && document.getElementById("race-canvas-host")) return;
+  const currentHost=document.getElementById("race-canvas-host");
+  if(currentHost && (c.racePlayer || currentHost._loadingMeeting===c))return;
 
   // タイムライン（画面の物理位置の source）を先に作り、実況/HUDの順位もこれに合わせる
   // ＝中盤の「先頭/N番手」が画面と一致（表示専用・着順/結果/配当は不変）。
@@ -3860,7 +3861,8 @@ function renderRaceRun() {
       raceCommentator: c.raceCommentator
     });
   };
-  showRaceLoading(host, c, startNow);
+  host._loadingMeeting=c;
+  showRaceLoading(host,c,()=>{delete host._loadingMeeting;startNow();});
   // （レース隅のマスコット竜は撤去：レース画面には不要。音量ボタンはグローバル常設 mountVolumeFab）
 }
 

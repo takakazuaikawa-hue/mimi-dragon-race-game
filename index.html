@@ -17,7 +17,8 @@
 <title>ミミのドラゴンレース紀行 ／ 転生したらバニーガールだった私の汎用スキル《ぱほぱほ》だけがレベルアップな件</title>
 <link rel="stylesheet" href="style.css?v=20261127b">
 <link rel="stylesheet" href="shingan-festival.css?v=20261126a">
-<link rel="stylesheet" href="race_screens.css?v=20261126a">
+<link rel="stylesheet" href="race_screens.css?v=20261127e">
+<link rel="stylesheet" href="race_camera.css?v=7">
 </head>
 <body class="title-mode">
 <div class="s4-embers" aria-hidden="true"></div>
@@ -72,7 +73,7 @@
 <script src="js/sfx.js?v=20261127b"></script>
 <script src="js/bgm.js?v=20261126a"></script>
 <!-- ゾーンBGM（ホーム/モール等を画面追従で自動再生・RaceBgm共有・表示専用） -->
-<script src="js/bgm_zones.js?v=20261126a"></script>
+<script src="js/bgm_zones.js?v=20261127race"></script>
 <script src="js/data_dragons.js?v=20261126a"></script>
 <script src="js/data_courses.js?v=20261126a"></script>
 <script src="js/data_weather.js?v=20261126a"></script>
@@ -97,12 +98,14 @@
 <script src="js/data_race_chat.js?v=20261126a"></script>
 <!-- ゆっくり実況の解説者6人（門番つき・表示専用）。race_canvas.js より前に -->
 <script src="js/data_commentators.js?v=20261126a"></script>
-<script src="js/race_broadcast.js?v=20261126a"></script>
+<script src="js/race_broadcast.js?v=20261127b"></script>
 <script src="js/data_broadcast_lines.js?v=20261126a"></script>
   <script src="js/data_broadcast_rare.js?v=20261126a"></script>
   <script src="js/data_broadcast_chatter.js?v=20261126a"></script>
 <script src="js/devcheck_broadcast.js?v=20261126a"></script>
-<script src="js/race_canvas.js?v=20261126a"></script>
+<script src="js/race_island_scenery.js?v=20261127h"></script>
+<script src="js/race_chase_course.js?v=20261127e"></script>
+<script src="js/race_canvas.js?v=20261128c"></script>
 <script src="js/event_hooks.js?v=20261126a"></script>
 <script src="js/event_registry.js?v=20261126a"></script>
 <script src="js/goals.js?v=20261126a"></script>
@@ -119,7 +122,7 @@
 <script src="js/sns.js?v=20261126a"></script>
 <!-- 次の一手エンジン（島の一日ループの結線・docs/GAME_EXPERIENCE_DESIGN.md §3・表示専用） -->
 <script src="js/next_suggest.js?v=20261126a"></script>
-<script src="js/ui_render.js?v=20261126a"></script>
+<script src="js/ui_render.js?v=20261127racedesk"></script>
 <!-- ui_render.jsからの分割（CODEMAP §6）：目標/食事＝ui_meta、暮らし系＝ui_assets -->
 <script src="js/ui_home.js?v=20261126a"></script>
 <script src="js/ui_meta.js?v=20261126a"></script>
@@ -224,6 +227,6 @@
 <script src="js/shingan_festival.js?v=20261126a"></script>
 <script src="js/shingan_festival_ui.js?v=20261126a"></script>
 <script src="js/island_care_ui.js?v=20261126a"></script>
-<script src="js/main.js?v=20261126a"></script>
+<script src="js/main.js?v=20261127c"></script>
 </body>
 </html>

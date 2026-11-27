@@ -984,6 +984,8 @@ function showRaceLoading(host, c, onReady) {
   let done = false;
   const go = () => {
     if (done) return; done = true;
+    clearTimeout(deadline);
+    if(!host.isConnected || state.current!==c)return;
     const wrap = host.querySelector(".rcload");
     if (wrap) wrap.remove();
     onReady();
@@ -991,6 +993,7 @@ function showRaceLoading(host, c, onReady) {
 
   const box = document.createElement("div");
   box.className = "rcload";
+  const art = rcLoadArtFor(c.race);
   box.innerHTML =
     '<div class="rcload-in">' +
       '<div class="rcload-cup">' + (c.race && c.race.cup ? c.race.cup : "レース") + '</div>' +
@@ -998,9 +1001,8 @@ function showRaceLoading(host, c, onReady) {
       '<div class="rcload-bar"><i></i></div>' +
       '<div class="rcload-note">実況席、準備しています……</div>' +
       // ★下部に一枚絵。素材はすでにあるので、待ち時間を絵で持たせる。
-      //   今日の舞台に近い風景を選ぶ（読めなければ枠ごと消えるので崩れない）。
-      (rcLoadArtFor(c.race)
-        ? '<div class="rcload-art"><img src="' + rcLoadArtFor(c.race) +
+      (art
+        ? '<div class="rcload-art"><img src="' + art +
           '" alt="" onerror="rcLoadArtRetry(this)"></div>'
         : "") +
     '</div>';
@@ -1037,13 +1039,22 @@ function showRaceLoading(host, c, onReady) {
       const ids = ((c.timeline && c.timeline.dragons) || []).map(d => d.id).filter(Boolean);
       if (!ids.length || typeof _rcDragonSprite !== "function") { cb(); return; }
       setNote("出走竜を呼んでいます……");
-      ids.forEach(id => { try { _rcDragonSprite(id); if (typeof _rcDragonRigV2 === "function") _rcDragonRigV2(id); } catch (e) {} });
+      const rigs=ids.map(id=>typeof _rcDragonRigV2==="function" && window.RC_USE_V2RIG!==false ? _rcDragonRigV2(id) : null);
       const t0 = Date.now();
       const tick = () => {
-        const ready = ids.every(id => {
-          const e = (typeof RC_DSPRITE !== "undefined") ? RC_DSPRITE[id] : null;
-          const r = (typeof RC_DRIG !== "undefined") ? RC_DRIG[id] : null;   // 竜V2リグ（無い竜は待たない）
-          return e && (e.ok || e.bad) && (!r || r.ok || r.bad);          // 読めた／無い のどちらかで決着
+        if(done || !host.isConnected)return;
+        const elapsed=Date.now()-t0;
+        // A ready rig already contains the complete dragon. Only a missing or
+        // slow rig needs the flat portrait and its expensive full-size alpha scan.
+        let ready=true;
+        ids.forEach((id,i)=>{
+          const rig=rigs[i];
+          if(rig?.ok)return;
+          if(!rig || rig.bad || elapsed>1000){
+            const sprite=_rcDragonSprite(id);
+            if(sprite?.ok || sprite?.bad)return;
+          }
+          ready=false;
         });
         if (ready || Date.now() - t0 > RC_LOAD_DRAGON_MS) { cb(); return; }
         setTimeout(tick, 40);
@@ -1052,59 +1063,37 @@ function showRaceLoading(host, c, onReady) {
     } catch (e) { cb(); }
   };
 
-  const preload = (cb) => {
-    // ★待つ対象：一枚絵の背景／視差背景3層／ロード画面の絵。
-    //   以前は視差背景（images/racebg_v2_time/ の L1〜L3）を待っていなかったため、
-    //   走り出してから背景が差し替わっていた（ユーザー指摘の再発分）。
-    let pending = 3, fired = false;
-    const finish = () => { if (!fired) { fired = true; cb(); } };
-    const one = () => { if (--pending <= 0) finish(); };
-    try {
-      setNote("コースを用意しています……");
-      if (typeof rcBgFor === "function") { rcBgFor(c.race, one); } else { one(); }
-      // ★視差背景も待つ。時間帯フォルダは本編と同じ引き方をする
-      //   （違うフォルダを先読みしても、本番が使う絵は温まらない）。
-      try {
-        const tdir = (typeof rcRaceTime === "function" && typeof RC_TIME_DIR !== "undefined")
-          ? (RC_TIME_DIR[rcRaceTime(c.race)] || "night") : "night";
-        if (typeof rcParaFor === "function") {
-          const pe = rcParaFor(c.race, one, tdir);
-          if (pe && (pe.ok || pe.fail)) one();   // 既に温まっている／その地域に絵が無い
-        } else { one(); }
-      } catch (e2) { one(); }
-      // ★ロード画面に出す一枚絵も、実際に読めるまで待つ。
-      //   待たずに進むと「絵が出ないままロードが終わり、走り出してから
-      //   背景が入れ替わる」状態になる（ユーザー指摘）。
-      const art = rcLoadArtFor(c.race);
-      if (art) {
-        const im = new Image();
-        im.onload = one; im.onerror = one;
-        im.src = art;
-      } else { one(); }
-    } catch (e) { finish(); }
-    setTimeout(finish, RC_LOAD_IMG_MS);   // ★先読みの完了通知が返らない実装でも、ここで切り上げる
-                                          //   （実測：待ち切ると毎レース3.6秒待たされていた）
+  const preloadCourse = cb => {
+    const dir=RC_TIME_DIR[rcRaceTime(c.race)] || "night";
+    let settled=false;
+    const timer=setTimeout(ready,RC_LOAD_IMG_MS);
+    function ready(){
+      if(settled)return;
+      settled=true;clearTimeout(timer);cb();
+    }
+    try{
+      const art=rcParaFor(c.race,ready,dir);
+      if(!art || art.ok || art.fail)ready();
+    }catch{ready();}
   };
-
-  // 台本づくりは一拍おいてから（ロード画面を先に見せて、固まって見えないように）
-  setTimeout(() => {
+  // Use the loading interval for the real entrants and their course together.
+  // The loading illustration is already requested by the img above.
+  if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches)rcLoadChaseRuntime().catch(()=>{});
+  const deadline=setTimeout(go,RC_LOAD_MAX_MS);
+  setTimeout(()=>{
+    if(done || !host.isConnected)return;
     build();
-    preload(() => {
-      // ★竜のスプライトは背景より優先度が高い。ここが揃う前に走り出すと
-      //   「最初の一瞬だけ別の竜」になるので、必ず待ってから発走する。
-      preloadDragons(() => {
-        const rest = Math.max(0, RC_LOAD_MIN_MS - (Date.now() - started));
-        setNote("まもなく発走です");
-        setTimeout(go, rest);
-      });
-    });
-  }, 60);
-
-  setTimeout(go, RC_LOAD_MAX_MS);   // 最終防衛線：何があっても走り出す
+    let pending=2;
+    const ready=()=>{
+      if(--pending || done || !host.isConnected)return;
+      setNote("まもなく発走です");
+      setTimeout(go,Math.max(0,RC_LOAD_MIN_MS-(Date.now()-started)));
+    };
+    preloadCourse(ready);preloadDragons(ready);
+  },0);
 }
 
-// ロード画面の一枚絵。ミミのロード用イラスト（images/cast/mimi/loading*）。
-// ★この 46 枚はロード画面のために用意された素材。毎回ランダムで1枚出す。
+// ロード画面の一枚絵。ミミのイラストから毎回ランダムで1枚出す。
 // EXTENSION POINT: 絵を足したらファイル名をこの配列に1行足すだけ。
 var RC_LOAD_DIR = "images/cast/mimi/";
 var RC_LOAD_ARTS = [
@@ -1119,7 +1108,7 @@ var RC_LOAD_ARTS = [
   "loading33.webp", "loading34.webp", "loading35.webp", "loading36.webp",
   "loading37.webp", "loading38.webp", "loading39.webp", "loading40.webp",
   "loading41.webp", "loading42.webp", "loading43.webp", "loading44.webp",
-  "loading45.webp", "loading46.webp"
+  "loading45.webp", "loading46.webp", "mimi_secret_sukanpin_back.webp"
 ];
 var _rcLoadLast = -1;
 function rcLoadArtFor(race) {
