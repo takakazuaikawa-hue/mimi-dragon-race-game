@@ -214,7 +214,8 @@
     box.tabIndex = -1;
     var name = mk("span", "dlg-name");
     var text = mk("div", "dlg-text");
-    var next = mk("span", "dlg-next", "▼");
+    var next = mk("button", "dlg-next", "▼");
+    next.type = "button";
     box.appendChild(name);
     box.appendChild(text);
     box.appendChild(next);
@@ -267,9 +268,13 @@
     dom.bg.style.removeProperty("--dlg-shot-still");
   }
 
+  function backgroundUrl(id) {
+    return /[/.]/.test(id) ? id : "images/bg/" + id + ".webp";
+  }
+
   function setBg(id, shot) {
     if (!dom) return;
-    var fallback = id && (/[/.]/.test(id) ? id : "images/bg/" + id + ".webp");
+    var fallback = id && backgroundUrl(id);
     var url = shot ? "images/story/video/" + shot + ".webp" : fallback;
     if (dom.bg.dataset.cur === url) return;
     stopBgVideo();
@@ -334,7 +339,7 @@
       //   通常の解決チェーンの先頭に挿すだけなので、404なら従来の絵へ自動で落ちる。
       out.push({ s: (l.s != null ? l.s : l.speaker), t: String(t), e: (l.e || l.expr), side: l.side,
         fx: l.fx, se: l.se, bg: l.bg, shot: l.shot, w: l.w, img: l.img,
-        name: l.name, exit: Array.isArray(l.exit) ? l.exit.slice() : [],
+        name: l.name, place: l.place, action: l.action, exit: Array.isArray(l.exit) ? l.exit.slice() : [],
         react: Array.isArray(l.react) ? l.react.map(function (r) { return { s: r.s, e: r.e }; }) : [] });
     }
     return out;
@@ -377,12 +382,15 @@
       // 直前(出走時)に保留されたセリフがレース開始後に出てしまうのを防ぐ。{force:true}で例外可。
       if (typeof state !== "undefined" && state && state.ui && state.ui.screen === "race_run" && !(options && options.force)) { resolve(); return; }
       queue = lines; idx = 0; opts = options; resolveFn = resolve;
+      if (opts.preloadBackgrounds) {
+        new Set(lines.filter(function (line) { return line.bg && !line.shot; }).map(function (line) { return line.bg; }))
+          .forEach(function (id) { var image = new Image(); image.src = backgroundUrl(id); });
+      }
       var d = ensureDom();
       d.overlay.classList.toggle("encounter-mode", !!opts.encounter);
       d.log.classList.add("hidden"); d.logButton.setAttribute("aria-expanded", "false");
       d.logBody.textContent = "";
       d.episode.textContent = opts.encounter ? opts.encounter.episode || "出会いの場面" : "";
-      d.place.textContent = opts.encounter ? opts.encounter.place || "" : "";
       // 立ち絵スロット初期化
       ["left", "right"].forEach(function (s) {
         var sl = d.slots[s]; sl.id = null; sl.expr = null; sl.imgOv = null; sl.has = false;
@@ -402,6 +410,12 @@
     if (!line) { finish(); return; }
     var c = castOf(line.s);
     d.progress.textContent = String(idx + 1).padStart(2, "0") + " / " + queue.length;
+    d.place.textContent = opts.encounter ? line.place || opts.encounter.place || "" : "";
+    d.next.classList.toggle("is-action", !!line.action);
+    d.next.textContent = line.action || "▼";
+    d.next.setAttribute("aria-label", line.action || "会話を進める");
+    d.next.tabIndex = line.action ? 0 : -1;
+    if (document.activeElement === d.next) d.box.focus({ preventScroll: true });
     // 明示した人物だけ退場。三人目との会話で前の相手を残さない。
     line.exit.forEach(function (id) {
       ["left", "right"].forEach(function (side) {

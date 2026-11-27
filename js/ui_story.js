@@ -196,14 +196,24 @@ function showStoryEvent(e) {
   if (window.Sfx) Sfx.play("tick");
 }
 
+function _storyEconomyButton() {
+  const button = el("button", "news-btn prim news-done-go", "🏝️ 島の収支と次の手を確かめる ▶");
+  button.onclick = () => renderEconomy();
+  return button;
+}
+
 // 専用画面：1話を読む（新聞の特集一面＝大見出し＋寄稿者＋ハーフトーン写真＋本文）
 // 読み終えた直後の一枚（上の renderStoryChapter）。行き先は、その話で会った人が授けるものに合わせる。
-//   走れないとき（すっからかん・空腹）は、先にそちらへ（レースへ送って入口で止めない）。行き先の画面は既存のものだけ。
+//   レースに進む話は、すっからかん・空腹なら先に立て直す。終章の帳簿はいつでも確認できる。
 function _storyDoneBox(ch, cast) {
   const box = el("div", "news-done");
   const _ep = (ch.id === "ED") ? "最終話" : ("第" + ch.id + "話");
   box.appendChild(el("div", "news-done-t", "✅ " + _ep + "を、読み終えた"));
   if (ch.id === "ED") return box;
+  if (ch.id === "5" && typeof renderEconomy === "function") {
+    box.appendChild(_storyEconomyButton());
+    return box;
+  }
   const broke = (typeof playerBroke === "function") && playerBroke();
   const hungry = (typeof hungryNeedsMeal === "function") && hungryNeedsMeal();
   let label, go;
@@ -211,7 +221,6 @@ function _storyDoneBox(ch, cast) {
   else if (hungry) { label = "🍙 ごはんを食べて、レースへ ▶"; go = () => renderMeals(); }
   else if (ch.cast === "sumika" && typeof renderLifeTree === "function") { label = "🏠 スミカの宿題（くらし）を見にいく ▶"; go = () => renderLifeTree(); }
   else if (ch.cast === "makura" && typeof renderCollection === "function" && (typeof dexUnlocked !== "function" || dexUnlocked())) { label = "🐲 推し竜の記録（図鑑）を開く ▶"; go = () => renderCollection(); }
-  else if (ch.cast === "celestia") { label = "🏝️ 島に戻って、明日の開催に備える ▶"; go = () => renderHome(); }
   else if (ch.cast === "mizu") { label = "📊 市場を見る目で、次の出走表へ ▶"; go = () => renderRaceSelect(); }
   else if (ch.cast === "sake") { label = "🐲 竜を見る目で、次の出走表へ ▶"; go = () => renderRaceSelect(); }
   else { label = "🐉 次のレースへ ▶"; go = () => renderRaceSelect(); }
@@ -222,8 +231,11 @@ function _storyDoneBox(ch, cast) {
 }
 
 function storyEncounterOptions(ch) {
-  const places = { "1": "レース場の門前", "2": "夜市の出走表", "3": "村の行政窓口", "4": "場外の配信席", "5": "星の見える観覧席" };
-  return places[ch.id] ? { encounter: { episode: "EPISODE " + String(ch.id).padStart(2, "0") + " / 出会い", place: places[ch.id] } } : {};
+  const places = { "1": "レース場の門前", "2": "夜市の出走表", "3": "村の行政窓口", "4": "場外の配信席", "5": "競技場を見下ろす祠" };
+  return places[ch.id] ? {
+    encounter: { episode: "EPISODE " + String(ch.id).padStart(2, "0") + " / 出会い", place: places[ch.id] },
+    preloadBackgrounds: ch.id === "5"
+  } : {};
 }
 
 function renderStoryChapter(chId) {
@@ -293,7 +305,8 @@ function renderStoryChapter(chId) {
   const news = el("div", "news news-article");
   // ★絵と大きな文字で読み終えて戻ってきた直後だけ、紙面の先頭に「読み終えた」と、その話で開いた遊びへの出口を1つ
   //   （2026-11-13・Codex 3回め #8：「読み終える」を押すと同じ本文の冒頭へ戻るだけで、会った人への興味を次の遊びへ渡す手がなかった）。
-  if (state.ui && state.ui._storyJustRead === ch.id) { state.ui._storyJustRead = null; try { news.appendChild(_storyDoneBox(ch, cast)); } catch (e) {} }
+  const justRead = state.ui && state.ui._storyJustRead === ch.id;
+  if (justRead) { state.ui._storyJustRead = null; try { news.appendChild(_storyDoneBox(ch, cast)); } catch (e) {} }
 
   // EPバッジ（話数）＋エピソードタイトル（headline）。旧タイトルは肩の subhead に降ろす。
   const _epIdx = STORY_CHAPTERS.findIndex(c => c.id === ch.id);
@@ -345,6 +358,7 @@ function renderStoryChapter(chId) {
     desk.onclick = () => renderChapterFourJourney(true);
     btns.appendChild(desk);
   }
+  if (ch.id === "5" && !justRead && typeof renderEconomy === "function") btns.appendChild(_storyEconomyButton());
   if (typeof srOpenReader === "function") {
     const again = el("button", "news-btn", "🎬 絵と大きな文字で読む");
     again.onclick = () => srOpenReader(ch, (finished) => { if (finished) { state.ui._storyJustRead = ch.id; renderStoryChapter(ch.id); } });

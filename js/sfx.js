@@ -162,6 +162,17 @@ var Sfx = (function () {
         case "click": // soft UI tap
           tone(330, t, 0.03, "sine", 0.12);
           break;
+        case "shutterKnock":
+          tone(125, t, 0.09, "sine", 0.21, 80);
+          noise(t, 0.055, 0.38, 590);
+          tone(142, t + 0.22, 0.08, "sine", 0.18, 93);
+          noise(t + 0.22, 0.05, 0.32, 720);
+          break;
+        case "ladleTap":
+          noise(t, 0.035, 0.18, 2650);
+          tone(842, t, 0.23, "sine", 0.16);
+          tone(1640, t, 0.14, "sine", 0.075);
+          break;
         case "paho": // ミミの「ぱほぱほ♪」風 — 軽いふた跳ねのかわいい合いの手
           tone(740, t, 0.07, "triangle", 0.20, 980);
           tone(620, t + 0.09, 0.10, "triangle", 0.18, 830);

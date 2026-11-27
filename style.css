@@ -3018,7 +3018,16 @@ button.rs-nextgoal { display: grid; grid-template-columns: 1fr auto; column-gap:
 }
 .dlg-next {
   position: absolute; right: 16px; bottom: 9px; color: var(--gold-bright);
-  font-size: 13px; animation: dlg-bounce 1.05s ease-in-out infinite;
+  font: inherit; font-size: 13px; padding: 0; border: 0; background: none;
+  cursor: pointer; animation: dlg-bounce 1.05s ease-in-out infinite;
+}
+.dlg-next.is-action {
+  position: static; display: block; margin: 8px 0 0 auto; min-height: 44px; padding: 8px 16px;
+  border: 1px solid var(--gold-line); border-radius: var(--rd-14);
+  background: #342b1e; font-size: 14px; font-weight: bold; animation: none;
+}
+.dlg-next.is-action:hover, .dlg-next.is-action:focus-visible {
+  background: #493825;
 }
 .dlg-skip {
   position: absolute; z-index: 4; top: max(10px, env(safe-area-inset-top, 0px)); right: 12px;
