@@ -215,6 +215,7 @@ function rcPoroHead(T,body,img,rect,b,k,flank,texture){
 
 function rcChaseHead(T,id,body,img,canvas,rect,b,k,depth,nx,ny,flank,texture){
   if(id==="poro")return rcPoroHead(T,body,img,rect,b,k,flank,texture);
+  const rubel=id==="rubel";
   const [eyeX,eyeY,leftEye,eyeV]=RC_CHASE_EYES[id];
   const [,cy,relativeHeight,noseV]=RC_FRONT_HEADS[id];
   const cut=eyeX-.215;
@@ -239,7 +240,8 @@ function rcChaseHead(T,id,body,img,canvas,rect,b,k,depth,nx,ny,flank,texture){
     }
     ends.push(end);widths.push(Math.max(.004,half));
   }
-  const top=Math.min(eyeY-.055,Math.max(0,cy-relativeHeight*.5));
+  // The tips of Rubel's swept horns reach the top of the side cutout.
+  const top=rubel ? 0 : Math.min(eyeY-.055,Math.max(0,cy-relativeHeight*.5));
   let bottom=eyeY;
   for(let j=row(eyeY);j<resolution;j++)if(ends[j]>eyeX-.045)bottom=j/(resolution-1);
   bottom=clamp(bottom,eyeY+.08,1);
@@ -249,7 +251,7 @@ function rcChaseHead(T,id,body,img,canvas,rect,b,k,depth,nx,ny,flank,texture){
     if(score>best){best=score;noseY=v;}
   }
   noseY=clamp(noseY,eyeY+.006,bottom-.006);
-  const bridge=cut+.034;
+  const bridge=rubel ? eyeX-.08 : cut+.034;
   const endEye=Math.max(eyeX+.004,ends[row(eyeY)]);
   const qEye=clamp((.5-leftEye)/widths[row(eyeV)],.10,.96);
   const exponent=clamp(Math.log(clamp((endEye-eyeX)/(endEye-bridge),.008,.98))/Math.log(qEye),.35,7);
@@ -259,6 +261,9 @@ function rcChaseHead(T,id,body,img,canvas,rect,b,k,depth,nx,ny,flank,texture){
     const v=j/rings;
     const y=v<eyeV?lerp(top,eyeY,v/eyeV):v<noseV?lerp(eyeY,noseY,(v-eyeV)/(noseV-eyeV)):lerp(noseY,bottom,(v-noseV)/(1-noseV));
     const end=ends[row(y)],extent=widths[row(v)],join=Math.min(bridge,end);
+    // Both cheeks use the same profile eye throughout the turn. The portrait
+    // supplies the bridge and crown without painting a second iris over it.
+    const eyeBand=rubel ? T.MathUtils.smoothstep(v,.38,.49)*(1-T.MathUtils.smoothstep(v,.71,.84)) : 0;
     for(let i=-1;i<=steps+1;i++){
       const skirt=i<0||i>steps;
       const q=Math.sin((clamp(i/steps,0,1)-.5)*Math.PI);
@@ -267,17 +272,18 @@ function rcChaseHead(T,id,body,img,canvas,rect,b,k,depth,nx,ny,flank,texture){
       const base=depth[clamp(Math.round(sy*ny),0,ny)*(nx+1)+clamp(Math.round(sx*nx),0,nx)];
       // Rubel's long, low neck blends into a deeper cheek. Keep the seam and
       // tip of the nose registered to the side art and the finish line.
-      const cheekLift = id === "rubel" ? .20 * T.MathUtils.smoothstep(x, cut, eyeX) * (eyeY-y) : 0;
+      const cheekLift = rubel ? .20 * T.MathUtils.smoothstep(x, cut, eyeX) * (eyeY-y) : 0;
       pos.push((sx-.5)*b.w*k,(1-sy)*b.h*k+cheekLift*rect.h*k,-q*(skirt?base:extent*width));
       // Correct the length foreshortening of the illustrated muzzle on a turn.
       // The neck seam stays fixed. Both views still share one depth surface.
       const muzzle=Math.max(0,1-Math.pow((v-noseV)/.58,2));
-      // The short snout on Rubel's portrait sits close to the brow. Too much
-      // forward relief hides the eyes when seen from above the leaders.
-      const faceX=eyeX+.045+(id==="rubel"?.046:.078)*muzzle-.085*q*q;
-      const faceY=eyeY+(v-eyeV)*relativeHeight-(id==="rubel"?.032:0);
+      // Keep Rubel's brow and muzzle at their measured profile positions.
+      const faceX=rubel ? x : eyeX+.045+.078*muzzle-.085*q*q;
+      const faceY=eyeY+(v-eyeV)*relativeHeight-(rubel?.032:0);
       turnPose.push(skirt?0:(faceX-x)*rect.w*k,skirt?0:(y-cheekLift-faceY)*rect.h*k,0);
-      uv.push(.5+q*extent,1-v);sideUV.push(sx,1-sy);rim.push(skirt?1:0);cheek.push(Math.abs(q));
+      uv.push(.5+q*extent,1-v);sideUV.push(sx,1-sy);
+      rim.push(skirt ? 1 : eyeBand && eyeBand*T.MathUtils.smoothstep(Math.abs(q)*extent,.075,.17));
+      cheek.push(Math.abs(q));
       if(j && i>=0){const a=pos.length/3-1;idx.push(a-cols-1,a-1,a,a-cols-1,a,a-cols);}
     }
   }
